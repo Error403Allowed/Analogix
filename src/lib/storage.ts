@@ -1,0 +1,81 @@
+export interface StudentProfile {
+  yearLevel: string;
+  state: string;
+  subjects: string[];
+  interests: string[];
+  onboardingComplete: boolean;
+}
+
+const STORAGE_KEY = 'learnmate_profile';
+
+export const getStudentProfile = (): StudentProfile | null => {
+  const stored = localStorage.getItem(STORAGE_KEY);
+  if (!stored) return null;
+  try {
+    return JSON.parse(stored);
+  } catch {
+    return null;
+  }
+};
+
+export const saveStudentProfile = (profile: StudentProfile): void => {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(profile));
+};
+
+export const clearStudentProfile = (): void => {
+  localStorage.removeItem(STORAGE_KEY);
+};
+
+export const YEAR_LEVELS = [
+  'Year 7',
+  'Year 8', 
+  'Year 9',
+  'Year 10',
+  'Year 11',
+  'Year 12',
+];
+
+export const STATES = [
+  { value: 'NSW', label: 'New South Wales' },
+  { value: 'VIC', label: 'Victoria' },
+  { value: 'QLD', label: 'Queensland' },
+  { value: 'WA', label: 'Western Australia' },
+  { value: 'SA', label: 'South Australia' },
+  { value: 'TAS', label: 'Tasmania' },
+  { value: 'ACT', label: 'Australian Capital Territory' },
+  { value: 'NT', label: 'Northern Territory' },
+];
+
+export const SUBJECTS = [
+  { value: 'mathematics', label: 'Mathematics', icon: '📐' },
+  { value: 'physics', label: 'Physics', icon: '⚛️' },
+  { value: 'chemistry', label: 'Chemistry', icon: '🧪' },
+  { value: 'biology', label: 'Biology', icon: '🧬' },
+  { value: 'english', label: 'English', icon: '📚' },
+  { value: 'history', label: 'History', icon: '🏛️' },
+  { value: 'geography', label: 'Geography', icon: '🌏' },
+  { value: 'pdhpe', label: 'PDHPE', icon: '🏃' },
+  { value: 'digital-tech', label: 'Digital Technologies', icon: '💻' },
+  { value: 'economics', label: 'Economics', icon: '📊' },
+];
+
+export const INTERESTS = [
+  { value: 'cricket', label: 'Cricket', category: 'Sports' },
+  { value: 'afl', label: 'AFL', category: 'Sports' },
+  { value: 'soccer', label: 'Soccer', category: 'Sports' },
+  { value: 'f1-racing', label: 'F1 Racing', category: 'Sports' },
+  { value: 'basketball', label: 'Basketball', category: 'Sports' },
+  { value: 'minecraft', label: 'Minecraft', category: 'Games' },
+  { value: 'roblox', label: 'Roblox', category: 'Games' },
+  { value: 'fortnite', label: 'Fortnite', category: 'Games' },
+  { value: 'chess', label: 'Chess', category: 'Games' },
+  { value: 'movies', label: 'Movies', category: 'Entertainment' },
+  { value: 'anime', label: 'Anime', category: 'Entertainment' },
+  { value: 'music', label: 'Music', category: 'Entertainment' },
+  { value: 'coding', label: 'Coding', category: 'Technology' },
+  { value: 'gadgets', label: 'Gadgets', category: 'Technology' },
+  { value: 'space', label: 'Space', category: 'Exploration' },
+  { value: 'cars', label: 'Cars', category: 'Vehicles' },
+  { value: 'cooking', label: 'Cooking', category: 'Hobbies' },
+  { value: 'art', label: 'Art & Design', category: 'Creative' },
+];
