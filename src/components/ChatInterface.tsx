@@ -3,8 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Send, Loader2, BookOpen, Sparkles, GraduationCap, Settings } from "lucide-react";
-import { type StudentProfile, SUBJECTS, INTERESTS } from "@/lib/storage";
+import { Send, Loader2, BookOpen, Sparkles, GraduationCap, ArrowLeft } from "lucide-react";
+import { type StudentProfile, SUBJECTS, INTERESTS, updateLearningStats } from "@/lib/storage";
 import ReactMarkdown from "react-markdown";
 
 interface Message {
@@ -15,9 +15,10 @@ interface Message {
 interface ChatInterfaceProps {
   profile: StudentProfile;
   onEditProfile: () => void;
+  onBackToDashboard: () => void;
 }
 
-export const ChatInterface = ({ profile, onEditProfile }: ChatInterfaceProps) => {
+export const ChatInterface = ({ profile, onEditProfile, onBackToDashboard }: ChatInterfaceProps) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -40,10 +41,35 @@ export const ChatInterface = ({ profile, onEditProfile }: ChatInterfaceProps) =>
     return INTERESTS.find(i => i.value === value)?.label || value;
   };
 
+  const detectSubject = (text: string): string | undefined => {
+    const lowerText = text.toLowerCase();
+    for (const subject of SUBJECTS) {
+      if (lowerText.includes(subject.label.toLowerCase()) || lowerText.includes(subject.value)) {
+        return subject.value;
+      }
+    }
+    // Check for common topic keywords
+    if (lowerText.includes('newton') || lowerText.includes('physics') || lowerText.includes('force')) {
+      return 'physics';
+    }
+    if (lowerText.includes('equation') || lowerText.includes('algebra') || lowerText.includes('math')) {
+      return 'mathematics';
+    }
+    if (lowerText.includes('cell') || lowerText.includes('photosynthesis') || lowerText.includes('dna')) {
+      return 'biology';
+    }
+    if (lowerText.includes('war') || lowerText.includes('history') || lowerText.includes('ancient')) {
+      return 'history';
+    }
+    return undefined;
+  };
+
   const sendMessage = async () => {
     if (!input.trim() || isLoading) return;
 
     const userMessage: Message = { role: "user", content: input.trim() };
+    const detectedSubject = detectSubject(input);
+    
     setMessages(prev => [...prev, userMessage]);
     setInput("");
     setIsLoading(true);
@@ -75,6 +101,9 @@ export const ChatInterface = ({ profile, onEditProfile }: ChatInterfaceProps) =>
         }
         throw new Error("Failed to get response");
       }
+
+      // Track the question
+      updateLearningStats(detectedSubject);
 
       const reader = response.body?.getReader();
       if (!reader) throw new Error("No response stream");
@@ -154,25 +183,26 @@ export const ChatInterface = ({ profile, onEditProfile }: ChatInterfaceProps) =>
       <header className="border-b-2 border-border bg-card p-4">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onBackToDashboard}
+              className="mr-2"
+            >
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              Dashboard
+            </Button>
+            <div className="h-6 w-px bg-border" />
             <div className="p-2 bg-primary border-2 border-border shadow-xs">
-              <GraduationCap className="h-6 w-6 text-primary-foreground" />
+              <GraduationCap className="h-5 w-5 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="text-xl font-bold">LearnMate</h1>
-              <p className="text-sm text-muted-foreground">
+              <h1 className="text-lg font-bold">AI Tutor</h1>
+              <p className="text-xs text-muted-foreground">
                 {profile.yearLevel} • {profile.state}
               </p>
             </div>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onEditProfile}
-            className="border-2"
-          >
-            <Settings className="h-4 w-4 mr-2" />
-            Edit Profile
-          </Button>
         </div>
       </header>
 
@@ -184,10 +214,9 @@ export const ChatInterface = ({ profile, onEditProfile }: ChatInterfaceProps) =>
               <div className="inline-flex p-4 bg-secondary border-2 border-border mb-6">
                 <Sparkles className="h-12 w-12 text-primary" />
               </div>
-              <h2 className="text-2xl font-bold mb-2">G'day! Ready to learn?</h2>
+              <h2 className="text-2xl font-bold mb-2">Ask me anything!</h2>
               <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-                Ask me anything about your subjects. I'll explain concepts using
-                analogies from your interests like{" "}
+                I'll explain concepts using analogies from your interests like{" "}
                 <span className="font-medium">
                   {profile.interests.slice(0, 2).map(getInterestLabel).join(" and ")}
                 </span>
