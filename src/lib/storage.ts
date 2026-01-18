@@ -6,7 +6,18 @@ export interface StudentProfile {
   onboardingComplete: boolean;
 }
 
+export interface LearningStats {
+  totalSessions: number;
+  totalQuestions: number;
+  questionsToday: number;
+  streakDays: number;
+  lastActiveDate: string;
+  subjectBreakdown: Record<string, number>;
+  weeklyActivity: number[];
+}
+
 const STORAGE_KEY = 'learnmate_profile';
+const STATS_KEY = 'learnmate_stats';
 
 export const getStudentProfile = (): StudentProfile | null => {
   const stored = localStorage.getItem(STORAGE_KEY);
@@ -24,6 +35,62 @@ export const saveStudentProfile = (profile: StudentProfile): void => {
 
 export const clearStudentProfile = (): void => {
   localStorage.removeItem(STORAGE_KEY);
+};
+
+export const getLearningStats = (): LearningStats => {
+  const stored = localStorage.getItem(STATS_KEY);
+  const defaultStats: LearningStats = {
+    totalSessions: 0,
+    totalQuestions: 0,
+    questionsToday: 0,
+    streakDays: 0,
+    lastActiveDate: '',
+    subjectBreakdown: {},
+    weeklyActivity: [0, 0, 0, 0, 0, 0, 0],
+  };
+  
+  if (!stored) return defaultStats;
+  try {
+    return { ...defaultStats, ...JSON.parse(stored) };
+  } catch {
+    return defaultStats;
+  }
+};
+
+export const updateLearningStats = (subject?: string): void => {
+  const stats = getLearningStats();
+  const today = new Date().toDateString();
+  const dayOfWeek = new Date().getDay();
+  
+  // Update streak
+  if (stats.lastActiveDate !== today) {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    if (stats.lastActiveDate === yesterday.toDateString()) {
+      stats.streakDays += 1;
+    } else if (stats.lastActiveDate !== today) {
+      stats.streakDays = 1;
+    }
+    stats.questionsToday = 0;
+    stats.totalSessions += 1;
+  }
+  
+  stats.totalQuestions += 1;
+  stats.questionsToday += 1;
+  stats.lastActiveDate = today;
+  stats.weeklyActivity[dayOfWeek] = (stats.weeklyActivity[dayOfWeek] || 0) + 1;
+  
+  if (subject) {
+    stats.subjectBreakdown[subject] = (stats.subjectBreakdown[subject] || 0) + 1;
+  }
+  
+  localStorage.setItem(STATS_KEY, JSON.stringify(stats));
+};
+
+export const incrementSession = (): void => {
+  const stats = getLearningStats();
+  stats.totalSessions += 1;
+  localStorage.setItem(STATS_KEY, JSON.stringify(stats));
 };
 
 export const YEAR_LEVELS = [
