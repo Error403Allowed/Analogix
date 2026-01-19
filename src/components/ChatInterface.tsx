@@ -9,6 +9,7 @@ import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import "katex/dist/katex.min.css";
+import { Analytics } from "@vercel/analytics/next"
 
 interface Message {
   role: "user" | "assistant";
@@ -211,8 +212,8 @@ export const ChatInterface = ({ profile, onEditProfile, onBackToDashboard }: Cha
       </header>
 
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-4">
-        <div className="max-w-4xl mx-auto space-y-4">
+      <div className="flex-1 overflow-y-auto flex flex-col-reverse p-4">
+        <div className="max-w-4xl mx-auto space-y-4 flex flex-col-reverse">
           {messages.length === 0 ? (
             <div className="text-center py-12">
               <div className="inline-flex p-4 bg-secondary border-2 border-border mb-6">
