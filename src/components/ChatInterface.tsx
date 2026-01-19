@@ -6,10 +6,6 @@ import { Badge } from "@/components/ui/badge";
 import { Send, Loader2, BookOpen, Sparkles, GraduationCap, ArrowLeft } from "lucide-react";
 import { type StudentProfile, SUBJECTS, INTERESTS, updateLearningStats } from "@/lib/storage";
 import ReactMarkdown from "react-markdown";
-import remarkMath from "remark-math";
-import rehypeKatex from "rehype-katex";
-import "katex/dist/katex.min.css";
-import { Analytics } from "@vercel/analytics/next"
 
 interface Message {
   role: "user" | "assistant";
@@ -78,6 +74,8 @@ export const ChatInterface = ({ profile, onEditProfile, onBackToDashboard }: Cha
     setInput("");
     setIsLoading(true);
 
+    let assistantContent = "";
+
     try {
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/tutor-chat`,
@@ -113,8 +111,18 @@ export const ChatInterface = ({ profile, onEditProfile, onBackToDashboard }: Cha
       const decoder = new TextDecoder();
       let buffer = "";
 
-      // Add empty assistant message to stream content into
-      setMessages(prev => [...prev, { role: "assistant", content: "" }]);
+      const updateAssistant = (text: string) => {
+        assistantContent += text;
+        setMessages(prev => {
+          const last = prev[prev.length - 1];
+          if (last?.role === "assistant") {
+            return prev.map((m, i) =>
+              i === prev.length - 1 ? { ...m, content: assistantContent } : m
+            );
+          }
+          return [...prev, { role: "assistant", content: assistantContent }];
+        });
+      };
 
       while (true) {
         const { done, value } = await reader.read();
@@ -137,20 +145,7 @@ export const ChatInterface = ({ profile, onEditProfile, onBackToDashboard }: Cha
           try {
             const parsed = JSON.parse(jsonStr);
             const content = parsed.choices?.[0]?.delta?.content;
-            if (content) {
-              setMessages(prev => {
-                const lastIndex = prev.length - 1;
-                const lastMessage = prev[lastIndex];
-                if (lastMessage.role === "assistant") {
-                  const updatedMessage = {
-                    ...lastMessage,
-                    content: lastMessage.content + content,
-                  };
-                  return [...prev.slice(0, lastIndex), updatedMessage];
-                }
-                return prev;
-              });
-            }
+            if (content) updateAssistant(content);
           } catch {
             buffer = line + "\n" + buffer;
             break;
@@ -212,8 +207,8 @@ export const ChatInterface = ({ profile, onEditProfile, onBackToDashboard }: Cha
       </header>
 
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto flex flex-col-reverse p-4">
-        <div className="max-w-4xl mx-auto space-y-4 flex flex-col-reverse">
+      <div className="flex-1 overflow-y-auto p-4">
+        <div className="max-w-4xl mx-auto space-y-4">
           {messages.length === 0 ? (
             <div className="text-center py-12">
               <div className="inline-flex p-4 bg-secondary border-2 border-border mb-6">
@@ -268,26 +263,7 @@ export const ChatInterface = ({ profile, onEditProfile, onBackToDashboard }: Cha
                 >
                   {message.role === "assistant" ? (
                     <div className="prose prose-sm max-w-none dark:prose-invert">
-                      <ReactMarkdown
-                        children={message.content}
-                        remarkPlugins={[remarkMath]}
-                        rehypePlugins={[rehypeKatex]}
-                        components={{
-                          code({ node, inline, className, children, ...props }) {
-                            return (
-                              <pre
-                                className="bg-gray-100 dark:bg-gray-800 p-2 rounded overflow-x-auto text-sm"
-                                {...props}
-                              >
-                                <code>{children}</code>
-                              </pre>
-                            );
-                          },
-                          a({ node, ...props }) {
-                            return <a className="text-blue-500 underline" {...props} />;
-                          },
-                        }}
-                      />
+                      <ReactMarkdown>{message.content}</ReactMarkdown>
                     </div>
                   ) : (
                     <p className="whitespace-pre-wrap">{message.content}</p>
@@ -295,6 +271,13 @@ export const ChatInterface = ({ profile, onEditProfile, onBackToDashboard }: Cha
                 </Card>
               </div>
             ))
+          )}
+          {isLoading && messages[messages.length - 1]?.role !== "assistant" && (
+            <div className="flex justify-start">
+              <Card className="p-4 border-2 border-border bg-card">
+                <Loader2 className="h-5 w-5 animate-spin" />
+              </Card>
+            </div>
           )}
           <div ref={messagesEndRef} />
         </div>
