@@ -12,7 +12,7 @@ export const LandingHero = ({ onGetStarted }: LandingHeroProps) => {
     {
       icon: Brain,
       title: "Personalised Analogies",
-      description: "Learn physics through F1 racing, maths through Minecraft, or history through your favourite movies.",
+      description: "Learn physics through Formula 1, maths through Minecraft, or history through your favourite movies.",
     },
     {
       icon: Target,
@@ -45,7 +45,7 @@ export const LandingHero = ({ onGetStarted }: LandingHeroProps) => {
             <div className="p-2 bg-primary border-2 border-border shadow-xs">
               <GraduationCap className="h-6 w-6 text-primary-foreground" />
             </div>
-            <span className="text-xl font-bold">LearnMate</span>
+            <span className="text-xl font-bold">Analogix</span>
           </div>
           <Button onClick={onGetStarted} className="border-2 border-border shadow-sm">
             Get Started
@@ -69,7 +69,7 @@ export const LandingHero = ({ onGetStarted }: LandingHeroProps) => {
             </h1>
             
             <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-              LearnMate uses AI to explain curriculum concepts using analogies from 
+              Analogix uses AI to explain curriculum concepts using analogies from 
               what you love — whether it's gaming, sports, music, or anything else.
             </p>
 
@@ -110,7 +110,7 @@ export const LandingHero = ({ onGetStarted }: LandingHeroProps) => {
             <div className="p-6 space-y-4">
               <div className="flex justify-end">
                 <div className="bg-primary text-primary-foreground px-4 py-2 border-2 border-border max-w-xs">
-                  <p className="text-sm">Explain Newton's Second Law using F1 racing</p>
+                  <p className="text-sm">Explain Newton's Second Law using Formula 1</p>
                 </div>
               </div>
               <div className="bg-card border-2 border-border p-4 max-w-md">
@@ -134,7 +134,7 @@ export const LandingHero = ({ onGetStarted }: LandingHeroProps) => {
       {/* Features Section */}
       <section className="py-16 px-4 bg-secondary border-t-2 border-b-2 border-border">
         <div className="max-w-6xl mx-auto">
-          <h2 className="text-3xl font-bold text-center mb-12">How LearnMate Works</h2>
+          <h2 className="text-3xl font-bold text-center mb-12">How Analogix Works</h2>
           <div className="grid md:grid-cols-3 gap-6">
             {features.map((feature) => {
               const Icon = feature.icon;
@@ -180,7 +180,7 @@ export const LandingHero = ({ onGetStarted }: LandingHeroProps) => {
             <div className="p-2 bg-primary border-2 border-border">
               <GraduationCap className="h-5 w-5 text-primary-foreground" />
             </div>
-            <span className="font-bold">LearnMate</span>
+            <span className="font-bold">Analogix</span>
           </div>
           <p className="text-sm text-muted-foreground">
             Built for Australian students, Years 7–12

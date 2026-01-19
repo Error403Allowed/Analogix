@@ -12,7 +12,10 @@ import {
   Sparkles,
   Target,
   Calendar,
+  Moon,
+  Sun,
 } from "lucide-react";
+import { useTheme } from "@/hooks/use-theme";
 import { type StudentProfile, type LearningStats, SUBJECTS } from "@/lib/storage";
 
 interface DashboardProps {
@@ -23,6 +26,8 @@ interface DashboardProps {
 }
 
 export const Dashboard = ({ profile, stats, onStartChat, onEditProfile }: DashboardProps) => {
+  const { theme, toggleTheme } = useTheme();
+
   const getSubjectLabel = (value: string) => {
     return SUBJECTS.find(s => s.value === value)?.label || value;
   };
@@ -51,21 +56,36 @@ export const Dashboard = ({ profile, stats, onStartChat, onEditProfile }: Dashbo
               <GraduationCap className="h-6 w-6 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="text-xl font-bold">LearnMate</h1>
+              <h1 className="text-xl font-bold">Analogix</h1>
               <p className="text-sm text-muted-foreground">
                 {profile.yearLevel} • {profile.state}
               </p>
             </div>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onEditProfile}
-            className="border-2"
-          >
-            <Settings className="h-4 w-4 mr-2" />
-            Edit Profile
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={toggleTheme}
+              className="border-2"
+              title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+            >
+              {theme === 'dark' ? (
+                <Sun className="h-4 w-4" />
+              ) : (
+                <Moon className="h-4 w-4" />
+              )}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onEditProfile}
+              className="border-2"
+            >
+              <Settings className="h-4 w-4 mr-2" />
+              Edit Profile
+            </Button>
+          </div>
         </div>
       </header>
 

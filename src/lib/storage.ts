@@ -16,8 +16,8 @@ export interface LearningStats {
   weeklyActivity: number[];
 }
 
-const STORAGE_KEY = 'learnmate_profile';
-const STATS_KEY = 'learnmate_stats';
+const STORAGE_KEY = 'Analogix_profile';
+const STATS_KEY = 'Analogix_stats';
 
 export const getStudentProfile = (): StudentProfile | null => {
   const stored = localStorage.getItem(STORAGE_KEY);
@@ -130,7 +130,7 @@ export const INTERESTS = [
   { value: 'cricket', label: 'Cricket', category: 'Sports' },
   { value: 'afl', label: 'AFL', category: 'Sports' },
   { value: 'soccer', label: 'Soccer', category: 'Sports' },
-  { value: 'f1-racing', label: 'F1 Racing', category: 'Sports' },
+  { value: 'Formula 1', label: 'Formula 1', category: 'Sports' },
   { value: 'basketball', label: 'Basketball', category: 'Sports' },
   { value: 'minecraft', label: 'Minecraft', category: 'Games' },
   { value: 'roblox', label: 'Roblox', category: 'Games' },
