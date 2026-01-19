@@ -6,6 +6,9 @@ import { Badge } from "@/components/ui/badge";
 import { Send, Loader2, BookOpen, Sparkles, GraduationCap, ArrowLeft } from "lucide-react";
 import { type StudentProfile, SUBJECTS, INTERESTS, updateLearningStats } from "@/lib/storage";
 import ReactMarkdown from "react-markdown";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
+import "katex/dist/katex.min.css";
 
 interface Message {
   role: "user" | "assistant";
@@ -262,8 +265,12 @@ export const ChatInterface = ({ profile, onEditProfile, onBackToDashboard }: Cha
                   }`}
                 >
                   {message.role === "assistant" ? (
-                    <div className="prose prose-sm max-w-none dark:prose-invert">
-                      <ReactMarkdown>{message.content}</ReactMarkdown>
+                    <div className="prose prose-sm max-w-none dark:prose-invert animate-fade-in">
+                      <ReactMarkdown
+                        children={message.content}
+                        remarkPlugins={[remarkMath]}
+                        rehypePlugins={[rehypeKatex]}
+                      />
                     </div>
                   ) : (
                     <p className="whitespace-pre-wrap">{message.content}</p>
