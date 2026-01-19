@@ -13,12 +13,14 @@ interface StudentProfile {
 }
 
 interface Message {
-  role: "user" | "assistant";
+  role: "user";
   content: string;
 }
 
 const buildSystemPrompt = (profile: StudentProfile): string => {
-  const interestsList = profile.interests.join(", ");
+  const primaryInterest = profile.interests[0];
+  const interestsList = primaryInterest;
+
   const subjectsList = profile.subjects.join(", ");
 
   return `## Role & Core Identity
@@ -38,13 +40,13 @@ For every concept or query response, adhere to this sequential structure:
 1. **Curriculum Anchor**
    - State the official concept in clear, academic language from the syllabus.
 
-2. **Essential Knowledge (Raw Facts)**
-   - Bullet-point key elements without any metaphors.
-   - Include definitions, formulas, units/symbols, and related prerequisites.
-
-3. **Interest-Based Analogy**
+2. **Interest-Based Analogy**
    - Select one strong, primary analogy tailored to the student's interests: ${interestsList}
    - Map elements explicitly and explain step-by-step for clarity.
+
+3. **Essential Knowledge (Raw Facts)**
+   - Bullet-point key elements without any metaphors.
+   - Include definitions, formulas, units/symbols, and related prerequisites.
 
 4. **Analogy ↔ Reality Bridge**
    - Explicitly link back to the concept to reinforce learning and prevent misconceptions.
@@ -67,14 +69,16 @@ For every concept or query response, adhere to this sequential structure:
 - If an analogy risks inaccuracy, qualify or discard it.
 - Keep responses appropriate for ${profile.yearLevel}.
 - Be friendly, encouraging, and professional.
+- Leave a space in each part of the structure (e.g. 1, 2, 3...) for easy identification.
+- Use gen z slang if user uses it (e.g. "Lowkey", "Fr", "Wassup", "Yo").
 
 ## Tone
 - Clear and concise
 - Encouraging but not condescending
-- Use Australian spelling and expressions when appropriate (e.g., "G'day", "No worries")`;
+- Use Australian spelling and expressions when appropriate (e.g., "Wassup!", "No worries")`;
 };
 
-serve(async (req) => {
+serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -85,35 +89,53 @@ serve(async (req) => {
       profile: StudentProfile;
     };
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      console.error("LOVABLE_API_KEY is not configured");
-      throw new Error("API key not configured");
+    if (!profile || !Array.isArray(profile.interests) || profile.interests.length === 0) {
+      throw new Error("Invalid or missing student interests");
+    }
+    if (!Array.isArray(messages)) {
+      throw new Error("Invalid messages payload");
+    }
+
+    const safeMessages = messages.map((m) => ({
+      role: "user" as const,
+      content: String(m.content).slice(0, 4000),
+    }));
+
+    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+    if (!OPENAI_API_KEY) {
+      console.error("OPENAI_API_KEY is not configured");
+      throw new Error("OpenAI API key not configured in Supabase secrets");
     }
 
     console.log("Processing chat request for", profile.yearLevel, profile.state);
 
     const systemPrompt = buildSystemPrompt(profile);
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30000);
+
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "gpt-4o",
         messages: [
           { role: "system", content: systemPrompt },
-          ...messages,
+          ...safeMessages,
         ],
         stream: true,
       }),
+      signal: controller.signal,
     });
+
+    clearTimeout(timeout);
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
+      console.error("OpenAI API error:", response.status, errorText);
       
       if (response.status === 429) {
         return new Response(
@@ -121,15 +143,21 @@ serve(async (req) => {
           { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      if (response.status === 402) {
+      if (response.status === 401) {
         return new Response(
-          JSON.stringify({ error: "Usage limit reached. Please try again later." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          JSON.stringify({ error: "Authentication failed. Check your API key." }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      if (response.status === 400) {
+        return new Response(
+          JSON.stringify({ error: "Invalid request. Check your input." }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
       
       return new Response(
-        JSON.stringify({ error: "Failed to get AI response" }),
+        JSON.stringify({ error: "Failed to get AI response from OpenAI" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
