@@ -135,6 +135,7 @@ export const INTERESTS = [
   { value: 'minecraft', label: 'Minecraft', category: 'Games' },
   { value: 'roblox', label: 'Roblox', category: 'Games' },
   { value: 'fortnite', label: 'Fortnite', category: 'Games' },
+  { value: 'valorant', label: 'Valorant', category: 'Games' },
   { value: 'chess', label: 'Chess', category: 'Games' },
   { value: 'movies', label: 'Movies', category: 'Entertainment' },
   { value: 'anime', label: 'Anime', category: 'Entertainment' },
@@ -143,6 +144,10 @@ export const INTERESTS = [
   { value: 'gadgets', label: 'Gadgets', category: 'Technology' },
   { value: 'space', label: 'Space', category: 'Exploration' },
   { value: 'cars', label: 'Cars', category: 'Vehicles' },
+  { value: 'motorbikes', label: 'Motorbikes', category: 'Vehicles' },
+  { value: 'trains', label: 'Trains', category: 'Vehicles' },
   { value: 'cooking', label: 'Cooking', category: 'Hobbies' },
+  { value: 'photography', label: 'Photography', category: 'Hobbies' },
+  { value: 'knitting', label: 'Knitting', category: 'Hobbies' },
   { value: 'art', label: 'Art & Design', category: 'Creative' },
 ];
