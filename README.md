@@ -4,7 +4,7 @@ Analogix is an intelligent tutoring platform that explains curriculum concepts u
 
 ## 🎯 Features
 
-- **Personalized Analogies**: Learn physics through F1 racing, maths through Minecraft, or history through your favorite movies
+- **Personalized Analogies**: Learn physics through Formula 1, maths through Minecraft, or history through your favorite movies
 - **Curriculum Aligned**: All content follows ACARA standards and state-specific syllabuses (NESA for NSW, VCAA for VIC, etc.)
 - **Exam Ready**: Every explanation includes exam-style practice questions and common pitfalls to avoid
 - **Multi-Subject Support**: Mathematics, Physics, Chemistry, Biology, English, History, Geography, and more
