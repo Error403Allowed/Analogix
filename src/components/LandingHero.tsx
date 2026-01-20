@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { GraduationCap, Sparkles, BookOpen, Target, Brain, ArrowRight } from "lucide-react";
+import { Analytics } from "@vercel/analytics/next"
 
 interface LandingHeroProps {
   onGetStarted: () => void;
@@ -37,10 +38,10 @@ export const LandingHero = ({ onGetStarted }: LandingHeroProps) => {
   ];
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="w-full min-h-screen bg-background">
       {/* Navigation */}
-      <nav className="border-b-2 border-border bg-card">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+      <nav className="w-full border-b-2 border-border bg-card">
+        <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-primary border-2 border-border shadow-xs">
               <GraduationCap className="h-6 w-6 text-primary-foreground" />
@@ -55,8 +56,8 @@ export const LandingHero = ({ onGetStarted }: LandingHeroProps) => {
       </nav>
 
       {/* Hero Section */}
-      <section className="py-16 md:py-24 px-4">
-        <div className="max-w-6xl mx-auto">
+      <section className="w-full py-16 md:py-24 px-4 sm:px-6 lg:px-8">
+        <div className="w-full max-w-7xl mx-auto">
           <div className="max-w-3xl mx-auto text-center mb-12">
             <Badge variant="secondary" className="mb-6 border-2 border-border px-4 py-2">
               <Sparkles className="h-4 w-4 mr-2" />
@@ -132,8 +133,8 @@ export const LandingHero = ({ onGetStarted }: LandingHeroProps) => {
       </section>
 
       {/* Features Section */}
-      <section className="py-16 px-4 bg-secondary border-t-2 border-b-2 border-border">
-        <div className="max-w-6xl mx-auto">
+      <section className="w-full py-16 px-4 sm:px-6 lg:px-8 bg-secondary border-t-2 border-b-2 border-border">
+        <div className="w-full max-w-7xl mx-auto">
           <h2 className="text-3xl font-bold text-center mb-12">How Analogix Works</h2>
           <div className="grid md:grid-cols-3 gap-6">
             {features.map((feature) => {
@@ -156,8 +157,8 @@ export const LandingHero = ({ onGetStarted }: LandingHeroProps) => {
       </section>
 
       {/* CTA Section */}
-      <section className="py-16 px-4">
-        <div className="max-w-2xl mx-auto text-center">
+      <section className="w-full py-16 px-4 sm:px-6 lg:px-8">
+        <div className="w-full max-w-2xl mx-auto text-center">
           <h2 className="text-3xl font-bold mb-4">Ready to Learn Smarter?</h2>
           <p className="text-muted-foreground mb-8">
             Set up your profile in 60 seconds and start getting personalised explanations.
@@ -174,8 +175,8 @@ export const LandingHero = ({ onGetStarted }: LandingHeroProps) => {
       </section>
 
       {/* Footer */}
-      <footer className="border-t-2 border-border bg-card py-8 px-4">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+      <footer className="w-full border-t-2 border-border bg-card py-8 px-4 sm:px-6 lg:px-8">
+        <div className="w-full max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-primary border-2 border-border">
               <GraduationCap className="h-5 w-5 text-primary-foreground" />

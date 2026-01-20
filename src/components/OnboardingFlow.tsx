@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowRight, ArrowLeft, GraduationCap, MapPin, BookOpen, Heart } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { ArrowRight, ArrowLeft, GraduationCap, MapPin, BookOpen, Heart, User } from "lucide-react";
 import { YEAR_LEVELS, STATES, SUBJECTS, INTERESTS, saveStudentProfile, type StudentProfile } from "@/lib/storage";
 
 interface OnboardingFlowProps {
@@ -11,6 +12,7 @@ interface OnboardingFlowProps {
 
 export const OnboardingFlow = ({ onComplete }: OnboardingFlowProps) => {
   const [step, setStep] = useState(0);
+  const [name, setName] = useState("");
   const [yearLevel, setYearLevel] = useState("");
   const [state, setState] = useState("");
   const [subjects, setSubjects] = useState<string[]>([]);
@@ -30,16 +32,18 @@ export const OnboardingFlow = ({ onComplete }: OnboardingFlowProps) => {
 
   const canProceed = () => {
     switch (step) {
-      case 0: return yearLevel !== "";
-      case 1: return state !== "";
-      case 2: return subjects.length > 0;
-      case 3: return interests.length >= 3;
+      case 0: return name !== "";
+      case 1: return yearLevel !== "";
+      case 2: return state !== "";
+      case 3: return subjects.length > 0;
+      case 4: return interests.length >= 3;
       default: return false;
     }
   };
 
   const handleComplete = () => {
     const profile: StudentProfile = {
+      name,
       yearLevel,
       state,
       subjects,
@@ -51,6 +55,11 @@ export const OnboardingFlow = ({ onComplete }: OnboardingFlowProps) => {
   };
 
   const steps = [
+    {
+      icon: User,
+      title: "What's your name?",
+      subtitle: "I'll personalize your learning experience",
+    },
     {
       icon: GraduationCap,
       title: "What year are you in?",
@@ -77,8 +86,8 @@ export const OnboardingFlow = ({ onComplete }: OnboardingFlowProps) => {
   const StepIcon = currentStep.icon;
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <Card className="w-full max-w-2xl border-2 border-border shadow-md">
+    <div className="w-full min-h-screen bg-background flex items-center justify-center p-4 sm:p-6 lg:p-8">
+      <Card className="w-full max-w-3xl border-2 border-border shadow-md">
         <CardHeader className="text-center border-b-2 border-border">
           <div className="flex items-center justify-center gap-2 mb-4">
             {steps.map((_, index) => (
@@ -101,6 +110,19 @@ export const OnboardingFlow = ({ onComplete }: OnboardingFlowProps) => {
 
         <CardContent className="p-6">
           {step === 0 && (
+            <div className="space-y-4">
+              <Input
+                type="text"
+                placeholder="Enter your name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="text-lg p-6 border-2 border-border"
+                autoFocus
+              />
+            </div>
+          )}
+
+          {step === 1 && (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               {YEAR_LEVELS.map((year) => (
                 <button
@@ -118,7 +140,7 @@ export const OnboardingFlow = ({ onComplete }: OnboardingFlowProps) => {
             </div>
           )}
 
-          {step === 1 && (
+          {step === 2 && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {STATES.map((s) => (
                 <button
@@ -137,7 +159,7 @@ export const OnboardingFlow = ({ onComplete }: OnboardingFlowProps) => {
             </div>
           )}
 
-          {step === 2 && (
+          {step === 3 && (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               {SUBJECTS.map((subject) => (
                 <button
@@ -156,7 +178,7 @@ export const OnboardingFlow = ({ onComplete }: OnboardingFlowProps) => {
             </div>
           )}
 
-          {step === 3 && (
+          {step === 4 && (
             <div>
               <div className="flex flex-wrap gap-2 mb-4">
                 {interests.length > 0 && (
@@ -216,7 +238,7 @@ export const OnboardingFlow = ({ onComplete }: OnboardingFlowProps) => {
               Back
             </Button>
 
-            {step < 3 ? (
+            {step < 4 ? (
               <Button
                 onClick={() => setStep(step + 1)}
                 disabled={!canProceed()}
