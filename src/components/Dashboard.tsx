@@ -48,7 +48,7 @@ export const Dashboard = ({ profile, stats, onStartChat, onEditProfile }: Dashbo
   const goalProgress = Math.min((stats.questionsToday / dailyGoal) * 100, 100);
 
   return (
-    <div className="w-full min-h-screen bg-background">
+    <div className="w-full min-h-screen bg-background bg-[radial-gradient(ellipse_at_top_left,_var(--tw-gradient-stops))] from-primary/10 via-background to-accent/10">
       {/* Header */}
       <header className="w-full border-b-2 border-border bg-card p-4">
         <div className="w-full max-w-7xl mx-auto flex items-center justify-between">
@@ -93,7 +93,7 @@ export const Dashboard = ({ profile, stats, onStartChat, onEditProfile }: Dashbo
       <main className="w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
         {/* Welcome Section with CTA */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <Card className="lg:col-span-2 border-2 border-border bg-gradient-to-br from-primary/10 to-accent/10">
+          <Card className="lg:col-span-2 border-2 border-border bg-gradient-to-br from-primary/20 via-primary/5 to-accent/20">
             <CardContent className="p-6">
               <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
                 <div className="flex-1">
@@ -118,7 +118,7 @@ export const Dashboard = ({ profile, stats, onStartChat, onEditProfile }: Dashbo
           </Card>
 
           {/* Streak Card */}
-          <Card className="border-2 border-border">
+          <Card className="border-2 border-border bg-gradient-to-br from-orange-500/10 to-red-500/10">
             <CardContent className="p-6 flex flex-col items-center justify-center h-full">
               <div className="p-3 bg-accent/20 border-2 border-border mb-3">
                 <Flame className="h-8 w-8 text-accent" />
@@ -274,9 +274,9 @@ export const Dashboard = ({ profile, stats, onStartChat, onEditProfile }: Dashbo
                             {count} questions
                           </span>
                         </div>
-                        <Progress 
-                          value={(count / (topSubjects[0][1] || 1)) * 100} 
-                          className="h-2 mt-1 border border-border" 
+                        <Progress
+                          value={(count / (topSubjects[0][1] || 1)) * 100}
+                          className="h-2 mt-1 border border-border"
                         />
                       </div>
                     </div>

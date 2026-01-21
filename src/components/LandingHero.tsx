@@ -1,3 +1,4 @@
+import ParticlesBackground from './ParticlesBackground';
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -29,7 +30,7 @@ export const LandingHero = ({ onGetStarted }: LandingHeroProps) => {
 
   const subjects = [
     "Mathematics",
-    "Physics", 
+    "Physics",
     "Chemistry",
     "Biology",
     "English",
@@ -38,7 +39,8 @@ export const LandingHero = ({ onGetStarted }: LandingHeroProps) => {
   ];
 
   return (
-    <div className="w-full min-h-screen bg-background">
+    <div className="w-full min-h-screen bg-background relative overflow-hidden">
+      <ParticlesBackground />
       {/* Navigation */}
       <nav className="w-full border-b-2 border-border bg-card">
         <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
@@ -63,14 +65,14 @@ export const LandingHero = ({ onGetStarted }: LandingHeroProps) => {
               <Sparkles className="h-4 w-4 mr-2" />
               AI-Powered Learning for Australian Students
             </Badge>
-            
+
             <h1 className="text-4xl md:text-6xl font-bold mb-6 leading-tight">
               Learn Any Subject Through
               <span className="block text-primary">Your Interests</span>
             </h1>
-            
+
             <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-              Analogix uses AI to explain curriculum concepts using analogies from 
+              Analogix uses AI to explain curriculum concepts using analogies from
               what you love — whether it's gaming, sports, music, or anything else.
             </p>
 
@@ -119,8 +121,8 @@ export const LandingHero = ({ onGetStarted }: LandingHeroProps) => {
                   <strong>📚 Official Definition:</strong> Force = Mass × Acceleration
                 </p>
                 <p className="text-sm mb-3">
-                  <strong>🏎️ F1 Analogy:</strong> Imagine an F1 car on the starting grid. 
-                  The engine's thrust is the <em>force</em>, the car's weight is the <em>mass</em>, 
+                  <strong>🏎️ F1 Analogy:</strong> Imagine an F1 car on the starting grid.
+                  The engine's thrust is the <em>force</em>, the car's weight is the <em>mass</em>,
                   and how quickly it speeds up is the <em>acceleration</em>.
                 </p>
                 <p className="text-sm text-muted-foreground">

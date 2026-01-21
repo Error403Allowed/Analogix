@@ -37,7 +37,7 @@ export const ChatInterface = ({ profile, onEditProfile, onBackToDashboard }: any
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  
+
   // Ref for the specific scrollable container
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -133,7 +133,7 @@ export const ChatInterface = ({ profile, onEditProfile, onBackToDashboard }: any
       if (!reader) throw new Error("No response stream");
 
       const decoder = new TextDecoder();
-      
+
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -184,7 +184,7 @@ export const ChatInterface = ({ profile, onEditProfile, onBackToDashboard }: any
     // Added overflow-hidden to root to prevent whole-page scrolling
     <div className="flex flex-col w-full h-screen overflow-hidden bg-background">
       <style>{animationStyles}</style>
-      
+
       {/* Header - Fixed Height */}
       <header className="flex-none w-full border-b-2 border-border bg-card p-4">
         <div className="w-full max-w-5xl mx-auto flex items-center justify-between">
@@ -205,7 +205,7 @@ export const ChatInterface = ({ profile, onEditProfile, onBackToDashboard }: any
       </header>
 
       {/* Messages Area - min-h-0 is the key for nested flex scroll */}
-      <div 
+      <div
         ref={scrollContainerRef}
         className="flex-1 overflow-y-auto p-4 sm:p-6 min-h-0 w-full"
       >
@@ -227,14 +227,24 @@ export const ChatInterface = ({ profile, onEditProfile, onBackToDashboard }: any
           ) : (
             messages.map((message, index) => (
               <div key={index} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"} ${message.role === "user" ? "message-animate" : ""}`}>
-                <Card className={`max-w-[90%] p-4 border-2 border-border shadow-none ${message.role === "user" ? "bg-primary text-primary-foreground" : "bg-card"}`}>
+                {message.role === "assistant" && (
+                  <div className="mr-2 mt-2 p-1.5 rounded-full bg-primary/10 border border-primary/20 h-fit">
+                    <Sparkles className="h-4 w-4 text-primary" />
+                  </div>
+                )}
+                <Card className={`max-w-[85%] p-4 border shadow-sm transition-all duration-300 ${message.role === "user"
+                    ? "bg-[#007AFF] text-white border-[#007AFF] rounded-2xl rounded-tr-sm dark:bg-[#007AFF]"
+                    : "bg-card ai-bubble-glow rounded-2xl rounded-tl-sm"
+                  }`}>
                   {message.role === "assistant" ? (
                     message.content === "" ? (
-                      <div key={`skeleton-${index}`}>
-                        <AssistantSkeleton />
+                      <div key={`skeleton-${index}`} className="animate-skeleton space-y-2 p-1">
+                        <div className="h-3 w-[90%] rounded bg-muted/50" />
+                        <div className="h-3 w-[75%] rounded bg-muted/50" />
+                        <div className="h-3 w-[60%] rounded bg-muted/50" />
                       </div>
                     ) : (
-                      <div key={`content-${index}`} className="prose prose-sm max-w-none dark:prose-invert prose-p:leading-relaxed message-animate">
+                      <div key={`content-${index}`} className="prose prose-sm max-w-none dark:prose-invert prose-p:leading-relaxed message-animate prose-headings:text-foreground prose-strong:text-foreground">
                         <ReactMarkdown
                           remarkPlugins={[remarkMath]}
                           rehypePlugins={[rehypeKatex]}
@@ -244,7 +254,7 @@ export const ChatInterface = ({ profile, onEditProfile, onBackToDashboard }: any
                       </div>
                     )
                   ) : (
-                    <p className="whitespace-pre-wrap">{message.content}</p>
+                    <p className="whitespace-pre-wrap font-medium">{message.content}</p>
                   )}
                 </Card>
               </div>

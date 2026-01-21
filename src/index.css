@@ -103,7 +103,7 @@ All colors MUST be HSL.
     --border: 220 15% 25%;
     --input: 220 15% 25%;
     --ring: 220 90% 56%;
-    
+
     --sidebar-background: 220 15% 8%;
     --sidebar-foreground: 220 10% 95%;
     --sidebar-primary: 220 90% 56%;
@@ -112,16 +112,16 @@ All colors MUST be HSL.
     --sidebar-accent-foreground: 220 15% 5%;
     --sidebar-border: 220 15% 25%;
     --sidebar-ring: 220 90% 56%;
-    
+
     --chart-1: 220 90% 56%;
     --chart-2: 160 70% 50%;
     --chart-3: 45 85% 60%;
     --chart-4: 280 70% 60%;
     --chart-5: 340 75% 60%;
-    
+
     --sidebar: 220 15% 8%;
     --radius: 0rem;
-    
+
     --shadow-2xs: 1px 1px 0px 0px hsl(220 15% 20%);
     --shadow-xs: 2px 2px 0px 0px hsl(220 15% 20%);
     --shadow-sm: 3px 3px 0px 0px hsl(220 15% 20%);
@@ -130,6 +130,16 @@ All colors MUST be HSL.
     --shadow-lg: 12px 12px 0px 0px hsl(220 15% 20%);
     --shadow-xl: 16px 16px 0px 0px hsl(220 15% 20%);
     --shadow-2xl: 24px 24px 0px 0px hsl(220 15% 20%);
+  }
+
+  .liquid-glass {
+    @apply backdrop-blur-[16px] border border-white/20 shadow-lg;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0.1) 100%);
+  }
+
+  .dark .liquid-glass {
+    background: linear-gradient(135deg, rgba(30, 30, 30, 0.6) 0%, rgba(30, 30, 30, 0.3) 100%);
+    @apply border-white/10;
   }
 }
 
@@ -161,6 +171,7 @@ All colors MUST be HSL.
     opacity: 0;
     transform: translateY(10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -169,4 +180,55 @@ All colors MUST be HSL.
 
 .message-animate {
   animation: message-fade-in 0.4s ease-out forwards;
+}
+
+@keyframes pulse-glow {
+  0% {
+    box-shadow: 0 0 5px rgba(59, 130, 246, 0.2);
+  }
+
+  50% {
+    box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
+  }
+
+  100% {
+    box-shadow: 0 0 5px rgba(59, 130, 246, 0.2);
+  }
+}
+
+.ai-bubble-glow {
+  animation: pulse-glow 2s infinite ease-in-out;
+  @apply border-primary/30;
+}
+
+@keyframes skeleton-pulse {
+  0% {
+    background-color: rgba(0, 0, 0, 0.05);
+  }
+
+  50% {
+    background-color: rgba(0, 0, 0, 0.1);
+  }
+
+  100% {
+    background-color: rgba(0, 0, 0, 0.05);
+  }
+}
+
+.dark @keyframes skeleton-pulse {
+  0% {
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+
+  50% {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+
+  100% {
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+}
+
+.animate-skeleton {
+  animation: skeleton-pulse 1.5s infinite ease-in-out;
 }
