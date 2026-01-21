@@ -1,10 +1,8 @@
 import { useState, useRef, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Send, Loader2, BookOpen, Sparkles, GraduationCap, ArrowLeft } from "lucide-react";
-import { type StudentProfile, SUBJECTS, INTERESTS, updateLearningStats } from "@/lib/storage";
+import { Button } from "@/components/ui/button.tsx";
+import { Textarea } from "@/components/ui/textarea.tsx";
+import { Card } from "@/components/ui/card.tsx";
+import { Send, Loader2, Sparkles, GraduationCap, ArrowLeft } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
@@ -25,15 +23,16 @@ interface Message {
   content: string;
 }
 
-const AssistantSkeleton = () => (
-  <div className="space-y-2">
-    <div className="h-3 w-[90%] rounded bg-muted animate-pulse" />
-    <div className="h-3 w-[75%] rounded bg-muted animate-pulse" />
-    <div className="h-3 w-[60%] rounded bg-muted animate-pulse" />
-  </div>
-);
+interface ChatInterfaceProps {
+  profile: {
+    yearLevel: string;
+    state: string;
+    interests: string[];
+  };
+  onBackToDashboard: () => void;
+}
 
-export const ChatInterface = ({ profile, onEditProfile, onBackToDashboard }: any) => {
+export const ChatInterface = ({ profile, onBackToDashboard }: ChatInterfaceProps) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -96,8 +95,7 @@ export const ChatInterface = ({ profile, onEditProfile, onBackToDashboard }: any
     scrollToBottom();
   }, [messages, isLoading]);
 
-  const getSubjectLabel = (value: string) => SUBJECTS.find(s => s.value === value)?.label || value;
-  const getInterestLabel = (value: string) => INTERESTS.find(i => i.value === value)?.label || value;
+
 
   const sendMessage = async () => {
     if (!input.trim() || isLoading) return;
@@ -159,7 +157,7 @@ export const ChatInterface = ({ profile, onEditProfile, onBackToDashboard }: any
           }
         }
       }
-    } catch (error) {
+    } catch (_error) {
       setMessages(prev => [...prev, { role: "assistant", content: "⚠️ Something went wrong." }]);
     } finally {
       if (flushTimeoutRef.current !== null) {
@@ -218,7 +216,7 @@ export const ChatInterface = ({ profile, onEditProfile, onBackToDashboard }: any
               <h2 className="text-2xl font-bold mb-2">Ask me anything!</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-w-xl mx-auto mt-8">
                 {["Explain Newton's laws", "Help with quadratic equations", "What caused World War I?", "How does photosynthesis work?"].map((q) => (
-                  <button key={q} onClick={() => setInput(q)} className="p-3 text-left border-2 border-border bg-card hover:bg-secondary transition-colors text-sm font-medium">
+                  <button type="button" key={q} onClick={() => setInput(q)} className="p-3 text-left border-2 border-border bg-card hover:bg-secondary transition-colors text-sm font-medium">
                     {q}
                   </button>
                 ))}

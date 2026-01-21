@@ -1,4 +1,5 @@
 export interface StudentProfile {
+  name: string;
   yearLevel: string;
   state: string;
   subjects: string[];
@@ -127,27 +128,26 @@ export const SUBJECTS = [
 ];
 
 export const INTERESTS = [
-  { value: 'cricket', label: 'Cricket', category: 'Sports' },
-  { value: 'afl', label: 'AFL', category: 'Sports' },
-  { value: 'soccer', label: 'Soccer', category: 'Sports' },
-  { value: 'Formula 1', label: 'Formula 1', category: 'Sports' },
-  { value: 'basketball', label: 'Basketball', category: 'Sports' },
-  { value: 'minecraft', label: 'Minecraft', category: 'Games' },
-  { value: 'roblox', label: 'Roblox', category: 'Games' },
-  { value: 'fortnite', label: 'Fortnite', category: 'Games' },
-  { value: 'valorant', label: 'Valorant', category: 'Games' },
-  { value: 'chess', label: 'Chess', category: 'Games' },
-  { value: 'movies', label: 'Movies', category: 'Entertainment' },
-  { value: 'anime', label: 'Anime', category: 'Entertainment' },
-  { value: 'music', label: 'Music', category: 'Entertainment' },
-  { value: 'coding', label: 'Coding', category: 'Technology' },
-  { value: 'gadgets', label: 'Gadgets', category: 'Technology' },
-  { value: 'space', label: 'Space', category: 'Exploration' },
-  { value: 'cars', label: 'Cars', category: 'Vehicles' },
-  { value: 'motorbikes', label: 'Motorbikes', category: 'Vehicles' },
-  { value: 'trains', label: 'Trains', category: 'Vehicles' },
-  { value: 'cooking', label: 'Cooking', category: 'Hobbies' },
-  { value: 'photography', label: 'Photography', category: 'Hobbies' },
-  { value: 'knitting', label: 'Knitting', category: 'Hobbies' },
-  { value: 'art', label: 'Art & Design', category: 'Creative' },
+  { value: 'cricket', label: 'Cricket', icon: '🏏', category: 'Sports' },
+  { value: 'afl', label: 'AFL', icon: '🏈', category: 'Sports' },
+  { value: 'soccer', label: 'Soccer', icon: '⚽', category: 'Sports' },
+  { value: 'Formula 1', label: 'Formula 1', icon: '🏎️', category: 'Sports' },
+  { value: 'basketball', label: 'Basketball', icon: '🏀', category: 'Sports' },
+  { value: 'minecraft', label: 'Minecraft', icon: '⛏️', category: 'Games' },
+  { value: 'roblox', label: 'Roblox', icon: '𝗥⟐𝗕𝗟◘𝗫', category: 'Games' },
+  { value: 'fortnite', label: 'Fortnite', icon: '🪂', category: 'Games' },
+  { value: 'chess', label: 'Chess', icon: '♟️', category: 'Games' },
+  { value: 'movies', label: 'Movies', icon: '🎬', category: 'Entertainment' },
+  { value: 'anime', label: 'Anime', icon: '⛩️', category: 'Entertainment' },
+  { value: 'music', label: 'Music', icon: '🎵', category: 'Entertainment' },
+  { value: 'coding', label: 'Coding', icon: '💻', category: 'Technology' },
+  { value: 'gadgets', label: 'Gadgets', icon: '📱', category: 'Technology' },
+  { value: 'space', label: 'Space', icon: '🚀', category: 'Exploration' },
+  { value: 'cars', label: 'Cars', icon: '🚗', category: 'Vehicles' },
+  { value: 'motorbikes', label: 'Motorbikes', icon: '🏍️', category: 'Vehicles' },
+  { value: 'trains', label: 'Trains', icon: '🚃', category: 'Vehicles' },
+  { value: 'cooking', label: 'Cooking', icon: '🍳', category: 'Hobbies' },
+  { value: 'photography', label: 'Photography', icon: '📸', category: 'Hobbies' },
+  { value: 'knitting', label: 'Knitting', icon: '🧶', category: 'Hobbies' },
+  { value: 'art', label: 'Art & Design', icon: '🎨', category: 'Creative' },
 ];

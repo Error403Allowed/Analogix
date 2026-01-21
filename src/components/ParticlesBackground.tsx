@@ -12,11 +12,11 @@ const ParticlesBackground = () => {
 
         let particles: Particle[] = [];
         let animationFrameId: number;
-        let mouse = { x: -1000, y: -1000 };
+        const mouse = { x: -1000, y: -1000 };
 
         const resizeCanvas = () => {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
+            canvas.width = globalThis.innerWidth;
+            canvas.height = globalThis.innerHeight;
         };
 
         const handleMouseMove = (event: MouseEvent) => {
@@ -86,7 +86,7 @@ const ParticlesBackground = () => {
 
         const init = () => {
             particles = [];
-            const numberOfParticles = Math.min(window.innerWidth * 0.15, 120);
+            const numberOfParticles = Math.min(globalThis.innerWidth * 0.15, 120);
             for (let i = 0; i < numberOfParticles; i++) {
                 particles.push(new Particle());
             }
@@ -104,19 +104,19 @@ const ParticlesBackground = () => {
             animationFrameId = requestAnimationFrame(animate);
         };
 
-        window.addEventListener('resize', () => {
+        globalThis.addEventListener('resize', () => {
             resizeCanvas();
             init();
         });
-        window.addEventListener('mousemove', handleMouseMove);
+        globalThis.addEventListener('mousemove', handleMouseMove);
 
         resizeCanvas();
         init();
         animate();
 
         return () => {
-            window.removeEventListener('resize', resizeCanvas);
-            window.removeEventListener('mousemove', handleMouseMove);
+            globalThis.removeEventListener('resize', resizeCanvas);
+            globalThis.removeEventListener('mousemove', handleMouseMove);
             cancelAnimationFrame(animationFrameId);
         };
     }, []);

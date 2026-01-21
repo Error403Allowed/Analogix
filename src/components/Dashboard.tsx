@@ -16,7 +16,7 @@ import {
   Sun,
 } from "lucide-react";
 import { useTheme } from "@/hooks/use-theme";
-import { type StudentProfile, type LearningStats, SUBJECTS } from "@/lib/storage";
+import { type StudentProfile, type LearningStats, SUBJECTS, INTERESTS } from "@/lib/storage";
 import { Analytics } from "@vercel/analytics/next"
 
 interface DashboardProps {
@@ -35,6 +35,14 @@ export const Dashboard = ({ profile, stats, onStartChat, onEditProfile }: Dashbo
 
   const getSubjectIcon = (value: string) => {
     return SUBJECTS.find(s => s.value === value)?.icon || '📖';
+  };
+
+  const getInterestLabel = (value: string) => {
+    return INTERESTS.find(i => i.value === value)?.label || value;
+  };
+
+  const getInterestIcon = (value: string) => {
+    return INTERESTS.find(i => i.value === value)?.icon || '✨';
   };
 
   const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -57,7 +65,7 @@ export const Dashboard = ({ profile, stats, onStartChat, onEditProfile }: Dashbo
               <GraduationCap className="h-6 w-6 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="text-xl font-bold">Analogix</h1>
+              <h1 className="text-xl font-bold">{profile.name}</h1>
               <p className="text-sm text-muted-foreground">
                 {profile.yearLevel} • {profile.state}
               </p>
@@ -290,6 +298,29 @@ export const Dashboard = ({ profile, stats, onStartChat, onEditProfile }: Dashbo
             </CardContent>
           </Card>
         </div>
+
+          {/* Your Interests */}
+          <Card className="border-2 border-border">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <BookOpen className="h-5 w-5 text-primary" />
+                Your Interests
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap gap-2">
+                {profile.interests.map((interest) => (
+                  <Badge
+                    key={interest}
+                    variant="secondary"
+                    className="border-2 border-border text-sm py-1 px-3"
+                  >
+                    {getInterestIcon(interest)} {getInterestLabel(interest)}
+                  </Badge>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
 
         {/* Quick Start Suggestions */}
         <Card className="border-2 border-border">
