@@ -86,7 +86,7 @@ export const OnboardingFlow = ({ onComplete }: OnboardingFlowProps) => {
   const StepIcon = currentStep.icon;
 
   return (
-    <div className="w-full min-h-screen bg-background flex items-center justify-center p-4 sm:p-6 lg:p-8">
+    <div className="w-full min-h-screen bg-background bg-[radial-gradient(ellipse_at_bottom_right,_var(--tw-gradient-stops))] from-primary/10 via-background to-tertiary/10 flex items-center justify-center p-4 sm:p-6 lg:p-8">
       <Card className="w-full max-w-3xl border-2 border-border shadow-md">
         <CardHeader className="text-center border-b-2 border-border">
           <div className="flex items-center justify-center gap-2 mb-4">

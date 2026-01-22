@@ -39,9 +39,16 @@ const ParticlesBackground = () => {
                 this.speedX = Math.random() * 1.5 - 0.75;
                 this.speedY = Math.random() * 1.5 - 0.75;
 
-                // Mix of Red and Green
-                const isRed = Math.random() > 0.5;
-                const hue = isRed ? Math.random() * 20 : Math.random() * 40 + 100; // Red (0-20) or Green (100-140)
+                // Mix of Blue, Green, and Purple
+                const rand = Math.random();
+                let hue;
+                if (rand < 0.33) {
+                    hue = Math.random() * 20 + 210; // Blue (210-230)
+                } else if (rand < 0.66) {
+                    hue = Math.random() * 40 + 100; // Green (100-140)
+                } else {
+                    hue = Math.random() * 40 + 260; // Purple (260-300)
+                }
                 const saturation = Math.random() * 20 + 70;
                 const lightness = Math.random() * 20 + 40;
                 const alpha = Math.random() * 0.5 + 0.3; // Increased opacity

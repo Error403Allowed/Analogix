@@ -7,24 +7,42 @@ import {
   getStudentProfile, 
   clearStudentProfile, 
   getLearningStats,
+  getSavedAppState,
+  saveAppState,
   type StudentProfile,
   type LearningStats 
 } from "@/lib/storage";
+import { useTheme } from "@/hooks/use-theme";
 
 type AppState = "landing" | "onboarding" | "dashboard" | "chat";
 
 const Index = () => {
+  const { theme } = useTheme();
   const [appState, setAppState] = useState<AppState>("landing");
   const [profile, setProfile] = useState<StudentProfile | null>(null);
   const [stats, setStats] = useState<LearningStats>(getLearningStats());
 
   useEffect(() => {
     const storedProfile = getStudentProfile();
+    const savedState = getSavedAppState<AppState>("landing");
+
     if (storedProfile?.onboardingComplete) {
       setProfile(storedProfile);
-      setAppState("dashboard");
+      // Only restore dashboard or chat if we have a profile
+      if (savedState === "chat") {
+        setAppState("chat");
+      } else {
+        setAppState("dashboard");
+      }
+    } else {
+      // If no profile, we must be in onboarding or landing
+      setAppState(savedState === "onboarding" ? "onboarding" : "landing");
     }
   }, []);
+
+  useEffect(() => {
+    saveAppState(appState);
+  }, [appState]);
 
   const refreshStats = () => {
     setStats(getLearningStats());
@@ -77,7 +95,6 @@ const Index = () => {
     return (
       <ChatInterface 
         profile={profile} 
-        onEditProfile={handleEditProfile}
         onBackToDashboard={handleBackToDashboard}
       />
     );

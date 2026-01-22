@@ -1,13 +1,14 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button.tsx";
 import { Textarea } from "@/components/ui/textarea.tsx";
 import { Card } from "@/components/ui/card.tsx";
-import { Send, Loader2, Sparkles, GraduationCap, ArrowLeft } from "lucide-react";
+import { Send, Loader2, Sparkles, GraduationCap, ArrowLeft, Sun, Moon, Copy, Check, Square } from "lucide-react";
+import { useTheme } from "@/hooks/use-theme";
 import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import "katex/dist/katex.min.css";
-
+import { getRandomQuestions, type StudentProfile } from "@/lib/storage";
 const animationStyles = `
   @keyframes fadeIn {
     from { opacity: 0; transform: translateY(8px); }
@@ -15,6 +16,74 @@ const animationStyles = `
   }
   .message-animate {
     animation: fadeIn 0.3s ease-out forwards;
+  }
+  
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+
+  .streaming-cursor::after {
+    content: "";
+    display: inline-block;
+    width: 2px;
+    height: 1.1em;
+    background-color: #3b82f6;
+    margin-left: 2px;
+    vertical-align: middle;
+    animation: blink 0.8s infinite;
+    box-shadow: 0 0 8px rgba(59, 130, 246, 0.5);
+  }
+  
+  @keyframes bounce-dot {
+    0%, 80%, 100% { transform: scale(0); }
+    40% { transform: scale(1.0); }
+  }
+
+  .dot-flashing {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .dot-flashing div {
+    width: 4px;
+    height: 4px;
+    background-color: currentColor;
+    border-radius: 50%;
+    display: inline-block;
+    animation: bounce-dot 1.4s infinite ease-in-out both;
+  }
+
+  .dot-flashing div:nth-child(1) { animation-delay: -0.32s; }
+  .dot-flashing div:nth-child(2) { animation-delay: -0.16s; }
+
+  @keyframes glow-around {
+    0% { box-shadow: 0 0 20px -5px rgba(59, 130, 246, 0.5), 0 0 15px -5px rgba(16, 185, 129, 0.4); }
+    50% { box-shadow: 0 0 30px -5px rgba(59, 130, 246, 0.3), 0 0 25px -2px rgba(16, 185, 129, 0.6); }
+    100% { box-shadow: 0 0 20px -5px rgba(59, 130, 246, 0.5), 0 0 15px -5px rgba(16, 185, 129, 0.4); }
+  }
+
+  @keyframes gradient-flow {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+
+  .glow-container {
+    position: relative;
+    padding: 2px;
+    background: transparent;
+    border-radius: 18px;
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .glow-container:focus-within {
+    outline: none;
+    background: linear-gradient(270deg, #3b82f6, #10b981, #9333ea, #3b82f6);
+    background-size: 300% auto;
+    animation: glow-around 4s infinite ease-in-out, gradient-flow 6s infinite linear;
+    border-color: transparent;
   }
 `;
 
@@ -24,16 +93,18 @@ interface Message {
 }
 
 interface ChatInterfaceProps {
-  profile: {
-    yearLevel: string;
-    state: string;
-    interests: string[];
-  };
+  profile: StudentProfile;
   onBackToDashboard: () => void;
 }
 
 export const ChatInterface = ({ profile, onBackToDashboard }: ChatInterfaceProps) => {
+  const { theme, toggleTheme } = useTheme();
   const [messages, setMessages] = useState<Message[]>([]);
+
+  const suggestedTopics = useMemo(() => 
+    getRandomQuestions(profile.subjects), 
+    [profile.subjects]
+  );
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
@@ -42,33 +113,61 @@ export const ChatInterface = ({ profile, onBackToDashboard }: ChatInterfaceProps
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const assistantBufferRef = useRef("");
-  const flushTimeoutRef = useRef<number | null>(null);
+  const [isTyping, setIsTyping] = useState(false);
+  const typingIntervalRef = useRef<number | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
-  const flushAssistantMessage = () => {
-    const finalContent = assistantBufferRef.current;
+  const startTypewriter = () => {
+    if (typingIntervalRef.current !== null) return;
+    
+    setIsTyping(true);
+    typingIntervalRef.current = window.setInterval(() => {
+      if (assistantBufferRef.current.length > 0) {
+        // Take 2-4 characters at a time for smoothness but speed
+        const charsToTake = Math.min(assistantBufferRef.current.length, 3);
+        const chunk = assistantBufferRef.current.slice(0, charsToTake);
+        assistantBufferRef.current = assistantBufferRef.current.slice(charsToTake);
 
-    setMessages(prev => {
-      const updated = [...prev];
-      const lastIndex = updated.length - 1;
-
-      if (updated[lastIndex]?.role === "assistant") {
-        updated[lastIndex] = {
-          ...updated[lastIndex],
-          content: finalContent,
-        };
+        setMessages(prev => {
+          const updated = [...prev];
+          const lastIndex = updated.length - 1;
+          if (updated[lastIndex]?.role === "assistant") {
+            updated[lastIndex] = {
+              ...updated[lastIndex],
+              content: updated[lastIndex].content + chunk,
+            };
+          }
+          return updated;
+        });
+      } else if (!isLoading) {
+        // Only stop if buffer is empty AND we aren't loading anymore
+        stopTypewriter();
       }
-
-      return updated;
-    });
+    }, 15); // Fast but smooth interval
   };
 
-  const scheduleFlush = () => {
-    if (flushTimeoutRef.current !== null) return;
+  const stopTypewriter = () => {
+    if (typingIntervalRef.current !== null) {
+      clearInterval(typingIntervalRef.current);
+      typingIntervalRef.current = null;
+    }
+    setIsTyping(false);
+  };
 
-    flushTimeoutRef.current = window.setTimeout(() => {
-      flushAssistantMessage();
-      flushTimeoutRef.current = null;
-    }, 50);
+  useEffect(() => {
+    return () => stopTypewriter();
+  }, []);
+
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+
+  const copyToClipboard = async (text: string, index: number) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedIndex(index);
+      setTimeout(() => setCopiedIndex(null), 2000);
+    } catch (err) {
+      console.error("Failed to copy text: ", err);
+    }
   };
 
   const preprocessLatex = (content: string) => {
@@ -80,34 +179,73 @@ export const ChatInterface = ({ profile, onBackToDashboard }: ChatInterfaceProps
   };
 
   // Fixed Scroll Logic: Targets only the container's scroll position
-  const scrollToBottom = (behavior: ScrollBehavior = "smooth") => {
+  const scrollToBottom = (behavior: ScrollBehavior = "smooth", force = false) => {
     if (scrollContainerRef.current) {
-      const { scrollHeight, clientHeight } = scrollContainerRef.current;
-      scrollContainerRef.current.scrollTo({
-        top: scrollHeight - clientHeight,
-        behavior,
-      });
+      const { scrollHeight, clientHeight, scrollTop } = scrollContainerRef.current;
+      // If we are within 50px of the bottom, we consider it "at the bottom"
+      // Using a smaller threshold to avoid "snapping" when user scrolls up
+      const isNearBottom = scrollHeight - clientHeight - scrollTop < 50;
+
+      if (force || isNearBottom) {
+        scrollContainerRef.current.scrollTo({
+          top: scrollHeight - clientHeight,
+          behavior,
+        });
+      }
     }
   };
 
   // Scroll whenever messages update or loading state changes
   useEffect(() => {
-    scrollToBottom();
+    if (messages.length === 0) return;
+    
+    const lastMessage = messages[messages.length - 1];
+    const isNewUserMessage = lastMessage.role === "user";
+    const isNewAssistantMessage = lastMessage.role === "assistant" && lastMessage.content === "";
+
+    // If it's a typing update, use "instant" (auto) behavior to not fight manual scroll
+    // Only use "smooth" for new messages
+    const behavior = (isNewUserMessage || isNewAssistantMessage) ? "smooth" : "auto";
+    
+    scrollToBottom(behavior, isNewUserMessage || isNewAssistantMessage);
   }, [messages, isLoading]);
 
 
 
+  const handleStop = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    stopTypewriter();
+    assistantBufferRef.current = "";
+    setIsLoading(false);
+  };
+
   const sendMessage = async () => {
-    if (!input.trim() || isLoading) return;
+    if (!input.trim() || isLoading || isTyping) return;
 
     const userMessage: Message = { role: "user", content: input.trim() };
-    setMessages(prev => [
-      ...prev,
-      userMessage,
-      { role: "assistant", content: "" }
-    ]);
+    
+    // We update messages with new set to avoid race conditions with setMessages above
+    setMessages(prev => {
+      const filtered = prev.filter((m, i) => {
+        // If we are interrupting, the last message might be an assistant one we just tried to clear
+        // But since setState is async, we ensure we don't have an empty/partial assistant message at the end
+        if (i === prev.length - 1 && m.role === "assistant") return false;
+        return true;
+      });
+      return [
+        ...filtered,
+        userMessage,
+        { role: "assistant", content: "" }
+      ];
+    });
+
     setInput("");
     setIsLoading(true);
+
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
 
     try {
       const response = await fetch(
@@ -119,9 +257,11 @@ export const ChatInterface = ({ profile, onBackToDashboard }: ChatInterfaceProps
             Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
           },
           body: JSON.stringify({
-            messages: [...messages, userMessage],
+            // Filter out any partial or empty assistant messages from history
+            messages: [...messages.filter(m => m.role !== "assistant" || m.content !== ""), userMessage],
             profile,
           }),
+          signal: controller.signal,
         }
       );
 
@@ -149,7 +289,7 @@ export const ChatInterface = ({ profile, onBackToDashboard }: ChatInterfaceProps
               const content = parsed.choices?.[0]?.delta?.content;
               if (content) {
                 assistantBufferRef.current += content;
-                scheduleFlush();
+                startTypewriter();
               }
             } catch (e) {
               console.error("Error parsing", e);
@@ -158,29 +298,17 @@ export const ChatInterface = ({ profile, onBackToDashboard }: ChatInterfaceProps
         }
       }
     } catch (_error) {
-      setMessages(prev => [...prev, { role: "assistant", content: "⚠️ Something went wrong." }]);
+      setMessages(prev => [...prev, { role: "assistant", content: "⚠️ The response has been cancelled or timed out." }]);
     } finally {
-      if (flushTimeoutRef.current !== null) {
-        clearTimeout(flushTimeoutRef.current);
-        flushTimeoutRef.current = null;
-      }
-
-      flushAssistantMessage();
-      assistantBufferRef.current = "";
       setIsLoading(false);
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
-  };
+
 
   return (
     // Added overflow-hidden to root to prevent whole-page scrolling
-    <div className="flex flex-col w-full h-screen overflow-hidden bg-background">
+    <div className="flex flex-col w-full h-screen overflow-hidden bg-background bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/5 via-background to-tertiary/5">
       <style>{animationStyles}</style>
 
       {/* Header - Fixed Height */}
@@ -195,9 +323,28 @@ export const ChatInterface = ({ profile, onBackToDashboard }: ChatInterfaceProps
               <GraduationCap className="h-5 w-5 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="text-lg font-bold">AI Tutor</h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-lg font-bold text-primary">Analogix</h1>
+                <span className="text-muted-foreground">|</span>
+                <span className="font-medium">{profile.name}</span>
+              </div>
               <p className="text-xs text-muted-foreground">{profile.yearLevel} • {profile.state}</p>
             </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={toggleTheme}
+              className="border-2"
+              title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+            >
+              {theme === 'dark' ? (
+                <Sun className="h-4 w-4" />
+              ) : (
+                <Moon className="h-4 w-4" />
+              )}
+            </Button>
           </div>
         </div>
       </header>
@@ -210,12 +357,9 @@ export const ChatInterface = ({ profile, onBackToDashboard }: ChatInterfaceProps
         <div className="w-full max-w-5xl mx-auto space-y-6">
           {messages.length === 0 ? (
             <div className="text-center py-12 message-animate">
-              <div className="inline-flex p-4 bg-secondary border-2 border-border mb-6">
-                <Sparkles className="h-12 w-12 text-primary" />
-              </div>
               <h2 className="text-2xl font-bold mb-2">Ask me anything!</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-w-xl mx-auto mt-8">
-                {["Explain Newton's laws", "Help with quadratic equations", "What caused World War I?", "How does photosynthesis work?"].map((q) => (
+                {suggestedTopics.map((q) => (
                   <button type="button" key={q} onClick={() => setInput(q)} className="p-3 text-left border-2 border-border bg-card hover:bg-secondary transition-colors text-sm font-medium">
                     {q}
                   </button>
@@ -236,13 +380,16 @@ export const ChatInterface = ({ profile, onBackToDashboard }: ChatInterfaceProps
                   }`}>
                   {message.role === "assistant" ? (
                     message.content === "" ? (
-                      <div key={`skeleton-${index}`} className="animate-skeleton space-y-2 p-1">
-                        <div className="h-3 w-[90%] rounded bg-muted/50" />
-                        <div className="h-3 w-[75%] rounded bg-muted/50" />
-                        <div className="h-3 w-[60%] rounded bg-muted/50" />
+                      <div key={`skeleton-${index}`} className="flex items-center gap-1 py-1">
+                        <span className="text-sm font-medium text-muted-foreground mr-1">Thinking</span>
+                        <div className="dot-flashing">
+                          <div></div>
+                          <div></div>
+                          <div></div>
+                        </div>
                       </div>
                     ) : (
-                      <div key={`content-${index}`} className="prose prose-sm max-w-none dark:prose-invert prose-p:leading-relaxed message-animate prose-headings:text-foreground prose-strong:text-foreground">
+                      <div key={`content-${index}`} className={`prose prose-sm max-w-none dark:prose-invert prose-p:leading-relaxed prose-headings:text-foreground prose-strong:text-foreground ${(isLoading || isTyping) && index === messages.length - 1 ? "streaming-cursor" : ""}`}>
                         <ReactMarkdown
                           remarkPlugins={[remarkMath]}
                           rehypePlugins={[rehypeKatex]}
@@ -253,6 +400,28 @@ export const ChatInterface = ({ profile, onBackToDashboard }: ChatInterfaceProps
                     )
                   ) : (
                     <p className="whitespace-pre-wrap font-medium">{message.content}</p>
+                  )}
+                  {message.role === "assistant" && message.content !== "" && !(isLoading && index === messages.length - 1) && (
+                    <div className="flex justify-end mt-2 pt-2 border-t border-border/50">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 px-2 text-xs text-muted-foreground hover:text-primary transition-colors"
+                        onClick={() => copyToClipboard(message.content, index)}
+                      >
+                        {copiedIndex === index ? (
+                          <>
+                            <Check className="h-3.5 w-3.5 mr-1" />
+                            Copied
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="h-3.5 w-3.5 mr-1" />
+                            Copy
+                          </>
+                        )}
+                      </Button>
+                    </div>
                   )}
                 </Card>
               </div>
@@ -268,21 +437,34 @@ export const ChatInterface = ({ profile, onBackToDashboard }: ChatInterfaceProps
         </div>
       </div>
 
-      {/* Input Area - Fixed Height */}
       <footer className="flex-none w-full border-t-2 border-border bg-card p-4">
         <div className="w-full max-w-5xl mx-auto flex gap-3">
-          <Textarea
-            ref={textareaRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Ask me anything..."
-            className="min-h-[52px] max-h-32 resize-none border-2 focus-visible:ring-primary"
-            disabled={isLoading}
+          {/* Glowing Wrapper */}
+          <div className="flex-1 rounded-[18px] glow-container border-2 border-border focus-within:border-transparent">
+            <Textarea
+              ref={textareaRef}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                if (!isLoading && !isTyping) sendMessage();
+              }
+            }}
+            placeholder={isLoading || isTyping ? "AI is thinking..." : "Type your question..."}
+            disabled={isLoading || isTyping}
+            className="flex-1 bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 outline-none text-base resize-none py-3 px-3 h-[48px] min-h-[48px] placeholder:text-muted-foreground transition-all duration-300 disabled:opacity-50"
           />
-          <Button onClick={sendMessage} disabled={!input.trim() || isLoading} className="h-auto px-6 border-2 border-border">
-            {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
-          </Button>
+          </div>
+          {(isLoading || isTyping) ? (
+            <Button onClick={handleStop} variant="destructive" className="h-[52px] w-[52px] p-0 flex items-center justify-center border-2 border-destructive/20 rounded-[12px] hover:bg-destructive hover:text-destructive-foreground transition-all duration-300">
+              <Square className="h-5 w-5 fill-current" />
+            </Button>
+          ) : (
+            <Button onClick={sendMessage} disabled={!input.trim()} className="h-[52px] w-[52px] p-0 flex items-center justify-center border-2 border-border rounded-[12px]">
+              <Send className="h-5 w-5" />
+            </Button>
+          )}
         </div>
       </footer>
     </div>

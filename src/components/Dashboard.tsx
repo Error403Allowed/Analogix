@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,7 +17,7 @@ import {
   Sun,
 } from "lucide-react";
 import { useTheme } from "@/hooks/use-theme";
-import { type StudentProfile, type LearningStats, SUBJECTS, INTERESTS } from "@/lib/storage";
+import { type StudentProfile, type LearningStats, SUBJECTS, INTERESTS, getRandomQuestions } from "@/lib/storage";
 import { Analytics } from "@vercel/analytics/next"
 
 interface DashboardProps {
@@ -28,6 +29,25 @@ interface DashboardProps {
 
 export const Dashboard = ({ profile, stats, onStartChat, onEditProfile }: DashboardProps) => {
   const { theme, toggleTheme } = useTheme();
+
+  const suggestedTopics = useMemo(() => 
+    getRandomQuestions(profile.subjects), 
+    [profile.subjects]
+  );
+
+  const welcomeGreeting = useMemo(() => {
+    const greetings = [
+      "Hi there!",
+      "Hey!",
+      "How's it going?",
+      "Great to see you!",
+      "Ready for some learning?",
+      "What's on the menu today?",
+      "Let's dive in!",
+      "Ready to crush it?"
+    ];
+    return greetings[Math.floor(Math.random() * greetings.length)];
+  }, []);
 
   const getSubjectLabel = (value: string) => {
     return SUBJECTS.find(s => s.value === value)?.label || value;
@@ -56,7 +76,7 @@ export const Dashboard = ({ profile, stats, onStartChat, onEditProfile }: Dashbo
   const goalProgress = Math.min((stats.questionsToday / dailyGoal) * 100, 100);
 
   return (
-    <div className="w-full min-h-screen bg-background bg-[radial-gradient(ellipse_at_top_left,_var(--tw-gradient-stops))] from-primary/10 via-background to-accent/10">
+    <div className="w-full min-h-screen bg-background bg-[radial-gradient(ellipse_at_top_left,_var(--tw-gradient-stops))] from-primary/10 via-background to-tertiary/10">
       {/* Header */}
       <header className="w-full border-b-2 border-border bg-card p-4">
         <div className="w-full max-w-7xl mx-auto flex items-center justify-between">
@@ -65,7 +85,11 @@ export const Dashboard = ({ profile, stats, onStartChat, onEditProfile }: Dashbo
               <GraduationCap className="h-6 w-6 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="text-xl font-bold">{profile.name}</h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl font-bold">Analogix</h1>
+                <span className="text-muted-foreground">|</span>
+                <span className="font-medium">{profile.name}</span>
+              </div>
               <p className="text-sm text-muted-foreground">
                 {profile.yearLevel} • {profile.state}
               </p>
@@ -101,13 +125,13 @@ export const Dashboard = ({ profile, stats, onStartChat, onEditProfile }: Dashbo
       <main className="w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
         {/* Welcome Section with CTA */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <Card className="lg:col-span-2 border-2 border-border bg-gradient-to-br from-primary/20 via-primary/5 to-accent/20">
+          <Card className="lg:col-span-2 border-2 border-border bg-gradient-to-br from-primary/20 via-tertiary/5 to-accent/20">
             <CardContent className="p-6">
               <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
                 <div className="flex-1">
-                  <h2 className="text-2xl font-bold mb-2">G'day! Ready to learn?</h2>
+                  <h2 className="text-2xl font-bold mb-2">{welcomeGreeting} Ready to learn?</h2>
                   <p className="text-muted-foreground mb-4">
-                    Your AI tutor is ready to explain any concept using analogies from{" "}
+                    Your AI tutor is ready to explain any concept using analogies from{profile.interests.length > 2 ? " " : " your interests"}
                     <span className="font-medium text-foreground">
                       {profile.interests.slice(0, 2).join(", ")}
                     </span>{" "}
@@ -332,12 +356,7 @@ export const Dashboard = ({ profile, stats, onStartChat, onEditProfile }: Dashbo
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-              {[
-                "Explain Newton's laws",
-                "Help with quadratic equations",
-                "What caused World War I?",
-                "How does photosynthesis work?",
-              ].map((topic) => (
+              {suggestedTopics.map((topic) => (
                 <Button
                   key={topic}
                   variant="outline"

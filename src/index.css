@@ -38,6 +38,8 @@ All colors MUST be HSL.
     --border: 220 20% 20%;
     --input: 220 20% 20%;
     --ring: 220 80% 50%;
+    --tertiary: 280 65% 55%;
+    --tertiary-foreground: 0 0% 100%;
 
     --radius: 0rem;
 
@@ -103,6 +105,8 @@ All colors MUST be HSL.
     --border: 220 15% 25%;
     --input: 220 15% 25%;
     --ring: 220 90% 56%;
+    --tertiary: 280 70% 60%;
+    --tertiary-foreground: 220 15% 5%;
 
     --sidebar-background: 220 15% 8%;
     --sidebar-foreground: 220 10% 95%;

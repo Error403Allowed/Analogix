@@ -39,7 +39,7 @@ export const LandingHero = ({ onGetStarted }: LandingHeroProps) => {
   ];
 
   return (
-    <div className="w-full min-h-screen bg-background relative overflow-hidden">
+    <div className="w-full min-h-screen bg-background relative overflow-hidden bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-primary/5 via-background to-tertiary/5">
       <ParticlesBackground />
       {/* Navigation */}
       <nav className="w-full border-b-2 border-border bg-card">
