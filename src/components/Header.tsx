@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { Bell, Settings, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "./ThemeToggle";
 import Mascot from "./Mascot";
 
 interface HeaderProps {
@@ -34,7 +35,7 @@ const Header = ({ userName = "Student", streak = 0 }: HeaderProps) => {
         </div>
 
         {/* Stats & Actions */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4">
           {/* Streak Badge */}
           {streak > 0 && (
             <motion.div
@@ -46,6 +47,9 @@ const Header = ({ userName = "Student", streak = 0 }: HeaderProps) => {
               <span className="font-bold">{streak} day streak!</span>
             </motion.div>
           )}
+
+          {/* Theme Toggle */}
+          <ThemeToggle />
 
           {/* Notifications */}
           <Button variant="ghost" size="icon" className="relative">

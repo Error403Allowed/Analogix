@@ -42,22 +42,26 @@
 
     --radius: 1rem;
 
-    /* Glassmorphic effects */
-    --glass-background: 0 0% 100% / 0.7;
-    --glass-border: 0 0% 100% / 0.3;
-    --glass-blur: 16px;
+    /* Liquid glass effects - Light mode */
+    --glass-background: 0 0% 100% / 0.6;
+    --glass-border: 0 0% 100% / 0.8;
+    --glass-shadow: 240 10% 15% / 0.08;
+    --glass-blur: 20px;
+    --glass-shine: linear-gradient(135deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0) 50%, rgba(255,255,255,0.1) 100%);
 
     /* Gradients */
     --gradient-primary: linear-gradient(135deg, hsl(258 85% 65%), hsl(200 75% 55%));
     --gradient-accent: linear-gradient(135deg, hsl(340 80% 65%), hsl(258 85% 65%));
     --gradient-success: linear-gradient(135deg, hsl(145 65% 45%), hsl(170 70% 50%));
     --gradient-warm: linear-gradient(135deg, hsl(35 90% 55%), hsl(340 80% 65%));
-    --gradient-background: linear-gradient(180deg, hsl(240 30% 97%), hsl(240 30% 92%));
+    --gradient-background: linear-gradient(180deg, hsl(240 30% 97%), hsl(250 40% 94%));
+    --gradient-liquid: linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.4) 100%);
 
     /* Shadows */
     --shadow-soft: 0 4px 24px -4px hsl(258 85% 65% / 0.15);
     --shadow-glow: 0 0 30px hsl(258 85% 65% / 0.25);
-    --shadow-card: 0 8px 32px -8px hsl(240 10% 15% / 0.1);
+    --shadow-card: 0 8px 32px -8px hsl(240 10% 15% / 0.1), 0 0 0 1px hsl(0 0% 100% / 0.5);
+    --shadow-liquid: 0 8px 32px rgba(0, 0, 0, 0.06), 0 2px 8px rgba(0, 0, 0, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.8);
 
     /* Chart colors */
     --chart-1: 258 85% 65%;
@@ -78,57 +82,64 @@
   }
 
   .dark {
-    --background: 240 15% 10%;
+    --background: 250 25% 8%;
     --foreground: 240 10% 95%;
 
-    --card: 240 15% 15%;
+    --card: 250 20% 12%;
     --card-foreground: 240 10% 95%;
 
-    --popover: 240 15% 12%;
+    --popover: 250 20% 10%;
     --popover-foreground: 240 10% 95%;
 
     --primary: 258 85% 70%;
-    --primary-foreground: 240 15% 10%;
+    --primary-foreground: 250 25% 8%;
 
     --secondary: 200 75% 60%;
-    --secondary-foreground: 240 15% 10%;
+    --secondary-foreground: 250 25% 8%;
 
-    --muted: 240 15% 20%;
+    --muted: 250 15% 18%;
     --muted-foreground: 240 10% 65%;
 
     --accent: 340 80% 70%;
-    --accent-foreground: 240 15% 10%;
+    --accent-foreground: 250 25% 8%;
 
     --success: 145 65% 50%;
-    --success-foreground: 240 15% 10%;
+    --success-foreground: 250 25% 8%;
 
     --warning: 35 90% 60%;
-    --warning-foreground: 240 15% 10%;
+    --warning-foreground: 250 25% 8%;
 
     --destructive: 0 75% 55%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 240 15% 25%;
-    --input: 240 15% 25%;
+    --border: 250 15% 20%;
+    --input: 250 15% 20%;
     --ring: 258 85% 70%;
 
-    --glass-background: 240 15% 15% / 0.8;
-    --glass-border: 240 15% 25% / 0.5;
+    /* Liquid glass effects - Dark mode */
+    --glass-background: 250 20% 15% / 0.7;
+    --glass-border: 250 20% 25% / 0.5;
+    --glass-shadow: 0 0% 0% / 0.3;
+    --glass-blur: 20px;
+    --glass-shine: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 50%, rgba(255,255,255,0.05) 100%);
 
     --gradient-primary: linear-gradient(135deg, hsl(258 85% 70%), hsl(200 75% 60%));
     --gradient-accent: linear-gradient(135deg, hsl(340 80% 70%), hsl(258 85% 70%));
+    --gradient-background: linear-gradient(180deg, hsl(250 25% 8%), hsl(250 30% 6%));
+    --gradient-liquid: linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%);
 
     --shadow-soft: 0 4px 24px -4px hsl(258 85% 70% / 0.2);
-    --shadow-glow: 0 0 30px hsl(258 85% 70% / 0.3);
-    --shadow-card: 0 8px 32px -8px hsl(0 0% 0% / 0.3);
+    --shadow-glow: 0 0 40px hsl(258 85% 70% / 0.3);
+    --shadow-card: 0 8px 32px -8px hsl(0 0% 0% / 0.4), 0 0 0 1px hsl(250 20% 25% / 0.3);
+    --shadow-liquid: 0 8px 32px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1);
 
-    --sidebar-background: 240 15% 12%;
+    --sidebar-background: 250 20% 10%;
     --sidebar-foreground: 240 10% 95%;
     --sidebar-primary: 258 85% 70%;
-    --sidebar-primary-foreground: 240 15% 10%;
+    --sidebar-primary-foreground: 250 25% 8%;
     --sidebar-accent: 200 75% 60%;
-    --sidebar-accent-foreground: 240 15% 10%;
-    --sidebar-border: 240 15% 25%;
+    --sidebar-accent-foreground: 250 25% 8%;
+    --sidebar-border: 250 15% 20%;
     --sidebar-ring: 258 85% 70%;
   }
 }
@@ -142,6 +153,7 @@
     @apply bg-background text-foreground font-sans antialiased;
     background: var(--gradient-background);
     min-height: 100vh;
+    transition: background 0.3s ease, color 0.3s ease;
   }
 }
 
@@ -151,11 +163,46 @@
     backdrop-filter: blur(var(--glass-blur));
     -webkit-backdrop-filter: blur(var(--glass-blur));
     border: 1px solid hsl(var(--glass-border));
+    position: relative;
+    overflow: hidden;
+  }
+
+  .glass::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--glass-shine);
+    pointer-events: none;
+    border-radius: inherit;
   }
 
   .glass-card {
     @apply glass rounded-2xl;
-    box-shadow: var(--shadow-card);
+    box-shadow: var(--shadow-liquid);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .glass-card:hover {
+    box-shadow: var(--shadow-liquid), var(--shadow-soft);
+    transform: translateY(-2px);
+  }
+
+  .liquid-blob {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(60px);
+    opacity: 0.5;
+    animation: blob-float 8s ease-in-out infinite;
+  }
+
+  @keyframes blob-float {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    25% { transform: translate(20px, -20px) scale(1.1); }
+    50% { transform: translate(-10px, 20px) scale(0.95); }
+    75% { transform: translate(15px, 10px) scale(1.05); }
   }
 
   .gradient-text {
@@ -187,5 +234,29 @@
 
   .glow-soft {
     box-shadow: var(--shadow-soft);
+  }
+
+  /* Liquid ripple effect on hover */
+  .liquid-ripple {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .liquid-ripple::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    background: radial-gradient(circle, hsl(var(--primary) / 0.15) 0%, transparent 70%);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    transition: width 0.6s ease, height 0.6s ease;
+  }
+
+  .liquid-ripple:hover::after {
+    width: 300%;
+    height: 300%;
   }
 }

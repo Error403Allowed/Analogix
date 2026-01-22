@@ -85,8 +85,13 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen pb-8">
-      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 pt-6">
+    <div className="min-h-screen pb-8 relative overflow-hidden">
+      {/* Decorative liquid blobs */}
+      <div className="liquid-blob w-96 h-96 bg-primary/30 -top-48 -left-48 fixed" />
+      <div className="liquid-blob w-80 h-80 bg-secondary/30 top-1/3 -right-40 fixed" style={{ animationDelay: '-2s' }} />
+      <div className="liquid-blob w-64 h-64 bg-accent/20 bottom-20 left-1/4 fixed" style={{ animationDelay: '-4s' }} />
+      
+      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 pt-6 relative z-10">
         <Header userName="Student" streak={7} />
 
         <motion.div
