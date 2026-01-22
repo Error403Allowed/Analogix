@@ -86,7 +86,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen pb-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 pt-6">
         <Header userName="Student" streak={7} />
 
         <motion.div
