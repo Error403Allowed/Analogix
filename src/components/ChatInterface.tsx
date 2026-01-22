@@ -2,13 +2,13 @@ import { useState, useRef, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button.tsx";
 import { Textarea } from "@/components/ui/textarea.tsx";
 import { Card } from "@/components/ui/card.tsx";
-import { Send, Loader2, Sparkles, GraduationCap, ArrowLeft, Sun, Moon, Copy, Check, Square } from "lucide-react";
+import { Send, Loader2, Sparkles, GraduationCap, ArrowLeft, Sun, Moon, Copy, Check, Square, RotateCcw } from "lucide-react";
 import { useTheme } from "@/hooks/use-theme";
 import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import "katex/dist/katex.min.css";
-import { getRandomQuestions, type StudentProfile } from "@/lib/storage";
+import { getRandomQuestions, updateLearningStats, type StudentProfile } from "@/lib/storage";
 const animationStyles = `
   @keyframes fadeIn {
     from { opacity: 0; transform: translateY(8px); }
@@ -244,6 +244,9 @@ export const ChatInterface = ({ profile, onBackToDashboard }: ChatInterfaceProps
     setInput("");
     setIsLoading(true);
 
+    // Track the question for dashboard stats
+    updateLearningStats(profile.subjects[0]);
+
     const controller = new AbortController();
     abortControllerRef.current = controller;
 
@@ -332,6 +335,20 @@ export const ChatInterface = ({ profile, onBackToDashboard }: ChatInterfaceProps
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setMessages([]);
+                assistantBufferRef.current = "";
+                stopTypewriter();
+              }}
+              className="border-2"
+              title="Start a new conversation"
+            >
+              <RotateCcw className="h-4 w-4 mr-1" />
+              New Chat
+            </Button>
             <Button
               variant="outline"
               size="sm"
