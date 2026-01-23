@@ -2,14 +2,16 @@ import ParticlesBackground from './ParticlesBackground';
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { GraduationCap, Sparkles, BookOpen, Target, Brain, ArrowRight } from "lucide-react";
+import { GraduationCap, Sparkles, BookOpen, Target, Brain, ArrowRight, Sun, Moon } from "lucide-react";
 import { Analytics } from "@vercel/analytics/next"
+import { useTheme } from "@/hooks/use-theme";
 
 interface LandingHeroProps {
   onGetStarted: () => void;
 }
 
 export const LandingHero = ({ onGetStarted }: LandingHeroProps) => {
+  const { theme, toggleTheme } = useTheme();
   const features = [
     {
       icon: Brain,
@@ -50,10 +52,25 @@ export const LandingHero = ({ onGetStarted }: LandingHeroProps) => {
             </div>
             <span className="text-xl font-bold">Analogix</span>
           </div>
-          <Button onClick={onGetStarted} className="border-2 border-border shadow-sm">
-            Get Started
-            <ArrowRight className="ml-2 h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={toggleTheme}
+              className="border-2"
+              title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+            >
+              {theme === 'dark' ? (
+                <Sun className="h-4 w-4" />
+              ) : (
+                <Moon className="h-4 w-4" />
+              )}
+            </Button>
+            <Button onClick={onGetStarted} className="border-2 border-border shadow-sm">
+              Get Started
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </nav>
 

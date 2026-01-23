@@ -72,7 +72,7 @@ export const Dashboard = ({ profile, stats, onStartChat, onEditProfile }: Dashbo
     .sort(([, a], [, b]) => b - a)
     .slice(0, 3);
 
-  const dailyGoal = 5;
+  const dailyGoal = 10;
   const goalProgress = Math.min((stats.questionsToday / dailyGoal) * 100, 100);
 
   return (
