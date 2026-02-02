@@ -7,7 +7,10 @@ import {
   Zap, 
   Plus,
   ChevronRight,
-  TrendingUp
+  TrendingUp,
+  MessageCircle,
+  Sparkles,
+  Settings
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Header from "@/components/Header";
@@ -24,6 +27,10 @@ const Index = () => {
   const navigate = useNavigate();
   const [showMoodCheck, setShowMoodCheck] = useState(true);
   const [showQuizCreator, setShowQuizCreator] = useState(false);
+
+  // Check if user has completed onboarding
+  const userPrefs = JSON.parse(localStorage.getItem("userPreferences") || "{}");
+  const hasCompletedOnboarding = userPrefs.onboardingComplete;
 
   // Mock data
   const subjects = [
@@ -98,31 +105,63 @@ const Index = () => {
           variants={containerVariants}
           initial="hidden"
           animate="visible"
-          className="space-y-6"
+          className="space-y-5"
         >
-          {/* Mood Check */}
+          {/* Onboarding CTA if not completed */}
+          {!hasCompletedOnboarding && (
+            <motion.div
+              variants={itemVariants}
+              className="glass-card p-5 border-l-4 border-accent"
+            >
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                <div className="flex items-center gap-3 flex-1">
+                  <Sparkles className="w-8 h-8 text-accent" />
+                  <div>
+                    <h3 className="font-bold text-foreground">Personalize Your Experience!</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Tell us your interests so we can teach you through analogies you'll love.
+                    </p>
+                  </div>
+                </div>
+                <Button onClick={() => navigate("/onboarding")} className="gap-2 gradient-primary text-primary-foreground border-0">
+                  <Settings className="w-4 h-4" />
+                  Set Up Preferences
+                </Button>
+              </div>
+            </motion.div>
+          )}
+
+          {/* Mood Check - Compact Row */}
           {showMoodCheck && (
             <motion.div variants={itemVariants}>
               <MoodCheck onMoodSelect={handleMoodSelect} />
             </motion.div>
           )}
 
-          {/* Quick Actions */}
-          <motion.div variants={itemVariants} className="flex flex-wrap gap-3">
+          {/* Quick Actions Row */}
+          <motion.div variants={itemVariants} className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <Button
               onClick={() => setShowQuizCreator(!showQuizCreator)}
-              className="gap-2 gradient-primary text-primary-foreground border-0 hover:opacity-90 shadow-lg"
+              className="gap-2 gradient-primary text-primary-foreground border-0 hover:opacity-90 shadow-lg h-auto py-3"
             >
               <Plus className="w-4 h-4" />
-              Create Quiz
+              <span className="hidden sm:inline">Create Quiz</span>
+              <span className="sm:hidden">Quiz</span>
             </Button>
-            <Button variant="outline" className="gap-2" onClick={() => navigate("/quiz")}>
+            <Button variant="outline" className="gap-2 h-auto py-3" onClick={() => navigate("/quiz")}>
               <Zap className="w-4 h-4 text-warning" />
-              Quick Practice
+              <span className="hidden sm:inline">Quick Practice</span>
+              <span className="sm:hidden">Practice</span>
             </Button>
-            <Button variant="outline" className="gap-2">
+            <Button variant="outline" className="gap-2 h-auto py-3" onClick={() => navigate("/chat")}>
+              <MessageCircle className="w-4 h-4 text-primary" />
+              <span className="hidden sm:inline">Analogy Tutor</span>
+              <span className="sm:hidden">Tutor</span>
+            </Button>
+            <Button variant="outline" className="gap-2 h-auto py-3">
               <Trophy className="w-4 h-4 text-accent" />
-              View Achievements
+              <span className="hidden sm:inline">Achievements</span>
+              <span className="sm:hidden">Badges</span>
             </Button>
           </motion.div>
 
@@ -138,7 +177,7 @@ const Index = () => {
           )}
 
           {/* Stats Row */}
-          <motion.div variants={itemVariants} className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <motion.div variants={itemVariants} className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             <StatsCard
               title="Quizzes Completed"
               value={45}
@@ -172,9 +211,9 @@ const Index = () => {
           </motion.div>
 
           {/* Main Content Grid */}
-          <div className="grid lg:grid-cols-3 gap-6">
+          <div className="grid lg:grid-cols-3 gap-5">
             {/* Left Column - Subjects */}
-            <motion.div variants={itemVariants} className="lg:col-span-2 space-y-6">
+            <motion.div variants={itemVariants} className="lg:col-span-2 space-y-5">
               {/* Subjects Header */}
               <div className="flex items-center justify-between">
                 <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
@@ -208,30 +247,36 @@ const Index = () => {
               >
                 <div className="flex items-start gap-4">
                   <Mascot size="sm" mood="excited" />
-                  <div>
+                  <div className="flex-1 min-w-0">
                     <h3 className="font-bold text-foreground mb-1">
                       🌟 You're a star in History—keep shining!
                     </h3>
                     <p className="text-sm text-muted-foreground mb-3">
-                      Your History scores are amazing! Let's focus on Biology next—I've prepared some fun quizzes to help you improve.
+                      Your History scores are amazing! Let's focus on Biology next—I've prepared quizzes with <span className="text-primary font-medium">analogies</span> just for you.
                     </p>
-                    <Button size="sm" className="gap-2">
-                      <TrendingUp className="w-4 h-4" />
-                      Start Biology Quiz
-                    </Button>
+                    <div className="flex flex-wrap gap-2">
+                      <Button size="sm" className="gap-2" onClick={() => navigate("/quiz")}>
+                        <TrendingUp className="w-4 h-4" />
+                        Start Biology Quiz
+                      </Button>
+                      <Button size="sm" variant="outline" className="gap-2" onClick={() => navigate("/chat")}>
+                        <MessageCircle className="w-4 h-4" />
+                        Learn with Analogies
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </motion.div>
             </motion.div>
 
             {/* Right Column - Exams & Achievements */}
-            <motion.div variants={itemVariants} className="space-y-6">
+            <motion.div variants={itemVariants} className="space-y-5">
               {/* Upcoming Exams */}
               <div>
                 <h2 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
                   📅 Upcoming Exams
                 </h2>
-                <div className="space-y-4">
+                <div className="space-y-3">
                   {upcomingExams.map((exam) => (
                     <CountdownTimer
                       key={exam.id}
