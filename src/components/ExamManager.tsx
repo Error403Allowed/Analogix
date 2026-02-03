@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, X, Calendar } from "lucide-react";
+import { Plus, X, Calendar, BookOpen, Clock, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -13,6 +13,7 @@ const ExamManager = () => {
   const [newName, setNewName] = useState("");
   const [newSubject, setNewSubject] = useState("");
   const [newDate, setNewDate] = useState("");
+  const [newType, setNewType] = useState<"exam" | "event" | "assignment">("exam");
 
   const userPrefs = JSON.parse(localStorage.getItem("userPreferences") || "{}");
   const subjects = userPrefs.subjects || ["General"];
@@ -20,21 +21,20 @@ const ExamManager = () => {
   useEffect(() => {
     const loadEvents = () => {
       const allEvents = eventStore.getAll();
-      const academicKeywords = ["exam", "assessment", "quiz", "test", "midterm", "final", "assignment", "project", "deadline", "paper", "presentation", "lab"];
+      const academicKeywords = ["exam", "assessment", "quiz", "test", "midterm", "final", "assignment", "project", "deadline", "paper", "presentation", "lab", "due"];
       
       // Filter for future academic events
       const upcoming = allEvents
         .filter(e => {
           const isFuture = new Date(e.date).setHours(0,0,0,0) >= new Date().setHours(0,0,0,0);
-          const hasKeyword = academicKeywords.some(keyword => 
-            e.title.toLowerCase().includes(keyword) || 
-            (e.description && e.description.toLowerCase().includes(keyword))
-          );
-          const isExamType = e.type === 'exam';
-          return isFuture && (hasKeyword || isExamType);
+          const combined = (e.title + " " + (e.description || "")).toLowerCase();
+          const hasKeyword = academicKeywords.some(kw => combined.includes(kw));
+          const isAcademicType = e.type === 'exam' || e.type === 'assignment';
+          
+          return isFuture && (hasKeyword || isAcademicType);
         })
         .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-        .slice(0, 3); // Show top 3
+        .slice(0, 5); // Show top 5
       setEvents(upcoming);
     };
     loadEvents();
@@ -52,9 +52,9 @@ const ExamManager = () => {
     const event: AppEvent = {
       id: Date.now().toString(),
       title: newName,
-      subject: newSubject || "General",
+      subject: newSubject || (newType === "event" ? "General" : subjects[0]),
       date: new Date(newDate),
-      type: "exam",
+      type: newType,
       source: "manual"
     };
 
@@ -63,6 +63,7 @@ const ExamManager = () => {
     setNewName("");
     setNewSubject("");
     setNewDate("");
+    setNewType("exam");
     toast.success("Added to your schedule!");
   };
 
@@ -75,73 +76,120 @@ const ExamManager = () => {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
-          📅 Upcoming
+          📅 Deadlines
         </h2>
-        <Button size="sm" variant="ghost" className="text-primary gap-1" onClick={() => setIsAdding(true)}>
+        <Button size="sm" variant="ghost" className="text-primary gap-1 font-bold" onClick={() => setIsAdding(true)}>
           <Plus className="w-4 h-4" /> Add
         </Button>
       </div>
 
       {isAdding && (
-        <div className="glass-card p-4 space-y-3 relative border-primary/20">
+        <div className="glass-card p-5 space-y-4 relative border-primary/20 shadow-xl bg-background/80 backdrop-blur-xl">
           <Button 
             variant="ghost" 
             size="icon" 
-            className="absolute top-2 right-2 h-6 w-6" 
+            className="absolute top-2 right-2 h-8 w-8 rounded-full" 
             onClick={() => setIsAdding(false)}
           >
-            <X className="w-3 h-3" />
+            <X className="w-4 h-4" />
           </Button>
-          <div className="space-y-2">
-            <Input 
-              placeholder="Assessment Name" 
-              value={newName} 
-              onChange={e => setNewName(e.target.value)}
-              className="h-8 text-xs glass"
-            />
-            <Select value={newSubject} onValueChange={setNewSubject}>
-               <SelectTrigger className="h-8 text-xs glass w-full">
-                 <SelectValue placeholder="Select Subject" />
-               </SelectTrigger>
-               <SelectContent>
-                 {subjects.map((s: string) => (
-                   <SelectItem key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</SelectItem>
-                 ))}
-               </SelectContent>
-            </Select>
-            <Input 
-              type="date" 
-              value={newDate} 
-              onChange={e => setNewDate(e.target.value)}
-              className="h-8 text-xs glass"
-            />
+          
+          <div className="space-y-3">
+            <div>
+              <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1 block">Title</label>
+              <Input 
+                placeholder="Ex: History Exam, Pizza Night..." 
+                value={newName} 
+                onChange={e => setNewName(e.target.value)}
+                className="h-10 text-sm glass font-bold"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1 block">Type</label>
+                <Select value={newType} onValueChange={(v: any) => setNewType(v)}>
+                  <SelectTrigger className="h-10 text-sm glass">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="exam">Exam</SelectItem>
+                    <SelectItem value="assignment">Assignment</SelectItem>
+                    <SelectItem value="event">General Event</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1 block">Subject</label>
+                <Select value={newSubject} onValueChange={setNewSubject}>
+                  <SelectTrigger className="h-10 text-sm glass">
+                    <SelectValue placeholder="Select" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="General">General</SelectItem>
+                    {subjects.map((s: string) => (
+                      <SelectItem key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div>
+              <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1 block">Date</label>
+              <Input 
+                type="date" 
+                value={newDate} 
+                onChange={e => setNewDate(e.target.value)}
+                className="h-10 text-sm glass"
+              />
+            </div>
           </div>
-          <Button size="sm" className="w-full gradient-primary" onClick={handleSubmit}>
-            Save
+
+          <Button size="lg" className="w-full gradient-primary font-bold shadow-lg" onClick={handleSubmit}>
+            Save to Schedule
           </Button>
         </div>
       )}
 
-      <div className="space-y-3 mt-4">
+      <div className="space-y-3">
         {events.map((event) => (
-          <div key={event.id} className="relative group flex items-center gap-3 glass p-3 rounded-xl border-l-4 border-l-primary/50">
-             <div className="flex-1">
-                <p className="font-bold text-sm text-foreground">{event.title}</p>
-                <p className="text-xs text-muted-foreground">{new Date(event.date).toLocaleDateString()} • {event.subject}</p>
+          <div key={event.id} className={`relative group flex items-start gap-3 glass p-4 rounded-2xl border-l-4 transition-all hover:scale-[1.02] ${
+            event.type === 'exam' ? 'border-l-primary' : 
+            event.type === 'assignment' ? 'border-l-accent' : 
+            'border-l-secondary'
+          }`}>
+             <div className="flex-1 space-y-1">
+                <div className="flex items-center gap-2">
+                  <p className="font-bold text-foreground leading-none">{event.title}</p>
+                  <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-black uppercase tracking-tighter ${
+                    event.type === 'exam' ? 'bg-primary/10 text-primary' : 
+                    event.type === 'assignment' ? 'bg-accent/10 text-accent' : 
+                    'bg-secondary/10 text-secondary'
+                  }`}>
+                    {event.type}
+                  </span>
+                </div>
+                <div className="flex items-center gap-3 text-[11px] text-muted-foreground font-bold">
+                  <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {new Date(event.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                  {event.subject !== 'General' && <span className="flex items-center gap-1"><BookOpen className="w-3 h-3" /> {event.subject}</span>}
+                </div>
              </div>
              <Button 
                variant="ghost" 
                size="icon" 
-               className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive" 
+               className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive rounded-full" 
                onClick={() => handleDelete(event.id)}
              >
-               <X className="w-3 h-3" />
+               <X className="w-4 h-4" />
              </Button>
           </div>
         ))}
         {events.length === 0 && !isAdding && (
-          <div className="text-center py-6 glass-card border-dashed">
-            <p className="text-xs text-muted-foreground">No upcoming exams.</p>
+          <div className="text-center py-12 glass-card border-dashed border-2">
+            <Calendar className="w-10 h-10 text-muted-foreground/20 mx-auto mb-3" />
+            <p className="text-sm font-bold text-muted-foreground">You've got nothing apparently.</p>
+            <p className="text-xs text-muted-foreground/60">Enjoy your freedom!</p>
           </div>
         )}
       </div>

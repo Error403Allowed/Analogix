@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { useNavigate } from "react-router-dom";
 import Mascot from "@/components/Mascot";
 import Confetti from "@/components/Confetti";
+import { achievementStore } from "@/utils/achievementStore";
 
 const subjects = [
   { id: "math", emoji: "🔢", label: "Mathematics", description: "Numbers, algebra, geometry" },
@@ -18,6 +19,8 @@ const subjects = [
   { id: "economics", emoji: "📈", label: "Economics", description: "Supply, demand, markets" },
   { id: "business", emoji: "💼", label: "Business Studies", description: "Management, strategy, startups" },
   { id: "commerce", emoji: "💰", label: "Commerce", description: "Trade, finance, accounting" },
+  { id: "pdhpe", emoji: "🏃", label: "PDHPE", description: "Health, fitness, well-being" },
+  { id: "geography", emoji: "🌏", label: "Geography", description: "World, maps, environment" },
 ];
 
 const hobbies = [
@@ -38,6 +41,7 @@ const Onboarding = () => {
   
   const [step, setStep] = useState(1);
   const [name, setName] = useState("");
+  const [grade, setGrade] = useState<string | null>(null);
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
   const [selectedHobbies, setSelectedHobbies] = useState<string[]>([]);
   const [isComplete, setIsComplete] = useState(false);
@@ -57,17 +61,26 @@ const Onboarding = () => {
   const handleNext = () => {
     if (step === 1 && name.trim()) {
       setStep(2);
-    } else if (step === 2 && selectedSubjects.length > 0) {
+    } else if (step === 2 && grade) {
       setStep(3);
-    } else if (step === 3 && selectedHobbies.length > 0) {
+    } else if (step === 3 && selectedSubjects.length > 0) {
+      setStep(4);
+    } else if (step === 4 && selectedHobbies.length > 0) {
       setIsComplete(true);
       
       localStorage.setItem("userPreferences", JSON.stringify({
         name: name.trim(),
+        grade: grade,
         subjects: selectedSubjects,
         hobbies: selectedHobbies,
         onboardingComplete: true
       }));
+
+      // Unlock Achievements
+      achievementStore.unlock("start_1"); // New Beginnings
+      if (name.trim().toLowerCase() !== "student") {
+        achievementStore.unlock("start_2"); // Identity Crisis
+      }
       
       setTimeout(() => navigate("/dashboard"), 2500);
     }
@@ -106,6 +119,7 @@ const Onboarding = () => {
                 <div className={`h-2 flex-1 rounded-full transition-colors ${step >= 1 ? 'gradient-primary' : 'bg-muted'}`} />
                 <div className={`h-2 flex-1 rounded-full transition-colors ${step >= 2 ? 'gradient-primary' : 'bg-muted'}`} />
                 <div className={`h-2 flex-1 rounded-full transition-colors ${step >= 3 ? 'gradient-primary' : 'bg-muted'}`} />
+                <div className={`h-2 flex-1 rounded-full transition-colors ${step >= 4 ? 'gradient-primary' : 'bg-muted'}`} />
               </div>
 
               {step === 1 && (
@@ -136,6 +150,41 @@ const Onboarding = () => {
               )}
 
               {step === 2 && (
+                <div className="space-y-8">
+                  <div className="flex items-center gap-5">
+                    <Mascot size="md" mood="thinking" />
+                    <div>
+                      <h1 className="text-3xl font-black text-foreground tracking-tight">
+                        What year are you in?
+                      </h1>
+                      <p className="text-muted-foreground text-lg">
+                        I'll tailor the difficulty to your level.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                    {["7", "8", "9", "10", "11", "12"].map((y) => (
+                      <motion.button
+                        key={y}
+                        onClick={() => setGrade(y)}
+                        className={`p-6 rounded-2xl border-2 transition-all flex flex-col items-center justify-center gap-2 group ${
+                          grade === y
+                            ? "border-primary bg-primary/10 shadow-lg scale-[1.02]"
+                            : "border-border glass hover:border-primary/50"
+                        }`}
+                        whileHover={{ y: -4 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        <span className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Year</span>
+                        <span className="text-4xl font-black text-foreground group-hover:scale-110 transition-transform">{y}</span>
+                      </motion.button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {step === 3 && (
                 <div className="space-y-8">
                   <div className="flex items-center gap-5">
                     <Mascot size="md" mood="excited" />
@@ -186,7 +235,7 @@ const Onboarding = () => {
                 </div>
               )}
 
-              {step === 3 && (
+              {step === 4 && (
                 <div className="space-y-8">
                   <div className="flex items-center gap-5">
                     <Mascot size="md" mood="excited" />
@@ -246,12 +295,13 @@ const Onboarding = () => {
                   onClick={handleNext}
                   disabled={
                     (step === 1 && !name.trim()) ||
-                    (step === 2 && selectedSubjects.length === 0) ||
-                    (step === 3 && selectedHobbies.length === 0)
+                    (step === 2 && !grade) ||
+                    (step === 3 && selectedSubjects.length === 0) ||
+                    (step === 4 && selectedHobbies.length === 0)
                   }
                   className="gap-2 gradient-primary text-primary-foreground border-0 h-14 px-8 rounded-2xl font-bold shadow-xl hover:opacity-90 transition-opacity"
                 >
-                  {step === 3 ? (
+                  {step === 4 ? (
                     <>
                       <Sparkles className="w-5 h-5" />
                       Finish Setup

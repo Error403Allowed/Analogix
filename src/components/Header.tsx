@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Settings, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -6,6 +6,7 @@ import { ThemeToggle } from "./ThemeToggle";
 import Mascot from "./Mascot";
 import { useNavigate } from "react-router-dom";
 import SettingsDialog from "./SettingsDialog";
+import { getAIGreeting } from "@/services/groq";
 
 interface HeaderProps {
   userName?: string;
@@ -15,6 +16,11 @@ interface HeaderProps {
 const Header = ({ userName = "Student", streak = 0 }: HeaderProps) => {
   const navigate = useNavigate();
   const [showSettings, setShowSettings] = useState(false);
+  const [greeting, setGreeting] = useState(`Welcome back, ${userName}! 👋`);
+
+  useEffect(() => {
+    getAIGreeting(userName, streak).then(setGreeting);
+  }, [userName, streak]);
 
   return (
     <>
@@ -36,7 +42,7 @@ const Header = ({ userName = "Student", streak = 0 }: HeaderProps) => {
                 Analogix
               </motion.h1>
               <p className="text-sm text-muted-foreground">
-                Welcome back, <span className="font-medium text-foreground">{userName}</span>! 👋
+                {greeting}
               </p>
             </div>
           </div>

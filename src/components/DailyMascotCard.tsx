@@ -3,28 +3,21 @@ import { motion } from "framer-motion";
 import { MessageCircle, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Mascot from "./Mascot";
+import { getAIGreeting } from "@/services/groq";
+import { statsStore } from "@/utils/statsStore";
 
 interface DailyMascotCardProps {
   userName: string;
   onChatStart: () => void;
 }
 
-const GREETINGS = [
-  "What's up! Ready to get into it?",
-  "Let's crush some goals today!",
-  "Got a tough concept? I can help!",
-  "Simulation theory or Calculus? Ask away!",
-  "Your brain is a muscle. let's flex it!"
-];
-
 const DailyMascotCard = ({ userName, onChatStart }: DailyMascotCardProps) => {
-  const [greeting, setGreeting] = useState("");
+  const [greeting, setGreeting] = useState("Hey there! Ready to learn?");
 
   useEffect(() => {
-    // Pick random greeting on mount
-    const random = GREETINGS[Math.floor(Math.random() * GREETINGS.length)];
-    setGreeting(random);
-  }, []);
+    const stats = statsStore.get();
+    getAIGreeting(userName, stats.currentStreak).then(setGreeting);
+  }, [userName]);
 
   return (
     <motion.div 

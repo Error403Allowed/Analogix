@@ -26,6 +26,8 @@ const subjects = [
   { id: "economics", label: "Economics", icon: "📈" },
   { id: "business", label: "Business Studies", icon: "💼" },
   { id: "commerce", label: "Commerce", icon: "💰" },
+  { id: "pdhpe", label: "PDHPE", icon: "🏃" },
+  { id: "geography", label: "Geography", icon: "🌏" },
 ];
 
 const sampleAnalogies: Record<string, { topic: string; analogy: string; explanation: string }[]> = {
@@ -144,10 +146,7 @@ const Chat = () => {
   const userSubjects = userPrefs.subjects || [];
 
   useEffect(() => {
-    // If you've already picked subjects, let's start with the first one!
-    if (userSubjects.length > 0 && !selectedSubject) {
-      setSelectedSubject(userSubjects[0]);
-    }
+    // We stay on the selection screen so Quizzy can ask what you want to explore!
   }, []);
 
   const scrollToBottom = () => {
@@ -163,15 +162,11 @@ const Chat = () => {
     setSelectedSubject(subjectId);
     const subject = subjects.find(s => s.id === subjectId);
     
-    // WELCOME: We start the chat with a friendly message and a pre-written analogy.
-    const analogies = sampleAnalogies[subjectId] || [];
-    const firstAnalogy = analogies[0];
-    
+    // WELCOME: Ask the user what they want to dive into!
     setMessages([{
       id: "welcome",
       role: "assistant",
-      content: `Hi ${userName}! Great choice! Let's explore ${subject?.label} ${subject?.icon} using analogies you'll love!\n\n**${firstAnalogy?.topic}**\n\n${firstAnalogy?.analogy}\n\n${firstAnalogy?.explanation}`,
-      analogy: firstAnalogy?.topic
+      content: `Hi ${userName}! 🚀 Great choice picking ${subject?.label} ${subject?.icon}.\n\nWhat specific topic or concept would you like to explore today? Just tell me what's on your mind, and I'll find a perfect analogy for you!`
     }]);
   };
 
@@ -209,6 +204,7 @@ const Chat = () => {
       const context = {
         subjects: selectedSubject ? [selectedSubject] : userSubjects,
         hobbies: userHobbies,
+        grade: userPrefs.grade,
         learningStyle: userPrefs.learningStyle
       };
 
@@ -227,7 +223,7 @@ const Chat = () => {
     })();
   };
 
-  const handleNewTopic = () => {
+  const handleNewTopic = async () => {
     if (!selectedSubject) return;
     
     const analogies = sampleAnalogies[selectedSubject] || [];
@@ -235,11 +231,31 @@ const Chat = () => {
     const availableAnalogies = analogies.filter(a => !usedTopics.includes(a.topic));
     
     if (availableAnalogies.length === 0) {
+      // AI GENERATION: If we ran out of samples, ask the AI for a new one!
+      setIsTyping(true);
+      const subjectLabel = subjects.find(s => s.id === selectedSubject)?.label || selectedSubject;
+      
+      const context = {
+        subjects: [selectedSubject],
+        hobbies: userHobbies,
+        grade: userPrefs.grade,
+        learningStyle: userPrefs.learningStyle
+      };
+
+      const aiPrompt = [{ 
+        role: "user" as const, 
+        content: `I've already learned about several topics in ${subjectLabel}. Can you introduce a NEW, interesting concept in ${subjectLabel} using a fun analogy related to my interests (${userHobbies.join(", ")})?` 
+      }];
+
+      const aiResponse = await getGroqCompletion(aiPrompt, context);
+      
       setMessages(prev => [...prev, {
         id: Date.now().toString(),
         role: "assistant",
-        content: "We've covered all the main topics! Try asking me a specific question, or pick a different subject to explore! 🎯"
+        content: aiResponse.content || "Hmm, I'm having trouble thinking of a new topic. Try asking me a specific question!",
+        analogy: "ai-generated-" + Date.now()
       }]);
+      setIsTyping(false);
       return;
     }
 
@@ -271,7 +287,7 @@ const Chat = () => {
           </Button>
           <div className="flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-primary" />
-            <h1 className="text-lg font-bold gradient-text">Analogy Tutor</h1>
+            <h1 className="text-lg font-bold gradient-text">Quizzy</h1>
           </div>
           <div className="w-20" /> {/* Spacer for centering */}
         </motion.header>

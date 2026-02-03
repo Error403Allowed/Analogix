@@ -12,17 +12,30 @@ export const parseICS = async (file: File): Promise<AppEvent[]> => {
         const comp = new ICAL.Component(jcalData);
         const vevents = comp.getAllSubcomponents("vevent");
 
-        const events: AppEvent[] = vevents.map((vevent) => {
-          const event = new ICAL.Event(vevent);
-          return {
-            id: Date.now() + Math.random().toString(36).substr(2, 9),
-            title: event.summary,
-            date: event.startDate.toJSDate(),
-            type: 'event', // Default type for imports
-            description: event.description || "Imported from Calendar",
-            source: 'import'
-          };
-        });
+        const academicKeywords = ["exam", "assessment", "quiz", "test", "midterm", "final", "assignment", "project", "deadline", "paper", "presentation", "lab", "due"];
+
+        const events: AppEvent[] = vevents
+          .map((vevent) => {
+            const event = new ICAL.Event(vevent);
+            const title = event.summary || "";
+            const description = event.description || "";
+            const combined = (title + " " + description).toLowerCase();
+
+            // Check if it's a deadline
+            const isDeadline = academicKeywords.some(kw => combined.includes(kw));
+            if (!isDeadline) return null;
+
+            return {
+              id: Date.now() + Math.random().toString(36).substr(2, 9),
+              title: title,
+              date: event.startDate.toJSDate(),
+              type: combined.includes("exam") || combined.includes("test") ? 'exam' : 
+                    combined.includes("assignment") || combined.includes("project") ? 'assignment' : 'event',
+              description: description || "Imported Deadline",
+              source: 'import'
+            } as AppEvent;
+          })
+          .filter(e => e !== null) as AppEvent[];
 
         resolve(events);
       } catch (err) {
