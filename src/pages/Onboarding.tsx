@@ -7,54 +7,39 @@ import Mascot from "@/components/Mascot";
 import Confetti from "@/components/Confetti";
 
 const hobbies = [
-  { id: "sports", emoji: "⚽", label: "Sports", examples: "Football, basketball, running" },
-  { id: "gaming", emoji: "🎮", label: "Gaming", examples: "Video games, strategy, puzzles" },
-  { id: "music", emoji: "🎵", label: "Music", examples: "Playing, listening, concerts" },
-  { id: "cooking", emoji: "🍳", label: "Cooking", examples: "Recipes, baking, food" },
-  { id: "art", emoji: "🎨", label: "Art & Design", examples: "Drawing, painting, crafts" },
-  { id: "movies", emoji: "🎬", label: "Movies & TV", examples: "Films, shows, anime" },
-  { id: "nature", emoji: "🌿", label: "Nature", examples: "Hiking, gardening, animals" },
-  { id: "tech", emoji: "💻", label: "Technology", examples: "Coding, gadgets, AI" },
-  { id: "reading", emoji: "📚", label: "Reading", examples: "Books, comics, stories" },
-  { id: "travel", emoji: "✈️", label: "Travel", examples: "Exploring, cultures, adventure" },
+  { id: "sports", emoji: "⚽", label: "Sports" },
+  { id: "gaming", emoji: "🎮", label: "Gaming" },
+  { id: "music", emoji: "🎵", label: "Music" },
+  { id: "cooking", emoji: "🍳", label: "Cooking" },
+  { id: "art", emoji: "🎨", label: "Art & Design" },
+  { id: "movies", emoji: "🎬", label: "Movies & TV" },
+  { id: "nature", emoji: "🌿", label: "Nature" },
+  { id: "tech", emoji: "💻", label: "Technology" },
+  { id: "reading", emoji: "📚", label: "Reading" },
+  { id: "travel", emoji: "✈️", label: "Travel" },
 ];
 
-const learningStyles = [
-  { 
-    id: "visual", 
-    emoji: "👁️", 
-    label: "Visual Learner", 
-    description: "I learn best with images, diagrams, and videos",
-    color: "from-primary/20 to-primary/5"
-  },
-  { 
-    id: "hands-on", 
-    emoji: "🖐️", 
-    label: "Hands-On Learner", 
-    description: "I learn by doing, practicing, and experimenting",
-    color: "from-success/20 to-success/5"
-  },
-  { 
-    id: "story", 
-    emoji: "📖", 
-    label: "Story-Based Learner", 
-    description: "I learn through narratives, examples, and analogies",
-    color: "from-accent/20 to-accent/5"
-  },
-  { 
-    id: "logical", 
-    emoji: "🧩", 
-    label: "Logical Learner", 
-    description: "I learn by understanding patterns and reasoning",
-    color: "from-warning/20 to-warning/5"
-  },
+// ACARA Curriculum Subjects
+const subjects = [
+  { id: "english", emoji: "📝", label: "English", color: "from-primary/20 to-primary/5" },
+  { id: "mathematics", emoji: "🔢", label: "Mathematics", color: "from-secondary/20 to-secondary/5" },
+  { id: "science", emoji: "🔬", label: "Science", color: "from-success/20 to-success/5" },
+  { id: "hpe", emoji: "🏃", label: "Health & PE", color: "from-accent/20 to-accent/5" },
+  { id: "history", emoji: "🏛️", label: "History", color: "from-warning/20 to-warning/5" },
+  { id: "geography", emoji: "🌏", label: "Geography", color: "from-primary/20 to-primary/5" },
+  { id: "civics", emoji: "⚖️", label: "Civics & Citizenship", color: "from-secondary/20 to-secondary/5" },
+  { id: "economics", emoji: "💰", label: "Economics & Business", color: "from-success/20 to-success/5" },
+  { id: "the-arts", emoji: "🎭", label: "The Arts", color: "from-accent/20 to-accent/5" },
+  { id: "digital-tech", emoji: "💻", label: "Digital Technologies", color: "from-warning/20 to-warning/5" },
+  { id: "design-tech", emoji: "🔧", label: "Design & Technologies", color: "from-primary/20 to-primary/5" },
+  { id: "languages", emoji: "🗣️", label: "Languages", color: "from-secondary/20 to-secondary/5" },
 ];
 
 const Onboarding = () => {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [selectedHobbies, setSelectedHobbies] = useState<string[]>([]);
-  const [selectedStyle, setSelectedStyle] = useState<string | null>(null);
+  const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
   const [isComplete, setIsComplete] = useState(false);
 
   const toggleHobby = (id: string) => {
@@ -63,18 +48,23 @@ const Onboarding = () => {
     );
   };
 
+  const toggleSubject = (id: string) => {
+    setSelectedSubjects((prev) =>
+      prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]
+    );
+  };
+
   const handleNext = () => {
     if (step === 1 && selectedHobbies.length > 0) {
       setStep(2);
-    } else if (step === 2 && selectedStyle) {
+    } else if (step === 2 && selectedSubjects.length > 0) {
       setIsComplete(true);
-      // Save preferences to localStorage (mock persistence)
       localStorage.setItem("userPreferences", JSON.stringify({
         hobbies: selectedHobbies,
-        learningStyle: selectedStyle,
+        subjects: selectedSubjects,
         onboardingComplete: true
       }));
-      setTimeout(() => navigate("/"), 2500);
+      setTimeout(() => navigate("/home"), 2500);
     }
   };
 
@@ -177,49 +167,44 @@ const Onboarding = () => {
                     <Mascot size="md" mood="thinking" />
                     <div>
                       <h1 className="text-2xl font-bold text-foreground">
-                        How do you learn best? 🧠
+                        What subjects do you want to learn? 📚
                       </h1>
                       <p className="text-muted-foreground">
-                        This helps me explain things in a way that sticks!
+                        Pick from the Australian Curriculum subjects
                       </p>
                     </div>
                   </div>
 
                   <motion.div
-                    className="grid gap-4 mb-8"
+                    className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-8"
                     variants={containerVariants}
                     initial="hidden"
                     animate="visible"
                   >
-                    {learningStyles.map((style) => (
+                    {subjects.map((subject) => (
                       <motion.button
-                        key={style.id}
+                        key={subject.id}
                         variants={itemVariants}
-                        onClick={() => setSelectedStyle(style.id)}
-                        className={`relative p-5 rounded-xl border-2 text-left transition-all bg-gradient-to-r ${style.color} ${
-                          selectedStyle === style.id
+                        onClick={() => toggleSubject(subject.id)}
+                        className={`relative p-4 rounded-xl border-2 text-left transition-all bg-gradient-to-br ${subject.color} ${
+                          selectedSubjects.includes(subject.id)
                             ? "border-primary shadow-lg"
                             : "border-border hover:border-primary/50"
                         }`}
-                        whileHover={{ x: 4 }}
+                        whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                       >
-                        {selectedStyle === style.id && (
+                        {selectedSubjects.includes(subject.id) && (
                           <motion.div
                             initial={{ scale: 0 }}
                             animate={{ scale: 1 }}
-                            className="absolute top-4 right-4 w-6 h-6 bg-primary rounded-full flex items-center justify-center"
+                            className="absolute -top-2 -right-2 w-6 h-6 bg-primary rounded-full flex items-center justify-center"
                           >
                             <Check className="w-4 h-4 text-primary-foreground" />
                           </motion.div>
                         )}
-                        <div className="flex items-center gap-3">
-                          <span className="text-3xl">{style.emoji}</span>
-                          <div>
-                            <h3 className="font-semibold text-foreground">{style.label}</h3>
-                            <p className="text-sm text-muted-foreground">{style.description}</p>
-                          </div>
-                        </div>
+                        <span className="text-2xl mb-1 block">{subject.emoji}</span>
+                        <span className="text-sm font-medium text-foreground">{subject.label}</span>
                       </motion.button>
                     ))}
                   </motion.div>
@@ -235,7 +220,7 @@ const Onboarding = () => {
                 <div className="flex-1" />
                 <Button
                   onClick={handleNext}
-                  disabled={(step === 1 && selectedHobbies.length < 2) || (step === 2 && !selectedStyle)}
+                  disabled={(step === 1 && selectedHobbies.length < 2) || (step === 2 && selectedSubjects.length === 0)}
                   className="gap-2 gradient-primary text-primary-foreground border-0"
                 >
                   {step === 2 ? (
