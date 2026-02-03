@@ -1,0 +1,185 @@
+import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useNavigate } from "react-router-dom";
+import { ArrowLeft, Calendar as CalendarIcon, Upload, FileUp, X, Clock, MapPin, Tag } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import Header from "@/components/Header";
+import { eventStore } from "@/utils/eventStore";
+import { AppEvent } from "@/types/events";
+import { isSameDay, format } from "date-fns";
+import ICSUploader from "@/components/ICSUploader";
+
+const CalendarPage = () => {
+  const navigate = useNavigate();
+  const [date, setDate] = useState<Date | undefined>(new Date());
+  const [events, setEvents] = useState<AppEvent[]>([]);
+  const [showUploader, setShowUploader] = useState(false);
+
+  const userPrefs = JSON.parse(localStorage.getItem("userPreferences") || "{}");
+  const userName = userPrefs.name || "Student";
+
+  useEffect(() => {
+    const loadEvents = () => setEvents(eventStore.getAll());
+    loadEvents();
+    window.addEventListener("eventsUpdated", loadEvents);
+    return () => window.removeEventListener("eventsUpdated", loadEvents);
+  }, []);
+
+  const selectedDayEvents = events.filter((e) => 
+    date && isSameDay(new Date(e.date), date)
+  ).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+  return (
+    <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#020617] pb-12">
+      <div className="max-w-[1700px] mx-auto w-full px-4 sm:px-6 lg:px-8 xl:px-12 pt-6">
+        <Header userName={userName} />
+
+        <div className="mb-8">
+           <Button variant="ghost" className="mb-4 pl-0 hover:bg-transparent hover:text-primary gap-2" onClick={() => navigate("/dashboard")}>
+             <ArrowLeft className="w-4 h-4" /> Back to Dashboard
+           </Button>
+
+           <div className="flex flex-col md:flex-row justify-between items-start gap-6 mb-8">
+             <div>
+               <h1 className="text-4xl font-black text-foreground mb-2 flex items-center gap-3">
+                 <CalendarIcon className="w-8 h-8 text-primary" />
+                 Schedule & Events
+               </h1>
+               <p className="text-muted-foreground">Manage your exams and learning milestones.</p>
+             </div>
+             
+             <Button 
+               variant="outline" 
+               className="gap-2 rounded-2xl glass"
+               onClick={() => setShowUploader(!showUploader)}
+             >
+               <Upload className="w-4 h-4" />
+               {showUploader ? "View Calendar" : "Import Schedule (.ics)"}
+             </Button>
+           </div>
+
+           <div className="grid grid-cols-12 gap-8">
+             {/* LEFT: CALENDAR VIEW */}
+             <div className="col-span-12 lg:col-span-5 xl:col-span-4">
+                <AnimatePresence mode="wait">
+                  {showUploader ? (
+                    <motion.div
+                      key="uploader"
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                    >
+                      <ICSUploader />
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="calendar"
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      className="glass-card p-6"
+                    >
+                      <Calendar
+                        mode="single"
+                        selected={date}
+                        onSelect={setDate}
+                        className="rounded-xl border-none p-0 scale-105 origin-top"
+                        modifiers={{
+                          event: (date) => events.some((e) => isSameDay(new Date(e.date), date))
+                        }}
+                        modifiersClassNames={{
+                          event: "bg-primary/10 font-bold text-primary relative after:content-[''] after:absolute after:bottom-1 after:left-1/2 after:-translate-x-1/2 after:w-1 after:h-1 after:bg-primary after:rounded-full"
+                        }}
+                      />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+             </div>
+
+             {/* RIGHT: EVENT DETAILS */}
+             <div className="col-span-12 lg:col-span-7 xl:col-span-8 space-y-6">
+                <div className="flex items-center justify-between px-2">
+                  <h2 className="text-2xl font-black text-foreground">
+                    {date ? format(date, 'MMMM do, yyyy') : 'Select a date'}
+                  </h2>
+                  <div className="bg-primary/10 text-primary px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest">
+                    {selectedDayEvents.length} {selectedDayEvents.length === 1 ? 'Event' : 'Events'}
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                   {selectedDayEvents.length > 0 ? (
+                     selectedDayEvents.map((event) => (
+                       <motion.div
+                         key={event.id}
+                         layout
+                         initial={{ opacity: 0, x: 20 }}
+                         animate={{ opacity: 1, x: 0 }}
+                         className="glass-card p-6 border-l-8 border-l-primary/40 flex flex-col md:flex-row md:items-center justify-between gap-6"
+                       >
+                         <div className="space-y-3">
+                           <div className="flex items-center gap-3">
+                              <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${
+                                event.type === 'exam' ? 'bg-destructive/10 text-destructive' : 'bg-primary/10 text-primary'
+                              }`}>
+                                {event.type}
+                              </span>
+                              {event.subject && (
+                                <span className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground">
+                                  <Tag className="w-3 h-3" />
+                                  {event.subject}
+                                </span>
+                              )}
+                           </div>
+                           <h3 className="text-xl font-bold text-foreground">{event.title}</h3>
+                           <p className="text-sm text-muted-foreground leading-relaxed max-w-2xl">
+                             {event.description || "No additional details provided."}
+                           </p>
+                         </div>
+
+                         <div className="flex items-center gap-4 text-muted-foreground shrink-0 border-t md:border-t-0 md:border-l border-border pt-4 md:pt-0 md:pl-6">
+                            <div className="flex flex-col items-center min-w-[60px]">
+                               <Clock className="w-4 h-4 mb-2 text-primary/60" />
+                               <span className="text-xs font-black text-foreground">
+                                 {format(new Date(event.date), 'h:mm a')}
+                               </span>
+                            </div>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="text-muted-foreground hover:text-destructive"
+                              onClick={() => {
+                                if(confirm("Delete this event?")) eventStore.remove(event.id);
+                              }}
+                            >
+                              <X className="w-4 h-4" />
+                            </Button>
+                         </div>
+                       </motion.div>
+                     ))
+                   ) : (
+                     <motion.div 
+                       initial={{ opacity: 0 }}
+                       animate={{ opacity: 1 }}
+                       className="glass-card p-12 text-center border-dashed"
+                     >
+                        <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+                           <Clock className="w-8 h-8 text-muted-foreground opacity-20" />
+                        </div>
+                        <h3 className="text-lg font-bold text-foreground mb-2">No plans yet!</h3>
+                        <p className="text-muted-foreground max-w-xs mx-auto">
+                           There are no exams or events scheduled for this day. Relax or add something new!
+                        </p>
+                     </motion.div>
+                   )}
+                </div>
+             </div>
+           </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default CalendarPage;

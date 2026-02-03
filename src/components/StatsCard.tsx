@@ -10,7 +10,7 @@ interface StatsCardProps {
     value: number;
     isPositive: boolean;
   };
-  color: "primary" | "secondary" | "success" | "warning" | "accent";
+  color: "primary" | "secondary" | "success" | "warning" | "accent" | "tertiary";
 }
 
 const StatsCard = ({ title, value, subtitle, icon: Icon, trend, color }: StatsCardProps) => {
@@ -20,6 +20,7 @@ const StatsCard = ({ title, value, subtitle, icon: Icon, trend, color }: StatsCa
     success: "from-success/20 to-success/5 text-success",
     warning: "from-warning/20 to-warning/5 text-warning",
     accent: "from-accent/20 to-accent/5 text-accent",
+    tertiary: "from-tertiary/20 to-tertiary/5 text-tertiary",
   };
 
   const iconBgClasses = {
@@ -28,6 +29,7 @@ const StatsCard = ({ title, value, subtitle, icon: Icon, trend, color }: StatsCa
     success: "bg-success/10",
     warning: "bg-warning/10",
     accent: "bg-accent/10",
+    tertiary: "bg-tertiary/10",
   };
 
   return (

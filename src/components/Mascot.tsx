@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 
 interface MascotProps {
-  mood?: "happy" | "excited" | "thinking" | "celebrating";
+  mood?: "happy" | "excited" | "thinking" | "celebrating" | "brain" | "study";
   message?: string;
   size?: "sm" | "md" | "lg";
 }
@@ -21,6 +21,10 @@ const Mascot = ({ mood = "happy", message, size = "md" }: MascotProps) => {
         return "🤔";
       case "celebrating":
         return "🥳";
+      case "brain":
+        return "🧠";
+      case "study":
+        return "🎓";
       default:
         return "😊";
     }
@@ -35,8 +39,9 @@ const Mascot = ({ mood = "happy", message, size = "md" }: MascotProps) => {
           transition: { duration: 0.5, repeat: Infinity } as const,
         };
       case "thinking":
+      case "study":
         return {
-          animate: { y: [0, -5, 0] },
+          animate: { y: [0, -5, 0], rotate: mood === "study" ? [-2, 2, -2] : 0 },
           transition: { duration: 2, repeat: Infinity } as const,
         };
       default:

@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useNavigate } from "react-router-dom";
 import Mascot from "@/components/Mascot";
+import { getGroqCompletion } from "@/services/groq";
+import { statsStore } from "@/utils/statsStore";
 
 interface Message {
   id: string;
@@ -20,6 +22,10 @@ const subjects = [
   { id: "physics", label: "Physics", icon: "⚡" },
   { id: "chemistry", label: "Chemistry", icon: "🧪" },
   { id: "literature", label: "Literature", icon: "📚" },
+  { id: "computing", label: "Computing", icon: "💻" },
+  { id: "economics", label: "Economics", icon: "📈" },
+  { id: "business", label: "Business Studies", icon: "💼" },
+  { id: "commerce", label: "Commerce", icon: "💰" },
 ];
 
 const sampleAnalogies: Record<string, { topic: string; analogy: string; explanation: string }[]> = {
@@ -79,20 +85,70 @@ const sampleAnalogies: Record<string, { topic: string; analogy: string; explanat
       analogy: "A metaphor is like calling your friend a 'rockstar' when they ace a test—you don't mean they literally sing, just that they're amazing!",
       explanation: "Metaphors create vivid images by comparing two things directly. 'Life is a journey' helps us think about life as an adventure with ups and downs."
     }
+  ],
+  computing: [
+    {
+      topic: "Algorithms",
+      analogy: "An algorithm is like a recipe for making a sandwich. You follow specific steps in a specific order to get the final result!",
+      explanation: "Computers need these step-by-step instructions (like 'add bread', then 'add jam') to perform tasks, solve problems, and run your favorite apps."
+    }
+  ],
+  economics: [
+    {
+      topic: "Supply and Demand",
+      analogy: "Think of supply and demand like a limited edition drop of your favorite sneakers. If everyone wants them (high demand) but there are only a few pairs (low supply), the price goes up!",
+      explanation: "Prices in a market are determined by how much people want something versus how much of it is available. It's the balancing act of the economy."
+    }
+  ],
+  business: [
+    {
+      topic: "Marketing",
+      analogy: "Marketing is like trying to be the most popular person at a party. You need to know what people like, dress appropriately, and have interesting things to say!",
+      explanation: "Businesses use marketing to understand their customers (the party guests) and present their products in a way that makes people want to 'hang out' with their brand."
+    }
+  ],
+  commerce: [
+    {
+      topic: "Profit and Loss",
+      analogy: "Profit and loss is like playing a game with coins. If you win more coins than you spent to enter the game, you have a profit. If you spend more than you win, you have a loss!",
+      explanation: "In commerce, businesses track their income (wins) and expenses (costs). Success means keeping your 'wins' higher than your 'costs' consistently."
+    }
   ]
 };
 
+/**
+ * ANALOGY TUTOR: This is where you actually talk to Quizzy (the AI).
+ * It uses your preferences to explain things in a way that makes sense to YOU.
+ */
 const Chat = () => {
   const navigate = useNavigate();
+  
+  // CURRENT TOPIC: Which subject are we talking about right now?
   const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
+  
+  // CONVERSATION: All the messages you and the AI have exchanged.
   const [messages, setMessages] = useState<Message[]>([]);
+  
+  // INPUT: What you're currently typing in the box.
   const [input, setInput] = useState("");
+  
+  // THINKING: This is true while we're waiting for the AI to reply.
   const [isTyping, setIsTyping] = useState(false);
+  
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Get user preferences
+  // RETRIEVING MEMORY: We pull your hobbies and subjects from the browser.
   const userPrefs = JSON.parse(localStorage.getItem("userPreferences") || "{}");
+  const userName = userPrefs.name || "Student";
   const userHobbies = userPrefs.hobbies || ["gaming", "sports"];
+  const userSubjects = userPrefs.subjects || [];
+
+  useEffect(() => {
+    // If you've already picked subjects, let's start with the first one!
+    if (userSubjects.length > 0 && !selectedSubject) {
+      setSelectedSubject(userSubjects[0]);
+    }
+  }, []);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -102,25 +158,28 @@ const Chat = () => {
     scrollToBottom();
   }, [messages]);
 
+  // PICKING A TOPIC: This runs when you select a subject icon.
   const handleSubjectSelect = (subjectId: string) => {
     setSelectedSubject(subjectId);
     const subject = subjects.find(s => s.id === subjectId);
     
-    // Add welcome message with first analogy
+    // WELCOME: We start the chat with a friendly message and a pre-written analogy.
     const analogies = sampleAnalogies[subjectId] || [];
     const firstAnalogy = analogies[0];
     
     setMessages([{
       id: "welcome",
       role: "assistant",
-      content: `Great choice! Let's explore ${subject?.label} ${subject?.icon} using analogies you'll love!\n\n**${firstAnalogy?.topic}**\n\n${firstAnalogy?.analogy}\n\n${firstAnalogy?.explanation}`,
+      content: `Hi ${userName}! Great choice! Let's explore ${subject?.label} ${subject?.icon} using analogies you'll love!\n\n**${firstAnalogy?.topic}**\n\n${firstAnalogy?.analogy}\n\n${firstAnalogy?.explanation}`,
       analogy: firstAnalogy?.topic
     }]);
   };
 
+  // TALKING TO THE AI: This is where the magic happens!
   const handleSend = () => {
     if (!input.trim() || !selectedSubject) return;
 
+    // 1. We show your message on the screen immediately.
     const userMessage: Message = {
       id: Date.now().toString(),
       role: "user",
@@ -129,29 +188,43 @@ const Chat = () => {
 
     setMessages(prev => [...prev, userMessage]);
     setInput("");
-    setIsTyping(true);
+    setIsTyping(true); // Show the "thinking" dots.
 
-    // Mock AI response with analogy
-    setTimeout(() => {
-      const analogies = sampleAnalogies[selectedSubject] || [];
-      const randomAnalogy = analogies[Math.floor(Math.random() * analogies.length)];
+    // Record the conversation
+    if (selectedSubject) {
+      statsStore.recordChat(subjects.find(s => s.id === selectedSubject)?.label || selectedSubject);
+    }
+    
+    // 2. We talk to the AI brain behind the scenes.
+    (async () => {
+      // We package up the chat history so the AI remembers what we've already said.
+      const messagesHistory = messages.map(m => ({ 
+        role: m.role, 
+        content: m.content 
+      }));
       
-      const hobbyContext = userHobbies[0] === "gaming" 
-        ? "Think of it like a game:" 
-        : userHobbies[0] === "sports"
-        ? "Imagine it like a sport:"
-        : "Here's a fun way to think about it:";
+      const newHistory = [...messagesHistory, { role: "user" as const, content: input }];
+      
+      // We also give the AI "Context" (your hobbies and style).
+      const context = {
+        subjects: selectedSubject ? [selectedSubject] : userSubjects,
+        hobbies: userHobbies,
+        learningStyle: userPrefs.learningStyle
+      };
 
+      // FETCH: We send the request over the internet and wait.
+      const aiResponse = await getGroqCompletion(newHistory, context);
+
+      // 3. We show the AI's reply on the screen.
       const response: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: `Great question! ${hobbyContext}\n\n${randomAnalogy?.analogy || "Every concept can be understood through the right lens!"}\n\n${randomAnalogy?.explanation || "Let me know if you'd like me to explain differently!"}\n\n💡 **Try this**: Can you think of another analogy that fits this concept?`,
-        analogy: randomAnalogy?.topic
+        content: aiResponse.content || "I'm not sure how to answer that.",
       };
 
       setMessages(prev => [...prev, response]);
-      setIsTyping(false);
-    }, 1500);
+      setIsTyping(false); // Hide the dots.
+    })();
   };
 
   const handleNewTopic = () => {
@@ -192,7 +265,7 @@ const Chat = () => {
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <Button variant="ghost" size="sm" onClick={() => navigate("/")} className="gap-2">
+          <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard")} className="gap-2">
             <ArrowLeft className="w-4 h-4" />
             Back
           </Button>
@@ -211,7 +284,7 @@ const Chat = () => {
             animate={{ opacity: 1 }}
           >
             <div className="text-center mb-8">
-              <Mascot size="lg" mood="excited" />
+              <Mascot size="lg" mood="brain" />
               <h2 className="text-2xl font-bold text-foreground mt-4 mb-2">
                 What shall we explore today? 🚀
               </h2>

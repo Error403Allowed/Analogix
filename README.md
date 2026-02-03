@@ -1,73 +1,73 @@
-# Welcome to your Lovable project
+# Analogix
 
-## Project info
+Analogix is a modern, analogy-based learning platform designed to help students
+master complex concepts by connecting them to things they already love—like
+gaming, sports, or music.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## Features
 
-## How can I edit this code?
+- **Personalized Onboarding**: Tailor your learning experience by selecting your
+  subjects and hobbies.
+- **Dynamic Analogy Tutor**: Interact with "Quizzy," an AI-powered tutor that
+  explains difficult topics using personalized analogies.
+- **Interactive Quizzes**: Test your knowledge with analogy-based questions
+  generated on the fly.
+- **Achievements & Badges**: Earn rewards as you master new subjects and
+  maintain study streaks.
+- **Schedule & Deadlines**: Manage your upcoming exams and milestones with a
+  built-in calendar and ICS import support.
+- **Mastery Dashboard**: Track your progress, accuracy, and streaks in one
+  central hub.
 
-There are several ways of editing your application.
+## Tech Stack
 
-**Use Lovable**
+- **Frontend**: React, Vite, TypeScript
+- **Styling**: Tailwind CSS, Framer Motion, Lucide icons
+- **State Management**: React Query, LocalStorage
+- **UI Components**: shadcn-ui
+- **AI Integration**: Groq API (Llama 3)
+- **Utilities**: ical.js, date-fns
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+## Getting Started
 
-Changes made via Lovable will be committed automatically to this repo.
+### Prerequisites
 
-**Use your preferred IDE**
+- Node.js (v18 or higher)
+- npm
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### Installation
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+1. Clone the repository:
+   ```sh
+   git clone <YOUR_GIT_URL>
+   ```
 
-Follow these steps:
+2. Navigate to the project directory:
+   ```sh
+   cd analogix
+   ```
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+3. Install dependencies:
+   ```sh
+   npm install
+   ```
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+4. Create a `.env` file in the root directory and add your Groq API key:
+   ```env
+   VITE_GROQ_API_KEY=your_api_key_here
+   ```
 
-# Step 3: Install the necessary dependencies.
-npm i
+5. Start the development server:
+   ```sh
+   npm run dev
+   ```
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
+## Development
 
-**Edit a file directly in GitHub**
+- `npm run dev`: Starts the development server.
+- `npm run build`: Generates the production build.
+- `npm run preview`: Previews the production build locally.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## License
 
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+Created by Shrravan Balamurugan.

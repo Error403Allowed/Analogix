@@ -110,10 +110,6 @@ I'll transform this into an engaging quiz with analogies you'll love!"
                   <Copy className="w-4 h-4" />
                   Paste from clipboard
                 </Button>
-                <Button variant="outline" size="sm" className="gap-2 flex-1 sm:flex-none">
-                  <FileText className="w-4 h-4" />
-                  Upload file
-                </Button>
               </div>
 
               <Button

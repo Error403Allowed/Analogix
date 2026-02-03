@@ -15,8 +15,8 @@
     --popover: 0 0% 100%;
     --popover-foreground: 240 10% 15%;
 
-    --primary: 258 85% 65%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 221 83% 40%;
+    --primary-foreground: 210 40% 98%;
 
     --secondary: 200 75% 55%;
     --secondary-foreground: 0 0% 100%;
@@ -24,8 +24,11 @@
     --muted: 240 15% 92%;
     --muted-foreground: 240 10% 45%;
 
-    --accent: 340 80% 65%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 142 72% 50%;
+    --accent-foreground: 142 80% 98%;
+
+    --tertiary: 271 81% 56%;
+    --tertiary-foreground: 271 100% 98%;
 
     --success: 145 65% 45%;
     --success-foreground: 0 0% 100%;
@@ -36,9 +39,9 @@
     --destructive: 0 85% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 240 15% 88%;
-    --input: 240 15% 88%;
-    --ring: 258 85% 65%;
+    --border: 221 20% 88%;
+    --input: 221 20% 88%;
+    --ring: 221 83% 40%;
 
     --radius: 1rem;
 
@@ -50,16 +53,17 @@
     --glass-shine: linear-gradient(135deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0) 50%, rgba(255,255,255,0.1) 100%);
 
     /* Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(258 85% 65%), hsl(200 75% 55%));
-    --gradient-accent: linear-gradient(135deg, hsl(340 80% 65%), hsl(258 85% 65%));
-    --gradient-success: linear-gradient(135deg, hsl(145 65% 45%), hsl(170 70% 50%));
+    --gradient-primary: linear-gradient(135deg, hsl(221 83% 40%), hsl(221 70% 30%));
+    --gradient-accent: linear-gradient(135deg, hsl(142 72% 50%), hsl(160 84% 39%));
+    --gradient-tertiary: linear-gradient(135deg, hsl(271 81% 56%), hsl(258 85% 65%));
+    --gradient-success: linear-gradient(135deg, hsl(142 65% 45%), hsl(170 70% 50%));
     --gradient-warm: linear-gradient(135deg, hsl(35 90% 55%), hsl(340 80% 65%));
     --gradient-background: linear-gradient(180deg, hsl(240 30% 97%), hsl(250 40% 94%));
     --gradient-liquid: linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.4) 100%);
 
     /* Shadows */
-    --shadow-soft: 0 4px 24px -4px hsl(258 85% 65% / 0.15);
-    --shadow-glow: 0 0 30px hsl(258 85% 65% / 0.25);
+    --shadow-soft: 0 4px 24px -4px hsl(221 83% 40% / 0.15);
+    --shadow-glow: 0 0 30px hsl(221 83% 40% / 0.25);
     --shadow-card: 0 8px 32px -8px hsl(240 10% 15% / 0.1), 0 0 0 1px hsl(0 0% 100% / 0.5);
     --shadow-liquid: 0 8px 32px rgba(0, 0, 0, 0.06), 0 2px 8px rgba(0, 0, 0, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.8);
 
@@ -91,8 +95,8 @@
     --popover: 250 20% 10%;
     --popover-foreground: 240 10% 95%;
 
-    --primary: 258 85% 70%;
-    --primary-foreground: 250 25% 8%;
+    --primary: 221 70% 55%;
+    --primary-foreground: 210 40% 98%;
 
     --secondary: 200 75% 60%;
     --secondary-foreground: 250 25% 8%;
@@ -100,8 +104,11 @@
     --muted: 250 15% 18%;
     --muted-foreground: 240 10% 65%;
 
-    --accent: 340 80% 70%;
-    --accent-foreground: 250 25% 8%;
+    --accent: 142 72% 60%;
+    --accent-foreground: 142 80% 5%;
+
+    --tertiary: 271 81% 65%;
+    --tertiary-foreground: 271 100% 98%;
 
     --success: 145 65% 50%;
     --success-foreground: 250 25% 8%;
@@ -112,9 +119,9 @@
     --destructive: 0 75% 55%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 250 15% 20%;
-    --input: 250 15% 20%;
-    --ring: 258 85% 70%;
+    --border: 221 20% 20%;
+    --input: 221 20% 20%;
+    --ring: 221 70% 55%;
 
     /* Liquid glass effects - Dark mode */
     --glass-background: 250 20% 15% / 0.7;
@@ -123,13 +130,14 @@
     --glass-blur: 20px;
     --glass-shine: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 50%, rgba(255,255,255,0.05) 100%);
 
-    --gradient-primary: linear-gradient(135deg, hsl(258 85% 70%), hsl(200 75% 60%));
-    --gradient-accent: linear-gradient(135deg, hsl(340 80% 70%), hsl(258 85% 70%));
+    --gradient-primary: linear-gradient(135deg, hsl(221 70% 55%), hsl(221 60% 45%));
+    --gradient-accent: linear-gradient(135deg, hsl(142 72% 60%), hsl(160 84% 45%));
+    --gradient-tertiary: linear-gradient(135deg, hsl(271 81% 65%), hsl(258 85% 70%));
     --gradient-background: linear-gradient(180deg, hsl(250 25% 8%), hsl(250 30% 6%));
     --gradient-liquid: linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%);
 
-    --shadow-soft: 0 4px 24px -4px hsl(258 85% 70% / 0.2);
-    --shadow-glow: 0 0 40px hsl(258 85% 70% / 0.3);
+    --shadow-soft: 0 4px 24px -4px hsl(221 70% 55% / 0.2);
+    --shadow-glow: 0 0 40px hsl(221 70% 55% / 0.3);
     --shadow-card: 0 8px 32px -8px hsl(0 0% 0% / 0.4), 0 0 0 1px hsl(250 20% 25% / 0.3);
     --shadow-liquid: 0 8px 32px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1);
 
