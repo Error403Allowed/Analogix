@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, useMotionValue, useSpring } from "framer-motion";
-import { ArrowRight, Sparkles, Brain, Zap, BookOpen, Star, Users, Trophy, MessageCircle, Gamepad2, Music, Palette } from "lucide-react";
+import { ArrowRight, Sparkles, Brain, Zap, BookOpen, Star, Users, Trophy, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -96,10 +96,32 @@ const Landing = () => {
     { value: "4.9", label: "User Rating", icon: Star },
   ];
 
-  const interestExamples = [
-    { icon: Gamepad2, label: "Gaming", color: "bg-primary/20 text-primary" },
-    { icon: Music, label: "Music", color: "bg-accent/20 text-accent" },
-    { icon: Palette, label: "Art", color: "bg-secondary/20 text-secondary" },
+  const interests = [
+    { emoji: "⚽", label: "Sports" },
+    { emoji: "🎮", label: "Gaming" },
+    { emoji: "🎵", label: "Music" },
+    { emoji: "🍳", label: "Cooking" },
+    { emoji: "🎨", label: "Art" },
+    { emoji: "🎬", label: "Movies" },
+    { emoji: "🌿", label: "Nature" },
+    { emoji: "💻", label: "Tech" },
+    { emoji: "📚", label: "Reading" },
+    { emoji: "✈️", label: "Travel" },
+  ];
+
+  const subjects = [
+    { emoji: "📝", label: "English" },
+    { emoji: "🔢", label: "Mathematics" },
+    { emoji: "🔬", label: "Science" },
+    { emoji: "🏃", label: "Health & PE" },
+    { emoji: "🏛️", label: "History" },
+    { emoji: "🌏", label: "Geography" },
+    { emoji: "⚖️", label: "Civics" },
+    { emoji: "💰", label: "Economics" },
+    { emoji: "🎭", label: "The Arts" },
+    { emoji: "💻", label: "Digital Tech" },
+    { emoji: "🔧", label: "Design Tech" },
+    { emoji: "🗣️", label: "Languages" },
   ];
 
   const analogyExamples = [
@@ -220,29 +242,21 @@ const Landing = () => {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="flex flex-wrap gap-3 justify-center mb-10"
+            className="flex flex-wrap gap-2 justify-center mb-10 max-w-3xl"
           >
-            {interestExamples.map((interest, i) => (
+            {interests.map((interest, i) => (
               <motion.div
                 key={interest.label}
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.4 + i * 0.1 }}
+                transition={{ delay: 0.3 + i * 0.03 }}
                 whileHover={{ scale: 1.05, y: -2 }}
-                className={`flex items-center gap-2 px-4 py-2 rounded-full ${interest.color} cursor-pointer transition-shadow hover:shadow-md`}
+                className="flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary cursor-pointer transition-shadow hover:shadow-md hover:bg-primary/20"
               >
-                <interest.icon className="w-4 h-4" />
+                <span>{interest.emoji}</span>
                 <span className="font-medium">{interest.label}</span>
               </motion.div>
             ))}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.7 }}
-              className="flex items-center gap-2 px-4 py-2 rounded-full bg-muted text-muted-foreground"
-            >
-              <span className="font-medium">+ 10 more</span>
-            </motion.div>
           </motion.div>
 
           <motion.div
@@ -318,11 +332,46 @@ const Landing = () => {
           ))}
         </motion.div>
 
+        {/* Subjects Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 40 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 1.1 }}
+          className="mt-24 w-full"
+        >
+          <div className="text-center mb-8">
+            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
+              All ACARA Subjects Covered
+            </h2>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              From English to Digital Technologies — we've got your entire curriculum
+            </p>
+          </div>
+
+          <motion.div
+            className="flex flex-wrap gap-3 justify-center max-w-4xl mx-auto"
+          >
+            {subjects.map((subject, i) => (
+              <motion.div
+                key={subject.label}
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 1.15 + i * 0.04 }}
+                whileHover={{ scale: 1.05, y: -3 }}
+                className="flex items-center gap-2 px-5 py-3 rounded-xl glass-card cursor-pointer"
+              >
+                <span className="text-xl">{subject.emoji}</span>
+                <span className="font-medium text-foreground">{subject.label}</span>
+              </motion.div>
+            ))}
+          </motion.div>
+        </motion.div>
+
         {/* Analogy Examples Section */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 1.2 }}
+          transition={{ delay: 1.4 }}
           className="mt-24 w-full"
         >
           <div className="text-center mb-12">
