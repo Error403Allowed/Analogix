@@ -3,6 +3,7 @@ import { ArrowRight, Sparkles, BookOpen, MessageCircle, Zap, Shield } from "luci
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import Mascot from "@/components/Mascot";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const Landing = () => {
   const navigate = useNavigate();
@@ -41,6 +42,7 @@ const Landing = () => {
           ) : (
             <Button variant="ghost" onClick={() => navigate("/onboarding")}>Sign In</Button>
           )}
+          <ThemeToggle />
           <Button className="gradient-primary text-primary-foreground border-0 shadow-lg" onClick={() => navigate(hasCompletedOnboarding ? "/dashboard" : "/onboarding")}>
             Get Started
           </Button>
