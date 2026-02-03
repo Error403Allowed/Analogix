@@ -82,19 +82,6 @@ const Landing = () => {
                 Try Analogy Tutor
               </Button>
             </motion.div>
-
-            <motion.div variants={itemVariants} className="flex items-center gap-6 pt-8 border-t border-border mt-8">
-              <div className="flex -space-x-4">
-                {[1, 2, 3, 4].map((i) => (
-                  <div key={i} className={`w-12 h-12 rounded-full border-4 border-background bg-muted flex items-center justify-center overflow-hidden`}>
-                    <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${i}`} alt="user" />
-                  </div>
-                ))}
-              </div>
-              <p className="text-sm font-medium text-muted-foreground">
-                Joined by <span className="text-foreground font-bold">2,000+ students</span> this week
-              </p>
-            </motion.div>
           </div>
 
           <motion.div 
