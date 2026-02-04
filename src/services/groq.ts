@@ -162,16 +162,18 @@ export const generateQuiz = async (
 ) => {
   if (!import.meta.env.VITE_GROQ_API_KEY) return null;
 
-  const systemPrompt = `You are Quizzy, an AI tutor. Generate a 5-question multiple choice quiz about "${input}" for a Year ${userContext.grade || "7-12"} student. 
+  const systemPrompt = `You are Quizzy, an AI tutor. Generate a 5-question mixed quiz about "${input}" for a Year ${userContext.grade || "7-12"} student. 
   
   CRITICAL: 
   1. Each question MUST include an "analogy" field that explains the concept using the user's hobbies (${userContext.hobbies.join(", ")}).
-  2. Return ONLY a JSON array of questions under a "questions" key.
-  3. Format:
+  2. The quiz should be a mix of "multiple_choice" and "short_answer" types.
+  3. Return ONLY a JSON array of questions under a "questions" key.
+  4. Format:
   {
     "questions": [
       {
         "id": 1,
+        "type": "multiple_choice",
         "question": "text",
         "analogy": "analogy text",
         "options": [
@@ -181,10 +183,18 @@ export const generateQuiz = async (
           {"id": "d", "text": "text", "isCorrect": false}
         ],
         "hint": "hint text"
+      },
+      {
+        "id": 2,
+        "type": "short_answer",
+        "question": "text",
+        "analogy": "analogy text",
+        "correctAnswer": "detailed correct answer for AI reference",
+        "hint": "hint text"
       }
     ]
   }
-  Ensure exactly 4 options per question.`;
+  Ensure exactly 4 options for multiple_choice. For short_answer, provide a clear 'correctAnswer' that the grading AI can use as a reference.`;
 
   try {
     const completion = await groq.chat.completions.create({
@@ -198,5 +208,39 @@ export const generateQuiz = async (
   } catch (error) {
     console.error("Quiz Generation Error:", error);
     return null;
+  }
+};
+
+/**
+ * AI GRADING: Evaluates a short answer response.
+ */
+export const gradeShortAnswer = async (
+  question: string,
+  targetAnswer: string,
+  userAnswer: string
+) => {
+  if (!import.meta.env.VITE_GROQ_API_KEY) return { isCorrect: false, feedback: "AI grading unavailable." };
+
+  try {
+    const completion = await groq.chat.completions.create({
+      messages: [
+        { 
+          role: "system", 
+          content: "You are a fair teacher. Evaluate the student's answer against the target answer. Be lenient with spelling and phrasing, focus on conceptual understanding. Return a JSON object with 'isCorrect' (boolean) and 'feedback' (short encouraging sentence)." 
+        },
+        { 
+          role: "user", 
+          content: `Question: ${question}\nTarget Answer: ${targetAnswer}\nStudent's Answer: ${userAnswer}` 
+        }
+      ],
+      model: "llama-3.3-70b-versatile",
+      temperature: 0.3,
+      response_format: { type: "json_object" }
+    });
+    
+    return JSON.parse(completion.choices[0]?.message?.content || '{"isCorrect": false, "feedback": "Something went wrong."}');
+  } catch (error) {
+    console.error("Grading Error:", error);
+    return { isCorrect: false, feedback: "Could not grade this answer." };
   }
 };

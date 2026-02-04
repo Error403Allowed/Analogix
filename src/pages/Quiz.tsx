@@ -173,8 +173,10 @@ const Quiz = () => {
               )}
 
               <QuizCard
+                type={questions[currentQuestion].type}
                 question={questions[currentQuestion].question}
                 options={questions[currentQuestion].options}
+                correctAnswer={questions[currentQuestion].correctAnswer}
                 questionNumber={currentQuestion + 1}
                 totalQuestions={questions.length}
                 onAnswer={handleAnswer}

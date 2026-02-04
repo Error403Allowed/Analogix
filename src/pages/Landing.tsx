@@ -1,14 +1,22 @@
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { ArrowRight, Sparkles, BookOpen, MessageCircle, Zap, Shield, Brain, Trophy, Star, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import Mascot from "@/components/Mascot";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import CursorParticles from "@/components/CursorParticles";
 
 const Landing = () => {
   const navigate = useNavigate();
   const userPrefs = JSON.parse(localStorage.getItem("userPreferences") || "{}");
   const hasCompletedOnboarding = userPrefs.onboardingComplete;
+
+  useEffect(() => {
+    if (hasCompletedOnboarding) {
+      navigate("/dashboard");
+    }
+  }, [hasCompletedOnboarding, navigate]);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -45,15 +53,16 @@ const Landing = () => {
     { emoji: "📝", label: "English" },
     { emoji: "🔢", label: "Maths" },
     { emoji: "🔬", label: "Science" },
-    { emoji: "🏃", label: "HPE" },
+    { emoji: "🏃", label: "PDHPE" },
     { emoji: "🏛️", label: "History" },
     { emoji: "🌏", label: "Geography" },
-    { emoji: "🎭", label: "The Arts" },
+    { emoji: "💰", label: "Commerce" },
     { emoji: "💻", label: "Digital Tech" },
   ];
 
   return (
     <div className="min-h-screen relative overflow-hidden bg-background selection:bg-primary/30">
+      <CursorParticles />
       {/* Background Blobs - Better distributed */}
       <div className="liquid-blob w-[600px] h-[600px] bg-primary/20 -top-72 -left-72 fixed blur-3xl" />
       <div className="liquid-blob w-[500px] h-[500px] bg-accent/20 top-1/3 -right-64 fixed blur-3xl opacity-30" style={{ animationDelay: "-2s" }} />
@@ -142,7 +151,6 @@ const Landing = () => {
                 transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
                 className="relative z-10"
               >
-                <Mascot size="lg" mood="excited" />
               </motion.div>
               
               {/* Floating Interest Bubbles */}

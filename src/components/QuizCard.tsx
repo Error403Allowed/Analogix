@@ -3,6 +3,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Check, X, Lightbulb } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Confetti from "./Confetti";
+import { Textarea } from "./ui/textarea";
+import { Loader2, Send } from "lucide-react";
+import { gradeShortAnswer } from "@/services/groq";
 
 interface QuizOption {
   id: string;
@@ -11,8 +14,10 @@ interface QuizOption {
 }
 
 interface QuizCardProps {
+  type?: "multiple_choice" | "short_answer";
   question: string;
-  options: QuizOption[];
+  options?: QuizOption[];
+  correctAnswer?: string;
   questionNumber: number;
   totalQuestions: number;
   onAnswer: (isCorrect: boolean) => void;
@@ -20,17 +25,23 @@ interface QuizCardProps {
 }
 
 const QuizCard = ({ 
+  type = "multiple_choice",
   question, 
-  options, 
+  options = [], 
+  correctAnswer,
   questionNumber, 
   totalQuestions, 
   onAnswer,
   hint 
 }: QuizCardProps) => {
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
+  const [shortAnswer, setShortAnswer] = useState("");
   const [showResult, setShowResult] = useState(false);
   const [showHint, setShowHint] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
+  const [isGrading, setIsGrading] = useState(false);
+  const [aiFeedback, setAiFeedback] = useState<string | null>(null);
+  const [isCorrectSA, setIsCorrectSA] = useState(false);
 
   const handleSelect = (optionId: string) => {
     if (showResult) return;
@@ -50,7 +61,32 @@ const QuizCard = ({
       setSelectedOption(null);
       setShowResult(false);
       setShowHint(false);
-    }, 2000);
+    }, 2500);
+  };
+
+  const handleShortAnswerSubmit = async () => {
+    if (!shortAnswer.trim() || isGrading) return;
+    
+    setIsGrading(true);
+    const result = await gradeShortAnswer(question, correctAnswer || "", shortAnswer);
+    
+    setIsCorrectSA(result.isCorrect);
+    setAiFeedback(result.feedback);
+    setShowResult(true);
+    setIsGrading(false);
+
+    if (result.isCorrect) {
+      setShowConfetti(true);
+      setTimeout(() => setShowConfetti(false), 2000);
+    }
+
+    setTimeout(() => {
+      onAnswer(result.isCorrect);
+      setShortAnswer("");
+      setShowResult(false);
+      setAiFeedback(null);
+      setShowHint(false);
+    }, 3500);
   };
 
   const getOptionStyles = (option: QuizOption) => {
@@ -74,6 +110,10 @@ const QuizCard = ({
   const getMessage = () => {
     if (!showResult) return null;
     
+    if (type === "short_answer") {
+      return aiFeedback;
+    }
+
     const isCorrect = options.find(o => o.id === selectedOption)?.isCorrect;
     
     if (isCorrect) {
@@ -158,39 +198,68 @@ const QuizCard = ({
         )}
       </AnimatePresence>
 
-      {/* Options */}
-      <div className="space-y-3 mb-6">
-        {options.map((option, index) => (
-          <motion.button
-            key={option.id}
-            className={`w-full p-4 rounded-xl border-2 text-left transition-all ${getOptionStyles(option)}`}
-            onClick={() => handleSelect(option.id)}
-            disabled={showResult}
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: index * 0.1 }}
-            whileHover={!showResult ? { scale: 1.02 } : {}}
-            whileTap={!showResult ? { scale: 0.98 } : {}}
+      {/* Selection Area */}
+      {type === "multiple_choice" ? (
+        <div className="space-y-3 mb-6">
+          {options.map((option, index) => (
+            <motion.button
+              key={option.id}
+              className={`w-full p-4 rounded-xl border-2 text-left transition-all ${getOptionStyles(option)}`}
+              onClick={() => handleSelect(option.id)}
+              disabled={showResult}
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: index * 0.1 }}
+              whileHover={!showResult ? { scale: 1.02 } : {}}
+              whileTap={!showResult ? { scale: 0.98 } : {}}
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-foreground font-medium">{option.text}</span>
+                {showResult && (
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: "spring", stiffness: 500 }}
+                  >
+                    {option.isCorrect ? (
+                      <Check className="w-5 h-5 text-success" />
+                    ) : selectedOption === option.id ? (
+                      <X className="w-5 h-5 text-destructive" />
+                    ) : null}
+                  </motion.div>
+                )}
+              </div>
+            </motion.button>
+          ))}
+        </div>
+      ) : (
+        <div className="space-y-4 mb-6">
+          <Textarea 
+            placeholder="Type your answer here..."
+            value={shortAnswer}
+            onChange={(e) => setShortAnswer(e.target.value)}
+            disabled={showResult || isGrading}
+            className="min-h-[120px] glass font-medium text-foreground p-4 rounded-xl border-2 border-border focus:border-primary"
+          />
+          <Button 
+            onClick={handleShortAnswerSubmit} 
+            disabled={!shortAnswer.trim() || showResult || isGrading}
+            className="w-full gradient-primary h-12 rounded-xl font-bold"
           >
-            <div className="flex items-center justify-between">
-              <span className="text-foreground font-medium">{option.text}</span>
-              {showResult && (
-                <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ type: "spring", stiffness: 500 }}
-                >
-                  {option.isCorrect ? (
-                    <Check className="w-5 h-5 text-success" />
-                  ) : selectedOption === option.id ? (
-                    <X className="w-5 h-5 text-destructive" />
-                  ) : null}
-                </motion.div>
-              )}
-            </div>
-          </motion.button>
-        ))}
-      </div>
+            {isGrading ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                AI is marking...
+              </>
+            ) : (
+              <>
+                <Send className="w-4 h-4 mr-2" />
+                Submit Answer
+              </>
+            )}
+          </Button>
+        </div>
+      )}
 
       {/* Result message */}
       <AnimatePresence>
