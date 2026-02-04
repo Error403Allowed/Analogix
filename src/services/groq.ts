@@ -20,11 +20,8 @@ const groq = new Groq({
   dangerouslyAllowBrowser: true // This lets the browser talk directly to Groq.
 });
 
-// This is just a way to tell the code exactly what a "Message" looks like.
-export interface ChatMessage {
-  role: "system" | "user" | "assistant";
-  content: string;
-}
+import { ChatMessage, UserContext } from "@/types/chat";
+import { QuizData } from "@/types/quiz";
 
 /**
  * THE MAIN FUNCTION: This is what we call when we want the AI to think.
@@ -32,12 +29,7 @@ export interface ChatMessage {
  */
 export const getGroqCompletion = async (
   messages: ChatMessage[],
-  userContext?: {
-    subjects: string[];
-    hobbies: string[];
-    grade?: string;
-    learningStyle: string;
-  }
+  userContext?: Partial<UserContext>
 ) => {
   // If there's no password, we politely tell the user why the AI isn't responding.
   if (!import.meta.env.VITE_GROQ_API_KEY) {
@@ -79,7 +71,7 @@ export const getGroqCompletion = async (
   try {
     // We send everything to the AI and wait for it to process.
     const completion = await groq.chat.completions.create({
-      messages: fullMessages as any,
+      messages: fullMessages as any[], // Cast to any[] or specific Groq message type if available, but consistent casting is better than 'as any' on the whole object
       model: "llama-3.3-70b-versatile", // This is the specific "model" or "brain version" we use.
       temperature: 0.7, // 0.7 makes it creative but not too crazy.
       max_tokens: 1024,
@@ -158,17 +150,24 @@ export const generateQuiz = async (
   userContext: {
     grade?: string;
     hobbies: string[];
-  }
-) => {
+  },
+  numberOfQuestions: number = 5
+): Promise<QuizData | null> => {
   if (!import.meta.env.VITE_GROQ_API_KEY) return null;
 
-  const systemPrompt = `You are Quizzy, an AI tutor. Generate a 5-question mixed quiz about "${input}" for a Year ${userContext.grade || "7-12"} student. 
+  const systemPrompt = `You are Quizzy, an AI tutor. Generate a ${numberOfQuestions}-question mixed quiz about "${input}" for a Year ${userContext.grade || "7-12"} student. 
+  Random Seed: ${Date.now()} (Ensure questions are different from previous runs).
   
   CRITICAL: 
   1. Each question MUST include an "analogy" field that explains the concept using the user's hobbies (${userContext.hobbies.join(", ")}).
   2. The quiz should be a mix of "multiple_choice" and "short_answer" types.
   3. Return ONLY a JSON array of questions under a "questions" key.
-  4. Format:
+  5. CRITICAL: Ensure questions are UNIQUE and different from typical textbook questions. Use startlingly different analogies or angles each time.
+  6. Use Markdown and LaTeX for formatting where appropriate.
+    - Use '$' for inline math equations (e.g., $E=mc^2$).
+    - Use '**' for bold text (e.g., **Key Concept**).
+    - CRITICAL: Double-escape all backslashes in the JSON string (e.g., use "\\frac" for "\frac").
+  7. Format:
   {
     "questions": [
       {
@@ -204,7 +203,23 @@ export const generateQuiz = async (
       response_format: { type: "json_object" }
     });
     
-    return JSON.parse(completion.choices[0]?.message?.content || "{}");
+    let content = completion.choices[0]?.message?.content || "{}";
+    
+    // Sanitize: If the AI output single backslashes for LaTeX (e.g. \frac), JSON.parse will fail.
+    // We try to fix this by replacing unescaped backslashes with double backslashes.
+    // This regex looks for \, not followed by another \, and not "or / or n or r or t or u or b or f
+    // Actually, simpler approach: use a dedicated dirty-json parser or just try-catch loop.
+    // Let's rely on the explicit instruction first, but catch the error and try a simple replace if it fails.
+    
+    try {
+      return JSON.parse(content);
+    } catch (e) {
+      console.warn("JSON Parse failed, attempting to sanitize LaTeX backslashes...", e);
+      // Attempt to double-escape backslashes that look like LaTeX commands
+      // Look for \ followed by [a-zA-Z]
+      const sanitized = content.replace(/\\([a-zA-Z])/g, "\\\\$1");
+      return JSON.parse(sanitized);
+    }
   } catch (error) {
     console.error("Quiz Generation Error:", error);
     return null;

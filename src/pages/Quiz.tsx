@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Home, RotateCcw, Share2, Trophy, Lightbulb, Loader2, Sparkles } from "lucide-react";
+import { ArrowLeft, Home, RotateCcw, Share2, Trophy, Lightbulb, Loader2, Sparkles, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate, useLocation } from "react-router-dom";
 import QuizCard from "@/components/QuizCard";
@@ -21,16 +21,54 @@ const Quiz = () => {
   const [showAnalogy, setShowAnalogy] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
 
+  /* New State Variables */
+  const [timeLeft, setTimeLeft] = useState<number | null>(null);
+
   const userPrefs = JSON.parse(localStorage.getItem("userPreferences") || "{}");
   const topic = location.state?.topic || userPrefs.subjects?.[0] || "general school topics";
+  const numQuestionsTarget = location.state?.numQuestions || 5;
+  const timerSetting = location.state?.timerDuration || null;
+
+  /* Timer Logic */
+  useEffect(() => {
+    if (timerSetting && !isLoading && !isComplete) {
+       setTimeLeft(timerSetting * 60); // Convert minutes to seconds
+    }
+  }, [timerSetting, isLoading, isComplete]);
+
+  useEffect(() => {
+    if (timeLeft === null || isComplete || isLoading) return;
+    
+    if (timeLeft <= 0) {
+      setIsComplete(true);
+      statsStore.addQuiz((score / (questions.length || 1)) * 100);
+      return;
+    }
+
+    const timer = setInterval(() => {
+      setTimeLeft(prev => (prev !== null && prev > 0 ? prev - 1 : 0));
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [timeLeft, isComplete, isLoading, score, questions.length]);
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
 
   useEffect(() => {
     const fetchQuiz = async () => {
       setIsLoading(true);
-      const quizData = await generateQuiz(topic, {
-        grade: userPrefs.grade,
-        hobbies: userPrefs.hobbies || []
-      });
+      const quizData = await generateQuiz(
+        topic, 
+        {
+          grade: userPrefs.grade,
+          hobbies: userPrefs.hobbies || []
+        },
+        numQuestionsTarget
+      );
       
       if (quizData && quizData.questions) {
         setQuestions(quizData.questions);
@@ -42,7 +80,7 @@ const Quiz = () => {
     };
 
     fetchQuiz();
-  }, [topic]);
+  }, [topic, numQuestionsTarget]);
 
   const handleAnswer = (isCorrect: boolean) => {
     setAnswers([...answers, isCorrect]);
@@ -58,7 +96,7 @@ const Quiz = () => {
       setTimeout(() => {
         setCurrentQuestion(currentQuestion + 1);
         setShowAnalogy(true);
-      }, 2000);
+      }, 1200); // Reduced delay for speed
     }
   };
 
@@ -131,6 +169,17 @@ const Quiz = () => {
               <Lightbulb className="w-5 h-5 text-warning" />
               <h1 className="text-lg font-bold gradient-text">Analogy Quiz 🧠</h1>
             </div>
+            
+             {/* Timer Display */}
+             {timeLeft !== null && (
+                <div className={`flex items-center gap-2 font-mono font-bold text-xl ${
+                    timeLeft < 30 ? "text-destructive animate-pulse" : "text-primary"
+                }`}>
+                    <Clock className="w-5 h-5" />
+                    {formatTime(timeLeft)}
+                </div>
+            )}
+
             <div className="flex items-center gap-2">
               <span className="text-sm text-muted-foreground">Score:</span>
               <motion.span
@@ -244,10 +293,6 @@ const Quiz = () => {
                 <Button variant="outline" onClick={() => navigate("/dashboard")} className="gap-2">
                   <Home className="w-4 h-4" />
                   Dashboard
-                </Button>
-                <Button variant="outline" className="gap-2">
-                  <Share2 className="w-4 h-4" />
-                  Share Score
                 </Button>
               </div>
 

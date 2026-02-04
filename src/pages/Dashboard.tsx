@@ -11,6 +11,7 @@ import {
   Sparkles
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import Header from "@/components/Header";
 import StatsCard from "@/components/StatsCard";
 import AchievementBadge from "@/components/AchievementBadge";
@@ -221,17 +222,32 @@ const Dashboard = () => {
                   )}
                </div>
 
-               {/* MOVED TO BOTTOM IF SPACE PERMITS: Quiz Creator Toggle */}
-               {showQuizCreator && (
-                  <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}>
-                    <QuizCreator onCreateQuiz={(content) => navigate("/quiz", { state: { topic: content } })} />
-                  </motion.div>
-               )}
+                {/* MOVED TO BOTTOM IF SPACE PERMITS: Quiz Creator Toggle */}
+                {/* Now handled via Dialog */}
             </motion.div>
           </div>
-
         </motion.div>
       </div>
+
+      <Dialog open={showQuizCreator} onOpenChange={setShowQuizCreator}>
+        <DialogContent className="max-w-2xl bg-transparent border-none p-0 shadow-none">
+           <DialogHeader className="hidden">
+             <DialogTitle>Create Custom Quiz</DialogTitle>
+           </DialogHeader>
+           <QuizCreator 
+             onCreateQuiz={(config) => {
+               setShowQuizCreator(false);
+               navigate("/quiz", { 
+                 state: { 
+                    topic: config.content,
+                    numQuestions: config.numQuestions,
+                    timerDuration: config.timerDuration
+                 } 
+               });
+             }} 
+           />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

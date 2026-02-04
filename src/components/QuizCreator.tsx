@@ -1,17 +1,33 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, Loader2, Copy, FileText, Wand2, Lightbulb } from "lucide-react";
+import { Sparkles, Loader2, Copy, FileText, Wand2, Lightbulb, Clock, List } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Slider } from "@/components/ui/slider";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import Mascot from "./Mascot";
 
+interface QuizConfiguration {
+  content: string;
+  numQuestions: number;
+  timerDuration: number | null; // in minutes
+}
+
 interface QuizCreatorProps {
-  onCreateQuiz: (content: string) => void;
+  onCreateQuiz: (config: QuizConfiguration) => void;
   isLoading?: boolean;
 }
 
 const QuizCreator = ({ onCreateQuiz, isLoading }: QuizCreatorProps) => {
   const [content, setContent] = useState("");
+  const [numQuestions, setNumQuestions] = useState(5);
+  const [timerDuration, setTimerDuration] = useState<string>("none");
   const [step, setStep] = useState<"input" | "processing" | "ready">("input");
   const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
 
@@ -29,7 +45,11 @@ const QuizCreator = ({ onCreateQuiz, isLoading }: QuizCreatorProps) => {
   const handleSubmit = () => {
     if (!content.trim()) return;
     setStep("processing");
-    onCreateQuiz(content);
+    onCreateQuiz({
+      content,
+      numQuestions,
+      timerDuration: timerDuration === "none" ? null : parseInt(timerDuration)
+    });
   };
 
   useEffect(() => {
@@ -86,18 +106,48 @@ const QuizCreator = ({ onCreateQuiz, isLoading }: QuizCreatorProps) => {
             )}
 
             <Textarea
-              placeholder="Paste your syllabus, notes, or study material here... 📚
-
-Example:
-- Chapter 5: Photosynthesis
-- Key terms: chlorophyll, glucose, carbon dioxide
-- Important dates for upcoming exam...
-
-I'll transform this into an engaging quiz with analogies you'll love!"
+              placeholder="Paste your syllabus, notes, or study material here... 📚"
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              className="min-h-[180px] mb-4 glass border-border focus:border-primary transition-colors resize-none"
+              className="min-h-[120px] mb-4 glass border-border focus:border-primary transition-colors resize-none"
             />
+
+            {/* Customization Controls */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+               {/* Question Count */}
+               <div className="bg-background/20 p-3 rounded-xl border border-white/10">
+                  <label className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-2 mb-3">
+                    <List className="w-3 h-3" /> Question Count: <span className="text-primary">{numQuestions}</span>
+                  </label>
+                  <Slider 
+                    value={[numQuestions]} 
+                    onValueChange={(vals) => setNumQuestions(vals[0])} 
+                    min={3} 
+                    max={10} 
+                    step={1}
+                    className="py-2"
+                  />
+               </div>
+
+               {/* Timer */}
+               <div className="bg-background/20 p-3 rounded-xl border border-white/10">
+                  <label className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-2 mb-2">
+                    <Clock className="w-3 h-3" /> Quiz Timer
+                  </label>
+                  <Select value={timerDuration} onValueChange={setTimerDuration}>
+                    <SelectTrigger className="h-9 bg-transparent border-white/20">
+                      <SelectValue placeholder="No Timer" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No Timer (Relaxed)</SelectItem>
+                      <SelectItem value="1">1 Minute (Blitz)</SelectItem>
+                      <SelectItem value="5">5 Minutes</SelectItem>
+                      <SelectItem value="10">10 Minutes</SelectItem>
+                      <SelectItem value="20">20 Minutes</SelectItem>
+                    </SelectContent>
+                  </Select>
+               </div>
+            </div>
 
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
               <div className="flex items-center gap-2">
@@ -118,7 +168,7 @@ I'll transform this into an engaging quiz with analogies you'll love!"
                 className="gap-2 gradient-primary text-primary-foreground border-0 hover:opacity-90"
               >
                 <Wand2 className="w-4 h-4" />
-                Generate Analogy Quiz
+                Generate Quiz
                 <Sparkles className="w-4 h-4" />
               </Button>
             </div>
@@ -150,7 +200,7 @@ I'll transform this into an engaging quiz with analogies you'll love!"
             </motion.p>
             
             <p className="text-sm text-muted-foreground mt-2">
-              This usually takes a few seconds...
+              Cooking up {numQuestions} questions...
             </p>
           </motion.div>
         )}

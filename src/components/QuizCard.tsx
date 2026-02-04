@@ -6,6 +6,7 @@ import Confetti from "./Confetti";
 import { Textarea } from "./ui/textarea";
 import { Loader2, Send } from "lucide-react";
 import { gradeShortAnswer } from "@/services/groq";
+import MarkdownRenderer from "./MarkdownRenderer";
 
 interface QuizOption {
   id: string;
@@ -61,7 +62,7 @@ const QuizCard = ({
       setSelectedOption(null);
       setShowResult(false);
       setShowHint(false);
-    }, 2500);
+    }, 1200);
   };
 
   const handleShortAnswerSubmit = async () => {
@@ -86,7 +87,7 @@ const QuizCard = ({
       setShowResult(false);
       setAiFeedback(null);
       setShowHint(false);
-    }, 3500);
+    }, 2000);
   };
 
   const getOptionStyles = (option: QuizOption) => {
@@ -164,13 +165,13 @@ const QuizCard = ({
       </div>
 
       {/* Question */}
-      <motion.h2
+      <motion.div
         className="text-xl font-bold text-foreground mb-6"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
       >
-        {question}
-      </motion.h2>
+        <MarkdownRenderer content={question} />
+      </motion.div>
 
       {/* Hint button */}
       {hint && !showHint && !showResult && (
@@ -193,7 +194,10 @@ const QuizCard = ({
             exit={{ opacity: 0, height: 0 }}
             className="mb-4 p-3 rounded-lg bg-warning/10 border border-warning/20"
           >
-            <p className="text-sm text-foreground">💡 {hint}</p>
+            <div className="text-sm text-foreground flex gap-2">
+                <span>💡</span>
+                <MarkdownRenderer content={hint} />
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -213,13 +217,16 @@ const QuizCard = ({
               whileHover={!showResult ? { scale: 1.02 } : {}}
               whileTap={!showResult ? { scale: 0.98 } : {}}
             >
-              <div className="flex items-center justify-between">
-                <span className="text-foreground font-medium">{option.text}</span>
+              <div className="flex items-center justify-between w-full">
+                <span className="text-foreground font-medium flex-1">
+                  <MarkdownRenderer content={option.text} />
+                </span>
                 {showResult && (
                   <motion.div
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
                     transition={{ type: "spring", stiffness: 500 }}
+                    className="ml-2"
                   >
                     {option.isCorrect ? (
                       <Check className="w-5 h-5 text-success" />

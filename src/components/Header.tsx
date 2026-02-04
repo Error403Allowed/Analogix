@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { Settings, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "./ThemeToggle";
+import ThemeSelector from "./ThemeSelector";
 import Mascot from "./Mascot";
 import { useNavigate } from "react-router-dom";
 import SettingsDialog from "./SettingsDialog";
@@ -62,6 +63,9 @@ const Header = ({ userName = "Student", streak = 0 }: HeaderProps) => {
 
             {/* Theme Toggle */}
             <ThemeToggle />
+
+            {/* Accent Theme Selector */}
+            <ThemeSelector />
 
             {/* Settings */}
             <Button variant="ghost" size="icon" onClick={() => setShowSettings(true)}>
