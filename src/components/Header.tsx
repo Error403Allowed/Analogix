@@ -32,7 +32,6 @@ const Header = ({ userName = "Student", streak = 0 }: HeaderProps) => {
         <div className="flex items-center justify-between">
           {/* Logo & Welcome */}
           <div className="flex items-center gap-4">
-            <Mascot size="sm" mood="study" />
             <div>
               <motion.h1
                 className="text-xl font-bold gradient-text"
