@@ -9,6 +9,7 @@ import { eventStore } from "@/utils/eventStore";
 import { AppEvent } from "@/types/events";
 import { isSameDay, format } from "date-fns";
 import ICSUploader from "@/components/ICSUploader";
+import TypewriterText from "@/components/TypewriterText";
 
 const CalendarPage = () => {
   const navigate = useNavigate();
@@ -48,7 +49,7 @@ const CalendarPage = () => {
              <div>
                <h1 className="text-4xl font-black text-foreground mb-2 flex items-center gap-3">
                  <CalendarIcon className="w-8 h-8 text-primary" />
-                 Schedule & Events
+                 <TypewriterText text="Schedule & Events" delay={120} />
                </h1>
                <p className="text-muted-foreground">Manage your exams and learning milestones.</p>
              </div>
@@ -105,7 +106,7 @@ const CalendarPage = () => {
              <div className="col-span-12 lg:col-span-7 xl:col-span-8 space-y-6">
                 <div className="flex items-center justify-between px-2">
                   <h2 className="text-2xl font-black text-foreground">
-                    {date ? format(date, 'MMMM do, yyyy') : 'Select a date'}
+                    <TypewriterText text={date ? format(date, 'MMMM do, yyyy') : 'Select a date'} delay={120} />
                   </h2>
                   <div className="bg-primary/10 text-primary px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest">
                     {selectedDayEvents.length} {selectedDayEvents.length === 1 ? 'Event' : 'Events'}

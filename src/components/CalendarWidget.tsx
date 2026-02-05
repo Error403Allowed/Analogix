@@ -79,7 +79,7 @@ const CalendarWidget = () => {
             
             <div className="mt-4 border-t border-border pt-4">
               <h4 className="text-xs font-bold text-muted-foreground mb-3 uppercase tracking-wider">
-                Events for {date?.toLocaleDateString()}
+                Upcoming Events
               </h4>
               <div className="space-y-2 max-h-[150px] overflow-y-auto custom-scrollbar">
                 {selectedDayEvents.length > 0 ? (

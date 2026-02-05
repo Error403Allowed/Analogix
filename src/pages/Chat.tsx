@@ -1,122 +1,170 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Send, Sparkles, BookOpen, Lightbulb, RefreshCw } from "lucide-react";
+import {
+  ArrowLeft,
+  Send,
+  Sparkles,
+  BookOpen,
+  Lightbulb,
+  RefreshCw,
+  Square
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useNavigate } from "react-router-dom";
-import Mascot from "@/components/Mascot";
 import { getGroqCompletion } from "@/services/groq";
 import { statsStore } from "@/utils/statsStore";
+import MarkdownRenderer from "@/components/MarkdownRenderer";
+import TypewriterText from "@/components/TypewriterText";
+import { SUBJECT_CATALOG, getSubjectDescription } from "@/constants/subjects";
+
+// Typewriter animation component for AI messages - uses refs to prevent restart on parent re-renders
+const TypewriterMessage = ({ 
+  content, 
+  isNew, 
+  onComplete,
+  shouldStop
+}: { 
+  content: string; 
+  isNew: boolean; 
+  onComplete?: () => void;
+  shouldStop?: boolean;
+}) => {
+  const [displayedContent, setDisplayedContent] = useState(isNew ? "" : content);
+  const [isTyping, setIsTyping] = useState(isNew);
+  const charIndexRef = useRef(0);
+  const contentRef = useRef(content);
+  const hasStartedRef = useRef(false);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const mathSpansRef = useRef<Array<{ start: number; end: number }>>([]);
+
+  const computeMathSpans = (text: string) => {
+    const spans: Array<{ start: number; end: number }> = [];
+    let i = 0;
+    while (i < text.length) {
+      if (text[i] === "\\" && text[i + 1] === "$") {
+        i += 2;
+        continue;
+      }
+      if (text[i] === "$") {
+        const isDisplay = text[i + 1] === "$";
+        const delim = isDisplay ? "$$" : "$";
+        const start = i;
+        i += delim.length;
+        while (i < text.length) {
+          if (text[i] === "\\" && text[i + 1] === "$") {
+            i += 2;
+            continue;
+          }
+          if (delim === "$$" && text[i] === "$" && text[i + 1] === "$") {
+            i += 2;
+            spans.push({ start, end: i });
+            break;
+          }
+          if (delim === "$" && text[i] === "$") {
+            i += 1;
+            spans.push({ start, end: i });
+            break;
+          }
+          i += 1;
+        }
+        continue;
+      }
+      i += 1;
+    }
+    return spans;
+  };
+
+  // Update content ref when content changes
+  useEffect(() => {
+    contentRef.current = content;
+    mathSpansRef.current = computeMathSpans(content);
+  }, [content]);
+
+  // Handle stop command
+  useEffect(() => {
+    if (shouldStop && isTyping) {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+      // Show full content immediately when stopped
+      setDisplayedContent(contentRef.current);
+      setIsTyping(false);
+      onComplete?.();
+    }
+  }, [shouldStop, isTyping, onComplete]);
+
+  useEffect(() => {
+    // If not new or already started, don't restart
+    if (!isNew || hasStartedRef.current) {
+      if (!isNew) {
+        setDisplayedContent(content);
+      }
+      return;
+    }
+
+    hasStartedRef.current = true;
+    charIndexRef.current = 0;
+
+    const typeNextChar = () => {
+      const currentContent = contentRef.current;
+      if (charIndexRef.current < currentContent.length) {
+        const nextIndex = charIndexRef.current;
+        const mathSpan = mathSpansRef.current.find((span) => span.start === nextIndex);
+        if (mathSpan) {
+          charIndexRef.current = mathSpan.end;
+        } else {
+          charIndexRef.current++;
+        }
+        setDisplayedContent(currentContent.slice(0, charIndexRef.current));
+        // Variable speed: faster for spaces/newlines, slower for punctuation
+        const char = currentContent[charIndexRef.current - 1];
+        let speed = 15; // Base speed (fast for chat)
+        if (char === " " || char === "\n") speed = 8;
+        else if (char === "." || char === "!" || char === "?" || char === ",") speed = 80;
+        else if (char === "*") speed = 5; // Fast for markdown
+        timeoutRef.current = setTimeout(typeNextChar, speed);
+      } else {
+        setIsTyping(false);
+        onComplete?.();
+      }
+    };
+
+    timeoutRef.current = setTimeout(typeNextChar, 100);
+    
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, [isNew]); // Only depend on isNew, not content or onComplete
+
+  // Render Markdown/LaTeX during typing with a cursor
+  return (
+    <span className="whitespace-pre-wrap text-sm leading-relaxed">
+      <MarkdownRenderer content={displayedContent} className="text-sm leading-relaxed" />
+      {isTyping && (
+        <motion.span
+          animate={{ opacity: [1, 0, 1] }}
+          transition={{ duration: 0.8, repeat: Infinity }}
+          className="inline-block w-[2px] h-[1em] ml-0.5 bg-primary align-middle rounded-sm"
+          style={{ verticalAlign: "text-bottom" }}
+        />
+      )}
+    </span>
+  );
+};
 
 interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
   analogy?: string;
+  isNew?: boolean; // Track if this is a new message for typewriter effect
 }
 
-const subjects = [
-  { id: "math", label: "Mathematics", icon: "🔢" },
-  { id: "biology", label: "Biology", icon: "🧬" },
-  { id: "history", label: "History", icon: "📜" },
-  { id: "physics", label: "Physics", icon: "⚡" },
-  { id: "chemistry", label: "Chemistry", icon: "🧪" },
-  { id: "literature", label: "Literature", icon: "📚" },
-  { id: "computing", label: "Computing", icon: "💻" },
-  { id: "economics", label: "Economics", icon: "📈" },
-  { id: "business", label: "Business Studies", icon: "💼" },
-  { id: "commerce", label: "Commerce", icon: "💰" },
-  { id: "pdhpe", label: "PDHPE", icon: "🏃" },
-  { id: "geography", label: "Geography", icon: "🌏" },
-];
+const subjects = SUBJECT_CATALOG;
 
-const sampleAnalogies: Record<string, { topic: string; analogy: string; explanation: string }[]> = {
-  math: [
-    {
-      topic: "Algebra (Variables)",
-      analogy: "Think of variables like empty boxes in a video game inventory. The box can hold different items (numbers), but the box itself stays the same!",
-      explanation: "Just like how a game inventory slot can hold a sword, potion, or shield, a variable like 'x' can hold any number. When you solve for x, you're figuring out what's in the box!"
-    },
-    {
-      topic: "Fractions",
-      analogy: "Fractions are like splitting a pizza with friends. If you have 1/4, you're getting one slice out of a pizza cut into 4 equal pieces!",
-      explanation: "The bottom number (denominator) tells you how many slices the pizza is cut into, and the top number (numerator) tells you how many slices you get."
-    }
-  ],
-  biology: [
-    {
-      topic: "Cell Mitochondria",
-      analogy: "Mitochondria are like the power plants of a city. Just as power plants convert fuel into electricity for homes, mitochondria convert food into energy (ATP) for the cell!",
-      explanation: "Without power plants, a city goes dark. Without mitochondria, cells can't function—that's why they're called the 'powerhouse of the cell'!"
-    },
-    {
-      topic: "DNA",
-      analogy: "DNA is like the recipe book in a kitchen. It contains all the instructions needed to make you—like recipes for eye color, height, and more!",
-      explanation: "Each gene is like a single recipe. When your cells need to make something (like a protein), they look up the recipe in the DNA cookbook."
-    }
-  ],
-  physics: [
-    {
-      topic: "Gravity",
-      analogy: "Gravity is like an invisible magnet that pulls everything toward Earth. It's why your basketball always comes back down after you shoot!",
-      explanation: "The bigger an object, the stronger its 'magnet.' Earth is huge, so it pulls everything toward its center—including you!"
-    },
-    {
-      topic: "Electricity",
-      analogy: "Electric current is like water flowing through pipes. Voltage is the water pressure, and resistance is how narrow the pipes are!",
-      explanation: "High voltage = high pressure = more power. Narrow pipes (high resistance) slow down the flow, just like thin wires resist current."
-    }
-  ],
-  history: [
-    {
-      topic: "The Renaissance",
-      analogy: "The Renaissance was like rebooting a computer after a long freeze. Europe 'restarted' after the Middle Ages with fresh ideas in art, science, and thinking!",
-      explanation: "Just like how a restart clears glitches and runs new programs, the Renaissance cleared old ways and introduced innovations that shaped our modern world."
-    }
-  ],
-  chemistry: [
-    {
-      topic: "Chemical Bonds",
-      analogy: "Atoms bonding is like people holding hands. Some hold hands loosely (ionic bonds), while others interlock fingers tightly (covalent bonds)!",
-      explanation: "Ionic bonds are like two people holding hands where one is much stronger—they can let go easily. Covalent bonds share equally, like best friends!"
-    }
-  ],
-  literature: [
-    {
-      topic: "Metaphors",
-      analogy: "A metaphor is like calling your friend a 'rockstar' when they ace a test—you don't mean they literally sing, just that they're amazing!",
-      explanation: "Metaphors create vivid images by comparing two things directly. 'Life is a journey' helps us think about life as an adventure with ups and downs."
-    }
-  ],
-  computing: [
-    {
-      topic: "Algorithms",
-      analogy: "An algorithm is like a recipe for making a sandwich. You follow specific steps in a specific order to get the final result!",
-      explanation: "Computers need these step-by-step instructions (like 'add bread', then 'add jam') to perform tasks, solve problems, and run your favorite apps."
-    }
-  ],
-  economics: [
-    {
-      topic: "Supply and Demand",
-      analogy: "Think of supply and demand like a limited edition drop of your favorite sneakers. If everyone wants them (high demand) but there are only a few pairs (low supply), the price goes up!",
-      explanation: "Prices in a market are determined by how much people want something versus how much of it is available. It's the balancing act of the economy."
-    }
-  ],
-  business: [
-    {
-      topic: "Marketing",
-      analogy: "Marketing is like trying to be the most popular person at a party. You need to know what people like, dress appropriately, and have interesting things to say!",
-      explanation: "Businesses use marketing to understand their customers (the party guests) and present their products in a way that makes people want to 'hang out' with their brand."
-    }
-  ],
-  commerce: [
-    {
-      topic: "Profit and Loss",
-      analogy: "Profit and loss is like playing a game with coins. If you win more coins than you spent to enter the game, you have a profit. If you spend more than you win, you have a loss!",
-      explanation: "In commerce, businesses track their income (wins) and expenses (costs). Success means keeping your 'wins' higher than your 'costs' consistently."
-    }
-  ]
-};
 
 /**
  * ANALOGY TUTOR: This is where you actually talk to Quizzy (the AI).
@@ -137,6 +185,12 @@ const Chat = () => {
   // THINKING: This is true while we're waiting for the AI to reply.
   const [isTyping, setIsTyping] = useState(false);
   
+  // STOP RESPONSE: Used to stop the typewriter animation
+  const [stopTyping, setStopTyping] = useState(false);
+  
+  // ANIMATING: Track if typewriter is currently running
+  const [isAnimating, setIsAnimating] = useState(false);
+  
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // RETRIEVING MEMORY: We pull your hobbies and subjects from the browser.
@@ -144,18 +198,15 @@ const Chat = () => {
   const userName = userPrefs.name || "Student";
   const userHobbies = userPrefs.hobbies || ["gaming", "sports"];
   const userSubjects = userPrefs.subjects || [];
+  const availableSubjects = userSubjects.length > 0
+    ? subjects.filter((s) => userSubjects.includes(s.id))
+    : subjects;
 
   useEffect(() => {
     // We stay on the selection screen so Quizzy can ask what you want to explore!
   }, []);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+  // No auto-scroll: user controls when to scroll.
 
   // PICKING A TOPIC: This runs when you select a subject icon.
   const handleSubjectSelect = (subjectId: string) => {
@@ -166,8 +217,11 @@ const Chat = () => {
     setMessages([{
       id: "welcome",
       role: "assistant",
-      content: `Hi ${userName}! 🚀 Great choice picking ${subject?.label} ${subject?.icon}.\n\nWhat specific topic or concept would you like to explore today? Just tell me what's on your mind, and I'll find a perfect analogy for you!`
+      content: `Hi ${userName}. Great choice picking ${subject?.label}.\n\nWhat specific topic or concept would you like to explore today? Just tell me what's on your mind, and I'll find a clear analogy for you.`,
+      isNew: true
     }]);
+    setIsAnimating(true);
+    setStopTyping(false);
   };
 
   // TALKING TO THE AI: This is where the magic happens!
@@ -216,56 +270,49 @@ const Chat = () => {
         id: (Date.now() + 1).toString(),
         role: "assistant",
         content: aiResponse.content || "I'm not sure how to answer that.",
+        isNew: true
       };
 
       setMessages(prev => [...prev, response]);
       setIsTyping(false); // Hide the dots.
+      setIsAnimating(true); // Start typewriter animation
+      setStopTyping(false);
     })();
   };
 
   const handleNewTopic = async () => {
     if (!selectedSubject) return;
+
+    // AI GENERATION: Always ask the AI for a new topic from the start.
+    setIsTyping(true);
+    const subjectLabel = subjects.find(s => s.id === selectedSubject)?.label || selectedSubject;
+    const usedTopics = messages.filter(m => m.analogy).map(m => m.analogy).filter(Boolean);
     
-    const analogies = sampleAnalogies[selectedSubject] || [];
-    const usedTopics = messages.filter(m => m.analogy).map(m => m.analogy);
-    const availableAnalogies = analogies.filter(a => !usedTopics.includes(a.topic));
+    const context = {
+      subjects: [selectedSubject],
+      hobbies: userHobbies,
+      grade: userPrefs.grade,
+      learningStyle: userPrefs.learningStyle
+    };
+
+    const avoidText = usedTopics.length > 0 ? `Avoid repeating these topics: ${usedTopics.join(", ")}.` : "";
+    const aiPrompt = [{ 
+      role: "user" as const, 
+      content: `Introduce a NEW, interesting concept in ${subjectLabel} using a fun analogy related to my interests (${userHobbies.join(", ")}). ${avoidText}` 
+    }];
+
+    const aiResponse = await getGroqCompletion(aiPrompt, context);
     
-    if (availableAnalogies.length === 0) {
-      // AI GENERATION: If we ran out of samples, ask the AI for a new one!
-      setIsTyping(true);
-      const subjectLabel = subjects.find(s => s.id === selectedSubject)?.label || selectedSubject;
-      
-      const context = {
-        subjects: [selectedSubject],
-        hobbies: userHobbies,
-        grade: userPrefs.grade,
-        learningStyle: userPrefs.learningStyle
-      };
-
-      const aiPrompt = [{ 
-        role: "user" as const, 
-        content: `I've already learned about several topics in ${subjectLabel}. Can you introduce a NEW, interesting concept in ${subjectLabel} using a fun analogy related to my interests (${userHobbies.join(", ")})?` 
-      }];
-
-      const aiResponse = await getGroqCompletion(aiPrompt, context);
-      
-      setMessages(prev => [...prev, {
-        id: Date.now().toString(),
-        role: "assistant",
-        content: aiResponse.content || "Hmm, I'm having trouble thinking of a new topic. Try asking me a specific question!",
-        analogy: "ai-generated-" + Date.now()
-      }]);
-      setIsTyping(false);
-      return;
-    }
-
-    const nextAnalogy = availableAnalogies[0];
     setMessages(prev => [...prev, {
       id: Date.now().toString(),
       role: "assistant",
-      content: `Here's another concept for you!\n\n**${nextAnalogy.topic}**\n\n${nextAnalogy.analogy}\n\n${nextAnalogy.explanation}`,
-      analogy: nextAnalogy.topic
+      content: aiResponse.content || "Hmm, I'm having trouble thinking of a new topic. Try asking me a specific question!",
+      analogy: `ai-generated-${Date.now()}`,
+      isNew: true
     }]);
+    setIsTyping(false);
+    setIsAnimating(true);
+    setStopTyping(false);
   };
 
   return (
@@ -277,19 +324,23 @@ const Chat = () => {
       <div className="flex-1 flex flex-col max-w-4xl mx-auto w-full px-4 py-6 relative z-10">
         {/* Header */}
         <motion.header
-          className="glass-card px-6 py-4 mb-4 flex items-center justify-between"
+          className="glass-card px-6 py-4 mb-4"
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard")} className="gap-2">
-            <ArrowLeft className="w-4 h-4" />
-            Back
-          </Button>
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-primary" />
-            <h1 className="text-lg font-bold gradient-text">Quizzy</h1>
+          <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center">
+            <div className="justify-self-start">
+              <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard")} className="gap-2">
+                <ArrowLeft className="w-4 h-4" />
+                Back
+              </Button>
+            </div>
+            <div className="flex items-center gap-2 justify-self-center">
+              <Sparkles className="w-5 h-5 text-primary" />
+              <h1 className="text-lg font-bold gradient-text">Quizzy</h1>
+            </div>
+            <div className="justify-self-end" />
           </div>
-          <div className="w-20" /> {/* Spacer for centering */}
         </motion.header>
 
         {!selectedSubject ? (
@@ -300,31 +351,38 @@ const Chat = () => {
             animate={{ opacity: 1 }}
           >
             <div className="text-center mb-8">
-              <Mascot size="lg" mood="brain" />
               <h2 className="text-2xl font-bold text-foreground mt-4 mb-2">
-                What shall we explore today? 🚀
+                <TypewriterText text="What shall we explore today?" delay={150} />
               </h2>
               <p className="text-muted-foreground">
-                Pick a subject and I'll teach you through fun analogies!
+                Pick a subject and I'll teach through clear analogies.
               </p>
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 w-full max-w-lg">
-              {subjects.map((subject, index) => (
-                <motion.button
-                  key={subject.id}
-                  onClick={() => handleSubjectSelect(subject.id)}
-                  className="glass-card p-6 text-center hover:border-primary/50 transition-all"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                  whileHover={{ scale: 1.05, y: -4 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <span className="text-4xl mb-2 block">{subject.icon}</span>
-                  <span className="font-medium text-foreground">{subject.label}</span>
-                </motion.button>
-              ))}
+              {availableSubjects.map((subject, index) => {
+                const Icon = subject.icon;
+                return (
+                  <motion.button
+                    key={subject.id}
+                    onClick={() => handleSubjectSelect(subject.id)}
+                    className="relative p-5 rounded-2xl border-2 transition-all text-left group border-border glass hover:border-primary/50"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                    whileHover={{ y: -4 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <span className="mb-3 block text-primary group-hover:scale-110 transition-transform">
+                      <Icon className="w-6 h-6" />
+                    </span>
+                    <div className="font-bold text-foreground">{subject.label}</div>
+                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground mt-1 opacity-70 group-hover:opacity-100">
+                      {getSubjectDescription(subject.id, userPrefs.grade)}
+                    </div>
+                  </motion.button>
+                );
+              })}
             </div>
           </motion.div>
         ) : (
@@ -346,7 +404,11 @@ const Chat = () => {
                 className="gap-2"
               >
                 <BookOpen className="w-4 h-4" />
-                {subjects.find(s => s.id === selectedSubject)?.icon}{" "}
+                {(() => {
+                  const current = subjects.find((s) => s.id === selectedSubject);
+                  const Icon = current?.icon;
+                  return Icon ? <Icon className="w-4 h-4 text-primary" /> : null;
+                })()}
                 {subjects.find(s => s.id === selectedSubject)?.label}
               </Button>
               <Button variant="outline" size="sm" onClick={handleNewTopic} className="gap-2">
@@ -380,9 +442,25 @@ const Chat = () => {
                           <span className="text-xs font-medium text-primary">Quizzy</span>
                         </div>
                       )}
-                      <p className="whitespace-pre-wrap text-sm leading-relaxed">
-                        {message.content}
-                      </p>
+                      {message.role === "assistant" ? (
+                        <TypewriterMessage 
+                          content={message.content} 
+                          isNew={message.isNew || false}
+                          shouldStop={stopTyping}
+                          onComplete={() => {
+                            // Mark message as no longer new after typing completes
+                            setMessages(prev => prev.map(m => 
+                              m.id === message.id ? { ...m, isNew: false } : m
+                            ));
+                            setIsAnimating(false);
+                            setStopTyping(false);
+                          }}
+                        />
+                      ) : (
+                        <p className="whitespace-pre-wrap text-sm leading-relaxed">
+                          {message.content}
+                        </p>
+                      )}
                     </div>
                   </motion.div>
                 ))}
@@ -426,7 +504,7 @@ const Chat = () => {
 
             {/* Input */}
             <motion.div
-              className="glass-card p-4"
+              className="glass-card p-4 sticky bottom-0 z-20 bg-background/80 backdrop-blur-xl border border-white/20 shadow-[0_-10px_30px_-20px_rgba(0,0,0,0.35)]"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
             >
@@ -443,16 +521,26 @@ const Chat = () => {
                   placeholder="Ask me anything about this subject..."
                   className="flex-1 glass border-border"
                 />
-                <Button
-                  type="submit"
-                  disabled={!input.trim() || isTyping}
-                  className="gap-2 gradient-primary text-primary-foreground border-0"
-                >
-                  <Send className="w-4 h-4" />
-                </Button>
+                {(isTyping || isAnimating) ? (
+                  <Button
+                    type="button"
+                    onClick={() => setStopTyping(true)}
+                    className="gap-2 bg-destructive hover:bg-destructive/90 text-destructive-foreground border-0"
+                  >
+                    <Square className="w-4 h-4" />
+                  </Button>
+                ) : (
+                  <Button
+                    type="submit"
+                    disabled={!input.trim()}
+                    className="gap-2 gradient-primary text-primary-foreground border-0"
+                  >
+                    <Send className="w-4 h-4" />
+                  </Button>
+                )}
               </form>
               <p className="text-xs text-muted-foreground mt-2 text-center">
-                I'll explain concepts using analogies based on your interests! 🎯
+                Quizzy can make mistakes. Check important info.
               </p>
             </motion.div>
           </>

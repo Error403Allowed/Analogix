@@ -27,7 +27,7 @@ export function ThemeToggle() {
       variant="ghost"
       size="icon"
       onClick={() => setTheme(isDark ? "light" : "dark")}
-      className="relative overflow-hidden"
+      className="relative overflow-hidden group"
     >
       <motion.div
         initial={false}
@@ -38,9 +38,9 @@ export function ThemeToggle() {
         transition={{ duration: 0.3, ease: "easeInOut" }}
       >
         {isDark ? (
-          <Moon className="h-5 w-5 text-primary" />
+          <Moon className="h-5 w-5 text-gray-500 dark:text-gray-400 group-hover:text-[var(--g-1)] transition-colors" />
         ) : (
-          <Sun className="h-5 w-5 text-warning" />
+          <Sun className="h-5 w-5 text-gray-500 dark:text-gray-400 group-hover:text-[var(--g-1)] transition-colors" />
         )}
       </motion.div>
       <span className="sr-only">Toggle theme</span>

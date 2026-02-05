@@ -13,6 +13,7 @@ import AchievementsLibrary from "./pages/AchievementsLibrary";
 import CalendarPage from "./pages/CalendarPage";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
+import FirstVisitOverlay from "./components/FirstVisitOverlay";
 
 const queryClient = new QueryClient();
 
@@ -23,6 +24,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          <FirstVisitOverlay />
           <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/onboarding" element={<Onboarding />} />

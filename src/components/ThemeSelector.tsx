@@ -84,7 +84,7 @@ const ThemeSelector = () => {
     <Popover>
       <PopoverTrigger asChild>
         <Button variant="ghost" size="icon" className="w-10 h-10 rounded-full hover:bg-primary/10 group">
-          <Palette className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
+          <Palette className="w-5 h-5 text-gray-500 dark:text-gray-400 group-hover:text-[var(--g-1)] transition-colors" />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-64 p-4 glass-card border-none mt-2" align="end">

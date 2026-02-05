@@ -1,15 +1,16 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Calendar, Clock } from "lucide-react";
+import type { ReactNode } from "react";
+import { Calendar, Clock, BookOpen } from "lucide-react";
 
 interface CountdownTimerProps {
   examDate: Date;
   examName: string;
   subject: string;
-  icon?: string;
+  icon?: ReactNode;
 }
 
-const CountdownTimer = ({ examDate, examName, subject, icon = "📚" }: CountdownTimerProps) => {
+const CountdownTimer = ({ examDate, examName, subject, icon = <BookOpen className="w-6 h-6" /> }: CountdownTimerProps) => {
   const [timeLeft, setTimeLeft] = useState(calculateTimeLeft());
 
   function calculateTimeLeft() {
@@ -44,12 +45,12 @@ const CountdownTimer = ({ examDate, examName, subject, icon = "📚" }: Countdow
   };
 
   const getMessage = () => {
-    if (timeLeft.isComplete) return "Time to shine! 🌟";
-    if (timeLeft.days === 0) return "Today's the day! You've got this! 💪";
-    if (timeLeft.days === 1) return "Tomorrow! Quick review time! 📖";
-    if (timeLeft.days <= 3) return "Almost there! Stay focused! 🎯";
-    if (timeLeft.days <= 7) return "One week left—you're doing great! 🚀";
-    return "Plenty of time! Keep up the good work! ✨";
+    if (timeLeft.isComplete) return "Time to shine.";
+    if (timeLeft.days === 0) return "Today's the day. You've got this.";
+    if (timeLeft.days === 1) return "Tomorrow. Quick review time.";
+    if (timeLeft.days <= 3) return "Almost there. Stay focused.";
+    if (timeLeft.days <= 7) return "One week left. You're doing great.";
+    return "Plenty of time. Keep up the good work.";
   };
 
   return (
@@ -69,7 +70,7 @@ const CountdownTimer = ({ examDate, examName, subject, icon = "📚" }: Countdow
         <div className="flex items-start justify-between mb-4">
           <div className="flex items-center gap-3">
             <motion.span 
-              className="text-3xl"
+              className="text-primary"
               animate={{ rotate: [0, -10, 10, 0] }}
               transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
             >

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Header from "@/components/Header";
 import { achievementStore } from "@/utils/achievementStore";
+import TypewriterText from "@/components/TypewriterText";
 
 const AchievementsLibrary = () => {
   const navigate = useNavigate();
@@ -67,7 +68,7 @@ const AchievementsLibrary = () => {
              <div>
                <h1 className="text-4xl font-black text-foreground mb-2 flex items-center gap-3">
                  <Trophy className="w-8 h-8 text-warning" />
-                 Achievement Library
+                 <TypewriterText text="Achievement Library" delay={120} />
                </h1>
                <p className="text-muted-foreground">Collect badges as you master new topics.</p>
              </div>

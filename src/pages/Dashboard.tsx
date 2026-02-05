@@ -24,10 +24,12 @@ import { achievementStore } from "@/utils/achievementStore";
 import { statsStore } from "@/utils/statsStore";
 import { getAIBannerPhrase } from "@/services/groq";
 import { useAchievementChecker } from "@/hooks/useAchievementChecker";
+import TypewriterText from "@/components/TypewriterText";
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const [showQuizCreator, setShowQuizCreator] = useState(false);
+  const [quizCreatorMode, setQuizCreatorMode] = useState<'custom' | 'learning'>('custom');
   const [recentAchievements, setRecentAchievements] = useState([]);
   const [bannerPhrase, setBannerPhrase] = useState("Loading your plan...");
   
@@ -91,23 +93,19 @@ const Dashboard = () => {
           animate="visible"
           className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-6 items-start"
         >
-          {/* Row 1: AI Welcome & Quick Stats */}
+          {/* Row 1: Welcome & Quick Stats */}
           <div className="lg:col-span-8 space-y-6">
             <motion.div variants={itemVariants} className="glass-card p-8 border-none bg-gradient-to-br from-primary/10 via-background/50 to-accent/5 relative overflow-hidden group min-h-[220px] flex flex-col justify-center">
                 <div className="absolute top-0 right-0 w-80 h-80 bg-primary/10 rounded-full -mr-40 -mt-40 blur-3xl group-hover:scale-110 transition-transform duration-700" />
                 <div className="relative z-10">
-                   <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary font-black text-xs mb-4 uppercase tracking-widest">
-                      <Sparkles className="w-3 h-3" />
-                      Daily Insight
-                   </span>
                    <h2 className="text-3xl md:text-4xl font-black text-foreground mb-4 leading-tight tracking-tight max-w-2xl">
-                      {bannerPhrase}
+                      <TypewriterText text={bannerPhrase} delay={120} />
                    </h2>
                    <div className="flex flex-wrap gap-4 mt-2">
-                      <Button onClick={() => navigate("/quiz", { state: { topic: userPrefs.subjects?.[0] || 'general knowledge' } })} className="gradient-primary text-primary-foreground border-0 px-8 h-12 rounded-2xl font-black shadow-xl hover:scale-105 transition-transform">
+                      <Button onClick={() => { setQuizCreatorMode('learning'); setShowQuizCreator(true); }} className="gradient-primary text-primary-foreground border-0 px-8 h-12 rounded-2xl font-black shadow-xl hover:scale-105 transition-transform">
                         Start Learning Session
                       </Button>
-                      <Button variant="outline" onClick={() => setShowQuizCreator(true)} className="h-12 px-6 rounded-2xl font-bold bg-background/50 backdrop-blur hover:bg-background/80">
+                      <Button variant="outline" onClick={() => { setQuizCreatorMode('custom'); setShowQuizCreator(true); }} className="h-12 px-6 rounded-2xl font-bold bg-background/50 backdrop-blur hover:bg-background/80">
                         Custom Quiz
                       </Button>
                    </div>
@@ -124,7 +122,7 @@ const Dashboard = () => {
                   subtitle="Keep it up!"
                 />
                 <StatsCard 
-                  title="AI Conversations" 
+                  title="Conversations" 
                   value={`${statsData.conversationsCount}`} 
                   icon={MessageCircle} 
                   color="accent"
@@ -150,7 +148,7 @@ const Dashboard = () => {
                    <div className="p-1 px-2 rounded-lg bg-primary/10">
                      <MessageCircle className="w-4 h-4 text-primary" />
                    </div>
-                   AI Tutor
+                   Tutor
                  </h2>
                </div>
                <div className="flex-1">
@@ -235,11 +233,13 @@ const Dashboard = () => {
              <DialogTitle>Create Custom Quiz</DialogTitle>
            </DialogHeader>
            <QuizCreator 
+             hideContentInput={quizCreatorMode === 'learning'}
              onCreateQuiz={(config) => {
                setShowQuizCreator(false);
                navigate("/quiz", { 
                  state: { 
                     topic: config.content,
+                    subject: config.subject,
                     numQuestions: config.numQuestions,
                     timerDuration: config.timerDuration
                  } 

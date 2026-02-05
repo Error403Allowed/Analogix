@@ -119,19 +119,19 @@ const QuizCard = ({
     
     if (isCorrect) {
       const messages = [
-        "Brilliant! You're on fire! 🔥",
-        "Amazing work! High five! 🖐️",
-        "Nailed it! You're a star! ⭐",
-        "Perfect! Keep crushing it! 💪",
+        "Brilliant work.",
+        "Great job.",
+        "Nailed it.",
+        "Perfect. Keep going.",
       ];
       return messages[Math.floor(Math.random() * messages.length)];
     }
     
     const messages = [
-      "Oops! Close but no cookie! 🍪",
-      "Not quite, but you're learning! 📚",
-      "Almost there! Try again next time! 🎯",
-      "Good try! Mistakes help us grow! 🌱",
+      "Close. Keep going.",
+      "Not quite, but you're learning.",
+      "Almost there. Try again next time.",
+      "Good try. Mistakes help us grow.",
     ];
     return messages[Math.floor(Math.random() * messages.length)];
   };
@@ -195,7 +195,7 @@ const QuizCard = ({
             className="mb-4 p-3 rounded-lg bg-warning/10 border border-warning/20"
           >
             <div className="text-sm text-foreground flex gap-2">
-                <span>💡</span>
+                <span aria-hidden="true">•</span>
                 <MarkdownRenderer content={hint} />
             </div>
           </motion.div>
@@ -256,7 +256,7 @@ const QuizCard = ({
             {isGrading ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                AI is marking...
+                Checking answer...
               </>
             ) : (
               <>

@@ -1,7 +1,9 @@
 import { motion } from "framer-motion";
+import type { ReactNode } from "react";
+import { Lock } from "lucide-react";
 
 interface AchievementBadgeProps {
-  icon: string;
+  icon: ReactNode;
   title: string;
   description: string;
   isUnlocked: boolean;
@@ -37,7 +39,7 @@ const AchievementBadge = ({ icon, title, description, isUnlocked, isNew }: Achie
         animate={isUnlocked ? { rotate: [0, -10, 10, 0] } : {}}
         transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
       >
-        {isUnlocked ? icon : "🔒"}
+        {isUnlocked ? icon : <Lock className="w-5 h-5 text-muted-foreground" />}
       </motion.div>
       
       <h4 className="font-bold text-foreground text-sm">{title}</h4>

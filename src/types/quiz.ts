@@ -12,6 +12,8 @@ export interface QuizQuestion {
   options?: QuizOption[];
   correctAnswer?: string; // For short answer
   hint?: string;
+  python_solution?: string;
+  reasoning?: string;
 }
 
 export interface QuizData {

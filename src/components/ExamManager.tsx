@@ -30,8 +30,9 @@ const ExamManager = () => {
           const combined = (e.title + " " + (e.description || "")).toLowerCase();
           const hasKeyword = academicKeywords.some(kw => combined.includes(kw));
           const isAcademicType = e.type === 'exam' || e.type === 'assignment';
+          const isManual = e.source === 'manual';
           
-          return isFuture && (hasKeyword || isAcademicType);
+          return isFuture && (hasKeyword || isAcademicType || isManual);
         })
         .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
         .slice(0, 5); // Show top 5
@@ -76,7 +77,7 @@ const ExamManager = () => {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
-          📅 Deadlines
+          Deadlines
         </h2>
         <Button size="sm" variant="ghost" className="text-primary gap-1 font-bold" onClick={() => setIsAdding(true)}>
           <Plus className="w-4 h-4" /> Add

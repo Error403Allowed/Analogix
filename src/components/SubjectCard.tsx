@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { ArrowRight, Star, TrendingUp } from "lucide-react";
+import { ArrowRight, Star, TrendingUp, Flame } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface SubjectCardProps {
@@ -53,7 +53,7 @@ const SubjectCard = ({ name, icon, progress, quizCount, streak = 0, onStudy }: S
               animate={{ scale: [1, 1.05, 1] }}
               transition={{ duration: 2, repeat: Infinity }}
             >
-              🔥 {streak}
+              <Flame className="w-3.5 h-3.5" /> {streak}
             </motion.div>
           )}
         </div>

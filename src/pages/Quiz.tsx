@@ -1,14 +1,14 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Home, RotateCcw, Share2, Trophy, Lightbulb, Loader2, Sparkles, Clock } from "lucide-react";
+import { ArrowLeft, Home, RotateCcw, Share2, Trophy, Lightbulb, Loader2, Sparkles, Clock, Brain, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate, useLocation } from "react-router-dom";
 import QuizCard from "@/components/QuizCard";
-import Mascot from "@/components/Mascot";
 import Confetti from "@/components/Confetti";
 import { statsStore } from "@/utils/statsStore";
 import { achievementStore } from "@/utils/achievementStore";
 import { generateQuiz } from "@/services/groq";
+import TypewriterText from "@/components/TypewriterText";
 
 const Quiz = () => {
   const navigate = useNavigate();
@@ -26,13 +26,31 @@ const Quiz = () => {
 
   const userPrefs = JSON.parse(localStorage.getItem("userPreferences") || "{}");
   const topic = location.state?.topic || userPrefs.subjects?.[0] || "general school topics";
+  const subject = location.state?.subject || userPrefs.subjects?.[0] || "General";
   const numQuestionsTarget = location.state?.numQuestions || 5;
-  const timerSetting = location.state?.timerDuration || null;
+  const timerSetting = location.state?.timerDuration ?? null;
+  const HISTORY_KEY = "recentQuizQuestions";
+
+  const normalizeQuestion = (text: string) =>
+    text.toLowerCase().replace(/\s+/g, " ").trim();
+
+  const getRecentQuestions = (): string[] => {
+    try {
+      return JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
+    } catch {
+      return [];
+    }
+  };
+
+  const storeRecentQuestions = (questions: string[]) => {
+    const trimmed = questions.slice(-80);
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(trimmed));
+  };
 
   /* Timer Logic */
   useEffect(() => {
-    if (timerSetting && !isLoading && !isComplete) {
-       setTimeLeft(timerSetting * 60); // Convert minutes to seconds
+    if (timerSetting !== null && !isLoading && !isComplete) {
+       setTimeLeft(timerSetting); // Already in seconds
     }
   }, [timerSetting, isLoading, isComplete]);
 
@@ -61,16 +79,51 @@ const Quiz = () => {
   useEffect(() => {
     const fetchQuiz = async () => {
       setIsLoading(true);
-      const quizData = await generateQuiz(
-        topic, 
-        {
-          grade: userPrefs.grade,
-          hobbies: userPrefs.hobbies || []
-        },
-        numQuestionsTarget
-      );
-      
+      const recent = getRecentQuestions();
+      const avoidList = recent.slice(-20);
+      const baseSeed = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      let quizData = null;
+      let stored = false;
+
+      for (let attempt = 0; attempt < 3; attempt++) {
+        quizData = await generateQuiz(
+          topic,
+          {
+            grade: userPrefs.grade,
+            hobbies: userPrefs.hobbies || [],
+            subject: subject
+          },
+          numQuestionsTarget,
+          { diversitySeed: `${baseSeed}-${attempt}`, avoidQuestions: avoidList }
+        );
+
+        if (!quizData || !quizData.questions) continue;
+        const normalized = quizData.questions.map((q: any) =>
+          normalizeQuestion(q.question || "")
+        );
+        const hasBanned = quizData.questions.some((q: any) =>
+          /2\s*x\s*\+\s*5\s*=\s*11/i.test(q.question || "")
+        );
+        if (hasBanned) {
+          continue;
+        }
+        const hasOverlap = normalized.some((q: string) => recent.includes(q));
+        if (!hasOverlap) {
+          storeRecentQuestions([...recent, ...normalized]);
+          stored = true;
+          break;
+        }
+      }
+
       if (quizData && quizData.questions) {
+        if (!stored) {
+          const normalized = quizData.questions.map((q: any) =>
+            normalizeQuestion(q.question || "")
+          );
+          storeRecentQuestions([...recent, ...normalized]);
+        }
+        console.log("Generated Quiz Data:", quizData);
+        (window as any).generatedQuizData = quizData;
         setQuestions(quizData.questions);
       } else {
         // Fallback or error state
@@ -114,7 +167,14 @@ const Quiz = () => {
         >
           <Loader2 className="w-16 h-16 text-primary" />
         </motion.div>
-        <Mascot size="lg" mood="thinking" message={`Quizzy is crafting a personalized ${topic} quiz just for you...`} />
+        <div className="mt-6 flex flex-col items-center text-center gap-3">
+          <div className="w-16 h-16 rounded-full bg-primary/10 text-primary flex items-center justify-center">
+            <Brain className="w-7 h-7" />
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Quizzy is crafting a personalized {topic} quiz...
+          </p>
+        </div>
         <div className="mt-8 flex items-center gap-2 text-primary font-bold animate-pulse">
             <Sparkles className="w-5 h-5" />
             Generating Analogies...
@@ -126,7 +186,14 @@ const Quiz = () => {
   if (questions.length === 0) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-4">
-         <Mascot size="lg" mood="thinking" message="Oops! I couldn't generate a quiz right now. Check your internet or API key!" />
+         <div className="flex flex-col items-center text-center gap-3">
+           <div className="w-14 h-14 rounded-full bg-destructive/10 text-destructive flex items-center justify-center">
+             <AlertTriangle className="w-6 h-6" />
+           </div>
+           <p className="text-sm text-muted-foreground">
+             Oops! I couldn't generate a quiz right now. Check your internet or API key.
+           </p>
+         </div>
          <Button onClick={() => navigate("/dashboard")} className="mt-6">Back to Dashboard</Button>
       </div>
     );
@@ -134,13 +201,25 @@ const Quiz = () => {
 
   const getScoreMessage = () => {
     const percentage = (score / questions.length) * 100;
-    if (percentage >= 80) return { emoji: "🎉", message: "Outstanding! Analogies made it click!" };
-    if (percentage >= 60) return { emoji: "🌟", message: "Great job! Keep making connections!" };
-    if (percentage >= 40) return { emoji: "💪", message: "Nice effort! Analogies help—let's try again!" };
-    return { emoji: "📚", message: "Keep learning! Every analogy brings you closer!" };
+    if (percentage >= 80) return { emoji: "", message: "Outstanding. The analogies landed." };
+    if (percentage >= 60) return { emoji: "", message: "Great work. Keep making connections." };
+    if (percentage >= 40) return { emoji: "", message: "Good effort. Try another angle." };
+    return { emoji: "", message: "Keep learning. Each pass builds clarity." };
   };
 
   const scoreData = getScoreMessage();
+  const encouragementMessage =
+    currentQuestion === 0
+      ? "Use the analogy hints to connect concepts."
+      : answers[answers.length - 1]
+      ? "The analogy clicked. Keep going."
+      : "No worries. Try a different angle.";
+  const EncouragementIcon =
+    currentQuestion === 0
+      ? Lightbulb
+      : answers[answers.length - 1]
+      ? Sparkles
+      : AlertTriangle;
 
   return (
     <div className="min-h-screen pb-8 relative overflow-hidden">
@@ -155,41 +234,45 @@ const Quiz = () => {
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <div className="flex items-center justify-between">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => navigate("/dashboard")}
-              className="gap-2"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Back
-            </Button>
-            <div className="flex items-center gap-2">
-              <Lightbulb className="w-5 h-5 text-warning" />
-              <h1 className="text-lg font-bold gradient-text">Analogy Quiz 🧠</h1>
-            </div>
-            
-             {/* Timer Display */}
-             {timeLeft !== null && (
-                <div className={`flex items-center gap-2 font-mono font-bold text-xl ${
-                    timeLeft < 30 ? "text-destructive animate-pulse" : "text-primary"
-                }`}>
-                    <Clock className="w-5 h-5" />
-                    {formatTime(timeLeft)}
-                </div>
-            )}
-
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Score:</span>
-              <motion.span
-                key={score}
-                initial={{ scale: 1.5 }}
-                animate={{ scale: 1 }}
-                className="font-bold text-primary"
+          <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center">
+            <div className="justify-self-start">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate("/dashboard")}
+                className="gap-2"
               >
-                {score}/{questions.length}
-              </motion.span>
+                <ArrowLeft className="w-4 h-4" />
+                Back
+              </Button>
+            </div>
+            <div className="flex items-center gap-2 justify-self-center">
+              <Lightbulb className="w-5 h-5 text-warning" />
+              <h1 className="text-lg font-bold gradient-text">
+                <TypewriterText text="Analogy Quiz" delay={120} />
+              </h1>
+            </div>
+            <div className="flex items-center gap-4 justify-self-end">
+              {/* Timer Display */}
+              {timeLeft !== null && (
+                <div className={`flex items-center gap-2 font-mono font-bold text-xl ${
+                  timeLeft < 30 ? "text-destructive animate-pulse" : "text-primary"
+                }`}>
+                  <Clock className="w-5 h-5" />
+                  {formatTime(timeLeft)}
+                </div>
+              )}
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Score:</span>
+                <motion.span
+                  key={score}
+                  initial={{ scale: 1.5 }}
+                  animate={{ scale: 1 }}
+                  className="font-bold text-primary"
+                >
+                  {score}/{questions.length}
+                </motion.span>
+              </div>
             </div>
           </div>
         </motion.header>
@@ -241,11 +324,12 @@ const Quiz = () => {
             >
               <Confetti />
               
-              <Mascot 
-                size="lg" 
-                mood={score >= 3 ? "celebrating" : "happy"} 
-                message={scoreData.message}
-              />
+              <div className="flex flex-col items-center text-center gap-3">
+                <div className="w-16 h-16 rounded-full bg-primary/10 text-primary flex items-center justify-center">
+                  <Sparkles className="w-7 h-7" />
+                </div>
+                <p className="text-sm text-muted-foreground">{scoreData.message}</p>
+              </div>
 
               <motion.div
                 initial={{ scale: 0 }}
@@ -253,9 +337,8 @@ const Quiz = () => {
                 transition={{ delay: 0.3, type: "spring" }}
                 className="my-8"
               >
-                <div className="text-6xl mb-4">{scoreData.emoji}</div>
                 <h2 className="text-3xl font-bold text-foreground mb-2">
-                  Quiz Complete!
+                  <TypewriterText text="Quiz Complete!" delay={120} />
                 </h2>
                 <p className="text-muted-foreground">
                   You scored{" "}
@@ -307,7 +390,7 @@ const Quiz = () => {
                 >
                   <div className="flex items-center justify-center gap-2">
                     <Trophy className="w-5 h-5" />
-                    <span className="font-bold">Achievement Unlocked: Analogy Master! 🏆</span>
+                    <span className="font-bold">Achievement Unlocked: Analogy Master</span>
                   </div>
                 </motion.div>
               )}
@@ -315,7 +398,7 @@ const Quiz = () => {
           )}
         </AnimatePresence>
 
-        {/* Mascot Encouragement */}
+        {/* Encouragement */}
         {!isComplete && (
           <motion.div
             className="mt-6 flex justify-center"
@@ -323,17 +406,12 @@ const Quiz = () => {
             animate={{ opacity: 1 }}
             transition={{ delay: 0.5 }}
           >
-            <Mascot
-              size="sm"
-              mood={answers[answers.length - 1] === false ? "thinking" : "happy"}
-              message={
-                currentQuestion === 0
-                  ? "Use the analogy hints to connect concepts! 🚀"
-                  : answers[answers.length - 1]
-                  ? "The analogy clicked! Keep going! ⭐"
-                  : "No worries—try a different angle! 💪"
-              }
-            />
+            <div className="glass-card px-4 py-3 flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center">
+                <EncouragementIcon className="w-4 h-4" />
+              </div>
+              <span className="text-sm text-muted-foreground">{encouragementMessage}</span>
+            </div>
           </motion.div>
         )}
       </div>

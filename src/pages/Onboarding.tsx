@@ -1,39 +1,122 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowRight, Check, Sparkles, User } from "lucide-react";
+import {
+  ArrowRight,
+  Check,
+  Sparkles,
+  User,
+  Calculator,
+  Microscope,
+  Landmark,
+  Zap,
+  FlaskConical,
+  BookOpen,
+  Cpu,
+  LineChart,
+  Briefcase,
+  Wallet,
+  HeartPulse,
+  Globe,
+  Dumbbell,
+  Gamepad2,
+  Music,
+  CookingPot,
+  Palette,
+  Film,
+  Leaf,
+  Laptop,
+  Book,
+  Plane
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useNavigate } from "react-router-dom";
-import Mascot from "@/components/Mascot";
 import Confetti from "@/components/Confetti";
 import { achievementStore } from "@/utils/achievementStore";
 
+// Cool typewriter animation component for Quizzy
+const TypewriterText = ({ text, className = "", delay = 0 }: { text: string; className?: string; delay?: number }) => {
+  const [displayedText, setDisplayedText] = useState("");
+  const [showCursor, setShowCursor] = useState(true);
+  const [isComplete, setIsComplete] = useState(false);
+
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+    let charIndex = 0;
+
+    const startTyping = () => {
+      const typeNextChar = () => {
+        if (charIndex < text.length) {
+          setDisplayedText(text.slice(0, charIndex + 1));
+          charIndex++;
+          // Variable speed for more natural feel
+          const char = text[charIndex - 1];
+          const speed = char === " " ? 30 : char === "." || char === "!" || char === "?" ? 150 : 50;
+          timeoutId = setTimeout(typeNextChar, speed);
+        } else {
+          setIsComplete(true);
+        }
+      };
+      typeNextChar();
+    };
+
+    timeoutId = setTimeout(startTyping, delay);
+    return () => clearTimeout(timeoutId);
+  }, [text, delay]);
+
+  // Blinking cursor effect
+  useEffect(() => {
+    if (!isComplete) return;
+    const cursorInterval = setInterval(() => setShowCursor(prev => !prev), 530);
+    const hideCursor = setTimeout(() => {
+      setShowCursor(false);
+      clearInterval(cursorInterval);
+    }, 3000);
+    return () => {
+      clearInterval(cursorInterval);
+      clearTimeout(hideCursor);
+    };
+  }, [isComplete]);
+
+  return (
+    <span className={className}>
+      {displayedText}
+      <motion.span
+        animate={{ opacity: showCursor ? 1 : 0 }}
+        transition={{ duration: 0.1 }}
+        className="inline-block w-[3px] h-[1em] ml-0.5 bg-primary align-middle rounded-sm"
+        style={{ verticalAlign: "text-bottom" }}
+      />
+    </span>
+  );
+};
+
 const subjects = [
-  { id: "math", emoji: "🔢", label: "Mathematics", description: "Numbers, algebra, geometry" },
-  { id: "biology", emoji: "🧬", label: "Biology", description: "Life, cells, nature" },
-  { id: "history", emoji: "📜", label: "History", description: "Past events, cultures" },
-  { id: "physics", emoji: "⚡", label: "Physics", description: "Matter, energy, forces" },
-  { id: "chemistry", emoji: "🧪", label: "Chemistry", description: "Elements, reactions" },
-  { id: "literature", emoji: "📚", label: "Literature", description: "Books, poetry, stories" },
-  { id: "computing", emoji: "💻", label: "Computing", description: "Coding, hardware, software" },
-  { id: "economics", emoji: "📈", label: "Economics", description: "Supply, demand, markets" },
-  { id: "business", emoji: "💼", label: "Business Studies", description: "Management, strategy, startups" },
-  { id: "commerce", emoji: "💰", label: "Commerce", description: "Trade, finance, accounting" },
-  { id: "pdhpe", emoji: "🏃", label: "PDHPE", description: "Health, fitness, well-being" },
-  { id: "geography", emoji: "🌏", label: "Geography", description: "World, maps, environment" },
+  { id: "math", icon: <Calculator className="w-6 h-6" />, label: "Mathematics", description: "Numbers, algebra, geometry" },
+  { id: "biology", icon: <Microscope className="w-6 h-6" />, label: "Biology", description: "Life, cells, nature" },
+  { id: "history", icon: <Landmark className="w-6 h-6" />, label: "History", description: "Past events, cultures" },
+  { id: "physics", icon: <Zap className="w-6 h-6" />, label: "Physics", description: "Matter, energy, forces" },
+  { id: "chemistry", icon: <FlaskConical className="w-6 h-6" />, label: "Chemistry", description: "Elements, reactions" },
+  { id: "literature", icon: <BookOpen className="w-6 h-6" />, label: "Literature", description: "Books, poetry, stories" },
+  { id: "computing", icon: <Cpu className="w-6 h-6" />, label: "Computing", description: "Coding, hardware, software" },
+  { id: "economics", icon: <LineChart className="w-6 h-6" />, label: "Economics", description: "Supply, demand, markets" },
+  { id: "business", icon: <Briefcase className="w-6 h-6" />, label: "Business Studies", description: "Management, strategy, startups" },
+  { id: "commerce", icon: <Wallet className="w-6 h-6" />, label: "Commerce", description: "Trade, finance, accounting" },
+  { id: "pdhpe", icon: <HeartPulse className="w-6 h-6" />, label: "PDHPE", description: "Health, fitness, well-being" },
+  { id: "geography", icon: <Globe className="w-6 h-6" />, label: "Geography", description: "World, maps, environment" },
 ];
 
 const hobbies = [
-  { id: "sports", emoji: "⚽", label: "Sports" },
-  { id: "gaming", emoji: "🎮", label: "Gaming" },
-  { id: "music", emoji: "🎵", label: "Music" },
-  { id: "cooking", emoji: "🍳", label: "Cooking" },
-  { id: "art", emoji: "🎨", label: "Art & Design" },
-  { id: "movies", emoji: "🎬", label: "Movies & TV" },
-  { id: "nature", emoji: "🌿", label: "Nature" },
-  { id: "tech", emoji: "💻", label: "Technology" },
-  { id: "reading", emoji: "📚", label: "Reading" },
-  { id: "travel", emoji: "✈️", label: "Travel" },
+  { id: "sports", icon: <Dumbbell className="w-6 h-6" />, label: "Sports" },
+  { id: "gaming", icon: <Gamepad2 className="w-6 h-6" />, label: "Gaming" },
+  { id: "music", icon: <Music className="w-6 h-6" />, label: "Music" },
+  { id: "cooking", icon: <CookingPot className="w-6 h-6" />, label: "Cooking" },
+  { id: "art", icon: <Palette className="w-6 h-6" />, label: "Art & Design" },
+  { id: "movies", icon: <Film className="w-6 h-6" />, label: "Movies & TV" },
+  { id: "nature", icon: <Leaf className="w-6 h-6" />, label: "Nature" },
+  { id: "tech", icon: <Laptop className="w-6 h-6" />, label: "Technology" },
+  { id: "reading", icon: <Book className="w-6 h-6" />, label: "Reading" },
+  { id: "travel", icon: <Plane className="w-6 h-6" />, label: "Travel" },
 ];
 
 const Onboarding = () => {
@@ -125,13 +208,12 @@ const Onboarding = () => {
               {step === 1 && (
                 <div className="space-y-8">
                   <div className="flex items-center gap-5">
-                    <Mascot size="md" mood="happy" />
                     <div>
                       <h1 className="text-3xl font-black text-foreground tracking-tight">
-                        Hi there! I'm Quizzy.
+                        <TypewriterText text="Hi there! I'm Quizzy." delay={300} />
                       </h1>
                       <p className="text-muted-foreground text-lg">
-                        What should I call you?
+                        <TypewriterText text="What should I call you?" delay={1200} />
                       </p>
                     </div>
                   </div>
@@ -152,7 +234,6 @@ const Onboarding = () => {
               {step === 2 && (
                 <div className="space-y-8">
                   <div className="flex items-center gap-5">
-                    <Mascot size="md" mood="thinking" />
                     <div>
                       <h1 className="text-3xl font-black text-foreground tracking-tight">
                         What year are you in?
@@ -187,7 +268,6 @@ const Onboarding = () => {
               {step === 3 && (
                 <div className="space-y-8">
                   <div className="flex items-center gap-5">
-                    <Mascot size="md" mood="excited" />
                     <div>
                       <h1 className="text-3xl font-black text-foreground tracking-tight">
                         Nice to meet you, {name}!
@@ -226,7 +306,7 @@ const Onboarding = () => {
                             <Check className="w-4 h-4 text-primary-foreground" />
                           </motion.div>
                         )}
-                        <span className="text-4xl mb-3 block group-hover:scale-110 transition-transform">{subject.emoji}</span>
+                        <span className="mb-3 block text-primary group-hover:scale-110 transition-transform">{subject.icon}</span>
                         <div className="font-bold text-foreground">{subject.label}</div>
                         <div className="text-[10px] uppercase tracking-wider text-muted-foreground mt-1 opacity-70 group-hover:opacity-100">{subject.description}</div>
                       </motion.button>
@@ -238,7 +318,6 @@ const Onboarding = () => {
               {step === 4 && (
                 <div className="space-y-8">
                   <div className="flex items-center gap-5">
-                    <Mascot size="md" mood="excited" />
                     <div>
                       <h1 className="text-3xl font-black text-foreground tracking-tight">
                         Almost there!
@@ -277,7 +356,7 @@ const Onboarding = () => {
                             <Check className="w-4 h-4 text-primary-foreground" />
                           </motion.div>
                         )}
-                        <span className="text-4xl mb-3 block group-hover:scale-110 transition-transform">{hobby.emoji}</span>
+                        <span className="mb-3 block text-primary group-hover:scale-110 transition-transform">{hobby.icon}</span>
                         <span className="text-sm font-bold text-foreground">{hobby.label}</span>
                       </motion.button>
                     ))}
@@ -323,7 +402,6 @@ const Onboarding = () => {
               className="glass-card p-16 text-center relative overflow-hidden shadow-2xl"
             >
               <Confetti />
-              <Mascot size="lg" mood="celebrating" />
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -331,7 +409,7 @@ const Onboarding = () => {
                 className="mt-8 space-y-4"
               >
                 <h1 className="text-4xl font-black text-foreground tracking-tight">
-                  You're all set, {name}! 🎉
+                  You're all set, {name}.
                 </h1>
                 <p className="text-muted-foreground text-xl max-w-md mx-auto">
                   I'm ready to help you master your subjects with custom analogies!
