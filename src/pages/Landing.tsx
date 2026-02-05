@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Analytics } from "@vercel/analytics/next"
 import { motion } from "framer-motion";
 import {
   ArrowRight,
@@ -97,6 +98,14 @@ const Landing = () => {
     visible: { opacity: 1, y: 0 }
   };
 
+  const handleNav = (path: string) => {
+    if (!hasCompletedOnboarding) {
+      navigate("/onboarding");
+      return;
+    }
+    navigate(path);
+  };
+
   const features = [
     {
       icon: Brain,
@@ -142,21 +151,28 @@ const Landing = () => {
 
       {/* Navigation */}
       <nav className="relative z-20 px-8 py-6 max-w-7xl mx-auto backdrop-blur-sm">
-        <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center">
-          <div className="justify-self-start" />
-          <span className="text-2xl font-black gradient-text tracking-tighter justify-self-center">
+        <div className="flex items-center justify-between gap-6">
+          <span className="text-2xl font-black gradient-text tracking-tighter">
             Analogix
           </span>
-          <div className="flex items-center gap-4 justify-self-end">
-            <Button variant="ghost" onClick={() => navigate(hasCompletedOnboarding ? "/dashboard" : "/onboarding")} className="hidden sm:flex font-bold">
-              {hasCompletedOnboarding ? "Dashboard" : "Sign In"}
-            </Button>
+          <div className="hidden md:flex items-center gap-6 text-sm font-black text-muted-foreground">
+            <button onClick={() => handleNav("/quiz")} className="hover:text-primary transition-colors">
+              Quizzes
+            </button>
+            <button onClick={() => handleNav("/chat")} className="hover:text-primary transition-colors">
+              Chat
+            </button>
+            <button onClick={() => handleNav("/dashboard")} className="hover:text-primary transition-colors">
+              Progress
+            </button>
+          </div>
+          <div className="flex items-center gap-4">
             <ThemeToggle />
-            <Button 
-              className="gradient-primary text-primary-foreground border-0 shadow-lg px-6 font-bold" 
-              onClick={() => navigate(hasCompletedOnboarding ? "/dashboard" : "/onboarding")}
+            <Button
+              className="gradient-primary text-primary-foreground border-0 shadow-lg px-6 font-bold"
+              onClick={() => handleNav("/dashboard")}
             >
-              Get Started
+              {hasCompletedOnboarding ? "Dashboard" : "Get Started"}
             </Button>
           </div>
         </div>

@@ -42,7 +42,7 @@ const FirstVisitOverlay = () => {
           >
             <div className="mx-auto mb-6 h-px w-20 bg-gradient-to-r from-transparent via-white/60 to-transparent" />
             <h1 className="text-4xl sm:text-5xl font-semibold tracking-tight text-white">
-              Focused learning, with a calmer interface
+              Tired of textbooks and lectures that leave you more confused?
             </h1>
             <p className="mt-4 text-base sm:text-lg text-white/70 leading-relaxed">
               Build momentum through clear explanations, tailored analogies, and
