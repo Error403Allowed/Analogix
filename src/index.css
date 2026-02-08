@@ -120,6 +120,17 @@
   @apply shadow-[0_20px_40px_-15px_rgba(0,0,0,0.1)];
 }
 
+/* Hide scrollbars but keep scroll behavior */
+.hide-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
 /* Floating background blobs */
 .liquid-blob {
   border-radius: 9999px;

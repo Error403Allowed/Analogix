@@ -172,7 +172,7 @@ const Quiz = () => {
             <Brain className="w-7 h-7" />
           </div>
           <p className="text-sm text-muted-foreground">
-            Quizzy is crafting a personalized {topic} quiz...
+            Quizzy is crafting a personalised {topic} quiz...
           </p>
         </div>
         <div className="mt-8 flex items-center gap-2 text-primary font-bold animate-pulse">

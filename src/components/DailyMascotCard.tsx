@@ -21,7 +21,7 @@ const DailyMascotCard = ({ userName, onChatStart }: DailyMascotCardProps) => {
 
   return (
     <motion.div 
-      className="glass-card p-8 min-h-[350px] relative overflow-hidden group border-primary/20"
+      className="glass-card p-8 h-full min-h-[350px] relative overflow-hidden group border-primary/20"
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
     >

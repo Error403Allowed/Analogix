@@ -14,6 +14,7 @@ import CalendarPage from "./pages/CalendarPage";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
 import FirstVisitOverlay from "./components/FirstVisitOverlay";
+import ThemeSync from "./components/ThemeSync";
 
 const queryClient = new QueryClient();
 
@@ -24,6 +25,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          <ThemeSync />
           <FirstVisitOverlay />
           <Routes>
             <Route path="/" element={<Landing />} />

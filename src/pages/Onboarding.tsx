@@ -127,6 +127,7 @@ const Onboarding = () => {
   const [grade, setGrade] = useState<string | null>(null);
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
   const [selectedHobbies, setSelectedHobbies] = useState<string[]>([]);
+  const [hobbyDetails, setHobbyDetails] = useState<Record<string, string>>({});
   const [isComplete, setIsComplete] = useState(false);
 
   const toggleSubject = (id: string) => {
@@ -136,9 +137,17 @@ const Onboarding = () => {
   };
 
   const toggleHobby = (id: string) => {
-    setSelectedHobbies((prev) =>
-      prev.includes(id) ? prev.filter((h) => h !== id) : [...prev, id]
-    );
+    setSelectedHobbies((prev) => {
+      if (prev.includes(id)) {
+        setHobbyDetails((details) => {
+          const next = { ...details };
+          delete next[id];
+          return next;
+        });
+        return prev.filter((h) => h !== id);
+      }
+      return [...prev, id];
+    });
   };
 
   const handleNext = () => {
@@ -150,12 +159,20 @@ const Onboarding = () => {
       setStep(4);
     } else if (step === 4 && selectedHobbies.length > 0) {
       setIsComplete(true);
+
+      const hobbiesWithDetails = selectedHobbies.map((id) => {
+        const label = hobbies.find((h) => h.id === id)?.label || id;
+        const detail = (hobbyDetails[id] || "").trim();
+        return detail ? `${label} (${detail})` : label;
+      });
       
       localStorage.setItem("userPreferences", JSON.stringify({
         name: name.trim(),
         grade: grade,
         subjects: selectedSubjects,
-        hobbies: selectedHobbies,
+        hobbies: hobbiesWithDetails,
+        hobbyIds: selectedHobbies,
+        hobbyDetails,
         onboardingComplete: true
       }));
 
@@ -361,6 +378,46 @@ const Onboarding = () => {
                       </motion.button>
                     ))}
                   </motion.div>
+
+                  {selectedHobbies.length > 0 && (
+                    <div className="space-y-3">
+                      <p className="text-sm text-muted-foreground">
+                        Add specifics (optional). Example: Sports → cricket, Music → piano.
+                      </p>
+                      <div className="space-y-3">
+                        {selectedHobbies.map((id) => {
+                          const hobby = hobbies.find((h) => h.id === id);
+                          const placeholderById: Record<string, string> = {
+                            sports: "e.g., cricket",
+                            gaming: "e.g., Minecraft",
+                            music: "e.g., piano",
+                            cooking: "e.g., baking",
+                            art: "e.g., digital art",
+                            movies: "e.g., sci-fi",
+                            nature: "e.g., hiking",
+                            tech: "e.g., robotics",
+                            reading: "e.g., fantasy",
+                            travel: "e.g., Japan"
+                          };
+                          return (
+                            <div key={id} className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                              <span className="text-sm font-semibold text-foreground sm:w-32">
+                                {hobby?.label || id}
+                              </span>
+                              <Input
+                                value={hobbyDetails[id] || ""}
+                                onChange={(e) =>
+                                  setHobbyDetails((prev) => ({ ...prev, [id]: e.target.value }))
+                                }
+                                placeholder={placeholderById[id] || "Add a specific example"}
+                                className="h-10 glass border-border"
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 

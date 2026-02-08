@@ -2,21 +2,21 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
-  Send,
   Sparkles,
   BookOpen,
   Lightbulb,
   RefreshCw,
-  Square
+  Copy
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useNavigate } from "react-router-dom";
 import { getGroqCompletion } from "@/services/groq";
 import { statsStore } from "@/utils/statsStore";
 import MarkdownRenderer from "@/components/MarkdownRenderer";
 import TypewriterText from "@/components/TypewriterText";
 import { SUBJECT_CATALOG, getSubjectDescription } from "@/constants/subjects";
+import { toast } from "sonner";
+import ChatInputBar from "@/components/ChatInputBar";
 
 // Typewriter animation component for AI messages - uses refs to prevent restart on parent re-renders
 const TypewriterMessage = ({ 
@@ -119,10 +119,10 @@ const TypewriterMessage = ({
         setDisplayedContent(currentContent.slice(0, charIndexRef.current));
         // Variable speed: faster for spaces/newlines, slower for punctuation
         const char = currentContent[charIndexRef.current - 1];
-        let speed = 15; // Base speed (fast for chat)
-        if (char === " " || char === "\n") speed = 8;
-        else if (char === "." || char === "!" || char === "?" || char === ",") speed = 80;
-        else if (char === "*") speed = 5; // Fast for markdown
+        let speed = 12; // Base speed (fast for chat)
+        if (char === " " || char === "\n") speed = 6.5;
+        else if (char === "." || char === "!" || char === "?" || char === ",") speed = 65;
+        else if (char === "*") speed = 4; // Fast for markdown
         timeoutRef.current = setTimeout(typeNextChar, speed);
       } else {
         setIsTyping(false);
@@ -192,6 +192,9 @@ const Chat = () => {
   const [isAnimating, setIsAnimating] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const messageRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   // RETRIEVING MEMORY: We pull your hobbies and subjects from the browser.
   const userPrefs = JSON.parse(localStorage.getItem("userPreferences") || "{}");
@@ -202,11 +205,40 @@ const Chat = () => {
     ? subjects.filter((s) => userSubjects.includes(s.id))
     : subjects;
 
+  const chatContext = {
+    subjects: selectedSubject ? [selectedSubject] : userSubjects,
+    hobbies: userHobbies,
+    grade: userPrefs.grade,
+    learningStyle: userPrefs.learningStyle
+  };
+
+  const lastAssistantId = [...messages].reverse().find((m) => m.role === "assistant")?.id;
+
   useEffect(() => {
     // We stay on the selection screen so Quizzy can ask what you want to explore!
   }, []);
 
   // No auto-scroll: user controls when to scroll.
+
+  useEffect(() => {
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!messages.length) return;
+    const last = messages[messages.length - 1];
+    if (last.role !== "user") return;
+    const container = messagesContainerRef.current;
+    const el = messageRefs.current[last.id];
+    if (!container || !el) return;
+    requestAnimationFrame(() => {
+      container.scrollTo({ top: Math.max(el.offsetTop - 8, 0), behavior: "smooth" });
+    });
+  }, [messages]);
 
   // PICKING A TOPIC: This runs when you select a subject icon.
   const handleSubjectSelect = (subjectId: string) => {
@@ -237,6 +269,9 @@ const Chat = () => {
 
     setMessages(prev => [...prev, userMessage]);
     setInput("");
+    if (inputRef.current) {
+      inputRef.current.style.height = "auto";
+    }
     setIsTyping(true); // Show the "thinking" dots.
 
     // Record the conversation
@@ -255,15 +290,8 @@ const Chat = () => {
       const newHistory = [...messagesHistory, { role: "user" as const, content: input }];
       
       // We also give the AI "Context" (your hobbies and style).
-      const context = {
-        subjects: selectedSubject ? [selectedSubject] : userSubjects,
-        hobbies: userHobbies,
-        grade: userPrefs.grade,
-        learningStyle: userPrefs.learningStyle
-      };
-
       // FETCH: We send the request over the internet and wait.
-      const aiResponse = await getGroqCompletion(newHistory, context);
+      const aiResponse = await getGroqCompletion(newHistory, chatContext);
 
       // 3. We show the AI's reply on the screen.
       const response: Message = {
@@ -288,20 +316,13 @@ const Chat = () => {
     const subjectLabel = subjects.find(s => s.id === selectedSubject)?.label || selectedSubject;
     const usedTopics = messages.filter(m => m.analogy).map(m => m.analogy).filter(Boolean);
     
-    const context = {
-      subjects: [selectedSubject],
-      hobbies: userHobbies,
-      grade: userPrefs.grade,
-      learningStyle: userPrefs.learningStyle
-    };
-
     const avoidText = usedTopics.length > 0 ? `Avoid repeating these topics: ${usedTopics.join(", ")}.` : "";
     const aiPrompt = [{ 
       role: "user" as const, 
       content: `Introduce a NEW, interesting concept in ${subjectLabel} using a fun analogy related to my interests (${userHobbies.join(", ")}). ${avoidText}` 
     }];
 
-    const aiResponse = await getGroqCompletion(aiPrompt, context);
+    const aiResponse = await getGroqCompletion(aiPrompt, chatContext);
     
     setMessages(prev => [...prev, {
       id: Date.now().toString(),
@@ -315,13 +336,65 @@ const Chat = () => {
     setStopTyping(false);
   };
 
+  const handleCopy = async (content: string) => {
+    try {
+      await navigator.clipboard.writeText(content);
+      toast.success("Copied response");
+    } catch {
+      toast.error("Copy failed");
+    }
+  };
+
+  const handleRegenerate = async (messageId: string) => {
+    const targetIndex = messages.findIndex((m) => m.id === messageId);
+    if (targetIndex <= 0) return;
+
+    const history = messages
+      .slice(0, targetIndex)
+      .map((m) => ({ role: m.role, content: m.content }));
+
+    setIsTyping(true);
+    try {
+      const aiResponse = await getGroqCompletion(history, chatContext);
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === messageId
+            ? { ...m, content: aiResponse.content || "I'm not sure how to answer that.", isNew: true }
+            : m
+        )
+      );
+      setIsAnimating(true);
+      setStopTyping(false);
+    } finally {
+      setIsTyping(false);
+    }
+  };
+
+  const handleTextareaKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (input.trim()) {
+        handleSend();
+      }
+    }
+  };
+
+  const handleInputChange = (value: string) => {
+    setInput(value);
+    if (!inputRef.current) return;
+    const el = inputRef.current;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 180)}px`;
+  };
+
   return (
-    <div className="min-h-screen flex flex-col relative overflow-hidden">
+    <div className="fixed inset-0 flex flex-col overflow-hidden">
       {/* Background */}
       <div className="liquid-blob w-96 h-96 bg-primary/20 -top-48 -right-48 fixed" />
       <div className="liquid-blob w-64 h-64 bg-accent/20 bottom-20 -left-32 fixed" style={{ animationDelay: '-2s' }} />
 
-      <div className="flex-1 flex flex-col max-w-4xl mx-auto w-full px-4 py-6 relative z-10">
+      <div className="flex-1 flex flex-col max-w-4xl mx-auto w-full px-4 py-6 relative z-10 min-h-0 h-full">
         {/* Header */}
         <motion.header
           className="glass-card px-6 py-4 mb-4"
@@ -418,7 +491,11 @@ const Chat = () => {
             </motion.div>
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto space-y-4 mb-4">
+            <div
+              ref={messagesContainerRef}
+              className="flex-1 min-h-0 overflow-y-auto space-y-4 pb-6 overscroll-contain hide-scrollbar"
+              style={{ overflowAnchor: "none" }}
+            >
               <AnimatePresence>
                 {messages.map((message) => (
                   <motion.div
@@ -426,6 +503,9 @@ const Chat = () => {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
+                    ref={(node) => {
+                      messageRefs.current[message.id] = node;
+                    }}
                   >
                     <div
                       className={`max-w-[85%] p-4 rounded-2xl ${
@@ -460,6 +540,28 @@ const Chat = () => {
                         <p className="whitespace-pre-wrap text-sm leading-relaxed">
                           {message.content}
                         </p>
+                      )}
+                      {message.role === "assistant" && (
+                        <div className="mt-3 flex items-center justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleCopy(message.content)}
+                            className="text-xs font-semibold text-muted-foreground hover:text-primary transition-colors flex items-center gap-1"
+                          >
+                            <Copy className="w-3.5 h-3.5" />
+                            Copy
+                          </button>
+                          {message.id === lastAssistantId && (
+                            <button
+                              type="button"
+                              onClick={() => handleRegenerate(message.id)}
+                              className="text-xs font-semibold text-muted-foreground hover:text-primary transition-colors flex items-center gap-1"
+                            >
+                              <RefreshCw className="w-3.5 h-3.5" />
+                              Regenerate
+                            </button>
+                          )}
+                        </div>
                       )}
                     </div>
                   </motion.div>
@@ -499,50 +601,20 @@ const Chat = () => {
                 </motion.div>
               )}
               
-              <div ref={messagesEndRef} />
+              <div className="h-36" aria-hidden />
+              <div ref={messagesEndRef} style={{ overflowAnchor: "none" }} />
             </div>
 
-            {/* Input */}
-            <motion.div
-              className="glass-card p-4 sticky bottom-0 z-20 bg-background/80 backdrop-blur-xl border border-white/20 shadow-[0_-10px_30px_-20px_rgba(0,0,0,0.35)]"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-            >
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  handleSend();
-                }}
-                className="flex gap-3"
-              >
-                <Input
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  placeholder="Ask me anything about this subject..."
-                  className="flex-1 glass border-border"
-                />
-                {(isTyping || isAnimating) ? (
-                  <Button
-                    type="button"
-                    onClick={() => setStopTyping(true)}
-                    className="gap-2 bg-destructive hover:bg-destructive/90 text-destructive-foreground border-0"
-                  >
-                    <Square className="w-4 h-4" />
-                  </Button>
-                ) : (
-                  <Button
-                    type="submit"
-                    disabled={!input.trim()}
-                    className="gap-2 gradient-primary text-primary-foreground border-0"
-                  >
-                    <Send className="w-4 h-4" />
-                  </Button>
-                )}
-              </form>
-              <p className="text-xs text-muted-foreground mt-2 text-center">
-                Quizzy can make mistakes. Check important info.
-              </p>
-            </motion.div>
+            <ChatInputBar
+              value={input}
+              onChange={handleInputChange}
+              onSubmit={handleSend}
+              onStop={() => setStopTyping(true)}
+              onKeyDownCapture={handleTextareaKeyDown}
+              inputRef={inputRef}
+              isTyping={isTyping}
+              isAnimating={isAnimating}
+            />
           </>
         )}
       </div>

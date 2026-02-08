@@ -8,7 +8,12 @@ import {
   MessageCircle,
   Clock,
   ArrowRight,
-  Sparkles
+  Sparkles,
+  Smile,
+  Coffee,
+  Brain,
+  Flame,
+  Moon
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -25,6 +30,66 @@ import { statsStore } from "@/utils/statsStore";
 import { getAIBannerPhrase } from "@/services/groq";
 import { useAchievementChecker } from "@/hooks/useAchievementChecker";
 import TypewriterText from "@/components/TypewriterText";
+import { applyThemeByName } from "@/components/ThemeSelector";
+
+const moodThemes = [
+  {
+    id: "focused",
+    label: "Focused",
+    theme: "Classic Blue",
+    description: "Clean, calm, and sharp.",
+    icon: Brain
+  },
+  {
+    id: "energized",
+    label: "Energized",
+    theme: "Candy Pop",
+    description: "bright, fast, and bold.",
+    icon: Flame
+  },
+  {
+    id: "chill",
+    label: "Chill",
+    theme: "Oceanic",
+    description: "Cool and steady.",
+    icon: Moon
+  },
+  {
+    id: "tired",
+    label: "Tired",
+    theme: "Sunset Ember",
+    description: "Warm and soothing.",
+    icon: Coffee
+  },
+  {
+    id: "creative",
+    label: "Creative",
+    theme: "Cosmic Aurora",
+    description: "Vivid and curious.",
+    icon: Sparkles
+  },
+  {
+    id: "productive",
+    label: "Productive",
+    theme: "Midnight Gold",
+    description: "Bright and motivating.",
+    icon: Target
+  },
+  {
+    id: "excited",
+    label: "Excited",
+    theme: "Cyber Neon",
+    description: "Electric and bold.",
+    icon: Zap
+  },
+  {
+    id: "balanced",
+    label: "Balanced",
+    theme: "Forest Glow",
+    description: "Grounded and steady.",
+    icon: Smile
+  }
+];
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -32,6 +97,7 @@ const Dashboard = () => {
   const [quizCreatorMode, setQuizCreatorMode] = useState<'custom' | 'learning'>('custom');
   const [recentAchievements, setRecentAchievements] = useState([]);
   const [bannerPhrase, setBannerPhrase] = useState("Loading your plan...");
+  const [selectedMood, setSelectedMood] = useState(() => localStorage.getItem("mood-theme") || "focused");
   
   // Start Achievement Sync
   useAchievementChecker();
@@ -65,6 +131,13 @@ const Dashboard = () => {
     };
   }, [userName]);
 
+  useEffect(() => {
+    const mood = moodThemes.find((m) => m.id === selectedMood);
+    if (!mood) return;
+    applyThemeByName(mood.theme);
+    localStorage.setItem("mood-theme", mood.id);
+  }, [selectedMood]);
+
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
@@ -91,7 +164,7 @@ const Dashboard = () => {
           variants={containerVariants}
           initial="hidden"
           animate="visible"
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-6 items-start"
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-6 items-stretch"
         >
           {/* Row 1: Welcome & Quick Stats */}
           <div className="lg:col-span-8 space-y-6">
@@ -157,6 +230,43 @@ const Dashboard = () => {
                    onChatStart={() => navigate("/chat")} 
                  />
                </div>
+            </motion.div>
+          </div>
+
+          {/* Mood Selector */}
+          <div className="lg:col-span-12">
+            <motion.div variants={itemVariants} className="glass-card p-6 bg-background/60">
+              <div className="flex items-center justify-between gap-4 flex-wrap">
+                <div>
+                  <h3 className="text-lg font-black text-foreground flex items-center gap-2">
+                    <Coffee className="w-4 h-4 text-primary" />
+                    Set your mood
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    The colour theme adapts to your study vibe.
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {moodThemes.map((mood) => {
+                    const Icon = mood.icon;
+                    const isActive = selectedMood === mood.id;
+                    return (
+                      <button
+                        key={mood.id}
+                        onClick={() => setSelectedMood(mood.id)}
+                        className={`px-4 py-2 rounded-xl border text-left transition-all flex items-center gap-2 ${
+                          isActive
+                            ? "border-primary bg-primary/10 shadow-lg"
+                            : "border-border glass hover:border-primary/50"
+                        }`}
+                      >
+                        <Icon className="w-4 h-4 text-primary" />
+                        <div className="text-xs font-bold">{mood.label}</div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </motion.div>
           </div>
 

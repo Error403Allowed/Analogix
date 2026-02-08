@@ -175,7 +175,7 @@ const QuizCreator = ({ onCreateQuiz, isLoading, hideContentInput = false }: Quiz
                 animate={{ opacity: 1, y: 0 }}
               >
                 <p className="text-sm text-foreground">
-                  <span className="font-medium">✨ Personalized for you:</span>{" "}
+                  <span className="font-medium">✨ Personalised for you:</span>{" "}
                   Questions will include analogies based on your interests:{" "}
                   <span className="text-primary font-medium">
                     {userPrefs.hobbies?.slice(0, 10).join(", ")}

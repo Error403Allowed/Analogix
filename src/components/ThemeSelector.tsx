@@ -44,11 +44,6 @@ const themes = [
     name: "Candy Pop",
     p: { h: "316", s: "91%", l: "60%" },
     g: ["#ec4899", "#facc15", "#06b6d4"]
-  },
-  {
-    name: "Prismatic",
-    p: { h: "280", s: "90%", l: "60%" },
-    g: ["#ff0000", "#00ff00", "#0000ff"]
   }
 ];
 
@@ -121,5 +116,24 @@ const ThemeSelector = () => {
     </Popover>
   );
 };
+
+export const applyThemeByName = (themeName: string) => {
+  const theme = themes.find(t => t.name === themeName);
+  if (!theme) return;
+
+  const root = document.documentElement;
+  root.style.setProperty("--p-h", theme.p.h);
+  root.style.setProperty("--p-s", theme.p.s);
+  root.style.setProperty("--p-l", theme.p.l);
+  root.style.setProperty("--g-1", theme.g[0]);
+  root.style.setProperty("--g-2", theme.g[1]);
+  root.style.setProperty("--g-3", theme.g[2]);
+
+  localStorage.setItem("app-theme", themeName);
+};
+
+export const getThemeByName = (themeName: string) => themes.find(t => t.name === themeName);
+
+export const getAllThemes = () => themes;
 
 export default ThemeSelector;

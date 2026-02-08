@@ -70,11 +70,12 @@ export const getGroqCompletion = async (
   3. Adjust the complexity of your language and scientific detail to be appropriate for a Year ${userContext?.grade || "7-12"} student.
   4. Keep explanations clear and concise.
   5. If the user asks about a topic outside their subjects, still help them but try to relate it back if possible.
-  6. Explain the raw facts (derived from ACARA curriculum) of the topic before explaining with an analogy.
-  7. Don't use emojis too much, apart from just titles. 
-  8. Use seperation techniques between raw facts and analogies.
-  9. Put "⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻" to seperate paragraphs and parts of text that are not related to each other.
-  10. Use LaTeX for all math notation. Wrap inline math in '$...$' and display math in '$$...$$'.
+  6. Blend facts and analogies together so they feel like a single, coherent explanation. Do NOT split into separate sections.
+  7. Avoid hard dividers or separators. Keep the flow continuous.
+  8. Keep the analogy tightly mapped to the actual concept in each sentence. Avoid switching topics.
+  9. Use Australian/British English spelling (e.g., colour, organise, maths).
+  10. Don't use emojis too much, apart from just titles. 
+  11. Use LaTeX for all math notation. Wrap inline math in '$...$' and display math in '$$...$$'.
       - Examples: $x^2$, $\\int_a^b f(x)\\,dx$, $f(x)$, $\\frac{dy}{dx}$.
       - If a response contains math symbols, powers, integrals, functions, or equations, it MUST be in LaTeX.
   `;
@@ -93,7 +94,7 @@ export const getGroqCompletion = async (
         messages: fullMessages as any[],
         model: "llama-3.3-70b-versatile",
         temperature: 0.7,
-        max_tokens: 1024,
+        max_tokens: 2048,
       });
       return completion.choices[0]?.message;
     } catch (error) {
@@ -151,6 +152,57 @@ export const getAIGreeting = async (userName: string, streak: number) => {
 export const getAIBannerPhrase = async (userName: string, subjects: string[]) => {
   if (clients.length === 0) return "What's the plan for today?";
 
+  const minLength = 72;
+  const maxLength = 140;
+
+  const normaliseText = (text: string) =>
+    text.replace(/\s+/g, " ").replace(/["“”]/g, "").trim();
+
+  const suffixes = [
+    " Let's map your next steps together.",
+    " Ready to dive deeper and connect the dots today?",
+    " Let's turn curiosity into real progress now.",
+    " Keep the momentum and make each insight count.",
+  ];
+
+  const buildCandidate = (base: string) => {
+    if (base.length > maxLength) return null;
+    let result = base;
+    for (const suffix of suffixes) {
+      if (result.length >= minLength) break;
+      if (result.length + suffix.length <= maxLength) {
+        result = `${result}${suffix}`;
+      }
+    }
+    if (result.length >= minLength && result.length <= maxLength) return result;
+    return null;
+  };
+
+  const fallbackBanner = () => {
+    const cleanedSubjects = subjects.map((subject) => subject.trim()).filter(Boolean);
+    const subjectSnippet = cleanedSubjects.length > 0 ? ` in ${cleanedSubjects.join(", ")}` : "";
+    const bases = [
+      `Hey ${userName}, ready to explore${subjectSnippet} and grow your skills today?`,
+      `Hey ${userName}, ready to explore and grow your skills today?`,
+      "Ready to explore, connect ideas, and grow your skills today?",
+      "Let's explore new ideas, connect the dots, and build real progress today.",
+    ];
+    for (const base of bases) {
+      const candidate = buildCandidate(base);
+      if (candidate) return candidate;
+    }
+    return "Let's explore new ideas, connect the dots, and build real progress today.";
+  };
+
+  const ensureLengthRange = (text: string) => {
+    if (text.length >= minLength && text.length <= maxLength) return text;
+    if (text.length < minLength) {
+      const padded = buildCandidate(text);
+      if (padded) return padded;
+    }
+    return fallbackBanner();
+  };
+
   const callWithRetry = async (retryCount = 0): Promise<string> => {
     const activeGroq = getRotatedClient();
     if (!activeGroq) return "What's the plan for today?";
@@ -160,7 +212,7 @@ export const getAIBannerPhrase = async (userName: string, subjects: string[]) =>
         messages: [
           { 
             role: "system", 
-            content: 'Generate a short, punchy 10-word call to action for a student dashboard. Focus on curiosity and growth. Use the students name. Be unique.' 
+            content: "Generate a punchy call to action for a student dashboard. Use Australian/British spelling. Focus on curiosity and growth. Use the student's name. Be unique. Length must be between 72 and 140 characters." 
           },
           { 
             role: "user", 
@@ -171,7 +223,12 @@ export const getAIBannerPhrase = async (userName: string, subjects: string[]) =>
         temperature: 1.0,
         max_tokens: 50,
       });
-      return completion.choices[0]?.message?.content?.replace(/"/g, '') || "Ready to turn concepts into analogies?";
+      const raw = completion.choices[0]?.message?.content || "Ready to turn concepts into analogies?";
+      const cleaned = normaliseText(raw);
+      if ((cleaned.length < minLength || cleaned.length > maxLength) && retryCount < 1) {
+        return callWithRetry(retryCount + 1);
+      }
+      return ensureLengthRange(cleaned);
     } catch {
       if (retryCount < clients.length - 1) return callWithRetry(retryCount + 1);
       return "What should we tackle first?";
@@ -217,14 +274,15 @@ export const generateQuiz = async (
     - CRITICAL: Double-escape all backslashes in the JSON string (e.g., use "\\frac" for "\frac").
     - If the content includes powers, integrals, derivatives, functions, or equations, render them in LaTeX (e.g., $x^n$, $\\int f(x)\\,dx$, $f(x)$).
   7. Use "⸻" to seperate paragraphs and parts of text that are not related to each other.
+  8. Use Australian/British English spelling (e.g., colour, organise, maths).
   
-  8. MATH/SCIENCE VERIFICATION (CRITICAL):
+  9. MATH/SCIENCE VERIFICATION (CRITICAL):
     - If the question involves ANY calculation (Math, Physics, Chemistry, etc.), you MUST generate a Python script to solve it.
     - Include this script in a "python_solution" field.
     - The "correctAnswer" and options MUST be derived strictly from this Python script's output.
     - Do NOT rely on your internal training data for calculations. Trust the code.
   
-  9. Format:
+  10. Format:
   {
     "questions": [
       {
