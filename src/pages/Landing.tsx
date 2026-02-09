@@ -162,6 +162,9 @@ const Landing = () => {
             <button onClick={() => handleNav("/chat")} className="hover:text-primary transition-colors">
               Chat
             </button>
+            <button onClick={() => handleNav("/dashboard")} className="hover:text-primary transition-colors">
+              Progress
+            </button>
           </div>
           <div className="flex items-center gap-4">
             <ThemeToggle />
@@ -202,7 +205,7 @@ const Landing = () => {
                 <Button 
                   size="lg" 
                   className="h-16 px-10 text-xl font-black gradient-primary text-primary-foreground border-0 shadow-2xl hover:scale-105 transition-transform rounded-2xl"
-                  onClick={() => handleNav("/dashboard")}
+                  onClick={() => navigate(hasCompletedOnboarding ? "/dashboard" : "/onboarding")}
                 >
                   {hasCompletedOnboarding ? "Go to Dashboard" : "Start Learning Now"}
                   <ArrowRight className="ml-2 w-6 h-6" />
@@ -336,7 +339,7 @@ const Landing = () => {
             <Button 
                size="lg" 
                className="h-16 px-12 text-2xl font-black bg-white text-primary hover:bg-white/90 border-0 shadow-2xl rounded-2xl"
-               onClick={() => handleNav("/dashboard")}
+               onClick={() => navigate("/onboarding")}
             >
               Get Started Now
             </Button>

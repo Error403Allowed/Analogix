@@ -59,7 +59,7 @@ const AchievementsLibrary = () => {
       <div className="max-w-[1700px] mx-auto w-full px-4 sm:px-6 lg:px-8 xl:px-12 pt-6">
         <Header userName={userName} />
         
-        <div className="mb-8">
+        <div className="pb-8">
            <Button variant="ghost" className="mb-4 pl-0 hover:bg-transparent hover:text-primary gap-2" onClick={() => navigate("/dashboard")}>
              <ArrowLeft className="w-4 h-4" /> Back to Dashboard
            </Button>

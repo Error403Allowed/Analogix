@@ -2,33 +2,40 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { MessageCircle, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { getAIGreeting } from "@/services/groq";
+import { getAIGreeting } from "@/services/huggingface";
 import { statsStore } from "@/utils/statsStore";
 import TypewriterText from "@/components/TypewriterText";
+import { getMoodProfile, getStoredMoodId } from "@/utils/mood";
+import { cn } from "@/lib/utils";
 
 interface DailyMascotCardProps {
   userName: string;
   onChatStart: () => void;
+  subtitle?: string;
+  moodId?: string;
+  className?: string;
 }
 
-const DailyMascotCard = ({ userName, onChatStart }: DailyMascotCardProps) => {
+const DailyMascotCard = ({ userName, onChatStart, subtitle, moodId, className }: DailyMascotCardProps) => {
   const [greeting, setGreeting] = useState("Welcome back. Ready to learn?");
+  const resolvedMoodId = moodId || getStoredMoodId();
+  const moodProfile = getMoodProfile(resolvedMoodId);
 
   useEffect(() => {
     const stats = statsStore.get();
-    getAIGreeting(userName, stats.currentStreak).then(setGreeting);
-  }, [userName]);
+    getAIGreeting(userName, stats.currentStreak, resolvedMoodId).then(setGreeting);
+  }, [userName, resolvedMoodId]);
 
   return (
     <motion.div 
-      className="glass-card p-8 h-full min-h-[350px] relative overflow-hidden group border-primary/20"
+      className={cn("glass-card p-8 min-h-[350px] h-full relative overflow-hidden group border-primary/20 flex flex-col", className)}
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
     >
        {/* Background glow */}
        <div className="absolute -right-10 -top-10 w-40 h-40 bg-accent/10 rounded-full blur-3xl group-hover:bg-accent/20 transition-all duration-700" />
        
-       <div className="relative z-10 flex flex-col items-center text-center space-y-6 h-full justify-center">
+       <div className="relative z-10 flex flex-col items-center text-center space-y-6 flex-1 justify-center">
           <motion.div
             className="w-20 h-20 rounded-3xl bg-primary/10 text-primary grid place-items-center"
             animate={{ y: [0, -5, 0] }}
@@ -41,7 +48,7 @@ const DailyMascotCard = ({ userName, onChatStart }: DailyMascotCardProps) => {
             <h3 className="text-2xl font-black text-foreground max-w-[260px] leading-tight mx-auto mb-2">
               <TypewriterText text={greeting} delay={150} />
             </h3>
-            <p className="text-sm text-muted-foreground">Tutor is online</p>
+            <p className="text-sm text-muted-foreground">{subtitle || moodProfile.dashboard.tutorSubtitle}</p>
           </div>
 
           <Button 

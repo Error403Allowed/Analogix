@@ -16,16 +16,20 @@ const groq2 = apiKey2 ? new Groq({ apiKey: apiKey2, dangerouslyAllowBrowser: tru
 const clients = [groq1, groq2].filter((c): c is Groq => c !== null);
 
 /**
- * HELPER: Gets the next available Groq client based on a 30-second rotation.
+ * HELPER: Rotates keys per request and steps to the next key on retries.
  */
-const getRotatedClient = (offset = 0) => {
+let rotationCursor = 0;
+
+const getRotationBase = () => {
+  if (clients.length === 0) return 0;
+  const base = rotationCursor % clients.length;
+  rotationCursor = (rotationCursor + 1) % clients.length;
+  return base;
+};
+
+const getRotatedClient = (baseIndex: number, offset = 0) => {
   if (clients.length === 0) return null;
-  
-  // Calculate index based on 30-second windows
-  const thirtySeconds = 30 * 1000;
-  const timeIndex = Math.floor(Date.now() / thirtySeconds);
-  const index = (timeIndex + offset) % clients.length;
-  
+  const index = (baseIndex + offset) % clients.length;
   return clients[index];
 };
 
@@ -38,6 +42,7 @@ if (clients.length === 0) {
 
 import { ChatMessage, UserContext } from "@/types/chat";
 import { QuizData } from "@/types/quiz";
+import { getMoodProfile } from "@/utils/mood";
 
 /**
  * THE MAIN FUNCTION: This is what we call when we want the AI to think.
@@ -54,9 +59,13 @@ export const getGroqCompletion = async (
     };
   }
 
+  const moodProfile = getMoodProfile(userContext?.mood);
   const systemPrompt = `You are "Quizzy", an enthusiastic and helpful AI tutor.
   
   Your Goal: Explain concepts using analogies based on the user's interests.
+
+  Mood: ${moodProfile.label} (${moodProfile.aiTone})
+  Mood Guidance: ${moodProfile.aiStyle}
   
   User Profile:
   - Year Level: Year ${userContext?.grade || "7-12"}
@@ -68,16 +77,17 @@ export const getGroqCompletion = async (
   1. Always keep your tone encouraging, fun, and supportive.
   2. Use analogies related to their specific hobbies whenever possible.
   3. Adjust the complexity of your language and scientific detail to be appropriate for a Year ${userContext?.grade || "7-12"} student.
-  4. Keep explanations clear and concise.
+  4. Keep explanations clear and concise, matching the mood guidance.
   5. If the user asks about a topic outside their subjects, still help them but try to relate it back if possible.
-  6. Blend facts and analogies together so they feel like a single, coherent explanation. Do NOT split into separate sections.
-  7. Avoid hard dividers or separators. Keep the flow continuous.
-  8. Keep the analogy tightly mapped to the actual concept in each sentence. Avoid switching topics.
-  9. Use Australian/British English spelling (e.g., colour, organise, maths).
-  10. Don't use emojis too much, apart from just titles. 
-  11. Use LaTeX for all math notation. Wrap inline math in '$...$' and display math in '$$...$$'.
+  6. Explain the raw facts (derived from ACARA curriculum) of the topic before explaining with an analogy.
+  7. Don't use emojis too much, apart from just titles.  
+  8. Use seperation techniques between raw facts and analogies.
+  9. Use LaTeX for all math notation. Wrap inline math in '$...$' and display math in '$$...$$'.
       - Examples: $x^2$, $\\int_a^b f(x)\\,dx$, $f(x)$, $\\frac{dy}{dx}$.
       - If a response contains math symbols, powers, integrals, functions, or equations, it MUST be in LaTeX.
+  10. Make sure to keep responses concise and avoid overwhelming the student with too much information at once. If a topic is complex, break it down into smaller parts and explain each part clearly before moving on. 
+  11. Unless a student asks for concepts or definitions, focus more on the analogy and intuitive understanding rather than just stating facts. The goal is to make the concept relatable and memorable through their interests.
+  12. Read over your response before sending to ensure it matches the mood and style guidance, and that the analogies are relevant to the user's hobbies, as well as ensuring the grammar and formatting is clear and correct. 
   `;
 
   const fullMessages = [
@@ -85,8 +95,9 @@ export const getGroqCompletion = async (
     ...messages
   ];
 
+  const rotationBase = getRotationBase();
   const callWithRetry = async (retryCount = 0): Promise<any> => {
-    const activeGroq = getRotatedClient(retryCount);
+    const activeGroq = getRotatedClient(rotationBase, retryCount);
     if (!activeGroq) return { role: "assistant", content: "No AI service available." };
 
     try {
@@ -94,7 +105,7 @@ export const getGroqCompletion = async (
         messages: fullMessages as any[],
         model: "llama-3.3-70b-versatile",
         temperature: 0.7,
-        max_tokens: 2048,
+        max_tokens: 1024,
       });
       return completion.choices[0]?.message;
     } catch (error) {
@@ -112,14 +123,16 @@ export const getGroqCompletion = async (
 /**
  * GENERATING DYNAMIC GREETINGS: This uses AI to create unique greetings for the user.
  */
-export const getAIGreeting = async (userName: string, streak: number) => {
+export const getAIGreeting = async (userName: string, streak: number, mood?: string) => {
   const stripEmojis = (text: string) =>
     text.replace(/\p{Extended_Pictographic}/gu, "").replace(/\s+/g, " ").trim();
 
   if (clients.length === 0) return `Welcome back, ${userName}.`;
 
+  const rotationBase = getRotationBase();
+  const moodProfile = getMoodProfile(mood);
   const callWithRetry = async (retryCount = 0): Promise<string> => {
-    const activeGroq = getRotatedClient();
+    const activeGroq = getRotatedClient(rotationBase, retryCount);
     if (!activeGroq) return `Welcome back, ${userName}!`;
 
     try {
@@ -127,7 +140,7 @@ export const getAIGreeting = async (userName: string, streak: number) => {
         messages: [
           { 
             role: "system", 
-            content: 'You are Quizzy, a concise tutor. Generate a short, enthusiastic, one-sentence greeting for a student. Keep it under 8 words. Do not use emojis. Avoid generic "Welcome back".' 
+            content: `You are Quizzy, a concise tutor. Generate a short, one-sentence greeting for a student. Keep it under 8 words. Do not use emojis. Avoid generic "Welcome back". Mood: ${moodProfile.label}. Tone: ${moodProfile.greetingStyle}.` 
           },
           { 
             role: "user", 
@@ -149,62 +162,59 @@ export const getAIGreeting = async (userName: string, streak: number) => {
   return await callWithRetry();
 };
 
-export const getAIBannerPhrase = async (userName: string, subjects: string[]) => {
-  if (clients.length === 0) return "What's the plan for today?";
-
-  const minLength = 72;
-  const maxLength = 140;
-
+export const getAIBannerPhrase = async (userName: string, subjects: string[], mood?: string) => {
+  const FALLBACK_LINES = [
+    "Let’s make light progress today.",
+    "Pick one idea and explore it.",
+    "Small steps still build skill."
+  ];  
+  const ensurePunctuation = (text: string) => {
+    const lines = text.split('\n');
+    return lines.map((line) => {
+      const trimmed = line.trim();
+      if (!trimmed) return trimmed;
+      // Add period if no punctuation at end
+      if (!/[.!?]$/.test(trimmed)) {
+        return trimmed + '.';
+      }
+      return trimmed;
+    }).join('\n');
+  };
   const normaliseText = (text: string) =>
     text.replace(/\s+/g, " ").replace(/["“”]/g, "").trim();
 
-  const suffixes = [
-    " Let's map your next steps together.",
-    " Ready to dive deeper and connect the dots today?",
-    " Let's turn curiosity into real progress now.",
-    " Keep the momentum and make each insight count.",
-  ];
-
-  const buildCandidate = (base: string) => {
-    if (base.length > maxLength) return null;
-    let result = base;
-    for (const suffix of suffixes) {
-      if (result.length >= minLength) break;
-      if (result.length + suffix.length <= maxLength) {
-        result = `${result}${suffix}`;
-      }
-    }
-    if (result.length >= minLength && result.length <= maxLength) return result;
-    return null;
-  };
-
-  const fallbackBanner = () => {
-    const cleanedSubjects = subjects.map((subject) => subject.trim()).filter(Boolean);
-    const subjectSnippet = cleanedSubjects.length > 0 ? ` in ${cleanedSubjects.join(", ")}` : "";
-    const bases = [
-      `Hey ${userName}, ready to explore${subjectSnippet} and grow your skills today?`,
-      `Hey ${userName}, ready to explore and grow your skills today?`,
-      "Ready to explore, connect ideas, and grow your skills today?",
-      "Let's explore new ideas, connect the dots, and build real progress today.",
+  const forceThreeLines = (text: string) => {
+    const words = text.split(" ").filter(Boolean);
+    if (words.length <= 3) return words.join("\n");
+    const target = Math.ceil(words.length / 3);
+    const lines = [
+      words.slice(0, target).join(" "),
+      words.slice(target, target * 2).join(" "),
+      words.slice(target * 2).join(" ")
     ];
-    for (const base of bases) {
-      const candidate = buildCandidate(base);
-      if (candidate) return candidate;
-    }
-    return "Let's explore new ideas, connect the dots, and build real progress today.";
+    return lines.map((line) => line.trim()).join("\n");
   };
 
-  const ensureLengthRange = (text: string) => {
-    if (text.length >= minLength && text.length <= maxLength) return text;
-    if (text.length < minLength) {
-      const padded = buildCandidate(text);
-      if (padded) return padded;
+  const getRecentBanners = () => {
+    try {
+      return JSON.parse(localStorage.getItem("recentBannerPhrases") || "[]");
+    } catch {
+      return [];
     }
-    return fallbackBanner();
   };
 
+  const storeBanner = (text: string) => {
+    const recent = getRecentBanners();
+    const next = [...recent, text].slice(-6);
+    localStorage.setItem("recentBannerPhrases", JSON.stringify(next));
+  };
+
+  if (clients.length === 0) return FALLBACK_LINES.join("\n");
+
+  const rotationBase = getRotationBase();
+  const moodProfile = getMoodProfile(mood);
   const callWithRetry = async (retryCount = 0): Promise<string> => {
-    const activeGroq = getRotatedClient();
+    const activeGroq = getRotatedClient(rotationBase, retryCount);
     if (!activeGroq) return "What's the plan for today?";
 
     try {
@@ -212,7 +222,7 @@ export const getAIBannerPhrase = async (userName: string, subjects: string[]) =>
         messages: [
           { 
             role: "system", 
-            content: "Generate a punchy call to action for a student dashboard. Use Australian/British spelling. Focus on curiosity and growth. Use the student's name. Be unique. Length must be between 72 and 140 characters." 
+            content: `Generate a short, punchy 3-line call to action for a student dashboard. Each line should be 4-7 words and END WITH A PERIOD. Focus on curiosity and growth. Use the student's name. Be unique. No emojis. Mood: ${moodProfile.label}. Style: ${moodProfile.bannerStyle}.` 
           },
           { 
             role: "user", 
@@ -223,15 +233,22 @@ export const getAIBannerPhrase = async (userName: string, subjects: string[]) =>
         temperature: 1.0,
         max_tokens: 50,
       });
-      const raw = completion.choices[0]?.message?.content || "Ready to turn concepts into analogies?";
+      const raw = completion.choices[0]?.message?.content || "";
       const cleaned = normaliseText(raw);
-      if ((cleaned.length < minLength || cleaned.length > maxLength) && retryCount < 1) {
+      const threeLines = forceThreeLines(cleaned);
+      const withPunctuation = ensurePunctuation(threeLines);
+      const recent = getRecentBanners();
+      if (recent.includes(withPunctuation) && retryCount < 1) {
         return callWithRetry(retryCount + 1);
       }
-      return ensureLengthRange(cleaned);
+      const finalText = withPunctuation || FALLBACK_LINES.join("\n");
+      storeBanner(finalText);
+      return finalText;
     } catch {
       if (retryCount < clients.length - 1) return callWithRetry(retryCount + 1);
-      return "What should we tackle first?";
+      const fallback = FALLBACK_LINES.join("\n");
+      storeBanner(fallback);
+      return fallback;
     }
   };
 
@@ -247,6 +264,7 @@ export const generateQuiz = async (
     grade?: string;
     hobbies: string[];
     subject?: string;
+    mood?: string;
   },
   numberOfQuestions: number = 5,
   options?: {
@@ -259,9 +277,11 @@ export const generateQuiz = async (
   const subject = userContext.subject || "General";
   const diversitySeed = options?.diversitySeed || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   const avoidList = (options?.avoidQuestions || []).slice(0, 20);
+  const moodProfile = getMoodProfile(userContext.mood);
   const systemPrompt = `You are Quizzy, an AI tutor. Generate a ${numberOfQuestions}-question mixed quiz for a Year ${userContext.grade || "7-12"} student.
   
   CRITICAL INSTRUCTIONS: 
+  0. Mood: ${moodProfile.label}. Quiz style: ${moodProfile.quizStyle}.
   1. Each question MUST include an "analogy" field that explains the concept using the user's hobbies (${userContext.hobbies.join(", ")}).
   2. The quiz should be a mix of "multiple_choice" and "short_answer" types.
   3. Return ONLY a JSON array of questions under a "questions" key.
@@ -274,15 +294,14 @@ export const generateQuiz = async (
     - CRITICAL: Double-escape all backslashes in the JSON string (e.g., use "\\frac" for "\frac").
     - If the content includes powers, integrals, derivatives, functions, or equations, render them in LaTeX (e.g., $x^n$, $\\int f(x)\\,dx$, $f(x)$).
   7. Use "⸻" to seperate paragraphs and parts of text that are not related to each other.
-  8. Use Australian/British English spelling (e.g., colour, organise, maths).
   
-  9. MATH/SCIENCE VERIFICATION (CRITICAL):
+  8. MATH/SCIENCE VERIFICATION (CRITICAL):
     - If the question involves ANY calculation (Math, Physics, Chemistry, etc.), you MUST generate a Python script to solve it.
     - Include this script in a "python_solution" field.
     - The "correctAnswer" and options MUST be derived strictly from this Python script's output.
     - Do NOT rely on your internal training data for calculations. Trust the code.
   
-  10. Format:
+  9. Format:
   {
     "questions": [
       {
@@ -321,8 +340,9 @@ Avoid (do not repeat or paraphrase):
 ${avoidList.length > 0 ? avoidList.map((q, i) => `${i + 1}. ${q}`).join("\n") : "None"}
 `;
 
+  const rotationBase = getRotationBase();
   const callWithRetry = async (retryCount = 0): Promise<QuizData | null> => {
-    const activeGroq = getRotatedClient();
+    const activeGroq = getRotatedClient(rotationBase, retryCount);
     if (!activeGroq) return null;
 
     try {
@@ -365,8 +385,9 @@ export const gradeShortAnswer = async (
 ) => {
   if (clients.length === 0) return { isCorrect: false, feedback: "AI grading unavailable." };
 
+  const rotationBase = getRotationBase();
   const callWithRetry = async (retryCount = 0): Promise<any> => {
-    const activeGroq = getRotatedClient();
+    const activeGroq = getRotatedClient(rotationBase, retryCount);
     if (!activeGroq) return { isCorrect: false, feedback: "AI grading unavailable." };
 
     try {

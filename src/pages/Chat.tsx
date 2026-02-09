@@ -2,21 +2,24 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
+  Send,
   Sparkles,
   BookOpen,
   Lightbulb,
   RefreshCw,
-  Copy
+  Square,
+  Copy,
+  Check
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useNavigate } from "react-router-dom";
-import { getGroqCompletion } from "@/services/groq";
+import { getGroqCompletion } from "@/services/huggingface";
 import { statsStore } from "@/utils/statsStore";
 import MarkdownRenderer from "@/components/MarkdownRenderer";
 import TypewriterText from "@/components/TypewriterText";
 import { SUBJECT_CATALOG, getSubjectDescription } from "@/constants/subjects";
-import { toast } from "sonner";
-import ChatInputBar from "@/components/ChatInputBar";
+import { getStoredMoodId } from "@/utils/mood";
 
 // Typewriter animation component for AI messages - uses refs to prevent restart on parent re-renders
 const TypewriterMessage = ({ 
@@ -119,10 +122,10 @@ const TypewriterMessage = ({
         setDisplayedContent(currentContent.slice(0, charIndexRef.current));
         // Variable speed: faster for spaces/newlines, slower for punctuation
         const char = currentContent[charIndexRef.current - 1];
-        let speed = 12; // Base speed (fast for chat)
-        if (char === " " || char === "\n") speed = 6.5;
-        else if (char === "." || char === "!" || char === "?" || char === ",") speed = 65;
-        else if (char === "*") speed = 4; // Fast for markdown
+        let speed = 15; // Base speed (fast for chat)
+        if (char === " " || char === "\n") speed = 8;
+        else if (char === "." || char === "!" || char === "?" || char === ",") speed = 80;
+        else if (char === "*") speed = 5; // Fast for markdown
         timeoutRef.current = setTimeout(typeNextChar, speed);
       } else {
         setIsTyping(false);
@@ -161,6 +164,7 @@ interface Message {
   content: string;
   analogy?: string;
   isNew?: boolean; // Track if this is a new message for typewriter effect
+  isWelcome?: boolean;
 }
 
 const subjects = SUBJECT_CATALOG;
@@ -190,11 +194,11 @@ const Chat = () => {
   
   // ANIMATING: Track if typewriter is currently running
   const [isAnimating, setIsAnimating] = useState(false);
+
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const copyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
-  const messagesContainerRef = useRef<HTMLDivElement>(null);
-  const messageRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   // RETRIEVING MEMORY: We pull your hobbies and subjects from the browser.
   const userPrefs = JSON.parse(localStorage.getItem("userPreferences") || "{}");
@@ -204,53 +208,149 @@ const Chat = () => {
   const availableSubjects = userSubjects.length > 0
     ? subjects.filter((s) => userSubjects.includes(s.id))
     : subjects;
+  const isInputLocked = isTyping || isAnimating;
 
-  const chatContext = {
+  const latestAssistantId = [...messages].reverse().find((m) => m.role === "assistant")?.id;
+
+  const welcomeTemplates = useCallback((subjectLabel: string) => ([
+    `Hi ${userName}. Great choice picking ${subjectLabel}.\n\nWhat specific topic or concept would you like to explore today? Just tell me what's on your mind, and I'll find a clear analogy for you.`,
+    `Hey ${userName}! ${subjectLabel} is a strong pick.\n\nTell me a topic or concept you're curious about, and I'll explain it with a clear analogy.`,
+    `Nice, ${userName}. ${subjectLabel} unlocked.\n\nWhat should we explore first? I’ll make it click with a simple analogy.`,
+    `Alright ${userName}, ${subjectLabel} it is.\n\nName a concept and I’ll break it down with a clear analogy.`,
+    `Welcome, ${userName}. Let’s dive into ${subjectLabel}.\n\nWhat topic do you want to tackle today?`
+  ]), [userName]);
+
+  const buildWelcomeMessage = useCallback((subjectLabel: string, previous?: string) => {
+    const options = welcomeTemplates(subjectLabel);
+    if (options.length === 0) return "";
+    let next = options[Math.floor(Math.random() * options.length)];
+    if (previous && options.length > 1) {
+      let attempts = 0;
+      while (next === previous && attempts < 6) {
+        next = options[Math.floor(Math.random() * options.length)];
+        attempts += 1;
+      }
+    }
+    return next;
+  }, [welcomeTemplates]);
+
+  const buildContext = useCallback(() => ({
     subjects: selectedSubject ? [selectedSubject] : userSubjects,
     hobbies: userHobbies,
     grade: userPrefs.grade,
-    learningStyle: userPrefs.learningStyle
-  };
+    learningStyle: userPrefs.learningStyle,
+    mood: getStoredMoodId()
+  }), [selectedSubject, userSubjects, userHobbies, userPrefs.grade, userPrefs.learningStyle]);
 
-  const lastAssistantId = [...messages].reverse().find((m) => m.role === "assistant")?.id;
+  const handleCopy = useCallback(async (text: string, id: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      textarea.style.left = "-9999px";
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      try {
+        document.execCommand("copy");
+      } catch {
+        // Ignore copy failures.
+      }
+      document.body.removeChild(textarea);
+    }
+
+    setCopiedId(id);
+    if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+    copyTimeoutRef.current = setTimeout(() => setCopiedId(null), 1500);
+  }, []);
+
+  const handleRegenerate = useCallback(async (messageId: string) => {
+    if (isInputLocked) return;
+    const targetIndex = messages.findIndex((m) => m.id === messageId);
+    if (targetIndex === -1) return;
+    const target = messages[targetIndex];
+    if (target.role !== "assistant") return;
+
+    const subjectLabel = subjects.find(s => s.id === selectedSubject)?.label || selectedSubject || "this subject";
+
+    if (target.isWelcome) {
+      const nextContent = buildWelcomeMessage(subjectLabel, target.content);
+      setMessages((prev) => prev.map((m) => (
+        m.id === messageId
+          ? { ...m, id: `welcome-${Date.now()}`, content: nextContent, isNew: true, isWelcome: true }
+          : m
+      )));
+      setIsAnimating(true);
+      setStopTyping(false);
+      return;
+    }
+
+    if (latestAssistantId && target.id !== latestAssistantId) return;
+    if (messages[targetIndex - 1]?.role !== "user") return;
+
+    const history = messages.slice(0, targetIndex).map((m) => ({
+      role: m.role,
+      content: m.content
+    }));
+
+    if (!selectedSubject) return;
+
+    setIsTyping(true);
+    setStopTyping(false);
+
+    const aiResponse = await getGroqCompletion(history, buildContext());
+
+    setMessages((prev) => prev.map((m) => (
+      m.id === messageId
+        ? {
+            ...m,
+            id: `${messageId}-regen-${Date.now()}`,
+            content: aiResponse.content || "I'm not sure how to answer that.",
+            isNew: true
+          }
+        : m
+    )));
+    setIsTyping(false);
+    setIsAnimating(true);
+    setStopTyping(false);
+  }, [
+    isInputLocked,
+    messages,
+    subjects,
+    selectedSubject,
+    latestAssistantId,
+    buildContext,
+    buildWelcomeMessage
+  ]);
 
   useEffect(() => {
     // We stay on the selection screen so Quizzy can ask what you want to explore!
   }, []);
 
-  // No auto-scroll: user controls when to scroll.
-
   useEffect(() => {
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
     return () => {
-      document.body.style.overflow = previous;
+      if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
     };
   }, []);
 
-  useEffect(() => {
-    if (!messages.length) return;
-    const last = messages[messages.length - 1];
-    if (last.role !== "user") return;
-    const container = messagesContainerRef.current;
-    const el = messageRefs.current[last.id];
-    if (!container || !el) return;
-    requestAnimationFrame(() => {
-      container.scrollTo({ top: Math.max(el.offsetTop - 8, 0), behavior: "smooth" });
-    });
-  }, [messages]);
+  // No auto-scroll: user controls when to scroll.
 
   // PICKING A TOPIC: This runs when you select a subject icon.
   const handleSubjectSelect = (subjectId: string) => {
     setSelectedSubject(subjectId);
     const subject = subjects.find(s => s.id === subjectId);
+    const subjectLabel = subject?.label || subjectId;
     
     // WELCOME: Ask the user what they want to dive into!
     setMessages([{
-      id: "welcome",
+      id: `welcome-${Date.now()}`,
       role: "assistant",
-      content: `Hi ${userName}. Great choice picking ${subject?.label}.\n\nWhat specific topic or concept would you like to explore today? Just tell me what's on your mind, and I'll find a clear analogy for you.`,
-      isNew: true
+      content: buildWelcomeMessage(subjectLabel),
+      isNew: true,
+      isWelcome: true
     }]);
     setIsAnimating(true);
     setStopTyping(false);
@@ -258,7 +358,7 @@ const Chat = () => {
 
   // TALKING TO THE AI: This is where the magic happens!
   const handleSend = () => {
-    if (!input.trim() || !selectedSubject) return;
+    if (!input.trim() || !selectedSubject || isInputLocked) return;
 
     // 1. We show your message on the screen immediately.
     const userMessage: Message = {
@@ -269,9 +369,6 @@ const Chat = () => {
 
     setMessages(prev => [...prev, userMessage]);
     setInput("");
-    if (inputRef.current) {
-      inputRef.current.style.height = "auto";
-    }
     setIsTyping(true); // Show the "thinking" dots.
 
     // Record the conversation
@@ -290,8 +387,10 @@ const Chat = () => {
       const newHistory = [...messagesHistory, { role: "user" as const, content: input }];
       
       // We also give the AI "Context" (your hobbies and style).
+      const context = buildContext();
+
       // FETCH: We send the request over the internet and wait.
-      const aiResponse = await getGroqCompletion(newHistory, chatContext);
+      const aiResponse = await getGroqCompletion(newHistory, context);
 
       // 3. We show the AI's reply on the screen.
       const response: Message = {
@@ -309,20 +408,22 @@ const Chat = () => {
   };
 
   const handleNewTopic = async () => {
-    if (!selectedSubject) return;
+    if (!selectedSubject || isInputLocked) return;
 
     // AI GENERATION: Always ask the AI for a new topic from the start.
     setIsTyping(true);
     const subjectLabel = subjects.find(s => s.id === selectedSubject)?.label || selectedSubject;
     const usedTopics = messages.filter(m => m.analogy).map(m => m.analogy).filter(Boolean);
     
+    const context = buildContext();
+
     const avoidText = usedTopics.length > 0 ? `Avoid repeating these topics: ${usedTopics.join(", ")}.` : "";
     const aiPrompt = [{ 
       role: "user" as const, 
       content: `Introduce a NEW, interesting concept in ${subjectLabel} using a fun analogy related to my interests (${userHobbies.join(", ")}). ${avoidText}` 
     }];
 
-    const aiResponse = await getGroqCompletion(aiPrompt, chatContext);
+    const aiResponse = await getGroqCompletion(aiPrompt, context);
     
     setMessages(prev => [...prev, {
       id: Date.now().toString(),
@@ -336,65 +437,13 @@ const Chat = () => {
     setStopTyping(false);
   };
 
-  const handleCopy = async (content: string) => {
-    try {
-      await navigator.clipboard.writeText(content);
-      toast.success("Copied response");
-    } catch {
-      toast.error("Copy failed");
-    }
-  };
-
-  const handleRegenerate = async (messageId: string) => {
-    const targetIndex = messages.findIndex((m) => m.id === messageId);
-    if (targetIndex <= 0) return;
-
-    const history = messages
-      .slice(0, targetIndex)
-      .map((m) => ({ role: m.role, content: m.content }));
-
-    setIsTyping(true);
-    try {
-      const aiResponse = await getGroqCompletion(history, chatContext);
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === messageId
-            ? { ...m, content: aiResponse.content || "I'm not sure how to answer that.", isNew: true }
-            : m
-        )
-      );
-      setIsAnimating(true);
-      setStopTyping(false);
-    } finally {
-      setIsTyping(false);
-    }
-  };
-
-  const handleTextareaKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      e.stopPropagation();
-      if (input.trim()) {
-        handleSend();
-      }
-    }
-  };
-
-  const handleInputChange = (value: string) => {
-    setInput(value);
-    if (!inputRef.current) return;
-    const el = inputRef.current;
-    el.style.height = "auto";
-    el.style.height = `${Math.min(el.scrollHeight, 180)}px`;
-  };
-
   return (
-    <div className="fixed inset-0 flex flex-col overflow-hidden">
+    <div className="min-h-screen flex flex-col relative overflow-hidden">
       {/* Background */}
       <div className="liquid-blob w-96 h-96 bg-primary/20 -top-48 -right-48 fixed" />
       <div className="liquid-blob w-64 h-64 bg-accent/20 bottom-20 -left-32 fixed" style={{ animationDelay: '-2s' }} />
 
-      <div className="flex-1 flex flex-col max-w-4xl mx-auto w-full px-4 py-6 relative z-10 min-h-0 h-full">
+      <div className="flex-1 flex flex-col max-w-4xl mx-auto w-full px-4 py-6 relative z-10">
         {/* Header */}
         <motion.header
           className="glass-card px-6 py-4 mb-4"
@@ -484,28 +533,27 @@ const Chat = () => {
                 })()}
                 {subjects.find(s => s.id === selectedSubject)?.label}
               </Button>
-              <Button variant="outline" size="sm" onClick={handleNewTopic} className="gap-2">
+              <Button variant="outline" size="sm" onClick={handleNewTopic} className="gap-2" disabled={isInputLocked}>
                 <RefreshCw className="w-4 h-4" />
                 New Topic
               </Button>
             </motion.div>
 
             {/* Messages */}
-            <div
-              ref={messagesContainerRef}
-              className="flex-1 min-h-0 overflow-y-auto space-y-4 pb-6 overscroll-contain hide-scrollbar"
-              style={{ overflowAnchor: "none" }}
-            >
+            <div className="flex-1 overflow-y-auto space-y-4 mb-4">
               <AnimatePresence>
-                {messages.map((message) => (
+                {messages.map((message, index) => {
+                  const canRegenerate =
+                    message.role === "assistant" &&
+                    (message.isWelcome ||
+                      (message.id === latestAssistantId && messages[index - 1]?.role === "user"));
+
+                  return (
                   <motion.div
                     key={message.id}
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
-                    ref={(node) => {
-                      messageRefs.current[message.id] = node;
-                    }}
                   >
                     <div
                       className={`max-w-[85%] p-4 rounded-2xl ${
@@ -523,49 +571,72 @@ const Chat = () => {
                         </div>
                       )}
                       {message.role === "assistant" ? (
-                        <TypewriterMessage 
-                          content={message.content} 
-                          isNew={message.isNew || false}
-                          shouldStop={stopTyping}
-                          onComplete={() => {
-                            // Mark message as no longer new after typing completes
-                            setMessages(prev => prev.map(m => 
-                              m.id === message.id ? { ...m, isNew: false } : m
-                            ));
-                            setIsAnimating(false);
-                            setStopTyping(false);
-                          }}
-                        />
-                      ) : (
-                        <p className="whitespace-pre-wrap text-sm leading-relaxed">
-                          {message.content}
-                        </p>
-                      )}
-                      {message.role === "assistant" && (
-                        <div className="mt-3 flex items-center justify-end gap-2">
-                          <button
-                            type="button"
-                            onClick={() => handleCopy(message.content)}
-                            className="text-xs font-semibold text-muted-foreground hover:text-primary transition-colors flex items-center gap-1"
-                          >
-                            <Copy className="w-3.5 h-3.5" />
-                            Copy
-                          </button>
-                          {message.id === lastAssistantId && (
-                            <button
+                        <>
+                          <TypewriterMessage 
+                            content={message.content} 
+                            isNew={message.isNew || false}
+                            shouldStop={stopTyping}
+                            onComplete={() => {
+                              // Mark message as no longer new after typing completes
+                              setMessages(prev => prev.map(m => 
+                                m.id === message.id ? { ...m, isNew: false } : m
+                              ));
+                              setIsAnimating(false);
+                              setStopTyping(false);
+                            }}
+                          />
+                          <div className="mt-3 flex items-center justify-end gap-2">
+                            <Button
                               type="button"
-                              onClick={() => handleRegenerate(message.id)}
-                              className="text-xs font-semibold text-muted-foreground hover:text-primary transition-colors flex items-center gap-1"
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleCopy(message.content, message.id)}
+                              aria-label="Copy response"
+                              title="Copy response"
+                              className="h-7 w-7 rounded-full text-muted-foreground hover:text-primary"
                             >
-                              <RefreshCw className="w-3.5 h-3.5" />
-                              Regenerate
-                            </button>
-                          )}
-                        </div>
+                              {copiedId === message.id ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                            </Button>
+                            {canRegenerate && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleRegenerate(message.id)}
+                                disabled={isInputLocked}
+                                aria-label="Regenerate response"
+                                title="Regenerate response"
+                                className="h-7 w-7 rounded-full text-muted-foreground hover:text-primary"
+                              >
+                                <RefreshCw className="w-3 h-3" />
+                              </Button>
+                            )}
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <p className="whitespace-pre-wrap text-sm leading-relaxed">
+                            {message.content}
+                          </p>
+                          <div className="mt-2 flex items-center justify-end">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleCopy(message.content, message.id)}
+                              aria-label="Copy prompt"
+                              title="Copy prompt"
+                              className="h-7 w-7 rounded-full text-primary-foreground/80 hover:text-primary-foreground hover:bg-white/10"
+                            >
+                              {copiedId === message.id ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                            </Button>
+                          </div>
+                        </>
                       )}
                     </div>
                   </motion.div>
-                ))}
+                );
+                })}
               </AnimatePresence>
 
               {isTyping && (
@@ -601,20 +672,61 @@ const Chat = () => {
                 </motion.div>
               )}
               
-              <div className="h-36" aria-hidden />
-              <div ref={messagesEndRef} style={{ overflowAnchor: "none" }} />
+              <div ref={messagesEndRef} />
             </div>
 
-            <ChatInputBar
-              value={input}
-              onChange={handleInputChange}
-              onSubmit={handleSend}
-              onStop={() => setStopTyping(true)}
-              onKeyDownCapture={handleTextareaKeyDown}
-              inputRef={inputRef}
-              isTyping={isTyping}
-              isAnimating={isAnimating}
-            />
+            {/* Input */}
+            <motion.div
+              className="glass-card p-4 sticky bottom-0 z-20 bg-background/80 backdrop-blur-xl border border-white/20 shadow-[0_-10px_30px_-20px_rgba(0,0,0,0.35)] relative group"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+            >
+              <div className="pointer-events-none absolute -inset-1 rounded-[28px] opacity-0 transition-opacity duration-300 group-focus-within:opacity-100">
+                <div
+                  className="absolute inset-0 rounded-[28px] bg-gradient-to-r from-[var(--g-1)] via-[var(--g-2)] to-[var(--g-3)] animate-gradient-x opacity-80"
+                  style={{
+                    padding: "2px",
+                    WebkitMask: "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
+                    WebkitMaskComposite: "xor",
+                    maskComposite: "exclude"
+                  }}
+                />
+              </div>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleSend();
+                }}
+                className="flex gap-3 relative z-10"
+              >
+                <Input
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  placeholder="Ask me anything about this subject..."
+                  className="flex-1 glass border-border"
+                />
+                {(isTyping || isAnimating) ? (
+                  <Button
+                    type="button"
+                    onClick={() => setStopTyping(true)}
+                    className="gap-2 bg-destructive hover:bg-destructive/90 text-destructive-foreground border-0"
+                  >
+                    <Square className="w-4 h-4" />
+                  </Button>
+                ) : (
+                  <Button
+                    type="submit"
+                    disabled={!input.trim()}
+                    className="gap-2 gradient-primary text-primary-foreground border-0"
+                  >
+                    <Send className="w-4 h-4" />
+                  </Button>
+                )}
+              </form>
+              <p className="text-xs text-muted-foreground mt-2 text-center">
+                Quizzy can make mistakes. Check important info.
+              </p>
+            </motion.div>
           </>
         )}
       </div>

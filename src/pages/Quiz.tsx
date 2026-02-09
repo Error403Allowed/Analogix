@@ -7,8 +7,9 @@ import QuizCard from "@/components/QuizCard";
 import Confetti from "@/components/Confetti";
 import { statsStore } from "@/utils/statsStore";
 import { achievementStore } from "@/utils/achievementStore";
-import { generateQuiz } from "@/services/groq";
+import { generateQuiz } from "@/services/huggingface";
 import TypewriterText from "@/components/TypewriterText";
+import { getStoredMoodId } from "@/utils/mood";
 
 const Quiz = () => {
   const navigate = useNavigate();
@@ -91,7 +92,8 @@ const Quiz = () => {
           {
             grade: userPrefs.grade,
             hobbies: userPrefs.hobbies || [],
-            subject: subject
+            subject: subject,
+            mood: getStoredMoodId()
           },
           numQuestionsTarget,
           { diversitySeed: `${baseSeed}-${attempt}`, avoidQuestions: avoidList }
@@ -172,7 +174,7 @@ const Quiz = () => {
             <Brain className="w-7 h-7" />
           </div>
           <p className="text-sm text-muted-foreground">
-            Quizzy is crafting a personalised {topic} quiz...
+            Quizzy is crafting a personalized {topic} quiz...
           </p>
         </div>
         <div className="mt-8 flex items-center gap-2 text-primary font-bold animate-pulse">

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { 
   Trophy, 
+  Brain,
   Target, 
   Zap, 
   TrendingUp,
@@ -11,7 +12,6 @@ import {
   Sparkles,
   Smile,
   Coffee,
-  Brain,
   Flame,
   Moon
 } from "lucide-react";
@@ -27,10 +27,11 @@ import DailyMascotCard from "@/components/DailyMascotCard";
 import { useNavigate } from "react-router-dom";
 import { achievementStore } from "@/utils/achievementStore";
 import { statsStore } from "@/utils/statsStore";
-import { getAIBannerPhrase } from "@/services/groq";
+import { getAIBannerPhrase } from "@/services/huggingface";
 import { useAchievementChecker } from "@/hooks/useAchievementChecker";
 import TypewriterText from "@/components/TypewriterText";
 import { applyThemeByName } from "@/components/ThemeSelector";
+import { getMoodProfile } from "@/utils/mood";
 
 const moodThemes = [
   {
@@ -44,7 +45,7 @@ const moodThemes = [
     id: "energized",
     label: "Energized",
     theme: "Candy Pop",
-    description: "bright, fast, and bold.",
+    description: "Bright, fast, and bold.",
     icon: Flame
   },
   {
@@ -96,7 +97,7 @@ const Dashboard = () => {
   const [showQuizCreator, setShowQuizCreator] = useState(false);
   const [quizCreatorMode, setQuizCreatorMode] = useState<'custom' | 'learning'>('custom');
   const [recentAchievements, setRecentAchievements] = useState([]);
-  const [bannerPhrase, setBannerPhrase] = useState("Loading your plan...");
+  const [bannerPhrase, setBannerPhrase] = useState("");
   const [selectedMood, setSelectedMood] = useState(() => localStorage.getItem("mood-theme") || "focused");
   
   // Start Achievement Sync
@@ -123,20 +124,23 @@ const Dashboard = () => {
     handleAchievementsUpdate();
     
     // Fetch AI banner specifically for the dashboard
-    getAIBannerPhrase(userName, userPrefs.subjects || []).then(setBannerPhrase);
+    getAIBannerPhrase(userName, userPrefs.subjects || [], selectedMood).then(setBannerPhrase);
     
     return () => {
       window.removeEventListener("statsUpdated", handleStatsUpdate);
       window.removeEventListener("achievementsUpdated", handleAchievementsUpdate);
     };
-  }, [userName]);
+  }, [userName, selectedMood]);
 
   useEffect(() => {
     const mood = moodThemes.find((m) => m.id === selectedMood);
     if (!mood) return;
     applyThemeByName(mood.theme);
     localStorage.setItem("mood-theme", mood.id);
+    window.dispatchEvent(new Event("moodUpdated"));
   }, [selectedMood]);
+
+  const moodProfile = getMoodProfile(selectedMood);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -167,67 +171,84 @@ const Dashboard = () => {
           className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-6 items-stretch"
         >
           {/* Row 1: Welcome & Quick Stats */}
-          <div className="lg:col-span-8 space-y-6">
+          <div className="lg:col-span-8 flex flex-col gap-6 h-full">
             <motion.div variants={itemVariants} className="glass-card p-8 border-none bg-gradient-to-br from-primary/10 via-background/50 to-accent/5 relative overflow-hidden group min-h-[220px] flex flex-col justify-center">
                 <div className="absolute top-0 right-0 w-80 h-80 bg-primary/10 rounded-full -mr-40 -mt-40 blur-3xl group-hover:scale-110 transition-transform duration-700" />
                 <div className="relative z-10">
                    <h2 className="text-3xl md:text-4xl font-black text-foreground mb-4 leading-tight tracking-tight max-w-2xl">
-                      <TypewriterText text={bannerPhrase} delay={120} />
+                      {bannerPhrase ? (
+                        <TypewriterText text={bannerPhrase} delay={120} className="whitespace-pre-line" />
+                      ) : (
+                        <div className="space-y-3">
+                          <span className="block h-7 w-4/5 rounded-md bg-muted/40 animate-pulse" />
+                          <span className="block h-7 w-3/5 rounded-md bg-muted/40 animate-pulse" />
+                          <span className="block h-7 w-2/5 rounded-md bg-muted/40 animate-pulse" />
+                        </div>
+                      )}
                    </h2>
                    <div className="flex flex-wrap gap-4 mt-2">
                       <Button onClick={() => { setQuizCreatorMode('learning'); setShowQuizCreator(true); }} className="gradient-primary text-primary-foreground border-0 px-8 h-12 rounded-2xl font-black shadow-xl hover:scale-105 transition-transform">
-                        Start Learning Session
+                        {moodProfile.dashboard.primaryCta}
                       </Button>
                       <Button variant="outline" onClick={() => { setQuizCreatorMode('custom'); setShowQuizCreator(true); }} className="h-12 px-6 rounded-2xl font-bold bg-background/50 backdrop-blur hover:bg-background/80">
-                        Custom Quiz
+                        {moodProfile.dashboard.secondaryCta}
                       </Button>
                    </div>
                 </div>
             </motion.div>
 
             {/* QUICK STATS BAR - This fulfills "resize and go on the bottom" logic on mobile, but is top-level on desktop */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <StatsCard 
-                  title="Daily Streak" 
-                  value={statsData.currentStreak} 
-                  icon={Zap} 
-                  color="warning" 
-                  subtitle="Keep it up!"
-                />
-                <StatsCard 
-                  title="Conversations" 
-                  value={`${statsData.conversationsCount}`} 
-                  icon={MessageCircle} 
-                  color="accent"
-                  subtitle={statsData.topSubject !== "None" 
-                    ? `${statsData.subjectCounts[statsData.topSubject] || 0} chats in ${statsData.topSubject}` 
-                    : "Start a chat to track stats!"}
-                />
-                <StatsCard 
-                  title="Quiz History" 
-                  value={statsData.quizzesDone} 
-                  icon={TrendingUp} 
-                  color="tertiary"
-                  subtitle="Last 30 days"
-                />
+            <div className="flex flex-col sm:flex-row gap-4">
+                <div className="flex-1">
+                  <StatsCard 
+                    title="Daily Streak" 
+                    value={statsData.currentStreak} 
+                    icon={Zap} 
+                    color="warning" 
+                    subtitle={moodProfile.dashboard.streakSubtitle}
+                  />
+                </div>
+                <div className="flex-1">
+                  <StatsCard 
+                    title="Conversations" 
+                    value={`${statsData.conversationsCount}`} 
+                    icon={MessageCircle} 
+                    color="accent"
+                    subtitle={statsData.topSubject !== "None" 
+                      ? `${statsData.subjectCounts[statsData.topSubject] || 0} chats in ${statsData.topSubject}` 
+                      : moodProfile.dashboard.conversationsFallback}
+                  />
+                </div>
+                <div className="flex-1">
+                  <StatsCard 
+                    title="Quiz History" 
+                    value={statsData.quizzesDone} 
+                    icon={TrendingUp} 
+                    color="tertiary"
+                    subtitle={moodProfile.dashboard.quizSubtitle}
+                  />
+                </div>
             </div>
           </div>
 
-          {/* Right Column (Top): Ask Quizzy */}
-          <div className="lg:col-span-4 space-y-6 h-full">
+          {/* Right Column: Ask Quizzy - Aligned with stats */}
+          <div className="lg:col-span-4">
             <motion.div variants={itemVariants} className="h-full flex flex-col">
                <div className="flex items-center justify-between px-2 mb-4">
                  <h2 className="text-lg font-black text-foreground flex items-center gap-3">
                    <div className="p-1 px-2 rounded-lg bg-primary/10">
                      <MessageCircle className="w-4 h-4 text-primary" />
                    </div>
-                   Tutor
+                   {moodProfile.dashboard.tutorTitle}
                  </h2>
                </div>
                <div className="flex-1">
                  <DailyMascotCard 
                    userName={userName} 
                    onChatStart={() => navigate("/chat")} 
+                   subtitle={moodProfile.dashboard.tutorSubtitle}
+                   moodId={selectedMood}
+                   className="h-full"
                  />
                </div>
             </motion.div>
@@ -235,7 +256,7 @@ const Dashboard = () => {
 
           {/* Mood Selector */}
           <div className="lg:col-span-12">
-            <motion.div variants={itemVariants} className="glass-card p-6 bg-background/60">
+            <motion.div variants={itemVariants} className="glass-card p-6 bg-background/60 h-full flex flex-col">
               <div className="flex items-center justify-between gap-4 flex-wrap">
                 <div>
                   <h3 className="text-lg font-black text-foreground flex items-center gap-2">
@@ -273,24 +294,26 @@ const Dashboard = () => {
           {/* Row 2: Secondary Content */}
           {/* Calendar Card */}
           <div className="lg:col-span-4">
-            <motion.div variants={itemVariants}>
+            <motion.div variants={itemVariants} className="h-full flex flex-col">
               <div className="flex items-center justify-between px-2 mb-4">
                  <h2 className="text-lg font-black text-foreground flex items-center gap-2 uppercase tracking-widest text-[10px] opacity-70">
-                    Your Calendar
+                    {moodProfile.dashboard.calendarTitle}
                  </h2>
               </div>
-              <CalendarWidget />
+              <div className="flex-1">
+                <CalendarWidget />
+              </div>
             </motion.div>
           </div>
 
           {/* Deadlines Card - Takes up space based on content */}
           <div className="lg:col-span-4">
-            <motion.div variants={itemVariants} className="space-y-4">
+            <motion.div variants={itemVariants} className="h-full flex flex-col gap-4">
                <div className="px-2 text-muted-foreground font-black text-[10px] uppercase tracking-[0.2em] flex items-center gap-2">
                  <Clock className="w-3 h-3 text-accent" />
-                 Upcoming Deadlines
+                 {moodProfile.dashboard.deadlinesTitle}
                </div>
-               <div className="glass-card p-5 bg-background/50 h-full">
+               <div className="glass-card p-5 bg-background/50 flex-1">
                  <ExamManager />
                </div>
             </motion.div>
@@ -298,11 +321,11 @@ const Dashboard = () => {
 
           {/* Achievements Card */}
           <div className="lg:col-span-4">
-            <motion.div variants={itemVariants} className="space-y-4">
+            <motion.div variants={itemVariants} className="h-full flex flex-col gap-4">
                <div className="flex items-center justify-between px-2">
                  <h3 className="text-muted-foreground font-black text-[10px] uppercase tracking-[0.2em] flex items-center gap-2">
                     <Trophy className="w-3 h-3 text-accent" />
-                    Achievements
+                    {moodProfile.dashboard.achievementsTitle}
                   </h3>
                   <button 
                     onClick={() => navigate("/achievements")}
@@ -325,7 +348,7 @@ const Dashboard = () => {
                     ))
                   ) : (
                     <div className="col-span-2 text-center py-6 glass-card border-dashed">
-                      <p className="text-xs text-muted-foreground font-bold">Earn badges by studying!</p>
+                      <p className="text-xs text-muted-foreground font-bold">{moodProfile.dashboard.achievementsEmpty}</p>
                     </div>
                   )}
                </div>

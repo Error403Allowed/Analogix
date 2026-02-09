@@ -1,17 +1,24 @@
 import { useEffect } from "react";
-import { useLocation } from "react-router-dom";
-import { applyThemeByName, getThemeByName } from "@/components/ThemeSelector";
+import { applyThemeByName } from "@/components/ThemeSelector";
+import { getMoodProfile, getStoredMoodId } from "@/utils/mood";
+
+const applyMoodTheme = () => {
+  const moodId = getStoredMoodId();
+  const profile = getMoodProfile(moodId);
+  applyThemeByName(profile.theme);
+};
 
 const ThemeSync = () => {
-  const { pathname } = useLocation();
-
   useEffect(() => {
-    if (pathname === "/") return;
-    const saved = localStorage.getItem("app-theme");
-    const fallback = "Classic Blue";
-    const themeToApply = saved && getThemeByName(saved) ? saved : fallback;
-    applyThemeByName(themeToApply);
-  }, [pathname]);
+    applyMoodTheme();
+    const handleMoodChange = () => applyMoodTheme();
+    window.addEventListener("moodUpdated", handleMoodChange);
+    window.addEventListener("storage", handleMoodChange);
+    return () => {
+      window.removeEventListener("moodUpdated", handleMoodChange);
+      window.removeEventListener("storage", handleMoodChange);
+    };
+  }, []);
 
   return null;
 };

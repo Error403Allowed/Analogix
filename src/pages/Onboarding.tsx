@@ -33,6 +33,7 @@ import { Input } from "@/components/ui/input";
 import { useNavigate } from "react-router-dom";
 import Confetti from "@/components/Confetti";
 import { achievementStore } from "@/utils/achievementStore";
+import { HOBBY_OPTIONS, POPULAR_INTERESTS } from "@/utils/interests";
 
 // Cool typewriter animation component for Quizzy
 const TypewriterText = ({ text, className = "", delay = 0 }: { text: string; className?: string; delay?: number }) => {
@@ -106,18 +107,23 @@ const subjects = [
   { id: "geography", icon: <Globe className="w-6 h-6" />, label: "Geography", description: "World, maps, environment" },
 ];
 
-const hobbies = [
-  { id: "sports", icon: <Dumbbell className="w-6 h-6" />, label: "Sports" },
-  { id: "gaming", icon: <Gamepad2 className="w-6 h-6" />, label: "Gaming" },
-  { id: "music", icon: <Music className="w-6 h-6" />, label: "Music" },
-  { id: "cooking", icon: <CookingPot className="w-6 h-6" />, label: "Cooking" },
-  { id: "art", icon: <Palette className="w-6 h-6" />, label: "Art & Design" },
-  { id: "movies", icon: <Film className="w-6 h-6" />, label: "Movies & TV" },
-  { id: "nature", icon: <Leaf className="w-6 h-6" />, label: "Nature" },
-  { id: "tech", icon: <Laptop className="w-6 h-6" />, label: "Technology" },
-  { id: "reading", icon: <Book className="w-6 h-6" />, label: "Reading" },
-  { id: "travel", icon: <Plane className="w-6 h-6" />, label: "Travel" },
-];
+const hobbyIcons: Record<string, JSX.Element> = {
+  sports: <Dumbbell className="w-6 h-6" />,
+  gaming: <Gamepad2 className="w-6 h-6" />,
+  music: <Music className="w-6 h-6" />,
+  cooking: <CookingPot className="w-6 h-6" />,
+  art: <Palette className="w-6 h-6" />,
+  movies: <Film className="w-6 h-6" />,
+  nature: <Leaf className="w-6 h-6" />,
+  tech: <Laptop className="w-6 h-6" />,
+  reading: <Book className="w-6 h-6" />,
+  travel: <Plane className="w-6 h-6" />
+};
+
+const hobbies = HOBBY_OPTIONS.map((hobby) => ({
+  ...hobby,
+  icon: hobbyIcons[hobby.id]
+}));
 
 const Onboarding = () => {
   const navigate = useNavigate();
@@ -127,7 +133,8 @@ const Onboarding = () => {
   const [grade, setGrade] = useState<string | null>(null);
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
   const [selectedHobbies, setSelectedHobbies] = useState<string[]>([]);
-  const [hobbyDetails, setHobbyDetails] = useState<Record<string, string>>({});
+  const [interestSelections, setInterestSelections] = useState<Record<string, string[]>>({});
+  const [customInterest, setCustomInterest] = useState<Record<string, string>>({});
   const [isComplete, setIsComplete] = useState(false);
 
   const toggleSubject = (id: string) => {
@@ -139,15 +146,61 @@ const Onboarding = () => {
   const toggleHobby = (id: string) => {
     setSelectedHobbies((prev) => {
       if (prev.includes(id)) {
-        setHobbyDetails((details) => {
-          const next = { ...details };
-          delete next[id];
-          return next;
+        const next = prev.filter((h) => h !== id);
+        setInterestSelections((details) => {
+          const updated = { ...details };
+          delete updated[id];
+          return updated;
         });
-        return prev.filter((h) => h !== id);
+        setCustomInterest((details) => {
+          const updated = { ...details };
+          delete updated[id];
+          return updated;
+        });
+        return next;
       }
       return [...prev, id];
     });
+  };
+
+  const toggleInterestItem = (id: string, item: string) => {
+    setInterestSelections((prev) => {
+      const current = prev[id] || [];
+      const exists = current.some((entry) => entry.toLowerCase() === item.toLowerCase());
+      const next = exists
+        ? current.filter((entry) => entry.toLowerCase() !== item.toLowerCase())
+        : [...current, item];
+      return { ...prev, [id]: next };
+    });
+  };
+
+  const addCustomInterest = (id: string) => {
+    const trimmed = (customInterest[id] || "").trim();
+    if (!trimmed) return;
+    setInterestSelections((prev) => {
+      const current = prev[id] || [];
+      const exists = current.some((entry) => entry.toLowerCase() === trimmed.toLowerCase());
+      if (exists) return prev;
+      return { ...prev, [id]: [...current, trimmed] };
+    });
+    setCustomInterest((prev) => ({ ...prev, [id]: "" }));
+  };
+
+  const buildHobbyDetails = (hobbyIds: string[]) => {
+    const nextDetails: Record<string, string> = {};
+    hobbyIds.forEach((id) => {
+      const merged = [
+        ...(interestSelections[id] || []),
+        (customInterest[id] || "").trim()
+      ].filter(Boolean);
+      const unique = merged.filter(
+        (item, index, self) =>
+          index === self.findIndex((entry) => entry.toLowerCase() === item.toLowerCase())
+      );
+      const detail = unique.join(", ").trim();
+      if (detail) nextDetails[id] = detail;
+    });
+    return nextDetails;
   };
 
   const handleNext = () => {
@@ -160,9 +213,10 @@ const Onboarding = () => {
     } else if (step === 4 && selectedHobbies.length > 0) {
       setIsComplete(true);
 
+      const hobbyDetails = buildHobbyDetails(selectedHobbies);
       const hobbiesWithDetails = selectedHobbies.map((id) => {
-        const label = hobbies.find((h) => h.id === id)?.label || id;
-        const detail = (hobbyDetails[id] || "").trim();
+        const label = HOBBY_OPTIONS.find((hobby) => hobby.id === id)?.label || id;
+        const detail = hobbyDetails[id] || "";
         return detail ? `${label} (${detail})` : label;
       });
       
@@ -172,7 +226,7 @@ const Onboarding = () => {
         subjects: selectedSubjects,
         hobbies: hobbiesWithDetails,
         hobbyIds: selectedHobbies,
-        hobbyDetails,
+        hobbyDetails: hobbyDetails,
         onboardingComplete: true
       }));
 
@@ -380,42 +434,74 @@ const Onboarding = () => {
                   </motion.div>
 
                   {selectedHobbies.length > 0 && (
-                    <div className="space-y-3">
-                      <p className="text-sm text-muted-foreground">
-                        Add specifics (optional). Example: Sports → cricket, Music → piano.
-                      </p>
-                      <div className="space-y-3">
-                        {selectedHobbies.map((id) => {
-                          const hobby = hobbies.find((h) => h.id === id);
-                          const placeholderById: Record<string, string> = {
-                            sports: "e.g., cricket",
-                            gaming: "e.g., Minecraft",
-                            music: "e.g., piano",
-                            cooking: "e.g., baking",
-                            art: "e.g., digital art",
-                            movies: "e.g., sci-fi",
-                            nature: "e.g., hiking",
-                            tech: "e.g., robotics",
-                            reading: "e.g., fantasy",
-                            travel: "e.g., Japan"
-                          };
-                          return (
-                            <div key={id} className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-                              <span className="text-sm font-semibold text-foreground sm:w-32">
-                                {hobby?.label || id}
-                              </span>
-                              <Input
-                                value={hobbyDetails[id] || ""}
-                                onChange={(e) =>
-                                  setHobbyDetails((prev) => ({ ...prev, [id]: e.target.value }))
-                                }
-                                placeholder={placeholderById[id] || "Add a specific example"}
-                                className="h-10 glass border-border"
-                              />
+                    <div className="space-y-4">
+                      {selectedHobbies.map((id) => {
+                        const hobby = hobbies.find((item) => item.id === id);
+                        const label = hobby?.label || id;
+                        const popularItems = POPULAR_INTERESTS[id as keyof typeof POPULAR_INTERESTS] || [];
+                        const selections = interestSelections[id] || [];
+                        const normalizedPopular = popularItems.map((item) => item.toLowerCase());
+                        const customItems = selections.filter(
+                          (item) => !normalizedPopular.includes(item.toLowerCase())
+                        );
+                        const displayItems = [...popularItems, ...customItems];
+                        const customValue = customInterest[id] || "";
+
+                        return (
+                          <div key={id} className="glass p-4 rounded-2xl border border-white/10">
+                            <div className="flex items-center gap-2 text-sm font-bold text-foreground">
+                              <span className="text-primary">{hobby?.icon}</span>
+                              <span>Popular {label}</span>
                             </div>
-                          );
-                        })}
-                      </div>
+                            <div className="flex flex-wrap gap-2 mt-3">
+                              {displayItems.map((item) => {
+                                const isActive = selections.some(
+                                  (entry) => entry.toLowerCase() === item.toLowerCase()
+                                );
+                                const isCustom = !normalizedPopular.includes(item.toLowerCase());
+                                return (
+                                  <button
+                                    key={item}
+                                    onClick={() => toggleInterestItem(id, item)}
+                                    className={`px-3 py-2 rounded-full border text-xs font-bold transition-all ${
+                                      isActive
+                                        ? "border-primary bg-primary/10 shadow-lg"
+                                        : "border-border glass hover:border-primary/50"
+                                    } ${isCustom ? "border-dashed" : ""}`}
+                                  >
+                                    <span className="whitespace-nowrap">
+                                      {item}
+                                      {isCustom && (
+                                        <span className="ml-1 text-[9px] uppercase tracking-widest text-muted-foreground">
+                                          Custom
+                                        </span>
+                                      )}
+                                    </span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                            <div className="flex gap-2 mt-3">
+                              <Input
+                                value={customValue}
+                                onChange={(e) =>
+                                  setCustomInterest((prev) => ({ ...prev, [id]: e.target.value }))
+                                }
+                                placeholder={`Add your favourite ${label.toLowerCase()}...`}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") {
+                                    e.preventDefault();
+                                    addCustomInterest(id);
+                                  }
+                                }}
+                              />
+                              <Button type="button" variant="outline" onClick={() => addCustomInterest(id)}>
+                                Add
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>

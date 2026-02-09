@@ -4,7 +4,7 @@ import { Palette, Check, Settings2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
-const themes = [
+export const themes = [
   {
     name: "Classic Blue",
     p: { h: "221.2", s: "83.2%", l: "53.3%" },
@@ -44,35 +44,38 @@ const themes = [
     name: "Candy Pop",
     p: { h: "316", s: "91%", l: "60%" },
     g: ["#ec4899", "#facc15", "#06b6d4"]
+  },
+  {
+    name: "Prismatic",
+    p: { h: "280", s: "90%", l: "60%" },
+    g: ["#ff0000", "#00ff00", "#0000ff"]
   }
 ];
+
+export const applyThemeByName = (themeName: string) => {
+  const theme = themes.find(t => t.name === themeName);
+  if (!theme) return;
+
+  const root = document.documentElement;
+  root.style.setProperty("--p-h", theme.p.h);
+  root.style.setProperty("--p-s", theme.p.s);
+  root.style.setProperty("--p-l", theme.p.l);
+  root.style.setProperty("--g-1", theme.g[0]);
+  root.style.setProperty("--g-2", theme.g[1]);
+  root.style.setProperty("--g-3", theme.g[2]);
+
+  localStorage.setItem("app-theme", themeName);
+};
 
 const ThemeSelector = () => {
   const [activeTheme, setActiveTheme] = useState(() => {
     return localStorage.getItem("app-theme") || "Classic Blue";
   });
 
-  const applyTheme = (themeName: string) => {
-    const theme = themes.find(t => t.name === themeName);
-    if (!theme) return;
-
-    const root = document.documentElement;
-    root.style.setProperty("--p-h", theme.p.h);
-    root.style.setProperty("--p-s", theme.p.s);
-    root.style.setProperty("--p-l", theme.p.l);
-    root.style.setProperty("--g-1", theme.g[0]);
-    root.style.setProperty("--g-2", theme.g[1]);
-    root.style.setProperty("--g-3", theme.g[2]);
-
-    setActiveTheme(themeName);
-    localStorage.getItem("app-theme");
-    localStorage.setItem("app-theme", themeName);
-  };
-
   // On mount, apply saved theme
   useEffect(() => {
     const saved = localStorage.getItem("app-theme");
-    if (saved) applyTheme(saved);
+    if (saved) applyThemeByName(saved);
   }, []);
 
   return (
@@ -92,7 +95,10 @@ const ThemeSelector = () => {
           {themes.map((theme) => (
             <button
               key={theme.name}
-              onClick={() => applyTheme(theme.name)}
+              onClick={() => {
+                applyThemeByName(theme.name);
+                setActiveTheme(theme.name);
+              }}
               className={`relative p-2 rounded-xl border text-left transition-all hover:scale-105 ${
                 activeTheme === theme.name 
                   ? "border-primary bg-primary/5 ring-1 ring-primary" 
@@ -116,24 +122,5 @@ const ThemeSelector = () => {
     </Popover>
   );
 };
-
-export const applyThemeByName = (themeName: string) => {
-  const theme = themes.find(t => t.name === themeName);
-  if (!theme) return;
-
-  const root = document.documentElement;
-  root.style.setProperty("--p-h", theme.p.h);
-  root.style.setProperty("--p-s", theme.p.s);
-  root.style.setProperty("--p-l", theme.p.l);
-  root.style.setProperty("--g-1", theme.g[0]);
-  root.style.setProperty("--g-2", theme.g[1]);
-  root.style.setProperty("--g-3", theme.g[2]);
-
-  localStorage.setItem("app-theme", themeName);
-};
-
-export const getThemeByName = (themeName: string) => themes.find(t => t.name === themeName);
-
-export const getAllThemes = () => themes;
 
 export default ThemeSelector;

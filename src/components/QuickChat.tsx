@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Send, Lightbulb, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { getGroqCompletion } from "@/services/groq";
+import { getGroqCompletion } from "@/services/huggingface";
+import { getStoredMoodId } from "@/utils/mood";
 
 interface Message {
   id: string;
@@ -43,7 +44,8 @@ const QuickChat = () => {
     const response = await getGroqCompletion(history, {
       subjects: userSubjects,
       hobbies: userHobbies,
-      learningStyle: userPrefs.learningStyle || "visual"
+      learningStyle: userPrefs.learningStyle || "visual",
+      mood: getStoredMoodId()
     });
 
     setMessages(prev => [...prev, { 
