@@ -195,6 +195,9 @@ const Chat = () => {
   // ANIMATING: Track if typewriter is currently running
   const [isAnimating, setIsAnimating] = useState(false);
 
+  // ANALOGY INTENSITY: Controls how many analogies appear (0-4 = 5 levels)
+  const [analogyIntensity, setAnalogySIntensity] = useState(3);
+
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const copyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
@@ -239,8 +242,9 @@ const Chat = () => {
     hobbies: userHobbies,
     grade: userPrefs.grade,
     learningStyle: userPrefs.learningStyle,
-    mood: getStoredMoodId()
-  }), [selectedSubject, userSubjects, userHobbies, userPrefs.grade, userPrefs.learningStyle]);
+    mood: getStoredMoodId(),
+    analogyIntensity
+  }), [selectedSubject, userSubjects, userHobbies, userPrefs.grade, userPrefs.learningStyle, analogyIntensity]);
 
   const handleCopy = useCallback(async (text: string, id: string) => {
     try {
@@ -420,7 +424,7 @@ const Chat = () => {
     const avoidText = usedTopics.length > 0 ? `Avoid repeating these topics: ${usedTopics.join(", ")}.` : "";
     const aiPrompt = [{ 
       role: "user" as const, 
-      content: `Introduce a NEW, interesting concept in ${subjectLabel} using a fun analogy related to my interests (${userHobbies.join(", ")}). ${avoidText}` 
+      content: `Introduce a NEW, interesting concept in ${subjectLabel} using an analogy that references a specific moment, scene, or character from my interests (${userHobbies.join(", ")})—not generic settings. ${avoidText}` 
     }];
 
     const aiResponse = await getGroqCompletion(aiPrompt, context);
@@ -510,9 +514,9 @@ const Chat = () => {
         ) : (
           /* Chat Interface */
           <>
-            {/* Subject Badge */}
+            {/* Subject Badge & Controls */}
             <motion.div
-              className="flex items-center justify-center gap-2 mb-4"
+              className="flex items-center justify-center gap-4 mb-4 flex-wrap"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
             >
@@ -537,6 +541,20 @@ const Chat = () => {
                 <RefreshCw className="w-4 h-4" />
                 New Topic
               </Button>
+
+              {/* Analogy Intensity Slider */}
+              <div className="flex items-center gap-3 px-3 py-2 rounded-lg border border-border bg-background/50">
+                <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">Analogies:</span>
+                <input
+                  type="range"
+                  min="0"
+                  max="4"
+                  value={analogyIntensity}
+                  onChange={(e) => setAnalogySIntensity(Number(e.target.value))}
+                  className="w-24 h-2 bg-border rounded-lg appearance-none cursor-pointer accent-primary"
+                />
+                <span className="text-xs font-bold text-primary w-5 text-center">{analogyIntensity + 1}/5</span>
+              </div>
             </motion.div>
 
             {/* Messages */}

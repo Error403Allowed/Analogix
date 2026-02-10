@@ -58,7 +58,7 @@ const parseErrorMessage = async (response: Response) => {
  */
 export const getGroqCompletion = async (
   messages: ChatMessage[],
-  userContext?: Partial<UserContext>
+  userContext?: Partial<UserContext> & { analogyIntensity?: number }
 ) => {
   if (apiKeys.length === 0) {
     return {
@@ -68,6 +68,16 @@ export const getGroqCompletion = async (
   }
 
   const moodProfile = getMoodProfile(userContext?.mood);
+  const analogyIntensity = userContext?.analogyIntensity ?? 3; // Default to level 3
+  
+  const analogyGuidance = [
+    "Use minimal analogies - focus on raw facts and concepts.",
+    "Use some analogies - mostly facts with occasional hobby-based comparisons.",
+    "Balance facts and analogies equally - mix raw facts with hobby-based analogies.",
+    "Use frequent analogies - explain most concepts using hobby-based analogies.",
+    "Use extensive analogies - every explanation should use hobby-based analogies."
+  ][analogyIntensity];
+
   const systemPrompt = `You are "Quizzy", an enthusiastic and helpful AI tutor.
   
 Your Goal: Explain concepts using analogies based on the user's interests.
@@ -81,11 +91,18 @@ User Profile:
 - Learning Style: ${userContext?.learningStyle || "General"}
 - Target Subjects: ${userContext?.subjects?.join(", ") || "General"}
 
+Analogy Intensity: ${analogyIntensity + 1}/5
+${analogyGuidance}
+
 Instructions:
 1. Always keep your tone encouraging, fun, and supportive.
-2. Use analogies related to their specific hobbies whenever possible.
+2. Use analogies rooted in their specific interests—but make them CONCRETE and SPECIFIC, not generic.
+   - For TV shows / movies: reference actual moments, scenes, episodes, character quirks, running gags, or plot points (e.g. for The Big Bang Theory: Sheldon's spot, the broken elevator, "Bazinga", a specific experiment or argument between the guys—NOT vague phrases like "in Leonard's apartment" or "like on the show").
+   - For games: specific mechanics, levels, characters, or story beats.
+   - For sports / music / etc.: specific players, matches, songs, albums, or real events.
+   Avoid bland, setting-only references; the analogy should feel like it could only come from that interest.
 3. Adjust the complexity of your language and scientific detail to be appropriate for a Year ${userContext?.grade || "7-12"} student.
-4. Keep explanations clear and concise, matching the mood guidance.
+4. Keep explanations clear and concise, without overwhelming the user with too much content and make sure you are matching the mood guidance.
 5. If the user asks about a topic outside their subjects, still help them but try to relate it back if possible.
 6. Explain the raw facts (derived from ACARA curriculum) of the topic before explaining with an analogy.
 7. Don't use emojis too much, apart from just titles.  
@@ -93,7 +110,12 @@ Instructions:
 9. Use LaTeX for all math notation. Wrap inline math in '$...$' and display math in '$$...$$'.
     - Examples: $x^2$, $\\int_a^b f(x)\\,dx$, $f(x)$, $\\frac{dy}{dx}$.
     - If a response contains math symbols, powers, integrals, functions, or equations, it MUST be in LaTeX.
-10. Make sure to keep responses concise and avoid overwhelming the student with too much information at once.`;
+10. Make sure to keep responses concise and avoid overwhelming the student with too much information at once.
+11. Make sure to always fact-check your responses (especially the analogies) and make sure there are no formatting or grammatical issues (especially with LaTeX).
+12. If you don't know the answer, say you don't know but suggest where they might find the answer or how they could think about it.
+13. NEVER make up false information or fake analogies. If you don't know, say you don't know.
+14. ALWAYS use the student's hobbies and interests in your analogies, but make sure they are specific and concrete references, not generic ones.
+15. If there are any issues, terminate the response and start again. Make sure to follow all instructions carefully and check your work before responding.`;
 
   const rotationBase = getRotationBase();
   const callWithRetry = async (retryCount = 0): Promise<any> => {
@@ -229,7 +251,22 @@ export const getAIBannerPhrase = async (userName: string, subjects: string[], mo
       words.slice(target, target * 2).join(" "),
       words.slice(target * 2).join(" ")
     ];
-    return lines.map((line) => line.trim()).join("\n");
+    return lines.map((line) => line.trim()).filter(Boolean).join("\n");
+  };
+
+  const enforceExactlyThreeLines = (text: string): string => {
+    const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+    
+    if (lines.length === 3) {
+      return lines.join('\n');
+    }
+    
+    if (lines.length > 3) {
+      return lines.slice(0, 3).join('\n');
+    }
+    
+    // If fewer than 3 lines, force split the content
+    return forceThreeLines(text);
   };
 
   const getRecentBanners = () => {
@@ -252,7 +289,7 @@ export const getAIBannerPhrase = async (userName: string, subjects: string[], mo
   const moodProfile = getMoodProfile(mood);
   const callWithRetry = async (retryCount = 0): Promise<string> => {
     const activeKey = getRotatedKey(rotationBase, retryCount);
-    if (!activeKey) return "What's the plan for today?";
+    if (!activeKey) return FALLBACK_LINES.join("\n");
 
     try {
       const response = await fetch(HF_CHAT_URL, {
@@ -266,7 +303,7 @@ export const getAIBannerPhrase = async (userName: string, subjects: string[], mo
           messages: [
             {
               role: "system",
-              content: `You generate only a 3-line banner. Output exactly 3 lines, 4-7 words each, each line must end with a period. No extra text, no labels, no quotes, no preface. Mood: ${moodProfile.label}. Style: ${moodProfile.bannerStyle}.`
+              content: `You generate EXACTLY 3 lines for a banner. CRITICAL: Output must be exactly 3 lines, no more, no less. Each line 4-7 words, each ending with a period. No extra text, labels, quotes, or preface. Output ONLY the 3 lines separated by newlines. Mood: ${moodProfile.label}. Style: ${moodProfile.bannerStyle}.`
             },
             {
               role: "user",
@@ -290,15 +327,16 @@ export const getAIBannerPhrase = async (userName: string, subjects: string[], mo
         .replace(/^["'`]+|["'`]+$/g, "")
         .replace(/^.*?:\s*/gm, "")
         .trim();
-      const asLines = cleaned.split("\n").map((line) => line.trim()).filter(Boolean);
-      const normalized = asLines.length >= 3 ? asLines.slice(0, 3).join("\n") : normaliseText(cleaned);
-      const threeLines = asLines.length >= 3 ? normalized : forceThreeLines(normalized);
-      const withPunctuation = ensurePunctuation(threeLines);
+      
+      const withPunctuation = ensurePunctuation(cleaned);
+      const enforced = enforceExactlyThreeLines(withPunctuation);
+      
       const recent = getRecentBanners();
-      if (recent.includes(withPunctuation) && retryCount < 1) {
+      if (recent.includes(enforced) && retryCount < 1) {
         return callWithRetry(retryCount + 1);
       }
-      const finalText = withPunctuation || FALLBACK_LINES.join("\n");
+      
+      const finalText = enforced || FALLBACK_LINES.join("\n");
       storeBanner(finalText);
       return finalText;
     } catch {
@@ -345,7 +383,7 @@ Return ONLY valid JSON with this exact structure:
       "id": 1,
       "type": "multiple_choice",
       "question": "text",
-      "analogy": "analogy using ${userContext.hobbies.join(", ")}",
+      "analogy": "concrete analogy referencing a specific moment, scene, character, or element from the student's interests (not generic settings like 'in X's apartment')",
       "options": [
         {"id": "a", "text": "option", "isCorrect": true},
         {"id": "b", "text": "option", "isCorrect": false},
@@ -358,7 +396,7 @@ Return ONLY valid JSON with this exact structure:
 }
 
 CRITICAL: Mood: ${moodProfile.label}. Quiz style: ${moodProfile.quizStyle}.
-Each question MUST have an analogy using the student's hobbies.
+Each question MUST have an analogy that references a SPECIFIC moment, scene, character, or element from the student's interests (e.g. for a show: a real episode moment or running gag—never generic placeholders like "in Leonard's apartment").
 Mix multiple_choice and short_answer types.
 Use LaTeX for math: $x^2$ for inline, $$equation$$ for display.
 Double-escape backslashes in JSON.

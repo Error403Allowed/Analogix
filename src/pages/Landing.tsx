@@ -163,7 +163,7 @@ const Landing = () => {
               Chat
             </button>
             <button onClick={() => handleNav("/dashboard")} className="hover:text-primary transition-colors">
-              Progress
+              Dashboard
             </button>
           </div>
           <div className="flex items-center gap-4">

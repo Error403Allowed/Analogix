@@ -14,7 +14,7 @@ export const HOBBY_OPTIONS = [
 export type HobbyId = (typeof HOBBY_OPTIONS)[number]["id"];
 
 export const POPULAR_INTERESTS: Record<HobbyId, string[]> = {
-  sports: ["Soccer", "Basketball", "Tennis", "Cricket", "Swimming", "Rugby", "Netball"],
+  sports: ["Soccer", "Basketball", "Tennis", "Cricket", "Formula 1", "Swimming", "Rugby", "Netball"],
   gaming: ["RPG", "FPS", "Strategy", "Simulation", "Racing", "Sports Games", "Indie"],
   music: ["Pop", "Hip-Hop", "Rock", "Classical", "K-Pop", "Jazz", "EDM"],
   cooking: ["Baking", "Italian", "Mexican", "Asian", "Desserts", "Meal Prep", "Grilling"],
