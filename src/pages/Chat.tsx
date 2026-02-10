@@ -15,7 +15,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useNavigate } from "react-router-dom";
 import { getGroqCompletion } from "@/services/huggingface";
-import { fetchImageForQuery } from "@/services/unsplash";
 import { statsStore } from "@/utils/statsStore";
 import MarkdownRenderer from "@/components/MarkdownRenderer";
 import TypewriterText from "@/components/TypewriterText";
@@ -164,10 +163,13 @@ interface Message {
   role: "user" | "assistant";
   content: string;
   analogy?: string;
-  imageUrl?: string; // Optional image shown inline (e.g. from Unsplash)
+  imageUrl?: string;
   isNew?: boolean; // Track if this is a new message for typewriter effect
   isWelcome?: boolean;
 }
+
+// Stub: image fetching was removed (unsplash.ts deleted)
+const fetchImageForQuery = async (..._args: unknown[]): Promise<string | null> => null;
 
 const subjects = SUBJECT_CATALOG;
 
@@ -210,9 +212,7 @@ const Chat = () => {
   const userName = userPrefs.name || "Student";
   const userHobbies = userPrefs.hobbies || ["gaming", "sports"];
   const userSubjects = userPrefs.subjects || [];
-  const availableSubjects = userSubjects.length > 0
-    ? subjects.filter((s) => userSubjects.includes(s.id))
-    : subjects;
+  // Always show all subjects when picking what to learn with Quizzy (onboarding choices are for context only)
   const isInputLocked = isTyping || isAnimating;
 
   const latestAssistantId = [...messages].reverse().find((m) => m.role === "assistant")?.id;
@@ -407,8 +407,8 @@ const Chat = () => {
       };
 
       setMessages(prev => [...prev, response]);
-      setIsTyping(false); // Hide the dots.
-      setIsAnimating(true); // Start typewriter animation
+      setIsTyping(false);
+      setIsAnimating(true);
       setStopTyping(false);
     })();
   };
@@ -430,12 +430,12 @@ const Chat = () => {
     }];
 
     const aiResponse = await getGroqCompletion(aiPrompt, context);
-    
+    const newMsgId = Date.now().toString();
     setMessages(prev => [...prev, {
-      id: Date.now().toString(),
+      id: newMsgId,
       role: "assistant",
       content: aiResponse.content || "Hmm, I'm having trouble thinking of a new topic. Try asking me a specific question!",
-      analogy: `ai-generated-${Date.now()}`,
+      analogy: `ai-generated-${newMsgId}`,
       isNew: true
     }]);
     setIsTyping(false);
@@ -444,68 +444,72 @@ const Chat = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col relative overflow-hidden">
-      {/* Background */}
-      <div className="liquid-blob w-96 h-96 bg-primary/20 -top-48 -right-48 fixed" />
-      <div className="liquid-blob w-64 h-64 bg-accent/20 bottom-20 -left-32 fixed" style={{ animationDelay: '-2s' }} />
-
-      <div className="flex-1 flex flex-col max-w-4xl mx-auto w-full px-4 py-6 relative z-10">
-        {/* Header */}
+    <div className="min-h-screen flex flex-col relative overflow-hidden chat-neural-bg">
+      <div className="chat-blob chat-blob-1" aria-hidden />
+      <div className="chat-blob chat-blob-2" aria-hidden />
+      <div className="chat-blob chat-blob-3" aria-hidden />
+      <div className="flex-1 flex flex-col max-w-3xl mx-auto w-full px-4 sm:px-6 py-6 relative z-10">
+        {/* Neural interface header */}
         <motion.header
-          className="glass-card px-6 py-4 mb-4"
-          initial={{ opacity: 0, y: -20 }}
+          className="chat-neural-header flex items-center justify-between py-3 px-4 -mx-4 sm:-mx-6 mb-4"
+          initial={{ opacity: 0, y: -12 }}
           animate={{ opacity: 1, y: 0 }}
+          transition={{ type: "spring", stiffness: 300, damping: 24 }}
         >
-          <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center">
-            <div className="justify-self-start">
-              <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard")} className="gap-2">
-                <ArrowLeft className="w-4 h-4" />
-                Back
-              </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate("/dashboard")}
+            className="gap-2 -ml-2 text-muted-foreground hover:text-foreground rounded-xl"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back
+          </Button>
+          <div className="flex items-center gap-2.5">
+            <div className="quizzy-avatar w-9 h-9 rounded-xl gradient-primary flex items-center justify-center">
+              <Sparkles className="w-4 h-4 text-white" />
             </div>
-            <div className="flex items-center gap-2 justify-self-center">
-              <Sparkles className="w-5 h-5 text-primary" />
-              <h1 className="text-lg font-bold gradient-text">Quizzy</h1>
-            </div>
-            <div className="justify-self-end" />
+            <h1 className="text-base font-bold gradient-text">Quizzy</h1>
           </div>
+          <div className="w-16" />
         </motion.header>
 
         {!selectedSubject ? (
-          /* Subject Selection */
+          /* Subject Selection - refined cards */
           <motion.div
-            className="flex-1 flex flex-col items-center justify-center"
+            className="flex-1 flex flex-col items-center justify-center py-8"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
+            transition={{ duration: 0.4 }}
           >
-            <div className="text-center mb-8">
-              <h2 className="text-2xl font-bold text-foreground mt-4 mb-2">
+            <div className="text-center mb-10">
+              <h2 className="text-2xl sm:text-3xl font-semibold text-foreground mb-2 tracking-tight">
                 <TypewriterText text="What shall we explore today?" delay={150} />
               </h2>
-              <p className="text-muted-foreground">
-                Pick a subject and I'll teach through clear analogies.
+              <p className="text-muted-foreground text-sm sm:text-base">
+                Pick a subject — I'll explain with clear, personalized analogies.
               </p>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 w-full max-w-lg">
-              {availableSubjects.map((subject, index) => {
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-5 w-full max-w-2xl">
+              {subjects.map((subject, index) => {
                 const Icon = subject.icon;
                 return (
                   <motion.button
                     key={subject.id}
                     onClick={() => handleSubjectSelect(subject.id)}
-                    className="relative p-5 rounded-2xl border-2 transition-all text-left group border-border glass hover:border-primary/50"
+                    className="chat-hex-card p-5 text-left group"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                    whileHover={{ y: -4 }}
+                    transition={{ delay: index * 0.08, type: "spring", stiffness: 180, damping: 18 }}
+                    whileHover={{ scale: 1.03 }}
                     whileTap={{ scale: 0.98 }}
                   >
-                    <span className="mb-3 block text-primary group-hover:scale-110 transition-transform">
-                      <Icon className="w-6 h-6" />
-                    </span>
-                    <div className="font-bold text-foreground">{subject.label}</div>
-                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground mt-1 opacity-70 group-hover:opacity-100">
+                    <div className="w-12 h-12 rounded-lg gradient-primary flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                      <Icon className="w-6 h-6 text-white" />
+                    </div>
+                    <div className="font-bold text-foreground text-sm">{subject.label}</div>
+                    <div className="text-[10px] uppercase tracking-widest text-muted-foreground mt-1 font-mono">
                       {getSubjectDescription(subject.id, userPrefs.grade)}
                     </div>
                   </motion.button>
@@ -516,11 +520,12 @@ const Chat = () => {
         ) : (
           /* Chat Interface */
           <>
-            {/* Subject Badge & Controls */}
+            {/* Subject Badge & Controls - compact pill bar */}
             <motion.div
-              className="flex items-center justify-center gap-4 mb-4 flex-wrap"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
+              className="flex items-center justify-center gap-2 sm:gap-3 mb-6 flex-wrap"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
             >
               <Button
                 variant="outline"
@@ -529,38 +534,43 @@ const Chat = () => {
                   setSelectedSubject(null);
                   setMessages([]);
                 }}
-                className="gap-2"
+                className="chat-neural-pill gap-2 rounded-md h-8 px-4 text-xs font-medium hover:text-primary"
               >
-                <BookOpen className="w-4 h-4" />
+                <BookOpen className="w-3.5 h-3.5" />
                 {(() => {
                   const current = subjects.find((s) => s.id === selectedSubject);
                   const Icon = current?.icon;
-                  return Icon ? <Icon className="w-4 h-4 text-primary" /> : null;
+                  return Icon ? <Icon className="w-3.5 h-3.5 text-primary" /> : null;
                 })()}
                 {subjects.find(s => s.id === selectedSubject)?.label}
               </Button>
-              <Button variant="outline" size="sm" onClick={handleNewTopic} className="gap-2" disabled={isInputLocked}>
-                <RefreshCw className="w-4 h-4" />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleNewTopic}
+                className="chat-neural-pill gap-2 rounded-md h-8 px-4 text-xs font-medium hover:text-primary"
+                disabled={isInputLocked}
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
                 New Topic
               </Button>
 
-              {/* Analogy Intensity Slider */}
-              <div className="flex items-center gap-3 px-3 py-2 rounded-lg border border-border bg-background/50">
-                <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">Analogies:</span>
+              <div className="chat-neural-pill flex items-center gap-2 pl-3 pr-3 py-1.5 rounded-md">
+                <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Analogies</span>
                 <input
                   type="range"
                   min="0"
                   max="4"
                   value={analogyIntensity}
                   onChange={(e) => setAnalogySIntensity(Number(e.target.value))}
-                  className="w-24 h-2 bg-border rounded-lg appearance-none cursor-pointer accent-primary"
+                  className="w-20 h-1.5 bg-border rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:cursor-pointer"
                 />
-                <span className="text-xs font-bold text-primary w-5 text-center">{analogyIntensity + 1}/5</span>
+                <span className="text-xs font-semibold text-primary tabular-nums w-4">{analogyIntensity + 1}/5</span>
               </div>
             </motion.div>
 
-            {/* Messages */}
-            <div className="flex-1 overflow-y-auto space-y-4 mb-4">
+            {/* Messages - sleek chat bubbles */}
+            <div className="flex-1 overflow-y-auto space-y-6 mb-6 min-h-0">
               <AnimatePresence>
                 {messages.map((message, index) => {
                   const canRegenerate =
@@ -571,27 +581,43 @@ const Chat = () => {
                   return (
                   <motion.div
                     key={message.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
+                    initial={{ opacity: 0, y: message.role === "user" ? 16 : -8, x: message.role === "user" ? 20 : -20 }}
+                    animate={{ opacity: 1, y: 0, x: 0 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 28 }}
                     className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
                   >
                     <div
-                      className={`max-w-[85%] p-4 rounded-2xl ${
+                      className={`max-w-[88%] sm:max-w-[85%] ${
                         message.role === "user"
-                          ? "bg-primary text-primary-foreground rounded-br-md"
-                          : "glass-card rounded-bl-md"
+                          ? "chat-bubble-user"
+                          : "chat-bubble-assistant"
                       }`}
                     >
                       {message.role === "assistant" && (
-                        <div className="flex items-center gap-2 mb-2">
-                          <div className="w-6 h-6 rounded-full gradient-primary flex items-center justify-center">
-                            <Lightbulb className="w-3 h-3 text-primary-foreground" />
+                        <div className="flex items-center gap-2 mb-2.5">
+                          <div className="quizzy-avatar w-6 h-6 rounded-lg gradient-primary flex items-center justify-center flex-shrink-0">
+                            <Lightbulb className="w-3 h-3 text-white" />
                           </div>
-                          <span className="text-xs font-medium text-primary">Quizzy</span>
+                          <span className="text-xs font-semibold gradient-text">Quizzy</span>
                         </div>
                       )}
                       {message.role === "assistant" ? (
                         <>
+                          {message.imageUrl && (
+                            <a
+                              href={message.imageUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="block mb-3 rounded-xl overflow-hidden border border-border/60 bg-muted/30 focus:outline-none focus:ring-2 focus:ring-primary/40 ring-offset-2 ring-offset-transparent"
+                            >
+                              <img
+                                src={message.imageUrl}
+                                alt="Related to this topic"
+                                className="w-full max-h-56 object-cover"
+                                loading="lazy"
+                              />
+                            </a>
+                          )}
                           <TypewriterMessage 
                             content={message.content} 
                             isNew={message.isNew || false}
@@ -605,7 +631,7 @@ const Chat = () => {
                               setStopTyping(false);
                             }}
                           />
-                          <div className="mt-3 flex items-center justify-end gap-2">
+                          <div className="mt-3 flex items-center justify-end gap-0.5 opacity-70 hover:opacity-100 transition-opacity">
                             <Button
                               type="button"
                               variant="ghost"
@@ -613,7 +639,7 @@ const Chat = () => {
                               onClick={() => handleCopy(message.content, message.id)}
                               aria-label="Copy response"
                               title="Copy response"
-                              className="h-7 w-7 rounded-full text-muted-foreground hover:text-primary"
+                              className="h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50"
                             >
                               {copiedId === message.id ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
                             </Button>
@@ -626,7 +652,7 @@ const Chat = () => {
                                 disabled={isInputLocked}
                                 aria-label="Regenerate response"
                                 title="Regenerate response"
-                                className="h-7 w-7 rounded-full text-muted-foreground hover:text-primary"
+                                className="h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50"
                               >
                                 <RefreshCw className="w-3 h-3" />
                               </Button>
@@ -638,7 +664,7 @@ const Chat = () => {
                           <p className="whitespace-pre-wrap text-sm leading-relaxed">
                             {message.content}
                           </p>
-                          <div className="mt-2 flex items-center justify-end">
+                          <div className="mt-2 flex items-center justify-end opacity-80 hover:opacity-100 transition-opacity">
                             <Button
                               type="button"
                               variant="ghost"
@@ -646,7 +672,7 @@ const Chat = () => {
                               onClick={() => handleCopy(message.content, message.id)}
                               aria-label="Copy prompt"
                               title="Copy prompt"
-                              className="h-7 w-7 rounded-full text-primary-foreground/80 hover:text-primary-foreground hover:bg-white/10"
+                              className="h-7 w-7 rounded-lg text-primary-foreground/90 hover:text-primary-foreground hover:bg-white/15"
                             >
                               {copiedId === message.id ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
                             </Button>
@@ -661,31 +687,20 @@ const Chat = () => {
 
               {isTyping && (
                 <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
+                  initial={{ opacity: 0, x: -12 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 25 }}
                   className="flex justify-start"
                 >
-                  <div className="glass-card p-4 rounded-2xl rounded-bl-md">
-                    <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-full gradient-primary flex items-center justify-center">
-                        <Lightbulb className="w-3 h-3 text-primary-foreground" />
+                  <div className="chat-bubble-assistant">
+                    <div className="flex items-center gap-3">
+                      <div className="quizzy-avatar w-6 h-6 rounded-md flex items-center justify-center shrink-0">
+                        <Lightbulb className="w-3 h-3 text-white" />
                       </div>
-                      <div className="flex gap-1">
-                        <motion.span
-                          className="w-2 h-2 bg-primary rounded-full"
-                          animate={{ y: [0, -4, 0] }}
-                          transition={{ repeat: Infinity, duration: 0.6 }}
-                        />
-                        <motion.span
-                          className="w-2 h-2 bg-primary rounded-full"
-                          animate={{ y: [0, -4, 0] }}
-                          transition={{ repeat: Infinity, duration: 0.6, delay: 0.1 }}
-                        />
-                        <motion.span
-                          className="w-2 h-2 bg-primary rounded-full"
-                          animate={{ y: [0, -4, 0] }}
-                          transition={{ repeat: Infinity, duration: 0.6, delay: 0.2 }}
-                        />
+                      <div className="flex gap-1 items-end h-5">
+                        {[0, 1, 2, 3, 4, 5, 6].map((i) => (
+                          <div key={i} className="spectrum-bar" style={{ alignSelf: "flex-end" }} />
+                        ))}
                       </div>
                     </div>
                   </div>
@@ -695,57 +710,52 @@ const Chat = () => {
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Input */}
+            {/* Input - terminal style */}
             <motion.div
-              className="glass-card p-4 sticky bottom-0 z-20 bg-background/80 backdrop-blur-xl border border-white/20 shadow-[0_-10px_30px_-20px_rgba(0,0,0,0.35)] relative group"
-              initial={{ opacity: 0, y: 20 }}
+              className="sticky bottom-0 z-20 pt-2 pb-1 -mx-1"
+              initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
             >
-              <div className="pointer-events-none absolute -inset-1 rounded-[28px] opacity-0 transition-opacity duration-300 group-focus-within:opacity-100">
-                <div
-                  className="absolute inset-0 rounded-[28px] bg-gradient-to-r from-[var(--g-1)] via-[var(--g-2)] to-[var(--g-3)] animate-gradient-x opacity-80"
-                  style={{
-                    padding: "2px",
-                    WebkitMask: "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
-                    WebkitMaskComposite: "xor",
-                    maskComposite: "exclude"
+              <div className="chat-input-container rounded-lg">
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    handleSend();
                   }}
-                />
+                  className="flex gap-2 sm:gap-3 items-center p-3"
+                >
+                  <span className="text-primary font-semibold text-sm shrink-0">›</span>
+                  <Input
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    placeholder="Ask anything about this subject..."
+                    className="flex-1 h-11 sm:h-12 px-3 rounded-md border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/70 font-mono text-sm"
+                  />
+                  {(isTyping || isAnimating) ? (
+                    <Button
+                      type="button"
+                      onClick={() => setStopTyping(true)}
+                      size="icon"
+                      className="h-11 w-11 sm:h-12 sm:w-12 rounded-xl bg-destructive/90 hover:bg-destructive text-destructive-foreground border-0 shrink-0"
+                    >
+                      <Square className="w-4 h-4" />
+                    </Button>
+                  ) : (
+                    <Button
+                      type="submit"
+                      disabled={!input.trim()}
+                      size="icon"
+                      className="h-11 w-11 sm:h-12 sm:w-12 rounded-xl gradient-primary text-white border-0 shrink-0 shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:hover:scale-100"
+                    >
+                      <Send className="w-4 h-4" />
+                    </Button>
+                  )}
+                </form>
+                <p className="text-[10px] sm:text-xs text-muted-foreground/70 text-center pb-2 font-mono">
+                  Quizzy can make mistakes. Verify important information.
+                </p>
               </div>
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  handleSend();
-                }}
-                className="flex gap-3 relative z-10"
-              >
-                <Input
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  placeholder="Ask me anything about this subject..."
-                  className="flex-1 glass border-border"
-                />
-                {(isTyping || isAnimating) ? (
-                  <Button
-                    type="button"
-                    onClick={() => setStopTyping(true)}
-                    className="gap-2 bg-destructive hover:bg-destructive/90 text-destructive-foreground border-0"
-                  >
-                    <Square className="w-4 h-4" />
-                  </Button>
-                ) : (
-                  <Button
-                    type="submit"
-                    disabled={!input.trim()}
-                    className="gap-2 gradient-primary text-primary-foreground border-0"
-                  >
-                    <Send className="w-4 h-4" />
-                  </Button>
-                )}
-              </form>
-              <p className="text-xs text-muted-foreground mt-2 text-center">
-                Quizzy can make mistakes. Check important info.
-              </p>
             </motion.div>
           </>
         )}
