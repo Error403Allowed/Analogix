@@ -12,7 +12,7 @@ import {
   Check
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { useNavigate } from "react-router-dom";
 import { getGroqCompletion } from "@/services/huggingface";
 import { statsStore } from "@/utils/statsStore";
@@ -723,14 +723,15 @@ const Chat = () => {
                     e.preventDefault();
                     handleSend();
                   }}
-                  className="flex gap-2 sm:gap-3 items-center p-3"
+                  className="flex gap-2 sm:gap-3 items-end p-3"
                 >
-                  <span className="text-primary font-semibold text-sm shrink-0">›</span>
-                  <Input
+                  <span className="text-primary font-semibold text-sm shrink-0 pb-3">›</span>
+                  <Textarea
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     placeholder="Ask anything about this subject..."
-                    className="flex-1 h-11 sm:h-12 px-3 rounded-md border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/70 font-mono text-sm"
+                    rows={Math.max(1, Math.min(12, Math.ceil(input.length / 70)))}
+                    className="flex-1 min-h-11 sm:min-h-12 px-3 py-2.5 rounded-md border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/70 font-mono text-sm resize-none overflow-y-auto"
                   />
                   {(isTyping || isAnimating) ? (
                     <Button
