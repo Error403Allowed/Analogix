@@ -730,8 +730,8 @@ const Chat = () => {
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     placeholder="Ask anything about this subject..."
-                    rows={Math.max(1, Math.min(12, Math.ceil(input.length / 70)))}
-                    className="flex-1 min-h-11 sm:min-h-12 px-3 py-2.5 rounded-md border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/70 font-mono text-sm resize-none overflow-y-auto"
+                    rows={Math.max(1, Math.min(12, Math.ceil(input.length / 70) || 1))}
+                    className="flex-1 !min-h-11 sm:!min-h-12 px-3 py-2.5 rounded-md border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/70 font-mono text-sm resize-none overflow-y-auto max-h-64"
                   />
                   {(isTyping || isAnimating) ? (
                     <Button
