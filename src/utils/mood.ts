@@ -1,6 +1,7 @@
 export const moodProfiles = {
   focused: {
     label: "Focused",
+    theme: "Classic Blue",
     aiTone: "clear, calm, precise",
     aiStyle: "Keep responses structured, concise, and step-by-step. Minimise fluff.",
     quizStyle: "Rigorous, concept-first questions with clean phrasing.",
@@ -22,6 +23,7 @@ export const moodProfiles = {
   },
   energized: {
     label: "Energized",
+    theme: "Candy Pop",
     aiTone: "high-energy, punchy, motivating",
     aiStyle: "Use short, lively sentences and action verbs. Keep momentum.",
     quizStyle: "Fast-paced, upbeat questions with snappy prompts.",
@@ -43,6 +45,7 @@ export const moodProfiles = {
   },
   chill: {
     label: "Chill",
+    theme: "Oceanic",
     aiTone: "relaxed, warm, unhurried",
     aiStyle: "Use gentle phrasing and a soothing cadence. Avoid pressure.",
     quizStyle: "Low-pressure, friendly questions with supportive hints.",
@@ -64,6 +67,7 @@ export const moodProfiles = {
   },
   tired: {
     label: "Tired",
+    theme: "Sunset Ember",
     aiTone: "gentle, low-energy, supportive",
     aiStyle: "Keep responses short, reassuring, and low-effort to read. Encourage light, manageable learning without telling the student to stop or leave.",
     quizStyle: "Simple, low-cognitive-load questions with clear wording.",
@@ -85,6 +89,7 @@ export const moodProfiles = {
   },
   creative: {
     label: "Creative",
+    theme: "Cosmic Aurora",
     aiTone: "imaginative, playful, curious",
     aiStyle: "Use vivid imagery and playful analogies while staying accurate.",
     quizStyle: "Inventive prompts that invite creative thinking.",
@@ -106,6 +111,7 @@ export const moodProfiles = {
   },
   productive: {
     label: "Productive",
+    theme: "Midnight Gold",
     aiTone: "crisp, efficient, goal-oriented",
     aiStyle: "Be direct and actionable. Emphasise next steps and clarity.",
     quizStyle: "Targeted, efficient questions that reinforce mastery.",
@@ -127,6 +133,7 @@ export const moodProfiles = {
   },
   excited: {
     label: "Excited",
+    theme: "Cyber Neon",
     aiTone: "enthusiastic, upbeat, confident",
     aiStyle: "Use lively phrasing and momentum, but keep it clear.",
     quizStyle: "Dynamic questions with punchy prompts.",
@@ -148,6 +155,7 @@ export const moodProfiles = {
   },
   balanced: {
     label: "Balanced",
+    theme: "Forest Glow",
     aiTone: "steady, composed, encouraging",
     aiStyle: "Keep a calm, even tone with clear explanations.",
     quizStyle: "Well-rounded questions with balanced difficulty.",

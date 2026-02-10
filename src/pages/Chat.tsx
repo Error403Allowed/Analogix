@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useNavigate } from "react-router-dom";
 import { getGroqCompletion } from "@/services/huggingface";
+import { fetchImageForQuery } from "@/services/unsplash";
 import { statsStore } from "@/utils/statsStore";
 import MarkdownRenderer from "@/components/MarkdownRenderer";
 import TypewriterText from "@/components/TypewriterText";
@@ -163,6 +164,7 @@ interface Message {
   role: "user" | "assistant";
   content: string;
   analogy?: string;
+  imageUrl?: string; // Optional image shown inline (e.g. from Unsplash)
   isNew?: boolean; // Track if this is a new message for typewriter effect
   isWelcome?: boolean;
 }
