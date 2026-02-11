@@ -10,7 +10,10 @@ import {
   Briefcase,
   Wallet,
   HeartPulse,
-  Globe
+  Globe,
+  Wrench,
+  Stethoscope,
+  Languages
 } from "lucide-react";
 
 export type SubjectId =
@@ -19,13 +22,16 @@ export type SubjectId =
   | "history"
   | "physics"
   | "chemistry"
-  | "literature"
+  | "english"
   | "computing"
   | "economics"
   | "business"
   | "commerce"
   | "pdhpe"
-  | "geography";
+  | "geography"
+  | "engineering"
+  | "medicine"
+  | "languages";
 
 type GradeBand = "junior" | "middle" | "senior";
 
@@ -86,13 +92,13 @@ export const SUBJECT_CATALOG: Array<{
     }
   },
   {
-    id: "literature",
-    label: "Literature",
+    id: "english",
+    label: "English",
     icon: BookOpen,
     descriptions: {
-      junior: "BOOKS, POETRY, STORIES",
-      middle: "THEMES, VOICE, CONTEXT",
-      senior: "ANALYSIS, CRITIQUE, STYLE"
+      junior: "READING, WRITING, SPEAKING",
+      middle: "LITERATURE, LANGUAGE, CULTURE",
+      senior: "CRITICISM, ANALYSIS, CREATIVITY"
     }
   },
   {
@@ -153,6 +159,36 @@ export const SUBJECT_CATALOG: Array<{
       junior: "WORLD, MAPS, ENVIRONMENT",
       middle: "POPULATION, CLIMATE, CITIES",
       senior: "HUMANS, HAZARDS, SYSTEMS"
+    }
+  },
+  {
+    id: "engineering",
+    label: "Engineering",
+    icon: Wrench,
+    descriptions: {
+      junior: "DESIGN, MECHANICS, BUILD",
+      middle: "STRUCTURES, MATERIALS, SYSTEMS",
+      senior: "MECHANICS, THERMODYNAMICS, DESIGN"
+    }
+  },
+  {
+    id: "medicine",
+    label: "Medicine",
+    icon: Stethoscope,
+    descriptions: {
+      junior: "HEALTH, ANATOMY, DISEASE",
+      middle: "ORGANS, TREATMENTS, PATHOLOGY",
+      senior: "PHYSIOLOGY, PHARMACOLOGY, DIAGNOSIS"
+    }
+  },
+  {
+    id: "languages",
+    label: "Languages",
+    icon: Languages,
+    descriptions: {
+      junior: "VOCAB, GRAMMAR, SPEAKING",
+      middle: "LITERATURE, CULTURE, WRITING",
+      senior: "LINGUISTICS, LITERATURE, FLUENCY"
     }
   }
 ];

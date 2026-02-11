@@ -14,7 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useNavigate } from "react-router-dom";
-import { getGroqCompletion } from "@/services/huggingface";
+import { getHuggingFaceCompletion } from "@/services/huggingface";
 import { statsStore } from "@/utils/statsStore";
 import MarkdownRenderer from "@/components/MarkdownRenderer";
 import TypewriterText from "@/components/TypewriterText";
@@ -307,7 +307,7 @@ const Chat = () => {
     setIsTyping(true);
     setStopTyping(false);
 
-    const aiResponse = await getGroqCompletion(history, buildContext());
+    const aiResponse = await getHuggingFaceCompletion(history, buildContext());
 
     setMessages((prev) => prev.map((m) => (
       m.id === messageId
@@ -396,7 +396,7 @@ const Chat = () => {
       const context = buildContext();
 
       // FETCH: We send the request over the internet and wait.
-      const aiResponse = await getGroqCompletion(newHistory, context);
+      const aiResponse = await getHuggingFaceCompletion(newHistory, context);
 
       // 3. We show the AI's reply on the screen.
       const response: Message = {
@@ -429,7 +429,7 @@ const Chat = () => {
       content: `Introduce a NEW, interesting concept in ${subjectLabel} using an analogy that references a specific moment, scene, or character from my interests (${userHobbies.join(", ")})—not generic settings. ${avoidText}` 
     }];
 
-    const aiResponse = await getGroqCompletion(aiPrompt, context);
+    const aiResponse = await getHuggingFaceCompletion(aiPrompt, context);
     const newMsgId = Date.now().toString();
     setMessages(prev => [...prev, {
       id: newMsgId,

@@ -24,7 +24,7 @@ const SUBJECT_OPTIONS = [
   { id: "history", label: "History" },
   { id: "physics", label: "Physics" },
   { id: "chemistry", label: "Chemistry" },
-  { id: "literature", label: "Literature" },
+  { id: "english", label: "English" },
   { id: "computing", label: "Computing" },
   { id: "economics", label: "Economics" },
   { id: "business", label: "Business Studies" },
