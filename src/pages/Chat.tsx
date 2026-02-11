@@ -444,14 +444,11 @@ const Chat = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col relative overflow-hidden chat-neural-bg">
-      <div className="chat-blob chat-blob-1" aria-hidden />
-      <div className="chat-blob chat-blob-2" aria-hidden />
-      <div className="chat-blob chat-blob-3" aria-hidden />
-      <div className="flex-1 flex flex-col max-w-3xl mx-auto w-full px-4 sm:px-6 py-6 relative z-10">
-        {/* Neural interface header */}
+    <div className="min-h-screen flex flex-col relative overflow-hidden bg-background">
+      <div className="flex-1 flex flex-col max-w-3xl mx-auto w-full px-4 sm:px-6 py-6 relative">
+        {/* Simple header */}
         <motion.header
-          className="chat-neural-header flex items-center justify-between py-3 px-4 -mx-4 sm:-mx-6 mb-4"
+          className="flex items-center justify-between py-3 px-4 -mx-4 sm:-mx-6 mb-4 border-b border-border"
           initial={{ opacity: 0, y: -12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ type: "spring", stiffness: 300, damping: 24 }}
@@ -466,10 +463,10 @@ const Chat = () => {
             Back
           </Button>
           <div className="flex items-center gap-2.5">
-            <div className="quizzy-avatar w-9 h-9 rounded-xl gradient-primary flex items-center justify-center">
-              <Sparkles className="w-4 h-4 text-white" />
+            <div className="w-9 h-9 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
+              <Lightbulb className="w-4 h-4 text-white" />
             </div>
-            <h1 className="text-base font-bold gradient-text">Quizzy</h1>
+            <h1 className="text-base font-semibold text-foreground">Quizzy</h1>
           </div>
           <div className="w-16" />
         </motion.header>
@@ -498,18 +495,18 @@ const Chat = () => {
                   <motion.button
                     key={subject.id}
                     onClick={() => handleSubjectSelect(subject.id)}
-                    className="chat-hex-card p-5 text-left group"
+                    className="p-5 text-left group border border-border rounded-xl bg-card hover:bg-muted/50 transition-colors"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.08, type: "spring", stiffness: 180, damping: 18 }}
                     whileHover={{ scale: 1.03 }}
                     whileTap={{ scale: 0.98 }}
                   >
-                    <div className="w-12 h-12 rounded-lg gradient-primary flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                    <div className="w-12 h-12 rounded-lg bg-primary flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
                       <Icon className="w-6 h-6 text-white" />
                     </div>
                     <div className="font-bold text-foreground text-sm">{subject.label}</div>
-                    <div className="text-[10px] uppercase tracking-widest text-muted-foreground mt-1 font-mono">
+                    <div className="text-xs text-muted-foreground mt-1">
                       {getSubjectDescription(subject.id, userPrefs.grade)}
                     </div>
                   </motion.button>
@@ -520,7 +517,7 @@ const Chat = () => {
         ) : (
           /* Chat Interface */
           <>
-            {/* Subject Badge & Controls - compact pill bar */}
+            {/* Controls bar */}
             <motion.div
               className="flex items-center justify-center gap-2 sm:gap-3 mb-6 flex-wrap"
               initial={{ opacity: 0, y: 8 }}
@@ -534,13 +531,12 @@ const Chat = () => {
                   setSelectedSubject(null);
                   setMessages([]);
                 }}
-                className="chat-neural-pill gap-2 rounded-md h-8 px-4 text-xs font-medium hover:text-primary"
+                className="gap-2 rounded-md h-8 px-4 text-xs font-medium"
               >
-                <BookOpen className="w-3.5 h-3.5" />
                 {(() => {
                   const current = subjects.find((s) => s.id === selectedSubject);
                   const Icon = current?.icon;
-                  return Icon ? <Icon className="w-3.5 h-3.5 text-primary" /> : null;
+                  return Icon ? <Icon className="w-3.5 h-3.5" /> : null;
                 })()}
                 {subjects.find(s => s.id === selectedSubject)?.label}
               </Button>
@@ -548,15 +544,15 @@ const Chat = () => {
                 variant="outline"
                 size="sm"
                 onClick={handleNewTopic}
-                className="chat-neural-pill gap-2 rounded-md h-8 px-4 text-xs font-medium hover:text-primary"
+                className="gap-2 rounded-md h-8 px-4 text-xs font-medium"
                 disabled={isInputLocked}
               >
                 <RefreshCw className="w-3.5 h-3.5" />
                 New Topic
               </Button>
 
-              <div className="chat-neural-pill flex items-center gap-2 pl-3 pr-3 py-1.5 rounded-md">
-                <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Analogies</span>
+              <div className="flex items-center gap-2 pl-3 pr-3 py-1.5 rounded-md border border-border bg-muted/30">
+                <span className="text-xs font-medium text-muted-foreground">Intensity:</span>
                 <input
                   type="range"
                   min="0"
@@ -589,16 +585,16 @@ const Chat = () => {
                     <div
                       className={`max-w-[88%] sm:max-w-[85%] ${
                         message.role === "user"
-                          ? "chat-bubble-user"
-                          : "chat-bubble-assistant"
+                          ? "message-bubble-user"
+                          : "message-bubble-assistant"
                       }`}
                     >
                       {message.role === "assistant" && (
                         <div className="flex items-center gap-2 mb-2.5">
-                          <div className="quizzy-avatar w-6 h-6 rounded-lg gradient-primary flex items-center justify-center flex-shrink-0">
+                          <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
                             <Lightbulb className="w-3 h-3 text-white" />
                           </div>
-                          <span className="text-xs font-semibold gradient-text">Quizzy</span>
+                          <span className="text-xs font-semibold text-primary">Quizzy</span>
                         </div>
                       )}
                       {message.role === "assistant" ? (
@@ -664,7 +660,7 @@ const Chat = () => {
                           <p className="whitespace-pre-wrap text-sm leading-relaxed">
                             {message.content}
                           </p>
-                          <div className="mt-2 flex items-center justify-end opacity-80 hover:opacity-100 transition-opacity">
+                          <div className="mt-2 flex items-center justify-end">
                             <Button
                               type="button"
                               variant="ghost"
@@ -672,7 +668,7 @@ const Chat = () => {
                               onClick={() => handleCopy(message.content, message.id)}
                               aria-label="Copy prompt"
                               title="Copy prompt"
-                              className="h-7 w-7 rounded-lg text-primary-foreground/90 hover:text-primary-foreground hover:bg-white/15"
+                              className="h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
                             >
                               {copiedId === message.id ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
                             </Button>
@@ -692,14 +688,14 @@ const Chat = () => {
                   transition={{ type: "spring", stiffness: 400, damping: 25 }}
                   className="flex justify-start"
                 >
-                  <div className="chat-bubble-assistant">
+                  <div className="message-bubble-assistant">
                     <div className="flex items-center gap-3">
-                      <div className="quizzy-avatar w-6 h-6 rounded-md flex items-center justify-center shrink-0">
+                      <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center shrink-0">
                         <Lightbulb className="w-3 h-3 text-white" />
                       </div>
                       <div className="flex gap-1 items-end h-5">
                         {[0, 1, 2, 3, 4, 5, 6].map((i) => (
-                          <div key={i} className="spectrum-bar" style={{ alignSelf: "flex-end" }} />
+                          <div key={i} className="typing-dot" style={{ alignSelf: "flex-end" }} />
                         ))}
                       </div>
                     </div>
@@ -717,7 +713,7 @@ const Chat = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
             >
-              <div className="chat-input-container rounded-lg">
+              <div className="message-input-container rounded-lg border border-border">
                 <form
                   onSubmit={(e) => {
                     e.preventDefault();
@@ -725,7 +721,6 @@ const Chat = () => {
                   }}
                   className="flex gap-2 sm:gap-3 items-end p-3"
                 >
-                  <span className="text-primary font-semibold text-sm shrink-0 pb-3">›</span>
                   <Textarea
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
@@ -747,7 +742,7 @@ const Chat = () => {
                       type="submit"
                       disabled={!input.trim()}
                       size="icon"
-                      className="h-11 w-11 sm:h-12 sm:w-12 rounded-xl gradient-primary text-white border-0 shrink-0 shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:hover:scale-100"
+                      className="h-11 w-11 sm:h-12 sm:w-12 rounded-full bg-primary text-white border-0 shrink-0 hover:bg-primary/90 active:scale-95 transition-all disabled:opacity-50 disabled:hover:bg-primary"
                     >
                       <Send className="w-4 h-4" />
                     </Button>

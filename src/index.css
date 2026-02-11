@@ -208,237 +208,66 @@ button .markdown-content .katex {
   pointer-events: none; /* Prevent interference with clicks */
 }
 
-/* ========== NEURAL INTERFACE - Chat Page ========== */
-.chat-neural-bg {
-  position: relative;
-  background-color: hsl(var(--background));
-}
+/* ========== MESSAGE INTERFACE - Clean Text Style ========== */
 
-/* Gradient blobs - floating, gentle movement */
-.chat-blob {
-  position: absolute;
-  border-radius: 9999px;
-  filter: blur(80px);
-  opacity: 0.4;
-  pointer-events: none;
-  animation: blob-float 20s ease-in-out infinite;
-}
-
-.chat-blob-1 {
-  width: 400px;
-  height: 400px;
-  top: -15%;
-  right: -10%;
-  background: hsl(var(--primary) / 0.25);
-}
-
-.chat-blob-2 {
-  width: 320px;
-  height: 320px;
-  bottom: 10%;
-  left: -12%;
-  background: hsl(var(--primary) / 0.2);
-  animation-delay: -7s;
-}
-
-.chat-blob-3 {
-  width: 280px;
-  height: 280px;
-  top: 40%;
-  left: 50%;
-  background: hsl(var(--primary) / 0.12);
-  animation: blob-float-center 20s ease-in-out infinite;
-  animation-delay: -14s;
-}
-
-@keyframes blob-float {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  25% { transform: translate(20px, -15px) scale(1.05); }
-  50% { transform: translate(-15px, 10px) scale(0.95); }
-  75% { transform: translate(10px, 20px) scale(1.02); }
-}
-
-@keyframes blob-float-center {
-  0%, 100% { transform: translate(-50%, -50%) translate(0, 0) scale(1); }
-  25% { transform: translate(-50%, -50%) translate(15px, -10px) scale(1.05); }
-  50% { transform: translate(-50%, -50%) translate(-10px, 8px) scale(0.95); }
-  75% { transform: translate(-50%, -50%) translate(8px, 12px) scale(1.02); }
-}
-
-/* Data packet - user message: sharp, glowing edge */
-.chat-bubble-user {
-  @apply px-4 py-3 text-sm leading-relaxed relative;
-  background: hsl(var(--primary) / 0.95);
+/* User message bubble - blue, right-aligned */
+.message-bubble-user {
+  @apply px-4 py-2.5 text-sm leading-relaxed;
+  background: hsl(var(--primary));
   color: white;
-  clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px));
-  box-shadow: 
-    0 0 0 1px hsl(var(--primary) / 0.5),
-    0 0 24px -4px hsl(var(--primary) / 0.6),
-    inset 0 1px 0 rgb(255 255 255 / 0.2);
+  border-radius: 18px;
+  word-break: break-word;
 }
 
-.chat-bubble-user::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 24px;
-  height: 24px;
-  background: linear-gradient(135deg, rgb(255 255 255 / 0.2) 0%, transparent 50%);
-  clip-path: polygon(100% 0, 0 0, 0 100%);
+/* Assistant message bubble - transparent, left-aligned */
+.message-bubble-assistant {
+  @apply px-4 py-3 text-sm leading-relaxed;
+  color: hsl(var(--foreground));
+  word-break: break-word;
 }
 
-/* Data packet - assistant: neural response block */
-.chat-bubble-assistant {
-  @apply px-4 py-3 text-sm leading-relaxed relative pl-6;
-  background: hsl(var(--card) / 0.95);
-  backdrop-filter: blur(12px);
-  border: 1px solid hsl(var(--border) / 0.8);
-  clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%, 0 0);
-  box-shadow: 0 4px 24px -4px rgb(0 0 0 / 0.08);
+.dark .message-bubble-assistant {
+  color: hsl(var(--foreground));
 }
 
-.chat-bubble-assistant::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 4px;
-  background: linear-gradient(to bottom, var(--g-1), var(--g-2), var(--g-3));
-  box-shadow: 0 0 16px -2px hsl(var(--primary) / 0.5);
+/* Message input container */
+.message-input-container {
+  @apply relative overflow-hidden bg-card;
+  box-shadow: 0 -1px 3px rgb(0 0 0 / 0.1);
 }
 
-.dark .chat-bubble-assistant {
-  background: hsl(var(--card) / 0.7);
-  border-color: hsl(var(--border) / 0.5);
-  box-shadow: 0 4px 24px -4px rgb(0 0 0 / 0.4);
+.dark .message-input-container {
+  box-shadow: 0 -1px 3px rgb(0 0 0 / 0.3);
 }
 
-/* Terminal-style input */
-.chat-input-container {
-  @apply relative overflow-hidden;
-  font-family: "JetBrains Mono", ui-monospace, monospace;
-  background: hsl(var(--card) / 0.8);
-  backdrop-filter: blur(12px);
-  border: 1px solid hsl(var(--border));
-  box-shadow: 
-    0 0 0 1px hsl(var(--primary) / 0.1),
-    0 8px 32px -8px rgb(0 0 0 / 0.1),
-    inset 0 1px 0 rgb(255 255 255 / 0.05);
+.message-input-container:focus-within {
+  box-shadow: 0 -1px 3px rgb(0 0 0 / 0.1);
 }
 
-.chat-input-container:focus-within {
-  border-color: hsl(var(--primary) / 0.6);
-  box-shadow: 
-    0 0 0 2px hsl(var(--primary) / 0.2),
-    0 0 40px -8px hsl(var(--primary) / 0.3);
+/* Typing indicator dots */
+.typing-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: hsl(var(--foreground) / 0.6);
+  animation: typing-bounce 1.4s infinite;
 }
 
-.dark .chat-input-container {
-  background: hsl(var(--card) / 0.5);
-}
+.typing-dot:nth-child(1) { animation-delay: 0ms; }
+.typing-dot:nth-child(2) { animation-delay: 200ms; }
+.typing-dot:nth-child(3) { animation-delay: 400ms; }
+.typing-dot:nth-child(4) { animation-delay: 600ms; }
+.typing-dot:nth-child(5) { animation-delay: 800ms; }
+.typing-dot:nth-child(6) { animation-delay: 1000ms; }
+.typing-dot:nth-child(7) { animation-delay: 1200ms; }
 
-.dark .chat-input-container:focus-within {
-  box-shadow: 
-    0 0 0 2px hsl(var(--primary) / 0.3),
-    0 0 48px -8px hsl(var(--primary) / 0.25);
-}
-
-/* Terminal prompt prefix */
-.chat-input-prompt::before {
-  content: '>';
-  color: hsl(var(--primary));
-  font-weight: 600;
-  margin-right: 0.5rem;
-}
-
-/* Data block subject cards - chamfered corners */
-.chat-hex-card {
-  position: relative;
-  clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 16px 100%, 0 calc(100% - 16px));
-  background: linear-gradient(135deg, hsl(var(--card)) 0%, hsl(var(--muted) / 0.8) 100%);
-  border: 1px solid hsl(var(--border));
-  transition: all 0.3s ease;
-}
-
-.chat-hex-card:hover {
-  border-color: hsl(var(--primary) / 0.6);
-  box-shadow: 
-    0 0 0 2px hsl(var(--primary) / 0.2),
-    0 0 32px -8px hsl(var(--primary) / 0.3);
-  transform: translateY(-2px);
-}
-
-.chat-hex-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 40px;
-  height: 4px;
-  background: linear-gradient(90deg, var(--g-1), var(--g-2));
-  box-shadow: 0 0 12px -2px hsl(var(--primary) / 0.5);
-}
-
-/* Spectrum analyzer typing indicator */
-.spectrum-bar {
-  width: 4px;
-  border-radius: 2px;
-  background: linear-gradient(to top, var(--g-1), var(--g-2));
-  animation: spectrum-pulse 0.6s ease-in-out infinite;
-}
-
-.spectrum-bar:nth-child(1) { animation-delay: 0ms; }
-.spectrum-bar:nth-child(2) { animation-delay: 80ms; }
-.spectrum-bar:nth-child(3) { animation-delay: 160ms; }
-.spectrum-bar:nth-child(4) { animation-delay: 240ms; }
-.spectrum-bar:nth-child(5) { animation-delay: 320ms; }
-.spectrum-bar:nth-child(6) { animation-delay: 400ms; }
-.spectrum-bar:nth-child(7) { animation-delay: 480ms; }
-
-@keyframes spectrum-pulse {
-  0%, 100% { height: 6px; opacity: 0.5; }
-  50% { height: 20px; opacity: 1; }
-}
-
-/* Neural header bar */
-.chat-neural-header {
-  background: hsl(var(--card) / 0.6);
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid hsl(var(--border) / 0.5);
-  box-shadow: 0 1px 0 rgb(255 255 255 / 0.05);
-}
-
-.dark .chat-neural-header {
-  box-shadow: 0 1px 0 rgb(255 255 255 / 0.03);
-}
-
-/* Control pills - neural style */
-.chat-neural-pill {
-  font-family: "JetBrains Mono", ui-monospace, monospace;
-  font-size: 0.7rem;
-  background: hsl(var(--muted) / 0.8);
-  border: 1px solid hsl(var(--border));
-  transition: all 0.2s ease;
-}
-
-.chat-neural-pill:hover {
-  border-color: hsl(var(--primary) / 0.5);
-  box-shadow: 0 0 12px -4px hsl(var(--primary) / 0.3);
-}
-
-/* Quizzy avatar - neural orb */
-.quizzy-avatar {
-  background: linear-gradient(135deg, var(--g-1), var(--g-2));
-  border: 1px solid rgb(255 255 255 / 0.3);
-  box-shadow: 
-    0 0 0 1px hsl(var(--primary) / 0.3),
-    0 0 20px -4px hsl(var(--primary) / 0.5);
-  animation: neural-orb-pulse 2s ease-in-out infinite;
-}
-
-@keyframes neural-orb-pulse {
-  0%, 100% { box-shadow: 0 0 0 1px hsl(var(--primary) / 0.3), 0 0 20px -4px hsl(var(--primary) / 0.5); }
-  50% { box-shadow: 0 0 0 2px hsl(var(--primary) / 0.5), 0 0 28px -2px hsl(var(--primary) / 0.6); }
+@keyframes typing-bounce {
+  0%, 60%, 100% { 
+    transform: translateY(0);
+    opacity: 0.7;
+  }
+  30% { 
+    transform: translateY(-10px);
+    opacity: 1;
+  }
 }
