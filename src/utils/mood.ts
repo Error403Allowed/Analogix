@@ -56,7 +56,7 @@ export const moodProfiles = {
       secondaryCta: "Custom Quiz",
       tutorTitle: "Chill Tutor",
       tutorSubtitle: "Relaxed and ready",
-      calendarTitle: "Gentle Plan",
+      calendarTitle: "Calm Plan",
       deadlinesTitle: "Coming Up",
       achievementsTitle: "Moments",
       streakSubtitle: "Steady and smooth",

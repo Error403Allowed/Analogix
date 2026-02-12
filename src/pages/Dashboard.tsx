@@ -1,111 +1,115 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import { 
-  Trophy, 
-  Brain,
-  Target, 
-  Zap, 
+  Trophy,
+  Target,
+  Zap,
   TrendingUp,
   MessageCircle,
-  Clock,
   ArrowRight,
+  Compass,
+  Medal,
+  Flag,
   Sparkles,
-  Smile,
-  Coffee,
-  Flame,
-  Moon
+  Calendar,
+  Dumbbell,
+  Gamepad2,
+  Music,
+  CookingPot,
+  Palette,
+  Film,
+  Leaf,
+  Laptop,
+  Book,
+  Plane
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import Header from "@/components/Header";
-import StatsCard from "@/components/StatsCard";
 import AchievementBadge from "@/components/AchievementBadge";
 import QuizCreator from "@/components/QuizCreator";
 import ExamManager from "@/components/ExamManager";
 import CalendarWidget from "@/components/CalendarWidget";
-import DailyMascotCard from "@/components/DailyMascotCard";
 import { useNavigate } from "react-router-dom";
 import { achievementStore } from "@/utils/achievementStore";
 import { statsStore } from "@/utils/statsStore";
-import { getAIBannerPhrase } from "@/services/huggingface";
 import { useAchievementChecker } from "@/hooks/useAchievementChecker";
-import TypewriterText from "@/components/TypewriterText";
+import { SUBJECT_CATALOG } from "@/constants/subjects";
+import { HOBBY_OPTIONS } from "@/utils/interests";
 import { applyThemeByName } from "@/components/ThemeSelector";
-import { getMoodProfile } from "@/utils/mood";
+import { getMoodProfile, getStoredMoodId, moodProfiles } from "@/utils/mood";
 
-const moodThemes = [
-  {
-    id: "focused",
-    label: "Focused",
-    theme: "Classic Blue",
-    description: "Clean, calm, and sharp.",
-    icon: Brain
-  },
-  {
-    id: "energized",
-    label: "Energized",
-    theme: "Candy Pop",
-    description: "Bright, fast, and bold.",
-    icon: Flame
-  },
-  {
-    id: "chill",
-    label: "Chill",
-    theme: "Oceanic",
-    description: "Cool and steady.",
-    icon: Moon
-  },
-  {
-    id: "tired",
-    label: "Tired",
-    theme: "Sunset Ember",
-    description: "Warm and soothing.",
-    icon: Coffee
-  },
-  {
-    id: "creative",
-    label: "Creative",
-    theme: "Cosmic Aurora",
-    description: "Vivid and curious.",
-    icon: Sparkles
-  },
-  {
-    id: "productive",
-    label: "Productive",
-    theme: "Midnight Gold",
-    description: "Bright and motivating.",
-    icon: Target
-  },
-  {
-    id: "excited",
-    label: "Excited",
-    theme: "Cyber Neon",
-    description: "Electric and bold.",
-    icon: Zap
-  },
-  {
-    id: "balanced",
-    label: "Balanced",
-    theme: "Forest Glow",
-    description: "Grounded and steady.",
-    icon: Smile
+type DashboardPreferences = {
+  name?: string;
+  subjects?: string[];
+  hobbyIds?: string[];
+  hobbyDetails?: Record<string, string>;
+  hobbies?: string[];
+};
+
+type DashboardAchievement = ReturnType<typeof achievementStore.getAll>[number];
+
+const readLocalStorageJson = <T,>(key: string, fallback: T): T => {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return fallback;
+    const parsed = JSON.parse(raw);
+    if (parsed === null || typeof parsed !== "object") return fallback;
+    return parsed as T;
+  } catch {
+    return fallback;
   }
-];
+};
+
+const toNonNegativeInt = (value: unknown): number => {
+  const n = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(n) || n < 0) return 0;
+  return Math.floor(n);
+};
+
+const toPercent = (value: unknown): number => {
+  const n = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(n)) return 0;
+  return Math.min(100, Math.max(0, Math.round(n)));
+};
+
+const normalizeSubjectCounts = (value: unknown): Record<string, number> => {
+  if (!value || typeof value !== "object") return {};
+  const result: Record<string, number> = {};
+
+  Object.entries(value as Record<string, unknown>).forEach(([key, rawCount]) => {
+    const label = String(key || "").trim();
+    if (!label) return;
+    result[label] = toNonNegativeInt(rawCount);
+  });
+
+  return result;
+};
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const [showQuizCreator, setShowQuizCreator] = useState(false);
   const [quizCreatorMode, setQuizCreatorMode] = useState<'custom' | 'learning'>('custom');
-  const [recentAchievements, setRecentAchievements] = useState([]);
-  const [bannerPhrase, setBannerPhrase] = useState("");
-  const [selectedMood, setSelectedMood] = useState(() => localStorage.getItem("mood-theme") || "focused");
+  const [recentAchievements, setRecentAchievements] = useState<DashboardAchievement[]>([]);
+  const [selectedMood, setSelectedMood] = useState(() => getStoredMoodId());
+  const [showInsights, setShowInsights] = useState(false);
   
   // Start Achievement Sync
   useAchievementChecker();
 
-  const userPrefs = JSON.parse(localStorage.getItem("userPreferences") || "{}");
+  const userPrefs = readLocalStorageJson<DashboardPreferences>("userPreferences", {});
   const userName = userPrefs.name || "Student";
   const [statsData, setStatsData] = useState(() => statsStore.get());
+
+  const normalizedStats = useMemo(() => {
+    return {
+      quizzesDone: toNonNegativeInt(statsData.quizzesDone),
+      currentStreak: toNonNegativeInt(statsData.currentStreak),
+      accuracy: toPercent(statsData.accuracy),
+      conversationsCount: toNonNegativeInt(statsData.conversationsCount),
+      subjectCounts: normalizeSubjectCounts(statsData.subjectCounts)
+    };
+  }, [statsData]);
 
   useEffect(() => {
     const handleStatsUpdate = () => {
@@ -113,7 +117,17 @@ const Dashboard = () => {
     };
     
     const handleAchievementsUpdate = () => {
-      setRecentAchievements(achievementStore.getAll().filter(a => a.unlocked).slice(-4));
+      const latestUnlocked = achievementStore
+        .getAll()
+        .filter((achievement) => achievement.unlocked)
+        .sort((a, b) => {
+          const aTime = a.unlockedAt ? new Date(a.unlockedAt).getTime() : 0;
+          const bTime = b.unlockedAt ? new Date(b.unlockedAt).getTime() : 0;
+          return aTime - bTime;
+        })
+        .slice(-4);
+
+      setRecentAchievements(latestUnlocked);
     };
 
     window.addEventListener("statsUpdated", handleStatsUpdate);
@@ -123,24 +137,148 @@ const Dashboard = () => {
     handleStatsUpdate();
     handleAchievementsUpdate();
     
-    // Fetch AI banner specifically for the dashboard
-    getAIBannerPhrase(userName, userPrefs.subjects || [], selectedMood).then(setBannerPhrase);
-    
     return () => {
       window.removeEventListener("statsUpdated", handleStatsUpdate);
       window.removeEventListener("achievementsUpdated", handleAchievementsUpdate);
     };
-  }, [userName, selectedMood]);
+  }, [userName]);
 
   useEffect(() => {
-    const mood = moodThemes.find((m) => m.id === selectedMood);
-    if (!mood) return;
-    applyThemeByName(mood.theme);
-    localStorage.setItem("mood-theme", mood.id);
+    const profile = getMoodProfile(selectedMood);
+    applyThemeByName(profile.theme);
+    localStorage.setItem("mood-theme", selectedMood);
     window.dispatchEvent(new Event("moodUpdated"));
   }, [selectedMood]);
 
   const moodProfile = getMoodProfile(selectedMood);
+
+  const moodOptions = useMemo(
+    () =>
+      Object.entries(moodProfiles).map(([id, profile]) => ({
+        id,
+        label: profile.label
+      })),
+    []
+  );
+
+  const masteryPercent = useMemo(() => {
+    if (normalizedStats.quizzesDone > 0) {
+      return normalizedStats.accuracy;
+    }
+    return 0;
+  }, [normalizedStats.accuracy, normalizedStats.quizzesDone]);
+
+  const subjectLabelMap = useMemo(() => {
+    const map = new Map<string, string>();
+    SUBJECT_CATALOG.forEach((subject) => map.set(subject.id, subject.label));
+    return map;
+  }, []);
+
+  const subjectIdByLabelMap = useMemo(() => {
+    const map = new Map<string, string>();
+    SUBJECT_CATALOG.forEach((subject) => map.set(subject.label.toLowerCase(), subject.id));
+    return map;
+  }, []);
+
+  const subjectLabels = useMemo(() => {
+    const prefsSubjects = Array.isArray(userPrefs.subjects) ? userPrefs.subjects : [];
+    if (prefsSubjects.length > 0) {
+      const labels = prefsSubjects
+        .map((id) => subjectLabelMap.get(id) || id)
+        .map((value) => String(value || "").trim())
+        .filter(Boolean);
+      return Array.from(new Set(labels));
+    }
+    return Object.keys(normalizedStats.subjectCounts);
+  }, [normalizedStats.subjectCounts, subjectLabelMap, userPrefs.subjects]);
+
+  const subjectPerformance = useMemo(() => {
+    const counts = normalizedStats.subjectCounts;
+    const rows = subjectLabels.map((label) => ({
+      label,
+      count: counts[label] || counts[subjectIdByLabelMap.get(label.toLowerCase()) || ""] || 0
+    }));
+    const max = Math.max(1, ...rows.map((row) => row.count));
+    return rows.map((row) => ({
+      ...row,
+      percent: Math.round((row.count / max) * 100)
+    }));
+  }, [normalizedStats.subjectCounts, subjectIdByLabelMap, subjectLabels]);
+
+  const hasSubjectActivity = useMemo(
+    () => subjectPerformance.some((subject) => subject.count > 0),
+    [subjectPerformance]
+  );
+
+  const subjectPerformanceDesc = useMemo(
+    () => [...subjectPerformance].sort((a, b) => b.count - a.count || a.label.localeCompare(b.label)),
+    [subjectPerformance]
+  );
+
+  const weakestSubjects = useMemo(() => {
+    if (!hasSubjectActivity) return [];
+    return [...subjectPerformance].sort((a, b) => a.count - b.count).slice(0, 2);
+  }, [hasSubjectActivity, subjectPerformance]);
+
+  const activityLabel = normalizedStats.conversationsCount === 1 ? "analogy" : "analogies";
+  const streakLabel = normalizedStats.currentStreak === 1 ? "day" : "days";
+
+  const hobbyIconMap = useMemo(
+    () => ({
+      sports: Dumbbell,
+      gaming: Gamepad2,
+      music: Music,
+      cooking: CookingPot,
+      art: Palette,
+      movies: Film,
+      nature: Leaf,
+      tech: Laptop,
+      reading: Book,
+      travel: Plane
+    }),
+    []
+  );
+
+  const hobbyIdToLabelMap = useMemo(() => {
+    const map = new Map<string, string>();
+    HOBBY_OPTIONS.forEach((hobby) => map.set(hobby.id, hobby.label));
+    return map;
+  }, []);
+
+  const hobbyLabelToIdMap = useMemo(() => {
+    const map = new Map<string, string>();
+    HOBBY_OPTIONS.forEach((hobby) => map.set(hobby.label.toLowerCase(), hobby.id));
+    return map;
+  }, []);
+
+  const interestCards = useMemo(() => {
+    const hobbyIds = Array.isArray(userPrefs.hobbyIds) ? userPrefs.hobbyIds : [];
+    const hobbies = Array.isArray(userPrefs.hobbies) ? userPrefs.hobbies : [];
+    const unique = new Map<string, string>();
+
+    if (hobbyIds.length > 0) {
+      hobbyIds.forEach((id) => {
+        const label = hobbyIdToLabelMap.get(id) || id;
+        const normalized = label.trim();
+        if (!normalized) return;
+        unique.set(normalized.toLowerCase(), normalized);
+      });
+    }
+
+    if (hobbies.length > 0) {
+      hobbies.forEach((entry: string) => {
+        const baseLabel = entry.split("(")[0]?.trim() || entry.trim();
+        if (!baseLabel) return;
+        unique.set(baseLabel.toLowerCase(), baseLabel);
+      });
+    }
+
+    return Array.from(unique.entries()).map(([normalizedLabel, label]) => {
+      const hobbyId = hobbyLabelToIdMap.get(normalizedLabel);
+      const icon = hobbyId ? hobbyIconMap[hobbyId as keyof typeof hobbyIconMap] || Sparkles : Sparkles;
+      return { label, icon };
+    });
+  }, [hobbyIconMap, hobbyIdToLabelMap, hobbyLabelToIdMap, userPrefs.hobbies, userPrefs.hobbyIds]);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -153,211 +291,373 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#020617] pb-12 relative overflow-hidden flex flex-col">
+    <div className="h-[100dvh] bg-background dashboard-stage pb-2 relative overflow-x-hidden flex flex-col">
       {/* Background Decor */}
       <div className="liquid-blob w-[500px] h-[500px] bg-primary/20 -top-48 -left-48 fixed blur-3xl opacity-20" />
       <div className="liquid-blob w-[400px] h-[400px] bg-accent/20 bottom-20 right-10 fixed blur-3xl opacity-20" style={{ animationDelay: "-3s" }} />
       
       <div className="absolute top-0 left-0 w-full h-[500px] bg-gradient-to-b from-primary/10 via-transparent to-transparent pointer-events-none" />
       
-      <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 pt-6 relative z-10 flex-1 flex flex-col">
-        <Header userName={userName} streak={statsData.currentStreak} />
+      <div className="w-full px-4 sm:px-6 lg:px-10 xl:px-12 2xl:px-16 pt-3 relative z-10 flex-1 min-h-0 flex flex-col">
+        <Header userName={userName} streak={normalizedStats.currentStreak} />
 
-        {/* BENTO GRID LAYOUT */}
+        {/* Mood Bar */}
         <motion.div
-          variants={containerVariants}
+          variants={itemVariants}
           initial="hidden"
           animate="visible"
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-6 items-stretch"
+          className="dashboard-panel px-4 py-3 mb-2"
         >
-          {/* Row 1: Welcome & Quick Stats */}
-          <div className="lg:col-span-8 flex flex-col gap-6 h-full">
-            <motion.div variants={itemVariants} className="glass-card p-8 border-none bg-gradient-to-br from-primary/10 via-background/50 to-accent/5 relative overflow-hidden group min-h-[220px] flex flex-col justify-center">
-                <div className="absolute top-0 right-0 w-80 h-80 bg-primary/10 rounded-full -mr-40 -mt-40 blur-3xl group-hover:scale-110 transition-transform duration-700" />
-                <div className="relative z-10">
-                   <h2 className="text-3xl md:text-4xl font-black text-foreground mb-4 leading-tight tracking-tight max-w-2xl">
-                      {bannerPhrase ? (
-                        <TypewriterText text={bannerPhrase} delay={120} className="whitespace-pre-line" />
-                      ) : (
-                        <div className="space-y-3">
-                          <span className="block h-7 w-4/5 rounded-md bg-muted/40 animate-pulse" />
-                          <span className="block h-7 w-3/5 rounded-md bg-muted/40 animate-pulse" />
-                          <span className="block h-7 w-2/5 rounded-md bg-muted/40 animate-pulse" />
-                        </div>
-                      )}
-                   </h2>
-                   <div className="flex flex-wrap gap-4 mt-2">
-                      <Button onClick={() => { setQuizCreatorMode('learning'); setShowQuizCreator(true); }} className="gradient-primary text-primary-foreground border-0 px-8 h-12 rounded-2xl font-black shadow-xl hover:scale-105 transition-transform">
-                        {moodProfile.dashboard.primaryCta}
-                      </Button>
-                      <Button variant="outline" onClick={() => { setQuizCreatorMode('custom'); setShowQuizCreator(true); }} className="h-12 px-6 rounded-2xl font-bold bg-background/50 backdrop-blur hover:bg-background/80">
-                        {moodProfile.dashboard.secondaryCta}
-                      </Button>
-                   </div>
-                </div>
-            </motion.div>
-
-            {/* QUICK STATS BAR - This fulfills "resize and go on the bottom" logic on mobile, but is top-level on desktop */}
-            <div className="flex flex-col sm:flex-row gap-4">
-                <div className="flex-1">
-                  <StatsCard 
-                    title="Daily Streak" 
-                    value={statsData.currentStreak} 
-                    icon={Zap} 
-                    color="warning" 
-                    subtitle={moodProfile.dashboard.streakSubtitle}
-                  />
-                </div>
-                <div className="flex-1">
-                  <StatsCard 
-                    title="Conversations" 
-                    value={`${statsData.conversationsCount}`} 
-                    icon={MessageCircle} 
-                    color="accent"
-                    subtitle={statsData.topSubject !== "None" 
-                      ? `${statsData.subjectCounts[statsData.topSubject] || 0} chats in ${statsData.topSubject}` 
-                      : moodProfile.dashboard.conversationsFallback}
-                  />
-                </div>
-                <div className="flex-1">
-                  <StatsCard 
-                    title="Quiz History" 
-                    value={statsData.quizzesDone} 
-                    icon={TrendingUp} 
-                    color="tertiary"
-                    subtitle={moodProfile.dashboard.quizSubtitle}
-                  />
-                </div>
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div>
+              <div className="text-sm font-semibold text-foreground">Mood bar</div>
+              <div className="text-xs text-muted-foreground">Pick a vibe. The UI and tutor adapt.</div>
             </div>
-          </div>
-
-          {/* Right Column: Ask Quizzy - Aligned with stats */}
-          <div className="lg:col-span-4">
-            <motion.div variants={itemVariants} className="h-full flex flex-col">
-               <div className="flex items-center justify-between px-2 mb-4">
-                 <h2 className="text-lg font-black text-foreground flex items-center gap-3">
-                   <div className="p-1 px-2 rounded-lg bg-primary/10">
-                     <MessageCircle className="w-4 h-4 text-primary" />
-                   </div>
-                   {moodProfile.dashboard.tutorTitle}
-                 </h2>
-               </div>
-               <div className="flex-1">
-                 <DailyMascotCard 
-                   userName={userName} 
-                   onChatStart={() => navigate("/chat")} 
-                   subtitle={moodProfile.dashboard.tutorSubtitle}
-                   moodId={selectedMood}
-                   className="h-full"
-                 />
-               </div>
-            </motion.div>
-          </div>
-
-          {/* Mood Selector */}
-          <div className="lg:col-span-12">
-            <motion.div variants={itemVariants} className="glass-card p-6 bg-background/60 h-full flex flex-col">
-              <div className="flex items-center justify-between gap-4 flex-wrap">
-                <div>
-                  <h3 className="text-lg font-black text-foreground flex items-center gap-2">
-                    <Coffee className="w-4 h-4 text-primary" />
-                    Set your mood
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    The colour theme adapts to your study vibe.
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {moodThemes.map((mood) => {
-                    const Icon = mood.icon;
-                    const isActive = selectedMood === mood.id;
-                    return (
-                      <button
-                        key={mood.id}
-                        onClick={() => setSelectedMood(mood.id)}
-                        className={`px-4 py-2 rounded-xl border text-left transition-all flex items-center gap-2 ${
-                          isActive
-                            ? "border-primary bg-primary/10 shadow-lg"
-                            : "border-border glass hover:border-primary/50"
-                        }`}
-                      >
-                        <Icon className="w-4 h-4 text-primary" />
-                        <div className="text-xs font-bold">{mood.label}</div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </motion.div>
-          </div>
-
-          {/* Row 2: Secondary Content */}
-          {/* Calendar Card */}
-          <div className="lg:col-span-4">
-            <motion.div variants={itemVariants} className="h-full flex flex-col">
-              <div className="flex items-center justify-between px-2 mb-4">
-                 <h2 className="text-lg font-black text-foreground flex items-center gap-2 uppercase tracking-widest text-[10px] opacity-70">
-                    {moodProfile.dashboard.calendarTitle}
-                 </h2>
-              </div>
-              <div className="flex-1">
-                <CalendarWidget />
-              </div>
-            </motion.div>
-          </div>
-
-          {/* Deadlines Card - Takes up space based on content */}
-          <div className="lg:col-span-4">
-            <motion.div variants={itemVariants} className="h-full flex flex-col gap-4">
-               <div className="px-2 text-muted-foreground font-black text-[10px] uppercase tracking-[0.2em] flex items-center gap-2">
-                 <Clock className="w-3 h-3 text-accent" />
-                 {moodProfile.dashboard.deadlinesTitle}
-               </div>
-               <div className="glass-card p-5 bg-background/50 flex-1">
-                 <ExamManager />
-               </div>
-            </motion.div>
-          </div>
-
-          {/* Achievements Card */}
-          <div className="lg:col-span-4">
-            <motion.div variants={itemVariants} className="h-full flex flex-col gap-4">
-               <div className="flex items-center justify-between px-2">
-                 <h3 className="text-muted-foreground font-black text-[10px] uppercase tracking-[0.2em] flex items-center gap-2">
-                    <Trophy className="w-3 h-3 text-accent" />
-                    {moodProfile.dashboard.achievementsTitle}
-                  </h3>
-                  <button 
-                    onClick={() => navigate("/achievements")}
-                    className="text-[10px] font-bold text-primary hover:underline flex items-center gap-1"
+            <div className="flex flex-wrap gap-2">
+              {moodOptions.map((mood) => {
+                const isActive = selectedMood === mood.id;
+                return (
+                  <button
+                    key={mood.id}
+                    onClick={() => setSelectedMood(mood.id as keyof typeof moodProfiles)}
+                    className={`px-3 py-1.5 rounded-full border text-xs font-semibold transition-all ${
+                      isActive
+                        ? "border-primary bg-primary/10 text-primary shadow-sm"
+                        : "border-border/60 bg-muted/30 text-muted-foreground hover:text-foreground hover:border-primary/40"
+                    }`}
                   >
-                    View Library <ArrowRight className="w-2 h-2" />
+                    {mood.label}
                   </button>
-               </div>
-               
-               <div className="grid grid-cols-2 gap-3">
-                  {recentAchievements.length > 0 ? (
-                    recentAchievements.map((achievement) => (
-                      <AchievementBadge
-                        key={achievement.id}
-                        icon={achievement.icon}
-                        title={achievement.title}
-                        description={achievement.description}
-                        isUnlocked={true}
-                      />
-                    ))
-                  ) : (
-                    <div className="col-span-2 text-center py-6 glass-card border-dashed">
-                      <p className="text-xs text-muted-foreground font-bold">{moodProfile.dashboard.achievementsEmpty}</p>
-                    </div>
-                  )}
-               </div>
-
-                {/* MOVED TO BOTTOM IF SPACE PERMITS: Quiz Creator Toggle */}
-                {/* Now handled via Dialog */}
-            </motion.div>
+                );
+              })}
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowInsights((prev) => !prev)}
+              className="h-8 rounded-full font-semibold bg-background/70"
+            >
+              {showInsights ? "Hide insights" : "Show insights"}
+            </Button>
           </div>
         </motion.div>
+
+        {!showInsights ? (
+          <motion.div
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+            className="grid grid-cols-1 xl:grid-cols-12 gap-3 items-stretch min-h-0 flex-1"
+          >
+            {/* Calendar + Deadlines (stacked to remove empty space) */}
+            <motion.div variants={itemVariants} className="xl:col-span-6 dashboard-panel p-4 flex flex-col h-full min-h-0 overflow-hidden">
+              <div className="flex items-center gap-2 text-sm font-semibold text-foreground mb-3">
+                <Calendar className="w-4 h-4 text-primary" />
+                {moodProfile.dashboard.calendarTitle}
+              </div>
+              <div className="grid grid-cols-1 lg:grid-cols-[1.25fr_1.05fr] gap-2 items-stretch flex-1 min-h-0">
+                <div className="flex flex-1 min-h-0 overflow-hidden">
+                  <CalendarWidget />
+                </div>
+                <div className="rounded-2xl border border-border/60 bg-muted/20 p-3 flex flex-col min-h-0">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-foreground mb-3">
+                    <Target className="w-4 h-4 text-primary" />
+                    {moodProfile.dashboard.deadlinesTitle}
+                  </div>
+                  <div className="flex-1 min-h-0 overflow-y-auto pr-1">
+                    <ExamManager />
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Progress at a glance */}
+            <motion.div variants={itemVariants} className="xl:col-span-3 dashboard-panel p-4 flex flex-col h-full min-h-0 overflow-hidden">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                  <Target className="w-4 h-4 text-primary" />
+                  Progress at a glance
+                </div>
+                <span className="text-xs text-muted-foreground">Overall mastery</span>
+              </div>
+              <div className="flex flex-1 flex-col justify-between gap-4">
+                <div className="grid gap-4 items-center">
+                  <div
+                    className="progress-ring w-28 h-28 xl:w-32 xl:h-32 mx-auto"
+                    style={{
+                      background: `conic-gradient(hsl(var(--primary)) ${masteryPercent}%, hsl(var(--border)) ${masteryPercent}% 100%)`
+                    }}
+                  >
+                    <div className="progress-ring-inner w-20 h-20 xl:w-24 xl:h-24">
+                      <div className="text-2xl font-display text-foreground">
+                        {normalizedStats.quizzesDone > 0 ? `${masteryPercent}%` : "—"}
+                      </div>
+                      <div className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+                        Mastery
+                      </div>
+                    </div>
+                  </div>
+                  <div className="space-y-4">
+                    <div className="text-sm text-muted-foreground">
+                      {normalizedStats.quizzesDone > 0
+                        ? `Based on ${normalizedStats.quizzesDone} quizzes.`
+                        : "Take a quiz to set your mastery baseline."}
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="rounded-2xl border border-border/60 bg-muted/40 p-3">
+                        <div className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Streak</div>
+                        <div className="text-2xl font-display text-foreground">{normalizedStats.currentStreak}</div>
+                        <div className="text-xs text-muted-foreground">{streakLabel} active</div>
+                      </div>
+                      <div className="rounded-2xl border border-border/60 bg-muted/40 p-3">
+                        <div className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Solved</div>
+                        <div className="text-2xl font-display text-foreground">{normalizedStats.conversationsCount}</div>
+                        <div className="text-xs text-muted-foreground">{activityLabel} explained</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  {interestCards.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {interestCards.map((interest) => {
+                        const Icon = interest.icon;
+                        return (
+                          <div
+                            key={interest.label}
+                            className="inline-flex items-center gap-2 rounded-xl border border-border/60 bg-muted/35 px-3 py-2 shadow-sm"
+                          >
+                            <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-primary/15 text-primary">
+                              <Icon className="w-3.5 h-3.5" />
+                            </span>
+                            <span className="text-xs font-semibold text-foreground">{interest.label}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">Add interests to personalize analogies.</span>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+
+            {/* AI Tutor + Quizzes (stacked to match calendar height) */}
+            <motion.div variants={itemVariants} className="xl:col-span-3 dashboard-panel p-4 flex flex-col gap-3 h-full min-h-0 overflow-hidden">
+              <div className="flex flex-col gap-3 flex-1 rounded-2xl border border-primary/20 bg-primary/5 p-4">
+                <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                  <Sparkles className="w-4 h-4 text-primary" />
+                  AI Tutor
+                </div>
+                <div className="text-lg font-display text-foreground">
+                  {moodProfile.dashboard.tutorTitle}
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  {moodProfile.dashboard.tutorSubtitle}
+                </p>
+                <div className="mt-auto flex flex-col gap-2">
+                  <Button
+                    onClick={() => navigate("/chat")}
+                    className="h-10 rounded-full gradient-primary text-primary-foreground border-0 font-semibold"
+                  >
+                    Chat with Quizzy
+                  </Button>
+                </div>
+              </div>
+              <div className="flex flex-col gap-3 flex-1 rounded-2xl border border-border/60 bg-muted/30 p-4">
+                <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                  <MessageCircle className="w-4 h-4 text-primary" />
+                  Quizzes
+                </div>
+                <div className="space-y-3">
+                  <div className="rounded-2xl border border-border/60 bg-muted/30 p-3">
+                    <div className="text-sm font-semibold text-foreground">Guided quiz</div>
+                    <div className="text-xs text-muted-foreground mb-3">
+                      Auto-built from your weak spots.
+                    </div>
+                    <Button
+                      onClick={() => { setQuizCreatorMode('learning'); setShowQuizCreator(true); }}
+                      className="h-9 rounded-full gradient-primary text-primary-foreground border-0 font-semibold w-full"
+                    >
+                      Start guided quiz
+                    </Button>
+                  </div>
+                  <div className="rounded-2xl border border-border/60 bg-muted/30 p-3">
+                    <div className="text-sm font-semibold text-foreground">Custom quiz</div>
+                    <div className="text-xs text-muted-foreground mb-3">
+                      Pick the topic, length, and style.
+                    </div>
+                    <Button
+                      variant="outline"
+                      onClick={() => { setQuizCreatorMode('custom'); setShowQuizCreator(true); }}
+                      className="h-9 rounded-full font-semibold bg-background/70 w-full"
+                    >
+                      Build custom quiz
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+
+          </motion.div>
+        ) : (
+          <motion.div
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+            className="flex-1 min-h-0 overflow-y-auto"
+          >
+            <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 items-stretch">
+            {/* Next steps + quick actions */}
+            <motion.div variants={itemVariants} className="xl:col-span-7 dashboard-panel p-5">
+              <div className="flex items-center gap-2 text-sm font-semibold text-foreground mb-4">
+                <Compass className="w-4 h-4 text-primary" />
+                Next steps
+              </div>
+              <div className="space-y-3 text-sm">
+                {weakestSubjects.length > 0 ? (
+                  weakestSubjects.map((subject) => (
+                    <div key={subject.label} className="flex items-start gap-3 rounded-2xl border border-border/60 bg-muted/30 p-4">
+                      <Flag className="w-4 h-4 text-rose-400 mt-0.5" />
+                      <div>
+                        <div className="font-semibold text-foreground">Focus on {subject.label}</div>
+                        <div className="text-xs text-muted-foreground">
+                          Low activity here — build strength with 2-3 quick analogies.
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="rounded-2xl border border-border/60 bg-muted/30 p-4 text-muted-foreground">
+                    Start your first analogy to unlock tailored next steps.
+                  </div>
+                )}
+              </div>
+              <div className="mt-5 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <Button
+                  onClick={() => navigate("/chat")}
+                  className="h-11 rounded-full gradient-primary text-primary-foreground border-0 font-semibold"
+                >
+                  Start new analogy
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => { setQuizCreatorMode('learning'); setShowQuizCreator(true); }}
+                  className="h-11 rounded-full font-semibold bg-background/70"
+                >
+                  Review mistakes
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => navigate("/calendar")}
+                  className="h-11 rounded-full font-semibold bg-background/70"
+                >
+                  Check your schedule
+                </Button>
+              </div>
+            </motion.div>
+
+            {/* Category performance */}
+            <motion.div variants={itemVariants} className="xl:col-span-5 dashboard-panel p-5">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                  <TrendingUp className="w-4 h-4 text-primary" />
+                  Subjects
+                </div>
+              </div>
+              <div className="space-y-4">
+                {hasSubjectActivity ? (
+                  subjectPerformanceDesc.slice(0, 6).map((subject) => {
+                    const barColor =
+                      subject.percent >= 67
+                        ? "bg-emerald-400"
+                        : subject.percent >= 34
+                          ? "bg-amber-400"
+                          : "bg-rose-400";
+                    return (
+                      <div key={subject.label} className="flex items-center gap-4">
+                        <div className="w-28 text-xs font-semibold text-foreground">{subject.label}</div>
+                        <div className="flex-1 h-2 rounded-full bg-muted/40 overflow-hidden">
+                          <div className={`h-full ${barColor}`} style={{ width: `${subject.percent}%` }} />
+                        </div>
+                        <div className="w-8 text-xs text-muted-foreground text-right">{subject.count}</div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="text-sm text-muted-foreground">
+                    Your category performance will appear after your first chats.
+                  </div>
+                )}
+              </div>
+            </motion.div>
+
+            {/* Recent activity */}
+            <motion.div variants={itemVariants} className="xl:col-span-5 dashboard-panel p-5">
+              <div className="flex items-center gap-2 text-sm font-semibold text-foreground mb-4">
+                <MessageCircle className="w-4 h-4 text-primary" />
+                Recent activity
+              </div>
+              <div className="space-y-3">
+                <div className="rounded-2xl border border-border/60 bg-muted/40 p-4 flex items-center justify-between">
+                  <div>
+                    <div className="text-xs text-muted-foreground">Current streak</div>
+                    <div className="text-xl font-display text-foreground">{normalizedStats.currentStreak} {streakLabel}</div>
+                  </div>
+                  <Zap className="w-5 h-5 text-amber-400" />
+                </div>
+                <div className="rounded-2xl border border-border/60 bg-muted/40 p-4 flex items-center justify-between">
+                  <div>
+                    <div className="text-xs text-muted-foreground">Conversations</div>
+                    <div className="text-xl font-display text-foreground">{normalizedStats.conversationsCount}</div>
+                  </div>
+                  <MessageCircle className="w-5 h-5 text-primary" />
+                </div>
+                <div className="rounded-2xl border border-border/60 bg-muted/40 p-4 flex items-center justify-between">
+                  <div>
+                    <div className="text-xs text-muted-foreground">Quizzes completed</div>
+                    <div className="text-xl font-display text-foreground">{normalizedStats.quizzesDone}</div>
+                  </div>
+                  <Medal className="w-5 h-5 text-emerald-400" />
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Highlights / badges */}
+            <motion.div variants={itemVariants} className="xl:col-span-7 dashboard-panel p-5">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                  <Trophy className="w-4 h-4 text-primary" />
+                  Highlights
+                </div>
+                <button
+                  onClick={() => navigate("/achievements")}
+                  className="text-xs font-semibold text-primary hover:underline flex items-center gap-1"
+                >
+                  View all badges <ArrowRight className="w-3 h-3" />
+                </button>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {recentAchievements.length > 0 ? (
+                  recentAchievements.map((achievement) => (
+                    <AchievementBadge
+                      key={achievement.id}
+                      icon={achievement.icon}
+                      title={achievement.title}
+                      description={achievement.description}
+                      isUnlocked={true}
+                    />
+                  ))
+                ) : (
+                  <div className="col-span-2 md:col-span-4 text-center py-8 text-sm text-muted-foreground">
+                    Earn badges by completing analogies and quizzes.
+                  </div>
+                )}
+              </div>
+            </motion.div>
+            </div>
+          </motion.div>
+        )}
       </div>
 
       <Dialog open={showQuizCreator} onOpenChange={setShowQuizCreator}>

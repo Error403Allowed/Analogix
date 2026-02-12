@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
+import { buildInterestList } from "@/utils/interests";
 import {
   Select,
   SelectContent,
@@ -71,7 +72,8 @@ const QuizCreator = ({ onCreateQuiz, isLoading, hideContentInput = false }: Quiz
   const [step, setStep] = useState<"input" | "processing" | "ready">("input");
   const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
 
-  const hasPreferences = userPrefs.hobbies?.length > 0;
+  const interestList = buildInterestList(userPrefs, []);
+  const hasPreferences = interestList.length > 0;
 
   const loadingMessages = [
     "Analyzing your content...",
@@ -114,7 +116,7 @@ const QuizCreator = ({ onCreateQuiz, isLoading, hideContentInput = false }: Quiz
       if (hideContentInput) {
         // If input is hidden (Start Learning Session), generate a topic string based on subject/grade
         const angle = angleOptions[Math.floor(Math.random() * angleOptions.length)];
-        const hobbies = (userPrefs.hobbies || []).slice(0, 3).join(", ");
+        const hobbies = interestList.slice(0, 3).join(", ");
         finalContent = `Create a ${finalSubject} quiz for Year ${userPrefs.grade || "7-12"}. Pick varied subtopics and lean toward ${angle}.${hobbies ? ` Use analogies tied to: ${hobbies}.` : ""}`;
       } else {
         return;
@@ -178,7 +180,7 @@ const QuizCreator = ({ onCreateQuiz, isLoading, hideContentInput = false }: Quiz
                   <span className="font-medium">✨ Personalized for you:</span>{" "}
                   Questions will include analogies based on your interests:{" "}
                   <span className="text-primary font-medium">
-                    {userPrefs.hobbies?.slice(0, 10).join(", ")}
+                    {interestList.slice(0, 10).join(", ")}
                   </span>.
                 </p>
               </motion.div>

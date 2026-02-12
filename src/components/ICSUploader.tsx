@@ -29,6 +29,10 @@ const ICSUploader = () => {
     setIsProcessing(true);
     try {
       const events = await parseICS(file);
+      if (events.length === 0) {
+        toast.error("No events found in that calendar file");
+        return;
+      }
       eventStore.addMultiple(events);
       toast.success(`Imported ${events.length} events!`);
     } catch (error) {

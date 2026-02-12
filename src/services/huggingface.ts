@@ -58,7 +58,11 @@ const parseErrorMessage = async (response: Response) => {
  */
 export const getHuggingFaceCompletion = async (
   messages: ChatMessage[],
-  userContext?: Partial<UserContext> & { analogyIntensity?: number }
+  userContext?: Partial<UserContext> & {
+    analogyIntensity?: number;
+    responseLength?: number;
+    analogyAnchor?: string;
+  }
 ) => {
   if (apiKeys.length === 0) {
     return {
@@ -68,19 +72,69 @@ export const getHuggingFaceCompletion = async (
   }
 
   const moodProfile = getMoodProfile(userContext?.mood);
-  const analogyIntensity = userContext?.analogyIntensity ?? 3; // Default to level 3
+  const analogyIntensity = userContext?.analogyIntensity ?? 2; // Default to level 2
+  const responseLength = userContext?.responseLength ?? 3; // Default to level 3 (medium)
   
   const analogyGuidance = [
-    "Use minimal analogies - focus on raw facts and concepts.",
-    "Use some analogies - mostly facts with occasional hobby-based comparisons.",
-    "Balance facts and analogies equally - mix raw facts with hobby-based analogies.",
+    "Use no analogies at all - focus exclusively on raw facts and concepts.",
+    "Use minimal analogies - mostly facts with rare hobby-based comparisons.",
+    "Use some analogies - balance facts with occasional hobby-based analogies.",
     "Use frequent analogies - explain most concepts using hobby-based analogies.",
-    "Use extensive analogies - every explanation should use hobby-based analogies."
+    "Use extensive analogies - almost every explanation should use hobby-based analogies.",
+    "Use only analogies - explain everything through hobby-based analogies exclusively."
   ][analogyIntensity];
 
-  const systemPrompt = `You are "Quizzy", an enthusiastic and helpful AI tutor.
-  
-Your Goal: Explain concepts using analogies based on the user's interests.
+  const lengthGuidance = [
+    "Length 1/5: 1-2 sentences, <= 40 words. No extra fluff.",
+    "Length 2/5: 2-3 sentences, <= 70 words. Focus on key points only.",
+    "Length 3/5: 3-5 sentences, <= 110 words. Balanced explanation.",
+    "Length 4/5: 5-7 sentences, <= 160 words. Add depth and one example.",
+    "Length 5/5: 7-10 sentences, <= 220 words. Rich detail and multiple angles."
+  ][responseLength - 1];
+
+  const allowedInterests = userContext?.hobbies?.length
+    ? userContext.hobbies.join(", ")
+    : "General";
+  const analogyAnchor = userContext?.analogyAnchor?.trim();
+
+  const analogyInstructionBlock = analogyIntensity === 0
+    ? `ANALOGY MODE: OFF
+Use no analogies. Explain directly, factually, and clearly. Do not reference hobbies or comparisons.`
+    : `1. ANALOGY-FIRST: Lead with the analogy rooted in their interests. Make it the foundation, not the afterthought.
+   - For TV/Movies: Use specific moments, scenes, character quirks, or plot beats (not vague settings). E.g., "Like when [character] does [specific action] in [episode], here's why..."
+   - For Games: Reference mechanics, progression systems, or narrative beats that create the same dynamic as the concept.
+   - For Sports/Music: Use specific athletes, plays, songs, or albums as parallels.
+   - If interests include specific subgenres or titles, ONLY use those. Do not generalize to broader categories or adjacent activities.
+   - Only use interests from the Allowed Interests list. If none apply, ask a brief clarification question instead of guessing.
+   - Choose ONE analogy anchor from the Allowed Interests and stick to it for the entire session. Never switch mid-response or mid-session.
+   - If an Analogy Anchor is provided, you MUST use ONLY that anchor.
+   - Use at most ONE analogy thread per response; keep the rest factual and direct.
+   - Never mention other sports, games, or genres outside the anchor. No cross-sport/game references.
+
+2. BUILD THROUGH MAPPING: Explicitly connect the analogy to the concept as you explain:
+   - "In [interest], X happens because of Y."
+   - "In [concept], the same thing happens: [mechanism]."
+   - "That's why they work the same way."`;
+
+  const teachingPhilosophy = analogyIntensity === 0
+    ? "Build understanding through clear, direct explanations grounded in facts."
+    : "Build understanding THROUGH the analogy, not around it. Start with what they know, layer the concept through that lens, then reveal complexity.";
+
+  const layeringGuidance = analogyIntensity === 0
+    ? `3. LAYER COMPLEXITY GRADUALLY:
+   - Start: Plain-language summary
+   - Deepen: The mechanism (why it works)
+   - Clarify: Edge cases or limits
+   - Optional: Advanced nuance if they're ready`
+    : `3. LAYER COMPLEXITY GRADUALLY:
+   - Start: Simple parallel (what's similar)
+   - Deepen: The mechanism (why it works)
+   - Acknowledge: Where the analogy breaks (shows deeper thinking, not weakness)
+   - Optional: Advanced nuance if they're ready`;
+
+  const systemPrompt = `You are "Quizzy", an enthusiastic and helpful AI tutor with a unique teaching style.
+
+Your Goal: Use the student's interests as the LENS for understanding, not just decoration.
 
 Mood: ${moodProfile.label} (${moodProfile.aiTone})
 Mood Guidance: ${moodProfile.aiStyle}
@@ -90,32 +144,52 @@ User Profile:
 - Interests/Hobbies: ${userContext?.hobbies?.join(", ") || "General"}
 - Learning Style: ${userContext?.learningStyle || "General"}
 - Target Subjects: ${userContext?.subjects?.join(", ") || "General"}
+Allowed Interests (verbatim): ${allowedInterests}
+Analogy Anchor (single topic): ${analogyAnchor || "Choose one from Allowed Interests and stick to it."}
 
-Analogy Intensity: ${analogyIntensity + 1}/5
-${analogyGuidance}
+Response Style:
+- Analogy Intensity: ${analogyIntensity}/5
+  ${analogyGuidance}
+- Response Length: ${responseLength}/5
+  ${lengthGuidance}
+  Follow the length strictly unless the user explicitly asks for more detail.
+
+CORE TEACHING PHILOSOPHY:
+${teachingPhilosophy}
 
 Instructions:
-1. Always keep your tone encouraging, fun, and supportive.
-2. Use analogies rooted in their specific interests—but make them CONCRETE and SPECIFIC, not generic.
-   - For TV shows / movies: reference actual moments, scenes, episodes, character quirks, running gags, or plot points (e.g. for The Big Bang Theory: Sheldon's spot, the broken elevator, "Bazinga", a specific experiment or argument between the guys—NOT vague phrases like "in Leonard's apartment" or "like on the show").
-   - For games: specific mechanics, levels, characters, or story beats.
-   - For sports / music / etc.: specific players, matches, songs, albums, or real events.
-   Avoid bland, setting-only references; the analogy should feel like it could only come from that interest.
-3. Adjust the complexity of your language and scientific detail to be appropriate for a Year ${userContext?.grade || "7-12"} student.
-4. Keep explanations clear and concise, without overwhelming the user with too much content and make sure you are matching the mood guidance.
-5. If the user asks about a topic outside their subjects, still help them but try to relate it back if possible.
-6. Explain the raw facts (derived from ACARA curriculum) of the topic before explaining with an analogy.
-7. Don't use emojis too much, apart from just titles.  
-8. Use seperation techniques between raw facts and analogies.
-9. Use LaTeX for all math notation. Wrap inline math in '$...$' and display math in '$$...$$'.
-    - Examples: $x^2$, $\\int_a^b f(x)\\,dx$, $f(x)$, $\\frac{dy}{dx}$.
-    - If a response contains math symbols, powers, integrals, functions, or equations, it MUST be in LaTeX.
-10. Make sure to keep responses concise and avoid overwhelming the student with too much information at once.
-11. Make sure to always fact-check your responses (especially the analogies) and make sure there are no formatting or grammatical issues (especially with LaTeX).
-12. If you don't know the answer, say you don't know but suggest where they might find the answer or how they could think about it.
-13. NEVER make up false information or fake analogies. If you don't know, say you don't know.
-14. ALWAYS use the student's hobbies and interests in your analogies, but make sure they are specific and concrete references, not generic ones.
-15. If there are any issues, terminate the response and start again. Make sure to follow all instructions carefully and check your work before responding.`;
+${analogyInstructionBlock}
+${layeringGuidance}
+
+4. ASK GUIDING QUESTIONS: Don't just explain—help them think:
+   - "In [interest], what happens when...?"
+   - "Notice how that parallels [concept]?"
+   - This makes them active learners, not passive listeners.
+
+5. TONE & PERSONALITY:
+   - Keep it encouraging and fun, but intellectually honest.
+   - Admit when an analogy has limits—this shows rigor, not uncertainty.
+   - Always match the mood guidance.
+
+6. TECHNICAL REQUIREMENTS:
+   - Adjust language complexity for Year ${userContext?.grade || "7-12"}.
+   - Use LaTeX for all math: $x^2$ (inline), $$equation$$ (display).
+   - Double-escape in JSON: \\\\ becomes \\\\
+   - Verify facts about their interests; never invent false details.
+   - If unsure about an interest detail, use the general principle instead.
+
+7. QUALITY CHECKS:
+   - Fact-check analogies and explanations before responding.
+   - Proofread formatting (especially LaTeX) for errors.
+   - If a response feels forced or disconnected, restart it.
+   - Keep it concise—avoid overwhelming detail unless asked.
+
+8. EDGE CASES:
+   - Outside their subjects? Still help, but try to connect it back to their interests.
+   - Don't know the answer? Say so, then suggest how they could figure it out.
+   - Don't use many emojis (except in titles).
+
+REMEMBER: You're not ChatGPT with a bonus analogy. You're a tutor who teaches THROUGH their passions.`;
 
   const rotationBase = getRotationBase();
   const callWithRetry = async (retryCount = 0): Promise<any> => {
@@ -136,7 +210,7 @@ Instructions:
             ...messages
           ],
           max_tokens: 1024,
-          temperature: 0.7,
+          temperature: 0.55,
         }),
       });
 
@@ -199,7 +273,7 @@ export const getAIGreeting = async (userName: string, streak: number, mood?: str
             }
           ],
           max_tokens: 30,
-          temperature: 0.9,
+          temperature: 0.3,
         }),
       });
 
@@ -391,9 +465,25 @@ Return ONLY valid JSON with this exact structure:
         {"id": "d", "text": "option", "isCorrect": false}
       ],
       "hint": "hint text"
+    },
+    {
+      "id": 2,
+      "type": "short_answer",
+      "question": "text",
+      "analogy": "analogy tied to the student's interests",
+      "correctAnswer": "short correct answer",
+      "hint": "hint text"
     }
   ]
 }
+
+Quality rules:
+- Take a moment to verify each question is coherent, factually correct, and grade-appropriate.
+- Every question must be answerable and unambiguous.
+- For multiple_choice: exactly 4 options, exactly 1 correct, no trick wording.
+- For short_answer: include a clear, concise correctAnswer.
+- Provide a helpful hint for every question.
+- Keep questions tightly aligned to the Topic and Subject.
 
 CRITICAL: Mood: ${moodProfile.label}. Quiz style: ${moodProfile.quizStyle}.
 Each question MUST have an analogy that references a SPECIFIC moment, scene, character, or element from the student's interests (e.g. for a show: a real episode moment or running gag—never generic placeholders like "in Leonard's apartment").
@@ -426,8 +516,8 @@ Seed: ${diversitySeed}`;
             { role: "system", content: systemPrompt },
             { role: "user", content: userPrompt }
           ],
-          max_tokens: 2048,
-          temperature: 0.95,
+          max_tokens: 2400,
+          temperature: 0.7,
         }),
       });
 
@@ -446,12 +536,42 @@ Seed: ${diversitySeed}`;
       }
       content = jsonMatch[0];
 
+      const isValidQuiz = (quiz: QuizData | null) => {
+        if (!quiz || !Array.isArray(quiz.questions)) return false;
+        if (quiz.questions.length !== numberOfQuestions) return false;
+        return quiz.questions.every((question) => {
+          if (!question || typeof question.question !== "string" || !question.question.trim()) return false;
+          if (!question.analogy || typeof question.analogy !== "string") return false;
+          if (question.type === "short_answer") {
+            return typeof question.correctAnswer === "string" && question.correctAnswer.trim().length > 0;
+          }
+          const options = question.options || [];
+          if (!Array.isArray(options) || options.length !== 4) return false;
+          const ids = new Set(options.map((opt) => opt.id));
+          const correctCount = options.filter((opt) => opt.isCorrect).length;
+          return ids.size === options.length && correctCount === 1;
+        });
+      };
+
       try {
-        return JSON.parse(content);
+        const parsed = JSON.parse(content);
+        if (!isValidQuiz(parsed)) {
+          console.warn("Quiz validation failed. Retrying with a new attempt.");
+          return null;
+        }
+
+        return parsed;
       } catch (e) {
         console.warn("JSON Parse failed, attempting to sanitize...", e);
         const sanitized = content.replace(/\\([a-zA-Z])/g, "\\\\$1");
-        return JSON.parse(sanitized);
+        const parsed = JSON.parse(sanitized);
+
+        if (!isValidQuiz(parsed)) {
+          console.warn("Quiz validation failed after sanitize. Retrying with a new attempt.");
+          return null;
+        }
+
+        return parsed;
       }
     } catch (error) {
       console.error(`Quiz Generation Attempt ${retryCount + 1} Failed:`, error);

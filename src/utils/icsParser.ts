@@ -12,26 +12,26 @@ export const parseICS = async (file: File): Promise<AppEvent[]> => {
         const comp = new ICAL.Component(jcalData);
         const vevents = comp.getAllSubcomponents("vevent");
 
-        const academicKeywords = ["exam", "assessment", "quiz", "test", "midterm", "final", "assignment", "project", "deadline", "paper", "presentation", "lab", "due"];
+        const academicKeywords = ["exam", "assessment", "quiz", "test", "midterm", "final"];
+        const assignmentKeywords = ["assignment", "project", "deadline", "paper", "presentation", "lab", "due"];
 
         const events: AppEvent[] = vevents
           .map((vevent) => {
             const event = new ICAL.Event(vevent);
-            const title = event.summary || "";
+            const title = event.summary || "Untitled event";
             const description = event.description || "";
+            if (!event.startDate) return null;
             const combined = (title + " " + description).toLowerCase();
 
-            // Check if it's a deadline
-            const isDeadline = academicKeywords.some(kw => combined.includes(kw));
-            if (!isDeadline) return null;
+            const isExam = academicKeywords.some((kw) => combined.includes(kw));
+            const isAssignment = assignmentKeywords.some((kw) => combined.includes(kw));
 
             return {
               id: Date.now() + Math.random().toString(36).substr(2, 9),
               title: title,
               date: event.startDate.toJSDate(),
-              type: combined.includes("exam") || combined.includes("test") ? 'exam' : 
-                    combined.includes("assignment") || combined.includes("project") ? 'assignment' : 'event',
-              description: description || "Imported Deadline",
+              type: isExam ? "exam" : isAssignment ? "assignment" : "event",
+              description: description || "Imported from calendar",
               source: 'import'
             } as AppEvent;
           })

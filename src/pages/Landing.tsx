@@ -161,8 +161,8 @@ const Landing = () => {
             <button onClick={() => handleNav("/chat")} className="hover:text-primary transition-colors">
               Chat
             </button>
-            <button onClick={() => handleNav("/dashboard")} className="hover:text-primary transition-colors">
-              Dashboard
+            <button onClick={() => handleNav("/calendar")} className="hover:text-primary transition-colors">
+              Calendar
             </button>
           </div>
           <div className="flex items-center gap-4">

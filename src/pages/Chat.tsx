@@ -1,10 +1,10 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
+  ArrowDown,
   Send,
-  Sparkles,
-  BookOpen,
+  Brain,
   Lightbulb,
   RefreshCw,
   Square,
@@ -19,6 +19,7 @@ import { statsStore } from "@/utils/statsStore";
 import MarkdownRenderer from "@/components/MarkdownRenderer";
 import TypewriterText from "@/components/TypewriterText";
 import { SUBJECT_CATALOG, getSubjectDescription } from "@/constants/subjects";
+import { buildInterestList, HOBBY_OPTIONS } from "@/utils/interests";
 import { getStoredMoodId } from "@/utils/mood";
 
 // Typewriter animation component for AI messages - uses refs to prevent restart on parent re-renders
@@ -198,24 +199,52 @@ const Chat = () => {
   
   // ANIMATING: Track if typewriter is currently running
   const [isAnimating, setIsAnimating] = useState(false);
+  
+  // RESPONSE LENGTH: Controls how long the response should be (1-5 = 5 levels, 1 = brief, 5 = detailed)
+  const [responseLength, setResponseLength] = useState(3);
 
-  // ANALOGY INTENSITY: Controls how many analogies appear (0-4 = 5 levels)
-  const [analogyIntensity, setAnalogySIntensity] = useState(3);
+  // ANALOGY MODE: Toggle analogies on/off (session-only)
+  const [analogyModeEnabled, setAnalogyModeEnabled] = useState(true);
+  const [analogyAnchor, setAnalogyAnchor] = useState<string | null>(null);
 
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const copyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [showScrollToBottom, setShowScrollToBottom] = useState(false);
+  const shouldAutoScrollRef = useRef(false);
+  const lockedToBottomRef = useRef(true);
 
   // RETRIEVING MEMORY: We pull your hobbies and subjects from the browser.
   const userPrefs = JSON.parse(localStorage.getItem("userPreferences") || "{}");
   const userName = userPrefs.name || "Student";
-  const userHobbies = userPrefs.hobbies || ["gaming", "sports"];
+  const userHobbies = buildInterestList(userPrefs, ["gaming", "sports"]);
   const userSubjects = userPrefs.subjects || [];
   // Always show all subjects when picking what to learn with Quizzy (onboarding choices are for context only)
   const isInputLocked = isTyping || isAnimating;
 
   const latestAssistantId = [...messages].reverse().find((m) => m.role === "assistant")?.id;
+
+  const genericInterestLabels = useMemo(
+    () => new Set(HOBBY_OPTIONS.map((hobby) => hobby.label.toLowerCase())),
+    []
+  );
+
+  const updateScrollButton = useCallback(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    const isNearBottom = distanceFromBottom <= 24;
+    lockedToBottomRef.current = isNearBottom;
+    setShowScrollToBottom(!isNearBottom);
+  }, []);
+
+  const scrollToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior });
+  }, []);
 
   const welcomeTemplates = useCallback((subjectLabel: string) => ([
     `Hi ${userName}. Great choice picking ${subjectLabel}.\n\nWhat specific topic or concept would you like to explore today? Just tell me what's on your mind, and I'll find a clear analogy for you.`,
@@ -239,14 +268,25 @@ const Chat = () => {
     return next;
   }, [welcomeTemplates]);
 
-  const buildContext = useCallback(() => ({
+  const buildContext = useCallback((overrideAnchor?: string | null) => ({
     subjects: selectedSubject ? [selectedSubject] : userSubjects,
     hobbies: userHobbies,
     grade: userPrefs.grade,
     learningStyle: userPrefs.learningStyle,
     mood: getStoredMoodId(),
-    analogyIntensity
-  }), [selectedSubject, userSubjects, userHobbies, userPrefs.grade, userPrefs.learningStyle, analogyIntensity]);
+    responseLength,
+    analogyIntensity: analogyModeEnabled ? 2 : 0,
+    analogyAnchor: overrideAnchor ?? analogyAnchor ?? undefined
+  }), [
+    selectedSubject,
+    userSubjects,
+    userHobbies,
+    userPrefs.grade,
+    userPrefs.learningStyle,
+    responseLength,
+    analogyModeEnabled,
+    analogyAnchor
+  ]);
 
   const handleCopy = useCallback(async (text: string, id: string) => {
     try {
@@ -307,7 +347,7 @@ const Chat = () => {
     setIsTyping(true);
     setStopTyping(false);
 
-    const aiResponse = await getHuggingFaceCompletion(history, buildContext());
+    const aiResponse = await getHuggingFaceCompletion(history, buildContext(analogyAnchor));
 
     setMessages((prev) => prev.map((m) => (
       m.id === messageId
@@ -342,23 +382,25 @@ const Chat = () => {
     };
   }, []);
 
-  // No auto-scroll: user controls when to scroll.
+  useEffect(() => {
+    updateScrollButton();
+    if (shouldAutoScrollRef.current || lockedToBottomRef.current) {
+      const behavior: ScrollBehavior = shouldAutoScrollRef.current ? "smooth" : "auto";
+      shouldAutoScrollRef.current = false;
+      requestAnimationFrame(() => scrollToBottom(behavior));
+    }
+  }, [messages.length, isTyping, updateScrollButton, scrollToBottom]);
 
   // PICKING A TOPIC: This runs when you select a subject icon.
   const handleSubjectSelect = (subjectId: string) => {
     setSelectedSubject(subjectId);
+    setAnalogyAnchor(null);
     const subject = subjects.find(s => s.id === subjectId);
     const subjectLabel = subject?.label || subjectId;
     
-    // WELCOME: Ask the user what they want to dive into!
-    setMessages([{
-      id: `welcome-${Date.now()}`,
-      role: "assistant",
-      content: buildWelcomeMessage(subjectLabel),
-      isNew: true,
-      isWelcome: true
-    }]);
-    setIsAnimating(true);
+    // Start blank; user begins the conversation.
+    setMessages([]);
+    setIsAnimating(false);
     setStopTyping(false);
   };
 
@@ -373,8 +415,29 @@ const Chat = () => {
       content: input
     };
 
+    const findAnchor = (text: string) => {
+      const lower = text.toLowerCase();
+      const matched = userHobbies.find((interest) => lower.includes(interest.toLowerCase()));
+      if (matched) return matched;
+      const specific = userHobbies.find(
+        (interest) => !genericInterestLabels.has(interest.toLowerCase())
+      );
+      return specific || userHobbies[0] || null;
+    };
+
+    const anchorForRequest =
+      analogyModeEnabled && userHobbies.length > 0
+        ? analogyAnchor || findAnchor(input)
+        : null;
+
+    if (anchorForRequest && anchorForRequest !== analogyAnchor) {
+      setAnalogyAnchor(anchorForRequest);
+    }
+
     setMessages(prev => [...prev, userMessage]);
     setInput("");
+    shouldAutoScrollRef.current = true;
+    lockedToBottomRef.current = true;
     setIsTyping(true); // Show the "thinking" dots.
 
     // Record the conversation
@@ -393,7 +456,7 @@ const Chat = () => {
       const newHistory = [...messagesHistory, { role: "user" as const, content: input }];
       
       // We also give the AI "Context" (your hobbies and style).
-      const context = buildContext();
+      const context = buildContext(anchorForRequest);
 
       // FETCH: We send the request over the internet and wait.
       const aiResponse = await getHuggingFaceCompletion(newHistory, context);
@@ -421,12 +484,13 @@ const Chat = () => {
     const subjectLabel = subjects.find(s => s.id === selectedSubject)?.label || selectedSubject;
     const usedTopics = messages.filter(m => m.analogy).map(m => m.analogy).filter(Boolean);
     
-    const context = buildContext();
+    const context = buildContext(analogyAnchor);
 
     const avoidText = usedTopics.length > 0 ? `Avoid repeating these topics: ${usedTopics.join(", ")}.` : "";
+    const anchorText = analogyAnchor ? `Use ONLY ${analogyAnchor} as the analogy source.` : "";
     const aiPrompt = [{ 
       role: "user" as const, 
-      content: `Introduce a NEW, interesting concept in ${subjectLabel} using an analogy that references a specific moment, scene, or character from my interests (${userHobbies.join(", ")})—not generic settings. ${avoidText}` 
+      content: `Introduce a NEW, interesting concept in ${subjectLabel} using an analogy that references a specific moment, scene, or character from my interests (${userHobbies.join(", ")})—not generic settings. ${anchorText} ${avoidText}` 
     }];
 
     const aiResponse = await getHuggingFaceCompletion(aiPrompt, context);
@@ -444,11 +508,11 @@ const Chat = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col relative overflow-hidden bg-background">
-      <div className="flex-1 flex flex-col max-w-3xl mx-auto w-full px-4 sm:px-6 py-6 relative">
+    <div className="min-h-[100dvh] flex flex-col relative overflow-hidden bg-background">
+      <div className="flex-1 flex flex-col max-w-3xl mx-auto w-full px-3 sm:px-6 py-4 sm:py-6 relative">
         {/* Simple header */}
         <motion.header
-          className="flex items-center justify-between py-3 px-4 -mx-4 sm:-mx-6 mb-4 border-b border-border"
+          className="flex items-center justify-between py-2 sm:py-3 px-3 sm:px-4 -mx-3 sm:-mx-6 mb-3 sm:mb-4 border-b border-border"
           initial={{ opacity: 0, y: -12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ type: "spring", stiffness: 300, damping: 24 }}
@@ -519,7 +583,7 @@ const Chat = () => {
           <>
             {/* Controls bar */}
             <motion.div
-              className="flex items-center justify-center gap-2 sm:gap-3 mb-6 flex-wrap"
+              className="flex items-center justify-center gap-2 sm:gap-3 mb-4 sm:mb-6 flex-wrap"
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
@@ -529,6 +593,7 @@ const Chat = () => {
                 size="sm"
                 onClick={() => {
                   setSelectedSubject(null);
+                  setAnalogyAnchor(null);
                   setMessages([]);
                 }}
                 className="gap-2 rounded-md h-8 px-4 text-xs font-medium"
@@ -551,208 +616,254 @@ const Chat = () => {
                 New Topic
               </Button>
 
-              <div className="flex items-center gap-2 pl-3 pr-3 py-1.5 rounded-md border border-border bg-muted/30">
-                <span className="text-xs font-medium text-muted-foreground">Intensity:</span>
+              <Button
+                variant={analogyModeEnabled ? "default" : "outline"}
+                size="sm"
+                onClick={() => setAnalogyModeEnabled((prev) => !prev)}
+                className="gap-2 rounded-md h-8 px-4 text-xs font-medium"
+                disabled={isInputLocked}
+                aria-pressed={analogyModeEnabled}
+              >
+                <Brain className="w-3.5 h-3.5" />
+                Analogy: {analogyModeEnabled ? "On" : "Off"}
+              </Button>
+
+              <div className="h-4 border-l border-border/50" />
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-medium text-muted-foreground">Length:</span>
                 <input
                   type="range"
-                  min="0"
-                  max="4"
-                  value={analogyIntensity}
-                  onChange={(e) => setAnalogySIntensity(Number(e.target.value))}
+                  min="1"
+                  max="5"
+                  value={responseLength}
+                  onChange={(e) => setResponseLength(Number(e.target.value))}
                   className="w-20 h-1.5 bg-border rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:cursor-pointer"
                 />
-                <span className="text-xs font-semibold text-primary tabular-nums w-4">{analogyIntensity + 1}/5</span>
+                <span className="text-xs font-semibold text-primary tabular-nums w-5">{responseLength}/5</span>
               </div>
             </motion.div>
 
-            {/* Messages - sleek chat bubbles */}
-            <div className="flex-1 overflow-y-auto space-y-6 mb-6 min-h-0">
-              <AnimatePresence>
-                {messages.map((message, index) => {
-                  const canRegenerate =
-                    message.role === "assistant" &&
-                    (message.isWelcome ||
-                      (message.id === latestAssistantId && messages[index - 1]?.role === "user"));
+            <div className="flex-1 min-h-0 relative">
+              {/* Messages - sleek chat bubbles */}
+              <div
+                ref={scrollContainerRef}
+                onScroll={updateScrollButton}
+                className="absolute inset-0 overflow-y-auto min-h-0 chat-scroll"
+              >
+                <div className="min-h-full flex flex-col justify-end space-y-6 pb-28 sm:pb-24 pt-1">
+                  <AnimatePresence>
+                    {messages.map((message, index) => {
+                      const canRegenerate =
+                        message.role === "assistant" &&
+                        (message.isWelcome ||
+                          (message.id === latestAssistantId && messages[index - 1]?.role === "user"));
 
-                  return (
-                  <motion.div
-                    key={message.id}
-                    initial={{ opacity: 0, y: message.role === "user" ? 16 : -8, x: message.role === "user" ? 20 : -20 }}
-                    animate={{ opacity: 1, y: 0, x: 0 }}
-                    transition={{ type: "spring", stiffness: 300, damping: 28 }}
-                    className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
-                  >
-                    <div
-                      className={`max-w-[88%] sm:max-w-[85%] ${
-                        message.role === "user"
-                          ? "message-bubble-user"
-                          : "message-bubble-assistant"
-                      }`}
+                      return (
+                      <motion.div
+                        key={message.id}
+                        initial={{ opacity: 0, y: message.role === "user" ? 16 : -8, x: message.role === "user" ? 20 : -20 }}
+                        animate={{ opacity: 1, y: 0, x: 0 }}
+                        transition={{ type: "spring", stiffness: 300, damping: 28 }}
+                        className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
+                      >
+                        <div
+                          className={`max-w-[88%] sm:max-w-[85%] ${
+                            message.role === "user"
+                              ? "message-bubble-user"
+                              : "message-bubble-assistant"
+                          }`}
+                        >
+                          {message.role === "assistant" && (
+                            <div className="flex items-center gap-2 mb-2.5">
+                              <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
+                                <Lightbulb className="w-3 h-3 text-white" />
+                              </div>
+                              <span className="text-xs font-semibold text-primary">Quizzy</span>
+                            </div>
+                          )}
+                          {message.role === "assistant" ? (
+                            <>
+                              {message.imageUrl && (
+                                <a
+                                  href={message.imageUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="block mb-3 rounded-xl overflow-hidden border border-border/60 bg-muted/30 focus:outline-none focus:ring-2 focus:ring-primary/40 ring-offset-2 ring-offset-transparent"
+                                >
+                                  <img
+                                    src={message.imageUrl}
+                                    alt="Related to this topic"
+                                    className="w-full max-h-56 object-cover"
+                                    loading="lazy"
+                                  />
+                                </a>
+                              )}
+                              <TypewriterMessage 
+                                content={message.content} 
+                                isNew={message.isNew || false}
+                                shouldStop={stopTyping}
+                                onComplete={() => {
+                                  // Mark message as no longer new after typing completes
+                                  setMessages(prev => prev.map(m => 
+                                    m.id === message.id ? { ...m, isNew: false } : m
+                                  ));
+                                  setIsAnimating(false);
+                                  setStopTyping(false);
+                                }}
+                              />
+                              <div className="mt-3 flex items-center justify-end gap-0.5 opacity-70 hover:opacity-100 transition-opacity">
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleCopy(message.content, message.id)}
+                                  aria-label="Copy response"
+                                  title="Copy response"
+                                  className="h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                                >
+                                  {copiedId === message.id ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                                </Button>
+                                {canRegenerate && (
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleRegenerate(message.id)}
+                                    disabled={isInputLocked}
+                                    aria-label="Regenerate response"
+                                    title="Regenerate response"
+                                    className="h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                                  >
+                                    <RefreshCw className="w-3 h-3" />
+                                  </Button>
+                                )}
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <p className="whitespace-pre-wrap text-sm leading-relaxed">
+                                {message.content}
+                              </p>
+                              <div className="mt-2 flex items-center justify-end">
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleCopy(message.content, message.id)}
+                                  aria-label="Copy prompt"
+                                  title="Copy prompt"
+                                  className="h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+                                >
+                                  {copiedId === message.id ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                                </Button>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </motion.div>
+                    );
+                    })}
+                  </AnimatePresence>
+
+                  {isTyping && (
+                    <motion.div
+                      initial={{ opacity: 0, x: -12 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                      className="flex justify-start"
                     >
-                      {message.role === "assistant" && (
-                        <div className="flex items-center gap-2 mb-2.5">
-                          <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
+                      <div className="message-bubble-assistant">
+                        <div className="flex items-center gap-3">
+                          <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center shrink-0">
                             <Lightbulb className="w-3 h-3 text-white" />
                           </div>
-                          <span className="text-xs font-semibold text-primary">Quizzy</span>
+                          <div className="flex gap-1 items-end h-5">
+                            {[0, 1, 2, 3, 4, 5, 6].map((i) => (
+                              <div key={i} className="typing-dot" style={{ alignSelf: "flex-end" }} />
+                            ))}
+                          </div>
                         </div>
-                      )}
-                      {message.role === "assistant" ? (
-                        <>
-                          {message.imageUrl && (
-                            <a
-                              href={message.imageUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="block mb-3 rounded-xl overflow-hidden border border-border/60 bg-muted/30 focus:outline-none focus:ring-2 focus:ring-primary/40 ring-offset-2 ring-offset-transparent"
-                            >
-                              <img
-                                src={message.imageUrl}
-                                alt="Related to this topic"
-                                className="w-full max-h-56 object-cover"
-                                loading="lazy"
-                              />
-                            </a>
-                          )}
-                          <TypewriterMessage 
-                            content={message.content} 
-                            isNew={message.isNew || false}
-                            shouldStop={stopTyping}
-                            onComplete={() => {
-                              // Mark message as no longer new after typing completes
-                              setMessages(prev => prev.map(m => 
-                                m.id === message.id ? { ...m, isNew: false } : m
-                              ));
-                              setIsAnimating(false);
-                              setStopTyping(false);
-                            }}
-                          />
-                          <div className="mt-3 flex items-center justify-end gap-0.5 opacity-70 hover:opacity-100 transition-opacity">
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleCopy(message.content, message.id)}
-                              aria-label="Copy response"
-                              title="Copy response"
-                              className="h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                            >
-                              {copiedId === message.id ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                            </Button>
-                            {canRegenerate && (
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleRegenerate(message.id)}
-                                disabled={isInputLocked}
-                                aria-label="Regenerate response"
-                                title="Regenerate response"
-                                className="h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                              >
-                                <RefreshCw className="w-3 h-3" />
-                              </Button>
-                            )}
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          <p className="whitespace-pre-wrap text-sm leading-relaxed">
-                            {message.content}
-                          </p>
-                          <div className="mt-2 flex items-center justify-end">
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleCopy(message.content, message.id)}
-                              aria-label="Copy prompt"
-                              title="Copy prompt"
-                              className="h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
-                            >
-                              {copiedId === message.id ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                            </Button>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  </motion.div>
-                );
-                })}
-              </AnimatePresence>
-
-              {isTyping && (
-                <motion.div
-                  initial={{ opacity: 0, x: -12 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ type: "spring", stiffness: 400, damping: 25 }}
-                  className="flex justify-start"
-                >
-                  <div className="message-bubble-assistant">
-                    <div className="flex items-center gap-3">
-                      <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center shrink-0">
-                        <Lightbulb className="w-3 h-3 text-white" />
                       </div>
-                      <div className="flex gap-1 items-end h-5">
-                        {[0, 1, 2, 3, 4, 5, 6].map((i) => (
-                          <div key={i} className="typing-dot" style={{ alignSelf: "flex-end" }} />
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-              
-              <div ref={messagesEndRef} />
-            </div>
-
-            {/* Input - terminal style */}
-            <motion.div
-              className="sticky bottom-0 z-20 pt-2 pb-1 -mx-1"
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
-            >
-              <div className="message-input-container rounded-lg border border-border">
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    handleSend();
-                  }}
-                  className="flex gap-2 sm:gap-3 items-end p-3"
-                >
-                  <Textarea
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    placeholder="Ask anything about this subject..."
-                    rows={Math.max(1, Math.min(12, Math.ceil(input.length / 70) || 1))}
-                    className="flex-1 !min-h-11 sm:!min-h-12 px-3 py-2.5 rounded-md border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/70 font-mono text-sm resize-none overflow-y-auto max-h-64"
-                  />
-                  {(isTyping || isAnimating) ? (
-                    <Button
-                      type="button"
-                      onClick={() => setStopTyping(true)}
-                      size="icon"
-                      className="h-11 w-11 sm:h-12 sm:w-12 rounded-xl bg-destructive/90 hover:bg-destructive text-destructive-foreground border-0 shrink-0"
-                    >
-                      <Square className="w-4 h-4" />
-                    </Button>
-                  ) : (
-                    <Button
-                      type="submit"
-                      disabled={!input.trim()}
-                      size="icon"
-                      className="h-11 w-11 sm:h-12 sm:w-12 rounded-full bg-primary text-white border-0 shrink-0 hover:bg-primary/90 active:scale-95 transition-all disabled:opacity-50 disabled:hover:bg-primary"
-                    >
-                      <Send className="w-4 h-4" />
-                    </Button>
+                    </motion.div>
                   )}
-                </form>
-                <p className="text-[10px] sm:text-xs text-muted-foreground/70 text-center pb-2 font-mono">
-                  Quizzy can make mistakes. Verify important information.
-                </p>
+                  
+                  <div ref={messagesEndRef} />
+                </div>
               </div>
-            </motion.div>
+
+              {showScrollToBottom && (
+                <Button
+                  type="button"
+                  variant="default"
+                  size="icon"
+                  onClick={() => {
+                    lockedToBottomRef.current = true;
+                    scrollToBottom();
+                  }}
+                  aria-label="Scroll to latest"
+                  title="Scroll to latest"
+                  className="absolute bottom-24 left-1/2 -translate-x-1/2 z-40 h-9 w-9 rounded-full bg-primary/40 text-white/90 shadow-md backdrop-blur hover:bg-primary/60"
+                >
+                  <ArrowDown className="w-4 h-4" />
+                </Button>
+              )}
+
+              <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-background via-background/90 to-transparent z-20" />
+
+              {/* Input - terminal style */}
+              <motion.div
+                className="absolute bottom-0 left-0 right-0 z-30 pt-2 pb-[calc(env(safe-area-inset-bottom)+0.25rem)] -mx-1 pointer-events-auto"
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
+              >
+                <div className="message-input-container rounded-lg border border-border bg-background">
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      handleSend();
+                    }}
+                    className="flex gap-2 sm:gap-3 items-end p-2.5 sm:p-3"
+                  >
+                    <Textarea
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault();
+                          handleSend();
+                        }
+                      }}
+                      placeholder={`Ask anything about ${subjects.find(s => s.id === selectedSubject)?.label || 'this subject'}...`}
+                      rows={Math.max(1, Math.min(12, Math.ceil(input.length / 70) || 1))}
+                      className="flex-1 !min-h-10 sm:!min-h-12 px-3 py-2.5 rounded-md border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/70 font-mono text-sm resize-none overflow-y-auto max-h-64"
+                    />
+                    {(isTyping || isAnimating) ? (
+                      <Button
+                        type="button"
+                        onClick={() => setStopTyping(true)}
+                        size="icon"
+                        className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-destructive/90 hover:bg-destructive text-destructive-foreground border-0 shrink-0"
+                      >
+                        <Square className="w-4 h-4" />
+                      </Button>
+                    ) : (
+                      <Button
+                        type="submit"
+                        disabled={!input.trim()}
+                        size="icon"
+                        className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-primary text-white border-0 shrink-0 hover:bg-primary/90 active:scale-95 transition-all disabled:opacity-50 disabled:hover:bg-primary"
+                      >
+                        <Send className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </form>
+                  <p className="text-[10px] sm:text-xs text-muted-foreground/70 text-center pb-2 font-mono">
+                    Quizzy can make mistakes. Verify important information.
+                  </p>
+                </div>
+              </motion.div>
+            </div>
           </>
         )}
       </div>

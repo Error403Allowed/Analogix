@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Lightbulb, Sparkles } from "lucide-react";
+import { Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getHuggingFaceCompletion } from "@/services/huggingface";
+import { buildInterestList } from "@/utils/interests";
 import { getStoredMoodId } from "@/utils/mood";
 
 interface Message {
@@ -22,7 +23,7 @@ const QuickChat = () => {
 
   const userPrefs = JSON.parse(localStorage.getItem("userPreferences") || "{}");
   const userName = userPrefs.name || "friend";
-  const userHobbies = userPrefs.hobbies || ["gaming"];
+  const userHobbies = buildInterestList(userPrefs, ["gaming"]);
   const userSubjects = userPrefs.subjects || ["general"];
 
   useEffect(() => {
