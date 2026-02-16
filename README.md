@@ -96,6 +96,8 @@
    ```env
    HF_API_KEY=your_huggingface_api_key_here
    HF_API_KEY_2=optional_backup_key_for_rotation
+   HF_CHAT_MODEL=mistralai/Mistral-7B-Instruct-v0.2
+   HF_CHAT_MODEL_FALLBACKS=meta-llama/Meta-Llama-3.1-8B-Instruct
    ```
 
 4. **Start the development server:**
@@ -305,6 +307,8 @@ Set in `app/layout.tsx` line 22:
 |---|---|---|
 | `HF_API_KEY` | ✅ Yes | Primary Hugging Face API key |
 | `HF_API_KEY_2` | ❌ Optional | Backup key for load balancing |
+| `HF_CHAT_MODEL` | ✅ Yes | Chat model used by the HF router |
+| `HF_CHAT_MODEL_FALLBACKS` | ❌ Optional | Comma-separated fallback models |
 
 Get your free API key at: https://huggingface.co/settings/tokens
 
@@ -338,7 +342,13 @@ Test files located in `src/test/`
 
 ### "Missing HF API Key" Error
 - Create a `.env.local` file in the project root
-- Add: `HF_API_KEY=your_key_here`
+- Add:
+```env
+HF_API_KEY=your_key_here
+HF_API_KEY_2=optional_backup
+HF_CHAT_MODEL=mistralai/Mistral-7B-Instruct-v0.2
+HF_CHAT_MODEL_FALLBACKS=meta-llama/Meta-Llama-3.1-8B-Instruct
+```
 - Restart dev server (`npm run dev`)
 
 ### Dark Mode Not Working

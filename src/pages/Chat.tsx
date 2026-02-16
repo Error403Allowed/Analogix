@@ -40,7 +40,7 @@ const TypewriterMessage = ({
   const [isTyping, setIsTyping] = useState(isNew);
   const charIndexRef = useRef(0);
   const contentRef = useRef(content);
-  const hasStartedRef = useRef(false);
+
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const mathSpansRef = useRef<Array<{ start: number; end: number }>>([]);
 
@@ -101,15 +101,12 @@ const TypewriterMessage = ({
   }, [shouldStop, isTyping, onComplete]);
 
   useEffect(() => {
-    // If not new or already started, don't restart
-    if (!isNew || hasStartedRef.current) {
-      if (!isNew) {
-        setDisplayedContent(content);
-      }
+    // If not new, show content immediately
+    if (!isNew) {
+      setDisplayedContent(content);
       return;
     }
 
-    hasStartedRef.current = true;
     charIndexRef.current = 0;
 
     const typeNextChar = () => {
@@ -352,21 +349,35 @@ const Chat = () => {
     setIsTyping(true);
     setStopTyping(false);
 
-    const aiResponse = await getHuggingFaceCompletion(history, buildContext(analogyAnchor));
+    try {
+      const aiResponse = await getHuggingFaceCompletion(history, buildContext(analogyAnchor));
 
-    setMessages((prev) => prev.map((m) => (
-      m.id === messageId
-        ? {
-            ...m,
-            id: `${messageId}-regen-${Date.now()}`,
-            content: aiResponse.content || "I'm not sure how to answer that.",
-            isNew: true
-          }
-        : m
-    )));
-    setIsTyping(false);
-    setIsAnimating(true);
-    setStopTyping(false);
+      setMessages((prev) => prev.map((m) => (
+        m.id === messageId
+          ? {
+              ...m,
+              id: `${messageId}-regen-${Date.now()}`,
+              content: aiResponse.content || "I'm not sure how to answer that.",
+              isNew: true
+            }
+          : m
+      )));
+    } catch {
+      setMessages((prev) => prev.map((m) => (
+        m.id === messageId
+          ? {
+              ...m,
+              id: `${messageId}-regen-${Date.now()}`,
+              content: "I couldn't reach the AI service. Try again in a moment.",
+              isNew: true
+            }
+          : m
+      )));
+    } finally {
+      setIsTyping(false);
+      setIsAnimating(true);
+      setStopTyping(false);
+    }
   }, [
     isInputLocked,
     messages,
@@ -463,21 +474,31 @@ const Chat = () => {
       // We also give the AI "Context" (your hobbies and style).
       const context = buildContext(anchorForRequest);
 
-      // FETCH: We send the request over the internet and wait.
-      const aiResponse = await getHuggingFaceCompletion(newHistory, context);
+      try {
+        // FETCH: We send the request over the internet and wait.
+        const aiResponse = await getHuggingFaceCompletion(newHistory, context);
 
-      // 3. We show the AI's reply on the screen.
-      const response: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content: aiResponse.content || "I'm not sure how to answer that.",
-        isNew: true
-      };
+        // 3. We show the AI's reply on the screen.
+        const response: Message = {
+          id: (Date.now() + 1).toString(),
+          role: "assistant",
+          content: aiResponse.content || "I'm not sure how to answer that.",
+          isNew: true
+        };
 
-      setMessages(prev => [...prev, response]);
-      setIsTyping(false);
-      setIsAnimating(true);
-      setStopTyping(false);
+        setMessages(prev => [...prev, response]);
+      } catch {
+        setMessages(prev => [...prev, {
+          id: (Date.now() + 1).toString(),
+          role: "assistant",
+          content: "I couldn't reach the AI service. Try again in a moment.",
+          isNew: true
+        }]);
+      } finally {
+        setIsTyping(false);
+        setIsAnimating(true);
+        setStopTyping(false);
+      }
     })();
   };
 
@@ -498,18 +519,30 @@ const Chat = () => {
       content: `Introduce a NEW, interesting concept in ${subjectLabel} using an analogy that references a specific moment, scene, or character from my interests (${userHobbies.join(", ")})—not generic settings. ${anchorText} ${avoidText}` 
     }];
 
-    const aiResponse = await getHuggingFaceCompletion(aiPrompt, context);
-    const newMsgId = Date.now().toString();
-    setMessages(prev => [...prev, {
-      id: newMsgId,
-      role: "assistant",
-      content: aiResponse.content || "Hmm, I'm having trouble thinking of a new topic. Try asking me a specific question!",
-      analogy: `ai-generated-${newMsgId}`,
-      isNew: true
-    }]);
-    setIsTyping(false);
-    setIsAnimating(true);
-    setStopTyping(false);
+    try {
+      const aiResponse = await getHuggingFaceCompletion(aiPrompt, context);
+      const newMsgId = Date.now().toString();
+      setMessages(prev => [...prev, {
+        id: newMsgId,
+        role: "assistant",
+        content: aiResponse.content || "Hmm, I'm having trouble thinking of a new topic. Try asking me a specific question!",
+        analogy: `ai-generated-${newMsgId}`,
+        isNew: true
+      }]);
+    } catch {
+      const newMsgId = Date.now().toString();
+      setMessages(prev => [...prev, {
+        id: newMsgId,
+        role: "assistant",
+        content: "I couldn't reach the AI service. Try again in a moment.",
+        analogy: `ai-generated-${newMsgId}`,
+        isNew: true
+      }]);
+    } finally {
+      setIsTyping(false);
+      setIsAnimating(true);
+      setStopTyping(false);
+    }
   };
 
   return (

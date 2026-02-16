@@ -32,17 +32,22 @@ import CursorParticles from "@/components/CursorParticles";
 const Landing = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const userPrefs =
-    typeof window !== "undefined"
-      ? JSON.parse(localStorage.getItem("userPreferences") || "{}")
-      : {};
-  const hasCompletedOnboarding = userPrefs.onboardingComplete;
+  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
 
   const THEME_ORDER_KEY = "landingThemeOrder";
   const THEME_INDEX_KEY = "landingThemeIndex";
 
   // Random Theme Logic (no repeats until all themes cycle)
   useEffect(() => {
+    setIsMounted(true);
+    try {
+      const prefs = JSON.parse(localStorage.getItem("userPreferences") || "{}");
+      setHasCompletedOnboarding(Boolean(prefs?.onboardingComplete));
+    } catch {
+      setHasCompletedOnboarding(false);
+    }
+
     const themes = [
       { p: { h: "199.2", s: "78.2%", l: "48.3%" }, g: ["#0ea5a6", "#2563eb", "#0f766e"] }, // Coastal
       { p: { h: "147", s: "56%", l: "38%" }, g: ["#15803d", "#16a34a", "#0f766e"] }, // Forest
@@ -87,12 +92,8 @@ const Landing = () => {
   }, []);
 
   useEffect(() => {
-    const forceLanding = searchParams.get("force") === "true";
-
-    if (hasCompletedOnboarding && !forceLanding) {
-      router.push("/dashboard");
-    }
-  }, [hasCompletedOnboarding, router, searchParams]);
+    // Automatic redirect removed as per user request
+  }, []);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -105,6 +106,7 @@ const Landing = () => {
   };
 
   const handleNav = (path: string) => {
+    if (!isMounted) return;
     if (!hasCompletedOnboarding) {
       router.push("/onboarding");
       return;
@@ -193,11 +195,11 @@ const Landing = () => {
           <motion.div
             className="grid lg:grid-cols-2 gap-16 items-center"
             variants={containerVariants}
-            initial="hidden"
+            initial={false}
             animate="visible"
           >
             <div className="space-y-8">
-              <motion.div variants={itemVariants}>
+              <motion.div variants={itemVariants} initial={{ opacity: 1, y: 0 }}>
                 <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-primary font-bold text-sm mb-6">
                   <Sparkles className="w-4 h-4" />
                   Personal Learning Studio
@@ -210,7 +212,7 @@ const Landing = () => {
                 </p>
               </motion.div>
 
-              <motion.div variants={itemVariants} className="flex flex-wrap gap-4 pt-4">
+              <motion.div variants={itemVariants} className="flex flex-wrap gap-4 pt-4" initial={{ opacity: 1, y: 0 }}>
                 <Button 
                   size="lg" 
                   className="h-16 px-10 text-xl font-black gradient-primary text-primary-foreground border-0 shadow-2xl hover:scale-105 transition-transform rounded-2xl"
@@ -221,7 +223,7 @@ const Landing = () => {
                 </Button>
               </motion.div>
 
-              <motion.div variants={itemVariants} className="flex items-center gap-8 pt-8 border-t border-border/50 mt-12">
+              <motion.div variants={itemVariants} className="flex items-center gap-8 pt-8 border-t border-border/50 mt-12" initial={{ opacity: 1, y: 0 }}>
                 <div>
                   <div className="text-3xl font-black text-foreground">2,000+</div>
                   <div className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Students</div>
@@ -240,6 +242,7 @@ const Landing = () => {
             <motion.div 
               variants={itemVariants}
               className="relative hidden lg:flex justify-center items-center"
+              initial={{ opacity: 1, y: 0 }}
             >
               <div className="absolute inset-0 bg-primary/20 rounded-full blur-[120px] animate-pulse" />
               <motion.div
@@ -293,7 +296,7 @@ const Landing = () => {
                 <motion.div 
                   key={i}
                   className="glass-card p-10 space-y-6 hover:border-primary/50 transition-all group"
-                  initial={{ opacity: 0, y: 30 }}
+                  initial={{ opacity: 1, y: 0 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: i * 0.1 }}
@@ -338,7 +341,7 @@ const Landing = () => {
         <section className="py-32 max-w-5xl mx-auto px-8">
           <motion.div 
             className="glass-card p-16 text-center relative overflow-hidden gradient-primary text-primary-foreground border-none"
-            initial={{ opacity: 0, scale: 0.95 }}
+            initial={{ opacity: 1, scale: 1 }}
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
           >
