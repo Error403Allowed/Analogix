@@ -1,5 +1,6 @@
+"use client";
+
 import { useState, useEffect } from "react";
-import { Analytics } from "@vercel/analytics/next"
 import { motion } from "framer-motion";
 import {
   ArrowRight,
@@ -18,16 +19,23 @@ import {
   Globe,
   HeartPulse,
   Cpu,
-  Percent
+  Percent,
+  Wrench,
+  Stethoscope,
+  Languages
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useNavigate } from "react-router-dom";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import CursorParticles from "@/components/CursorParticles";
 
 const Landing = () => {
-  const navigate = useNavigate();
-  const userPrefs = JSON.parse(localStorage.getItem("userPreferences") || "{}");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const userPrefs =
+    typeof window !== "undefined"
+      ? JSON.parse(localStorage.getItem("userPreferences") || "{}")
+      : {};
   const hasCompletedOnboarding = userPrefs.onboardingComplete;
 
   const THEME_ORDER_KEY = "landingThemeOrder";
@@ -79,13 +87,12 @@ const Landing = () => {
   }, []);
 
   useEffect(() => {
-    const searchParams = new URLSearchParams(window.location.search);
     const forceLanding = searchParams.get("force") === "true";
 
     if (hasCompletedOnboarding && !forceLanding) {
-      navigate("/dashboard");
+      router.push("/dashboard");
     }
-  }, [hasCompletedOnboarding, navigate]);
+  }, [hasCompletedOnboarding, router, searchParams]);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -99,10 +106,10 @@ const Landing = () => {
 
   const handleNav = (path: string) => {
     if (!hasCompletedOnboarding) {
-      navigate("/onboarding");
+      router.push("/onboarding");
       return;
     }
-    navigate(path);
+    router.push(path);
   };
 
   const features = [
@@ -138,6 +145,9 @@ const Landing = () => {
     { icon: Globe, label: "Geography" },
     { icon: Trophy, label: "Commerce" },
     { icon: Cpu, label: "Digital Tech" },
+    { icon: Wrench, label: "Engineering" },
+    { icon: Stethoscope, label: "Medicine" },
+    { icon: Languages, label: "Languages" },
   ];
 
   return (
@@ -204,7 +214,7 @@ const Landing = () => {
                 <Button 
                   size="lg" 
                   className="h-16 px-10 text-xl font-black gradient-primary text-primary-foreground border-0 shadow-2xl hover:scale-105 transition-transform rounded-2xl"
-                  onClick={() => navigate(hasCompletedOnboarding ? "/dashboard" : "/onboarding")}
+                  onClick={() => router.push(hasCompletedOnboarding ? "/dashboard" : "/onboarding")}
                 >
                   {hasCompletedOnboarding ? "Go to Dashboard" : "Start Learning Now"}
                   <ArrowRight className="ml-2 w-6 h-6" />
@@ -338,7 +348,7 @@ const Landing = () => {
             <Button 
                size="lg" 
                className="h-16 px-12 text-2xl font-black bg-white text-primary hover:bg-white/90 border-0 shadow-2xl rounded-2xl"
-               onClick={() => navigate("/onboarding")}
+               onClick={() => router.push("/onboarding")}
             >
               Get Started Now
             </Button>

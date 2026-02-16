@@ -15,7 +15,10 @@ const ExamManager = () => {
   const [newDate, setNewDate] = useState("");
   const [newType, setNewType] = useState<"exam" | "event" | "assignment">("exam");
 
-  const userPrefs = JSON.parse(localStorage.getItem("userPreferences") || "{}");
+  const userPrefs =
+    typeof window !== "undefined"
+      ? JSON.parse(localStorage.getItem("userPreferences") || "{}")
+      : {};
   const subjects = userPrefs.subjects || ["General"];
 
   useEffect(() => {

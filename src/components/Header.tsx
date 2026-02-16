@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Settings, User, Flame } from "lucide-react";
@@ -7,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ThemeToggle } from "./ThemeToggle";
 import ThemeSelector from "./ThemeSelector";
-import { useNavigate } from "react-router-dom";
+import { useRouter } from "next/navigation";
 import SettingsDialog from "./SettingsDialog";
 import { getAIGreeting } from "@/services/huggingface";
 import { getStoredMoodId } from "@/utils/mood";
@@ -38,7 +40,7 @@ const SUBJECT_OPTIONS = [
 
 
 const Header = ({ userName = "Student", streak = 0 }: HeaderProps) => {
-  const navigate = useNavigate();
+  const router = useRouter();
   const [showSettings, setShowSettings] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [greeting, setGreeting] = useState(`Welcome back, ${userName}.`);
@@ -221,7 +223,7 @@ const Header = ({ userName = "Student", streak = 0 }: HeaderProps) => {
             className="text-xl font-bold gradient-text cursor-pointer justify-self-center"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            onClick={() => navigate("/?force=true")}
+            onClick={() => router.push("/?force=true")}
           >
             Analogix
           </motion.h1>

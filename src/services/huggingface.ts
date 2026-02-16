@@ -4,8 +4,8 @@
  */
 
 // STEP 1: Get our API keys from the .env file.
-const apiKey1 = import.meta.env.VITE_HF_API_KEY;
-const apiKey2 = import.meta.env.VITE_HF_API_KEY_2;
+const apiKey1 = process.env.NEXT_PUBLIC_HF_API_KEY;
+const apiKey2 = process.env.NEXT_PUBLIC_HF_API_KEY_2;
 
 const apiKeys = [apiKey1, apiKey2].filter((key): key is string => key !== undefined && key !== "");
 
@@ -29,9 +29,9 @@ const getRotatedKey = (baseIndex: number, offset = 0) => {
 
 // SAFETY CHECK: If the API key is missing, we warn the user in the background.
 if (apiKeys.length === 0) {
-  console.error("Missing HF API Key (VITE_HF_API_KEY). The chatbot won't be able to talk yet!");
+  console.error("Missing HF API Key (NEXT_PUBLIC_HF_API_KEY). The chatbot won't be able to talk yet!");
 } else if (apiKeys.length === 1) {
-  console.warn("Only one HF key found. Add VITE_HF_API_KEY_2 for automatic rotation/reliability.");
+  console.warn("Only one HF key found. Add NEXT_PUBLIC_HF_API_KEY_2 for automatic rotation/reliability.");
 }
 
 import { ChatMessage, UserContext } from "@/types/chat";
@@ -67,7 +67,7 @@ export const getHuggingFaceCompletion = async (
   if (apiKeys.length === 0) {
     return {
       role: "assistant",
-      content: "I'm sorry! I don't have my AI 'brain' connected yet. Please add your VITE_HF_API_KEY to the .env file so we can start learning together."
+      content: "I'm sorry! I don't have my AI 'brain' connected yet. Please add your NEXT_PUBLIC_HF_API_KEY to the .env file so we can start learning together."
     };
   }
 

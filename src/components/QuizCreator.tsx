@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles, Loader2, Copy, Wand2, Lightbulb, Clock, List, BookOpen, ChevronUp, ChevronDown } from "lucide-react";
@@ -39,7 +40,10 @@ const SUBJECT_LABELS: Record<string, string> = {
   business: "Business Studies",
   commerce: "Commerce",
   pdhpe: "PDHPE",
-  geography: "Geography"
+  geography: "Geography",
+  engineering: "Engineering",
+  medicine: "Medicine",
+  languages: "Languages"
 };
 
 const FALLBACK_SUBJECTS = [
@@ -49,6 +53,8 @@ const FALLBACK_SUBJECTS = [
   "Geography",
   "Computer Science",
   "English",
+  "Engineering",
+  "Medicine",
   "Languages",
   "Art",
   "Music",
@@ -57,11 +63,20 @@ const FALLBACK_SUBJECTS = [
 ];
 
 const QuizCreator = ({ onCreateQuiz, isLoading, hideContentInput = false }: QuizCreatorProps) => {
-  const userPrefs = JSON.parse(localStorage.getItem("userPreferences") || "{}");
-  const subjectOptions =
-    Array.isArray(userPrefs.subjects) && userPrefs.subjects.length > 0
-      ? userPrefs.subjects.map((id: string) => SUBJECT_LABELS[id] || id)
-      : FALLBACK_SUBJECTS;
+  const userPrefs = useMemo(
+    () =>
+      typeof window !== "undefined"
+        ? JSON.parse(localStorage.getItem("userPreferences") || "{}")
+        : {},
+    [],
+  );
+  const subjectOptions = useMemo(
+    () =>
+      Array.isArray(userPrefs.subjects) && userPrefs.subjects.length > 0
+        ? userPrefs.subjects.map((id: string) => SUBJECT_LABELS[id] || id)
+        : FALLBACK_SUBJECTS,
+    [userPrefs.subjects],
+  );
 
   const [content, setContent] = useState("");
   const [subject, setSubject] = useState<string>(subjectOptions[0]);

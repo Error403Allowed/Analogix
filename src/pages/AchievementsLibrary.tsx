@@ -1,6 +1,8 @@
+"use client";
+
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { useNavigate } from "react-router-dom";
+import { useRouter } from "next/navigation";
 import { ArrowLeft, Trophy, Search, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,12 +11,15 @@ import { achievementStore } from "@/utils/achievementStore";
 import TypewriterText from "@/components/TypewriterText";
 
 const AchievementsLibrary = () => {
-  const navigate = useNavigate();
+  const router = useRouter();
   const [achievements, setAchievements] = useState(achievementStore.getAll());
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
 
-  const userPrefs = JSON.parse(localStorage.getItem("userPreferences") || "{}");
+  const userPrefs =
+    typeof window !== "undefined"
+      ? JSON.parse(localStorage.getItem("userPreferences") || "{}")
+      : {};
   const userName = userPrefs.name || "Student";
 
   useEffect(() => {
@@ -60,7 +65,7 @@ const AchievementsLibrary = () => {
         <Header userName={userName} />
         
         <div className="pb-8">
-           <Button variant="ghost" className="mb-4 pl-0 hover:bg-transparent hover:text-primary gap-2" onClick={() => navigate("/dashboard")}>
+           <Button variant="ghost" className="mb-4 pl-0 hover:bg-transparent hover:text-primary gap-2" onClick={() => router.push("/dashboard")}>
              <ArrowLeft className="w-4 h-4" /> Back to Dashboard
            </Button>
            

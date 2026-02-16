@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -17,6 +19,9 @@ import {
   Wallet,
   HeartPulse,
   Globe,
+  Wrench,
+  Stethoscope,
+  Languages,
   Dumbbell,
   Gamepad2,
   Music,
@@ -30,7 +35,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useNavigate } from "react-router-dom";
+import { useRouter } from "next/navigation";
 import Confetti from "@/components/Confetti";
 import { achievementStore } from "@/utils/achievementStore";
 import { HOBBY_OPTIONS, POPULAR_INTERESTS } from "@/utils/interests";
@@ -105,6 +110,9 @@ const subjects = [
   { id: "commerce", icon: <Wallet className="w-6 h-6" />, label: "Commerce", description: "Trade, finance, accounting" },
   { id: "pdhpe", icon: <HeartPulse className="w-6 h-6" />, label: "PDHPE", description: "Health, fitness, well-being" },
   { id: "geography", icon: <Globe className="w-6 h-6" />, label: "Geography", description: "World, maps, environment" },
+  { id: "engineering", icon: <Wrench className="w-6 h-6" />, label: "Engineering", description: "Design, mechanics, innovation" },
+  { id: "medicine", icon: <Stethoscope className="w-6 h-6" />, label: "Medicine", description: "Anatomy, health, diagnosis" },
+  { id: "languages", icon: <Languages className="w-6 h-6" />, label: "Languages", description: "Vocabulary, grammar, fluency" },
 ];
 
 const hobbyIcons: Record<string, JSX.Element> = {
@@ -126,7 +134,7 @@ const hobbies = HOBBY_OPTIONS.map((hobby) => ({
 }));
 
 const Onboarding = () => {
-  const navigate = useNavigate();
+  const router = useRouter();
   
   const [step, setStep] = useState(1);
   const [name, setName] = useState("");
@@ -236,7 +244,7 @@ const Onboarding = () => {
         achievementStore.unlock("start_2"); // Identity Crisis
       }
       
-      setTimeout(() => navigate("/dashboard"), 2500);
+      setTimeout(() => router.push("/dashboard"), 2500);
     }
   };
 

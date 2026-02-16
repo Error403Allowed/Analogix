@@ -1,8 +1,10 @@
+"use client";
+
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Home, RotateCcw, Share2, Trophy, Lightbulb, Loader2, Sparkles, Clock, Brain, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useRouter } from "next/navigation";
 import QuizCard from "@/components/QuizCard";
 import Confetti from "@/components/Confetti";
 import { statsStore } from "@/utils/statsStore";
@@ -12,8 +14,7 @@ import TypewriterText from "@/components/TypewriterText";
 import { getStoredMoodId } from "@/utils/mood";
 
 const Quiz = () => {
-  const navigate = useNavigate();
-  const location = useLocation();
+  const router = useRouter();
   const [questions, setQuestions] = useState<any[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [score, setScore] = useState(0);
@@ -24,13 +25,40 @@ const Quiz = () => {
 
   /* New State Variables */
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
+  const [pendingConfig, setPendingConfig] = useState<{
+    topic?: string;
+    subject?: string;
+    numQuestions?: number;
+    timerDuration?: number | null;
+  } | null>(null);
+  const [isConfigLoaded, setIsConfigLoaded] = useState(false);
 
-  const userPrefs = JSON.parse(localStorage.getItem("userPreferences") || "{}");
-  const topic = location.state?.topic || userPrefs.subjects?.[0] || "general school topics";
-  const subject = location.state?.subject || userPrefs.subjects?.[0] || "General";
-  const numQuestionsTarget = location.state?.numQuestions || 5;
-  const timerSetting = location.state?.timerDuration ?? null;
+  const userPrefs =
+    typeof window !== "undefined"
+      ? JSON.parse(localStorage.getItem("userPreferences") || "{}")
+      : {};
+  const topic = pendingConfig?.topic || userPrefs.subjects?.[0] || "general school topics";
+  const subject = pendingConfig?.subject || userPrefs.subjects?.[0] || "General";
+  const numQuestionsTarget = pendingConfig?.numQuestions || 5;
+  const timerSetting = pendingConfig?.timerDuration ?? null;
   const HISTORY_KEY = "recentQuizQuestions";
+
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem("pendingQuizConfig");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === "object") {
+          setPendingConfig(parsed);
+        }
+      }
+      sessionStorage.removeItem("pendingQuizConfig");
+    } catch {
+      // no-op
+    } finally {
+      setIsConfigLoaded(true);
+    }
+  }, []);
 
   const normalizeQuestion = (text: string) =>
     text.toLowerCase().replace(/\s+/g, " ").trim();
@@ -78,6 +106,8 @@ const Quiz = () => {
   };
 
   useEffect(() => {
+    if (!isConfigLoaded) return;
+
     const fetchQuiz = async () => {
       setIsLoading(true);
       const recent = getRecentQuestions();
@@ -135,7 +165,7 @@ const Quiz = () => {
     };
 
     fetchQuiz();
-  }, [topic, numQuestionsTarget]);
+  }, [isConfigLoaded, numQuestionsTarget, subject, topic]);
 
   const handleAnswer = (isCorrect: boolean) => {
     setAnswers([...answers, isCorrect]);
@@ -196,7 +226,7 @@ const Quiz = () => {
              Oops! I couldn't generate a quiz right now. Check your internet or API key.
            </p>
          </div>
-         <Button onClick={() => navigate("/dashboard")} className="mt-6">Back to Dashboard</Button>
+         <Button onClick={() => router.push("/dashboard")} className="mt-6">Back to Dashboard</Button>
       </div>
     );
   }
@@ -241,7 +271,7 @@ const Quiz = () => {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => navigate("/dashboard")}
+                onClick={() => router.push("/dashboard")}
                 className="gap-2"
               >
                 <ArrowLeft className="w-4 h-4" />
@@ -375,7 +405,7 @@ const Quiz = () => {
                   <RotateCcw className="w-4 h-4" />
                   Try Again
                 </Button>
-                <Button variant="outline" onClick={() => navigate("/dashboard")} className="gap-2">
+                <Button variant="outline" onClick={() => router.push("/dashboard")} className="gap-2">
                   <Home className="w-4 h-4" />
                   Dashboard
                 </Button>

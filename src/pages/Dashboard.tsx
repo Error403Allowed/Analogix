@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import { 
@@ -30,7 +32,7 @@ import AchievementBadge from "@/components/AchievementBadge";
 import QuizCreator from "@/components/QuizCreator";
 import ExamManager from "@/components/ExamManager";
 import CalendarWidget from "@/components/CalendarWidget";
-import { useNavigate } from "react-router-dom";
+import { useRouter } from "next/navigation";
 import { achievementStore } from "@/utils/achievementStore";
 import { statsStore } from "@/utils/statsStore";
 import { useAchievementChecker } from "@/hooks/useAchievementChecker";
@@ -87,7 +89,7 @@ const normalizeSubjectCounts = (value: unknown): Record<string, number> => {
 };
 
 const Dashboard = () => {
-  const navigate = useNavigate();
+  const router = useRouter();
   const [showQuizCreator, setShowQuizCreator] = useState(false);
   const [quizCreatorMode, setQuizCreatorMode] = useState<'custom' | 'learning'>('custom');
   const [recentAchievements, setRecentAchievements] = useState<DashboardAchievement[]>([]);
@@ -457,7 +459,7 @@ const Dashboard = () => {
                 </p>
                 <div className="mt-auto flex flex-col gap-2">
                   <Button
-                    onClick={() => navigate("/chat")}
+                    onClick={() => router.push("/chat")}
                     className="h-10 rounded-full gradient-primary text-primary-foreground border-0 font-semibold"
                   >
                     Chat with Quizzy
@@ -535,7 +537,7 @@ const Dashboard = () => {
               </div>
               <div className="mt-5 grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <Button
-                  onClick={() => navigate("/chat")}
+                  onClick={() => router.push("/chat")}
                   className="h-11 rounded-full gradient-primary text-primary-foreground border-0 font-semibold"
                 >
                   Start new analogy
@@ -549,7 +551,7 @@ const Dashboard = () => {
                 </Button>
                 <Button
                   variant="outline"
-                  onClick={() => navigate("/calendar")}
+                  onClick={() => router.push("/calendar")}
                   className="h-11 rounded-full font-semibold bg-background/70"
                 >
                   Check your schedule
@@ -631,7 +633,7 @@ const Dashboard = () => {
                   Highlights
                 </div>
                 <button
-                  onClick={() => navigate("/achievements")}
+                  onClick={() => router.push("/achievements")}
                   className="text-xs font-semibold text-primary hover:underline flex items-center gap-1"
                 >
                   View all badges <ArrowRight className="w-3 h-3" />
@@ -669,14 +671,16 @@ const Dashboard = () => {
              hideContentInput={quizCreatorMode === 'learning'}
              onCreateQuiz={(config) => {
                setShowQuizCreator(false);
-               navigate("/quiz", { 
-                 state: { 
-                    topic: config.content,
-                    subject: config.subject,
-                    numQuestions: config.numQuestions,
-                    timerDuration: config.timerDuration
-                 } 
-               });
+               sessionStorage.setItem(
+                 "pendingQuizConfig",
+                 JSON.stringify({
+                   topic: config.content,
+                   subject: config.subject,
+                   numQuestions: config.numQuestions,
+                   timerDuration: config.timerDuration,
+                 }),
+               );
+               router.push("/quiz");
              }} 
            />
         </DialogContent>

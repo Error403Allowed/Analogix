@@ -1,16 +1,27 @@
-import { Navigate } from "react-router-dom";
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
 }
 
 const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
-  const userPrefs = JSON.parse(localStorage.getItem("userPreferences") || "{}");
-  const hasCompletedOnboarding = userPrefs?.onboardingComplete;
+  const router = useRouter();
+  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    const userPrefs = JSON.parse(localStorage.getItem("userPreferences") || "{}");
+    const completed = Boolean(userPrefs?.onboardingComplete);
+    setHasCompletedOnboarding(completed);
+    if (!completed) {
+      router.replace("/");
+    }
+  }, [router]);
 
   if (!hasCompletedOnboarding) {
-    // Redirect to landing or onboarding if they haven't set up their profile
-    return <Navigate to="/" replace />;
+    return null;
   }
 
   return <>{children}</>;

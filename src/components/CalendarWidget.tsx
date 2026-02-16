@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, useEffect } from "react";
 import { Calendar } from "@/components/ui/calendar";
 import { buttonVariants } from "@/components/ui/button";
@@ -7,10 +9,10 @@ import { AppEvent } from "@/types/events";
 import { isSameDay } from "date-fns";
 import ICSUploader from "./ICSUploader";
 import { motion, AnimatePresence } from "framer-motion";
-import { useNavigate } from "react-router-dom";
+import { useRouter } from "next/navigation";
 
 const CalendarWidget = () => {
-  const navigate = useNavigate();
+  const router = useRouter();
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [events, setEvents] = useState<AppEvent[]>([]);
   const [showUploader, setShowUploader] = useState(false);
@@ -34,7 +36,7 @@ const CalendarWidget = () => {
         </h3>
         <div className="flex gap-3">
           <button 
-            onClick={() => navigate("/calendar")}
+            onClick={() => router.push("/calendar")}
             className="text-[10px] font-bold text-muted-foreground hover:text-primary transition-colors flex items-center gap-1"
           >
             Full View

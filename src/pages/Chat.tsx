@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -13,7 +15,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { useNavigate } from "react-router-dom";
+import { useRouter } from "next/navigation";
 import { getHuggingFaceCompletion } from "@/services/huggingface";
 import { statsStore } from "@/utils/statsStore";
 import MarkdownRenderer from "@/components/MarkdownRenderer";
@@ -180,7 +182,7 @@ const subjects = SUBJECT_CATALOG;
  * It uses your preferences to explain things in a way that makes sense to YOU.
  */
 const Chat = () => {
-  const navigate = useNavigate();
+  const router = useRouter();
   
   // CURRENT TOPIC: Which subject are we talking about right now?
   const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
@@ -217,7 +219,10 @@ const Chat = () => {
   const lockedToBottomRef = useRef(true);
 
   // RETRIEVING MEMORY: We pull your hobbies and subjects from the browser.
-  const userPrefs = JSON.parse(localStorage.getItem("userPreferences") || "{}");
+  const userPrefs =
+    typeof window !== "undefined"
+      ? JSON.parse(localStorage.getItem("userPreferences") || "{}")
+      : {};
   const userName = userPrefs.name || "Student";
   const userHobbies = buildInterestList(userPrefs, ["gaming", "sports"]);
   const userSubjects = userPrefs.subjects || [];
@@ -520,7 +525,7 @@ const Chat = () => {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => navigate("/dashboard")}
+            onClick={() => router.push("/dashboard")}
             className="gap-2 -ml-2 text-muted-foreground hover:text-foreground rounded-xl"
           >
             <ArrowLeft className="w-4 h-4" />

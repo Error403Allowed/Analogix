@@ -21,7 +21,10 @@ const QuickChat = () => {
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const userPrefs = JSON.parse(localStorage.getItem("userPreferences") || "{}");
+  const userPrefs =
+    typeof window !== "undefined"
+      ? JSON.parse(localStorage.getItem("userPreferences") || "{}")
+      : {};
   const userName = userPrefs.name || "friend";
   const userHobbies = buildInterestList(userPrefs, ["gaming"]);
   const userSubjects = userPrefs.subjects || ["general"];

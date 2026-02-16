@@ -13,7 +13,11 @@ interface SettingsDialogProps {
 }
 
 const SettingsDialog = ({ open, onOpenChange }: SettingsDialogProps) => {
-  const [prefs, setPrefs] = useState(() => JSON.parse(localStorage.getItem("userPreferences") || "{}"));
+  const [prefs, setPrefs] = useState(() =>
+    typeof window !== "undefined"
+      ? JSON.parse(localStorage.getItem("userPreferences") || "{}")
+      : {},
+  );
   const [name, setName] = useState(prefs.name || "");
 
   const handleSave = () => {

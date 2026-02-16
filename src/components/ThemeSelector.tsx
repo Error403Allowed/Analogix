@@ -69,6 +69,7 @@ export const applyThemeByName = (themeName: string) => {
 
 const ThemeSelector = () => {
   const [activeTheme, setActiveTheme] = useState(() => {
+    if (typeof window === "undefined") return "Classic Blue";
     return localStorage.getItem("app-theme") || "Classic Blue";
   });
 

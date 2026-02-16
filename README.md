@@ -42,7 +42,7 @@
 
 ### Frontend
 - **React 18** - UI framework
-- **Vite** - Ultra-fast build tool
+- **Next.js** - React framework and build system
 - **TypeScript** - Type-safe development
 - **Tailwind CSS** - Utility-first styling
 - **Framer Motion** - Smooth animations
@@ -56,7 +56,7 @@
 ### State & Storage
 - **React Query (TanStack)** - Data fetching & caching
 - **Browser LocalStorage** - Persistent user data
-- **React Router** - Client-side routing
+- **Next App Router** - File-based routing
 
 ### UI Components
 - **shadcn-ui** - Headless component library
@@ -94,20 +94,20 @@
 
 3. **Create `.env.local` file** in the project root:
    ```env
-   VITE_HF_API_KEY=your_huggingface_api_key_here
-   VITE_HF_API_KEY_2=optional_backup_key_for_rotation
+   HF_API_KEY=your_huggingface_api_key_here
+   HF_API_KEY_2=optional_backup_key_for_rotation
    ```
 
 4. **Start the development server:**
    ```bash
    npm run dev
    ```
-   Open [http://localhost:5173](http://localhost:5173) in your browser.
+   Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 5. **Build for production:**
    ```bash
    npm run build
-   npm run preview  # Test production build locally
+   npm run start    # Run production server locally
    ```
 
 ---
@@ -116,9 +116,14 @@
 
 ```
 Analogix/
+├── app/
+│   ├── layout.tsx              # Root layout + providers
+│   ├── page.tsx                # Landing route
+│   ├── dashboard/page.tsx      # Dashboard route
+│   ├── chat/page.tsx           # Chat route
+│   ├── quiz/page.tsx           # Quiz route
+│   └── ...                     # Other app router routes
 ├── src/
-│   ├── App.tsx                 # Main app component & routing
-│   ├── main.tsx                # React entry point
 │   ├── index.css               # Global styles & theme
 │   ├── pages/
 │   │   ├── Landing.tsx         # Homepage with theme rotation
@@ -156,7 +161,7 @@ Analogix/
 ├── public/
 ├── README.md                   # This file
 ├── package.json
-├── vite.config.ts
+├── next.config.mjs
 ├── tailwind.config.ts
 └── tsconfig.json
 ```
@@ -270,7 +275,7 @@ Edit `src/services/huggingface.ts` to change how Quizzy responds:
 ## 🌙 Theme System
 
 ### Default Theme: Dark Mode
-Set in `src/App.tsx` line 22:
+Set in `app/layout.tsx` line 22:
 ```tsx
 <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
 ```
@@ -298,8 +303,8 @@ Set in `src/App.tsx` line 22:
 
 | Variable | Required | Description |
 |---|---|---|
-| `VITE_HF_API_KEY` | ✅ Yes | Primary Hugging Face API key |
-| `VITE_HF_API_KEY_2` | ❌ Optional | Backup key for load balancing |
+| `HF_API_KEY` | ✅ Yes | Primary Hugging Face API key |
+| `HF_API_KEY_2` | ❌ Optional | Backup key for load balancing |
 
 Get your free API key at: https://huggingface.co/settings/tokens
 
@@ -333,11 +338,11 @@ Test files located in `src/test/`
 
 ### "Missing HF API Key" Error
 - Create a `.env.local` file in the project root
-- Add: `VITE_HF_API_KEY=your_key_here`
+- Add: `HF_API_KEY=your_key_here`
 - Restart dev server (`npm run dev`)
 
 ### Dark Mode Not Working
-- Check `src/App.tsx` line 22: should have `defaultTheme="dark"`
+- Check `app/layout.tsx` line 22: should have `defaultTheme="dark"`
 - Clear browser cache and localStorage
 - Hard refresh: `Cmd+Shift+R` (Mac) or `Ctrl+Shift+R` (Windows)
 
@@ -349,13 +354,13 @@ Test files located in `src/test/`
 ### Chat Messages Not Appearing
 - Check network tab (F12 → Network) for API calls
 - Verify Hugging Face API key has access to chat models
-- Check if rate limit reached (add `VITE_HF_API_KEY_2` for backup)
+- Check if rate limit reached (add `HF_API_KEY_2` for backup)
 
 ---
 
 ## 📈 Performance
 
-- **Vite**: Lightning-fast build & HMR
+- **Next.js**: Hybrid rendering, routing, and build tooling
 - **Code Splitting**: Page components lazy-loaded
 - **Image Optimization**: Lucide icons (SVG)
 - **CSS**: Tailwind purges unused styles in production
@@ -384,8 +389,8 @@ npm run build
 ```
 
 **Important:** Add environment variables to your hosting platform's dashboard:
-- `VITE_HF_API_KEY=your_key`
-- `VITE_HF_API_KEY_2=optional_backup`
+- `HF_API_KEY=your_key`
+- `HF_API_KEY_2=optional_backup`
 
 ---
 

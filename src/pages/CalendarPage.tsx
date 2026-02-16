@@ -1,6 +1,8 @@
+"use client";
+
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useNavigate } from "react-router-dom";
+import { useRouter } from "next/navigation";
 import { ArrowLeft, Calendar as CalendarIcon, Upload, FileUp, X, Clock, MapPin, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -12,12 +14,15 @@ import ICSUploader from "@/components/ICSUploader";
 import TypewriterText from "@/components/TypewriterText";
 
 const CalendarPage = () => {
-  const navigate = useNavigate();
+  const router = useRouter();
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [events, setEvents] = useState<AppEvent[]>([]);
   const [showUploader, setShowUploader] = useState(false);
 
-  const userPrefs = JSON.parse(localStorage.getItem("userPreferences") || "{}");
+  const userPrefs =
+    typeof window !== "undefined"
+      ? JSON.parse(localStorage.getItem("userPreferences") || "{}")
+      : {};
   const userName = userPrefs.name || "Student";
 
   useEffect(() => {
@@ -41,7 +46,7 @@ const CalendarPage = () => {
         <Header userName={userName} />
 
         <div className="mb-8">
-           <Button variant="ghost" className="mb-4 pl-0 hover:bg-transparent hover:text-primary gap-2" onClick={() => navigate("/dashboard")}>
+           <Button variant="ghost" className="mb-4 pl-0 hover:bg-transparent hover:text-primary gap-2" onClick={() => router.push("/dashboard")}>
              <ArrowLeft className="w-4 h-4" /> Back to Dashboard
            </Button>
 
