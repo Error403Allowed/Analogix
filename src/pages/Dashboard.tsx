@@ -412,7 +412,7 @@ const Dashboard = () => {
                         <div className="text-xs text-muted-foreground">{streakLabel} active</div>
                       </div>
                       <div className="rounded-2xl border border-border/60 bg-muted/40 p-3">
-                        <div className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Solved</div>
+                        <div className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Conversations</div>
                         <div className="text-2xl font-display text-foreground">{normalizedStats.conversationsCount}</div>
                         <div className="text-xs text-muted-foreground">{activityLabel} explained</div>
                       </div>
