@@ -112,7 +112,7 @@ export function TimerWidget() {
         </div>
       </div>
 
-      <div className="glass-card p-12 flex flex-col items-center justify-center relative overflow-hidden bg-background/40 w-full">
+      <div className="glass-card p-10 flex flex-col items-center justify-center relative overflow-hidden bg-background/40">
         <div className="mb-6 text-center">
             <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em] mb-2">{DEFAULT_MODES[mode].label}</p>
             <div className="flex items-center gap-6">
