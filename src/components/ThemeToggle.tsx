@@ -38,9 +38,9 @@ export function ThemeToggle() {
         transition={{ duration: 0.3, ease: "easeInOut" }}
       >
         {isDark ? (
-          <Moon className="h-5 w-5 text-gray-500 dark:text-gray-400 group-hover:text-[var(--g-1)] transition-colors" />
+          <Moon className="h-5 w-5 text-grey-500 dark:text-grey-400 group-hover:text-[var(--g-1)] transition-colours" />
         ) : (
-          <Sun className="h-5 w-5 text-gray-500 dark:text-gray-400 group-hover:text-[var(--g-1)] transition-colors" />
+          <Sun className="h-5 w-5 text-grey-500 dark:text-grey-400 group-hover:text-[var(--g-1)] transition-colours" />
         )}
       </motion.div>
       <span className="sr-only">Toggle theme</span>

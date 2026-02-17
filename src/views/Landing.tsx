@@ -87,7 +87,7 @@ const Landing = () => {
     const randomTheme = themes[themeIndex];
     const root = document.documentElement;
     
-    // Inject the random colors into the CSS variables
+    // Inject random colours into the CSS variables
     root.style.setProperty("--p-h", randomTheme.p.h);
     root.style.setProperty("--p-s", randomTheme.p.s);
     root.style.setProperty("--p-l", randomTheme.p.l);
@@ -124,43 +124,61 @@ const features = [
       icon: MessageCircle,
       title: "Analogy Tutor",
       description: "Explain anything with personalised analogies.",
-      gradient: "from-blue-500/10 to-indigo-500/10",
-      delay: 0.1
+      gradient: "from-violet-500 via-purple-500 to-indigo-500",
+      bgGradient: "from-violet-500/5 via-purple-500/5 to-indigo-500/5",
+      borderColor: "border-violet-500/20",
+      delay: 0.1,
+      iconAnimation: "flip"
     },
     {
       icon: Cpu,
       title: "Knowledge Lab",
       description: "Structured learning paths for any subject.",
-      gradient: "from-emerald-500/10 to-teal-500/10",
-      delay: 0.2
+      gradient: "from-emerald-500 via-teal-500 to-cyan-500",
+      bgGradient: "from-emerald-500/5 via-teal-500/5 to-cyan-500/5",
+      borderColor: "border-emerald-500/20",
+      delay: 0.2,
+      iconAnimation: "flip"
     },
     {
       icon: Calendar,
       title: "Smart Calendar",
       description: "Organised study schedule that adapts to you.",
-      gradient: "from-amber-500/10 to-orange-500/10",
-      delay: 0.3
+      gradient: "from-amber-500 via-orange-500 to-red-500",
+      bgGradient: "from-amber-500/5 via-orange-500/5 to-red-500/5",
+      borderColor: "border-amber-500/20",
+      delay: 0.3,
+      iconAnimation: "flip"
     },
     {
       icon: Trophy,
       title: "Achievement System",
       description: "Unlock badges and track your academic growth. Gamified learning that actually works.",
-      color: "from-purple-500 to-pink-600",
-      delay: 0.4
+      gradient: "from-yellow-400 via-amber-500 to-orange-500",
+      bgGradient: "from-yellow-400/5 via-amber-500/5 to-orange-500/5",
+      borderColor: "border-yellow-400/20",
+      delay: 0.4,
+      iconAnimation: "flip"
     },
     {
       icon: Palette,
       title: "Adaptive Moods",
       description: "Toggle between Focused, Creative, and Chill modes. The UI and tutor tone change with your vibe.",
-      color: "from-cyan-500 to-blue-600",
-      delay: 0.5
+      gradient: "from-pink-500 via-rose-500 to-purple-500",
+      bgGradient: "from-pink-500/5 via-rose-500/5 to-purple-500/5",
+      borderColor: "border-pink-500/20",
+      delay: 0.5,
+      iconAnimation: "flip"
     },
     {
       icon: Zap,
       title: "Instant Results",
       description: "Get immediate feedback on quizzes and real-time support from your personal AI assistant.",
-      color: "from-yellow-400 to-amber-600",
-      delay: 0.6
+      gradient: "from-blue-500 via-indigo-500 to-purple-500",
+      bgGradient: "from-blue-500/5 via-indigo-500/5 to-purple-500/5",
+      borderColor: "border-blue-500/20",
+      delay: 0.6,
+      iconAnimation: "flip"
     }
   ];
 
@@ -179,7 +197,7 @@ const features = [
     <div className="min-h-screen relative overflow-hidden bg-background selection:bg-primary/30">
       <Head>
         <title>Analogix | Learn with Clarity & Momentum</title>
-        <meta name="description" content="Stop memorizing. Start knowing. Analogix turns complex Australian Curriculum topics into analogies you actually care about." />
+        <meta name="description" content="Stop memorising. Start knowing. Analogix turns complex Australian Curriculum topics into analogies you actually care about." />
       </Head>
       <CursorParticles />
       
@@ -269,7 +287,7 @@ const features = [
                   Your New Academic Core
                 </span>
                 <h1 className="text-7xl md:text-9xl font-black text-foreground leading-[0.85] tracking-tighter mb-8">
-                  Stop memorizing. <br />
+                  Stop memorising. <br />
                   <span className="gradient-text">Start knowing.</span>
                 </h1>
                 <p className="text-xl md:text-2xl text-muted-foreground max-w-lg leading-relaxed font-medium">
@@ -385,45 +403,227 @@ const features = [
               {features.map((feature, i) => (
                 <motion.div 
                   key={i}
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
+                  initial={{ opacity: 0, y: 30, scale: 0.9 }}
+                  whileInView={{ opacity: 1, y: 0, scale: 1 }}
                   viewport={{ once: true }}
-                  transition={{ delay: feature.delay }}
-                  whileHover={{ y: -10 }}
-                  className="glass-card p-10 group relative overflow-hidden"
+                  transition={{ 
+                    delay: feature.delay,
+                    type: "spring",
+                    stiffness: 100,
+                    damping: 10
+                  }}
+                  whileHover={{ 
+                    y: -15,
+                    scale: 1.02,
+                    rotateX: 5,
+                    rotateY: 5,
+                    transition: { duration: 0.3 }
+                  }}
+                  className={`relative group overflow-hidden rounded-3xl border ${feature.borderColor} bg-gradient-to-br ${feature.bgGradient} backdrop-blur-xl shadow-lg hover:shadow-2xl transition-all duration-300`}
                 >
-                  <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br ${feature.color} opacity-0 group-hover:opacity-10 transition-opacity blur-2xl`} />
-                  
-                  <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${feature.color} flex items-center justify-center mb-8 shadow-lg shadow-primary/5 group-hover:scale-110 transition-transform`}>
-                    <feature.icon className="w-7 h-7 text-white" />
+                  {/* Animated background pattern */}
+                  <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                    <motion.div
+                      animate={{
+                        background: [
+                          `radial-gradient(circle at 20% 50%, rgba(255,255,255,0.1) 0%, transparent 50%)`,
+                          `radial-gradient(circle at 80% 50%, rgba(255,255,255,0.1) 0%, transparent 50%)`,
+                          `radial-gradient(circle at 50% 20%, rgba(255,255,255,0.1) 0%, transparent 50%)`,
+                        ]
+                      }}
+                      transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+                      className="absolute inset-0"
+                    />
                   </div>
                   
-                  <h3 className="text-2xl font-black mb-4">{feature.title}</h3>
-                  <p className="text-muted-foreground leading-relaxed font-medium">
-                    {feature.description}
-                  </p>
+                  {/* Floating particles */}
+                  <div className="absolute inset-0 pointer-events-none">
+                    {[...Array(3)].map((_, j) => (
+                      <motion.div
+                        key={j}
+                        animate={{
+                          y: [0, -20, 0],
+                          x: [0, Math.random() * 10 - 5, 0],
+                          opacity: [0, 1, 0]
+                        }}
+                        transition={{
+                          duration: 3 + j,
+                          repeat: Infinity,
+                          delay: j * 0.5,
+                          ease: "easeInOut"
+                        }}
+                        className={`absolute w-1 h-1 rounded-full bg-gradient-to-r ${feature.gradient}`}
+                        style={{
+                          top: `${20 + j * 30}%`,
+                          left: `${10 + j * 30}%`
+                        }}
+                      />
+                    ))}
+                  </div>
+
+                  <div className="relative p-10">
+                    {/* Icon with enhanced animation */}
+                    <motion.div 
+                      className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${feature.gradient} flex items-center justify-center mb-8 shadow-xl group-hover:shadow-2xl transition-all duration-300`}
+                      animate={{
+                        rotateY: [0, 360]
+                      }}
+                      transition={{
+                        duration: 4,
+                        repeat: Infinity,
+                        ease: "linear"
+                      }}
+                      whileHover={{
+                        rotateY: [0, 720],
+                        transition: {
+                          duration: 0.3,
+                          ease: "easeInOut"
+                        }
+                      }}
+                    >
+                      <feature.icon className="w-8 h-8 text-white drop-shadow-lg" />
+                    </motion.div>
+                    
+                    {/* Glow effect on hover */}
+                    <motion.div 
+                      className={`absolute top-10 left-10 w-16 h-16 rounded-2xl bg-gradient-to-br ${feature.gradient} blur-xl opacity-0 group-hover:opacity-50 transition-opacity duration-300`}
+                    />
+                    
+                    <motion.h3 
+                      className="text-2xl font-black mb-4 bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent"
+                      whileHover={{ scale: 1.05 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      {feature.title}
+                    </motion.h3>
+                    
+                    <motion.p 
+                      className="text-muted-foreground leading-relaxed font-medium"
+                      whileHover={{ scale: 1.02 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      {feature.description}
+                    </motion.p>
+
+                    {/* Interactive hover indicator */}
+                    <motion.div 
+                      className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                      initial={{ scale: 0 }}
+                      whileHover={{ scale: 1 }}
+                      whileInView={{ scale: 1 }}
+                      viewport={{ once: true }}
+                      transition={{ delay: feature.delay + 0.5 }}
+                    >
+                      <ArrowRight className={`w-5 h-5 bg-gradient-to-r ${feature.gradient} bg-clip-text text-transparent`} />
+                    </motion.div>
+                  </div>
+
+                  {/* Shimmer effect */}
+                  <motion.div 
+                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -skew-x-12"
+                    animate={{
+                      x: ['-100%', '200%']
+                    }}
+                    transition={{
+                      duration: 2,
+                      repeat: Infinity,
+                      repeatDelay: 5,
+                      ease: "easeInOut"
+                    }}
+                  />
                 </motion.div>
               ))}
             </div>
           </div>
         </section>
 
-        {/* Subjects - Micro Icons */}
-        <section className="py-32 overflow-hidden">
-          <div className="max-w-7xl mx-auto px-8">
-            <h2 className="text-3xl font-black text-center mb-20 uppercase tracking-[0.3em] opacity-40">Tuned for ACARA</h2>
+        {/* Subjects - Enhanced Interactive Icons */}
+        <section className="py-32 overflow-hidden relative">
+          {/* Animated background */}
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5" />
+          
+          <div className="max-w-7xl mx-auto px-8 relative z-10">
+            <motion.h2 
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="text-3xl font-black text-center mb-20 uppercase tracking-[0.3em] opacity-40"
+            >
+              Tuned for ACARA
+            </motion.h2>
+            
             <div className="flex flex-wrap justify-center gap-6">
               {subjects.map((sub, i) => (
                 <motion.div 
                   key={i}
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  whileInView={{ opacity: 1, scale: 1 }}
+                  initial={{ opacity: 0, scale: 0.8, rotate: -10 }}
+                  whileInView={{ opacity: 1, scale: 1, rotate: 0 }}
                   viewport={{ once: true }}
-                  transition={{ delay: i * 0.05 }}
-                  className="px-8 py-5 glass-card rounded-3xl flex items-center gap-4 hover:border-primary/40 transition-all cursor-default group"
+                  transition={{ 
+                    delay: i * 0.05,
+                    type: "spring",
+                    stiffness: 200,
+                    damping: 15
+                  }}
+                  whileHover={{ 
+                    scale: 1.1,
+                    rotate: 5,
+                    y: -5
+                  }}
+                  whileTap={{ scale: 0.95 }}
+                  className="px-8 py-5 glass-card rounded-3xl flex items-center gap-4 hover:border-primary/40 transition-all cursor-pointer group relative overflow-hidden"
                 >
-                  <sub.icon className="w-5 h-5 text-primary group-hover:scale-125 transition-transform" />
-                  <span className="font-black text-sm uppercase tracking-widest">{sub.label}</span>
+                  {/* Hover glow effect */}
+                  <motion.div 
+                    className="absolute inset-0 bg-gradient-to-r from-primary/10 to-accent/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-3xl"
+                  />
+                  
+                  {/* Animated icon */}
+                  <motion.div
+                    animate={{
+                      rotate: [0, 5, 0],
+                      scale: [1, 1.05, 1]
+                    }}
+                    transition={{
+                      duration: 4,
+                      repeat: Infinity,
+                      delay: i * 0.2,
+                      ease: "easeInOut"
+                    }}
+                    whileHover={{
+                      rotate: 360,
+                      scale: 1.2,
+                      transition: { duration: 0.5 }
+                    }}
+                  >
+                    <sub.icon className="w-5 h-5 text-primary group-hover:scale-125 transition-transform" />
+                  </motion.div>
+                  
+                  <motion.span 
+                    className="font-black text-sm uppercase tracking-widest relative z-10"
+                    whileHover={{ scale: 1.05 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    {sub.label}
+                  </motion.span>
+                  
+                  {/* Floating particles */}
+                  <motion.div
+                    className="absolute w-1 h-1 bg-primary rounded-full opacity-0 group-hover:opacity-100"
+                    animate={{
+                      scale: [0, 1, 0],
+                      opacity: [0, 1, 0]
+                    }}
+                    transition={{
+                      duration: 2,
+                      repeat: Infinity,
+                      ease: "easeInOut"
+                    }}
+                    style={{
+                      top: '20%',
+                      right: '20%'
+                    }}
+                  />
                 </motion.div>
               ))}
             </div>

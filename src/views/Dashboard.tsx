@@ -350,7 +350,7 @@ const Dashboard = () => {
             {/* Top Section: Calendar + Timer/Streak */}
             <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-stretch">
               {/* Calendar Section */}
-              <motion.div variants={itemVariants} className="xl:col-span-7 dashboard-panel p-8 flex flex-col">
+              <motion.div variants={itemVariants} className="xl:col-span-8 dashboard-panel p-8 flex flex-col">
                 <div className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.2em] text-muted-foreground mb-6">
                   <CalendarIcon className="w-4 h-4 text-primary" />
                   {moodProfile.dashboard.calendarTitle}
@@ -361,7 +361,7 @@ const Dashboard = () => {
               </motion.div>
 
               {/* Timer & Streak Column */}
-              <div className="xl:col-span-5 flex flex-col gap-4">
+              <div className="xl:col-span-4 flex flex-col gap-4">
                 <motion.div variants={itemVariants} className="dashboard-panel p-6 flex flex-col items-center justify-center">
                    <TimerWidget />
                 </motion.div>

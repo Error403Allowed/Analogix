@@ -235,7 +235,7 @@ const Header = ({ userName = "Student", streak = 0 }: HeaderProps) => {
               variant="ghost" 
               size="icon" 
               onClick={() => setShowSettings(true)}
-              className="text-gray-500 dark:text-gray-400 hover:text-[var(--g-1)] transition-colors"
+              className="text-grey-500 dark:text-grey-400 hover:text-[var(--g-1)] transition-colours"
             >
               <Settings className="w-5 h-5" />
             </Button>

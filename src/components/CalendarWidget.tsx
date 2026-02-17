@@ -75,7 +75,7 @@ const CalendarWidget = ({ streak = 0, streakLabel = "days" }: CalendarWidgetProp
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.98 }}
-            className="glass-card p-4 flex flex-col bg-background/40"
+            className="glass-card p-6 flex flex-col bg-background/40"
           >
             <Calendar
               mode="single"
