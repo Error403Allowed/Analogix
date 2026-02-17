@@ -228,26 +228,8 @@ const Header = ({ userName = "Student", streak = 0 }: HeaderProps) => {
             Analogix
           </motion.h1>
 
-          {/* Right: Stats & Actions */}
+          {/* Right: Actions */}
           <div className="flex items-center gap-2 sm:gap-4 justify-self-end">
-            {/* Streak Badge */}
-            {streak > 0 && (
-              <motion.div
-                className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-full gradient-warm text-warning-foreground"
-                animate={{ scale: [1, 1.02, 1] }}
-                transition={{ duration: 2, repeat: Infinity }}
-              >
-                <Flame className="w-4 h-4" />
-                <span className="font-bold">{streak} day streak</span>
-              </motion.div>
-            )}
-
-            {/* Theme Toggle */}
-            <ThemeToggle />
-
-            {/* Accent Theme Selector */}
-            <ThemeSelector />
-
             {/* Settings */}
             <Button 
               variant="ghost" 
@@ -260,7 +242,7 @@ const Header = ({ userName = "Student", streak = 0 }: HeaderProps) => {
 
             {/* Profile */}
             <motion.button
-              className="w-10 h-10 rounded-full gradient-primary flex items-center justify-center"
+              className="w-10 h-10 rounded-full gradient-primary flex items-center justify-center shadow-lg hover:shadow-primary/20 transition-all"
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => setShowProfile(true)}

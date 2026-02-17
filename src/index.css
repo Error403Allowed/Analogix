@@ -38,7 +38,11 @@
     --input: 214.3 31.8% 91.4%;
     --ring: var(--p-h) var(--p-s) var(--p-l);
 
-    --radius: 0.5rem;
+    --radius: 1.5rem;
+    --blur: 20px;
+    --glass-opacity: 0.4;
+    --border-opacity: 0.1;
+    --font-weight-display: 700;
 
     /* Theme Defaults (Blue) */
     --p-h: 199.2;
@@ -48,7 +52,9 @@
     --g-2: #2563eb;
     --g-3: #0f766e;
 
-    --font-sans: "Manrope", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-sans:
+      "Manrope", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+      sans-serif;
     --font-display: "Fraunces", ui-serif, Georgia, "Times New Roman", serif;
   }
 
@@ -95,9 +101,21 @@
     font-family: var(--font-sans);
     @apply bg-background text-foreground;
     background-image:
-      radial-gradient(900px 400px at 10% -10%, rgba(14, 165, 166, 0.12), transparent 60%),
-      radial-gradient(800px 500px at 100% 10%, rgba(37, 99, 235, 0.10), transparent 65%),
-      radial-gradient(700px 400px at 50% 100%, rgba(15, 118, 110, 0.10), transparent 60%);
+      radial-gradient(
+        900px 400px at 10% -10%,
+        rgba(14, 165, 166, 0.12),
+        transparent 60%
+      ),
+      radial-gradient(
+      800px 500px at 100% 10%,
+      rgba(37, 99, 235, 0.10),
+      transparent 65%
+    ),
+      radial-gradient(
+      700px 400px at 50% 100%,
+      rgba(15, 118, 110, 0.10),
+      transparent 60%
+    );
     background-attachment: fixed;
   }
 
@@ -113,33 +131,45 @@
 
 /* Enhanced Glass Card */
 .glass-card {
-  @apply bg-white/70 dark:bg-slate-900/60 backdrop-blur-xl border border-white/40 dark:border-white/10 shadow-2xl rounded-3xl transition-all duration-300;
+  @apply bg-white/70 dark:bg-slate-900/40 backdrop-blur-xl border
+    border-white/20 dark:border-white/5 shadow-2xl rounded-[3rem] transition-all
+    duration-500;
 }
 
 .glass-card:hover {
-  @apply shadow-[0_20px_40px_-15px_rgba(0,0,0,0.1)];
+  @apply shadow-[0_32px_64px_-20px_rgba(0,0,0,0.15)] border-primary/20;
 }
 
 /* Dashboard layout */
 .dashboard-stage {
   background:
-    radial-gradient(900px 500px at 8% -10%, hsl(var(--primary) / 0.12), transparent 60%),
-    radial-gradient(700px 500px at 110% 10%, rgba(56, 189, 248, 0.12), transparent 65%),
-    radial-gradient(600px 400px at 50% 110%, rgba(244, 114, 182, 0.10), transparent 60%);
+    radial-gradient(
+      1200px 600px at 8% -10%,
+      hsl(var(--primary) / 0.15),
+      transparent 60%
+    ),
+    radial-gradient(
+      1000px 600px at 110% 10%,
+      rgba(56, 189, 248, 0.15),
+      transparent 65%
+    ),
+    radial-gradient(
+      800px 600px at 50% 110%,
+      rgba(244, 114, 182, 0.12),
+      transparent 60%
+    );
 }
 
 .dashboard-panel {
-  @apply rounded-3xl border border-border/60 bg-background/85 dark:bg-slate-900/70 backdrop-blur-xl shadow-[0_24px_60px_-40px_rgba(15,23,42,0.6)] relative;
-  background-image:
-    linear-gradient(135deg, hsl(var(--primary) / 0.08), transparent 45%),
-    linear-gradient(35deg, rgba(56, 189, 248, 0.08), transparent 55%);
-  background-origin: border-box;
+  @apply rounded-[var(--radius)] relative transition-all duration-500;
+  backdrop-filter: blur(var(--blur));
 }
 
-.dark .dashboard-panel {
-  background-image:
-    linear-gradient(135deg, rgba(56, 189, 248, 0.12), transparent 45%),
-    linear-gradient(35deg, rgba(99, 102, 241, 0.10), transparent 55%);
+/* Only subtle gradients for depth in dark mode if needed, but keeping it flat as requested */
+.dashboard-panel {
+  background: transparent;
+  border: none;
+  box-shadow: none;
 }
 
 .progress-ring {
@@ -147,7 +177,8 @@
 }
 
 .progress-ring-inner {
-  @apply rounded-full bg-background dark:bg-slate-900 border border-border/60 shadow-inner flex flex-col items-center justify-center;
+  @apply rounded-full bg-background dark:bg-slate-900 border border-border/60
+    shadow-inner flex flex-col items-center justify-center;
 }
 
 /* Hide chat scrollbar but keep scroll */
@@ -178,14 +209,22 @@
 }
 
 @keyframes blob-float {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(20px, -10px) scale(1.05); }
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(20px, -10px) scale(1.05);
+  }
 }
-
 
 /* Gradient Text */
 .gradient-text {
-  background-image: linear-gradient(to right, var(--g-1), var(--g-2), var(--g-3));
+  background-image: linear-gradient(
+    to right,
+    var(--g-1),
+    var(--g-2),
+    var(--g-3)
+  );
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -194,7 +233,12 @@
 
 /* Primary Gradient Background */
 .gradient-primary {
-  background-image: linear-gradient(to right, var(--g-1), var(--g-2), var(--g-3));
+  background-image: linear-gradient(
+    to right,
+    var(--g-1),
+    var(--g-2),
+    var(--g-3)
+  );
   @apply text-white shadow-lg transition-all duration-300;
 }
 .gradient-primary:hover {
@@ -248,7 +292,7 @@
 }
 
 .markdown-content .katex {
-  @apply text-lg; /* Make math slightly larger */
+  font-size: 1.1em; /* Scales flexibly with surrounding text */
 }
 
 /* Make sure KaTeX displays correctly in buttons (options) */
@@ -301,21 +345,74 @@ button .markdown-content .katex {
   animation: typing-bounce 1.4s infinite;
 }
 
-.typing-dot:nth-child(1) { animation-delay: 0ms; }
-.typing-dot:nth-child(2) { animation-delay: 200ms; }
-.typing-dot:nth-child(3) { animation-delay: 400ms; }
-.typing-dot:nth-child(4) { animation-delay: 600ms; }
-.typing-dot:nth-child(5) { animation-delay: 800ms; }
-.typing-dot:nth-child(6) { animation-delay: 1000ms; }
-.typing-dot:nth-child(7) { animation-delay: 1200ms; }
+.typing-dot:nth-child(1) {
+  animation-delay: 0ms;
+}
+.typing-dot:nth-child(2) {
+  animation-delay: 200ms;
+}
+.typing-dot:nth-child(3) {
+  animation-delay: 400ms;
+}
+.typing-dot:nth-child(4) {
+  animation-delay: 600ms;
+}
+.typing-dot:nth-child(5) {
+  animation-delay: 800ms;
+}
+.typing-dot:nth-child(6) {
+  animation-delay: 1000ms;
+}
+.typing-dot:nth-child(7) {
+  animation-delay: 1200ms;
+}
 
-@keyframes typing-bounce {
-  0%, 60%, 100% { 
-    transform: translateY(0);
-    opacity: 0.7;
+/* Shimmer Effect */
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.05),
+    transparent
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite linear;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
   }
-  30% { 
-    transform: translateY(-10px);
-    opacity: 1;
+  100% {
+    background-position: 200% 0;
   }
+}
+
+/* Enhanced Glass Card with micro-glow */
+.glass-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.2),
+    transparent,
+    rgba(255, 255, 255, 0.05)
+  );
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+.dashboard-panel {
+  @apply rounded-[var(--radius)] relative transition-all duration-700;
+  backdrop-filter: blur(var(--blur));
 }

@@ -19,11 +19,18 @@ export const moodProfiles = {
       conversationsFallback: "Stay on track with a chat",
       quizSubtitle: "Last 30 days",
       achievementsEmpty: "Earn badges by studying!"
+    },
+    visuals: {
+      radius: "1.5rem",
+      blur: "20px",
+      glassOpacity: "0.4",
+      borderOpacity: "0.1",
+      fontWeight: "500"
     }
   },
   energized: {
     label: "Energized",
-    theme: "Candy Pop",
+    theme: "Sunset Ember",
     aiTone: "high-energy, punchy, motivating",
     aiStyle: "Use short, lively sentences and action verbs. Keep momentum.",
     quizStyle: "Fast-paced, upbeat questions with snappy prompts.",
@@ -41,6 +48,13 @@ export const moodProfiles = {
       conversationsFallback: "Spark a quick chat",
       quizSubtitle: "Fast wins, last 30 days",
       achievementsEmpty: "Grab your first win!"
+    },
+    visuals: {
+      radius: "2.5rem",
+      blur: "10px",
+      glassOpacity: "0.6",
+      borderOpacity: "0.2",
+      fontWeight: "800"
     }
   },
   chill: {
@@ -63,6 +77,13 @@ export const moodProfiles = {
       conversationsFallback: "Slow chat, big clarity",
       quizSubtitle: "No rush, last 30 days",
       achievementsEmpty: "Easy wins await"
+    },
+    visuals: {
+      radius: "3.5rem",
+      blur: "40px",
+      glassOpacity: "0.3",
+      borderOpacity: "0.05",
+      fontWeight: "400"
     }
   },
   tired: {
@@ -85,6 +106,13 @@ export const moodProfiles = {
       conversationsFallback: "Short chat, clear help",
       quizSubtitle: "Short and sweet",
       achievementsEmpty: "Small wins start here"
+    },
+    visuals: {
+      radius: "2rem",
+      blur: "60px",
+      glassOpacity: "0.2",
+      borderOpacity: "0.03",
+      fontWeight: "300"
     }
   },
   creative: {
@@ -107,6 +135,13 @@ export const moodProfiles = {
       conversationsFallback: "Brainstorm a quick chat",
       quizSubtitle: "Creative gains, last 30 days",
       achievementsEmpty: "Create your first highlight"
+    },
+    visuals: {
+      radius: "3rem",
+      blur: "15px",
+      glassOpacity: "0.5",
+      borderOpacity: "0.15",
+      fontWeight: "600"
     }
   },
   productive: {
@@ -129,6 +164,13 @@ export const moodProfiles = {
       conversationsFallback: "Quick clarity chat",
       quizSubtitle: "Progress, last 30 days",
       achievementsEmpty: "Start your progress log"
+    },
+    visuals: {
+      radius: "1.25rem",
+      blur: "5px",
+      glassOpacity: "0.7",
+      borderOpacity: "0.25",
+      fontWeight: "700"
     }
   },
   excited: {
@@ -151,6 +193,13 @@ export const moodProfiles = {
       conversationsFallback: "Jump into a chat",
       quizSubtitle: "Momentum, last 30 days",
       achievementsEmpty: "Hit your first milestone"
+    },
+    visuals: {
+      radius: "4rem",
+      blur: "0px",
+      glassOpacity: "0.8",
+      borderOpacity: "0.4",
+      fontWeight: "900"
     }
   },
   balanced: {
@@ -173,6 +222,13 @@ export const moodProfiles = {
       conversationsFallback: "Keep a steady chat",
       quizSubtitle: "Consistent progress",
       achievementsEmpty: "Build your steady wins"
+    },
+    visuals: {
+      radius: "2.5rem",
+      blur: "25px",
+      glassOpacity: "0.45",
+      borderOpacity: "0.12",
+      fontWeight: "500"
     }
   }
 } as const;
@@ -187,6 +243,20 @@ export const resolveMoodId = (value?: string): MoodId => {
 };
 
 export const getMoodProfile = (value?: string) => moodProfiles[resolveMoodId(value)];
+
+export const applyMoodVisuals = (moodId: MoodId) => {
+  const profile = moodProfiles[moodId];
+  const root = document.documentElement;
+  
+  root.style.setProperty("--radius", profile.visuals.radius);
+  root.style.setProperty("--blur", profile.visuals.blur);
+  root.style.setProperty("--glass-opacity", profile.visuals.glassOpacity);
+  root.style.setProperty("--border-opacity", profile.visuals.borderOpacity);
+  root.style.setProperty("--font-weight-display", profile.visuals.fontWeight);
+  
+  // Dispatch event for components that might need to react
+  window.dispatchEvent(new Event("moodVisualsUpdated"));
+};
 
 export const getStoredMoodId = (): MoodId => {
   try {

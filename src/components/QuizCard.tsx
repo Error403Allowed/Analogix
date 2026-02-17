@@ -196,7 +196,7 @@ const QuizCard = ({
           >
             <div className="text-sm text-foreground flex gap-2">
                 <span aria-hidden="true">•</span>
-                <MarkdownRenderer content={hint} />
+                <MarkdownRenderer content={hint || ""} />
             </div>
           </motion.div>
         )}

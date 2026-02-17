@@ -22,9 +22,9 @@ const SettingsDialog = ({ open, onOpenChange }: SettingsDialogProps) => {
 
   const handleSave = () => {
     localStorage.setItem("userPreferences", JSON.stringify({ ...prefs, name }));
+    window.dispatchEvent(new Event("userPreferencesUpdated"));
     toast.success("Settings saved!");
     onOpenChange(false);
-    window.location.reload(); // Simple reload to reflect name change globally
   };
 
   const handleReset = () => {
