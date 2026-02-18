@@ -626,7 +626,7 @@ const Chat = () => {
           </motion.div>
         ) : (
           /* Chat Interface */
-          <>
+          <div className="flex-1 flex flex-col">
             {/* Controls bar */}
             <motion.div
               className="flex items-center justify-center gap-2 sm:gap-3 mb-4 sm:mb-6 flex-wrap"
@@ -720,7 +720,7 @@ const Chat = () => {
                 onScroll={updateScrollButton}
                 className="absolute inset-0 overflow-y-auto min-h-0 chat-scroll"
               >
-                <div className="min-h-full flex flex-col justify-end space-y-6 pb-28 sm:pb-24 pt-1">
+                <div className="flex-grow flex flex-col justify-end space-y-6 pb-28 sm:pb-24 pt-1">
                   <AnimatePresence>
                     {messages.map((message, index) => {
                       const canRegenerate =
@@ -934,7 +934,7 @@ const Chat = () => {
                 </div>
               </motion.div>
             </div>
-          </>
+          </div>
         )}
       </div>
     </div>

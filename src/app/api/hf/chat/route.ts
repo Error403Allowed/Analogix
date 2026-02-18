@@ -127,8 +127,10 @@ ${complexityGuidance}
 
 6. TECHNICAL REQUIREMENTS:
    - Adjust language complexity for Year ${userContext?.grade || "7-12"}.
-   - Use LaTeX for all math: $x^2$ (inline), $$equation$$ (display).
-   - Double-escape in JSON: \\\\ becomes \\\\.
+   - Use LaTeX for ALL math, including simple variables.
+   - Inline Math: Use single dollar signs, e.g., $E=mc^2$ or $x$.
+   - Display Math (centered on new line): Use double dollar signs, e.g., $$\\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}$$.
+   - Double-escape backslashes in your JSON response: \\\\ becomes \\\\\\\\.
    - Verify facts about their interests; never invent false details.
    - If unsure about an interest detail, use the general principle instead.
 
@@ -160,8 +162,10 @@ REMEMBER: You aren't just an AI with an 'analogy' feature. You are the bridge be
     // STEP 3: Detect what type of question this is (coding/reasoning/general)
     // ========================================================================
     
-    const taskType = classifyTaskType(messages);
-    console.log(`[/api/hf/chat] Classified as "${taskType}" question`);
+    // Get the primary subject if available
+    const primarySubject = userContext?.subjects?.[0];
+    const taskType = classifyTaskType(messages, primarySubject);
+    console.log(`[/api/hf/chat] Classified as "${taskType}" question (Subject: ${primarySubject || "none"})`);
 
     // ========================================================================
     // STEP 4: Send to AI and return the response

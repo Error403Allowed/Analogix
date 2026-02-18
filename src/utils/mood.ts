@@ -30,7 +30,7 @@ export const moodProfiles = {
   },
   energized: {
     label: "Energized",
-    theme: "Sunset Ember",
+    theme: "Candy",
     aiTone: "high-energy, punchy, motivating",
     aiStyle: "Use short, lively sentences and action verbs. Keep momentum.",
     quizStyle: "Fast-paced, upbeat questions with snappy prompts.",
@@ -47,7 +47,6 @@ export const moodProfiles = {
       streakSubtitle: "Keep the fire burning",
       conversationsFallback: "Spark a quick chat",
       quizSubtitle: "Fast wins, last 30 days",
-      achievementsEmpty: "Grab your first win!"
     },
     visuals: {
       radius: "2.5rem",

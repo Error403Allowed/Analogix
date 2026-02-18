@@ -1,49 +1,48 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { useState, useEffect, useRef } from "react";
+import { motion, useScroll, useTransform, useSpring, AnimatePresence } from "framer-motion";
 import {
   ArrowRight,
   Sparkles,
   BookOpen,
   MessageCircle,
   Zap,
-  Shield,
   Brain,
   Trophy,
-  Star,
-  Users,
-  User,
   Calculator,
   FlaskConical,
   Landmark,
   Globe,
   HeartPulse,
   Cpu,
-  Percent,
-  Wrench,
-  Stethoscope,
-  Languages,
-  Calendar,
   Palette,
-  Check
+  Check,
+  ChevronRight,
+  Target,
+  Rocket,
+  Shield,
+  Lightbulb
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import Head from "next/head";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import CursorParticles from "@/components/CursorParticles";
 
 const Landing = () => {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+
+  const heroRef = useRef(null);
+  const featuresRef = useRef(null);
+  const smartSimpleRef = useRef(null);
+  const ctaRef = useRef(null);
 
   const THEME_ORDER_KEY = "landingThemeOrder";
   const THEME_INDEX_KEY = "landingThemeIndex";
 
-  // Random Theme Logic (no repeats until all themes cycle)
   useEffect(() => {
     setIsMounted(true);
     try {
@@ -62,16 +61,9 @@ const Landing = () => {
     const loadOrder = () => {
       try {
         const stored = JSON.parse(localStorage.getItem(THEME_ORDER_KEY) || "[]");
-        if (Array.isArray(stored) && stored.length === themes.length) {
-          return stored;
-        }
+        if (Array.isArray(stored) && stored.length === themes.length) return stored;
       } catch {}
-      // Create a shuffled order
-      const order = themes.map((_, i) => i);
-      for (let i = order.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [order[i], order[j]] = [order[j], order[i]];
-      }
+      const order = themes.map((_, i) => i).sort(() => Math.random() - 0.5);
       localStorage.setItem(THEME_ORDER_KEY, JSON.stringify(order));
       localStorage.setItem(THEME_INDEX_KEY, "0");
       return order;
@@ -81,13 +73,10 @@ const Landing = () => {
     const rawIndex = Number(localStorage.getItem(THEME_INDEX_KEY) || "0");
     const index = Number.isFinite(rawIndex) ? rawIndex : 0;
     const themeIndex = order[index % order.length];
-    const nextIndex = (index + 1) % order.length;
-    localStorage.setItem(THEME_INDEX_KEY, String(nextIndex));
+    localStorage.setItem(THEME_INDEX_KEY, String((index + 1) % order.length));
 
     const randomTheme = themes[themeIndex];
     const root = document.documentElement;
-    
-    // Inject random colours into the CSS variables
     root.style.setProperty("--p-h", randomTheme.p.h);
     root.style.setProperty("--p-s", randomTheme.p.s);
     root.style.setProperty("--p-l", randomTheme.p.l);
@@ -96,585 +85,366 @@ const Landing = () => {
     root.style.setProperty("--g-3", randomTheme.g[2]);
   }, []);
 
-  useEffect(() => {
-    // Automatic redirect removed as per user request
-  }, []);
+  // Hero section animations
+  const { scrollYProgress: heroScrollYProgress } = useScroll({
+    target: heroRef,
+    offset: ["start start", "end start"]
+  });
+  const heroScale = useTransform(heroScrollYProgress, [0, 1], [1, 0.9]);
+  const heroOpacity = useTransform(heroScrollYProgress, [0, 0.5], [1, 0]);
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
-  };
+  const { scrollYProgress: smartSimpleScrollYProgress } = useScroll({
+    target: smartSimpleRef,
+    offset: ["start end", "end start"]
+  });
+  const smartSimpleOpacity = useTransform(smartSimpleScrollYProgress, [0, 0.3], [0, 1]);
 
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0 }
-  };
+  const { scrollYProgress: ctaScrollYProgress } = useScroll({
+    target: ctaRef,
+    offset: ["start end", "end start"]
+  });
+  const ctaScale = useTransform(ctaScrollYProgress, [0, 0.5], [0.9, 1]);
+  const ctaOpacity = useTransform(ctaScrollYProgress, [0, 0.3], [0, 1]);
 
   const handleNav = (path: string) => {
     if (!isMounted) return;
-    if (!hasCompletedOnboarding) {
-      router.push("/onboarding");
-      return;
-    }
-    router.push(path);
+    router.push(hasCompletedOnboarding ? path : "/onboarding");
   };
 
-const features = [
+  const bentoFeatures = [
     {
-      icon: MessageCircle,
       title: "Analogy Tutor",
-      description: "Explain anything with personalised analogies.",
-      gradient: "from-violet-500 via-purple-500 to-indigo-500",
-      bgGradient: "from-violet-500/5 via-purple-500/5 to-indigo-500/5",
-      borderColor: "border-violet-500/20",
-      delay: 0.1,
-      iconAnimation: "flip"
+      desc: "Complex topics explained through your hobbies. No jargon.",
+      icon: MessageCircle,
+      size: "lg",
+      color: "bg-blue-500/10 text-blue-500 border-blue-500/20",
+      image: true
     },
     {
-      icon: Cpu,
-      title: "Knowledge Lab",
-      description: "Structured learning paths for any subject.",
-      gradient: "from-emerald-500 via-teal-500 to-cyan-500",
-      bgGradient: "from-emerald-500/5 via-teal-500/5 to-cyan-500/5",
-      borderColor: "border-emerald-500/20",
-      delay: 0.2,
-      iconAnimation: "flip"
-    },
-    {
-      icon: Calendar,
       title: "Smart Calendar",
-      description: "Organised study schedule that adapts to you.",
-      gradient: "from-amber-500 via-orange-500 to-red-500",
-      bgGradient: "from-amber-500/5 via-orange-500/5 to-red-500/5",
-      borderColor: "border-amber-500/20",
-      delay: 0.3,
-      iconAnimation: "flip"
+      desc: "Study plans that actually fit your life.",
+      icon: Lightbulb,
+      size: "sm",
+      color: "bg-amber-500/10 text-amber-500 border-amber-500/20"
     },
     {
-      icon: Trophy,
+      title: "Knowledge Lab",
+      desc: "Practice with quizzes that adapt to you.",
+      icon: FlaskConical,
+      size: "sm",
+      color: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
+    },
+    {
+      title: "ACARA Aligned",
+      desc: "Every subject mapped to the curriculum.",
+      icon: Shield,
+      size: "sm",
+      color: "bg-purple-500/10 text-purple-500 border-purple-500/20"
+    },
+    {
       title: "Achievement System",
-      description: "Unlock badges and track your academic growth. Gamified learning that actually works.",
-      gradient: "from-yellow-400 via-amber-500 to-orange-500",
-      bgGradient: "from-yellow-400/5 via-amber-500/5 to-orange-500/5",
-      borderColor: "border-yellow-400/20",
-      delay: 0.4,
-      iconAnimation: "flip"
-    },
-    {
-      icon: Palette,
-      title: "Adaptive Moods",
-      description: "Toggle between Focused, Creative, and Chill modes. The UI and tutor tone change with your vibe.",
-      gradient: "from-pink-500 via-rose-500 to-purple-500",
-      bgGradient: "from-pink-500/5 via-rose-500/5 to-purple-500/5",
-      borderColor: "border-pink-500/20",
-      delay: 0.5,
-      iconAnimation: "flip"
-    },
-    {
-      icon: Zap,
-      title: "Instant Results",
-      description: "Get immediate feedback on quizzes and real-time support from your personal AI assistant.",
-      gradient: "from-blue-500 via-indigo-500 to-purple-500",
-      bgGradient: "from-blue-500/5 via-indigo-500/5 to-purple-500/5",
-      borderColor: "border-blue-500/20",
-      delay: 0.6,
-      iconAnimation: "flip"
+      desc: "Earn badges and level up your academic core.",
+      icon: Trophy,
+      size: "lg",
+      color: "bg-orange-500/10 text-orange-500 border-orange-500/20",
+      stats: true
     }
-  ];
-
-  const subjects = [
-    { icon: BookOpen, label: "English" },
-    { icon: Calculator, label: "Maths" },
-    { icon: FlaskConical, label: "Science" },
-    { icon: HeartPulse, label: "PDHPE" },
-    { icon: Landmark, label: "History" },
-    { icon: Globe, label: "Geography" },
-    { icon: Trophy, label: "Commerce" },
-    { icon: Cpu, label: "Digital Tech" }
   ];
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-background selection:bg-primary/30">
+    <div className="min-h-screen bg-background selection:bg-primary/30 font-sans text-foreground">
       <Head>
-        <title>Analogix | Learn with Clarity & Momentum</title>
-        <meta name="description" content="Stop memorising. Start knowing. Analogix turns complex Australian Curriculum topics into analogies you actually care about." />
+        <title>Analogix | Master the Curriculum</title>
+        <meta name="description" content="The study upgrade for Australian students. Turn complex topics into simple analogies." />
       </Head>
+      
       <CursorParticles />
       
-      {/* Dynamic Background Elements */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <motion.div 
-          animate={{ 
-            scale: [1, 1.2, 1],
-            rotate: [0, 90, 0],
-            x: [0, 100, 0]
-          }}
-          transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-          className="liquid-blob w-[800px] h-[800px] bg-primary/10 -top-96 -left-96 fixed blur-[120px]" 
-        />
-        <motion.div 
-          animate={{ 
-            scale: [1, 1.3, 1],
-            rotate: [0, -90, 0],
-            y: [0, 50, 0]
-          }}
-          transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
-          className="liquid-blob w-[600px] h-[600px] bg-accent/10 bottom-0 -right-48 fixed blur-[100px]" 
-        />
+      {/* Background elements */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-full opacity-[0.03] dark:opacity-[0.05]" 
+             style={{ backgroundImage: 'radial-gradient(circle, currentColor 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/5 blur-[120px] rounded-full" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-accent/5 blur-[120px] rounded-full" />
       </div>
 
       {/* Navigation */}
-      <nav className="relative z-50 px-8 py-6 max-w-7xl mx-auto">
-        <div className="flex items-center justify-between">
+      <nav className="fixed top-0 left-0 right-0 z-[100] backdrop-blur-md border-b border-border/40 bg-background/80">
+        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
           <motion.div 
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="flex items-center gap-3"
+            className="flex items-center gap-2 cursor-pointer"
+            onClick={() => router.push("/")}
           >
-            <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center shadow-lg">
-              <Brain className="w-6 h-6 text-white" />
+            <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center shadow-lg shadow-primary/20">
+              <Brain className="w-5 h-5 text-primary-foreground" />
             </div>
-            <span className="text-2xl font-black gradient-text tracking-tighter">
+            <span className="text-xl font-bold tracking-tight font-display">
               Analogix
             </span>
           </motion.div>
           
-          <div className="hidden md:flex items-center gap-8 text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground/80">
-            {["Quizzes", "Tutor", "Calendar", "Badges"].map((item, i) => (
-              <motion.button 
+          <div className="hidden md:flex items-center gap-8">
+            {["Tutor", "Quizzes", "Calendar"].map((item) => (
+              <button 
                 key={item}
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.1 }}
-                onClick={() => handleNav(`/${item.toLowerCase() === 'tutor' ? 'chat' : item.toLowerCase() === 'badges' ? 'achievements' : item.toLowerCase()}`)}
-                className="hover:text-primary transition-colors relative group"
+                onClick={() => handleNav(`/${item === 'Tutor' ? 'chat' : item.toLowerCase()}`)}
+                className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
               >
                 {item}
-                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-primary transition-all group-hover:w-full" />
-              </motion.button>
+              </button>
             ))}
-          </div>
-
-          <motion.div 
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="flex items-center gap-4"
-          >
+            <div className="h-4 w-[1px] bg-border" />
             <ThemeToggle />
             <Button
-              className="gradient-primary text-primary-foreground border-0 shadow-xl px-8 h-12 rounded-full font-black uppercase tracking-widest text-[10px] hover:scale-105 transition-transform"
+              variant="default"
+              size="sm"
+              className="rounded-full px-6 font-semibold shadow-md shadow-primary/10"
               onClick={() => handleNav("/dashboard")}
             >
-              {hasCompletedOnboarding ? "Go to Dashboard" : "Start Now"}
+              {hasCompletedOnboarding ? "Dashboard" : "Get Started"}
             </Button>
-          </motion.div>
+          </div>
         </div>
       </nav>
 
-      <main className="relative z-10 pt-10">
+      <main className="relative pt-12=8">
         {/* Hero Section */}
-        <section className="max-w-7xl mx-auto px-8 py-12 lg:py-24">
-          <div className="grid lg:grid-cols-2 gap-20 items-center">
-            <motion.div 
-              initial="hidden"
-              animate="visible"
-              variants={containerVariants}
-              className="space-y-10"
-            >
-              <motion.div variants={itemVariants}>
-                <span className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-primary/10 border border-primary/20 text-primary font-black text-[10px] uppercase tracking-[0.2em] mb-8">
-                  <Sparkles className="w-3.5 h-3.5" />
-                  Your New Academic Core
-                </span>
-                <h1 className="text-7xl md:text-9xl font-black text-foreground leading-[0.85] tracking-tighter mb-8">
-                  Stop memorising. <br />
-                  <span className="gradient-text">Start knowing.</span>
-                </h1>
-                <p className="text-xl md:text-2xl text-muted-foreground max-w-lg leading-relaxed font-medium">
-                  We turn complex Australian Curriculum topics into analogies you actually care about. Maths through football. Chemistry through cooking.
-                </p>
-              </motion.div>
-
-              <motion.div variants={itemVariants} className="flex flex-wrap gap-6">
-                <Button 
-                  size="lg" 
-                  className="h-16 px-10 text-lg font-black gradient-primary text-primary-foreground border-0 shadow-[0_20px_40px_-10px_rgba(var(--primary-rgb),0.5)] hover:scale-105 transition-transform rounded-[2rem]"
-                  onClick={() => router.push(hasCompletedOnboarding ? "/dashboard" : "/onboarding")}
-                >
-                  Join the momentum
-                  <ArrowRight className="ml-2 w-5 h-5" />
-                </Button>
-                <div className="flex -space-x-3 items-center">
-                  {[1,2,3,4].map(i => (
-                    <div key={i} className="w-10 h-10 rounded-full border-2 border-background bg-muted overflow-hidden flex items-center justify-center">
-                      <User className="w-5 h-5 text-muted-foreground" />
-                    </div>
-                  ))}
-                  <span className="ml-4 text-xs font-bold text-muted-foreground uppercase tracking-widest">+2k Students</span>
-                </div>
-              </motion.div>
-            </motion.div>
-
-            {/* Visual Hero Element */}
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
-              className="relative aspect-square max-w-[600px] mx-auto hidden lg:block"
-            >
-              <div className="absolute inset-0 bg-primary/20 rounded-full blur-[100px]" />
-              
-              {/* Mock UI Cards */}
-              <motion.div 
-                animate={{ y: [0, -20, 0], rotate: [0, 2, 0] }}
-                transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-                className="absolute top-10 left-0 w-80 glass-card p-6 shadow-2xl z-20"
-              >
-                <div className="flex items-center gap-4 mb-4">
-                  <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center">
-                    <MessageCircle className="w-5 h-5 text-white" />
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-black uppercase text-muted-foreground">Analogy Tutor</p>
-                    <p className="font-bold text-sm">"Think of gravity as..."</p>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <div className="h-2 w-full bg-primary/10 rounded-full overflow-hidden">
-                    <motion.div 
-                      initial={{ width: 0 }}
-                      animate={{ width: "80%" }}
-                      transition={{ delay: 1, duration: 2 }}
-                      className="h-full bg-primary" 
-                    />
-                  </div>
-                  <p className="text-[9px] font-bold text-primary uppercase">Tuned to your interests</p>
-                </div>
-              </motion.div>
-
-              <motion.div 
-                animate={{ y: [0, 20, 0], rotate: [0, -2, 0] }}
-                transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-                className="absolute bottom-10 right-0 w-80 glass-card p-6 shadow-2xl z-10"
-              >
-                <div className="flex items-center gap-4 mb-4">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-500/20">
-                    <Check className="w-5 h-5 text-white" />
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-black uppercase text-muted-foreground">Knowledge Lab</p>
-                    <p className="font-bold text-sm">Assessment Complete</p>
-                  </div>
-                </div>
-                <p className="text-2xl font-black text-emerald-500">92% Level Up!</p>
-              </motion.div>
-
-              <div className="absolute inset-0 grid place-items-center">
-                <motion.div 
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 40, repeat: Infinity, ease: "linear" }}
-                  className="w-full h-full rounded-full border border-dashed border-primary/30" 
-                />
-                <Brain className="w-32 h-32 text-primary/40 absolute blur-[2px]" />
-                <Brain className="w-32 h-32 text-primary" />
-              </div>
-            </motion.div>
-          </div>
-        </section>
-
-        {/* Feature Grid - Enhanced */}
-        <section className="bg-muted/30 py-32 border-y border-border/50 relative">
-          <div className="max-w-7xl mx-auto px-8">
-            <div className="text-center mb-24 space-y-6">
-              <motion.h2 
-                whileInView={{ opacity: 1, y: 0 }}
-                initial={{ opacity: 0, y: 20 }}
-                viewport={{ once: true }}
-                className="text-5xl md:text-7xl font-black text-foreground tracking-tighter"
-              >
-                Everything to <span className="gradient-text">level up.</span>
-              </motion.h2>
-              <p className="text-xl text-muted-foreground max-w-2xl mx-auto font-medium">
-                Analogix is more than a tutor. It's an entire ecosystem built around how students actually learn.
-              </p>
-            </div>
-
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {features.map((feature, i) => (
-                <motion.div 
-                  key={i}
-                  initial={{ opacity: 0, y: 30, scale: 0.9 }}
-                  whileInView={{ opacity: 1, y: 0, scale: 1 }}
-                  viewport={{ once: true }}
-                  transition={{ 
-                    delay: feature.delay,
-                    type: "spring",
-                    stiffness: 100,
-                    damping: 10
-                  }}
-                  whileHover={{ 
-                    y: -15,
-                    scale: 1.02,
-                    rotateX: 5,
-                    rotateY: 5,
-                    transition: { duration: 0.3 }
-                  }}
-                  className={`relative group overflow-hidden rounded-3xl border ${feature.borderColor} bg-gradient-to-br ${feature.bgGradient} backdrop-blur-xl shadow-lg hover:shadow-2xl transition-all duration-300`}
-                >
-                  {/* Animated background pattern */}
-                  <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-                    <motion.div
-                      animate={{
-                        background: [
-                          `radial-gradient(circle at 20% 50%, rgba(255,255,255,0.1) 0%, transparent 50%)`,
-                          `radial-gradient(circle at 80% 50%, rgba(255,255,255,0.1) 0%, transparent 50%)`,
-                          `radial-gradient(circle at 50% 20%, rgba(255,255,255,0.1) 0%, transparent 50%)`,
-                        ]
-                      }}
-                      transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
-                      className="absolute inset-0"
-                    />
-                  </div>
-                  
-                  {/* Floating particles */}
-                  <div className="absolute inset-0 pointer-events-none">
-                    {[...Array(3)].map((_, j) => (
-                      <motion.div
-                        key={j}
-                        animate={{
-                          y: [0, -20, 0],
-                          x: [0, Math.random() * 10 - 5, 0],
-                          opacity: [0, 1, 0]
-                        }}
-                        transition={{
-                          duration: 3 + j,
-                          repeat: Infinity,
-                          delay: j * 0.5,
-                          ease: "easeInOut"
-                        }}
-                        className={`absolute w-1 h-1 rounded-full bg-gradient-to-r ${feature.gradient}`}
-                        style={{
-                          top: `${20 + j * 30}%`,
-                          left: `${10 + j * 30}%`
-                        }}
-                      />
-                    ))}
-                  </div>
-
-                  <div className="relative p-10">
-                    {/* Icon with enhanced animation */}
-                    <motion.div 
-                      className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${feature.gradient} flex items-center justify-center mb-8 shadow-xl group-hover:shadow-2xl transition-all duration-300`}
-                      animate={{
-                        rotateY: [0, 360]
-                      }}
-                      transition={{
-                        duration: 4,
-                        repeat: Infinity,
-                        ease: "linear"
-                      }}
-                      whileHover={{
-                        rotateY: [0, 720],
-                        transition: {
-                          duration: 0.3,
-                          ease: "easeInOut"
-                        }
-                      }}
-                    >
-                      <feature.icon className="w-8 h-8 text-white drop-shadow-lg" />
-                    </motion.div>
-                    
-                    {/* Glow effect on hover */}
-                    <motion.div 
-                      className={`absolute top-10 left-10 w-16 h-16 rounded-2xl bg-gradient-to-br ${feature.gradient} blur-xl opacity-0 group-hover:opacity-50 transition-opacity duration-300`}
-                    />
-                    
-                    <motion.h3 
-                      className="text-2xl font-black mb-4 bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent"
-                      whileHover={{ scale: 1.05 }}
-                      transition={{ duration: 0.2 }}
-                    >
-                      {feature.title}
-                    </motion.h3>
-                    
-                    <motion.p 
-                      className="text-muted-foreground leading-relaxed font-medium"
-                      whileHover={{ scale: 1.02 }}
-                      transition={{ duration: 0.2 }}
-                    >
-                      {feature.description}
-                    </motion.p>
-
-                    {/* Interactive hover indicator */}
-                    <motion.div 
-                      className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                      initial={{ scale: 0 }}
-                      whileHover={{ scale: 1 }}
-                      whileInView={{ scale: 1 }}
-                      viewport={{ once: true }}
-                      transition={{ delay: feature.delay + 0.5 }}
-                    >
-                      <ArrowRight className={`w-5 h-5 bg-gradient-to-r ${feature.gradient} bg-clip-text text-transparent`} />
-                    </motion.div>
-                  </div>
-
-                  {/* Shimmer effect */}
-                  <motion.div 
-                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -skew-x-12"
-                    animate={{
-                      x: ['-100%', '200%']
-                    }}
-                    transition={{
-                      duration: 2,
-                      repeat: Infinity,
-                      repeatDelay: 5,
-                      ease: "easeInOut"
-                    }}
-                  />
-                </motion.div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* Subjects - Enhanced Interactive Icons */}
-        <section className="py-32 overflow-hidden relative">
-          {/* Animated background */}
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5" />
-          
-          <div className="max-w-7xl mx-auto px-8 relative z-10">
-            <motion.h2 
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              className="text-3xl font-black text-center mb-20 uppercase tracking-[0.3em] opacity-40"
-            >
-              Tuned for ACARA
-            </motion.h2>
-            
-            <div className="flex flex-wrap justify-center gap-6">
-              {subjects.map((sub, i) => (
-                <motion.div 
-                  key={i}
-                  initial={{ opacity: 0, scale: 0.8, rotate: -10 }}
-                  whileInView={{ opacity: 1, scale: 1, rotate: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ 
-                    delay: i * 0.05,
-                    type: "spring",
-                    stiffness: 200,
-                    damping: 15
-                  }}
-                  whileHover={{ 
-                    scale: 1.1,
-                    rotate: 5,
-                    y: -5
-                  }}
-                  whileTap={{ scale: 0.95 }}
-                  className="px-8 py-5 glass-card rounded-3xl flex items-center gap-4 hover:border-primary/40 transition-all cursor-pointer group relative overflow-hidden"
-                >
-                  {/* Hover glow effect */}
-                  <motion.div 
-                    className="absolute inset-0 bg-gradient-to-r from-primary/10 to-accent/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-3xl"
-                  />
-                  
-                  {/* Animated icon */}
-                  <motion.div
-                    animate={{
-                      rotate: [0, 5, 0],
-                      scale: [1, 1.05, 1]
-                    }}
-                    transition={{
-                      duration: 4,
-                      repeat: Infinity,
-                      delay: i * 0.2,
-                      ease: "easeInOut"
-                    }}
-                    whileHover={{
-                      rotate: 360,
-                      scale: 1.2,
-                      transition: { duration: 0.5 }
-                    }}
-                  >
-                    <sub.icon className="w-5 h-5 text-primary group-hover:scale-125 transition-transform" />
-                  </motion.div>
-                  
-                  <motion.span 
-                    className="font-black text-sm uppercase tracking-widest relative z-10"
-                    whileHover={{ scale: 1.05 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    {sub.label}
-                  </motion.span>
-                  
-                  {/* Floating particles */}
-                  <motion.div
-                    className="absolute w-1 h-1 bg-primary rounded-full opacity-0 group-hover:opacity-100"
-                    animate={{
-                      scale: [0, 1, 0],
-                      opacity: [0, 1, 0]
-                    }}
-                    transition={{
-                      duration: 2,
-                      repeat: Infinity,
-                      ease: "easeInOut"
-                    }}
-                    style={{
-                      top: '20%',
-                      right: '20%'
-                    }}
-                  />
-                </motion.div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* Call to Action - Intense */}
-        <section className="py-32 px-8 max-w-7xl mx-auto">
+        <section ref={heroRef} className="max-w-7xl mx-auto px-6 py-20 lg:py-32 overflow-hidden relative z-10">
           <motion.div 
-            initial={{ opacity: 0, y: 50 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="rounded-[4rem] gradient-primary p-20 text-center relative overflow-hidden shadow-[0_40px_100px_-20px_rgba(var(--primary-rgb),0.5)]"
+            style={{ scale: heroScale, opacity: heroOpacity }}
+            className="text-center space-y-8"
           >
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.2),transparent)]" />
             <motion.div 
-              animate={{ rotate: 360 }}
-              transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-              className="absolute -top-24 -right-24 w-64 h-64 border-4 border-white/10 rounded-full" 
-            />
-            
-            <h2 className="text-5xl md:text-8xl font-black text-white mb-8 leading-[0.9] tracking-tighter relative z-10">
-              Your future <br />
-              self will <br />
-              thank you.
-            </h2>
-            <p className="text-xl md:text-2xl text-white/80 mb-12 max-w-2xl mx-auto font-medium relative z-10">
-              Join thousands of students turning their study time into high-impact momentum.
-            </p>
-            <Button 
-               size="lg" 
-               className="h-20 px-16 text-2xl font-black bg-white text-primary hover:bg-white/90 border-0 shadow-2xl rounded-[2.5rem] relative z-10 hover:scale-105 transition-transform"
-               onClick={() => router.push("/onboarding")}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold uppercase tracking-wider mb-4"
             >
-              Get Started Now
-            </Button>
+              <Sparkles className="w-3.5 h-3.5" />
+              The student upgrade
+            </motion.div>
+            
+            <motion.h1 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="text-6xl md:text-8xl lg:text-9xl font-bold font-display tracking-tight leading-[0.9] text-balance"
+            >
+              Actually <span className="text-primary italic">understand</span> <br className="hidden md:block" /> what you study.
+            </motion.h1>
+
+            <motion.p 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto leading-relaxed"
+            >
+              We turn syllabus stress into simple analogies. <br className="hidden md:block" /> 
+              The ultimate study buddy for the Australian Curriculum.
+            </motion.p>
+
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4"
+            >
+              <Button 
+                size="lg" 
+                className="h-14 px-8 text-lg font-bold rounded-2xl group transition-all duration-300 shadow-xl shadow-primary/20"
+                onClick={() => handleNav("/onboarding")}
+              >
+                Start for free
+                <ChevronRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              </Button>
+              <Button 
+                variant="outline" 
+                size="lg" 
+                className="h-14 px-8 text-lg font-bold rounded-2xl border-2"
+                onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })}
+              >
+                See features
+              </Button>
+            </motion.div>
           </motion.div>
         </section>
 
-        <footer className="py-20 border-t border-border/50">
-          <div className="max-w-7xl mx-auto px-8 flex flex-col md:flex-row justify-between items-center gap-10">
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center">
-                <Brain className="w-6 h-6 text-white" />
+        {/* Features Bento Grid */}
+        <section id="features" className="py-24 px-6 max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-5xl font-bold font-display tracking-tight mb-4">Everything to level up.</h2>
+            <p className="text-muted-foreground">Modern tools built for how students actually think.</p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 auto-rows-[250px]">
+            {bentoFeatures.map((item, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.1 }}
+                className={cn(
+                  "p-8 rounded-[2.5rem] bg-card border border-border shadow-sm flex flex-col justify-between overflow-hidden relative group hover:border-primary/30 transition-colors",
+                  item.size === "lg" ? "md:col-span-2" : "md:col-span-1"
+                )}
+              >
+                <div className="relative z-10">
+                  <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center mb-6 border", item.color)}>
+                    <item.icon className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-2xl font-bold font-display mb-2">{item.title}</h3>
+                  <p className="text-muted-foreground text-sm max-w-xs">{item.desc}</p>
+                </div>
+                
+                {item.image && (
+                   <div className="absolute bottom-0 right-0 w-1/2 h-1/2 bg-gradient-to-br from-primary/20 to-transparent blur-3xl -mb-10 -mr-10 opacity-50 group-hover:opacity-100 transition-opacity" />
+                )}
+                
+                {item.stats && (
+                  <div className="absolute bottom-6 right-8 flex items-center gap-2">
+                    <div className="h-2 w-24 bg-muted rounded-full overflow-hidden">
+                      <motion.div 
+                        initial={{ width: 0 }}
+                        whileInView={{ width: '75%' }}
+                        transition={{ duration: 1, delay: 0.5 }}
+                        className="h-full bg-primary" 
+                      />
+                    </div>
+                    <span className="text-[10px] font-bold text-primary">LVL 12</span>
+                  </div>
+                )}
+              </motion.div>
+            ))}
+          </div>
+        </section>
+
+        {/* The "Smart but Simple" Section */}
+        <section ref={smartSimpleRef} className="py-24 px-6 overflow-hidden relative">
+          <motion.div style={{ opacity: smartSimpleOpacity }} className="max-w-7xl mx-auto">
+            <div className="grid lg:grid-cols-2 gap-20 items-center">
+              <div>
+                <h2 className="text-4xl md:text-6xl font-bold font-display tracking-tight mb-8">
+                  Built for the <br /> <span className="text-primary italic">way you learn.</span>
+                </h2>
+                <div className="space-y-6">
+                  {[
+                    { title: "Personalised for you", desc: "Your interests drive the explanations. Football, gaming, or art—we adapt to you." },
+                    { title: "Curriculum Focused", desc: "Mapped directly to Year 7-12 Australian standards. No fluff, just results." },
+                    { title: "Gamified Progress", desc: "Earn badges and level up as you master subjects. Because study shouldn't be boring." }
+                  ].map((item, i) => (
+                    <motion.div 
+                        key={i} 
+                        initial={{ opacity: 0, x: -20 }}
+                        whileInView={{ opacity: 1, x: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ delay: 0.2 * i }}
+                        className="flex gap-4"
+                    >
+                      <div className="mt-1 w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <Check className="w-3 h-3 text-primary" />
+                      </div>
+                      <div>
+                        <h4 className="font-bold mb-1">{item.title}</h4>
+                        <p className="text-sm text-muted-foreground">{item.desc}</p>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
               </div>
-              <span className="text-2xl font-black tracking-tighter">Analogix</span>
+              
+              <div className="relative">
+                <div className="absolute inset-0 bg-primary/20 blur-[120px] rounded-full" />
+                <div className="relative grid grid-cols-2 gap-4">
+                  <div className="space-y-4 pt-12">
+                    <motion.div 
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        whileInView={{ opacity: 1, scale: 1 }}
+                        className="aspect-square rounded-3xl bg-card border border-border shadow-xl p-6 flex flex-col justify-between"
+                    >
+                      <Trophy className="w-8 h-8 text-amber-500" />
+                      <div className="space-y-1">
+                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Achieved</p>
+                        <p className="text-lg font-bold">Science Pro</p>
+                      </div>
+                    </motion.div>
+                    <motion.div 
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        whileInView={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: 0.1 }}
+                        className="aspect-square rounded-3xl bg-primary text-primary-foreground shadow-xl p-6 flex flex-col justify-between"
+                    >
+                      <Rocket className="w-8 h-8" />
+                      <div className="space-y-1">
+                        <p className="text-xs font-bold opacity-70 uppercase tracking-widest">Momentum</p>
+                        <p className="text-lg font-bold">5 Day Streak</p>
+                      </div>
+                    </motion.div>
+                  </div>
+                  <div className="space-y-4">
+                    <motion.div 
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        whileInView={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: 0.2 }}
+                        className="aspect-[3/4] rounded-3xl bg-card border border-border shadow-xl p-6 flex flex-col justify-between overflow-hidden relative"
+                    >
+                      <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full blur-3xl -mr-16 -mt-16" />
+                      <Cpu className="w-8 h-8 text-emerald-500" />
+                      <div className="space-y-1">
+                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Lab Progress</p>
+                        <p className="text-xl font-bold">84% Complete</p>
+                        <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden mt-2">
+                           <motion.div initial={{ width: 0 }} whileInView={{ width: '84%' }} transition={{ duration: 1, delay: 0.5 }} className="h-full bg-emerald-500" />
+                        </div>
+                      </div>
+                    </motion.div>
+                  </div>
+                </div>
+              </div>
             </div>
-            <p className="text-muted-foreground text-sm font-bold uppercase tracking-[0.2em] opacity-50">© 2026 Analogix Studio. Beyond textbooks.</p>
-            <div className="flex gap-10">
-              {["Privacy", "Terms", "Contact"].map(item => (
-                <button key={item} className="text-sm font-black uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors">
+          </motion.div>
+        </section>
+
+        {/* CTA Section */}
+        <section ref={ctaRef} className="py-32 px-6">
+          <motion.div
+            style={{ scale: ctaScale, opacity: ctaOpacity }}
+            className="max-w-5xl mx-auto rounded-[3rem] bg-foreground text-background p-12 md:p-24 text-center relative overflow-hidden"
+          >
+            <div className="absolute inset-0 opacity-10" 
+                 style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '40px 40px' }} />
+            
+            <div className="relative z-10 space-y-8">
+              <h2 className="text-4xl md:text-7xl font-bold font-display tracking-tight leading-none">
+                Stop guessing. <br /> Start mastering.
+              </h2>
+              <p className="text-lg md:text-xl text-background/70 max-w-xl mx-auto leading-relaxed">
+                Join the students who are actually having fun while studying. No, seriously.
+              </p>
+              <Button 
+                size="lg" 
+                variant="secondary"
+                className="h-16 px-12 text-xl font-bold rounded-2xl hover:scale-105 transition-transform"
+                onClick={() => handleNav("/onboarding")}
+              >
+                Get Started for Free
+              </Button>
+            </div>
+          </motion.div>
+        </section>
+
+        {/* Footer */}
+        <footer className="py-12 border-t border-border/50">
+          <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-8">
+            <div className="flex items-center gap-2">
+              <Brain className="w-5 h-5 text-primary" />
+              <span className="font-bold font-display">Analogix</span>
+            </div>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-widest">© 2026 Analogix. Beyond Textbooks.</p>
+            <div className="flex gap-8">
+              {["Support", "Privacy", "Twitter"].map(item => (
+                <button key={item} className="text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors">
                   {item}
                 </button>
               ))}
@@ -685,5 +455,10 @@ const features = [
     </div>
   );
 };
+
+// Helper for class merging
+function cn(...inputs: any[]) {
+  return inputs.filter(Boolean).join(" ");
+}
 
 export default Landing;

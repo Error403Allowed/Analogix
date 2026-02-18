@@ -17,15 +17,15 @@ const CursorParticles = () => {
   const addParticle = useCallback((x: number, y: number) => {
     const id = Date.now();
     const color = COLORS[Math.floor(Math.random() * COLORS.length)];
-    const size = Math.random() * 8 + 4;
+    const size = Math.random() * 3 + 2;
     
-    setParticles((prev) => [...prev.slice(-15), { id, x, y, color, size }]);
+    setParticles((prev) => [...prev.slice(-10), { id, x, y, color, size }]);
   }, []);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       // Add particle every few pixels or on every move with throttling
-      if (Math.random() > 0.7) {
+      if (Math.random() > 0.85) {
         addParticle(e.clientX, e.clientY);
       }
     };
@@ -41,7 +41,7 @@ const CursorParticles = () => {
           <motion.div
             key={particle.id}
             initial={{ 
-              opacity: 0.8, 
+              opacity: 0.4, 
               scale: 0.5, 
               x: particle.x, 
               y: particle.y 
@@ -49,19 +49,18 @@ const CursorParticles = () => {
             animate={{ 
               opacity: 0, 
               scale: 0,
-              x: particle.x + (Math.random() - 0.5) * 100,
-              y: particle.y + (Math.random() - 0.5) * 100,
+              x: particle.x + (Math.random() - 0.5) * 40,
+              y: particle.y + (Math.random() - 0.5) * 40,
             }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.8, ease: "easeOut" }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
             style={{
               position: "absolute",
               width: particle.size,
               height: particle.size,
               backgroundColor: particle.color,
               borderRadius: "50%",
-              filter: "blur(1px)",
-              boxShadow: `0 0 10px ${particle.color}`,
+              opacity: 0.3,
             }}
           />
         ))}

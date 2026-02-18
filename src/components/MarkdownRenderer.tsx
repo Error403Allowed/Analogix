@@ -15,7 +15,7 @@ const MarkdownRenderer = ({ content, className }: MarkdownRendererProps) => {
         remarkPlugins={[remarkMath]}
         rehypePlugins={[[rehypeKatex, { strict: false }]]}
         components={{
-          p: ({ children }) => <span className="inline">{children}</span>,
+          p: ({ children }) => <p className="mb-4 last:mb-0 leading-relaxed">{children}</p>,
         }}
       >
         {content}
