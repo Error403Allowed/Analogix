@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Home, RotateCcw, Share2, Trophy, Lightbulb, Loader2, Sparkles, Clock, Brain, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Home, RotateCcw, Share2, Trophy, Lightbulb, Loader2, Sparkles, Clock, Brain, AlertTriangle, ChevronRight, Settings2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import QuizCard from "@/components/QuizCard";
@@ -13,6 +13,11 @@ import { generateQuiz } from "@/services/huggingface";
 import TypewriterText from "@/components/TypewriterText";
 import MarkdownRenderer from "@/components/MarkdownRenderer";
 import { getStoredMoodId } from "@/utils/mood";
+import { SUBJECT_CATALOG, SubjectId, getGradeBand } from "@/constants/subjects";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Slider } from "@/components/ui/slider";
+import { cn } from "@/lib/utils";
 
 const Quiz = () => {
   const router = useRouter();
@@ -22,7 +27,14 @@ const Quiz = () => {
   const [isComplete, setIsComplete] = useState(false);
   const [answers, setAnswers] = useState<boolean[]>([]);
   const [showAnalogy, setShowAnalogy] = useState(true);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+  const [showConfig, setShowConfig] = useState(true);
+
+  /* Quiz Configuration State */
+  const [selectedSubject, setSelectedSubject] = useState<SubjectId>("math");
+  const [numQuestions, setNumQuestions] = useState(5);
+  const [timeLimit, setTimeLimit] = useState(5); // minutes
+  const [difficulty, setDifficulty] = useState("intermediate");
 
   /* New State Variables */
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
@@ -31,6 +43,7 @@ const Quiz = () => {
     subject?: string;
     numQuestions?: number;
     timerDuration?: number | null;
+    difficulty?: string;
   } | null>(null);
   const [isConfigLoaded, setIsConfigLoaded] = useState(false);
 
@@ -38,10 +51,32 @@ const Quiz = () => {
     typeof window !== "undefined"
       ? JSON.parse(localStorage.getItem("userPreferences") || "{}")
       : {};
-  const topic = pendingConfig?.topic || userPrefs.subjects?.[0] || "general school topics";
-  const subject = pendingConfig?.subject || userPrefs.subjects?.[0] || "General";
-  const numQuestionsTarget = pendingConfig?.numQuestions || 5;
-  const timerSetting = pendingConfig?.timerDuration ?? null;
+  
+  const gradeBand = getGradeBand(userPrefs.grade);
+  
+  const difficultyOptions = {
+    junior: [
+      { id: "foundational", label: "Foundational", desc: "Core concepts & simple analogies" },
+      { id: "intermediate", label: "Intermediate", desc: "Standard Year 7-8 level" },
+      { id: "advanced", label: "Advanced", desc: "Challenge yourself" }
+    ],
+    middle: [
+      { id: "foundational", label: "Revision", desc: "Refresh core concepts" },
+      { id: "intermediate", label: "Standard", desc: "Year 9-10 curriculum level" },
+      { id: "advanced", label: "Extended", desc: "Deep conceptual links" }
+    ],
+    senior: [
+      { id: "foundational", label: "Standard", desc: "Year 11-12 basic concepts" },
+      { id: "intermediate", label: "Advanced", desc: "Complex systems & analysis" },
+      { id: "advanced", label: "Extension", desc: "Deep theoretical analogies" }
+    ]
+  }[gradeBand];
+
+  const topic = pendingConfig?.topic || selectedSubject;
+  const subjectLabel = SUBJECT_CATALOG.find(s => s.id === (pendingConfig?.subject || selectedSubject))?.label || "General";
+  const numQuestionsTarget = pendingConfig?.numQuestions || numQuestions;
+  const timerSetting = pendingConfig?.timerDuration ?? (timeLimit * 60);
+  const quizDifficulty = pendingConfig?.difficulty || difficulty;
   const HISTORY_KEY = "recentQuizQuestions";
 
   useEffect(() => {
@@ -51,6 +86,7 @@ const Quiz = () => {
         const parsed = JSON.parse(raw);
         if (parsed && typeof parsed === "object") {
           setPendingConfig(parsed);
+          setShowConfig(false); // Skip config if already provided (e.g. from Dashboard)
         }
       }
       sessionStorage.removeItem("pendingQuizConfig");
@@ -60,6 +96,11 @@ const Quiz = () => {
       setIsConfigLoaded(true);
     }
   }, []);
+
+  const startQuiz = () => {
+    setShowConfig(false);
+    fetchQuiz();
+  };
 
   const normalizeQuestion = (text: string) =>
     text.toLowerCase().replace(/\s+/g, " ").trim();
@@ -77,16 +118,72 @@ const Quiz = () => {
     localStorage.setItem(HISTORY_KEY, JSON.stringify(trimmed));
   };
 
+  const fetchQuiz = async () => {
+    setIsLoading(true);
+    const recent = getRecentQuestions();
+    const avoidList = recent.slice(-20);
+    const baseSeed = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    let quizData: any = null;
+    let stored = false;
+
+    for (let attempt = 0; attempt < 3; attempt++) {
+      quizData = await generateQuiz(
+        topic,
+        {
+          grade: userPrefs.grade,
+          hobbies: userPrefs.hobbies || [],
+          subject: pendingConfig?.subject || selectedSubject,
+          mood: getStoredMoodId(),
+          difficulty: quizDifficulty
+        },
+        numQuestionsTarget,
+        { diversitySeed: `${baseSeed}-${attempt}`, avoidQuestions: avoidList }
+      );
+
+      if (!quizData || !quizData.questions) continue;
+      const normalized = quizData.questions.map((q: any) =>
+        normalizeQuestion(q.question || "")
+      );
+      const hasBanned = quizData.questions.some((q: any) =>
+        /2\s*x\s*\+\s*5\s*=\s*11/i.test(q.question || "")
+      );
+      if (hasBanned) {
+        continue;
+      }
+      const hasOverlap = normalized.some((q: string) => recent.includes(q));
+      if (!hasOverlap) {
+        storeRecentQuestions([...recent, ...normalized]);
+        stored = true;
+        break;
+      }
+    }
+
+    if (quizData && quizData.questions) {
+      if (!stored) {
+        const normalized = quizData.questions.map((q: any) =>
+          normalizeQuestion(q.question || "")
+        );
+        storeRecentQuestions([...recent, ...normalized]);
+      }
+      console.log("Generated Quiz Data:", quizData);
+      (window as any).generatedQuizData = quizData;
+      setQuestions(quizData.questions);
+    } else {
+      setQuestions([]);
+    }
+    setIsLoading(false);
+  };
+
   /* Timer Logic */
   useEffect(() => {
-    if (timerSetting !== null && !isLoading && !isComplete) {
-       setTimeLeft(timerSetting); // Already in seconds
+    if (timerSetting !== null && !isLoading && !isComplete && !showConfig) {
+      setTimeLeft(timerSetting);
     }
-  }, [timerSetting, isLoading, isComplete]);
+  }, [timerSetting, isLoading, isComplete, showConfig]);
 
   useEffect(() => {
-    if (timeLeft === null || isComplete || isLoading) return;
-    
+    if (timeLeft === null || isComplete || isLoading || showConfig) return;
+
     if (timeLeft <= 0) {
       setIsComplete(true);
       statsStore.addQuiz((score / (questions.length || 1)) * 100);
@@ -98,7 +195,7 @@ const Quiz = () => {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [timeLeft, isComplete, isLoading, score, questions.length]);
+  }, [timeLeft, isComplete, isLoading, score, questions.length, showConfig]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -108,65 +205,11 @@ const Quiz = () => {
 
   useEffect(() => {
     if (!isConfigLoaded) return;
+    if (pendingConfig) {
+      fetchQuiz();
+    }
+  }, [isConfigLoaded]);
 
-    const fetchQuiz = async () => {
-      setIsLoading(true);
-      const recent = getRecentQuestions();
-      const avoidList = recent.slice(-20);
-      const baseSeed = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-      let quizData: any = null;
-      let stored = false;
-
-      for (let attempt = 0; attempt < 3; attempt++) {
-        quizData = await generateQuiz(
-          topic,
-          {
-            grade: userPrefs.grade,
-            hobbies: userPrefs.hobbies || [],
-            subject: subject,
-            mood: getStoredMoodId()
-          },
-          numQuestionsTarget,
-          { diversitySeed: `${baseSeed}-${attempt}`, avoidQuestions: avoidList }
-        );
-
-        if (!quizData || !quizData.questions) continue;
-        const normalized = quizData.questions.map((q: any) =>
-          normalizeQuestion(q.question || "")
-        );
-        const hasBanned = quizData.questions.some((q: any) =>
-          /2\s*x\s*\+\s*5\s*=\s*11/i.test(q.question || "")
-        );
-        if (hasBanned) {
-          continue;
-        }
-        const hasOverlap = normalized.some((q: string) => recent.includes(q));
-        if (!hasOverlap) {
-          storeRecentQuestions([...recent, ...normalized]);
-          stored = true;
-          break;
-        }
-      }
-
-      if (quizData && quizData.questions) {
-        if (!stored) {
-          const normalized = quizData.questions.map((q: any) =>
-            normalizeQuestion(q.question || "")
-          );
-          storeRecentQuestions([...recent, ...normalized]);
-        }
-        console.log("Generated Quiz Data:", quizData);
-        (window as any).generatedQuizData = quizData;
-        setQuestions(quizData.questions);
-      } else {
-        // Fallback or error state
-        setQuestions([]);
-      }
-      setIsLoading(false);
-    };
-
-    fetchQuiz();
-  }, [isConfigLoaded, numQuestionsTarget, subject, topic]);
 
   const handleAnswer = (isCorrect: boolean) => {
     setAnswers([...answers, isCorrect]);
@@ -190,6 +233,127 @@ const Quiz = () => {
     window.location.reload(); // Quickest way to refetch AI quiz
   };
 
+  if (showConfig && !isLoading) {
+    return (
+      <div className="min-h-screen pb-8 relative overflow-hidden bg-background">
+        <div className="liquid-blob w-80 h-80 bg-primary/20 -top-40 -right-40 fixed" />
+        <div className="liquid-blob w-64 h-64 bg-accent/20 bottom-20 -left-32 fixed" />
+
+        <div className="max-w-2xl mx-auto px-4 sm:px-6 pt-12 relative z-10">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="glass-card p-8 md:p-12"
+          >
+            <div className="flex items-center gap-4 mb-8">
+              <div className="w-12 h-12 rounded-2xl gradient-primary flex items-center justify-center shadow-lg">
+                <Settings2 className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-3xl font-black text-foreground tracking-tight">Configure Quiz</h1>
+                <p className="text-muted-foreground">Tuned for Year {userPrefs.grade || "7"}</p>
+              </div>
+            </div>
+
+            <div className="space-y-8">
+              {/* Subject Selection */}
+              <div className="space-y-3">
+                <Label className="text-sm font-black uppercase tracking-widest text-muted-foreground">Subject</Label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {SUBJECT_CATALOG.map((s) => (
+                    <button
+                      key={s.id}
+                      onClick={() => setSelectedSubject(s.id)}
+                      className={cn(
+                        "flex items-center gap-2 p-3 rounded-xl border text-xs font-bold transition-all",
+                        selectedSubject === s.id
+                          ? "border-primary bg-primary/10 shadow-md text-primary"
+                          : "border-border glass hover:border-primary/50"
+                      )}
+                    >
+                      <s.icon className="w-4 h-4" />
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Amount of Questions */}
+              <div className="space-y-4">
+                <div className="flex justify-between">
+                  <Label className="text-sm font-black uppercase tracking-widest text-muted-foreground">Amount</Label>
+                  <span className="text-sm font-bold text-primary">{numQuestions} Questions</span>
+                </div>
+                <Slider
+                  value={[numQuestions]}
+                  onValueChange={([val]) => setNumQuestions(val)}
+                  min={3}
+                  max={20}
+                  step={1}
+                  className="py-4"
+                />
+              </div>
+
+              <div className="grid sm:grid-cols-2 gap-8">
+                {/* Time Limit */}
+                <div className="space-y-4">
+                  <div className="flex justify-between">
+                    <Label className="text-sm font-black uppercase tracking-widest text-muted-foreground">Time Limit</Label>
+                    <span className="text-sm font-bold text-primary">{timeLimit}m</span>
+                  </div>
+                  <Slider
+                    value={[timeLimit]}
+                    onValueChange={([val]) => setTimeLimit(val)}
+                    min={1}
+                    max={30}
+                    step={1}
+                    className="py-4"
+                  />
+                </div>
+
+                {/* Difficulty */}
+                <div className="space-y-3">
+                  <Label className="text-sm font-black uppercase tracking-widest text-muted-foreground">Difficulty</Label>
+                  <Select value={difficulty} onValueChange={setDifficulty}>
+                    <SelectTrigger className="rounded-xl border-border glass h-12">
+                      <SelectValue placeholder="Select difficulty" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {difficultyOptions?.map((opt) => (
+                        <SelectItem key={opt.id} value={opt.id}>
+                          <div className="flex flex-col text-left">
+                            <span className="font-bold">{opt.label}</span>
+                            <span className="text-[10px] text-muted-foreground">{opt.desc}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <Button
+                size="lg"
+                onClick={startQuiz}
+                className="w-full h-16 rounded-[2rem] gradient-primary text-white font-black text-lg uppercase tracking-widest shadow-xl hover:scale-[1.02] transition-transform gap-3"
+              >
+                Start Quiz
+                <ChevronRight className="w-5 h-5" />
+              </Button>
+            </div>
+          </motion.div>
+          
+          <div className="mt-8 flex justify-center">
+            <Button variant="ghost" onClick={() => router.push("/dashboard")} className="text-muted-foreground hover:text-foreground">
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to Dashboard
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4">
@@ -205,7 +369,7 @@ const Quiz = () => {
             <Brain className="w-7 h-7" />
           </div>
           <p className="text-sm text-muted-foreground">
-            Making quiz for {subject}...
+            Making quiz for {subjectLabel}...
           </p>
         </div>
         <div className="mt-8 flex items-center gap-2 text-primary font-bold animate-pulse">

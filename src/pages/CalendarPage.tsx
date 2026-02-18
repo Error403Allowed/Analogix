@@ -10,6 +10,9 @@ import { isSameDay, format, startOfWeek, endOfWeek, eachDayOfInterval, addWeeks,
 import ICSUploader from "@/components/ICSUploader";
 import TypewriterText from "@/components/TypewriterText";
 import { cn } from "@/lib/utils";
+import { AppEvent } from "@/types/events";
+import { eventStore } from "@/utils/eventStore";
+import Header from "@/components/Header";
 
 type CalendarView = 'day' | 'week' | 'month' | 'term';
 
@@ -125,7 +128,7 @@ const CalendarPage = () => {
                       <Calendar
                         mode="single"
                         selected={date}
-                        onSelect={setDate}
+                        onSelect={(newDate) => newDate && setDate(newDate)}
                         className="rounded-xl border-none p-0 scale-105 origin-top"
                         modifiers={{
                           event: (date) => events.some((e) => isSameDay(new Date(e.date), date))

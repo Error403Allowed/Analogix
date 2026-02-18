@@ -185,6 +185,7 @@ export const generateQuiz = async (
     hobbies: string[];
     subject?: string;
     mood?: string;
+    difficulty?: string;
   },
   numberOfQuestions: number = 5,
   options?: {
