@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { callHfChat, formatError, getMoodProfile } from "../_utils";
+import { callHfChat, formatError } from "../_utils";
 
 export const runtime = "nodejs";
 
@@ -8,14 +8,12 @@ export async function POST(request: Request) {
     const body = await request.json();
     const userName: string = body.userName || "Student";
     const streak: number = body.streak || 0;
-    const mood: string | undefined = body.mood;
 
-    const moodProfile = getMoodProfile(mood);
     const content = await callHfChat({
       messages: [
         {
           role: "system",
-          content: `You are Quizzy, a concise tutor. Generate a short, one-sentence greeting for a student. Keep it under 8 words. Do not use emojis. Mood: ${moodProfile.label}. Tone: ${moodProfile.greetingStyle}.`,
+          content: `You are Quizzy, a concise tutor. Generate a short, one-sentence greeting for a student. Keep it under 8 words. Do not use emojis. Be warm and encouraging.`,
         },
         {
           role: "user",

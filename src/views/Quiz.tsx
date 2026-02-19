@@ -12,7 +12,6 @@ import { achievementStore } from "@/utils/achievementStore";
 import { generateQuiz } from "@/services/huggingface";
 import TypewriterText from "@/components/TypewriterText";
 import MarkdownRenderer from "@/components/MarkdownRenderer";
-import { getStoredMoodId } from "@/utils/mood";
 import { SUBJECT_CATALOG, SubjectId, getGradeBand } from "@/constants/subjects";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -133,7 +132,6 @@ const Quiz = () => {
           grade: userPrefs.grade,
           hobbies: userPrefs.hobbies || [],
           subject: pendingConfig?.subject || selectedSubject,
-          mood: getStoredMoodId(),
           difficulty: quizDifficulty
         },
         numQuestionsTarget,

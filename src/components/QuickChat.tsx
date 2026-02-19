@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getHuggingFaceCompletion } from "@/services/huggingface";
 import { buildInterestList } from "@/utils/interests";
-import { getStoredMoodId } from "@/utils/mood";
 
 interface Message {
   id: string;
@@ -49,7 +48,6 @@ const QuickChat = () => {
       subjects: userSubjects,
       hobbies: userHobbies,
       learningStyle: userPrefs.learningStyle || "visual",
-      mood: getStoredMoodId()
     });
 
     setMessages(prev => [...prev, { 

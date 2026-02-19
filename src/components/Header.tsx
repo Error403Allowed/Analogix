@@ -12,7 +12,6 @@ import ThemeSelector from "./ThemeSelector";
 import { useRouter } from "next/navigation";
 import SettingsDialog from "./SettingsDialog";
 import { getAIGreeting } from "@/services/huggingface";
-import { getStoredMoodId } from "@/utils/mood";
 import { HOBBY_OPTIONS, POPULAR_INTERESTS } from "@/utils/interests";
 
 interface HeaderProps {
@@ -44,17 +43,10 @@ const Header = ({ userName = "Student", streak = 0 }: HeaderProps) => {
   const [showSettings, setShowSettings] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [greeting, setGreeting] = useState(`Welcome back, ${userName}.`);
-  const [moodId, setMoodId] = useState(getStoredMoodId());
 
   useEffect(() => {
-    getAIGreeting(userName, streak, moodId).then(setGreeting);
-  }, [userName, streak, moodId]);
-
-  useEffect(() => {
-    const handleMoodUpdate = () => setMoodId(getStoredMoodId());
-    window.addEventListener("moodUpdated", handleMoodUpdate);
-    return () => window.removeEventListener("moodUpdated", handleMoodUpdate);
-  }, []);
+    getAIGreeting(userName, streak).then(setGreeting);
+  }, [userName, streak]);
 
   const [profileName, setProfileName] = useState(userName);
   const [profileGrade, setProfileGrade] = useState<string>("");

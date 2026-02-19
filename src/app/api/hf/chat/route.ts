@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { callHfChat, formatError, getMoodProfile, classifyTaskType } from "../_utils";
+import { callHfChat, formatError, classifyTaskType } from "../_utils";
 import type { ChatMessage, UserContext } from "@/types/chat";
 
 export const runtime = "nodejs";
@@ -19,9 +19,6 @@ export async function POST(request: Request) {
       deepDive?: boolean;
     } = body.userContext || {};
 
-    // Get the user's current mood to adjust the AI's tone
-    const moodProfile = getMoodProfile(userContext?.mood);
-    
     // How much should the AI use analogies? (0-5 scale)
     const analogyIntensity = userContext?.analogyIntensity ?? 2;
     
@@ -95,8 +92,8 @@ export async function POST(request: Request) {
 Your Mission: Transform complex, "dry" academic concepts into vivid, unforgettable analogies that speak to the student's soul.
 
 Response Persona:
-- Tone: ${moodProfile.label} (${moodProfile.aiTone}). Talk like a mentor who's genuinely excited about the subject.
-- Style: ${moodProfile.aiStyle}. Avoid clinical or robotic phrasing. Use natural transitions.
+- Tone: clear, engaging, and encouraging. Talk like a mentor who's genuinely excited about the subject.
+- Style: Keep responses structured and clear. Avoid clinical or robotic phrasing. Use natural transitions.
 - Student Context: Year ${userContext?.grade || "7-12"}. Match their vocabulary—don't talk down to them, but don't bury them in jargon.
 Allowed Interests (verbatim): ${allowedInterests}
 Analogy Anchor (single topic): ${analogyAnchor || "Choose one from Allowed Interests and stick to it."}
@@ -123,7 +120,6 @@ ${complexityGuidance}
 5. TONE & PERSONALITY:
    - Keep it encouraging and fun, but intellectually honest.
    - Admit when an analogy has limits—this shows rigor, not uncertainty.
-   - Always match the mood guidance.
 
 6. TECHNICAL REQUIREMENTS:
    - Adjust language complexity for Year ${userContext?.grade || "7-12"}.

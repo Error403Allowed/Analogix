@@ -9,7 +9,6 @@ export interface UserContext {
   hobbies: string[];
   grade?: string;
   learningStyle: string;
-  mood?: string;
   analogyIntensity?: number;
   responseLength?: number;
   deepDive?: boolean;

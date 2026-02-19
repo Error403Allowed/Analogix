@@ -3,7 +3,7 @@
 import {
   LayoutDashboard, MessageCircle, BookOpen, Calendar,
   GraduationCap, User, Brain, Trophy, ChevronRight,
-  ChevronDown, Smile, Palette, Sun, Moon,
+  ChevronDown, Palette, Sun, Moon,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -17,34 +17,17 @@ import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
 import { useTheme } from "next-themes";
 import { useSidebar } from "@/components/ui/sidebar";
-import { moodProfiles, getStoredMoodId, applyMoodVisuals, MoodId } from "@/utils/mood";
 import { applyThemeByName } from "@/components/ThemeSelector";
 import { themes } from "@/components/ThemeSelector";
-import { ThemeToggleButton } from "@/components/ThemeToggleButton";
 
 const mainItems = [
   { title: "Dashboard",    url: "/dashboard", icon: LayoutDashboard },
   { title: "Analogy Tutor",url: "/chat",      icon: MessageCircle   },
   { title: "Quizzes",      url: "/quiz",      icon: BookOpen        },
   { title: "Calendar",     url: "/calendar",  icon: Calendar        },
-];
-
-const schoolItems = [
-  { title: "My Subjects",  url: "/subjects",     icon: GraduationCap },
+  { title: "My Subjects",  url: "/subjects",   icon: GraduationCap   },
   { title: "Achievements", url: "/achievements", icon: Trophy        },
 ];
-
-// Small coloured dot showing current mood when sidebar is icon-only
-const MOOD_COLORS: Record<MoodId, string> = {
-  focused:    "#3b82f6",
-  energized:  "#f97316",
-  chill:      "#06b6d4",
-  tired:      "#8b5cf6",
-  creative:   "#ec4899",
-  productive: "#22c55e",
-  excited:    "#eab308",
-  balanced:   "#14b8a6",
-};
 
 export function AppSidebar() {
   const router = useRouter();
@@ -52,10 +35,8 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const { setTheme: setMode, resolvedTheme } = useTheme();
   const [userData, setUserData] = useState<any>(null);
-  const [selectedMood, setSelectedMood] = useState<MoodId>("focused");
   const [activeThemeName, setActiveThemeName] = useState("Classic Blue");
   const [mounted, setMounted] = useState(false);
-  const [moodOpen, setMoodOpen] = useState(true);
   const [themeOpen, setThemeOpen] = useState(true);
   const isCollapsed = state === "collapsed";
   const isDark = resolvedTheme === "dark";
@@ -65,33 +46,19 @@ export function AppSidebar() {
   useEffect(() => {
     const loadPrefs = () => setUserData(JSON.parse(localStorage.getItem("userPreferences") || "{}"));
     loadPrefs();
-    const mood = getStoredMoodId();
-    setSelectedMood(mood);
-    applyMoodVisuals(mood);
     setActiveThemeName(localStorage.getItem("app-theme") || "Classic Blue");
 
-    const onMood = () => setSelectedMood(getStoredMoodId());
     const onTheme = () => setActiveThemeName(localStorage.getItem("app-theme") || "Classic Blue");
 
     window.addEventListener("storage", loadPrefs);
     window.addEventListener("userPreferencesUpdated", loadPrefs);
-    window.addEventListener("moodUpdated", onMood);
     window.addEventListener("themeUpdated", onTheme);
     return () => {
       window.removeEventListener("storage", loadPrefs);
       window.removeEventListener("userPreferencesUpdated", loadPrefs);
-      window.removeEventListener("moodUpdated", onMood);
       window.removeEventListener("themeUpdated", onTheme);
     };
   }, []);
-
-  const handleMoodSelect = (id: MoodId) => {
-    setSelectedMood(id);
-    localStorage.setItem("mood-theme", id);
-    applyThemeByName(moodProfiles[id].theme);
-    applyMoodVisuals(id);
-    window.dispatchEvent(new Event("moodUpdated"));
-  };
 
   const handleThemeSelect = (name: string) => {
     setActiveThemeName(name);
@@ -137,86 +104,6 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* School nav */}
-        <SidebarGroup className="mt-4">
-          <p className="px-2 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 mb-2 group-data-[collapsible=icon]:hidden">School</p>
-          <SidebarGroupContent tabIndex={-1}>
-            <SidebarMenu>
-              {schoolItems.map(item => (
-                <SidebarMenuItem key={item.title}>
-                  <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                    <SidebarMenuButton isActive={pathname === item.url} onClick={() => router.push(item.url)}
-                      className={cn("h-10 rounded-xl transition-all duration-200 group-data-[collapsible=icon]:justify-center overflow-hidden",
-                        pathname === item.url ? "bg-primary/10 text-primary shadow-sm" : "hover:bg-muted/50 text-muted-foreground hover:text-foreground")}>
-                      <item.icon className={cn("w-5 h-5 shrink-0", pathname === item.url ? "text-primary" : "text-muted-foreground")} />
-                      <span className="font-bold truncate group-data-[collapsible=icon]:hidden">{item.title}</span>
-                    </SidebarMenuButton>
-                  </motion.div>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        {/* ── Mood ── */}
-        {isCollapsed ? (
-          /* Collapsed: just a coloured dot in a popover */
-          <SidebarGroup className="mt-4">
-            <SidebarGroupContent className="flex justify-center">
-              <Popover>
-                <PopoverTrigger asChild>
-                  <button className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-muted transition-colors relative" title="Mood">
-                    <Smile className="w-5 h-5 text-muted-foreground" />
-                    <span className="absolute bottom-1.5 right-1.5 w-2 h-2 rounded-full border border-background"
-                      style={{ background: MOOD_COLORS[selectedMood] }} />
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent side="right" align="start" className="w-48 p-3 glass-card border-white/10 ml-2 shadow-2xl">
-                  <p className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-2">Mood</p>
-                  <div className="flex flex-col gap-1">
-                    {(Object.entries(moodProfiles) as [MoodId, any][]).map(([id, profile]) => (
-                      <button key={id} onClick={() => handleMoodSelect(id)}
-                        className={cn("w-full text-left px-2 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2",
-                          selectedMood === id ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted/50 hover:text-foreground")}>
-                        <span className="w-2 h-2 rounded-full shrink-0" style={{ background: MOOD_COLORS[id] }} />
-                        {profile.label}
-                      </button>
-                    ))}
-                  </div>
-                </PopoverContent>
-              </Popover>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        ) : (
-          /* Expanded: collapsible section */
-          <SidebarGroup className="mt-4">
-            <button onClick={() => setMoodOpen(o => !o)}
-              className="flex items-center justify-between w-full px-2 mb-2 group">
-              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 group-hover:text-muted-foreground transition-colors">Mood</span>
-              <div className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full" style={{ background: MOOD_COLORS[selectedMood] }} />
-                <ChevronDown className={cn("w-3 h-3 text-muted-foreground/40 transition-transform", moodOpen && "rotate-180")} />
-              </div>
-            </button>
-            <AnimatePresence initial={false}>
-              {moodOpen && (
-                <motion.div key="mood-list" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
-                  <div className="px-1 flex flex-col gap-1 pb-1">
-                    {(Object.entries(moodProfiles) as [MoodId, any][]).map(([id, profile]) => (
-                      <button key={id} onClick={() => handleMoodSelect(id)}
-                        className={cn("w-full text-left px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2.5",
-                          selectedMood === id ? "bg-primary/10 text-primary border border-primary/20" : "text-muted-foreground hover:bg-muted/50 hover:text-foreground border border-transparent")}>
-                        <span className="w-2 h-2 rounded-full shrink-0" style={{ background: MOOD_COLORS[id] }} />
-                        {profile.label}
-                      </button>
-                    ))}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </SidebarGroup>
-        )}
-
         {/* ── Colour Scheme ── */}
         {isCollapsed ? (
           <SidebarGroup className="mt-2">
@@ -251,18 +138,24 @@ export function AppSidebar() {
           </SidebarGroup>
         ) : (
           <SidebarGroup className="mt-2">
-            <button onClick={() => setThemeOpen(o => !o)} className="flex items-center justify-between w-full px-2 mb-2 group">
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={() => setThemeOpen(o => !o)}
+              onKeyDown={e => (e.key === "Enter" || e.key === " ") && setThemeOpen(o => !o)}
+              className="flex items-center justify-between w-full px-2 mb-2 group cursor-pointer"
+            >
               <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 group-hover:text-muted-foreground transition-colors">Colour Scheme</span>
               <div className="flex items-center gap-1.5">
                 {mounted && (
                   <button onClick={e => { e.stopPropagation(); setMode(isDark ? "light" : "dark"); }}
-                    className="hover:text-primary transition-colors p-0.5 text-muted-foreground/40 hover:text-muted-foreground">
+                    className="hover:text-primary transition-colors p-0.5 text-muted-foreground/40">
                     {isDark ? <Sun className="w-3 h-3" /> : <Moon className="w-3 h-3" />}
                   </button>
                 )}
                 <ChevronDown className={cn("w-3 h-3 text-muted-foreground/40 transition-transform", themeOpen && "rotate-180")} />
               </div>
-            </button>
+            </div>
             <AnimatePresence initial={false}>
               {themeOpen && (
                 <motion.div key="theme-grid" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">

@@ -1,22 +1,21 @@
 import { useEffect } from "react";
 import { applyThemeByName } from "@/components/ThemeSelector";
-import { getMoodProfile, getStoredMoodId } from "@/utils/mood";
-
-const applyMoodTheme = () => {
-  const moodId = getStoredMoodId();
-  const profile = getMoodProfile(moodId);
-  applyThemeByName(profile.theme);
-};
 
 const ThemeSync = () => {
   useEffect(() => {
-    applyMoodTheme();
-    const handleMoodChange = () => applyMoodTheme();
-    window.addEventListener("moodUpdated", handleMoodChange);
-    window.addEventListener("storage", handleMoodChange);
+    const savedTheme = localStorage.getItem("app-theme") || "Classic Blue";
+    applyThemeByName(savedTheme);
+
+    const handleThemeChange = () => {
+      const theme = localStorage.getItem("app-theme") || "Classic Blue";
+      applyThemeByName(theme);
+    };
+
+    window.addEventListener("themeUpdated", handleThemeChange);
+    window.addEventListener("storage", handleThemeChange);
     return () => {
-      window.removeEventListener("moodUpdated", handleMoodChange);
-      window.removeEventListener("storage", handleMoodChange);
+      window.removeEventListener("themeUpdated", handleThemeChange);
+      window.removeEventListener("storage", handleThemeChange);
     };
   }, []);
 

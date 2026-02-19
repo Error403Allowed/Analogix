@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { callHfChat, formatError, getMoodProfile } from "../_utils";
+import { callHfChat, formatError } from "../_utils";
 import type { QuizData } from "@/types/quiz";
 
 export const runtime = "nodejs";
@@ -16,7 +16,6 @@ export async function POST(request: Request) {
     const diversitySeed =
       options?.diversitySeed || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const avoidList = (options?.avoidQuestions || []).slice(0, 20);
-    const moodProfile = getMoodProfile(userContext.mood);
 
     const systemPrompt = `You are Quizzy, a brilliant and supportive mentor. Generate a ${numberOfQuestions}-question mixed quiz for a Year ${userContext.grade || "7-12"} student that feels more like an exploration than an exam.
 
@@ -48,7 +47,7 @@ Return ONLY valid JSON with this exact structure:
 }
 
 Quality & Tone Rules:
-- Mood: ${moodProfile.label}. Quiz style: ${moodProfile.quizStyle}.
+- Use a warm, encouraging tone in the questions and analogies.
 - Use a warm, encouraging tone in the questions and analogies.
 - ANALOGY PERSISTENCE: If a connection to their interests isn't obvious, think laterally. Look for structural, functional, or emotional parallels between the concept and their hobbies. NEVER omit an analogy or use a generic one like "in X's room."
 - Every question must be factually accurate and level-appropriate for Year ${userContext.grade || "7-12"}.

@@ -75,14 +75,14 @@ export const getHuggingFaceCompletion = async (
 /**
  * GENERATING DYNAMIC GREETINGS: This uses AI to create unique greetings for the user.
  */
-export const getAIGreeting = async (userName: string, streak: number, mood?: string) => {
+export const getAIGreeting = async (userName: string, streak: number) => {
   const stripEmojis = (text: string) =>
     text.replace(/\p{Extended_Pictographic}/gu, "").replace(/\s+/g, " ").trim();
 
   try {
     const data = await fetchJson<{ text: string }>(
       "/api/hf/greeting",
-      { userName, streak, mood },
+      { userName, streak },
       15000,
     );
     return stripEmojis((data.text || `Welcome back, ${userName}.`).replace(/"/g, ""));
@@ -91,7 +91,7 @@ export const getAIGreeting = async (userName: string, streak: number, mood?: str
   }
 };
 
-export const getAIBannerPhrase = async (userName: string, subjects: string[], mood?: string) => {
+export const getAIBannerPhrase = async (userName: string, subjects: string[]) => {
   const FALLBACK_LINES = [
     "Let's make light progress today.",
     "Pick one idea and explore it.",
@@ -155,7 +155,7 @@ export const getAIBannerPhrase = async (userName: string, subjects: string[], mo
   try {
     const data = await fetchJson<{ text: string }>(
       "/api/hf/banner",
-      { userName, subjects, mood },
+      { userName, subjects },
       15000,
     );
     const raw = data.text || "";
@@ -184,7 +184,6 @@ export const generateQuiz = async (
     grade?: string;
     hobbies: string[];
     subject?: string;
-    mood?: string;
     difficulty?: string;
   },
   numberOfQuestions: number = 5,

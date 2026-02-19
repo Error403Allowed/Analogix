@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { callHfChat, formatError, getMoodProfile } from "../_utils";
+import { callHfChat, formatError } from "../_utils";
 
 export const runtime = "nodejs";
 
@@ -8,15 +8,12 @@ export async function POST(request: Request) {
     const body = await request.json();
     const userName: string = body.userName || "Student";
     const subjects: string[] = Array.isArray(body.subjects) ? body.subjects : [];
-    const mood: string | undefined = body.mood;
 
-    const moodProfile = getMoodProfile(mood);
     const content = await callHfChat({
       messages: [
         {
           role: "system",
-          content:
-            `You generate EXACTLY 3 lines for a banner. CRITICAL: Output must be exactly 3 lines, no more, no less. Each line 4-7 words, each ending with a period. No extra text, labels, quotes, or preface. Output ONLY the 3 lines separated by newlines. Mood: ${moodProfile.label}. Style: ${moodProfile.bannerStyle}.`,
+          content: `You generate EXACTLY 3 lines for a banner. CRITICAL: Output must be exactly 3 lines, no more, no less. Each line 4-7 words, each ending with a period. No extra text, labels, quotes, or preface. Output ONLY the 3 lines separated by newlines. Be motivating and concise.`,
         },
         {
           role: "user",

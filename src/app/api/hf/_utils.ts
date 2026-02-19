@@ -1,5 +1,3 @@
-import { getMoodProfile } from "@/utils/mood";
-
 // ============================================================================
 // CONFIGURATION: Where we send AI requests and which models to use
 // ============================================================================
@@ -237,5 +235,3 @@ export const callHfChat = async (
 
   throw lastError instanceof Error ? lastError : new Error("AI request failed after trying all models");
 };
-
-export { getMoodProfile };

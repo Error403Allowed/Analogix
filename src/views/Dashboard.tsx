@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { 
   Trophy,
   Zap,
@@ -34,7 +34,6 @@ import { useAchievementChecker } from "@/hooks/useAchievementChecker";
 import { SUBJECT_CATALOG } from "@/constants/subjects";
 import { HOBBY_OPTIONS } from "@/utils/interests";
 import { applyThemeByName } from "@/components/ThemeSelector";
-import { getMoodProfile, getStoredMoodId, moodProfiles } from "@/utils/mood";
 
 type DashboardPreferences = {
   name?: string;
@@ -89,7 +88,6 @@ const Dashboard = () => {
   const [showQuizCreator, setShowQuizCreator] = useState(false);
   const [quizCreatorMode, setQuizCreatorMode] = useState<'custom' | 'learning'>('custom');
   const [recentAchievements, setRecentAchievements] = useState<DashboardAchievement[]>([]);
-  const [selectedMood, setSelectedMood] = useState(() => getStoredMoodId());
   const [userPrefs, setUserPrefs] = useState<DashboardPreferences>(() => readLocalStorageJson("userPreferences", {}));
 
   useEffect(() => {
@@ -152,22 +150,9 @@ const Dashboard = () => {
   }, [userName]);
 
   useEffect(() => {
-    const profile = getMoodProfile(selectedMood);
-    applyThemeByName(profile.theme);
-    localStorage.setItem("mood-theme", selectedMood);
-    window.dispatchEvent(new Event("moodUpdated"));
-  }, [selectedMood]);
-
-  const moodProfile = getMoodProfile(selectedMood);
-
-  const moodOptions = useMemo(
-    () =>
-      Object.entries(moodProfiles).map(([id, profile]) => ({
-        id,
-        label: profile.label
-      })),
-    []
-  );
+    const savedTheme = localStorage.getItem("app-theme") || "Classic Blue";
+    applyThemeByName(savedTheme);
+  }, []);
 
 
   const subjectLabelMap = useMemo(() => {
@@ -302,67 +287,11 @@ const Dashboard = () => {
     }
   };
 
-  const [moodChosen, setMoodChosen] = useState(() => {
-    if (typeof window === "undefined") return false;
-    // Show mood bar only if user has NEVER picked a mood (no key in storage)
-    return !!localStorage.getItem("mood-theme");
-  });
-
   return (
     <div className="min-h-full relative overflow-x-hidden flex flex-col">
       <div className="w-full relative z-10 flex-1 min-h-0 flex flex-col">
 
         <div className="flex flex-col gap-4 min-h-0 flex-1 overflow-y-auto pb-12 custom-scrollbar px-1">
-            
-            {/* Mood Bar — fades away once a mood is chosen */}
-            <AnimatePresence>
-            {!moodChosen && (
-            <motion.div
-              key="mood-bar"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, height: 0, paddingTop: 0, paddingBottom: 0, marginBottom: 0, overflow: "hidden" }}
-              transition={{ duration: 0.45, ease: "easeInOut" }}
-              className="dashboard-panel px-6 py-4"
-            >
-              <div className="flex items-center justify-between flex-wrap gap-4">
-                <div className="flex items-center gap-6 flex-wrap flex-1 min-w-0">
-                  <div className="shrink-0">
-                    <div className="text-sm font-black uppercase tracking-[0.2em] text-foreground mb-1">Mood bar</div>
-                    <div className="text-[10px] font-bold text-muted-foreground uppercase opacity-70">Pick a vibe. The UI and tutor adapt.</div>
-                  </div>
-                  <div className="flex flex-wrap gap-1.5 flex-1 min-w-0">
-                    {moodOptions.map((mood) => {
-                      const isActive = selectedMood === mood.id;
-                      return (
-                        <button
-                          key={mood.id}
-                          onClick={() => {
-                            setSelectedMood(mood.id as keyof typeof moodProfiles);
-                            setTimeout(() => setMoodChosen(true), 600);
-                          }}
-                          className={`px-4 py-2 rounded-full border text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${
-                            isActive
-                              ? "border-primary bg-primary/10 text-primary shadow-sm"
-                              : "border-white/5 bg-white/5 text-muted-foreground hover:text-foreground hover:bg-white/10"
-                          }`}
-                        >
-                          {mood.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-                <Button 
-                  onClick={() => setShowQuizCreator(true)}
-                  className="rounded-full gradient-primary font-black uppercase tracking-widest text-[10px] px-8 shadow-xl shrink-0"
-                >
-                  New Quiz
-                </Button>
-              </div>
-            </motion.div>
-            )}
-            </AnimatePresence>
 
             {/* Top Section: Calendar + Timer */}
             <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-stretch">
@@ -370,7 +299,7 @@ const Dashboard = () => {
               <motion.div variants={itemVariants} className="xl:col-span-7 dashboard-panel p-8 flex flex-col">
                 <div className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.2em] text-muted-foreground mb-6">
                   <CalendarIcon className="w-4 h-4 text-primary" />
-                  {moodProfile.dashboard.calendarTitle}
+                  Calendar
                 </div>
                 <div className="flex-1">
                    <CalendarWidget streak={normalizedStats.currentStreak} streakLabel={streakLabel} />
@@ -422,7 +351,7 @@ const Dashboard = () => {
                   <div>
                     <h4 className="text-3xl font-black text-foreground mb-3 leading-tight tracking-tighter">Personal Study Assistant</h4>
                     <p className="text-xs text-muted-foreground leading-relaxed">
-                      {moodProfile.dashboard.tutorSubtitle}
+                      Your personal study assistant, ready to help.
                     </p>
                   </div>
                   <div className="mt-8 space-y-4">

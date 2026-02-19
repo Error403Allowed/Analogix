@@ -24,7 +24,6 @@ import MarkdownRenderer from "@/components/MarkdownRenderer";
 import TypewriterText from "@/components/TypewriterText";
 import { SUBJECT_CATALOG, getSubjectDescription } from "@/constants/subjects";
 import { buildInterestList, HOBBY_OPTIONS } from "@/utils/interests";
-import { getStoredMoodId } from "@/utils/mood";
 
 // Splits AI response into { thinking, response } based on <think>...</think> tags
 const parseThinkingContent = (content: string): { thinking: string | null; response: string } => {
@@ -332,12 +331,11 @@ const Chat = () => {
     hobbies: userHobbies,
     grade: userPrefs.grade,
     learningStyle: userPrefs.learningStyle,
-    mood: getStoredMoodId(),
     responseLength,
     analogyIntensity: analogyModeEnabled ? 2 : 0,
     analogyAnchor: overrideAnchor ?? analogyAnchor ?? undefined,
     deepDive: deepDiveEnabled,
-    memoryManagement: false // Locked for Plus users
+    memoryManagement: false
   }), [
     selectedSubject,
     userSubjects,

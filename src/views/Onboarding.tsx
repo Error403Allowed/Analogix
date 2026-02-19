@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowRight,
@@ -31,7 +31,9 @@ import {
   Leaf,
   Laptop,
   Book,
-  Plane
+  Plane,
+  CalendarDays,
+  Upload,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,6 +41,8 @@ import { useRouter } from "next/navigation";
 import Confetti from "@/components/Confetti";
 import { achievementStore } from "@/utils/achievementStore";
 import { HOBBY_OPTIONS, POPULAR_INTERESTS } from "@/utils/interests";
+import { parseICS } from "@/utils/icsParser";
+import { eventStore } from "@/utils/eventStore";
 
 // Cool typewriter animation component for Quizzy
 const TypewriterText = ({ text, className = "", delay = 0 }: { text: string; className?: string; delay?: number }) => {
@@ -133,6 +137,105 @@ const hobbies = HOBBY_OPTIONS.map((hobby) => ({
   icon: hobbyIcons[hobby.id]
 }));
 
+// ── ICS import step ──────────────────────────────────────────────────────────
+interface IcsStepProps {
+  importing: boolean;
+  imported: boolean;
+  count: number;
+  error: string | null;
+  onFile: (file: File) => void;
+}
+
+function IcsStep({ importing, imported, count, error, onFile }: IcsStepProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [dragging, setDragging] = useState(false);
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (file) onFile(file);
+  };
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-3xl font-black text-foreground tracking-tight">One last thing.</h1>
+        <p className="text-muted-foreground text-lg mt-1">
+          Got a school timetable or exam schedule as a calendar file? Import it and it'll show up on your dashboard.
+        </p>
+      </div>
+
+      <div
+        onDragOver={e => { e.preventDefault(); setDragging(true); }}
+        onDragLeave={e => { e.preventDefault(); setDragging(false); }}
+        onDrop={handleDrop}
+        className={`relative border-2 border-dashed rounded-2xl p-10 flex flex-col items-center gap-4 text-center transition-all cursor-pointer select-none
+          ${dragging ? "border-primary bg-primary/5 scale-[1.01]" : "border-border hover:border-primary/50"}
+          ${imported ? "border-green-500/60 bg-green-500/5" : ""}
+        `}
+        onClick={() => !imported && !importing && fileInputRef.current?.click()}
+      >
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".ics"
+          className="hidden"
+          onChange={e => { const f = e.target.files?.[0]; if (f) onFile(f); }}
+        />
+
+        {imported ? (
+          <>
+            <div className="w-16 h-16 rounded-full bg-green-500/15 flex items-center justify-center">
+              <Check className="w-8 h-8 text-green-500" />
+            </div>
+            <div>
+              <p className="font-black text-foreground text-lg">Imported {count} event{count !== 1 ? "s" : ""}!</p>
+              <p className="text-sm text-muted-foreground mt-1">Your calendar is ready to go.</p>
+            </div>
+          </>
+        ) : importing ? (
+          <>
+            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center animate-pulse">
+              <CalendarDays className="w-8 h-8 text-primary" />
+            </div>
+            <p className="font-bold text-muted-foreground">Reading calendar…</p>
+          </>
+        ) : (
+          <>
+            <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
+              <Upload className="w-8 h-8 text-muted-foreground" />
+            </div>
+            <div>
+              <p className="font-black text-foreground">Drop your .ics file here</p>
+              <p className="text-sm text-muted-foreground mt-1">or click to browse</p>
+            </div>
+            <div className="flex flex-wrap justify-center gap-2 mt-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
+              <span>Google Calendar</span>
+              <span>·</span>
+              <span>Outlook</span>
+              <span>·</span>
+              <span>Apple Calendar</span>
+              <span>·</span>
+              <span>Any .ics file</span>
+            </div>
+          </>
+        )}
+      </div>
+
+      {error && (
+        <p className="text-sm text-destructive font-bold text-center">{error}</p>
+      )}
+
+      <p className="text-xs text-muted-foreground text-center">
+        This is completely optional — you can always import from the Calendar page later.
+      </p>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 const Onboarding = () => {
   const router = useRouter();
   
@@ -144,6 +247,11 @@ const Onboarding = () => {
   const [interestSelections, setInterestSelections] = useState<Record<string, string[]>>({});
   const [customInterest, setCustomInterest] = useState<Record<string, string>>({});
   const [isComplete, setIsComplete] = useState(false);
+  // ICS import step state
+  const [icsImporting, setIcsImporting] = useState(false);
+  const [icsImported, setIcsImported] = useState(false);
+  const [icsCount, setIcsCount] = useState(0);
+  const [icsError, setIcsError] = useState<string | null>(null);
 
   const toggleSubject = (id: string) => {
     setSelectedSubjects((prev) =>
@@ -211,6 +319,50 @@ const Onboarding = () => {
     return nextDetails;
   };
 
+  const savePreferences = (hobbyIds: string[], hobbyDetails: Record<string, string>) => {
+    const hobbiesWithDetails = hobbyIds.map((id) => {
+      const label = HOBBY_OPTIONS.find((hobby) => hobby.id === id)?.label || id;
+      const detail = hobbyDetails[id] || "";
+      return detail ? `${label} (${detail})` : label;
+    });
+    localStorage.setItem("userPreferences", JSON.stringify({
+      name: name.trim(),
+      grade: grade,
+      subjects: selectedSubjects,
+      hobbies: hobbiesWithDetails,
+      hobbyIds,
+      hobbyDetails,
+      onboardingComplete: true,
+    }));
+    achievementStore.unlock("start_1");
+    if (name.trim().toLowerCase() !== "student") {
+      achievementStore.unlock("start_2");
+    }
+  };
+
+  const handleIcsFile = async (file: File) => {
+    if (!file.name.endsWith(".ics")) {
+      setIcsError("Please upload a .ics file");
+      return;
+    }
+    setIcsError(null);
+    setIcsImporting(true);
+    try {
+      const events = await parseICS(file);
+      if (events.length === 0) {
+        setIcsError("No events found in that file");
+        return;
+      }
+      eventStore.addMultiple(events);
+      setIcsCount(events.length);
+      setIcsImported(true);
+    } catch {
+      setIcsError("Couldn't parse that calendar file. Try exporting it again.");
+    } finally {
+      setIcsImporting(false);
+    }
+  };
+
   const handleNext = () => {
     if (step === 1 && name.trim()) {
       setStep(2);
@@ -219,31 +371,13 @@ const Onboarding = () => {
     } else if (step === 3 && selectedSubjects.length > 0) {
       setStep(4);
     } else if (step === 4 && selectedHobbies.length > 0) {
-      setIsComplete(true);
-
+      // Save preferences now, then move to ICS step
       const hobbyDetails = buildHobbyDetails(selectedHobbies);
-      const hobbiesWithDetails = selectedHobbies.map((id) => {
-        const label = HOBBY_OPTIONS.find((hobby) => hobby.id === id)?.label || id;
-        const detail = hobbyDetails[id] || "";
-        return detail ? `${label} (${detail})` : label;
-      });
-      
-      localStorage.setItem("userPreferences", JSON.stringify({
-        name: name.trim(),
-        grade: grade,
-        subjects: selectedSubjects,
-        hobbies: hobbiesWithDetails,
-        hobbyIds: selectedHobbies,
-        hobbyDetails: hobbyDetails,
-        onboardingComplete: true
-      }));
-
-      // Unlock Achievements
-      achievementStore.unlock("start_1"); // New Beginnings
-      if (name.trim().toLowerCase() !== "student") {
-        achievementStore.unlock("start_2"); // Identity Crisis
-      }
-      
+      savePreferences(selectedHobbies, hobbyDetails);
+      setStep(5);
+    } else if (step === 5) {
+      // ICS step complete (whether they imported or skipped)
+      setIsComplete(true);
       setTimeout(() => router.push("/dashboard"), 2500);
     }
   };
@@ -282,6 +416,7 @@ const Onboarding = () => {
                 <div className={`h-2 flex-1 rounded-full transition-colors ${step >= 2 ? 'gradient-primary' : 'bg-muted'}`} />
                 <div className={`h-2 flex-1 rounded-full transition-colors ${step >= 3 ? 'gradient-primary' : 'bg-muted'}`} />
                 <div className={`h-2 flex-1 rounded-full transition-colors ${step >= 4 ? 'gradient-primary' : 'bg-muted'}`} />
+                <div className={`h-2 flex-1 rounded-full transition-colors ${step >= 5 ? 'gradient-primary' : 'bg-muted'}`} />
               </div>
 
               {step === 1 && (
@@ -515,34 +650,61 @@ const Onboarding = () => {
                 </div>
               )}
 
+              {step === 5 && (
+                <IcsStep
+                  importing={icsImporting}
+                  imported={icsImported}
+                  count={icsCount}
+                  error={icsError}
+                  onFile={handleIcsFile}
+                />
+              )}
+
               <div className="flex justify-between items-center mt-10">
                 {step > 1 ? (
                   <Button variant="ghost" onClick={() => setStep(step - 1)} className="px-6 rounded-xl">
                     Back
                   </Button>
                 ) : <div />}
-                <Button
-                  onClick={handleNext}
-                  disabled={
-                    (step === 1 && !name.trim()) ||
-                    (step === 2 && !grade) ||
-                    (step === 3 && selectedSubjects.length === 0) ||
-                    (step === 4 && selectedHobbies.length === 0)
-                  }
-                  className="gap-2 gradient-primary text-primary-foreground border-0 h-14 px-8 rounded-2xl font-bold shadow-xl hover:opacity-90 transition-opacity"
-                >
-                  {step === 4 ? (
-                    <>
-                      <Sparkles className="w-5 h-5" />
-                      Finish Setup
-                    </>
-                  ) : (
-                    <>
-                      Next
-                      <ArrowRight className="w-5 h-5" />
-                    </>
+                <div className="flex items-center gap-3">
+                  {step === 5 && !icsImported && (
+                    <Button
+                      variant="ghost"
+                      onClick={handleNext}
+                      className="px-6 rounded-xl text-muted-foreground"
+                    >
+                      Skip
+                    </Button>
                   )}
-                </Button>
+                  <Button
+                    onClick={handleNext}
+                    disabled={
+                      (step === 1 && !name.trim()) ||
+                      (step === 2 && !grade) ||
+                      (step === 3 && selectedSubjects.length === 0) ||
+                      (step === 4 && selectedHobbies.length === 0) ||
+                      (step === 5 && icsImporting)
+                    }
+                    className="gap-2 gradient-primary text-primary-foreground border-0 h-14 px-8 rounded-2xl font-bold shadow-xl hover:opacity-90 transition-opacity"
+                  >
+                    {step === 5 ? (
+                      <>
+                        <Sparkles className="w-5 h-5" />
+                        {icsImported ? "All Done!" : "Finish Setup"}
+                      </>
+                    ) : step === 4 ? (
+                      <>
+                        Next
+                        <ArrowRight className="w-5 h-5" />
+                      </>
+                    ) : (
+                      <>
+                        Next
+                        <ArrowRight className="w-5 h-5" />
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
             </motion.div>
           ) : (

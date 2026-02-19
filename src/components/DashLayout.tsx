@@ -10,8 +10,9 @@ export default function DashLayout({ children }: { children: React.ReactNode }) 
   // Routes where sidebar should NOT appear
   const isLanding = pathname === "/" || !pathname;
   const isOnboarding = pathname === "/onboarding";
+  const isTimerFullscreen = pathname === "/timer";
 
-  if (isLanding || isOnboarding) {
+  if (isLanding || isOnboarding || isTimerFullscreen) {
     return <>{children}</>;
   }
 

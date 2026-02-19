@@ -7,7 +7,6 @@ import {
   Medal,
   MessageSquare,
   Rocket,
-  Smile,
   Target,
   User
 } from "lucide-react";
@@ -39,5 +38,4 @@ export const ACHIEVEMENTS_LIBRARY: Achievement[] = [
   
   // SOCIAL / MISC
   { id: "chat_1", title: "Hello World", description: "Send a message to Quizzy", icon: <MessageSquare className="w-5 h-5" />, category: "social" },
-  { id: "mood_1", title: "Vibe Check", description: "Track your mood once", icon: <Smile className="w-5 h-5" />, category: "starter" },
 ];
