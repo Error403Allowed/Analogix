@@ -1,5 +1,6 @@
 "use client";
 
+import { Analytics } from "@vercel/analytics/next"
 import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import { 

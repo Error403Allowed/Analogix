@@ -70,6 +70,7 @@ interface Prefs {
   subjects?: string[];
   hobbyIds?: string[];
   hobbyDetails?: Record<string, string>;
+  hobbies?: string[];
   onboardingComplete?: boolean;
 }
 
