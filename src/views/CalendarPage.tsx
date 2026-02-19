@@ -120,12 +120,11 @@ const CalendarPage = () => {
   ).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#020617] pb-12 relative overflow-hidden">
-      {/* Dynamic Background Blobs */}
-      <div className="liquid-blob w-[500px] h-[500px] bg-primary/20 -top-48 -left-48 fixed blur-3xl opacity-20" />
-      <div className="liquid-blob w-[400px] h-[400px] bg-accent/20 bottom-20 right-10 fixed blur-3xl opacity-20" style={{ animationDelay: "-3s" }} />
+    <div className="min-h-screen pb-12 relative overflow-hidden">
+      <div className="liquid-blob w-[500px] h-[500px] bg-primary/20 -top-48 -left-48 fixed blur-3xl opacity-10" />
+      <div className="liquid-blob w-[400px] h-[400px] bg-accent/20 bottom-20 right-10 fixed blur-3xl opacity-10" style={{ animationDelay: "-3s" }} />
       
-      <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 pt-6 relative z-10">
+      <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 pt-4 relative z-10">
         {/* Header removed as it is in DashLayout */}
 
         <div className="mb-8">
@@ -179,20 +178,18 @@ const CalendarPage = () => {
                     <div className="grid grid-cols-12 gap-8">
                       {/* Original Month View */}
                       <div className="col-span-12 lg:col-span-4">
-                        <div className="glass-card p-6">
-                          <Calendar
-                            mode="single"
-                            selected={date}
-                            onSelect={(d) => d && setDate(d)}
-                            className="rounded-xl border-none p-0 scale-105 origin-top"
-                            modifiers={{
-                              event: (date) => events.some((e) => isSameDay(new Date(e.date), date))
-                            }}
-                            modifiersClassNames={{
-                              event: "bg-primary/10 font-bold text-primary relative after:content-[''] after:absolute after:bottom-1 after:left-1/2 after:-translate-x-1/2 after:w-1 after:h-1 after:bg-primary after:rounded-full"
-                            }}
-                          />
-                        </div>
+                        <Calendar
+                          mode="single"
+                          selected={date}
+                          onSelect={(d) => d && setDate(d)}
+                          className="rounded-xl border-none p-0 scale-105 origin-top"
+                          modifiers={{
+                            event: (date) => events.some((e) => isSameDay(new Date(e.date), date))
+                          }}
+                          modifiersClassNames={{
+                            event: "bg-primary/10 font-bold text-primary relative after:content-[''] after:absolute after:bottom-1 after:left-1/2 after:-translate-x-1/2 after:w-1 after:h-1 after:bg-primary after:rounded-full"
+                          }}
+                        />
                       </div>
                       <div className="col-span-12 lg:col-span-8 space-y-4">
                         <div className="flex items-center justify-between mb-4">

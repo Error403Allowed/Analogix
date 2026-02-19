@@ -18,7 +18,7 @@ export default function DashLayout({ children }: { children: React.ReactNode }) 
   const pageTitle = pathname.slice(1).charAt(0).toUpperCase() + pathname.slice(2);
 
   return (
-    <SidebarProvider>
+    <SidebarProvider defaultOpen={false}>
       <div className="flex min-h-screen w-full bg-background overflow-hidden font-sans">
         <AppSidebar />
         <SidebarInset className="flex flex-col flex-1 min-w-0 bg-transparent relative">
