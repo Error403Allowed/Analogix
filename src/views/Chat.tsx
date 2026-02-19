@@ -26,6 +26,58 @@ import { SUBJECT_CATALOG, getSubjectDescription } from "@/constants/subjects";
 import { buildInterestList, HOBBY_OPTIONS } from "@/utils/interests";
 import { getStoredMoodId } from "@/utils/mood";
 
+// Splits AI response into { thinking, response } based on <think>...</think> tags
+const parseThinkingContent = (content: string): { thinking: string | null; response: string } => {
+  const match = content.match(/^<think>([\s\S]*?)<\/think>\s*/);
+  if (match) {
+    return { thinking: match[1].trim(), response: content.slice(match[0].length).trim() };
+  }
+  return { thinking: null, response: content };
+};
+
+// Collapsible thinking block — like DeepSeek / Claude's reasoning UI
+const ThinkingBlock = ({ content }: { content: string }) => {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="mb-3">
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className="flex items-center gap-1.5 text-muted-foreground/50 hover:text-muted-foreground/80 transition-colors mb-1.5"
+      >
+        <motion.svg
+          animate={{ rotate: open ? 90 : 0 }}
+          transition={{ duration: 0.18 }}
+          width="10" height="10" viewBox="0 0 10 10" fill="currentColor"
+        >
+          <path d="M3 1.5l4 3.5-4 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+        </motion.svg>
+        <span className="text-[11px] font-medium select-none tracking-wide">
+          {open ? "Hide thinking" : "Show thinking"}
+        </span>
+      </button>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            key="thinking-body"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            <div className="pl-3 border-l-2 border-border/40">
+              <p className="text-xs text-muted-foreground/55 italic whitespace-pre-wrap leading-relaxed">
+                {content}
+              </p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
 // Typewriter animation component for AI messages - uses refs to prevent restart on parent re-renders
 const TypewriterMessage = ({ 
   content, 
@@ -584,12 +636,12 @@ const Chat = () => {
         {!selectedSubject ? (
           /* Subject Selection - refined cards */
           <motion.div
-            className="flex-1 flex flex-col items-center justify-center py-8"
+            className="flex-1 flex flex-col items-center justify-center py-2"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.4 }}
           >
-            <div className="text-center mb-10">
+            <div className="text-center mb-6">
               <h2 className="text-2xl sm:text-3xl font-semibold text-foreground mb-2 tracking-tight">
                 <TypewriterText text="What shall we explore today?" delay={150} />
               </h2>
@@ -753,6 +805,10 @@ const Chat = () => {
                           )}
                           {message.role === "assistant" ? (
                             <>
+                              {(() => {
+                                const { thinking } = parseThinkingContent(message.content);
+                                return thinking ? <ThinkingBlock content={thinking} /> : null;
+                              })()}
                               {message.imageUrl && (
                                 <a
                                   href={message.imageUrl}
@@ -769,7 +825,7 @@ const Chat = () => {
                                 </a>
                               )}
                               <TypewriterMessage 
-                                content={message.content} 
+                                content={parseThinkingContent(message.content).response} 
                                 isNew={message.isNew || false}
                                 shouldStop={stopTyping}
                                 onComplete={() => {
@@ -786,7 +842,7 @@ const Chat = () => {
                                   type="button"
                                   variant="ghost"
                                   size="icon"
-                                  onClick={() => handleCopy(message.content, message.id)}
+                                  onClick={() => handleCopy(parseThinkingContent(message.content).response, message.id)}
                                   aria-label="Copy response"
                                   title="Copy response"
                                   className="h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50"

@@ -72,6 +72,7 @@ import { Moon, Sun, Palette } from "lucide-react";
 import { useSidebar } from "@/components/ui/sidebar";
 import { moodProfiles, getStoredMoodId, applyMoodVisuals, MoodId } from "@/utils/mood";
 import { applyThemeByName } from "@/components/ThemeSelector";
+import { ThemeToggleButton } from "@/components/ThemeToggleButton"; // Import the new component
 
 export function AppSidebar() {
   const router = useRouter();
@@ -81,7 +82,12 @@ export function AppSidebar() {
   const [userData, setUserData] = useState<any>(null);
   const [selectedMood, setSelectedMood] = useState<MoodId>("focused");
   const [activeThemeName, setActiveThemeName] = useState("Classic Blue");
+  const [mounted, setMounted] = useState(false);
   const isCollapsed = state === "collapsed";
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     const loadPrefs = () => {
@@ -209,12 +215,14 @@ export function AppSidebar() {
         <SidebarGroup className="mt-8">
           <SidebarGroupLabel className="px-4 flex items-center justify-between text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 mb-3 group-data-[collapsible=icon]:hidden">
             <span>Themes</span>
-            <button 
-              onClick={() => setMode(isDark ? "light" : "dark")}
-              className="hover:text-primary transition-colors p-1"
-            >
-              {isDark ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
-            </button>
+            {mounted && (
+              <button 
+                onClick={() => setMode(isDark ? "light" : "dark")}
+                className="hover:text-primary transition-colors p-1"
+              >
+                {isDark ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
+              </button>
+            )}
           </SidebarGroupLabel>
           <SidebarGroupContent className="group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:justify-center">
             <SidebarMenu className="group-data-[collapsible=icon]:w-auto">
@@ -266,12 +274,10 @@ function ThemeSelectorSidebar({ activeThemeName, onSelect, isDark, setMode }: {
   if (isCollapsed) {
     return (
       <div className="flex flex-col items-center gap-4">
-        <button 
-          onClick={() => setMode(isDark ? "light" : "dark")}
-          className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-muted transition-colors text-muted-foreground"
-        >
-          {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-        </button>
+        <ThemeToggleButton
+          buttonClassName="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-muted transition-colors text-muted-foreground"
+          iconClassName="w-5 h-5"
+        />
         <Popover>
           <PopoverTrigger asChild>
             <button className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-muted transition-colors text-muted-foreground">

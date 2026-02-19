@@ -4,20 +4,16 @@ import { getMoodProfile } from "@/utils/mood";
 // CONFIGURATION: Where we send AI requests and which models to use
 // ============================================================================
 
-const HF_CHAT_URL =
-  process.env.HF_CHAT_URL || "https://router.huggingface.co/v1/chat/completions";
+const GROQ_CHAT_URL =
+  process.env.GROQ_CHAT_URL || "https://api.groq.com/openai/v1/chat/completions";
 
-// The main model we use for general questions
-const DEFAULT_MODEL = "Qwen/Qwen3-72B-Instruct";
-
-// Specialized models for specific types of questions:
-const CODING_MODEL = "Qwen/Qwen3-Coder-30B-A3B-Instruct";  // Best at programming questions
-const REASONING_MODEL = "meta-llama/Meta-Llama-3-8B-Instruct";  // Reasoning specialist, widely available
-const MATH_MODEL = "Qwen/Qwen3-72B-Instruct"; // Explicit math specialist, which is also our default
-// MATH_MODEL removed as it was not supported by the provider
+// Groq model lineup — all free tier, best-in-class per task
+const DEFAULT_MODEL   = "meta-llama/llama-4-maverick-17b-128e-instruct"; // Llama 4, 128K ctx, fast & smart
+const CODING_MODEL    = "meta-llama/llama-4-maverick-17b-128e-instruct"; // Maverick handles code well too
+const REASONING_MODEL = "qwen/qwen3-32b";                                // Groq's recommended reasoning model, native <think> tags
 
 // Type definition: what kind of question is the user asking?
-export type TaskType = "coding" | "reasoning" | "math_reasoning" | "default";
+export type TaskType = "coding" | "reasoning" | "default";
 
 // ============================================================================
 // SMART QUESTION DETECTION: How we figure out what type of question it is
@@ -46,8 +42,8 @@ const REASONING_KEYWORDS = [
 // ============================================================================
 
 const apiKeys = [
-  process.env.HF_API_KEY,
-  process.env.HF_API_KEY_2,
+  process.env.GROQ_API_KEY,
+  process.env.GROQ_API_KEY_2,
 ].filter((key): key is string => Boolean(key));
 
 let nextApiKeyIndex = 0;
@@ -83,7 +79,7 @@ const parseErrorMessage = async (response: Response) => {
 
 export const assertApiKeys = () => {
   if (apiKeys.length === 0) {
-    throw new Error("Missing HF_API_KEY");
+    throw new Error("Missing GROQ_API_KEY");
   }
 };
 
@@ -104,11 +100,8 @@ export const classifyTaskType = (
   if (subject === "computing") {
     return "coding";
   }
-  if (subject === "math") {
-    return "math_reasoning";
-  }
   
-  const reasoningSubjects = ["physics", "chemistry", "biology", "engineering"];
+  const reasoningSubjects = ["math", "physics", "chemistry", "biology", "engineering"];
   if (subject && reasoningSubjects.includes(subject)) {
     return "reasoning";
   }
@@ -142,15 +135,28 @@ const getModelsForTaskType = (taskType: TaskType): string[] => {
     case "coding":
       return [CODING_MODEL, DEFAULT_MODEL];
     case "reasoning":
-      // Prioritize the reasoning model, then default
       return [REASONING_MODEL, DEFAULT_MODEL];
-    case "math_reasoning":
-      // Prioritize the math model, then reasoning, then default
-      return [MATH_MODEL, REASONING_MODEL, DEFAULT_MODEL];
     case "default":
     default:
       return [DEFAULT_MODEL];
   }
+};
+
+// DeepSeek-R1 works best with instructions in user messages, not system prompts.
+// This merges any system message into the first user message.
+const foldSystemIntoUser = (
+  messages: Array<{ role: "system" | "user" | "assistant"; content: string }>
+) => {
+  const systemMsg = messages.find(m => m.role === "system");
+  if (!systemMsg) return messages;
+  const rest = messages.filter(m => m.role !== "system");
+  const firstUser = rest.find(m => m.role === "user");
+  if (!firstUser) return rest;
+  return rest.map(m =>
+    m === firstUser
+      ? { ...m, content: `${systemMsg.content}\n\n${m.content}` }
+      : m
+  );
 };
 
 // ============================================================================
@@ -172,10 +178,10 @@ export const callHfChat = async (
     const keyIndexBase = getNextApiKeyIndex();
     const activeKey = getApiKeyAtIndex(keyIndexBase, retryCount);
     
-    if (!activeKey) throw new Error("No HF API keys available");
+    if (!activeKey) throw new Error("No Groq API keys available");
 
     try {
-      const response = await fetch(HF_CHAT_URL, {
+      const response = await fetch(GROQ_CHAT_URL, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${activeKey}`,
@@ -183,7 +189,10 @@ export const callHfChat = async (
         },
         body: JSON.stringify({
           model,
-          messages: payload.messages,
+          // Qwen3-32b works best with instructions in user messages, not system prompts
+          messages: model === REASONING_MODEL
+            ? foldSystemIntoUser(payload.messages)
+            : payload.messages,
           max_tokens: payload.max_tokens,
           temperature: payload.temperature,
         }),
@@ -191,7 +200,7 @@ export const callHfChat = async (
 
       if (!response.ok) {
         const errorMessage = await parseErrorMessage(response);
-        throw new Error(`HF API Error: ${response.status} - ${errorMessage}`);
+        throw new Error(`Groq API Error: ${response.status} - ${errorMessage}`);
       }
 
       const data = await response.json();
@@ -200,7 +209,7 @@ export const callHfChat = async (
     } catch (error) {
       const message = formatError(error);
       lastError = error;
-      console.error(`[HF] Request failed for model ${model} (attempt ${retryCount + 1})`, message);
+      console.error(`[Groq] Request failed for model ${model} (attempt ${retryCount + 1})`, message);
       
       if (retryCount < apiKeys.length - 1) {
         return tryModelWithApiKey(model, retryCount + 1);
@@ -212,16 +221,16 @@ export const callHfChat = async (
   const taskModels = getModelsForTaskType(taskType);
   const modelsToTry = [...new Set([...taskModels, DEFAULT_MODEL])];
   
-  console.log(`[HF] Question type: "${taskType}" → Trying models:`, modelsToTry);
+  console.log(`[Groq] Question type: "${taskType}" → Trying models:`, modelsToTry);
 
   for (const model of modelsToTry) {
     try {
-      console.log(`[HF] Attempting with model: ${model}`);
+      console.log(`[Groq] Attempting with model: ${model}`);
       return await tryModelWithApiKey(model);
     } catch (error) {
       const message = formatError(error);
       lastError = error;
-      console.warn(`[HF] Model ${model} failed: ${message}. Trying next model...`);
+      console.warn(`[Groq] Model ${model} failed: ${message}. Trying next model...`);
       continue;
     }
   }
