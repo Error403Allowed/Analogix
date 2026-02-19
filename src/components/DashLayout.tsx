@@ -11,8 +11,9 @@ export default function DashLayout({ children }: { children: React.ReactNode }) 
   const isLanding = pathname === "/" || !pathname;
   const isOnboarding = pathname === "/onboarding";
   const isTimerFullscreen = pathname === "/timer";
+  const isChat = pathname === "/chat";
 
-  if (isLanding || isOnboarding || isTimerFullscreen) {
+  if (isLanding || isOnboarding || isTimerFullscreen || isChat) {
     return <>{children}</>;
   }
 

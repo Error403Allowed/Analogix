@@ -2,34 +2,41 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Play, Pause, RotateCcw, SkipForward, Check, ArrowLeft } from "lucide-react";
+import { Play, Pause, RotateCcw, SkipForward, Check, ArrowLeft, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { loadTimerState, saveTimerState, DEFAULT_SETTINGS } from "@/lib/timerStore";
-import type { TimerPhase, TimerSettings } from "@/lib/timerStore";
+import { loadTimerState, saveTimerState, MAX_SESSIONS_TARGET, getDefaultTimerState } from "@/lib/timerStore";
+import type { TimerPhase, TimerSettings, TimerState } from "@/lib/timerStore";
 
 const RING_R = 140;
 const CIRCUMFERENCE = 2 * Math.PI * RING_R;
 
 export default function TimerPage() {
   const router = useRouter();
-  const [settings, setSettings] = useState<TimerSettings>(DEFAULT_SETTINGS);
-  const [phase, setPhase] = useState<TimerPhase>("study");
-  const [timeLeft, setTimeLeft] = useState(DEFAULT_SETTINGS.study);
-  const [isActive, setIsActive] = useState(false);
-  const [sessionsCompleted, setSessionsCompleted] = useState(0);
+  const initialStateRef = useRef<TimerState>(getDefaultTimerState());
+  const initialState = initialStateRef.current;
+  const [settings, setSettings] = useState<TimerSettings>(initialState.settings);
+  const [phase, setPhase] = useState<TimerPhase>(initialState.phase);
+  const [timeLeft, setTimeLeft] = useState(initialState.timeLeft);
+  const [isActive, setIsActive] = useState(initialState.isActive);
+  const [sessionsCompleted, setSessionsCompleted] = useState(initialState.sessionsCompleted);
+  const [sessionsTarget, setSessionsTarget] = useState(initialState.sessionsTarget);
   const [editing, setEditing] = useState(false);
   const [editingPhase, setEditingPhase] = useState<TimerPhase>("study");
   const [editMins, setEditMins] = useState("25");
   const [editSecs, setEditSecs] = useState("00");
+  const [editingSessions, setEditingSessions] = useState(false);
+  const [editSessionsValue, setEditSessionsValue] = useState(String(initialState.sessionsTarget));
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const [hydrated, setHydrated] = useState(false);
   const phaseRef = useRef(phase);
   const settingsRef = useRef(settings);
-  // Guard: don't persist state until we've loaded from storage
-  const loadedRef = useRef(false);
+  const sessionsTargetRef = useRef(sessionsTarget);
   phaseRef.current = phase;
   settingsRef.current = settings;
+  sessionsTargetRef.current = sessionsTarget;
 
+  // Load persisted state after mount to avoid hydration mismatches
   useEffect(() => {
     const s = loadTimerState();
     setSettings(s.settings);
@@ -37,14 +44,15 @@ export default function TimerPage() {
     setTimeLeft(s.timeLeft);
     setIsActive(s.isActive);
     setSessionsCompleted(s.sessionsCompleted);
-    loadedRef.current = true;
+    setSessionsTarget(s.sessionsTarget);
+    setHydrated(true);
   }, []);
 
-  // Persist state on every relevant change — but only after initial load
+  // Persist state on every relevant change
   useEffect(() => {
-    if (!loadedRef.current) return;
-    saveTimerState({ phase, timeLeft, isActive, sessionsCompleted, settings, lastTick: Date.now() });
-  }, [phase, timeLeft, isActive, sessionsCompleted, settings]);
+    if (!hydrated) return;
+    saveTimerState({ phase, timeLeft, isActive, sessionsCompleted, sessionsTarget, settings, lastTick: Date.now() });
+  }, [phase, timeLeft, isActive, sessionsCompleted, sessionsTarget, settings, hydrated]);
 
   // Sync from widget tab
   useEffect(() => {
@@ -56,6 +64,7 @@ export default function TimerPage() {
         setTimeLeft(s.timeLeft);
         setIsActive(s.isActive);
         setSessionsCompleted(s.sessionsCompleted);
+        setSessionsTarget(s.sessionsTarget);
       }
     };
     window.addEventListener("storage", onStorage);
@@ -67,7 +76,7 @@ export default function TimerPage() {
     const next: TimerPhase = current === "study" ? "break" : "study";
     if (current === "study") setSessionsCompleted(s => s + 1);
     setPhase(next);
-    setIsActive(false);
+    setIsActive(current === "study");
     setTimeLeft(settingsRef.current[next]);
     toast.success(next === "study" ? "Break done — back to studying! 🎯" : "Study session done! Time for a break 🌿");
   }, []);
@@ -86,7 +95,10 @@ export default function TimerPage() {
   const reset = () => { setIsActive(false); setTimeLeft(settings[phase]); };
 
   const startEdit = () => {
-    setIsActive(false);
+    if (isActive) {
+      toast.message("Pause the timer to edit durations.");
+      return;
+    }
     setEditingPhase(phase);
     setEditMins(String(Math.floor(settings[phase] / 60)).padStart(2, "0"));
     setEditSecs(String(settings[phase] % 60).padStart(2, "0"));
@@ -102,6 +114,22 @@ export default function TimerPage() {
     setEditing(false);
   };
 
+  const startEditSessions = () => {
+    if (isActive) {
+      toast.message("Pause the timer to edit the session goal.");
+      return;
+    }
+    setEditingSessions(true);
+    setEditSessionsValue(String(sessionsTargetRef.current));
+  };
+
+  const confirmEditSessions = () => {
+    const parsed = parseInt(editSessionsValue, 10);
+    const next = Math.max(1, Math.min(MAX_SESSIONS_TARGET, Number.isFinite(parsed) ? parsed : 1));
+    setSessionsTarget(next);
+    setEditingSessions(false);
+  };
+
   const fmt = (n: number) => String(n).padStart(2, "0");
   const mins = Math.floor(timeLeft / 60);
   const secs = timeLeft % 60;
@@ -109,6 +137,8 @@ export default function TimerPage() {
   const dashOffset = CIRCUMFERENCE * (1 - progress);
   const color = phase === "study" ? "hsl(var(--primary))" : "#22c55e";
   const label = phase === "study" ? "Study" : "Break";
+  const cycleCount = sessionsTarget > 0 ? sessionsCompleted % sessionsTarget : 0;
+  const filledDots = cycleCount === 0 && sessionsCompleted > 0 ? sessionsTarget : cycleCount;
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center relative p-8">
@@ -167,10 +197,38 @@ export default function TimerPage() {
 
       {/* Session dots */}
       <div className="flex items-center gap-3 mb-10">
-        {[0,1,2,3].map(i => (
+        {Array.from({ length: sessionsTarget }, (_, i) => (
           <div key={i} className={cn("w-3 h-3 rounded-full transition-all",
-            i < sessionsCompleted % 4 ? "bg-primary scale-110" : "bg-muted-foreground/20")} />
+            i < filledDots ? "bg-primary scale-110" : "bg-muted-foreground/20")} />
         ))}
+        {editingSessions ? (
+          <div className="flex items-center gap-2 ml-2">
+            <input
+              className="w-16 text-center font-bold bg-transparent border-b-2 border-primary outline-none text-foreground tabular-nums text-lg"
+              value={editSessionsValue}
+              maxLength={2}
+              onChange={e => setEditSessionsValue(e.target.value.replace(/\D/g, ""))}
+              onKeyDown={e => e.key === "Enter" && confirmEditSessions()}
+              autoFocus
+            />
+            <button
+              onClick={confirmEditSessions}
+              className="text-muted-foreground hover:text-foreground transition-colors"
+              title="Save session goal"
+            >
+              <Check className="w-5 h-5" />
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={startEditSessions}
+            className="text-sm uppercase tracking-widest font-bold text-muted-foreground hover:text-foreground transition-colors ml-2 inline-flex items-center gap-2"
+            title="Edit total sessions goal"
+          >
+            Goal {sessionsTarget}
+            <Pencil className="w-4 h-4" />
+          </button>
+        )}
         {sessionsCompleted > 0 && (
           <span className="text-sm text-muted-foreground font-bold ml-2">{sessionsCompleted} sessions</span>
         )}

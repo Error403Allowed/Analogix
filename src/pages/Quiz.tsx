@@ -12,7 +12,6 @@ import { achievementStore } from "@/utils/achievementStore";
 import { generateQuiz } from "@/services/huggingface";
 import TypewriterText from "@/components/TypewriterText";
 import MarkdownRenderer from "@/components/MarkdownRenderer";
-import { getStoredMoodId } from "@/utils/mood";
 
 const Quiz = () => {
   const router = useRouter();
@@ -124,7 +123,6 @@ const Quiz = () => {
             grade: userPrefs.grade,
             hobbies: userPrefs.hobbies || [],
             subject: subject,
-            mood: getStoredMoodId()
           },
           numQuestionsTarget,
           { diversitySeed: `${baseSeed}-${attempt}`, avoidQuestions: avoidList }

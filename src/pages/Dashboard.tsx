@@ -39,8 +39,6 @@ import { statsStore } from "@/utils/statsStore";
 import { useAchievementChecker } from "@/hooks/useAchievementChecker";
 import { SUBJECT_CATALOG } from "@/constants/subjects";
 import { HOBBY_OPTIONS } from "@/utils/interests";
-import { applyThemeByName } from "@/components/ThemeSelector";
-import { getMoodProfile, getStoredMoodId, moodProfiles } from "@/utils/mood";
 
 type DashboardPreferences = {
   name?: string;
@@ -94,7 +92,6 @@ const Dashboard = () => {
   const [showQuizCreator, setShowQuizCreator] = useState(false);
   const [quizCreatorMode, setQuizCreatorMode] = useState<'custom' | 'learning'>('custom');
   const [recentAchievements, setRecentAchievements] = useState<DashboardAchievement[]>([]);
-  const [selectedMood, setSelectedMood] = useState(() => getStoredMoodId());
   const [showInsights, setShowInsights] = useState(false);
   
   // Start Achievement Sync
@@ -146,23 +143,9 @@ const Dashboard = () => {
     };
   }, [userName]);
 
-  useEffect(() => {
-    const profile = getMoodProfile(selectedMood);
-    applyThemeByName(profile.theme);
-    localStorage.setItem("mood-theme", selectedMood);
-    window.dispatchEvent(new Event("moodUpdated"));
-  }, [selectedMood]);
-
-  const moodProfile = getMoodProfile(selectedMood);
-
-  const moodOptions = useMemo(
-    () =>
-      Object.entries(moodProfiles).map(([id, profile]) => ({
-        id,
-        label: profile.label
-      })),
-    []
-  );
+  const calendarTitle = "Upcoming lessons";
+  const deadlinesTitle = "Due soon";
+  const tutorSubtitle = "Clear, focused explanations that keep you on track.";
 
   const masteryPercent = useMemo(() => {
     if (normalizedStats.quizzesDone > 0) {
@@ -303,7 +286,6 @@ const Dashboard = () => {
       
       <div className="w-full pt-3 relative z-10 flex-1 min-h-0 flex flex-col">
 
-        {/* Mood Bar */}
         <motion.div
           variants={itemVariants}
           initial="hidden"
@@ -312,26 +294,8 @@ const Dashboard = () => {
         >
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div>
-              <div className="text-sm font-semibold text-foreground">Mood bar</div>
-              <div className="text-xs text-muted-foreground">Pick a vibe. The UI and tutor adapt.</div>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {moodOptions.map((mood) => {
-                const isActive = selectedMood === mood.id;
-                return (
-                  <button
-                    key={mood.id}
-                    onClick={() => setSelectedMood(mood.id as keyof typeof moodProfiles)}
-                    className={`px-3 py-1.5 rounded-full border text-xs font-semibold transition-all ${
-                      isActive
-                        ? "border-primary bg-primary/10 text-primary shadow-sm"
-                        : "border-border/60 bg-muted/30 text-muted-foreground hover:text-foreground hover:border-primary/40"
-                    }`}
-                  >
-                    {mood.label}
-                  </button>
-                );
-              })}
+              <div className="text-sm font-semibold text-foreground">Insights</div>
+              <div className="text-xs text-muted-foreground">Personalized highlights from your activity.</div>
             </div>
             <Button
               variant="outline"
@@ -350,7 +314,7 @@ const Dashboard = () => {
             <motion.div variants={itemVariants} className="xl:col-span-3 dashboard-panel p-4 flex flex-col h-full min-h-0 overflow-hidden">
               <div className="flex items-center gap-2 text-sm font-semibold text-foreground mb-3">
                 <Calendar className="w-4 h-4 text-primary" />
-                {moodProfile.dashboard.calendarTitle}
+                {calendarTitle}
               </div>
               <div className="flex-1 min-h-0">
                  <CalendarWidget />
@@ -358,7 +322,7 @@ const Dashboard = () => {
               <div className="mt-3 pt-3 border-t border-border/40 flex-1 min-h-0">
                   <div className="flex items-center gap-2 text-sm font-semibold text-foreground mb-3">
                     <Target className="w-4 h-4 text-primary" />
-                    {moodProfile.dashboard.deadlinesTitle}
+                    {deadlinesTitle}
                   </div>
                   <div className="h-40 overflow-y-auto pr-1">
                     <ExamManager />
@@ -438,7 +402,7 @@ const Dashboard = () => {
                   AI Tutor
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {moodProfile.dashboard.tutorSubtitle}
+                  {tutorSubtitle}
                 </p>
                 <div className="mt-auto">
                   <Button

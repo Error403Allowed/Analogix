@@ -49,14 +49,18 @@ const TypewriterText = ({ text, className = "", delay = 0 }: TypewriterTextProps
   }, [isComplete]);
 
   return (
-    <span className={className}>
-      {displayedText}
-      <motion.span
-        animate={{ opacity: showCursor ? 1 : 0 }}
-        transition={{ duration: 0.1 }}
-        className="inline-block w-[3px] h-[1em] ml-0.5 bg-primary align-middle rounded-sm"
-        style={{ verticalAlign: "text-bottom" }}
-      />
+    <span className={`relative inline-block align-baseline overflow-hidden ${className}`}>
+      {/* Invisible full text reserves the correct height from the start, preventing layout shift */}
+      <span className="invisible select-none" aria-hidden="true">{text}</span>
+      {/* Visible animated text overlaid on top */}
+      <span className="absolute inset-0">
+        {displayedText}
+        <motion.span
+          animate={{ opacity: showCursor ? 1 : 0 }}
+          transition={{ duration: 0.1 }}
+          className="inline-block w-[3px] h-[0.9em] ml-0.5 bg-primary align-baseline rounded-sm"
+        />
+      </span>
     </span>
   );
 };

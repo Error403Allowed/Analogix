@@ -11,5 +11,4 @@ export interface UserContext {
   learningStyle: string;
   analogyIntensity?: number;
   responseLength?: number;
-  deepDive?: boolean;
 }

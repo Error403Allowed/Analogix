@@ -12,18 +12,58 @@ import ICSUploader from "./ICSUploader";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { Flag, Plus, X, AlertCircle } from "lucide-react";
+import { getTermInfo, getNextTerm, getStoredState } from "@/utils/termData";
 
 interface CalendarWidgetProps {
   streak?: number;
   streakLabel?: string;
 }
 
-type Tab = "day" | "upcoming" | "deadlines";
+type Tab = "day" | "deadlines";
 
 const PRIORITY_COLORS = {
   high:   { bar: "bg-destructive",  badge: "bg-destructive/10 text-destructive",  label: "High"   },
   medium: { bar: "bg-amber-500",    badge: "bg-amber-500/10 text-amber-400",      label: "Medium" },
   low:    { bar: "bg-primary",      badge: "bg-primary/10 text-primary",          label: "Low"    },
+};
+
+const TermBadge = () => {
+  const userState = getStoredState();
+  if (!userState) return null;
+  const now = new Date();
+  const info = getTermInfo(now, userState);
+  const next = !info ? getNextTerm(now, userState) : null;
+
+  if (info) {
+    const pct = Math.round((info.week / info.weeksTotal) * 100);
+    return (
+      <div className="px-3 py-2.5 rounded-2xl bg-primary/5 border border-primary/10 flex items-center justify-between gap-3">
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-primary/70">{info.term.label} · {userState}</p>
+          <p className="text-sm font-black text-foreground leading-tight">Week {info.week} <span className="text-muted-foreground font-medium">of {info.weeksTotal}</span></p>
+        </div>
+        <div className="flex flex-col items-end gap-1.5 shrink-0">
+          <span className="text-[10px] font-black text-primary">{pct}%</span>
+          <div className="w-20 h-1.5 bg-primary/10 rounded-full overflow-hidden">
+            <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${pct}%` }} />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (next) {
+    const daysUntil = Math.ceil((next.start.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    return (
+      <div className="px-3 py-2.5 rounded-2xl bg-muted/40 border border-border/50 flex items-center justify-between gap-3">
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground/60">School Holidays · {userState}</p>
+          <p className="text-sm font-black text-foreground leading-tight">{next.label} in {daysUntil} day{daysUntil !== 1 ? "s" : ""}</p>
+        </div>
+      </div>
+    );
+  }
+  return null;
 };
 
 const CalendarWidget = ({ streak = 0, streakLabel = "days" }: CalendarWidgetProps) => {
@@ -55,11 +95,6 @@ const CalendarWidget = ({ streak = 0, streakLabel = "days" }: CalendarWidgetProp
 
   const selectedDayEvents = events.filter(e => date && isSameDay(new Date(e.date), date));
 
-  const upcomingEvents = events
-    .filter(e => isToday(new Date(e.date)) || isFuture(new Date(e.date)))
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-    .slice(0, 8);
-
   const activeDeadlines = deadlines
     .filter(d => isToday(new Date(d.dueDate)) || isFuture(new Date(d.dueDate)))
     .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
@@ -78,7 +113,6 @@ const CalendarWidget = ({ streak = 0, streakLabel = "days" }: CalendarWidgetProp
 
   const tabConfig: { id: Tab; label: string; count?: number }[] = [
     { id: "day",       label: date && isToday(date) ? "Today" : date ? format(date, "MMM d") : "Day", count: selectedDayEvents.length || undefined },
-    { id: "upcoming",  label: "Upcoming",  count: upcomingEvents.length  || undefined },
     { id: "deadlines", label: "Deadlines", count: activeDeadlines.length || undefined },
   ];
 
@@ -97,6 +131,9 @@ const CalendarWidget = ({ streak = 0, streakLabel = "days" }: CalendarWidgetProp
           </button>
         </div>
       </div>
+
+      {/* Term badge */}
+      <TermBadge />
 
       <AnimatePresence mode="wait">
         {showUploader ? (
@@ -150,16 +187,8 @@ const CalendarWidget = ({ streak = 0, streakLabel = "days" }: CalendarWidgetProp
                       : <EmptyState text="No events for this day." />}
                   </motion.div>
                 )}
-                {tab === "upcoming" && (
-                  <motion.div key="upcoming" initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 8 }} transition={{ duration: 0.15 }}
-                    className="space-y-2 max-h-[160px] overflow-y-auto pr-1 custom-scrollbar">
-                    {upcomingEvents.length > 0
-                      ? upcomingEvents.map(e => <EventRow key={e.id} event={e} showDate={true} />)
-                      : <EmptyState text="No upcoming events." />}
-                  </motion.div>
-                )}
                 {tab === "deadlines" && (
-                  <motion.div key="deadlines" initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 8 }} transition={{ duration: 0.15 }}>
+                  <motion.div key="deadlines-real" initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 8 }} transition={{ duration: 0.15 }}>
                     {/* Add button */}
                     <div className="flex justify-end mb-2">
                       <button onClick={() => setShowAddForm(f => !f)}

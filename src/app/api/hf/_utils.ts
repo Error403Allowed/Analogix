@@ -7,8 +7,10 @@ const GROQ_CHAT_URL =
 
 // Groq model lineup — all free tier, best-in-class per task
 const DEFAULT_MODEL   = "meta-llama/llama-4-maverick-17b-128e-instruct"; // Llama 4, 128K ctx, fast & smart
+const DEFAULT_FALLBACK_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"; // Scout as fallback
 const CODING_MODEL    = "meta-llama/llama-4-maverick-17b-128e-instruct"; // Maverick handles code well too
-const REASONING_MODEL = "qwen/qwen3-32b";                                // Groq's recommended reasoning model, native <think> tags
+const REASONING_MODEL = "qwen/qwen3-32b";                                // Strong reasoning model
+const REASONING_FALLBACK_MODEL = "openai/gpt-oss-120b";                  // Fallback reasoning model
 
 // Type definition: what kind of question is the user asking?
 export type TaskType = "coding" | "reasoning" | "default";
@@ -133,10 +135,10 @@ const getModelsForTaskType = (taskType: TaskType): string[] => {
     case "coding":
       return [CODING_MODEL, DEFAULT_MODEL];
     case "reasoning":
-      return [REASONING_MODEL, DEFAULT_MODEL];
+      return [REASONING_MODEL, REASONING_FALLBACK_MODEL, DEFAULT_MODEL, DEFAULT_FALLBACK_MODEL];
     case "default":
     default:
-      return [DEFAULT_MODEL];
+      return [DEFAULT_MODEL, DEFAULT_FALLBACK_MODEL];
   }
 };
 

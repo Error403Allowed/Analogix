@@ -3,296 +3,432 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Calendar as CalendarIcon, Upload, FileUp, X, Clock, MapPin, Tag } from "lucide-react";
+import {
+  ArrowLeft, Upload, X, Tag, ChevronLeft, ChevronRight,
+  Plus, Flag, Clock, CalendarDays,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import { startOfWeek, endOfWeek, eachDayOfInterval, addWeeks, startOfMonth, endOfMonth, isSameMonth, isSameDay, format } from "date-fns";
-import ICSUploader from "@/components/ICSUploader";
-import TypewriterText from "@/components/TypewriterText";
 import { cn } from "@/lib/utils";
+import {
+  startOfWeek, endOfWeek, eachDayOfInterval, addWeeks, subWeeks,
+  startOfMonth, endOfMonth, eachDayOfInterval as eachDay,
+  addMonths, subMonths, isSameMonth, isSameDay, isToday,
+  format, formatDistanceToNow, isFuture,
+} from "date-fns";
+import ICSUploader from "@/components/ICSUploader";
 import { eventStore } from "@/utils/eventStore";
+import { deadlineStore, Deadline } from "@/utils/deadlineStore";
 import { AppEvent } from "@/types/events";
+import { getTermInfo, getNextTerm, getStoredState, AustralianState } from "@/utils/termData";
 
-type CalendarView = 'day' | 'week' | 'month' | 'term';
+type CalendarView = "month" | "week" | "day";
 
-const TERMS = [
-  { id: 1, label: "Term 1", start: new Date(2026, 0, 27), end: new Date(2026, 3, 10) },
-  { id: 2, label: "Term 2", start: new Date(2026, 3, 27), end: new Date(2026, 6, 3) },
-  { id: 3, label: "Term 3", start: new Date(2026, 6, 20), end: new Date(2026, 8, 25) },
-  { id: 4, label: "Term 4", start: new Date(2026, 9, 12), end: new Date(2026, 11, 18) },
-];
-
-const getTermInfo = (date: Date) => {
-  const term = TERMS.find(t => date >= t.start && date <= t.end);
-  if (!term) return null;
-  const daysDiff = Math.floor((date.getTime() - term.start.getTime()) / (1000 * 60 * 60 * 24));
-  const weekNum = Math.floor(daysDiff / 7) + 1;
-  return { ...term, weekNum };
+const PRIORITY_COLORS = {
+  high:   { bar: "bg-destructive",  pill: "bg-destructive/10 text-destructive border-destructive/20"   },
+  medium: { bar: "bg-amber-500",    pill: "bg-amber-500/10 text-amber-400 border-amber-500/20"         },
+  low:    { bar: "bg-primary",      pill: "bg-primary/10 text-primary border-primary/20"               },
 };
+
+// ── Sub-components ────────────────────────────────────────────────────────────
+
+const EventPill = ({ event, onClick }: { event: AppEvent; onClick?: () => void }) => (
+  <div
+    role="button"
+    tabIndex={0}
+    onClick={onClick}
+    onKeyDown={e => (e.key === "Enter" || e.key === " ") && onClick?.()}
+    className={cn(
+      "w-full text-left text-[10px] font-bold px-1.5 py-0.5 rounded-md truncate transition-all hover:brightness-110 cursor-pointer",
+      event.type === "exam" ? "bg-destructive/15 text-destructive" : "bg-primary/15 text-primary"
+    )}>
+    {format(new Date(event.date), "h:mma")} {event.title}
+  </div>
+);
+
+const EventCard = ({ event, onDelete }: { event: AppEvent; onDelete: () => void }) => (
+  <motion.div layout initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+    className="flex items-start gap-4 p-4 rounded-2xl bg-card border border-border/60 hover:border-border transition-all group">
+    <div className={cn("w-1 self-stretch rounded-full shrink-0 mt-0.5", event.type === "exam" ? "bg-destructive" : "bg-primary")} />
+    <div className="flex-1 min-w-0">
+      <div className="flex items-center gap-2 mb-1 flex-wrap">
+        <span className={cn("text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border",
+          event.type === "exam" ? "bg-destructive/10 text-destructive border-destructive/20" : "bg-primary/10 text-primary border-primary/20")}>
+          {event.type}
+        </span>
+        {event.subject && (
+          <span className="flex items-center gap-1 text-[10px] text-muted-foreground font-bold uppercase tracking-widest">
+            <Tag className="w-2.5 h-2.5" />{event.subject}
+          </span>
+        )}
+      </div>
+      <p className="text-sm font-bold text-foreground">{event.title}</p>
+      {event.description && <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{event.description}</p>}
+      <p className="text-[10px] text-muted-foreground/60 mt-1.5 font-medium">{format(new Date(event.date), "h:mm a")}</p>
+    </div>
+    <button onClick={onDelete}
+      className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive p-1 rounded-lg hover:bg-destructive/10 shrink-0">
+      <X className="w-3.5 h-3.5" />
+    </button>
+  </motion.div>
+);
+
+const DeadlineCard = ({ deadline, onDelete }: { deadline: Deadline; onDelete: () => void }) => {
+  const due = new Date(deadline.dueDate);
+  const colors = PRIORITY_COLORS[deadline.priority];
+  const dueSoon = (due.getTime() - Date.now()) < 1000 * 60 * 60 * 48;
+  return (
+    <motion.div layout initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+      className="flex items-start gap-4 p-4 rounded-2xl bg-card border border-border/60 hover:border-border transition-all group">
+      <div className={cn("w-1 self-stretch rounded-full shrink-0 mt-0.5", colors.bar)} />
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 mb-1">
+          <span className={cn("text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border", colors.pill)}>
+            {deadline.priority}
+          </span>
+          {deadline.subject && (
+            <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">{deadline.subject}</span>
+          )}
+        </div>
+        <p className="text-sm font-bold text-foreground">{deadline.title}</p>
+        <p className={cn("text-[10px] mt-1 font-bold",
+          isToday(due) ? "text-destructive" : dueSoon ? "text-amber-400" : "text-muted-foreground/60")}>
+          {isToday(due) ? "Due today" : formatDistanceToNow(due, { addSuffix: true })}
+        </p>
+      </div>
+      <button onClick={onDelete}
+        className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive p-1 rounded-lg hover:bg-destructive/10 shrink-0">
+        <X className="w-3.5 h-3.5" />
+      </button>
+    </motion.div>
+  );
+};
+
+const EmptyState = ({ icon: Icon, text }: { icon: React.ElementType; text: string }) => (
+  <div className="py-12 flex flex-col items-center gap-3 text-center">
+    <div className="w-12 h-12 rounded-2xl bg-muted/50 flex items-center justify-center">
+      <Icon className="w-5 h-5 text-muted-foreground/40" />
+    </div>
+    <p className="text-xs text-muted-foreground/60 font-medium max-w-[180px]">{text}</p>
+  </div>
+);
+
+
+// ── Main Page ─────────────────────────────────────────────────────────────────
 
 const CalendarPage = () => {
   const router = useRouter();
+  const [today] = useState(new Date());
   const [date, setDate] = useState<Date>(new Date());
+  const [view, setView] = useState<CalendarView>("month");
   const [events, setEvents] = useState<AppEvent[]>([]);
+  const [deadlines, setDeadlines] = useState<Deadline[]>([]);
   const [showUploader, setShowUploader] = useState(false);
-  const [view, setView] = useState<CalendarView>('month');
+  const [selectedEvent, setSelectedEvent] = useState<AppEvent | null>(null);
 
-  const renderEventCard = (event: AppEvent) => (
-    <motion.div
-      key={event.id}
-      layout
-      initial={{ opacity: 0, x: 20 }}
-      animate={{ opacity: 1, x: 0 }}
-      className="glass-card p-6 border-l-8 border-l-primary/40 flex flex-col md:flex-row md:items-center justify-between gap-6"
-    >
-      <div className="space-y-3">
-        <div className="flex items-center gap-3">
-           <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${
-             event.type === 'exam' ? 'bg-destructive/10 text-destructive' : 'bg-primary/10 text-primary'
-           }`}>
-             {event.type}
-           </span>
-           {event.subject && (
-             <span className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground">
-               <Tag className="w-3 h-3" />
-               {event.subject}
-             </span>
-           )}
-        </div>
-        <h3 className="text-xl font-bold text-foreground">{event.title}</h3>
-        <p className="text-sm text-muted-foreground leading-relaxed max-w-2xl">
-          {event.description || "No additional details provided."}
-        </p>
-      </div>
-
-      <div className="flex items-center gap-4 text-muted-foreground shrink-0 border-t md:border-t-0 md:border-l border-border pt-4 md:pt-0 md:pl-6">
-         <div className="flex flex-col items-center min-w-[60px]">
-            <Clock className="w-4 h-4 mb-2 text-primary/60" />
-            <span className="text-xs font-black text-foreground">
-              {format(new Date(event.date), 'h:mm a')}
-            </span>
-         </div>
-         <Button 
-           variant="ghost" 
-           size="icon" 
-           className="text-muted-foreground hover:text-destructive"
-           onClick={() => {
-             if(confirm("Delete this event?")) eventStore.remove(event.id);
-           }}
-         >
-           <X className="w-4 h-4" />
-         </Button>
-      </div>
-    </motion.div>
-  );
-
-  const renderNoEvents = () => (
-    <motion.div 
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="glass-card p-12 text-center border-dashed"
-    >
-       <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-          <Clock className="w-8 h-8 text-muted-foreground opacity-20" />
-       </div>
-       <h3 className="text-lg font-bold text-foreground mb-2">No plans yet!</h3>
-       <p className="text-muted-foreground max-w-xs mx-auto">
-          There are no exams or events scheduled for this time. Relax or add something new!
-       </p>
-    </motion.div>
-  );
-
-  const userPrefs =
-    typeof window !== "undefined"
-      ? JSON.parse(localStorage.getItem("userPreferences") || "{}")
-      : {};
-  const userName = userPrefs.name || "Student";
+  // Add deadline form
+  const [showAddDeadline, setShowAddDeadline] = useState(false);
+  const [dlTitle, setDlTitle] = useState("");
+  const [dlDate, setDlDate] = useState("");
+  const [dlSubject, setDlSubject] = useState("");
+  const [dlPriority, setDlPriority] = useState<Deadline["priority"]>("medium");
 
   useEffect(() => {
     const loadEvents = () => setEvents(eventStore.getAll());
-    loadEvents();
+    const loadDeadlines = () => setDeadlines(deadlineStore.getAll());
+    loadEvents(); loadDeadlines();
     window.addEventListener("eventsUpdated", loadEvents);
-    return () => window.removeEventListener("eventsUpdated", loadEvents);
+    window.addEventListener("deadlinesUpdated", loadDeadlines);
+    return () => {
+      window.removeEventListener("eventsUpdated", loadEvents);
+      window.removeEventListener("deadlinesUpdated", loadDeadlines);
+    };
   }, []);
 
-  const selectedDayEvents = events.filter((e) => 
-    date && isSameDay(new Date(e.date), date)
-  ).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  const userState = getStoredState();
+  const termInfo = userState ? getTermInfo(date, userState) : null;
+  const selectedDayEvents = events.filter(e => isSameDay(new Date(e.date), date))
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  const activeDeadlines = deadlines
+    .filter(d => isToday(new Date(d.dueDate)) || isFuture(new Date(d.dueDate)))
+    .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
+
+  const handleAddDeadline = () => {
+    if (!dlTitle.trim() || !dlDate) return;
+    deadlineStore.add({ title: dlTitle.trim(), dueDate: new Date(dlDate).toISOString(), subject: dlSubject.trim() || undefined, priority: dlPriority });
+    setDlTitle(""); setDlDate(""); setDlSubject(""); setDlPriority("medium");
+    setShowAddDeadline(false);
+  };
+
+  const navigate = (dir: 1 | -1) => {
+    if (view === "month") setDate(dir === 1 ? addMonths(date, 1) : subMonths(date, 1));
+    else if (view === "week") setDate(dir === 1 ? addWeeks(date, 1) : subWeeks(date, 1));
+    else setDate(prev => { const d = new Date(prev); d.setDate(d.getDate() + dir); return d; });
+  };
+
+  const weekDays = eachDayOfInterval({
+    start: startOfWeek(date, { weekStartsOn: 1 }),
+    end: endOfWeek(date, { weekStartsOn: 1 }),
+  });
+
+  const monthStart = startOfMonth(date);
+  const monthEnd = endOfMonth(date);
+  const calStart = startOfWeek(monthStart, { weekStartsOn: 1 });
+  const calEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
+  const calDays = eachDay({ start: calStart, end: calEnd });
+
+
+  // ── Nav label ────────────────────────────────────────────────────────────────
+  const navLabel = view === "month"
+    ? format(date, "MMMM yyyy")
+    : view === "week"
+    ? `${format(weekDays[0], "MMM d")} – ${format(weekDays[6], "MMM d, yyyy")}`
+    : format(date, "EEEE, MMMM d");
 
   return (
-    <div className="min-h-screen pb-12 relative overflow-hidden">
-      <div className="liquid-blob w-[500px] h-[500px] bg-primary/20 -top-48 -left-48 fixed blur-3xl opacity-10" />
-      <div className="liquid-blob w-[400px] h-[400px] bg-accent/20 bottom-20 right-10 fixed blur-3xl opacity-10" style={{ animationDelay: "-3s" }} />
-      
-      <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 pt-4 relative z-10">
-        {/* Header removed as it is in DashLayout */}
+    <div className="min-h-screen bg-background">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
 
-        <div className="mb-8">
-           <Button variant="ghost" className="mb-4 pl-0 hover:bg-transparent hover:text-primary gap-2" onClick={() => router.push("/dashboard")}>
-             <ArrowLeft className="w-4 h-4" /> Back to Dashboard
-           </Button>
+        {/* ── Top bar ── */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <button onClick={() => router.push("/dashboard")}
+              className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors text-sm font-bold">
+              <ArrowLeft className="w-4 h-4" /> Dashboard
+            </button>
+            <span className="text-border/60">·</span>
+            {termInfo
+              ? <span className="text-xs font-black uppercase tracking-widest text-muted-foreground">{termInfo.term.label} · Week {termInfo.week} · {userState}</span>
+              : userState
+              ? <span className="text-xs font-black uppercase tracking-widest text-muted-foreground/40">School Holidays · {userState}</span>
+              : <span className="text-xs font-black uppercase tracking-widest text-muted-foreground/40">Set your state in profile</span>}
+          </div>
+          <button onClick={() => setShowUploader(s => !s)}
+            className={cn("flex items-center gap-2 text-xs font-black uppercase tracking-widest px-3 py-1.5 rounded-xl border transition-all",
+              showUploader ? "bg-muted text-foreground border-border" : "text-primary border-primary/30 hover:bg-primary/5")}>
+            <Upload className="w-3.5 h-3.5" />
+            {showUploader ? "Close" : "Import .ics"}
+          </button>
+        </div>
 
-            <div className="flex flex-col md:flex-row justify-between items-start gap-6 mb-8">
-              <div>
-                <h1 className="text-4xl font-black text-foreground mb-2 flex items-center gap-3">
-                  <CalendarIcon className="w-8 h-8 text-primary" />
-                  <TypewriterText text="Calendar" delay={120} />
-                </h1>
-                <p className="text-muted-foreground">Term {getTermInfo(date)?.id || "?"} • Week {getTermInfo(date)?.weekNum || "?"}</p>
-              </div>
-              
-              <div className="flex flex-wrap gap-2">
-                <div className="flex bg-muted/50 p-1 rounded-2xl border border-border/50 mr-2">
-                  {(['day', 'week', 'month', 'term'] as CalendarView[]).map((v) => (
-                    <button
-                      key={v}
-                      onClick={() => setView(v)}
-                      className={cn(
-                        "px-4 py-1.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all",
-                        view === v ? "bg-background text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"
-                      )}
-                    >
-                      {v}
-                    </button>
-                  ))}
+        {showUploader && (
+          <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="max-w-lg">
+            <ICSUploader />
+          </motion.div>
+        )}
+
+        {/* ── View switcher + nav ── */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <button onClick={() => navigate(-1)} className="w-8 h-8 rounded-xl border border-border flex items-center justify-center hover:bg-muted transition-colors">
+              <ChevronLeft className="w-4 h-4 text-muted-foreground" />
+            </button>
+            <button onClick={() => setDate(new Date())} className="px-3 py-1.5 rounded-xl border border-border text-xs font-black uppercase tracking-widest text-muted-foreground hover:bg-muted transition-colors">
+              Today
+            </button>
+            <button onClick={() => navigate(1)} className="w-8 h-8 rounded-xl border border-border flex items-center justify-center hover:bg-muted transition-colors">
+              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            </button>
+            <h2 className="text-lg font-black text-foreground ml-2">{navLabel}</h2>
+          </div>
+          <div className="flex bg-muted/50 p-1 rounded-xl border border-border/50">
+            {(["month", "week", "day"] as CalendarView[]).map(v => (
+              <button key={v} onClick={() => setView(v)}
+                className={cn("px-4 py-1.5 rounded-lg text-xs font-black uppercase tracking-widest transition-all",
+                  view === v ? "bg-background text-primary shadow-sm" : "text-muted-foreground hover:text-foreground")}>
+                {v}
+              </button>
+            ))}
+          </div>
+        </div>
+
+
+        {/* ── Main grid: calendar + sidebar ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-6">
+
+          {/* ── Calendar panel ── */}
+          <AnimatePresence mode="wait">
+            <motion.div key={view} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.18 }}
+              className="rounded-2xl border border-border bg-card overflow-hidden">
+
+              {/* MONTH VIEW */}
+              {view === "month" && (
+                <div>
+                  <div className="grid grid-cols-7 border-b border-border">
+                    {["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map(d => (
+                      <div key={d} className="py-3 text-center text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">{d}</div>
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-7">
+                    {calDays.map((day, i) => {
+                      const dayEvents = events.filter(e => isSameDay(new Date(e.date), day));
+                      const inMonth = isSameMonth(day, date);
+                      const isSelected = isSameDay(day, date);
+                      const isTod = isToday(day);
+                      return (
+                        <div
+                          key={i}
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => setDate(day)}
+                          onKeyDown={e => (e.key === "Enter" || e.key === " ") && setDate(day)}
+                          className={cn(
+                            "min-h-[100px] p-2 text-left border-b border-r border-border/40 transition-colors hover:bg-muted/30 flex flex-col gap-1 cursor-pointer",
+                            !inMonth && "opacity-30",
+                            isSelected && "bg-primary/5",
+                            (i + 1) % 7 === 0 && "border-r-0",
+                          )}>
+                          <span className={cn(
+                            "text-xs font-black w-7 h-7 flex items-center justify-center rounded-full transition-colors",
+                            isTod ? "bg-primary text-primary-foreground" : isSelected ? "text-primary" : "text-foreground",
+                          )}>{format(day, "d")}</span>
+                          <div className="flex flex-col gap-0.5 w-full">
+                            {dayEvents.slice(0, 3).map(e => <EventPill key={e.id} event={e} onClick={() => { setDate(day); setSelectedEvent(e); }} />)}
+                            {dayEvents.length > 3 && (
+                              <span className="text-[9px] text-muted-foreground font-bold pl-1">+{dayEvents.length - 3} more</span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-                <Button 
-                  variant="outline" 
-                  className="gap-2 rounded-2xl glass"
-                  onClick={() => setShowUploader(!showUploader)}
-                >
-                  <Upload className="w-4 h-4" />
-                  {showUploader ? "View Calendar" : "Import"}
-                </Button>
+              )}
+
+              {/* WEEK VIEW */}
+              {view === "week" && (
+                <div>
+                  <div className="grid grid-cols-7 border-b border-border">
+                    {weekDays.map(day => {
+                      const isTod = isToday(day);
+                      const isSelected = isSameDay(day, date);
+                      return (
+                        <button key={day.toISOString()} onClick={() => setDate(day)}
+                          className={cn("py-4 flex flex-col items-center gap-1 transition-colors hover:bg-muted/30", isSelected && "bg-primary/5")}>
+                          <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">{format(day, "EEE")}</span>
+                          <span className={cn("text-lg font-black w-9 h-9 flex items-center justify-center rounded-full",
+                            isTod ? "bg-primary text-primary-foreground" : isSelected ? "text-primary" : "text-foreground")}>
+                            {format(day, "d")}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className="grid grid-cols-7 min-h-[400px]">
+                    {weekDays.map(day => {
+                      const dayEvents = events.filter(e => isSameDay(new Date(e.date), day));
+                      const isSelected = isSameDay(day, date);
+                      return (
+                        <div key={day.toISOString()} onClick={() => setDate(day)}
+                          className={cn("p-2 border-r border-border/40 last:border-r-0 space-y-1 cursor-pointer hover:bg-muted/20 transition-colors", isSelected && "bg-primary/5")}>
+                          {dayEvents.map(e => <EventPill key={e.id} event={e} />)}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* DAY VIEW */}
+              {view === "day" && (
+                <div className="p-6">
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 mb-1">{format(date, "EEEE")}</p>
+                      <h3 className="text-3xl font-black text-foreground">{format(date, "MMMM d, yyyy")}</h3>
+                    </div>
+                    <span className="text-xs font-black uppercase tracking-widest px-3 py-1.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                      {selectedDayEvents.length} event{selectedDayEvents.length !== 1 ? "s" : ""}
+                    </span>
+                  </div>
+                  <div className="space-y-3">
+                    {selectedDayEvents.length > 0
+                      ? selectedDayEvents.map(e => <EventCard key={e.id} event={e} onDelete={() => { if (confirm("Delete event?")) eventStore.remove(e.id); }} />)
+                      : <EmptyState icon={CalendarDays} text="Nothing scheduled for this day." />}
+                  </div>
+                </div>
+              )}
+
+            </motion.div>
+          </AnimatePresence>
+
+
+          {/* ── Right sidebar ── */}
+          <div className="space-y-4">
+
+            {/* Selected day events (only shows in month/week view) */}
+            {view !== "day" && (
+              <div className="rounded-2xl border border-border bg-card p-4">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">{format(date, "EEEE")}</p>
+                    <p className="text-sm font-black text-foreground">{format(date, "MMMM d")}</p>
+                  </div>
+                  <span className="text-[10px] font-black px-2 py-1 rounded-full bg-muted text-muted-foreground">
+                    {selectedDayEvents.length} event{selectedDayEvents.length !== 1 ? "s" : ""}
+                  </span>
+                </div>
+                <div className="space-y-2">
+                  {selectedDayEvents.length > 0
+                    ? selectedDayEvents.map(e => <EventCard key={e.id} event={e} onDelete={() => { if (confirm("Delete?")) eventStore.remove(e.id); }} />)
+                    : <EmptyState icon={Clock} text="Nothing on this day." />}
+                </div>
+              </div>
+            )}
+
+            {/* Deadlines */}
+            <div className="rounded-2xl border border-border bg-card p-4">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <Flag className="w-3.5 h-3.5 text-primary" />
+                  <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Deadlines</span>
+                </div>
+                <button onClick={() => setShowAddDeadline(s => !s)}
+                  className={cn("flex items-center gap-1 text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full transition-all",
+                    showAddDeadline ? "bg-muted text-foreground" : "bg-primary/10 text-primary hover:bg-primary/20")}>
+                  <Plus className="w-3 h-3" />{showAddDeadline ? "Cancel" : "Add"}
+                </button>
+              </div>
+
+              <AnimatePresence>
+                {showAddDeadline && (
+                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden mb-3">
+                    <div className="p-3 rounded-xl bg-muted/30 border border-border/60 space-y-2">
+                      <input value={dlTitle} onChange={e => setDlTitle(e.target.value)} placeholder="Title..."
+                        className="w-full bg-transparent text-xs font-semibold text-foreground placeholder:text-muted-foreground/60 outline-none border-b border-border/30 pb-1.5" />
+                      <div className="flex gap-2">
+                        <input type="date" value={dlDate} onChange={e => setDlDate(e.target.value)}
+                          className="flex-1 bg-transparent text-xs text-foreground outline-none border border-border/40 rounded-lg px-2 py-1.5" />
+                        <input value={dlSubject} onChange={e => setDlSubject(e.target.value)} placeholder="Subject"
+                          className="flex-1 bg-transparent text-xs placeholder:text-muted-foreground/60 text-foreground outline-none border border-border/40 rounded-lg px-2 py-1.5" />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div className="flex gap-1">
+                          {(["high","medium","low"] as Deadline["priority"][]).map(p => (
+                            <button key={p} onClick={() => setDlPriority(p)}
+                              className={cn("text-[9px] font-black uppercase px-2 py-0.5 rounded-full border transition-all",
+                                dlPriority === p ? PRIORITY_COLORS[p].pill : "border-border text-muted-foreground hover:text-foreground")}>
+                              {p}
+                            </button>
+                          ))}
+                        </div>
+                        <button onClick={handleAddDeadline} disabled={!dlTitle.trim() || !dlDate}
+                          className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full bg-primary text-primary-foreground disabled:opacity-40 transition-all hover:bg-primary/90">
+                          Save
+                        </button>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              <div className="space-y-2 max-h-[360px] overflow-y-auto">
+                {activeDeadlines.length > 0
+                  ? activeDeadlines.map(d => <DeadlineCard key={d.id} deadline={d} onDelete={() => deadlineStore.remove(d.id)} />)
+                  : <EmptyState icon={Flag} text="No upcoming deadlines." />}
               </div>
             </div>
 
-           <div className="grid grid-cols-1 gap-8">
-              {showUploader ? (
-                <div className="max-w-xl mx-auto w-full">
-                  <ICSUploader />
-                </div>
-              ) : (
-                <div className="space-y-6">
-                  {view === 'month' && (
-                    <div className="grid grid-cols-12 gap-8">
-                      {/* Original Month View */}
-                      <div className="col-span-12 lg:col-span-4">
-                        <Calendar
-                          mode="single"
-                          selected={date}
-                          onSelect={(d) => d && setDate(d)}
-                          className="rounded-xl border-none p-0 scale-105 origin-top"
-                          modifiers={{
-                            event: (date) => events.some((e) => isSameDay(new Date(e.date), date))
-                          }}
-                          modifiersClassNames={{
-                            event: "bg-primary/10 font-bold text-primary relative after:content-[''] after:absolute after:bottom-1 after:left-1/2 after:-translate-x-1/2 after:w-1 after:h-1 after:bg-primary after:rounded-full"
-                          }}
-                        />
-                      </div>
-                      <div className="col-span-12 lg:col-span-8 space-y-4">
-                        <div className="flex items-center justify-between mb-4">
-                           <h2 className="text-2xl font-black text-foreground">{format(date, 'MMMM do, yyyy')}</h2>
-                           <div className="bg-primary/10 text-primary px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest">
-                             {selectedDayEvents.length} Events
-                           </div>
-                        </div>
-                        {selectedDayEvents.length > 0 ? (
-                           selectedDayEvents.map(renderEventCard)
-                        ) : (
-                           renderNoEvents()
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {view === 'week' && (
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-7 gap-4">
-                        {eachDayOfInterval({
-                          start: startOfWeek(date, { weekStartsOn: 1 }),
-                          end: endOfWeek(date, { weekStartsOn: 1 })
-                        }).map((day) => {
-                          const dayEvents = events.filter(e => isSameDay(new Date(e.date), day));
-                          const isToday = isSameDay(day, new Date());
-                          const isSelected = isSameDay(day, date);
-                          
-                          return (
-                            <div 
-                              key={day.toISOString()} 
-                              className={cn(
-                                "glass-card p-4 min-h-[300px] flex flex-col cursor-pointer transition-all",
-                                isSelected ? "ring-2 ring-primary" : "hover:border-primary/30",
-                                isToday && "bg-primary/5"
-                              )}
-                              onClick={() => setDate(day)}
-                            >
-                              <div className="text-center mb-4">
-                                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{format(day, 'EEE')}</p>
-                                <p className={cn("text-2xl font-black", isToday ? "text-primary" : "text-foreground")}>{format(day, 'd')}</p>
-                              </div>
-                              <div className="flex-1 space-y-2">
-                                {dayEvents.map(e => (
-                                  <div key={e.id} className="text-[10px] p-2 rounded-lg bg-primary/10 border border-primary/20 line-clamp-2">
-                                    <span className="font-black block uppercase tracking-tighter">{format(new Date(e.date), 'h:mm a')}</span>
-                                    {e.title}
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-
-                  {view === 'day' && (
-                    <div className="max-w-4xl mx-auto space-y-6">
-                       <div className="text-center mb-8">
-                          <h2 className="text-4xl font-black text-foreground mb-2">{format(date, 'EEEE, MMMM do')}</h2>
-                          <p className="text-muted-foreground font-medium uppercase tracking-[0.2em]">Daily Schedule</p>
-                       </div>
-                       <div className="space-y-4">
-                          {selectedDayEvents.length > 0 ? (
-                            selectedDayEvents.map(renderEventCard)
-                          ) : (
-                            renderNoEvents()
-                          )}
-                       </div>
-                    </div>
-                  )}
-
-                  {view === 'term' && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                       {TERMS.map(term => {
-                         const currentTerm = getTermInfo(date);
-                         const isCurrent = currentTerm?.id === term.id;
-
-                         return (
-                           <div key={term.id} className={cn("glass-card p-6 border-t-4", isCurrent ? "border-t-primary" : "border-t-muted")}>
-                              <div className="flex items-center justify-between mb-4">
-                                 <div>
-                                    <h3 className="text-xl font-black text-foreground">{term.label}</h3>
-                                    <p className="text-xs text-muted-foreground">{format(term.start, 'MMM d')} - {format(term.end, 'MMM d')}</p>
-                                 </div>
-                                 {isCurrent && <span className="bg-primary/10 text-primary px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">Active</span>}
-                              </div>
-                              <div className="grid grid-cols-5 gap-2">
-                                 {Array.from({ length: 10 }).map((_, i) => (
-                                   <div key={i} className="aspect-square rounded-xl bg-muted/30 border border-border/50 flex items-center justify-center text-[10px] font-black text-muted-foreground hover:bg-primary/5 hover:text-primary transition-colors cursor-pointer">
-                                      W{i+1}
-                                   </div>
-                                 ))}
-                              </div>
-                           </div>
-                         );
-                       })}
-                    </div>
-                  )}
-                </div>
-              )}
-           </div>
+          </div>
         </div>
       </div>
     </div>

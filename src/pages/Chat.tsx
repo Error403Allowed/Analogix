@@ -8,7 +8,6 @@ import {
   Send,
   Brain,
   Lightbulb,
-  Zap,
   RefreshCw,
   Square,
   Copy,
@@ -22,8 +21,7 @@ import { statsStore } from "@/utils/statsStore";
 import MarkdownRenderer from "@/components/MarkdownRenderer";
 import TypewriterText from "@/components/TypewriterText";
 import { SUBJECT_CATALOG, getSubjectDescription } from "@/constants/subjects";
-import { buildInterestList, HOBBY_OPTIONS } from "@/utils/interests";
-import { getStoredMoodId } from "@/utils/mood";
+import { buildInterestList } from "@/utils/interests";
 
 // Typewriter animation component for AI messages - uses refs to prevent restart on parent re-renders
 const TypewriterMessage = ({ 
@@ -205,10 +203,8 @@ const Chat = () => {
 
   // ANALOGY MODE: Toggle analogies on/off (session-only)
   const [analogyModeEnabled, setAnalogyModeEnabled] = useState(true);
-  const [analogyAnchor, setAnalogyAnchor] = useState<string | null>(null);
 
   // DEEP DIVE: Show technical breakdown of the analogy
-  const [deepDiveEnabled, setDeepDiveEnabled] = useState(false);
 
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const copyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -232,10 +228,11 @@ const Chat = () => {
 
   const latestAssistantId = [...messages].reverse().find((m) => m.role === "assistant")?.id;
 
-  const genericInterestLabels = useMemo(
-    () => new Set(HOBBY_OPTIONS.map((hobby) => hobby.label.toLowerCase())),
-    []
-  );
+  const findAnchor = useCallback((text: string) => {
+    const lower = text.toLowerCase();
+    const matched = userHobbies.find((interest) => lower.includes(interest.toLowerCase()));
+    return matched || null;
+  }, [userHobbies]);
 
   const updateScrollButton = useCallback(() => {
     const el = scrollContainerRef.current;
@@ -279,11 +276,9 @@ const Chat = () => {
     hobbies: userHobbies,
     grade: userPrefs.grade,
     learningStyle: userPrefs.learningStyle,
-    mood: getStoredMoodId(),
     responseLength,
-    analogyIntensity: analogyModeEnabled ? 2 : 0,
-    analogyAnchor: overrideAnchor ?? analogyAnchor ?? undefined,
-    deepDive: deepDiveEnabled
+    analogyIntensity: analogyModeEnabled ? 1 : 0,
+    analogyAnchor: overrideAnchor ?? undefined
   }), [
     selectedSubject,
     userSubjects,
@@ -291,9 +286,7 @@ const Chat = () => {
     userPrefs.grade,
     userPrefs.learningStyle,
     responseLength,
-    analogyModeEnabled,
-    analogyAnchor,
-    deepDiveEnabled
+    analogyModeEnabled
   ]);
 
   const handleCopy = useCallback(async (text: string, id: string) => {
@@ -356,7 +349,11 @@ const Chat = () => {
     setStopTyping(false);
 
     try {
-      const aiResponse = await getHuggingFaceCompletion(history, buildContext(analogyAnchor));
+      const previousUser = messages[targetIndex - 1]?.role === "user"
+        ? messages[targetIndex - 1]?.content
+        : "";
+      const explicitAnchor = previousUser ? findAnchor(previousUser) : null;
+      const aiResponse = await getHuggingFaceCompletion(history, buildContext(explicitAnchor));
 
       setMessages((prev) => prev.map((m) => (
         m.id === messageId
@@ -416,7 +413,6 @@ const Chat = () => {
   // PICKING A TOPIC: This runs when you select a subject icon.
   const handleSubjectSelect = (subjectId: string) => {
     setSelectedSubject(subjectId);
-    setAnalogyAnchor(null);
     const subject = subjects.find(s => s.id === subjectId);
     const subjectLabel = subject?.label || subjectId;
     
@@ -437,24 +433,10 @@ const Chat = () => {
       content: input
     };
 
-    const findAnchor = (text: string) => {
-      const lower = text.toLowerCase();
-      const matched = userHobbies.find((interest) => lower.includes(interest.toLowerCase()));
-      if (matched) return matched;
-      const specific = userHobbies.find(
-        (interest) => !genericInterestLabels.has(interest.toLowerCase())
-      );
-      return specific || userHobbies[0] || null;
-    };
-
     const anchorForRequest =
       analogyModeEnabled && userHobbies.length > 0
-        ? analogyAnchor || findAnchor(input)
+        ? findAnchor(input)
         : null;
-
-    if (anchorForRequest && anchorForRequest !== analogyAnchor) {
-      setAnalogyAnchor(anchorForRequest);
-    }
 
     setMessages(prev => [...prev, userMessage]);
     setInput("");
@@ -516,10 +498,10 @@ const Chat = () => {
     const subjectLabel = subjects.find(s => s.id === selectedSubject)?.label || selectedSubject;
     const usedTopics = messages.filter(m => m.analogy).map(m => m.analogy).filter(Boolean);
     
-    const context = buildContext(analogyAnchor);
+    const context = buildContext(null);
 
     const avoidText = usedTopics.length > 0 ? `Avoid repeating these topics: ${usedTopics.join(", ")}.` : "";
-    const anchorText = analogyAnchor ? `Use ONLY ${analogyAnchor} as the analogy source.` : "";
+    const anchorText = "";
     const aiPrompt = [{ 
       role: "user" as const, 
       content: `Introduce a NEW, interesting concept in ${subjectLabel} using an analogy that references a specific moment, scene, or character from my interests (${userHobbies.join(", ")})—not generic settings. ${anchorText} ${avoidText}` 
@@ -553,7 +535,7 @@ const Chat = () => {
 
   return (
     <div className="min-h-[100dvh] flex flex-col relative overflow-hidden bg-background">
-      <div className="flex-1 flex flex-col max-w-3xl mx-auto w-full px-3 sm:px-6 py-4 sm:py-6 relative">
+      <div className="flex-1 flex flex-col max-w-4xl mx-auto w-full px-3 sm:px-6 py-4 sm:py-6 relative">
         {/* Simple header */}
         <motion.header
           className="flex items-center justify-between py-2 sm:py-3 px-3 sm:px-4 -mx-3 sm:-mx-6 mb-3 sm:mb-4 border-b border-border"
@@ -637,7 +619,6 @@ const Chat = () => {
                 size="sm"
                 onClick={() => {
                   setSelectedSubject(null);
-                  setAnalogyAnchor(null);
                   setMessages([]);
                 }}
                 className="gap-2 rounded-md h-8 px-4 text-xs font-medium"
@@ -672,18 +653,6 @@ const Chat = () => {
                 Analogy: {analogyModeEnabled ? "On" : "Off"}
               </Button>
 
-              <Button
-                variant={deepDiveEnabled ? "default" : "outline"}
-                size="sm"
-                onClick={() => setDeepDiveEnabled((prev) => !prev)}
-                className="gap-2 rounded-md h-8 px-4 text-xs font-medium transition-all"
-                disabled={isInputLocked || !analogyModeEnabled}
-                aria-pressed={deepDiveEnabled}
-                title={!analogyModeEnabled ? "Enable Analogy first" : "Show technical mapping breakdown"}
-              >
-                <Zap className="w-3.5 h-3.5" />
-                Deep Dive: {deepDiveEnabled ? "On" : "Off"}
-              </Button>
 
               <div className="h-4 border-l border-border/50" />
               <div className="flex items-center gap-2">
@@ -723,22 +692,14 @@ const Chat = () => {
                         transition={{ type: "spring", stiffness: 300, damping: 28 }}
                         className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
                       >
-                        <div
-                          className={`max-w-[88%] sm:max-w-[85%] ${
-                            message.role === "user"
-                              ? "message-bubble-user"
-                              : "message-bubble-assistant"
-                          }`}
-                        >
-                          {message.role === "assistant" && (
+                        {message.role === "assistant" ? (
+                          <div className="max-w-[88%] sm:max-w-[85%] message-bubble-assistant">
                             <div className="flex items-center gap-2 mb-2.5">
                               <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
                                 <Lightbulb className="w-3 h-3 text-white" />
                               </div>
                               <span className="text-xs font-semibold text-primary">Quizzy</span>
                             </div>
-                          )}
-                          {message.role === "assistant" ? (
                             <>
                               {message.imageUrl && (
                                 <a
@@ -796,27 +757,27 @@ const Chat = () => {
                                 )}
                               </div>
                             </>
-                          ) : (
-                            <>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col items-end gap-2">
+                            <div className="max-w-full w-fit message-bubble-user">
                               <div className="whitespace-pre-wrap text-sm leading-relaxed">
                                 <MarkdownRenderer content={message.content} />
                               </div>
-                              <div className="mt-2 flex items-center justify-end">
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => handleCopy(message.content, message.id)}
-                                  aria-label="Copy prompt"
-                                  title="Copy prompt"
-                                  className="h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
-                                >
-                                  {copiedId === message.id ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                                </Button>
-                              </div>
-                            </>
-                          )}
-                        </div>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleCopy(message.content, message.id)}
+                              aria-label="Copy prompt"
+                              title="Copy prompt"
+                              className="h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+                            >
+                              {copiedId === message.id ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                            </Button>
+                          </div>
+                        )}
                       </motion.div>
                     );
                     })}

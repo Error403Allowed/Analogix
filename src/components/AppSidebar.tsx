@@ -19,6 +19,7 @@ import { useTheme } from "next-themes";
 import { useSidebar } from "@/components/ui/sidebar";
 import { applyThemeByName } from "@/components/ThemeSelector";
 import { themes } from "@/components/ThemeSelector";
+import ProfileSheet from "@/components/ProfileSheet";
 
 const mainItems = [
   { title: "Dashboard",    url: "/dashboard", icon: LayoutDashboard },
@@ -29,6 +30,8 @@ const mainItems = [
   { title: "Achievements", url: "/achievements", icon: Trophy        },
 ];
 
+// Small coloured dot showing current mood when sidebar is icon-only
+
 export function AppSidebar() {
   const router = useRouter();
   const pathname = usePathname();
@@ -38,6 +41,7 @@ export function AppSidebar() {
   const [activeThemeName, setActiveThemeName] = useState("Classic Blue");
   const [mounted, setMounted] = useState(false);
   const [themeOpen, setThemeOpen] = useState(true);
+  const [profileOpen, setProfileOpen] = useState(false);
   const isCollapsed = state === "collapsed";
   const isDark = resolvedTheme === "dark";
 
@@ -104,6 +108,10 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
+     
+
+        {/* Mood section removed */}
+
         {/* ── Colour Scheme ── */}
         {isCollapsed ? (
           <SidebarGroup className="mt-2">
@@ -138,13 +146,10 @@ export function AppSidebar() {
           </SidebarGroup>
         ) : (
           <SidebarGroup className="mt-2">
-            <div
-              role="button"
-              tabIndex={0}
+            <div role="button" tabIndex={0}
               onClick={() => setThemeOpen(o => !o)}
               onKeyDown={e => (e.key === "Enter" || e.key === " ") && setThemeOpen(o => !o)}
-              className="flex items-center justify-between w-full px-2 mb-2 group cursor-pointer"
-            >
+              className="flex items-center justify-between w-full px-2 mb-2 group cursor-pointer">
               <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 group-hover:text-muted-foreground transition-colors">Colour Scheme</span>
               <div className="flex items-center gap-1.5">
                 {mounted && (
@@ -184,19 +189,22 @@ export function AppSidebar() {
         <SidebarMenu className="w-full">
           <SidebarMenuItem className="flex justify-center">
             <SidebarMenuButton size="lg"
-              className="h-14 w-full flex items-center justify-start px-4 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0 hover:bg-primary/5 transition-all overflow-hidden">
+              onClick={() => setProfileOpen(true)}
+              className="h-14 w-full flex items-center justify-start px-4 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0 hover:bg-primary/5 transition-all overflow-hidden cursor-pointer">
               <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center shrink-0">
                 <User className="w-5 h-5 text-primary-foreground" />
               </div>
               <div className="flex-1 min-w-0 ml-3 group-data-[collapsible=icon]:hidden text-left overflow-hidden">
                 <p className="text-sm font-black text-foreground truncate">{name}</p>
-                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest opacity-60">Year {userData?.grade || "7-12"}</p>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest opacity-60">Year {userData?.grade || "?"} · {userData?.state || "Set state"} · Edit Profile</p>
               </div>
               <ChevronRight className="w-4 h-4 text-muted-foreground group-data-[collapsible=icon]:hidden mr-2 shrink-0" />
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
+
+      <ProfileSheet open={profileOpen} onOpenChange={setProfileOpen} />
     </Sidebar>
   );
 }

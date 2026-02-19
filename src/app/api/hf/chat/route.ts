@@ -16,11 +16,10 @@ export async function POST(request: Request) {
       analogyIntensity?: number;
       responseLength?: number;
       analogyAnchor?: string;
-      deepDive?: boolean;
     } = body.userContext || {};
 
     // How much should the AI use analogies? (0-5 scale)
-    const analogyIntensity = userContext?.analogyIntensity ?? 2;
+    const analogyIntensity = userContext?.analogyIntensity ?? 1;
     
     // How long should responses be? (1-5 scale)
     const responseLength = userContext?.responseLength ?? 3;
@@ -44,30 +43,80 @@ export async function POST(request: Request) {
       "Length 1/5: 1-2 sentences, <= 40 words. No extra fluff.",
       "Length 2/5: 2-3 sentences, <= 70 words. Focus on key points only.",
       "Length 3/5: 3-5 sentences, <= 110 words. Balanced explanation.",
-      "Length 4/5: 5-7 sentences, <= 160 words. Add depth and one example.",
-      "Length 5/5: 7-10 sentences, <= 220 words. Rich detail and multiple angles.",
+      "Length 4/5: 5-7 sentences, <= 170 words. Add depth and one example.",
+      "Length 5/5: 7-10 sentences, <= 230+ words. Rich detail and multiple angles.",
     ][responseLength - 1];
 
     // Get the user's hobbies/interests for making analogies
-    const allowedInterests = userContext?.hobbies?.length
-      ? userContext.hobbies.join(", ")
-      : "General";
-    const analogyAnchor = userContext?.analogyAnchor?.trim();
+    const interestList = userContext?.hobbies?.filter(Boolean) ?? [];
+    const allowedInterests = interestList.length > 0 ? interestList.join(", ") : "General";
+
+    const findExplicitInterest = (text: string, interests: string[]) => {
+      const lower = text.toLowerCase();
+      let best: { interest: string; index: number } | null = null;
+      for (const interest of interests) {
+        const idx = lower.indexOf(interest.toLowerCase());
+        if (idx >= 0 && (!best || idx < best.index)) {
+          best = { interest, index: idx };
+        }
+      }
+      return best?.interest ?? null;
+    };
+
+    const selectBestInterest = async (args: {
+      concept: string;
+      subject?: string;
+      interests: string[];
+    }) => {
+      if (!args.concept.trim() || args.interests.length === 0) return null;
+      const selectionPrompt = [
+        { role: "system" as const, content: "You are a strict classifier that selects the single best interest from a list for creating an analogy. Return exactly one item from the list. If none fit, return NONE." },
+        {
+          role: "user" as const,
+          content: `Concept: ${args.concept}\nSubject: ${args.subject || "unknown"}\nInterests: ${args.interests.join(", ")}\nReturn exactly one interest from the list or NONE.`
+        }
+      ];
+      const raw = await callHfChat(
+        { messages: selectionPrompt, max_tokens: 12, temperature: 0.2 },
+        "default"
+      );
+      const cleaned = raw.trim().replace(/^["'`]+|["'`]+$/g, "").split(/[\n\r]/)[0].trim();
+      if (!cleaned) return null;
+      if (/^none$/i.test(cleaned)) return null;
+      const lower = cleaned.toLowerCase();
+      const exact = args.interests.find((i) => i.toLowerCase() === lower);
+      if (exact) return exact;
+      const contained = args.interests.find((i) => lower.includes(i.toLowerCase()));
+      if (contained) return contained;
+      return null;
+    };
+
+    const latestUserMessage = [...messages].reverse().find((m) => m.role === "user")?.content || "";
+    const explicitFromMessage = latestUserMessage
+      ? findExplicitInterest(latestUserMessage, interestList)
+      : null;
+    const explicitFromContext = userContext?.analogyAnchor?.trim() || null;
+    const modelSelected = !explicitFromContext && !explicitFromMessage
+      ? await selectBestInterest({ concept: latestUserMessage, subject: userContext?.subjects?.[0], interests: interestList })
+      : null;
+    const analogyAnchor = explicitFromContext || explicitFromMessage || modelSelected || undefined;
 
     // Detailed instructions on how to use analogies
     const analogyInstructions =
       analogyIntensity === 0
         ? `ANALOGY MODE: OFF\\nUse no analogies. Explain directly, factually, and clearly. Do not reference hobbies or comparisons.`
-        : `1. ANALOGY-FIRST: Lead with the analogy rooted in their interests. Make it the foundation, not the afterthought.
+        : `1. ANALOGY-OPTIONAL: Use an analogy only when it improves clarity. If a direct explanation is already clear, skip the analogy.
    - For TV/Movies: Use specific moments, scenes, character quirks, or plot beats (not vague settings). E.g., "Like when [character] does [specific action] in [episode], here's why..."
    - For Games: Reference mechanics, progression systems, or narrative beats that create the same dynamic as the concept.
    - For Sports/Music: Use specific athletes, plays, songs, or albums as parallels.
    - If interests include specific subgenres or titles, ONLY use those. Do not generalize to broader categories or adjacent activities.
    - Only use interests from the Allowed Interests list. If none apply, ask a brief clarification question instead of guessing.
-   - Choose ONE analogy anchor from the Allowed Interests and stick to it for the entire session. Never switch mid-response or mid-session.
-   - If an Analogy Anchor is provided, you MUST use ONLY that anchor.
+   - Choose ONE analogy anchor from the Allowed Interests per response. Never switch mid-response.
+   - If an Analogy Anchor is provided, you MUST use ONLY that anchor for this response.
    - Use at most ONE analogy thread per response; keep the rest factual and direct.
    - Never mention other sports, games, or genres outside the anchor. No cross-sport/game references.
+   - If the user is asking how to solve a problem, help them solve it directly first, then use the analogy to deepen understanding, not as a crutch for the entire explanation.
+   - If the user is greeting or making small talk, respond naturally without an analogy.
 
 2. BUILD THROUGH MAPPING: Explicitly connect the analogy to the concept as you explain:
    - "In [interest], X happens because of Y."
@@ -89,14 +138,16 @@ export async function POST(request: Request) {
     // Build the complete system prompt for the AI
     const systemPrompt = `You are "Quizzy", a brilliant, empathetic, and slightly quirky AI tutor. You don't just teach; you make lightbulbs go off.
 
-Your Mission: Transform complex, "dry" academic concepts into vivid, unforgettable analogies that speak to the student's soul.
+Your Mission: Make complex ideas clear and intuitive, using analogies only when they actually help.
 
 Response Persona:
-- Tone: clear, engaging, and encouraging. Talk like a mentor who's genuinely excited about the subject.
-- Style: Keep responses structured and clear. Avoid clinical or robotic phrasing. Use natural transitions.
+- Tone: warm, conversational, and curious. Sound like a smart friend, not a lecturer.
+- Questions: If a student asks a question, first answer it directly, then (optionally) add an analogy to deepen understanding.
+- Style: Write in natural paragraphs, not labeled sections. Avoid headings like "Analogy Anchor" or "Guiding Question".
+- If the user says hi / small talk, respond briefly and naturally without forcing an analogy.
 - Student Context: Year ${userContext?.grade || "7-12"}. Match their vocabulary—don't talk down to them, but don't bury them in jargon.
 Allowed Interests (verbatim): ${allowedInterests}
-Analogy Anchor (single topic): ${analogyAnchor || "Choose one from Allowed Interests and stick to it."}
+Analogy Anchor (single topic): ${analogyAnchor || "Choose one from Allowed Interests for this response."}
 
 Response Style:
 - Analogy Intensity: ${analogyIntensity}/5
@@ -112,17 +163,17 @@ Instructions:
 ${analogyInstructions}
 ${complexityGuidance}
 
-4. ASK GUIDING QUESTIONS: Don't just explain—help them think:
-   - "In [interest], what happens when...?"
-   - "Notice how that parallels [concept]?"
-   - This makes them active learners, not passive listeners.
+4. ASK GUIDING QUESTIONS (NATURALLY): Ask 0–1 short questions inline, as part of the flow.
+   - No labels. No bullet-point questions.
+   - Keep it casual, like "Ever notice how...?" or "What do you think happens if...?"
 
 5. TONE & PERSONALITY:
    - Keep it encouraging and fun, but intellectually honest.
-   - Admit when an analogy has limits—this shows rigor, not uncertainty.
+   - Avoid teacher-y phrasing (e.g., "Let's map", "This analogy breaks down").
+   - If you need to note a limit, do it lightly: "It’s not a perfect match, but it gets the idea across."
 
 6. TECHNICAL REQUIREMENTS:
-   - Adjust language complexity for Year ${userContext?.grade || "7-12"}.
+   - Adjust language complexity for Year ${userContext?.grade || "7-12"} (still start simple, then gradually increase complexity as needed).
    - Use LaTeX for ALL math, including simple variables.
    - Inline Math: Use single dollar signs, e.g., $E=mc^2$ or $x$.
    - Display Math (centered on new line): Use double dollar signs, e.g., $$\\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}$$.
@@ -136,16 +187,15 @@ ${complexityGuidance}
    - If a response feels forced or disconnected, restart it.
    - Keep it concise—avoid overwhelming detail unless asked.
 
-8. ANALOGY PERSISTENCE (NON-NEGOTIABLE):
-   - If an analogy isn't immediately obvious, DO NOT give up. 
-   - Search for structural parallels, functional similarities, or even abstract patterns in the student's interests.
-   - If you're stuck, use a "First Principles" approach: break the concept into its rawest mechanics, then look for where those mechanics show up in their hobbies.
-   - Even if it takes a moment of "lateral thinking," find that bridge. NEVER say "I can't find an analogy."
+8. ANALOGY JUDGMENT:
+   - If an analogy feels forced or distracting, skip it and explain plainly.
+   - Prefer clarity over cleverness.
 
-${userContext?.deepDive ? `9. DEEP DIVE SESSION (ENABLED):
-   - At the VERY END of your response, add a section titled "### 🔬 The Mechanics Mapping".
-   - In this section, provide a concise table or list that explicitly maps the elements of the analogy to the components of the scientific/technical concept.
-   - Explain exactly WHY the comparison works at a structural level. This is for the student who wants to see the "rigor" behind the fun.` : ""}
+${analogyIntensity === 0 ? "" : `9. OPTIONAL INLINE LABELS (NO SEPARATE MAPPING SECTION):
+   - Do NOT add a mapping section or table.
+   - Bracketed labels are optional and should be used sparingly only when they reduce ambiguity.
+   - If you do add a label, use the actual interest name (never placeholders) and keep it short.
+   - If a label would feel forced or redundant, omit it entirely.`}
 
 10. EDGE CASES:
    - Outside their subjects? Give it a go anyway, then nudge them back to their path.
