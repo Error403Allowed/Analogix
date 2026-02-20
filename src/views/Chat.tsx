@@ -273,9 +273,6 @@ const Chat = () => {
   // ANIMATING: Track if typewriter is currently running
   const [isAnimating, setIsAnimating] = useState(false);
   
-  // RESPONSE LENGTH: Controls how long the response should be (1-5 = 5 levels, 1 = brief, 5 = detailed)
-  const [responseLength, setResponseLength] = useState(3);
-
   // ANALOGY MODE: Toggle analogies on/off (session-only)
   const [analogyModeEnabled, setAnalogyModeEnabled] = useState(true);
 
@@ -349,7 +346,6 @@ const Chat = () => {
     hobbies: userHobbies,
     grade: userPrefs.grade,
     learningStyle: userPrefs.learningStyle,
-    responseLength,
     analogyIntensity: analogyModeEnabled ? 1 : 0,
     analogyAnchor: overrideAnchor ?? undefined,
     memoryManagement: false
@@ -738,20 +734,6 @@ const Chat = () => {
                 Memory
                 <div className="px-1 py-0.5 rounded-sm bg-primary/20 text-[8px] font-black uppercase text-primary">Plus</div>
               </Button>
-
-              <div className="h-4 border-l border-border/50" />
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-medium text-muted-foreground">Length:</span>
-                <input
-                  type="range"
-                  min="1"
-                  max="5"
-                  value={responseLength}
-                  onChange={(e) => setResponseLength(Number(e.target.value))}
-                  className="w-20 h-1.5 bg-border rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:cursor-pointer"
-                />
-                <span className="text-xs font-semibold text-primary tabular-nums w-5">{responseLength}/5</span>
-              </div>
             </motion.div>
 
             <div className="flex-1 min-h-0 relative">
