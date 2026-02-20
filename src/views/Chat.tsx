@@ -355,7 +355,6 @@ const Chat = () => {
     userHobbies,
     userPrefs.grade,
     userPrefs.learningStyle,
-    responseLength,
     analogyModeEnabled
   ]);
 
