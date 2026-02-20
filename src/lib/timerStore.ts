@@ -37,7 +37,7 @@ export function loadTimerState(): TimerState {
     const sessionsCompleted = toNonNegativeInt(saved.sessionsCompleted);
     const sessionsTarget = clampSessionsTarget(saved.sessionsTarget);
     const hasTimeLeft = typeof saved.timeLeft === "number" && Number.isFinite(saved.timeLeft);
-    let timeLeft = hasTimeLeft ? Math.max(0, Math.floor(saved.timeLeft)) : settings[phase];
+    let timeLeft = hasTimeLeft ? Math.max(0, Math.floor(saved.timeLeft as number)) : settings[phase];
     let isActive = !!saved.isActive;
     let lastTick = typeof saved.lastTick === "number" && Number.isFinite(saved.lastTick)
       ? saved.lastTick
