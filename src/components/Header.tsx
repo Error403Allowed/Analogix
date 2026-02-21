@@ -11,7 +11,7 @@ import { ThemeToggle } from "./ThemeToggle";
 import ThemeSelector from "./ThemeSelector";
 import { useRouter } from "next/navigation";
 import SettingsDialog from "./SettingsDialog";
-import { getAIGreeting } from "@/services/huggingface";
+import { getAIGreeting } from "@/services/groq";
 import { HOBBY_OPTIONS, POPULAR_INTERESTS } from "@/utils/interests";
 
 interface HeaderProps {

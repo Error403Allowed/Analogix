@@ -8,21 +8,24 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import FirstVisitOverlay from "@/components/FirstVisitOverlay";
 import ThemeSync from "@/components/ThemeSync";
+import { AuthProvider } from "@/context/AuthContext";
 
 export default function AppProviders({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => new QueryClient());
 
   return (
     <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
-      <QueryClientProvider client={queryClient}>
-        <TooltipProvider>
-          <ThemeSync />
-          <FirstVisitOverlay />
-          {children}
-          <Toaster />
-          <Sonner />
-        </TooltipProvider>
-      </QueryClientProvider>
+      <AuthProvider>
+        <QueryClientProvider client={queryClient}>
+          <TooltipProvider>
+            <ThemeSync />
+            <FirstVisitOverlay />
+            {children}
+            <Toaster />
+            <Sonner />
+          </TooltipProvider>
+        </QueryClientProvider>
+      </AuthProvider>
     </ThemeProvider>
   );
 }

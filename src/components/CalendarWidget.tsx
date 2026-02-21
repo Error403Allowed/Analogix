@@ -82,8 +82,8 @@ const CalendarWidget = ({ streak = 0, streakLabel = "days" }: CalendarWidgetProp
   const [newPriority, setNewPriority] = useState<Deadline["priority"]>("medium");
 
   useEffect(() => {
-    const loadEvents = () => setEvents(eventStore.getAll());
-    const loadDeadlines = () => setDeadlines(deadlineStore.getAll());
+    const loadEvents = () => eventStore.getAll().then(setEvents);
+    const loadDeadlines = () => deadlineStore.getAll().then(setDeadlines);
     loadEvents(); loadDeadlines();
     window.addEventListener("eventsUpdated", loadEvents);
     window.addEventListener("deadlinesUpdated", loadDeadlines);
@@ -234,7 +234,7 @@ const CalendarWidget = ({ streak = 0, streakLabel = "days" }: CalendarWidgetProp
                     {/* Deadline list */}
                     <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1 custom-scrollbar">
                       {activeDeadlines.length > 0
-                        ? activeDeadlines.map(d => <DeadlineRow key={d.id} deadline={d} onRemove={() => deadlineStore.remove(d.id)} />)
+                        ? activeDeadlines.map(d => <DeadlineRow key={d.id} deadline={d} onRemove={() => { deadlineStore.remove(d.id); }} />)
                         : <EmptyState text="No deadlines yet. Add one above." />}
                     </div>
                   </motion.div>

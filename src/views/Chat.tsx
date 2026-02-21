@@ -17,8 +17,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useRouter } from "next/navigation";
-import { getHuggingFaceCompletion } from "@/services/huggingface";
+import { getGroqCompletion } from "@/services/groq";
 import { statsStore } from "@/utils/statsStore";
+import { chatStore } from "@/utils/chatStore";
 import MarkdownRenderer from "@/components/MarkdownRenderer";
 import TypewriterText from "@/components/TypewriterText";
 import { SUBJECT_CATALOG, getSubjectDescription } from "@/constants/subjects";
@@ -276,6 +277,9 @@ const Chat = () => {
   // ANALOGY MODE: Toggle analogies on/off (session-only)
   const [analogyModeEnabled, setAnalogyModeEnabled] = useState(true);
 
+  // CHAT HISTORY: Supabase session ID for saving messages
+  const [chatSessionId, setChatSessionId] = useState<string | null>(null);
+
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const copyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
@@ -422,7 +426,7 @@ const Chat = () => {
         ? messages[targetIndex - 1]?.content
         : "";
       const explicitAnchor = previousUser ? findAnchor(previousUser) : null;
-      const aiResponse = await getHuggingFaceCompletion(history, buildContext(explicitAnchor));
+      const aiResponse = await getGroqCompletion(history, buildContext(explicitAnchor));
 
       setMessages((prev) => prev.map((m) => (
         m.id === messageId
@@ -480,15 +484,16 @@ const Chat = () => {
   }, [messages.length, isTyping, updateScrollButton, scrollToBottom]);
 
   // PICKING A TOPIC: This runs when you select a subject icon.
-  const handleSubjectSelect = (subjectId: string) => {
+  const handleSubjectSelect = async (subjectId: string) => {
     setSelectedSubject(subjectId);
-    const subject = subjects.find(s => s.id === subjectId);
-    const subjectLabel = subject?.label || subjectId;
-    
-    // Start blank; user begins the conversation.
     setMessages([]);
     setIsAnimating(false);
     setStopTyping(false);
+
+    // Create a Supabase session for this chat
+    const subject = subjects.find(s => s.id === subjectId);
+    const sessionId = await chatStore.createSession(subjectId, `${subject?.label || subjectId} — ${new Date().toLocaleDateString()}`);
+    setChatSessionId(sessionId);
   };
 
   // TALKING TO THE AI: This is where the magic happens!
@@ -518,6 +523,11 @@ const Chat = () => {
       statsStore.recordChat(subjects.find(s => s.id === selectedSubject)?.label || selectedSubject);
     }
     
+    // Save user message to Supabase
+    if (chatSessionId) {
+      chatStore.addMessage(chatSessionId, "user", input);
+    }
+    
     // 2. We talk to the AI brain behind the scenes.
     (async () => {
       // We package up the chat history so the AI remembers what we've already said.
@@ -533,7 +543,7 @@ const Chat = () => {
 
       try {
         // FETCH: We send the request over the internet and wait.
-        const aiResponse = await getHuggingFaceCompletion(newHistory, context);
+        const aiResponse = await getGroqCompletion(newHistory, context);
 
         // 3. We show the AI's reply on the screen.
         const response: Message = {
@@ -544,6 +554,11 @@ const Chat = () => {
         };
 
         setMessages(prev => [...prev, response]);
+
+        // Save assistant reply to Supabase
+        if (chatSessionId) {
+          chatStore.addMessage(chatSessionId, "assistant", response.content);
+        }
       } catch {
         setMessages(prev => [...prev, {
           id: (Date.now() + 1).toString(),
@@ -577,7 +592,7 @@ const Chat = () => {
     }];
 
     try {
-      const aiResponse = await getHuggingFaceCompletion(aiPrompt, context);
+      const aiResponse = await getGroqCompletion(aiPrompt, context);
       const newMsgId = Date.now().toString();
       setMessages(prev => [...prev, {
         id: newMsgId,

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import Confetti from "./Confetti";
 import { Textarea } from "./ui/textarea";
 import { Loader2, Send } from "lucide-react";
-import { gradeShortAnswer } from "@/services/huggingface";
+import { gradeShortAnswer } from "@/services/groq";
 import MarkdownRenderer from "./MarkdownRenderer";
 
 interface QuizOption {

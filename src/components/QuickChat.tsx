@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { getHuggingFaceCompletion } from "@/services/huggingface";
+import { getGroqCompletion } from "@/services/groq";
 import { buildInterestList } from "@/utils/interests";
 
 interface Message {
@@ -44,7 +44,7 @@ const QuickChat = () => {
     const history = messages.map(m => ({ role: m.role, content: m.content }));
     history.push({ role: "user", content: input });
 
-    const response = await getHuggingFaceCompletion(history, {
+    const response = await getGroqCompletion(history, {
       subjects: userSubjects,
       hobbies: userHobbies,
       learningStyle: userPrefs.learningStyle || "visual",

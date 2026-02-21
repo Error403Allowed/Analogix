@@ -25,7 +25,7 @@ export default function DashLayout({ children }: { children: React.ReactNode }) 
         <AppSidebar />
         <SidebarInset className="flex flex-col flex-1 min-w-0 bg-transparent relative">
           <header className="h-16 flex items-center px-8 gap-4 shrink-0 transition-all duration-300">
-            <SidebarTrigger className="-ml-1 text-primary hover:bg-primary/10 rounded-full" />
+            <SidebarTrigger data-tutorial="sidebar-trigger" className="-ml-1 text-primary hover:bg-primary/10 rounded-full" />
             <div className="h-4 w-[1px] bg-border/40" />
             <div className="flex-1 min-w-0">
                <h1 className="text-[10px] font-black text-foreground truncate uppercase tracking-[0.4em] opacity-60">

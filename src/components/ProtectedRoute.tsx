@@ -1,28 +1,33 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
+import { Loader2 } from "lucide-react";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
 }
 
 const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
+  const { user, loading } = useAuth();
   const router = useRouter();
-  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState<boolean | null>(null);
 
   useEffect(() => {
-    const userPrefs = JSON.parse(localStorage.getItem("userPreferences") || "{}");
-    const completed = Boolean(userPrefs?.onboardingComplete);
-    setHasCompletedOnboarding(completed);
-    if (!completed) {
-      router.replace("/");
+    if (!loading && !user) {
+      router.replace("/onboarding");
     }
-  }, [router]);
+  }, [user, loading, router]);
 
-  if (!hasCompletedOnboarding) {
-    return null;
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
   }
+
+  if (!user) return null;
 
   return <>{children}</>;
 };

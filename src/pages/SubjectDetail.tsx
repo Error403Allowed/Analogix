@@ -17,7 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { SUBJECT_CATALOG, SubjectId } from "@/constants/subjects";
-import { subjectStore, SubjectMark } from "@/utils/subjectStore";
+import { subjectStore, SubjectMark, SubjectData } from "@/utils/subjectStore";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -28,13 +28,16 @@ export default function SubjectDetail() {
   const subjectId = (params?.id as string) || "";
   const subject = SUBJECT_CATALOG.find((s) => s.id === subjectId);
 
-  const [data, setData] = useState(subjectStore.getSubject(subjectId));
+  const [data, setData] = useState<SubjectData>({ id: subjectId, marks: [], notes: { content: "", lastUpdated: "" } });
   const [newMark, setNewMark] = useState({ title: "", score: "", total: "" });
-  const [notes, setNotes] = useState(data.notes.content);
+  const [notes, setNotes] = useState("");
 
   useEffect(() => {
-    setNotes(data.notes.content);
-  }, [data.notes.content]);
+    subjectStore.getSubject(subjectId).then(d => {
+      setData(d);
+      setNotes(d.notes.content);
+    });
+  }, [subjectId]);
 
   if (!subject) {
     return (
@@ -59,13 +62,8 @@ export default function SubjectDetail() {
     }
 
     subjectStore.addMark(subjectId, {
-      title: newMark.title,
-      score,
-      total,
-      date: new Date().toISOString()
-    });
-    
-    setData(subjectStore.getSubject(subjectId));
+      title: newMark.title, score, total, date: new Date().toISOString()
+    }).then(() => subjectStore.getSubject(subjectId).then(setData));
     setNewMark({ title: "", score: "", total: "" });
     toast.success("Mark added successfully!");
   };

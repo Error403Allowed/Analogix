@@ -49,7 +49,7 @@ const fetchJson = async <T>(
  * THE MAIN FUNCTION: This is what we call when we want the AI to think.
  * It takes the chat history and some info about the user (hobbies, etc.)
  */
-export const getHuggingFaceCompletion = async (
+export const getGroqCompletion = async (
   messages: ChatMessage[],
   userContext?: Partial<UserContext> & {
     analogyIntensity?: number;

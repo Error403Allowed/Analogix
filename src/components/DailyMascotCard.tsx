@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { MessageCircle, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { getAIGreeting } from "@/services/huggingface";
+import { getAIGreeting } from "@/services/groq";
 import { statsStore } from "@/utils/statsStore";
 import TypewriterText from "@/components/TypewriterText";
 import { cn } from "@/lib/utils";
@@ -18,8 +18,9 @@ const DailyMascotCard = ({ userName, onChatStart, subtitle, className }: DailyMa
   const [greeting, setGreeting] = useState("Welcome back. Ready to learn?");
 
   useEffect(() => {
-    const stats = statsStore.get();
-    getAIGreeting(userName, stats.currentStreak).then(setGreeting);
+    statsStore.get().then(stats => {
+      getAIGreeting(userName, stats.currentStreak).then(setGreeting);
+    });
   }, [userName]);
 
   return (

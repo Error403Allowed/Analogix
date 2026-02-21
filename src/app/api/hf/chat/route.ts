@@ -21,9 +21,6 @@ export async function POST(request: Request) {
     // How much should the AI use analogies? (0-5 scale)
     const analogyIntensity = userContext?.analogyIntensity ?? 1;
     
-    // How long should responses be? (1-5 scale)
-    const responseLength = userContext?.responseLength ?? 3;
-
     // ========================================================================
     // STEP 2: Build AI instructions based on user preferences
     // ========================================================================
@@ -39,13 +36,14 @@ export async function POST(request: Request) {
     ][analogyIntensity];
 
     // Instructions for how long responses should be
-    const lengthGuidance = [
-      "Length 1/5: 1-2 sentences, <= 40 words. No extra fluff.",
-      "Length 2/5: 2-3 sentences, <= 70 words. Focus on key points only.",
-      "Length 3/5: 3-5 sentences, <= 110 words. Balanced explanation.",
-      "Length 4/5: 5-7 sentences, <= 170 words. Add depth and one example.",
-      "Length 5/5: 7-10 sentences, <= 230+ words. Rich detail and multiple angles.",
-    ][responseLength - 1];
+    const lengthGuidance = `Calibrate response length naturally to the complexity of the question:
+   - Simple or conversational questions: 1-3 sentences. Don't pad.
+   - Concept explanations: as many paragraphs as genuinely needed to make it click — don't truncate, but don't repeat yourself either.
+   - Deep dives or multi-part questions: comprehensive, covering angles, examples, edge cases.
+   - Never artificially shorten or lengthen. Write exactly as much as the topic deserves.`;
+
+    // Token budget — generous so the AI is never cut off mid-thought
+    const maxTokens = 4096;
 
     // Get the user's hobbies/interests for making analogies
     const interestList = userContext?.hobbies?.filter(Boolean) ?? [];
@@ -138,6 +136,8 @@ export async function POST(request: Request) {
     // Build the complete system prompt for the AI
     const systemPrompt = `You are "Quizzy", a brilliant, empathetic, and slightly quirky AI tutor. You don't just teach; you make lightbulbs go off.
 
+Today's date: ${new Date().toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric" })}. You are fully up to date as of this date — never say your knowledge is limited to 2024 or any earlier date. If asked about recent events or developments, answer confidently based on what you know.
+
 Your Mission: Make complex ideas clear and intuitive, using analogies only when they actually help.
 
 Response Persona:
@@ -152,9 +152,8 @@ Analogy Anchor (single topic): ${analogyAnchor || "Choose one from Allowed Inter
 Response Style:
 - Analogy Intensity: ${analogyIntensity}/5
   ${analogyGuidance}
-- Response Length: ${responseLength}/5
+- Response Length: Write exactly as much as the topic deserves.
   ${lengthGuidance}
-  Follow the length strictly unless the user explicitly asks for more detail.
 
 CORE TEACHING PHILOSOPHY:
 ${teachingApproach}
@@ -220,7 +219,7 @@ REMEMBER: You aren't just an AI with an 'analogy' feature. You are the bridge be
     const content = await callHfChat(
       {
         messages: [{ role: "system", content: systemPrompt }, ...messages],
-        max_tokens: 1024,
+        max_tokens: maxTokens,
         temperature: 0.55,
       },
       taskType

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { motion } from "framer-motion";
 import { 
   Trophy,
@@ -34,6 +34,7 @@ import { useAchievementChecker } from "@/hooks/useAchievementChecker";
 import { SUBJECT_CATALOG } from "@/constants/subjects";
 import { HOBBY_OPTIONS } from "@/utils/interests";
 import { applyThemeByName } from "@/components/ThemeSelector";
+import TutorialOverlay from "@/components/TutorialOverlay";
 
 type DashboardPreferences = {
   name?: string;
@@ -89,6 +90,7 @@ const Dashboard = () => {
   const [quizCreatorMode, setQuizCreatorMode] = useState<'custom' | 'learning'>('custom');
   const [recentAchievements, setRecentAchievements] = useState<DashboardAchievement[]>([]);
   const [userPrefs, setUserPrefs] = useState<DashboardPreferences>(() => readLocalStorageJson("userPreferences", {}));
+  const [showTutorial, setShowTutorial] = useState(false);
 
   useEffect(() => {
     const handlePrefsUpdate = () => {
@@ -100,6 +102,16 @@ const Dashboard = () => {
       window.removeEventListener("userPreferencesUpdated", handlePrefsUpdate);
       window.removeEventListener("storage", handlePrefsUpdate);
     };
+  }, []);
+
+  // Show tutorial once right after onboarding
+  useEffect(() => {
+    const tutorialDone = localStorage.getItem("tutorialComplete");
+    if (!tutorialDone) {
+      // Small delay so the dashboard has painted before the overlay appears
+      const t = setTimeout(() => setShowTutorial(true), 600);
+      return () => clearTimeout(t);
+    }
   }, []);
   // Start Achievement Sync
   useAchievementChecker();
@@ -260,6 +272,11 @@ const Dashboard = () => {
     });
   }, [hobbyIconMap, hobbyIdToLabelMap, hobbyLabelToIdMap, userPrefs.hobbies, userPrefs.hobbyIds]);
 
+  const handleTutorialComplete = useCallback(() => {
+    localStorage.setItem("tutorialComplete", "1");
+    setShowTutorial(false);
+  }, []);
+
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: { opacity: 1, transition: { staggerChildren: 0.1, delayChildren: 0.2 } }
@@ -288,6 +305,7 @@ const Dashboard = () => {
   };
 
   return (
+    <>
     <div className="min-h-full relative overflow-x-hidden flex flex-col">
       <div className="w-full relative z-10 flex-1 min-h-0 flex flex-col">
 
@@ -296,7 +314,7 @@ const Dashboard = () => {
             {/* Top Section: Calendar + Timer */}
             <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-stretch">
               {/* Calendar Section */}
-              <motion.div variants={itemVariants} className="xl:col-span-7 dashboard-panel p-8 flex flex-col">
+              <motion.div variants={itemVariants} data-tutorial="calendar" className="xl:col-span-7 dashboard-panel p-8 flex flex-col">
                 <div className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.2em] text-muted-foreground mb-6">
                   <CalendarIcon className="w-4 h-4 text-primary" />
                   Calendar
@@ -308,13 +326,14 @@ const Dashboard = () => {
 
               {/* Timer & Streak Column */}
               <div className="xl:col-span-5 flex flex-col gap-4">
-                <motion.div variants={itemVariants} className="dashboard-panel p-6 flex flex-col items-center justify-center">
+                <motion.div variants={itemVariants} data-tutorial="timer" className="dashboard-panel p-6 flex flex-col items-center justify-center">
                    <TimerWidget />
                 </motion.div>
                 
                 <motion.div 
                   variants={itemVariants}
                   whileHover={{ scale: 1.02, y: -5 }}
+                  data-tutorial="streak"
                   className="dashboard-panel p-6 flex flex-col items-center justify-center text-center relative overflow-hidden group min-h-[140px] border border-amber-500/10 bg-amber-500/5 shadow-[0_20px_50px_rgba(245,158,11,0.05)]"
                 >
                   <div className="absolute inset-0 bg-gradient-to-br from-amber-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -334,7 +353,7 @@ const Dashboard = () => {
             </div>
 
             {/* Middle Section: Subjects (Persistent & Prominent) */}
-            <motion.div variants={itemVariants} className="dashboard-panel p-6">
+            <motion.div variants={itemVariants} data-tutorial="subjects" className="dashboard-panel p-6">
                <SubjectGrid />
             </motion.div>
 
@@ -342,7 +361,7 @@ const Dashboard = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
 
               {/* AI Tutor */}
-              <motion.div variants={itemVariants} className="dashboard-panel p-8 flex flex-col min-h-[500px]">
+              <motion.div variants={itemVariants} data-tutorial="ai-tutor" className="dashboard-panel p-8 flex flex-col min-h-[500px]">
                 <div className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.2em] text-muted-foreground mb-8">
                   <Sparkles className="w-4 h-4 text-primary" />
                   AI Tutor
@@ -367,7 +386,7 @@ const Dashboard = () => {
               </motion.div>
 
               {/* Quizzes */}
-              <motion.div variants={itemVariants} className="dashboard-panel p-8 flex flex-col min-h-[500px]">
+              <motion.div variants={itemVariants} data-tutorial="quiz" className="dashboard-panel p-8 flex flex-col min-h-[500px]">
                 <div className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.2em] text-muted-foreground mb-8">
                   <BookOpen className="w-4 h-4 text-primary" />
                   Knowledge Lab
@@ -421,7 +440,11 @@ const Dashboard = () => {
       </Dialog>
     </div>
   </div>
-);
+
+  {/* Tutorial — shown once right after onboarding */}
+  {showTutorial && <TutorialOverlay onComplete={handleTutorialComplete} />}
+  </>
+  );
 };
 
 export default Dashboard;

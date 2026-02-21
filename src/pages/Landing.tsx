@@ -22,7 +22,8 @@ import {
   Percent,
   Wrench,
   Stethoscope,
-  Languages
+  Languages,
+  Bot
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -136,6 +137,13 @@ const Landing = () => {
       iconBgClass: "bg-primary/10",
       iconClass: "text-primary"
     },
+    {
+      icon: Bot,
+      title: "AI-Powered Tutor",
+      description: "Trained on the Australian Curriculum and student data for personalized support.",
+      iconBgClass: "bg-primary/10",
+      iconClass: "text-primary"
+    }
   ];
 
   const subjects = [

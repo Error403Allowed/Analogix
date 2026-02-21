@@ -49,7 +49,7 @@ type DashboardPreferences = {
   hobbies?: string[];
 };
 
-type DashboardAchievement = ReturnType<typeof achievementStore.getAll>[number];
+type DashboardAchievement = Awaited<ReturnType<typeof achievementStore.getAll>>[number];
 
 const readLocalStorageJson = <T,>(key: string, fallback: T): T => {
   try {
@@ -100,7 +100,10 @@ const Dashboard = () => {
 
   const userPrefs = readLocalStorageJson<DashboardPreferences>("userPreferences", {});
   const userName = userPrefs.name || "Student";
-  const [statsData, setStatsData] = useState(() => statsStore.get());
+  const [statsData, setStatsData] = useState<Awaited<ReturnType<typeof statsStore.get>>>({
+    quizzesDone: 0, currentStreak: 0, accuracy: 0,
+    conversationsCount: 0, topSubject: "None", subjectCounts: {},
+  });
 
   const normalizedStats = useMemo(() => {
     return {
@@ -113,22 +116,20 @@ const Dashboard = () => {
   }, [statsData]);
 
   useEffect(() => {
-    const handleStatsUpdate = () => {
-      setStatsData(statsStore.get());
-    };
+    const handleStatsUpdate = () => { statsStore.get().then(setStatsData); };
     
     const handleAchievementsUpdate = () => {
-      const latestUnlocked = achievementStore
-        .getAll()
-        .filter((achievement) => achievement.unlocked)
-        .sort((a, b) => {
-          const aTime = a.unlockedAt ? new Date(a.unlockedAt).getTime() : 0;
-          const bTime = b.unlockedAt ? new Date(b.unlockedAt).getTime() : 0;
-          return aTime - bTime;
-        })
-        .slice(-4);
-
-      setRecentAchievements(latestUnlocked);
+      achievementStore.getAll().then(all => {
+        const latestUnlocked = all
+          .filter((achievement) => achievement.unlocked)
+          .sort((a, b) => {
+            const aTime = a.unlockedAt ? new Date(a.unlockedAt).getTime() : 0;
+            const bTime = b.unlockedAt ? new Date(b.unlockedAt).getTime() : 0;
+            return aTime - bTime;
+          })
+          .slice(-4);
+        setRecentAchievements(latestUnlocked);
+      });
     };
 
     window.addEventListener("statsUpdated", handleStatsUpdate);

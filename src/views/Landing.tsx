@@ -22,7 +22,8 @@ import {
   Target,
   Rocket,
   Shield,
-  Lightbulb
+  Lightbulb,
+  Bot
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
@@ -148,6 +149,13 @@ const Landing = () => {
       size: "lg",
       color: "bg-orange-500/10 text-orange-500 border-orange-500/20",
       stats: true
+    },
+    {
+      title: "AI-Powered Tutor",
+      desc: "Trained on the Australian Curriculum and student data for personalized support.",
+      icon: Bot,
+      size: "md",
+      color: "bg-primary/10 text-primary border-primary/20",
     }
   ];
 
@@ -270,57 +278,6 @@ const Landing = () => {
           </motion.div>
         </section>
 
-        {/* Features Bento Grid */}
-        <section id="features" className="py-24 px-6 max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-5xl font-bold font-display tracking-tight mb-4">Everything to level up.</h2>
-            <p className="text-muted-foreground">Modern tools built for how students actually think.</p>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 auto-rows-[250px]">
-            {bentoFeatures.map((item, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-                className={cn(
-                  "p-8 rounded-[2.5rem] bg-card border border-border shadow-sm flex flex-col justify-between overflow-hidden relative group hover:border-primary/30 transition-colors",
-                  item.size === "lg" ? "md:col-span-2" : "md:col-span-1"
-                )}
-              >
-                <div className="relative z-10">
-                  <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center mb-6 border", item.color)}>
-                    <item.icon className="w-6 h-6" />
-                  </div>
-                  <h3 className="text-2xl font-bold font-display mb-2">{item.title}</h3>
-                  <p className="text-muted-foreground text-sm max-w-xs">{item.desc}</p>
-                </div>
-                
-                {item.image && (
-                   <div className="absolute bottom-0 right-0 w-1/2 h-1/2 bg-gradient-to-br from-primary/20 to-transparent blur-3xl -mb-10 -mr-10 opacity-50 group-hover:opacity-100 transition-opacity" />
-                )}
-                
-                {item.stats && (
-                  <div className="absolute bottom-6 right-8 flex items-center gap-2">
-                    <div className="h-2 w-24 bg-muted rounded-full overflow-hidden">
-                      <motion.div 
-                        initial={{ width: 0 }}
-                        whileInView={{ width: '75%' }}
-                        transition={{ duration: 1, delay: 0.5 }}
-                        className="h-full bg-primary" 
-                      />
-                    </div>
-                    <span className="text-[10px] font-bold text-primary">LVL 12</span>
-                  </div>
-                )}
-              </motion.div>
-            ))}
-          </div>
-        </section>
-
-        {/* The "Smart but Simple" Section */}
         <section ref={smartSimpleRef} className="py-24 px-6 overflow-hidden relative">
           <motion.div style={{ opacity: smartSimpleOpacity }} className="max-w-7xl mx-auto">
             <div className="grid lg:grid-cols-2 gap-20 items-center">
@@ -404,6 +361,56 @@ const Landing = () => {
               </div>
             </div>
           </motion.div>
+        </section>
+
+        {/* Features Bento Grid */}
+        <section id="features" className="py-24 px-6 max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-5xl font-bold font-display tracking-tight mb-4">Everything to level up.</h2>
+            <p className="text-muted-foreground">Modern tools built for how students actually think.</p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 auto-rows-[250px]">
+            {bentoFeatures.map((item, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.1 }}
+                className={cn(
+                  "p-8 rounded-[2.5rem] bg-card border border-border shadow-sm flex flex-col justify-between overflow-hidden relative group hover:border-primary/30 transition-colors",
+                  item.size === "lg" ? "md:col-span-2" : "md:col-span-1"
+                )}
+              >
+                <div className="relative z-10">
+                  <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center mb-6 border", item.color)}>
+                    <item.icon className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-2xl font-bold font-display mb-2">{item.title}</h3>
+                  <p className="text-muted-foreground text-sm max-w-xs">{item.desc}</p>
+                </div>
+                
+                {item.image && (
+                   <div className="absolute bottom-0 right-0 w-1/2 h-1/2 bg-gradient-to-br from-primary/20 to-transparent blur-3xl -mb-10 -mr-10 opacity-50 group-hover:opacity-100 transition-opacity" />
+                )}
+                
+                {item.stats && (
+                  <div className="absolute bottom-6 right-8 flex items-center gap-2">
+                    <div className="h-2 w-24 bg-muted rounded-full overflow-hidden">
+                      <motion.div 
+                        initial={{ width: 0 }}
+                        whileInView={{ width: '75%' }}
+                        transition={{ duration: 1, delay: 0.5 }}
+                        className="h-full bg-primary" 
+                      />
+                    </div>
+                    <span className="text-[10px] font-bold text-primary">LVL 12</span>
+                  </div>
+                )}
+              </motion.div>
+            ))}
+          </div>
         </section>
 
         {/* CTA Section */}

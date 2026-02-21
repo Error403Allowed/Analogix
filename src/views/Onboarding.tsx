@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowRight, Check, Sparkles, User,
@@ -8,10 +8,11 @@ import {
   Cpu, LineChart, Briefcase, Wallet, HeartPulse, Globe, Wrench,
   Stethoscope, Languages, Dumbbell, Gamepad2, Music, CookingPot,
   Palette, Film, Leaf, Laptop, Book, Plane, CalendarDays, Upload,
+  Mail, Loader2, CheckCircle2, Brain,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Confetti from "@/components/Confetti";
 import { achievementStore } from "@/utils/achievementStore";
 import { HOBBY_OPTIONS, POPULAR_INTERESTS } from "@/utils/interests";
@@ -19,6 +20,8 @@ import { parseICS } from "@/utils/icsParser";
 import { eventStore } from "@/utils/eventStore";
 import { AustralianState, STATE_LABELS } from "@/utils/termData";
 import { cn } from "@/lib/utils";
+import { createClient } from "@/lib/supabase/client";
+import { useAuth } from "@/context/AuthContext";
 
 // ── Typewriter ────────────────────────────────────────────────────────────────
 const TypewriterText = ({ text, delay = 0 }: { text: string; delay?: number }) => {
@@ -35,9 +38,7 @@ const TypewriterText = ({ text, delay = 0 }: { text: string; delay?: number }) =
         const ch = text[i - 1];
         const speed = ch === " " ? 30 : ch === "." || ch === "!" ? 150 : 50;
         setTimeout(type, speed);
-      } else {
-        setDone(true);
-      }
+      } else { setDone(true); }
     }, delay);
     return () => clearTimeout(t);
   });
@@ -58,23 +59,120 @@ const TypewriterText = ({ text, delay = 0 }: { text: string; delay?: number }) =
   );
 };
 
+// ── Auth Step ─────────────────────────────────────────────────────────────────
+function AuthStep({ onAuthed, externalError }: { onAuthed: () => void; externalError?: string | null }) {
+  const { signInWithGoogle, signInWithMagicLink, user } = useAuth();
+  const [email, setEmail] = useState("");
+  const [magicSent, setMagicSent] = useState(false);
+  const [magicLoading, setMagicLoading] = useState(false);
+  const [magicError, setMagicError] = useState<string | null>(null);
+  const [googleLoading, setGoogleLoading] = useState(false);
+
+  // If they're already authed (e.g. came back after magic link), skip ahead
+  useEffect(() => { if (user) onAuthed(); }, [user]);
+
+  const handleMagicLink = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim()) return;
+    setMagicLoading(true);
+    setMagicError(null);
+    const { error } = await signInWithMagicLink(email.trim());
+    setMagicLoading(false);
+    if (error) { setMagicError(error); } else { setMagicSent(true); }
+  };
+
+  const handleGoogle = async () => {
+    setGoogleLoading(true);
+    await signInWithGoogle();
+    // Page will redirect via OAuth — no need to call onAuthed()
+  };
+
+  return (
+    <div className="space-y-8">
+      <div className="flex items-center gap-3">
+        <div className="w-12 h-12 rounded-2xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20 flex-shrink-0">
+          <Brain className="w-6 h-6 text-primary-foreground" />
+        </div>
+        <div>
+          <h1 className="text-3xl font-black text-foreground tracking-tight">Welcome to Analogix.</h1>
+          <p className="text-muted-foreground text-base mt-0.5">Create an account to save your progress.</p>
+        </div>
+      </div>
+
+      {magicSent ? (
+        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="text-center space-y-4 py-6">
+          <CheckCircle2 className="w-14 h-14 text-green-500 mx-auto" />
+          <div>
+            <p className="font-black text-foreground text-lg">Check your inbox!</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              We sent a magic link to <span className="font-bold text-foreground">{email}</span>. Click it to continue.
+            </p>
+          </div>
+          <button onClick={() => { setMagicSent(false); setEmail(""); }}
+            className="text-xs text-muted-foreground hover:text-foreground underline-offset-2 hover:underline transition-colors">
+            Use a different email
+          </button>
+        </motion.div>
+      ) : (
+        <div className="space-y-4">
+          <Button variant="outline" className="w-full h-12 gap-3 rounded-2xl font-semibold border-2 hover:border-primary/40 transition-all"
+            onClick={handleGoogle} disabled={googleLoading}>
+            {googleLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
+              <svg className="w-5 h-5" viewBox="0 0 24 24">
+                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+              </svg>
+            )}
+            Continue with Google
+          </Button>
+
+          <div className="flex items-center gap-3">
+            <div className="flex-1 h-px bg-border" />
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">or</span>
+            <div className="flex-1 h-px bg-border" />
+          </div>
+
+          <form onSubmit={handleMagicLink} className="space-y-3">
+            <div className="relative">
+              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input type="email" placeholder="your@email.com" value={email}
+                onChange={e => setEmail(e.target.value)}
+                className="pl-11 h-12 rounded-2xl border-2 focus:border-primary transition-colors" required />
+            </div>
+            {(magicError || externalError) && <p className="text-xs text-destructive font-medium">{magicError || externalError}</p>}
+            <Button type="submit" className="w-full h-12 rounded-2xl font-bold gap-2 shadow-lg shadow-primary/10"
+              disabled={magicLoading || !email.trim()}>
+              {magicLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <>Send Magic Link <ArrowRight className="w-4 h-4" /></>}
+            </Button>
+          </form>
+        </div>
+      )}
+      <p className="text-center text-xs text-muted-foreground pt-2">
+        Already have an account? Signing in will link to your existing profile.
+      </p>
+    </div>
+  );
+}
+
 // ── Data ──────────────────────────────────────────────────────────────────────
 const SUBJECTS = [
-  { id: "math",        icon: <Calculator className="w-6 h-6" />,  label: "Mathematics",     description: "Numbers, algebra, geometry"      },
-  { id: "biology",     icon: <Microscope className="w-6 h-6" />,  label: "Biology",          description: "Life, cells, nature"             },
-  { id: "history",     icon: <Landmark className="w-6 h-6" />,    label: "History",          description: "Past events, cultures"           },
-  { id: "physics",     icon: <Zap className="w-6 h-6" />,         label: "Physics",          description: "Matter, energy, forces"          },
-  { id: "chemistry",   icon: <FlaskConical className="w-6 h-6" />, label: "Chemistry",       description: "Elements, reactions"             },
-  { id: "english",     icon: <BookOpen className="w-6 h-6" />,    label: "English",          description: "Reading, writing, speaking"      },
-  { id: "computing",   icon: <Cpu className="w-6 h-6" />,         label: "Computing",        description: "Coding, hardware, software"      },
-  { id: "economics",   icon: <LineChart className="w-6 h-6" />,   label: "Economics",        description: "Supply, demand, markets"         },
-  { id: "business",    icon: <Briefcase className="w-6 h-6" />,   label: "Business Studies", description: "Management, strategy, startups" },
-  { id: "commerce",    icon: <Wallet className="w-6 h-6" />,      label: "Commerce",         description: "Trade, finance, accounting"      },
-  { id: "pdhpe",       icon: <HeartPulse className="w-6 h-6" />,  label: "PDHPE",            description: "Health, fitness, well-being"     },
-  { id: "geography",   icon: <Globe className="w-6 h-6" />,       label: "Geography",        description: "World, maps, environment"        },
-  { id: "engineering", icon: <Wrench className="w-6 h-6" />,      label: "Engineering",      description: "Design, mechanics, innovation"   },
-  { id: "medicine",    icon: <Stethoscope className="w-6 h-6" />, label: "Medicine",         description: "Anatomy, health, diagnosis"      },
-  { id: "languages",   icon: <Languages className="w-6 h-6" />,   label: "Languages",        description: "Vocabulary, grammar, fluency"    },
+  { id: "math",        icon: <Calculator className="w-6 h-6" />,   label: "Mathematics",     description: "Numbers, algebra, geometry"      },
+  { id: "biology",     icon: <Microscope className="w-6 h-6" />,   label: "Biology",          description: "Life, cells, nature"             },
+  { id: "history",     icon: <Landmark className="w-6 h-6" />,     label: "History",          description: "Past events, cultures"           },
+  { id: "physics",     icon: <Zap className="w-6 h-6" />,          label: "Physics",          description: "Matter, energy, forces"          },
+  { id: "chemistry",   icon: <FlaskConical className="w-6 h-6" />, label: "Chemistry",        description: "Elements, reactions"             },
+  { id: "english",     icon: <BookOpen className="w-6 h-6" />,     label: "English",          description: "Reading, writing, speaking"      },
+  { id: "computing",   icon: <Cpu className="w-6 h-6" />,          label: "Computing",        description: "Coding, hardware, software"      },
+  { id: "economics",   icon: <LineChart className="w-6 h-6" />,    label: "Economics",        description: "Supply, demand, markets"         },
+  { id: "business",    icon: <Briefcase className="w-6 h-6" />,    label: "Business Studies", description: "Management, strategy, startups" },
+  { id: "commerce",    icon: <Wallet className="w-6 h-6" />,       label: "Commerce",         description: "Trade, finance, accounting"      },
+  { id: "pdhpe",       icon: <HeartPulse className="w-6 h-6" />,   label: "PDHPE",            description: "Health, fitness, well-being"     },
+  { id: "geography",   icon: <Globe className="w-6 h-6" />,        label: "Geography",        description: "World, maps, environment"        },
+  { id: "engineering", icon: <Wrench className="w-6 h-6" />,       label: "Engineering",      description: "Design, mechanics, innovation"   },
+  { id: "medicine",    icon: <Stethoscope className="w-6 h-6" />,  label: "Medicine",         description: "Anatomy, health, diagnosis"      },
+  { id: "languages",   icon: <Languages className="w-6 h-6" />,    label: "Languages",        description: "Vocabulary, grammar, fluency"    },
 ];
 
 const HOBBY_ICONS: Record<string, React.ReactNode> = {
@@ -125,11 +223,24 @@ function IcsStep({ importing, imported, count, error, onFile }:
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
-const TOTAL_STEPS = 6;
+// Steps: 1=Auth, 2=Name, 3=Year, 4=State, 5=Subjects, 6=Hobbies, 7=ICS
+const TOTAL_STEPS = 7;
 
 const Onboarding = () => {
   const router = useRouter();
-  const [step, setStep] = useState(1);
+  const searchParams = useSearchParams();
+  const { user } = useAuth();
+
+  // If coming back from OAuth/magic link, jump to the correct step
+  const initialStep = useMemo(() => {
+    const s = parseInt(searchParams?.get("step") ?? "1", 10);
+    return isNaN(s) ? 1 : s;
+  }, []);
+
+  const [step, setStep] = useState(initialStep);
+  const [authError, setAuthError] = useState<string | null>(
+    searchParams?.get("error") === "auth_failed" ? "Authentication failed. Please try again." : null
+  );
   const [name, setName] = useState("");
   const [grade, setGrade] = useState<string | null>(null);
   const [state, setState] = useState<AustralianState | null>(null);
@@ -186,16 +297,31 @@ const Onboarding = () => {
     return d;
   };
 
-  const savePreferences = (hobbyIds: string[], hobbyDetails: Record<string, string>) => {
+  const savePreferences = async (hobbyIds: string[], hobbyDetails: Record<string, string>) => {
     const hobbies = hobbyIds.map(id => {
       const label = HOBBY_OPTIONS.find(h => h.id === id)?.label || id;
       const detail = hobbyDetails[id] || "";
       return detail ? `${label} (${detail})` : label;
     });
-    localStorage.setItem("userPreferences", JSON.stringify({
+    const prefs = {
       name: name.trim(), grade, state, subjects: selectedSubjects,
       hobbies, hobbyIds, hobbyDetails, onboardingComplete: true,
-    }));
+    };
+    localStorage.setItem("userPreferences", JSON.stringify(prefs));
+
+    try {
+      const supabase = createClient();
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      if (currentUser) {
+        await supabase.from("profiles").upsert({
+          id: currentUser.id, name: prefs.name, grade: prefs.grade, state: prefs.state,
+          subjects: prefs.subjects, hobbies: prefs.hobbies, hobby_ids: prefs.hobbyIds,
+          hobby_details: prefs.hobbyDetails, onboarding_complete: true,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: "id" });
+      }
+    } catch (e) { console.error("[Onboarding] Supabase save failed:", e); }
+
     achievementStore.unlock("start_1");
     if (name.trim().toLowerCase() !== "student") achievementStore.unlock("start_2");
   };
@@ -211,20 +337,22 @@ const Onboarding = () => {
     finally { setIcsImporting(false); }
   };
 
+  // Step 1 (auth) is complete once the user is logged in
   const canNext =
-    (step === 1 && !!name.trim()) ||
-    (step === 2 && !!grade) ||
-    (step === 3 && !!state) ||
-    (step === 4 && selectedSubjects.length > 0) ||
-    (step === 5 && selectedHobbies.length > 0) ||
-    (step === 6 && !icsImporting);
+    (step === 1 && !!user) ||
+    (step === 2 && !!name.trim()) ||
+    (step === 3 && !!grade) ||
+    (step === 4 && !!state) ||
+    (step === 5 && selectedSubjects.length > 0) ||
+    (step === 6 && selectedHobbies.length > 0) ||
+    (step === 7 && !icsImporting);
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (!canNext) return;
-    if (step < 5) { setStep(s => s + 1); return; }
-    if (step === 5) {
-      savePreferences(selectedHobbies, buildHobbyDetails(selectedHobbies));
-      setStep(6); return;
+    if (step < 6) { setStep(s => s + 1); return; }
+    if (step === 6) {
+      await savePreferences(selectedHobbies, buildHobbyDetails(selectedHobbies));
+      setStep(7); return;
     }
     setIsComplete(true);
     setTimeout(() => router.push("/dashboard"), 2500);
@@ -242,15 +370,21 @@ const Onboarding = () => {
           {!isComplete ? (
             <motion.div key={`step-${step}`} initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }}
               className="glass-card p-8 md:p-10 shadow-2xl border-white/20">
-              {/* Progress bar */}
-              <div className="flex items-center gap-2 mb-10">
-                {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
-                  <div key={i} className={cn("h-2 flex-1 rounded-full transition-colors", step >= i + 1 ? "gradient-primary" : "bg-muted")} />
-                ))}
-              </div>
 
-              {/* Step 1 — Name */}
-              {step === 1 && (
+              {/* Progress bar — only show from step 2 onwards */}
+              {step > 1 && (
+                <div className="flex items-center gap-2 mb-10">
+                  {Array.from({ length: TOTAL_STEPS - 1 }).map((_, i) => (
+                    <div key={i} className={cn("h-2 flex-1 rounded-full transition-colors", step - 1 >= i + 1 ? "gradient-primary" : "bg-muted")} />
+                  ))}
+                </div>
+              )}
+
+              {/* Step 1 — Auth */}
+              {step === 1 && <AuthStep onAuthed={() => setStep(2)} externalError={authError} />}
+
+              {/* Step 2 — Name */}
+              {step === 2 && (
                 <div className="space-y-8">
                   <div>
                     <h1 className="text-3xl font-black text-foreground tracking-tight"><TypewriterText text="Hi there! I'm Quizzy." delay={300} /></h1>
@@ -265,8 +399,8 @@ const Onboarding = () => {
                 </div>
               )}
 
-              {/* Step 2 — Year */}
-              {step === 2 && (
+              {/* Step 3 — Year */}
+              {step === 3 && (
                 <div className="space-y-8">
                   <div>
                     <h1 className="text-3xl font-black text-foreground tracking-tight">What year are you in?</h1>
@@ -285,8 +419,8 @@ const Onboarding = () => {
                 </div>
               )}
 
-              {/* Step 3 — State */}
-              {step === 3 && (
+              {/* Step 4 — State */}
+              {step === 4 && (
                 <div className="space-y-8">
                   <div>
                     <h1 className="text-3xl font-black text-foreground tracking-tight">Where do you go to school?</h1>
@@ -305,8 +439,8 @@ const Onboarding = () => {
                 </div>
               )}
 
-              {/* Step 4 — Subjects */}
-              {step === 4 && (
+              {/* Step 5 — Subjects */}
+              {step === 5 && (
                 <div className="space-y-8">
                   <div>
                     <h1 className="text-3xl font-black text-foreground tracking-tight">Nice to meet you, {name}!</h1>
@@ -331,8 +465,8 @@ const Onboarding = () => {
                 </div>
               )}
 
-              {/* Step 5 — Hobbies */}
-              {step === 5 && (
+              {/* Step 6 — Hobbies */}
+              {step === 6 && (
                 <div className="space-y-8">
                   <div>
                     <h1 className="text-3xl font-black text-foreground tracking-tight">Almost there!</h1>
@@ -395,30 +529,41 @@ const Onboarding = () => {
                 </div>
               )}
 
-              {/* Step 6 — ICS */}
-              {step === 6 && (
+              {/* Step 7 — ICS */}
+              {step === 7 && (
                 <IcsStep importing={icsImporting} imported={icsImported} count={icsCount} error={icsError} onFile={handleIcsFile} />
               )}
 
-              {/* Footer buttons */}
-              <div className="flex justify-between items-center mt-10">
-                {step > 1
-                  ? <Button variant="ghost" onClick={() => setStep(s => s - 1)} className="px-6 rounded-xl">Back</Button>
-                  : <div />}
-                <div className="flex items-center gap-3">
-                  {step === 6 && !icsImported && (
-                    <Button variant="ghost" onClick={handleNext} className="px-6 rounded-xl text-muted-foreground">Skip</Button>
-                  )}
-                  <Button onClick={handleNext} disabled={!canNext}
-                    className="gap-2 gradient-primary text-primary-foreground border-0 h-14 px-8 rounded-2xl font-bold shadow-xl hover:opacity-90 transition-opacity">
-                    {step === 6 ? (
-                      <><Sparkles className="w-5 h-5" />{icsImported ? "All Done!" : "Finish Setup"}</>
-                    ) : (
-                      <>Next <ArrowRight className="w-5 h-5" /></>
+              {/* Footer buttons — hidden on auth step since it handles its own flow */}
+              {step > 1 && (
+                <div className="flex justify-between items-center mt-10">
+                  <Button variant="ghost" onClick={() => setStep(s => s - 1)} className="px-6 rounded-xl">Back</Button>
+                  <div className="flex items-center gap-3">
+                    {step === 7 && !icsImported && (
+                      <Button variant="ghost" onClick={handleNext} className="px-6 rounded-xl text-muted-foreground">Skip</Button>
                     )}
+                    <Button onClick={handleNext} disabled={!canNext}
+                      className="gap-2 gradient-primary text-primary-foreground border-0 h-14 px-8 rounded-2xl font-bold shadow-xl hover:opacity-90 transition-opacity">
+                      {step === 7 ? (
+                        <><Sparkles className="w-5 h-5" />{icsImported ? "All Done!" : "Finish Setup"}</>
+                      ) : (
+                        <>Next <ArrowRight className="w-5 h-5" /></>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* On the auth step, show a subtle "next" only if already authed */}
+              {step === 1 && user && (
+                <div className="flex justify-end mt-10">
+                  <Button onClick={() => setStep(2)}
+                    className="gap-2 gradient-primary text-primary-foreground border-0 h-14 px-8 rounded-2xl font-bold shadow-xl hover:opacity-90 transition-opacity">
+                    Continue <ArrowRight className="w-5 h-5" />
                   </Button>
                 </div>
-              </div>
+              )}
+
             </motion.div>
           ) : (
             <motion.div key="complete" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}

@@ -9,7 +9,7 @@ import QuizCard from "@/components/QuizCard";
 import Confetti from "@/components/Confetti";
 import { statsStore } from "@/utils/statsStore";
 import { achievementStore } from "@/utils/achievementStore";
-import { generateQuiz } from "@/services/huggingface";
+import { generateQuiz } from "@/services/groq";
 import TypewriterText from "@/components/TypewriterText";
 import MarkdownRenderer from "@/components/MarkdownRenderer";
 

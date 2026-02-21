@@ -1,39 +1,99 @@
+import { createClient } from "@/lib/supabase/client";
 import { AppEvent } from "@/types/events";
 
-const STORAGE_KEY = "userEvents";
+const LOCAL_KEY = "userEvents";
 
 export const eventStore = {
-  getAll: (): AppEvent[] => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (!stored) return [];
-      const parsed = JSON.parse(stored);
-      // Reconstitute Date objects
-      return parsed.map((e: any) => ({ ...e, date: new Date(e.date) }));
-    } catch {
-      return [];
+  getAll: async (): Promise<AppEvent[]> => {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (user) {
+      const { data } = await supabase
+        .from("events")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("date", { ascending: true });
+      if (data) {
+        return data.map((row: any) => ({
+          id: row.id,
+          title: row.title,
+          date: new Date(row.date),
+          type: row.type as AppEvent["type"],
+          subject: row.subject,
+          description: row.description,
+          source: (row.source ?? "import") as AppEvent["source"],
+        }));
+      }
     }
+
+    try {
+      const stored = localStorage.getItem(LOCAL_KEY);
+      if (!stored) return [];
+      return JSON.parse(stored).map((e: any) => ({ ...e, date: new Date(e.date) }));
+    } catch { return []; }
   },
 
-  add: (event: AppEvent) => {
-    const events = eventStore.getAll();
-    events.push(event);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(events));
-    // Trigger a custom event for real-time updates across components
+  add: async (event: AppEvent) => {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (user) {
+      await supabase.from("events").insert({
+        user_id: user.id,
+        title: event.title,
+        date: event.date,
+        type: event.type,
+        subject: event.subject,
+        description: event.description,
+        source: event.source,
+      });
+    }
+
+    try {
+      const events = await eventStore.getAll();
+      localStorage.setItem(LOCAL_KEY, JSON.stringify([...events, event]));
+    } catch {}
     window.dispatchEvent(new Event("eventsUpdated"));
   },
 
-  addMultiple: (newEvents: AppEvent[]) => {
-    const events = eventStore.getAll();
-    const updated = [...events, ...newEvents];
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+  addMultiple: async (newEvents: AppEvent[]) => {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (user) {
+      await supabase.from("events").insert(
+        newEvents.map(e => ({
+          user_id: user.id,
+          title: e.title,
+          date: e.date,
+          type: e.type,
+          subject: e.subject,
+          description: e.description,
+          source: e.source,
+        }))
+      );
+    }
+
+    try {
+      const existing = await eventStore.getAll();
+      localStorage.setItem(LOCAL_KEY, JSON.stringify([...existing, ...newEvents]));
+    } catch {}
     window.dispatchEvent(new Event("eventsUpdated"));
   },
 
-  remove: (id: string) => {
-    const events = eventStore.getAll();
-    const filtered = events.filter((e) => e.id !== id);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+  remove: async (id: string) => {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (user) {
+      await supabase.from("events").delete().eq("id", id).eq("user_id", user.id);
+    }
+
+    try {
+      const events = await eventStore.getAll();
+      localStorage.setItem(LOCAL_KEY, JSON.stringify(events.filter(e => e.id !== id)));
+    } catch {}
     window.dispatchEvent(new Event("eventsUpdated"));
-  }
+  },
 };

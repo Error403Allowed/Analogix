@@ -23,23 +23,21 @@ const ExamManager = () => {
 
   useEffect(() => {
     const loadEvents = () => {
-      const allEvents = eventStore.getAll();
-      const academicKeywords = ["exam", "assessment", "quiz", "test", "midterm", "final", "assignment", "project", "deadline", "paper", "presentation", "lab", "due"];
-      
-      // Filter for future academic events
-      const upcoming = allEvents
-        .filter(e => {
-          const isFuture = new Date(e.date).setHours(0,0,0,0) >= new Date().setHours(0,0,0,0);
-          const combined = (e.title + " " + (e.description || "")).toLowerCase();
-          const hasKeyword = academicKeywords.some(kw => combined.includes(kw));
-          const isAcademicType = e.type === 'exam' || e.type === 'assignment';
-          const isManual = e.source === 'manual';
-          
-          return isFuture && (hasKeyword || isAcademicType || isManual);
-        })
-        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-        .slice(0, 5); // Show top 5
-      setEvents(upcoming);
+      eventStore.getAll().then(allEvents => {
+        const academicKeywords = ["exam", "assessment", "quiz", "test", "midterm", "final", "assignment", "project", "deadline", "paper", "presentation", "lab", "due"];
+        const upcoming = allEvents
+          .filter(e => {
+            const isFuture = new Date(e.date).setHours(0,0,0,0) >= new Date().setHours(0,0,0,0);
+            const combined = (e.title + " " + (e.description || "")).toLowerCase();
+            const hasKeyword = academicKeywords.some(kw => combined.includes(kw));
+            const isAcademicType = e.type === 'exam' || e.type === 'assignment';
+            const isManual = e.source === 'manual';
+            return isFuture && (hasKeyword || isAcademicType || isManual);
+          })
+          .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+          .slice(0, 5);
+        setEvents(upcoming);
+      });
     };
     loadEvents();
     window.addEventListener("eventsUpdated", loadEvents);
@@ -64,10 +62,7 @@ const ExamManager = () => {
 
     eventStore.add(event);
     setIsAdding(false);
-    setNewName("");
-    setNewSubject("");
-    setNewDate("");
-    setNewType("exam");
+    setNewName(""); setNewSubject(""); setNewDate(""); setNewType("exam");
     toast.success("Added to your schedule!");
   };
 

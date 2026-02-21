@@ -133,8 +133,8 @@ const CalendarPage = () => {
   const [dlPriority, setDlPriority] = useState<Deadline["priority"]>("medium");
 
   useEffect(() => {
-    const loadEvents = () => setEvents(eventStore.getAll());
-    const loadDeadlines = () => setDeadlines(deadlineStore.getAll());
+    const loadEvents = () => eventStore.getAll().then(setEvents);
+    const loadDeadlines = () => deadlineStore.getAll().then(setDeadlines);
     loadEvents(); loadDeadlines();
     window.addEventListener("eventsUpdated", loadEvents);
     window.addEventListener("deadlinesUpdated", loadDeadlines);

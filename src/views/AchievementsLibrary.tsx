@@ -13,18 +13,15 @@ import { cn } from "@/lib/utils";
 
 const AchievementsLibrary = () => {
   const router = useRouter();
-  const [achievements, setAchievements] = useState(achievementStore.getAll());
+  const [achievements, setAchievements] = useState<Awaited<ReturnType<typeof achievementStore.getAll>>>([]);
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
 
-  const userPrefs =
-    typeof window !== "undefined"
-      ? JSON.parse(localStorage.getItem("userPreferences") || "{}")
-      : {};
-  const userName = userPrefs.name || "Student";
-
   useEffect(() => {
-    setAchievements(achievementStore.getAll());
+    achievementStore.getAll().then(setAchievements);
+    const refresh = () => achievementStore.getAll().then(setAchievements);
+    window.addEventListener("achievementsUpdated", refresh);
+    return () => window.removeEventListener("achievementsUpdated", refresh);
   }, []);
 
   const filtered = achievements.filter((a) => {

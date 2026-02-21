@@ -22,12 +22,12 @@ import { themes } from "@/components/ThemeSelector";
 import ProfileSheet from "@/components/ProfileSheet";
 
 const mainItems = [
-  { title: "Dashboard",    url: "/dashboard", icon: LayoutDashboard },
-  { title: "Analogy Tutor",url: "/chat",      icon: MessageCircle   },
-  { title: "Quizzes",      url: "/quiz",      icon: BookOpen        },
-  { title: "Calendar",     url: "/calendar",  icon: Calendar        },
-  { title: "My Subjects",  url: "/subjects",   icon: GraduationCap   },
-  { title: "Achievements", url: "/achievements", icon: Trophy        },
+  { title: "Dashboard",    url: "/dashboard",    icon: LayoutDashboard, tutorial: "dashboard-nav"    },
+  { title: "Analogy Tutor",url: "/chat",         icon: MessageCircle,   tutorial: "chat-nav"         },
+  { title: "Quizzes",      url: "/quiz",         icon: BookOpen,        tutorial: "quiz-nav"         },
+  { title: "Calendar",     url: "/calendar",     icon: Calendar,        tutorial: "calendar-nav"     },
+  { title: "My Subjects",  url: "/subjects",     icon: GraduationCap,   tutorial: "subjects-nav"     },
+  { title: "Achievements", url: "/achievements", icon: Trophy,          tutorial: "achievements-nav" },
 ];
 
 // Small coloured dot showing current mood when sidebar is icon-only
@@ -73,7 +73,7 @@ export function AppSidebar() {
   const name = userData?.name || "Student";
 
   return (
-    <Sidebar collapsible="icon" className="border-r border-border/50 bg-background/95 backdrop-blur-sm">
+    <Sidebar collapsible="icon" className="border-r border-border/50 bg-background/95 backdrop-blur-sm" data-tutorial="sidebar">
       {/* Logo */}
       <SidebarHeader className="h-20 flex items-center px-6 group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:justify-center transition-all duration-300">
         <button onClick={() => router.push("/?force=true")}
@@ -94,7 +94,7 @@ export function AppSidebar() {
             <SidebarMenu>
               {mainItems.map(item => (
                 <SidebarMenuItem key={item.title}>
-                  <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                  <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} data-tutorial={item.tutorial}>
                     <SidebarMenuButton isActive={pathname === item.url} onClick={() => router.push(item.url)}
                       className={cn("h-10 rounded-xl transition-all duration-200 group-data-[collapsible=icon]:justify-center overflow-hidden",
                         pathname === item.url ? "bg-primary/10 text-primary shadow-sm" : "hover:bg-muted/50 text-muted-foreground hover:text-foreground")}>
@@ -114,10 +114,11 @@ export function AppSidebar() {
 
         {/* ── Colour Scheme ── */}
         {isCollapsed ? (
-          <SidebarGroup className="mt-2">
+          <SidebarGroup className="mt-2" data-tutorial="theme-section">
             <SidebarGroupContent className="flex flex-col items-center gap-2">
               {mounted && (
                 <button onClick={() => setMode(isDark ? "light" : "dark")}
+                  data-tutorial="theme"
                   className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-muted transition-colors text-muted-foreground">
                   {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
                 </button>
@@ -145,7 +146,7 @@ export function AppSidebar() {
             </SidebarGroupContent>
           </SidebarGroup>
         ) : (
-          <SidebarGroup className="mt-2">
+          <SidebarGroup className="mt-2" data-tutorial="theme">
             <div role="button" tabIndex={0}
               onClick={() => setThemeOpen(o => !o)}
               onKeyDown={e => (e.key === "Enter" || e.key === " ") && setThemeOpen(o => !o)}
@@ -190,6 +191,7 @@ export function AppSidebar() {
           <SidebarMenuItem className="flex justify-center">
             <SidebarMenuButton size="lg"
               onClick={() => setProfileOpen(true)}
+              data-tutorial="profile"
               className="h-14 w-full flex items-center justify-start px-4 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0 hover:bg-primary/5 transition-all overflow-hidden cursor-pointer">
               <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center shrink-0">
                 <User className="w-5 h-5 text-primary-foreground" />
