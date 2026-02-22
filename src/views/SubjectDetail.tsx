@@ -19,7 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { SUBJECT_CATALOG, SubjectId } from "@/constants/subjects";
-import { subjectStore, SubjectMark } from "@/utils/subjectStore";
+import { subjectStore, SubjectMark, SubjectData } from "@/utils/subjectStore";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -30,9 +30,21 @@ export default function SubjectDetail() {
   const subjectId = (params?.id as string) || "";
   const subject = SUBJECT_CATALOG.find((s) => s.id === subjectId);
 
-  const [data, setData] = useState(subjectStore.getSubject(subjectId));
+  const emptyData: SubjectData = { id: subjectId, marks: [], notes: { content: "", lastUpdated: new Date().toISOString() } };
+  const [data, setData] = useState<SubjectData>(emptyData);
   const [newMark, setNewMark] = useState({ title: "", score: "", total: "" });
-  const [notes, setNotes] = useState(data.notes.content);
+  const [notes, setNotes] = useState("");
+
+  // Load data async on mount
+  useEffect(() => {
+    subjectStore.getSubject(subjectId).then(d => {
+      setData(d);
+      setNotes(d.notes.content);
+    });
+    const handler = () => subjectStore.getSubject(subjectId).then(setData);
+    window.addEventListener("subjectDataUpdated", handler);
+    return () => window.removeEventListener("subjectDataUpdated", handler);
+  }, [subjectId]);
 
   useEffect(() => {
     setNotes(data.notes.content);
@@ -48,7 +60,7 @@ export default function SubjectDetail() {
     );
   }
 
-  const handleAddMark = () => {
+  const handleAddMark = async () => {
     if (!newMark.title || !newMark.score || !newMark.total) {
       toast.error("Please fill in all fields");
       return;
@@ -60,14 +72,14 @@ export default function SubjectDetail() {
       return;
     }
 
-    subjectStore.addMark(subjectId, {
+    await subjectStore.addMark(subjectId, {
       title: newMark.title,
       score,
       total,
       date: new Date().toISOString()
     });
-    
-    setData(subjectStore.getSubject(subjectId));
+    const updated = await subjectStore.getSubject(subjectId);
+    setData(updated);
     setNewMark({ title: "", score: "", total: "" });
     toast.success("Mark added successfully!");
   };

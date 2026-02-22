@@ -117,7 +117,10 @@ const Dashboard = () => {
   useAchievementChecker();
 
   const userName = userPrefs.name || "Student";
-  const [statsData, setStatsData] = useState(() => statsStore.get());
+  const [statsData, setStatsData] = useState<import("@/utils/statsStore").UserStats>({
+    quizzesDone: 0, currentStreak: 0, accuracy: 0,
+    conversationsCount: 0, topSubject: "None", subjectCounts: {},
+  });
 
   const normalizedStats = useMemo(() => {
     return {
@@ -130,8 +133,9 @@ const Dashboard = () => {
   }, [statsData]);
 
   useEffect(() => {
-    const handleStatsUpdate = () => {
-      setStatsData(statsStore.get());
+    const handleStatsUpdate = async () => {
+      const stats = await statsStore.get();
+      setStatsData(stats);
     };
     
     const handleAchievementsUpdate = async () => {

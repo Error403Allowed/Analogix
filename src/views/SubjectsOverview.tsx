@@ -26,13 +26,20 @@ export default function SubjectsOverview() {
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [userSubjects, setUserSubjects] = useState<string[]>([]);
-  const [statsData, setStatsData] = useState(() => statsStore.get());
+  const [statsData, setStatsData] = useState<import("@/utils/statsStore").UserStats>({
+    quizzesDone: 0, currentStreak: 0, accuracy: 0,
+    conversationsCount: 0, topSubject: "None", subjectCounts: {},
+  });
 
   useEffect(() => {
     const prefs = JSON.parse(localStorage.getItem("userPreferences") || "{}");
     setUserSubjects(prefs.subjects || []);
-    
-    const handleStatsUpdate = () => setStatsData(statsStore.get());
+
+    const handleStatsUpdate = async () => {
+      const stats = await statsStore.get();
+      setStatsData(stats);
+    };
+    handleStatsUpdate();
     window.addEventListener("statsUpdated", handleStatsUpdate);
     return () => window.removeEventListener("statsUpdated", handleStatsUpdate);
   }, []);
