@@ -14,6 +14,12 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
+const getRedirectBaseUrl = () => {
+  const envUrl = process.env.NEXT_PUBLIC_SITE_URL;
+  if (envUrl && envUrl.length > 0) return envUrl.replace(/\/$/, "");
+  return window.location.origin;
+};
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Memoised so we don't recreate the client (and its subscriptions) on every render
   const supabase = useMemo(() => createClient(), []);
@@ -44,7 +50,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
+        redirectTo: `${getRedirectBaseUrl()}/auth/callback?next=${encodeURIComponent(next)}`,
       },
     });
   }, [supabase]);
