@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowRight, Check, Sparkles, User,
@@ -196,26 +196,34 @@ const TOTAL_STEPS = 7;
 const Onboarding = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { user: authUser, loading: authLoading } = useAuth();
 
-  // If coming back from OAuth, the callback route redirects here with ?step=2.
-  // We read it once on mount — searchParams is stable from Next.js so this is safe.
-  const initialStep = useMemo(() => {
-    const s = parseInt(searchParams?.get("step") ?? "1", 10);
-    return isNaN(s) || s < 1 || s > TOTAL_STEPS ? 1 : s;
-  }, [searchParams]);
-
-  const [step, setStep] = useState(initialStep);
-  const [authError, setAuthError] = useState<string | null>(
+  const [authError] = useState<string | null>(
     searchParams?.get("error") === "auth_failed" ? "Authentication failed. Please try again." : null
   );
 
-  // If a signed-in user somehow lands on step 1 (e.g. direct URL), bump them to step 2
-  const { user: authUser, loading: authLoading } = useAuth();
+  // Always start on step 1 — the gate below moves us forward once auth resolves.
+  // This prevents ?step=2 in the URL from skipping auth for unauthenticated users.
+  const [step, setStep] = useState(1);
+
   useEffect(() => {
-    if (!authLoading && authUser && step === 1) {
-      setStep(2);
+    if (authLoading) return;
+
+    if (authUser) {
+      try {
+        const prefs = JSON.parse(localStorage.getItem("userPreferences") || "{}");
+        if (prefs?.onboardingComplete) {
+          router.replace("/dashboard");
+          return;
+        }
+      } catch {}
+      // Signed in but not finished — jump to step from URL (or 2)
+      const urlStep = parseInt(searchParams?.get("step") ?? "2", 10);
+      setStep(isNaN(urlStep) || urlStep <= 1 ? 2 : urlStep);
     }
-  }, [authUser, authLoading, step]);
+    // Not signed in — stay on step 1
+  }, [authUser, authLoading]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const [name, setName] = useState("");
   const [grade, setGrade] = useState<string | null>(null);
   const [state, setState] = useState<AustralianState | null>(null);
