@@ -316,18 +316,7 @@ const Dashboard = () => {
   return (
     <>
     <div className="min-h-full relative overflow-x-hidden flex flex-col">
-      <div className="w-full relative z-10 flex-1 min-h-0 flex flex-col">
-        <div className="flex items-center justify-end px-1 pb-3">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => router.push("/?force=true")}
-            className="rounded-full font-semibold"
-          >
-            Visit Landing
-          </Button>
-        </div>
-
+      <div className="w-full relative z-10 flex-1 min-h-0 flex flex-col">       
         <div className="flex flex-col gap-4 min-h-0 flex-1 overflow-y-auto pb-12 custom-scrollbar px-1">
 
             {/* Top Section: Calendar + Timer */}
