@@ -115,7 +115,7 @@ const Landing = () => {
   const bentoFeatures = [
     {
       title: "Analogy Tutor",
-      desc: "Complex topics explained through your hobbies. No jargon.",
+      desc: "Complex topics explained through your hobbies. No jargon. ",
       icon: MessageCircle,
       size: "lg",
       color: "bg-blue-500/10 text-blue-500 border-blue-500/20",
@@ -150,13 +150,6 @@ const Landing = () => {
       color: "bg-orange-500/10 text-orange-500 border-orange-500/20",
       stats: true
     },
-    {
-      title: "AI-Powered Tutor",
-      desc: "Trained on the Australian Curriculum and student data for personalized support.",
-      icon: Bot,
-      size: "md",
-      color: "bg-primary/10 text-primary border-primary/20",
-    }
   ];
 
   return (
