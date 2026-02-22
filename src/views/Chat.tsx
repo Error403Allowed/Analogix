@@ -22,7 +22,7 @@ import { statsStore } from "@/utils/statsStore";
 import { chatStore } from "@/utils/chatStore";
 import MarkdownRenderer from "@/components/MarkdownRenderer";
 import TypewriterText from "@/components/TypewriterText";
-import { SUBJECT_CATALOG, getSubjectDescription } from "@/constants/subjects";
+import { SUBJECT_CATALOG, SubjectId, getSubjectDescription } from "@/constants/subjects";
 import { buildInterestList } from "@/utils/interests";
 
 // Splits AI response into { thinking, response } based on <think>...</think> tags.
@@ -257,7 +257,7 @@ const Chat = () => {
   const router = useRouter();
   
   // CURRENT TOPIC: Which subject are we talking about right now?
-  const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
+  const [selectedSubject, setSelectedSubject] = useState<SubjectId | null>(null);
   
   // CONVERSATION: All the messages you and the AI have exchanged.
   const [messages, setMessages] = useState<Message[]>([]);
@@ -491,7 +491,7 @@ const Chat = () => {
   }, [messages.length, isTyping, updateScrollButton, scrollToBottom]);
 
   // PICKING A TOPIC: This runs when you select a subject icon.
-  const handleSubjectSelect = async (subjectId: string) => {
+  const handleSubjectSelect = async (subjectId: SubjectId) => {
     setSelectedSubject(subjectId);
     setMessages([]);
     setIsAnimating(false);
