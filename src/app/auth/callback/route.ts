@@ -2,8 +2,8 @@ import { createClient } from "@/lib/supabase/server";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 
-const getOrigin = (request: Request) => {
-  const hdrs = headers();
+const getOrigin = async (request: Request) => {
+  const hdrs = await headers();
   const forwardedProto = hdrs.get("x-forwarded-proto") ?? "http";
   const forwardedHost = hdrs.get("x-forwarded-host") ?? hdrs.get("host");
 
@@ -17,7 +17,7 @@ const getOrigin = (request: Request) => {
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const origin = getOrigin(request);
+  const origin = await getOrigin(request);
   const code = searchParams.get("code");
   const next = searchParams.get("next") ?? "/onboarding?step=2";
 
