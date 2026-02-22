@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DashboardPanel } from "@/components/ui/panels";
 import Header from "@/components/Header";
 import AchievementBadge from "@/components/AchievementBadge";
 import QuizCreator from "@/components/QuizCreator";
@@ -170,7 +171,7 @@ const Dashboard = () => {
   }, [userName]);
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem("app-theme") || "Classic Blue";
+    const savedTheme = localStorage.getItem("app-theme") || "Cosmic Aurora";
     applyThemeByName(savedTheme);
   }, []);
 
@@ -316,13 +317,28 @@ const Dashboard = () => {
     <>
     <div className="min-h-full relative overflow-x-hidden flex flex-col">
       <div className="w-full relative z-10 flex-1 min-h-0 flex flex-col">
+        <div className="flex items-center justify-end px-1 pb-3">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => router.push("/?force=true")}
+            className="rounded-full font-semibold"
+          >
+            Visit Landing
+          </Button>
+        </div>
 
         <div className="flex flex-col gap-4 min-h-0 flex-1 overflow-y-auto pb-12 custom-scrollbar px-1">
 
             {/* Top Section: Calendar + Timer */}
             <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-stretch">
               {/* Calendar Section */}
-              <motion.div variants={itemVariants} data-tutorial="calendar" className="xl:col-span-7 dashboard-panel p-8 flex flex-col">
+              <DashboardPanel
+                as={motion.div}
+                variants={itemVariants}
+                data-tutorial="calendar"
+                className="xl:col-span-7 p-8 flex flex-col"
+              >
                 <div className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.2em] text-muted-foreground mb-6">
                   <CalendarIcon className="w-4 h-4 text-primary" />
                   Calendar
@@ -330,19 +346,25 @@ const Dashboard = () => {
                 <div className="flex-1">
                    <CalendarWidget streak={normalizedStats.currentStreak} streakLabel={streakLabel} />
                 </div>
-              </motion.div>
+              </DashboardPanel>
 
               {/* Timer & Streak Column */}
               <div className="xl:col-span-5 flex flex-col gap-4">
-                <motion.div variants={itemVariants} data-tutorial="timer" className="dashboard-panel p-6 flex flex-col items-center justify-center">
+                <DashboardPanel
+                  as={motion.div}
+                  variants={itemVariants}
+                  data-tutorial="timer"
+                  className="p-6 flex flex-col items-center justify-center"
+                >
                    <TimerWidget />
-                </motion.div>
+                </DashboardPanel>
                 
-                <motion.div 
+                <DashboardPanel
+                  as={motion.div}
                   variants={itemVariants}
                   whileHover={{ scale: 1.02, y: -5 }}
                   data-tutorial="streak"
-                  className="dashboard-panel p-6 flex flex-col items-center justify-center text-center relative overflow-hidden group min-h-[140px] border border-amber-500/10 bg-amber-500/5 shadow-[0_20px_50px_rgba(245,158,11,0.05)]"
+                  className="p-6 flex flex-col items-center justify-center text-center relative overflow-hidden group min-h-[140px] border border-amber-500/10 bg-amber-500/5 shadow-[0_20px_50px_rgba(245,158,11,0.05)]"
                 >
                   <div className="absolute inset-0 bg-gradient-to-br from-amber-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                   <div className="w-14 h-14 rounded-[2rem] bg-amber-500/10 flex items-center justify-center mb-3 relative z-10 shadow-lg shadow-amber-500/10 group-hover:scale-110 transition-transform">
@@ -356,20 +378,30 @@ const Dashboard = () => {
                       {streakLabel} Active Streak
                     </p>
                   </div>
-                </motion.div>
+                </DashboardPanel>
               </div>
             </div>
 
             {/* Middle Section: Subjects (Persistent & Prominent) */}
-            <motion.div variants={itemVariants} data-tutorial="subjects" className="dashboard-panel p-6">
+            <DashboardPanel
+              as={motion.div}
+              variants={itemVariants}
+              data-tutorial="subjects"
+              className="p-6"
+            >
                <SubjectGrid />
-            </motion.div>
+            </DashboardPanel>
 
             {/* Bottom Section: AI Tutor + Quizzes */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
 
               {/* AI Tutor */}
-              <motion.div variants={itemVariants} data-tutorial="ai-tutor" className="dashboard-panel p-8 flex flex-col min-h-[500px]">
+              <DashboardPanel
+                as={motion.div}
+                variants={itemVariants}
+                data-tutorial="ai-tutor"
+                className="p-8 flex flex-col min-h-[500px]"
+              >
                 <div className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.2em] text-muted-foreground mb-8">
                   <Sparkles className="w-4 h-4 text-primary" />
                   AI Tutor
@@ -391,10 +423,15 @@ const Dashboard = () => {
                     </Button>
                   </div>
                 </div>
-              </motion.div>
+              </DashboardPanel>
 
               {/* Quizzes */}
-              <motion.div variants={itemVariants} data-tutorial="quiz" className="dashboard-panel p-8 flex flex-col min-h-[500px]">
+              <DashboardPanel
+                as={motion.div}
+                variants={itemVariants}
+                data-tutorial="quiz"
+                className="p-8 flex flex-col min-h-[500px]"
+              >
                 <div className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.2em] text-muted-foreground mb-8">
                   <BookOpen className="w-4 h-4 text-primary" />
                   Knowledge Lab
@@ -420,7 +457,7 @@ const Dashboard = () => {
                     </Button>
                   </div>
                 </div>
-              </motion.div>
+              </DashboardPanel>
             </div>
           </div>
       <Dialog open={showQuizCreator} onOpenChange={setShowQuizCreator}>

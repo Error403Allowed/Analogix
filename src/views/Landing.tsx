@@ -26,13 +26,13 @@ import {
   Bot
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Head from "next/head";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import CursorParticles from "@/components/CursorParticles";
 
 const Landing = () => {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
 
@@ -40,9 +40,6 @@ const Landing = () => {
   const featuresRef = useRef(null);
   const smartSimpleRef = useRef(null);
   const ctaRef = useRef(null);
-
-  const THEME_ORDER_KEY = "landingThemeOrder";
-  const THEME_INDEX_KEY = "landingThemeIndex";
 
   useEffect(() => {
     setIsMounted(true);
@@ -52,38 +49,26 @@ const Landing = () => {
     } catch {
       setHasCompletedOnboarding(false);
     }
+  }, []);
 
-    const themes = [
-      { p: { h: "199.2", s: "78.2%", l: "48.3%" }, g: ["#0ea5a6", "#2563eb", "#0f766e"] }, // Coastal
-      { p: { h: "147", s: "56%", l: "38%" }, g: ["#15803d", "#16a34a", "#0f766e"] }, // Forest
-      { p: { h: "32", s: "76%", l: "52%" }, g: ["#f59e0b", "#f97316", "#ea580c"] }, // Amber
-    ];
+  const forceLanding =
+    searchParams?.get("force") === "true" || searchParams?.get("force") === "1";
 
-    const loadOrder = () => {
-      try {
-        const stored = JSON.parse(localStorage.getItem(THEME_ORDER_KEY) || "[]");
-        if (Array.isArray(stored) && stored.length === themes.length) return stored;
-      } catch {}
-      const order = themes.map((_, i) => i).sort(() => Math.random() - 0.5);
-      localStorage.setItem(THEME_ORDER_KEY, JSON.stringify(order));
-      localStorage.setItem(THEME_INDEX_KEY, "0");
-      return order;
-    };
+  useEffect(() => {
+    if (!isMounted) return;
+    if (hasCompletedOnboarding && !forceLanding) {
+      router.replace("/dashboard");
+    }
+  }, [hasCompletedOnboarding, isMounted, router, forceLanding]);
 
-    const order = loadOrder();
-    const rawIndex = Number(localStorage.getItem(THEME_INDEX_KEY) || "0");
-    const index = Number.isFinite(rawIndex) ? rawIndex : 0;
-    const themeIndex = order[index % order.length];
-    localStorage.setItem(THEME_INDEX_KEY, String((index + 1) % order.length));
-
-    const randomTheme = themes[themeIndex];
+  useEffect(() => {
     const root = document.documentElement;
-    root.style.setProperty("--p-h", randomTheme.p.h);
-    root.style.setProperty("--p-s", randomTheme.p.s);
-    root.style.setProperty("--p-l", randomTheme.p.l);
-    root.style.setProperty("--g-1", randomTheme.g[0]);
-    root.style.setProperty("--g-2", randomTheme.g[1]);
-    root.style.setProperty("--g-3", randomTheme.g[2]);
+    root.style.setProperty("--p-h", "199.2");
+    root.style.setProperty("--p-s", "78.2%");
+    root.style.setProperty("--p-l", "48.3%");
+    root.style.setProperty("--g-1", "#2563eb");
+    root.style.setProperty("--g-2", "#22c55e");
+    root.style.setProperty("--g-3", "#f59e0b");
   }, []);
 
   // Hero section animations
@@ -115,7 +100,7 @@ const Landing = () => {
   const bentoFeatures = [
     {
       title: "Analogy Tutor",
-      desc: "Complex topics explained through your hobbies. No jargon. ",
+      desc: "Complex topics explained through your hobbies, so stuff actually makes sense.",
       icon: MessageCircle,
       size: "lg",
       color: "bg-blue-500/10 text-blue-500 border-blue-500/20",
@@ -123,30 +108,30 @@ const Landing = () => {
     },
     {
       title: "Smart Calendar",
-      desc: "Study plans that actually fit your life.",
+      desc: "Study plans that actually fit your life and adapt as you go. Because plans should be flexible, not rigid.",
       icon: Lightbulb,
       size: "sm",
       color: "bg-amber-500/10 text-amber-500 border-amber-500/20"
     },
     {
       title: "Knowledge Lab",
-      desc: "Practice with quizzes that adapt to you.",
+      desc: "Practice with quizzes that adapt to you and track your progress with real-time analytics.",
       icon: FlaskConical,
       size: "sm",
       color: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
     },
     {
       title: "ACARA Aligned",
-      desc: "Every subject mapped to the curriculum.",
+      desc: "Every subject mapped to the curriculum so you can focus on learning, not searching.",
       icon: Shield,
       size: "sm",
       color: "bg-purple-500/10 text-purple-500 border-purple-500/20"
     },
     {
       title: "Achievement System",
-      desc: "Earn badges and level up your academic core.",
+      desc: "Earn badges and level up your academic core so you're actually appreciated for your hard work.",
       icon: Trophy,
-      size: "lg",
+      size: "sm",
       color: "bg-orange-500/10 text-orange-500 border-orange-500/20",
       stats: true
     },
@@ -163,10 +148,26 @@ const Landing = () => {
       
       {/* Background elements */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-0 left-0 w-full h-full opacity-[0.03] dark:opacity-[0.05]" 
-             style={{ backgroundImage: 'radial-gradient(circle, currentColor 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/5 blur-[120px] rounded-full" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-accent/5 blur-[120px] rounded-full" />
+        <div
+          className="absolute inset-0"
+          style={{
+            backgroundImage:
+              "radial-gradient(circle at 12% 18%, rgba(37, 99, 235, 0.18), transparent 42%)," +
+              "radial-gradient(circle at 82% 22%, rgba(34, 197, 94, 0.16), transparent 40%)," +
+              "radial-gradient(circle at 70% 78%, rgba(245, 158, 11, 0.18), transparent 45%)," +
+              "radial-gradient(circle at 20% 80%, rgba(16, 185, 129, 0.12), transparent 40%)"
+          }}
+        />
+        <div
+          className="absolute top-0 left-0 w-full h-full opacity-[0.05]"
+          style={{
+            backgroundImage: "radial-gradient(circle, rgba(15, 23, 42, 0.6) 1px, transparent 1px)",
+            backgroundSize: "44px 44px"
+          }}
+        />
+        <div className="absolute top-[-12%] left-[-10%] w-[46%] h-[46%] bg-blue-500/10 blur-[140px] rounded-full" />
+        <div className="absolute bottom-[-12%] right-[-10%] w-[44%] h-[44%] bg-emerald-500/10 blur-[140px] rounded-full" />
+        <div className="absolute top-[20%] right-[15%] w-[30%] h-[30%] bg-amber-500/10 blur-[120px] rounded-full" />
       </div>
 
       {/* Navigation */}
@@ -197,7 +198,6 @@ const Landing = () => {
               </button>
             ))}
             <div className="h-4 w-[1px] bg-border" />
-            <ThemeToggle />
             <Button
               variant="default"
               size="sm"
@@ -241,8 +241,7 @@ const Landing = () => {
               transition={{ delay: 0.2 }}
               className="text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto leading-relaxed"
             >
-              We turn syllabus stress into simple analogies. <br className="hidden md:block" /> 
-              The ultimate study buddy for the Australian Curriculum.
+              No more rote learning, with tools that turn textbooks into something actually worth learning.
             </motion.p>
 
             <motion.div 

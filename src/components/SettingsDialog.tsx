@@ -6,6 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { achievementStore } from "@/utils/achievementStore";
+import { useAuth } from "@/context/AuthContext";
+import { useRouter } from "next/navigation";
 
 interface SettingsDialogProps {
   open: boolean;
@@ -13,6 +15,8 @@ interface SettingsDialogProps {
 }
 
 const SettingsDialog = ({ open, onOpenChange }: SettingsDialogProps) => {
+  const router = useRouter();
+  const { signOut } = useAuth();
   const [prefs, setPrefs] = useState(() =>
     typeof window !== "undefined"
       ? JSON.parse(localStorage.getItem("userPreferences") || "{}")
@@ -33,6 +37,12 @@ const SettingsDialog = ({ open, onOpenChange }: SettingsDialogProps) => {
       achievementStore.reset();
       window.location.reload();
     }
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    onOpenChange(false);
+    router.replace("/onboarding");
   };
 
   return (
@@ -63,11 +73,16 @@ const SettingsDialog = ({ open, onOpenChange }: SettingsDialogProps) => {
             <Switch id="notifications" defaultChecked />
           </div>
 
-          <div className="pt-4 border-t border-border">
-             <h4 className="text-sm font-bold text-destructive mb-2">Danger Zone</h4>
-             <Button variant="destructive" size="sm" onClick={handleReset} className="w-full">
-               Reset All Data
-             </Button>
+          <div className="pt-4 border-t border-border space-y-3">
+            <Button variant="outline" size="sm" onClick={handleSignOut} className="w-full">
+              Sign Out
+            </Button>
+            <div>
+              <h4 className="text-sm font-bold text-destructive mb-2">Danger Zone</h4>
+              <Button variant="destructive" size="sm" onClick={handleReset} className="w-full">
+                Reset All Data
+              </Button>
+            </div>
           </div>
         </div>
         <div className="flex justify-end gap-2">

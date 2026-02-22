@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ArrowRight, Check, Sparkles, User,
+  ArrowRight, Check, Sparkles,
   Calculator, Microscope, Landmark, Zap, FlaskConical, BookOpen,
   Cpu, LineChart, Briefcase, Wallet, HeartPulse, Globe, Wrench,
   Stethoscope, Languages, Dumbbell, Gamepad2, Music, CookingPot,
@@ -86,39 +86,60 @@ function AuthStep({ onAuthed, externalError }: { onAuthed: () => void; externalE
   }
 
   return (
-    <div className="space-y-8">
-      <div className="flex items-center gap-3">
-        <div className="w-12 h-12 rounded-2xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20 flex-shrink-0">
-          <Brain className="w-6 h-6 text-primary-foreground" />
-        </div>
-        <div>
-          <h1 className="text-3xl font-black text-foreground tracking-tight">Welcome to Analogix.</h1>
-          <p className="text-muted-foreground text-base mt-0.5">Create an account to save your progress.</p>
+    <div className="grid gap-8 md:grid-cols-[1.1fr_0.9fr] items-stretch">
+      <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-primary/10 via-transparent to-accent/10 p-8 md:p-10">
+        <div className="absolute inset-0 opacity-60 bg-[radial-gradient(circle_at_20%_20%,rgba(59,130,246,0.25),transparent_55%),radial-gradient(circle_at_80%_10%,rgba(236,72,153,0.2),transparent_45%),radial-gradient(circle_at_50%_80%,rgba(34,197,94,0.18),transparent_50%)]" />
+        <div className="relative z-10 flex h-full flex-col justify-between gap-6">
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20 flex-shrink-0">
+                <Brain className="w-6 h-6 text-primary-foreground" />
+              </div>
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.3em] text-muted-foreground">Analogix</p>
+                <h1 className="text-3xl md:text-4xl font-black text-foreground tracking-tight">Login / Sign Up</h1>
+              </div>
+            </div>
+            <p className="text-sm md:text-base text-muted-foreground max-w-sm">
+              Sign in to keep your progress, sync your subjects, and unlock personalized analogies.
+            </p>
+          </div>
+          <div className="space-y-2">
+            <p className="text-2xl md:text-3xl font-black text-foreground tracking-tight">Start your study adventure.</p>
+            <p className="text-xs text-muted-foreground">Built for quick wins, deep focus, and smarter revision.</p>
+          </div>
         </div>
       </div>
 
-      {externalError && (
-        <div className="bg-destructive/10 border border-destructive/30 rounded-xl px-4 py-3 text-sm text-destructive font-medium">
-          {externalError}
+      <div className="flex flex-col justify-center gap-6">
+        <div>
+          <h2 className="text-3xl font-black text-foreground tracking-tight">Sign in</h2>
+          <p className="text-muted-foreground text-sm mt-1">Use your Google account to continue.</p>
         </div>
-      )}
 
-      <Button variant="outline" className="w-full h-12 gap-3 rounded-2xl font-semibold border-2 hover:border-primary/40 transition-all"
-        onClick={handleGoogle} disabled={googleLoading}>
-        {googleLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
-          <svg className="w-5 h-5" viewBox="0 0 24 24">
-            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-          </svg>
+        {externalError && (
+          <div className="bg-destructive/10 border border-destructive/30 rounded-xl px-4 py-3 text-sm text-destructive font-medium">
+            {externalError}
+          </div>
         )}
-        Continue with Google
-      </Button>
 
-      <p className="text-center text-xs text-muted-foreground pt-2">
-        Already have an account? Signing in will link to your existing profile.
-      </p>
+        <Button variant="outline" className="w-full h-12 gap-3 rounded-2xl font-semibold border-2 hover:border-primary/40 transition-all"
+          onClick={handleGoogle} disabled={googleLoading}>
+          {googleLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
+            <svg className="w-5 h-5" viewBox="0 0 24 24">
+              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+            </svg>
+          )}
+          Continue with Google
+        </Button>
+
+        <p className="text-center text-xs text-muted-foreground">
+          Already have an account? Signing in will link to your existing profile.
+        </p>
+      </div>
     </div>
   );
 }
@@ -190,8 +211,8 @@ function IcsStep({ importing, imported, count, error, onFile }:
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
-// Steps: 1=Auth, 2=Name, 3=Year, 4=State, 5=Subjects, 6=Hobbies, 7=ICS
-const TOTAL_STEPS = 7;
+// Steps: 1=Auth, 2=Year, 3=State, 4=Subjects, 5=Hobbies, 6=ICS
+const TOTAL_STEPS = 6;
 
 const Onboarding = () => {
   const router = useRouter();
@@ -219,7 +240,8 @@ const Onboarding = () => {
       } catch {}
       // Signed in but not finished — jump to step from URL (or 2)
       const urlStep = parseInt(searchParams?.get("step") ?? "2", 10);
-      setStep(isNaN(urlStep) || urlStep <= 1 ? 2 : urlStep);
+      const safeStep = isNaN(urlStep) || urlStep <= 1 ? 2 : Math.min(urlStep, TOTAL_STEPS);
+      setStep(safeStep);
     }
     // Not signed in — stay on step 1
   }, [authUser, authLoading]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -280,14 +302,32 @@ const Onboarding = () => {
     return d;
   };
 
+  const getAuthName = useCallback(() => {
+    if (!authUser) return "";
+    const meta = authUser.user_metadata || {};
+    const first = meta.first_name || meta.given_name;
+    const last = meta.last_name || meta.family_name;
+    const full = meta.full_name || meta.name;
+    const combined = [first, last].filter(Boolean).join(" ").trim();
+    return (combined || full || authUser.email?.split("@")[0] || "").trim();
+  }, [authUser]);
+
+  useEffect(() => {
+    const derived = getAuthName();
+    if (derived && !name.trim()) setName(derived);
+  }, [getAuthName, name]);
+
+  const displayName = name.trim() || getAuthName() || "Student";
+
   const savePreferences = async (hobbyIds: string[], hobbyDetails: Record<string, string>) => {
     const hobbies = hobbyIds.map(id => {
       const label = HOBBY_OPTIONS.find(h => h.id === id)?.label || id;
       const detail = hobbyDetails[id] || "";
       return detail ? `${label} (${detail})` : label;
     });
+    const finalName = displayName;
     const prefs = {
-      name: name.trim(), grade, state, subjects: selectedSubjects,
+      name: finalName, grade, state, subjects: selectedSubjects,
       hobbies, hobbyIds, hobbyDetails, onboardingComplete: true,
     };
     localStorage.setItem("userPreferences", JSON.stringify(prefs));
@@ -306,7 +346,7 @@ const Onboarding = () => {
     } catch (e) { console.error("[Onboarding] Supabase save failed:", e); }
 
     achievementStore.unlock("start_1");
-    if (name.trim().toLowerCase() !== "student") achievementStore.unlock("start_2");
+    if (displayName.trim().toLowerCase() !== "student") achievementStore.unlock("start_2");
   };
 
   const handleIcsFile = async (file: File) => {
@@ -323,19 +363,18 @@ const Onboarding = () => {
   // Step 1 (auth) is complete once the user is logged in
   const canNext =
     (step === 1 && !!authUser) ||
-    (step === 2 && !!name.trim()) ||
-    (step === 3 && !!grade) ||
-    (step === 4 && !!state) ||
-    (step === 5 && selectedSubjects.length > 0) ||
-    (step === 6 && selectedHobbies.length > 0) ||
-    (step === 7 && !icsImporting);
+    (step === 2 && !!grade) ||
+    (step === 3 && !!state) ||
+    (step === 4 && selectedSubjects.length > 0) ||
+    (step === 5 && selectedHobbies.length > 0) ||
+    (step === 6 && !icsImporting);
 
   const handleNext = async () => {
     if (!canNext) return;
-    if (step < 6) { setStep(s => s + 1); return; }
-    if (step === 6) {
+    if (step < 5) { setStep(s => s + 1); return; }
+    if (step === 5) {
       await savePreferences(selectedHobbies, buildHobbyDetails(selectedHobbies));
-      setStep(7); return;
+      setStep(6); return;
     }
     setIsComplete(true);
     setTimeout(() => router.push("/dashboard"), 2500);
@@ -348,11 +387,15 @@ const Onboarding = () => {
     <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden bg-background">
       <div className="liquid-blob w-96 h-96 bg-primary/20 -top-48 -left-48 fixed" />
       <div className="liquid-blob w-80 h-80 bg-accent/20 bottom-20 right-10 fixed" style={{ animationDelay: "-3s" }} />
-      <motion.div className="w-full max-w-2xl relative z-10" initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }}>
+      <motion.div
+        className={cn("w-full relative z-10", step === 1 ? "max-w-5xl" : "max-w-2xl")}
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+      >
         <AnimatePresence mode="wait">
           {!isComplete ? (
             <motion.div key={`step-${step}`} initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }}
-              className="glass-card p-8 md:p-10 shadow-2xl border-white/20">
+              className={cn("glass-card shadow-2xl border-white/20", step === 1 ? "p-6 md:p-8" : "p-8 md:p-10")}>
 
               {/* Progress bar — only show from step 2 onwards */}
               {step > 1 && (
@@ -366,24 +409,8 @@ const Onboarding = () => {
               {/* Step 1 — Auth */}
               {step === 1 && <AuthStep onAuthed={() => setStep(2)} externalError={authError} />}
 
-              {/* Step 2 — Name */}
+              {/* Step 2 — Year */}
               {step === 2 && (
-                <div className="space-y-8">
-                  <div>
-                    <h1 className="text-3xl font-black text-foreground tracking-tight"><TypewriterText text="Hi there! I'm Quizzy." delay={300} /></h1>
-                    <p className="text-muted-foreground text-lg"><TypewriterText text="What should I call you?" delay={1200} /></p>
-                  </div>
-                  <div className="relative">
-                    <User className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground w-5 h-5" />
-                    <Input autoFocus placeholder="Your name" value={name} onChange={e => setName(e.target.value)}
-                      className="pl-12 h-14 text-xl glass border-2 focus:border-primary transition-all rounded-2xl"
-                      onKeyDown={e => e.key === "Enter" && handleNext()} />
-                  </div>
-                </div>
-              )}
-
-              {/* Step 3 — Year */}
-              {step === 3 && (
                 <div className="space-y-8">
                   <div>
                     <h1 className="text-3xl font-black text-foreground tracking-tight">What year are you in?</h1>
@@ -402,8 +429,8 @@ const Onboarding = () => {
                 </div>
               )}
 
-              {/* Step 4 — State */}
-              {step === 4 && (
+              {/* Step 3 — State */}
+              {step === 3 && (
                 <div className="space-y-8">
                   <div>
                     <h1 className="text-3xl font-black text-foreground tracking-tight">Where do you go to school?</h1>
@@ -422,11 +449,11 @@ const Onboarding = () => {
                 </div>
               )}
 
-              {/* Step 5 — Subjects */}
-              {step === 5 && (
+              {/* Step 4 — Subjects */}
+              {step === 4 && (
                 <div className="space-y-8">
                   <div>
-                    <h1 className="text-3xl font-black text-foreground tracking-tight">Nice to meet you, {name}!</h1>
+                    <h1 className="text-3xl font-black text-foreground tracking-tight">Nice to meet you, {displayName}!</h1>
                     <p className="text-muted-foreground text-lg">Which subjects are we tackling?</p>
                   </div>
                   <motion.div className="grid grid-cols-2 sm:grid-cols-3 gap-3" variants={cv} initial="hidden" animate="visible">
@@ -448,8 +475,8 @@ const Onboarding = () => {
                 </div>
               )}
 
-              {/* Step 6 — Hobbies */}
-              {step === 6 && (
+              {/* Step 5 — Hobbies */}
+              {step === 5 && (
                 <div className="space-y-8">
                   <div>
                     <h1 className="text-3xl font-black text-foreground tracking-tight">Almost there!</h1>
@@ -512,8 +539,8 @@ const Onboarding = () => {
                 </div>
               )}
 
-              {/* Step 7 — ICS */}
-              {step === 7 && (
+              {/* Step 6 — ICS */}
+              {step === 6 && (
                 <IcsStep importing={icsImporting} imported={icsImported} count={icsCount} error={icsError} onFile={handleIcsFile} />
               )}
 
@@ -522,12 +549,12 @@ const Onboarding = () => {
                 <div className="flex justify-between items-center mt-10">
                   <Button variant="ghost" onClick={() => setStep(s => s - 1)} className="px-6 rounded-xl">Back</Button>
                   <div className="flex items-center gap-3">
-                    {step === 7 && !icsImported && (
+                    {step === 6 && !icsImported && (
                       <Button variant="ghost" onClick={handleNext} className="px-6 rounded-xl text-muted-foreground">Skip</Button>
                     )}
                     <Button onClick={handleNext} disabled={!canNext}
                       className="gap-2 gradient-primary text-primary-foreground border-0 h-14 px-8 rounded-2xl font-bold shadow-xl hover:opacity-90 transition-opacity">
-                      {step === 7 ? (
+                      {step === 6 ? (
                         <><Sparkles className="w-5 h-5" />{icsImported ? "All Done!" : "Finish Setup"}</>
                       ) : (
                         <>Next <ArrowRight className="w-5 h-5" /></>
@@ -553,7 +580,7 @@ const Onboarding = () => {
               className="glass-card p-16 text-center relative overflow-hidden shadow-2xl">
               <Confetti />
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="mt-8 space-y-4">
-                <h1 className="text-4xl font-black text-foreground tracking-tight">You're all set, {name}.</h1>
+                <h1 className="text-4xl font-black text-foreground tracking-tight">You're all set, {displayName}.</h1>
                 <p className="text-muted-foreground text-xl max-w-md mx-auto">I'm ready to help you master your subjects with custom analogies!</p>
               </motion.div>
             </motion.div>
