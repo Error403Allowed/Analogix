@@ -110,6 +110,7 @@ CREATE TABLE IF NOT EXISTS public.events (
   location   TEXT,
   description TEXT,
   color      TEXT,
+  source     TEXT DEFAULT 'import',
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

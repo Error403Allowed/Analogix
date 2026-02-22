@@ -9,12 +9,12 @@ export const eventStore = {
     const { data: { user } } = await supabase.auth.getUser();
 
     if (user) {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("events")
         .select("*")
         .eq("user_id", user.id)
         .order("date", { ascending: true });
-      if (data) {
+      if (!error && data && data.length > 0) {
         return data.map((row: any) => ({
           id: row.id,
           title: row.title,
@@ -24,6 +24,9 @@ export const eventStore = {
           description: row.description,
           source: (row.source ?? "import") as AppEvent["source"],
         }));
+      }
+      if (error) {
+        console.warn("[eventStore] Supabase getAll failed:", error);
       }
     }
 
@@ -39,7 +42,7 @@ export const eventStore = {
     const { data: { user } } = await supabase.auth.getUser();
 
     if (user) {
-      await supabase.from("events").insert({
+      const { error } = await supabase.from("events").insert({
         user_id: user.id,
         title: event.title,
         date: event.date,
@@ -48,6 +51,9 @@ export const eventStore = {
         description: event.description,
         source: event.source,
       });
+      if (error) {
+        console.warn("[eventStore] Supabase add failed:", error);
+      }
     }
 
     try {
@@ -62,7 +68,7 @@ export const eventStore = {
     const { data: { user } } = await supabase.auth.getUser();
 
     if (user) {
-      await supabase.from("events").insert(
+      const { error } = await supabase.from("events").insert(
         newEvents.map(e => ({
           user_id: user.id,
           title: e.title,
@@ -73,6 +79,9 @@ export const eventStore = {
           source: e.source,
         }))
       );
+      if (error) {
+        console.warn("[eventStore] Supabase addMultiple failed:", error);
+      }
     }
 
     try {

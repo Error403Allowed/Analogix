@@ -15,27 +15,56 @@ export const parseICS = async (file: File): Promise<AppEvent[]> => {
         const academicKeywords = ["exam", "assessment", "quiz", "test", "midterm", "final"];
         const assignmentKeywords = ["assignment", "project", "deadline", "paper", "presentation", "lab", "due"];
 
-        const events: AppEvent[] = vevents
-          .map((vevent) => {
-            const event = new ICAL.Event(vevent);
-            const title = event.summary || "Untitled event";
-            const description = event.description || "";
-            if (!event.startDate) return null;
-            const combined = (title + " " + description).toLowerCase();
+        const now = new Date();
+        const rangeStartJs = new Date(now);
+        rangeStartJs.setDate(rangeStartJs.getDate() - 30);
+        const rangeEndJs = new Date(now);
+        rangeEndJs.setDate(rangeEndJs.getDate() + 365);
+        const rangeStart = ICAL.Time.fromJSDate(rangeStartJs, false);
+        const rangeEnd = ICAL.Time.fromJSDate(rangeEndJs, false);
 
-            const isExam = academicKeywords.some((kw) => combined.includes(kw));
-            const isAssignment = assignmentKeywords.some((kw) => combined.includes(kw));
+        const events: AppEvent[] = [];
 
-            return {
-              id: Date.now() + Math.random().toString(36).substr(2, 9),
-              title: title,
-              date: event.startDate.toJSDate(),
-              type: isExam ? "exam" : isAssignment ? "assignment" : "event",
-              description: description || "Imported from calendar",
-              source: 'import'
-            } as AppEvent;
-          })
-          .filter(e => e !== null) as AppEvent[];
+        const pushEvent = (event: ICAL.Event, startTime: ICAL.Time, title: string, description: string) => {
+          const combined = (title + " " + description).toLowerCase();
+          const isExam = academicKeywords.some((kw) => combined.includes(kw));
+          const isAssignment = assignmentKeywords.some((kw) => combined.includes(kw));
+          const jsDate = startTime.toJSDate();
+          if (jsDate < rangeStartJs || jsDate > rangeEndJs) return;
+
+          const uid = event.uid || title || "event";
+          const occurrenceId = `${uid}-${jsDate.toISOString()}`;
+
+          events.push({
+            id: occurrenceId,
+            title,
+            date: jsDate,
+            type: isExam ? "exam" : isAssignment ? "assignment" : "event",
+            description: description || "Imported from calendar",
+            source: "import",
+          });
+        };
+
+        vevents.forEach((vevent) => {
+          const event = new ICAL.Event(vevent);
+          if (!event.startDate) return;
+          const title = event.summary || "Untitled event";
+          const description = event.description || "";
+
+          if (event.isRecurring()) {
+            const iter = event.iterator(rangeStart);
+            let next = iter.next();
+            let guard = 0;
+            while (next && next.compare(rangeEnd) <= 0 && guard < 1000) {
+              const occurrence = event.getOccurrenceDetails(next);
+              pushEvent(event, occurrence.startDate, title, description);
+              next = iter.next();
+              guard += 1;
+            }
+          } else {
+            pushEvent(event, event.startDate, title, description);
+          }
+        });
 
         resolve(events);
       } catch (err) {
