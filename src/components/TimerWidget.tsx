@@ -177,7 +177,7 @@ export function TimerWidget() {
               className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors ml-1 inline-flex items-center gap-1"
               title="Edit total sessions goal"
             >
-              Goal {sessionsTarget}
+              {sessionsTarget} sessions
               <Pencil className="w-3 h-3" />
             </button>
           )}

@@ -246,7 +246,7 @@ interface Message {
 // Stub: image fetching was removed (unsplash.ts deleted)
 const fetchImageForQuery = async (..._args: unknown[]): Promise<string | null> => null;
 
-const subjects = SUBJECT_CATALOG;
+const allSubjects = SUBJECT_CATALOG;
 
 
 /**
@@ -296,8 +296,15 @@ const Chat = () => {
       : {};
   const userName = userPrefs.name || "Student";
   const userHobbies = buildInterestList(userPrefs, ["gaming", "sports"]);
-  const userSubjects = userPrefs.subjects || [];
-  // Always show all subjects when picking what to learn with Quizzy (onboarding choices are for context only)
+  const userSubjects = Array.isArray(userPrefs.subjects) ? userPrefs.subjects : [];
+  const availableSubjects = useMemo(
+    () => allSubjects.filter((subject) => userSubjects.includes(subject.id)),
+    [userSubjects],
+  );
+  const availableSubjectIds = useMemo(
+    () => new Set(availableSubjects.map((subject) => subject.id)),
+    [availableSubjects],
+  );
   const isInputLocked = isTyping || isAnimating;
 
   const latestAssistantId = [...messages].reverse().find((m) => m.role === "assistant")?.id;
@@ -394,7 +401,7 @@ const Chat = () => {
     const target = messages[targetIndex];
     if (target.role !== "assistant") return;
 
-    const subjectLabel = subjects.find(s => s.id === selectedSubject)?.label || selectedSubject || "this subject";
+    const subjectLabel = allSubjects.find(s => s.id === selectedSubject)?.label || selectedSubject || "this subject";
 
     if (target.isWelcome) {
       const nextContent = buildWelcomeMessage(subjectLabel, target.content);
@@ -457,7 +464,7 @@ const Chat = () => {
   }, [
     isInputLocked,
     messages,
-    subjects,
+    allSubjects,
     selectedSubject,
     latestAssistantId,
     buildContext,
@@ -491,7 +498,8 @@ const Chat = () => {
     setStopTyping(false);
 
     // Create a Supabase session for this chat
-    const subject = subjects.find(s => s.id === subjectId);
+    if (!availableSubjectIds.has(subjectId)) return;
+    const subject = allSubjects.find(s => s.id === subjectId);
     const sessionId = await chatStore.createSession(subjectId, `${subject?.label || subjectId} — ${new Date().toLocaleDateString()}`);
     setChatSessionId(sessionId);
   };
@@ -520,7 +528,7 @@ const Chat = () => {
 
     // Record the conversation
     if (selectedSubject) {
-      statsStore.recordChat(subjects.find(s => s.id === selectedSubject)?.label || selectedSubject);
+      statsStore.recordChat(allSubjects.find(s => s.id === selectedSubject)?.label || selectedSubject);
     }
     
     // Save user message to Supabase
@@ -579,7 +587,7 @@ const Chat = () => {
 
     // AI GENERATION: Always ask the AI for a new topic from the start.
     setIsTyping(true);
-    const subjectLabel = subjects.find(s => s.id === selectedSubject)?.label || selectedSubject;
+    const subjectLabel = allSubjects.find(s => s.id === selectedSubject)?.label || selectedSubject;
     const usedTopics = messages.filter(m => m.analogy).map(m => m.analogy).filter(Boolean);
     
     const context = buildContext(null);
@@ -663,7 +671,11 @@ const Chat = () => {
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-5 w-full max-w-2xl">
-              {subjects.map((subject, index) => {
+              {availableSubjects.length === 0 ? (
+                <div className="col-span-full rounded-xl border border-dashed border-border bg-muted/30 p-6 text-center text-sm text-muted-foreground">
+                  You haven’t selected any subjects yet. Add subjects in your profile to start a session.
+                </div>
+              ) : availableSubjects.map((subject, index) => {
                 const Icon = subject.icon;
                 return (
                   <motion.button
@@ -708,11 +720,11 @@ const Chat = () => {
                 className="gap-2 rounded-md h-8 px-4 text-xs font-medium"
               >
                 {(() => {
-                  const current = subjects.find((s) => s.id === selectedSubject);
+                  const current = allSubjects.find((s) => s.id === selectedSubject);
                   const Icon = current?.icon;
                   return Icon ? <Icon className="w-3.5 h-3.5" /> : null;
                 })()}
-                {subjects.find(s => s.id === selectedSubject)?.label}
+                {allSubjects.find(s => s.id === selectedSubject)?.label}
               </Button>
               <Button
                 variant="outline"
@@ -937,7 +949,7 @@ const Chat = () => {
                           handleSend();
                         }
                       }}
-                      placeholder={`Ask anything about ${subjects.find(s => s.id === selectedSubject)?.label || 'this subject'}...`}
+                      placeholder={`Ask anything about ${allSubjects.find(s => s.id === selectedSubject)?.label || "this subject"}...`}
                       rows={Math.max(1, Math.min(12, Math.ceil(input.length / 70) || 1))}
                       className="flex-1 !min-h-10 sm:!min-h-12 px-3 py-2.5 rounded-md border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/70 font-mono text-sm resize-none overflow-y-auto max-h-64"
                     />
