@@ -61,43 +61,16 @@ export async function POST(request: Request) {
       return best?.interest ?? null;
     };
 
-    const selectBestInterest = async (args: {
-      concept: string;
-      subject?: string;
-      interests: string[];
-    }) => {
-      if (!args.concept.trim() || args.interests.length === 0) return null;
-      const selectionPrompt = [
-        { role: "system" as const, content: "You are a strict classifier that selects the single best interest from a list for creating an analogy. Return exactly one item from the list. If none fit, return NONE." },
-        {
-          role: "user" as const,
-          content: `Concept: ${args.concept}\nSubject: ${args.subject || "unknown"}\nInterests: ${args.interests.join(", ")}\nReturn exactly one interest from the list or NONE.`
-        }
-      ];
-      const raw = await callHfChat(
-        { messages: selectionPrompt, max_tokens: 12, temperature: 0.2 },
-        "default"
-      );
-      const cleaned = raw.trim().replace(/^["'`]+|["'`]+$/g, "").split(/[\n\r]/)[0].trim();
-      if (!cleaned) return null;
-      if (/^none$/i.test(cleaned)) return null;
-      const lower = cleaned.toLowerCase();
-      const exact = args.interests.find((i) => i.toLowerCase() === lower);
-      if (exact) return exact;
-      const contained = args.interests.find((i) => lower.includes(i.toLowerCase()));
-      if (contained) return contained;
-      return null;
-    };
-
     const latestUserMessage = [...messages].reverse().find((m) => m.role === "user")?.content || "";
     const explicitFromMessage = latestUserMessage
       ? findExplicitInterest(latestUserMessage, interestList)
       : null;
     const explicitFromContext = userContext?.analogyAnchor?.trim() || null;
-    const modelSelected = !explicitFromContext && !explicitFromMessage
-      ? await selectBestInterest({ concept: latestUserMessage, subject: userContext?.subjects?.[0], interests: interestList })
+    // Pick a random interest as fallback — no extra AI call needed
+    const randomInterest = interestList.length > 0
+      ? interestList[Math.floor(Math.random() * interestList.length)]
       : null;
-    const analogyAnchor = explicitFromContext || explicitFromMessage || modelSelected || undefined;
+    const analogyAnchor = explicitFromContext || explicitFromMessage || randomInterest || undefined;
 
     // Detailed instructions on how to use analogies
     const analogyInstructions =

@@ -43,10 +43,27 @@ const Header = ({ userName = "Student", streak = 0 }: HeaderProps) => {
   const [showSettings, setShowSettings] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [greeting, setGreeting] = useState(`Welcome back, ${userName}.`);
+  const [hydrated, setHydrated] = useState(false);
+
+  // Wait for hydration before firing any API calls — avoids Turbopack cold-start races
+  useEffect(() => { setHydrated(true); }, []);
 
   useEffect(() => {
-    getAIGreeting(userName, streak).then(setGreeting);
-  }, [userName, streak]);
+    if (!hydrated) return;
+    // Check session cache first — no need to hit the API if we already have one
+    const cacheKey = `greeting_${userName}`;
+    const cached = sessionStorage.getItem(cacheKey);
+    if (cached) { setGreeting(cached); return; }
+
+    // Small delay so the dev server has time to be ready before we fire
+    const timer = setTimeout(() => {
+      getAIGreeting(userName, streak).then((g) => {
+        setGreeting(g);
+        sessionStorage.setItem(cacheKey, g);
+      });
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [hydrated, userName, streak]);
 
   const [profileName, setProfileName] = useState(userName);
   const [profileGrade, setProfileGrade] = useState<string>("");

@@ -1,5 +1,5 @@
-import LoginView from "@/views/Login";
+import { redirect } from "next/navigation";
 
 export default function LoginPage() {
-  return <LoginView />;
+  redirect("/onboarding");
 }

@@ -44,7 +44,7 @@ type DashboardPreferences = {
   hobbies?: string[];
 };
 
-type DashboardAchievement = ReturnType<typeof achievementStore.getAll>[number];
+type DashboardAchievement = Awaited<ReturnType<typeof achievementStore.getAll>>[number];
 
 const readLocalStorageJson = <T,>(key: string, fallback: T): T => {
   if (typeof window === "undefined") return fallback;
@@ -134,18 +134,22 @@ const Dashboard = () => {
       setStatsData(statsStore.get());
     };
     
-    const handleAchievementsUpdate = () => {
-      const latestUnlocked = achievementStore
-        .getAll()
-        .filter((achievement) => achievement.unlocked)
-        .sort((a, b) => {
-          const aTime = a.unlockedAt ? new Date(a.unlockedAt).getTime() : 0;
-          const bTime = b.unlockedAt ? new Date(b.unlockedAt).getTime() : 0;
-          return aTime - bTime;
-        })
-        .slice(-4);
+    const handleAchievementsUpdate = async () => {
+      try {
+        const allAchievements = await achievementStore.getAll();
+        const latestUnlocked = allAchievements
+          .filter((achievement) => achievement.unlocked)
+          .sort((a, b) => {
+            const aTime = a.unlockedAt ? new Date(a.unlockedAt).getTime() : 0;
+            const bTime = b.unlockedAt ? new Date(b.unlockedAt).getTime() : 0;
+            return aTime - bTime;
+          })
+          .slice(-4);
 
-      setRecentAchievements(latestUnlocked);
+        setRecentAchievements(latestUnlocked);
+      } catch {
+        setRecentAchievements([]);
+      }
     };
 
     window.addEventListener("statsUpdated", handleStatsUpdate);

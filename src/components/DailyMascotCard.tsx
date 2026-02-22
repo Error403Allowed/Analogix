@@ -18,9 +18,19 @@ const DailyMascotCard = ({ userName, onChatStart, subtitle, className }: DailyMa
   const [greeting, setGreeting] = useState("Welcome back. Ready to learn?");
 
   useEffect(() => {
-    statsStore.get().then(stats => {
-      getAIGreeting(userName, stats.currentStreak).then(setGreeting);
-    });
+    const cacheKey = `greeting_${userName}`;
+    const cached = sessionStorage.getItem(cacheKey);
+    if (cached) { setGreeting(cached); return; }
+
+    const timer = setTimeout(() => {
+      statsStore.get().then(stats => {
+        getAIGreeting(userName, stats.currentStreak).then((g) => {
+          setGreeting(g);
+          sessionStorage.setItem(cacheKey, g);
+        });
+      });
+    }, 500);
+    return () => clearTimeout(timer);
   }, [userName]);
 
   return (

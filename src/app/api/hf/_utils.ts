@@ -195,6 +195,8 @@ export const callHfChat = async (
             : payload.messages,
           max_tokens: payload.max_tokens,
           temperature: payload.temperature,
+          // Disable Qwen3's slow "thinking" mode for non-reasoning tasks
+          ...(model === REASONING_MODEL && { reasoning_effort: "none" }),
         }),
       });
 
