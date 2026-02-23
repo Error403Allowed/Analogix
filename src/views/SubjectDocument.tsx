@@ -187,25 +187,23 @@ export default function SubjectDocument() {
     setHelperMessages((prev) => [...prev, userMessage]);
     setHelperInput("");
     setHelperTyping(true);
-    const currentTitle = title.trim() || "Untitled";
-    const documentLines = documents.slice(0, 6).map((doc, i) => {
-      const updated = doc.lastUpdated ? new Date(doc.lastUpdated).toLocaleDateString() : "Unknown";
-      return `${i + 1}. ${doc.title?.trim() || "Untitled"} (updated ${updated})`;
-    });
-    const moreCount = Math.max(0, documents.length - 6);
-    const documentSummary = documentLines.length > 0
-      ? `${documentLines.join("\n")}${moreCount ? `\n…plus ${moreCount} more` : ""}` : "No documents yet.";
-    const contentText = content.replace(/<[^>]*>/g, " ").slice(0, 1500);
-    const contextMessage: ChatMessage = {
-      role: "system",
-      content: `Subject: ${subject?.label || "Subject"}\nDocuments:\n${documentSummary}\nCurrent document: ${currentTitle}\nContent:\n${contentText || "No content yet."}`,
-    };
-    const history = [contextMessage, ...helperMessages, userMessage].slice(-9);
+
+    // Strip HTML tags and truncate to keep context within token limits
+    const docText = content.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+    const pageContext = [
+      `Subject: ${subject?.label || "Unknown"}`,
+      `Document title: ${title.trim() || "Untitled"}`,
+      `Document content:\n${docText.slice(0, 3000) || "(empty document)"}`,
+      docText.length > 3000 ? `[…content truncated, ${docText.length} chars total]` : "",
+    ].filter(Boolean).join("\n");
+
+    const history = [...helperMessages, userMessage].slice(-8);
     try {
       const response = await getGroqCompletion(history, {
         subjects: [subjectId], hobbies: userPrefs.hobbies || [],
         grade: userPrefs.grade, learningStyle: userPrefs.learningStyle || "visual",
         responseLength: 2, analogyIntensity: 0.2,
+        pageContext,
       });
       setHelperMessages((prev) => [...prev, response]);
     } catch {

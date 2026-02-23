@@ -12,4 +12,5 @@ export interface UserContext {
   learningStyle: string;
   analogyIntensity?: number;
   responseLength?: number;
+  pageContext?: string; // Injected page/document context — appended to the system prompt
 }

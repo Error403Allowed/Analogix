@@ -191,7 +191,16 @@ REMEMBER: You aren't just an AI with an 'analogy' feature. You are the bridge be
     
     const content = await callHfChat(
       {
-        messages: [{ role: "system", content: systemPrompt }, ...messages],
+        messages: [
+          {
+            role: "system",
+            content: systemPrompt + (userContext?.pageContext
+              ? `\n\n--- PAGE CONTEXT (read before answering) ---\n${userContext.pageContext}\n--- END PAGE CONTEXT ---`
+              : ""),
+          },
+          // Strip out any system messages the client may have passed — we own the system prompt
+          ...messages.filter(m => m.role !== "system"),
+        ],
         max_tokens: maxTokens,
         temperature: 0.55,
       },

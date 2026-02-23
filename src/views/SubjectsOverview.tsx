@@ -1,17 +1,10 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { 
-  ArrowRight, 
-  TrendingUp, 
-  Search, 
-  Compass, 
-  Flag, 
-  Zap, 
-  MessageCircle, 
-  Medal,
-  Activity
+import {
+  ArrowRight, TrendingUp, Search, Zap, MessageCircle,
+  Medal, Send, X, ChevronRight, BookOpen, Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,28 +12,35 @@ import { SUBJECT_CATALOG } from "@/constants/subjects";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { statsStore } from "@/utils/statsStore";
+import { getGroqCompletion } from "@/services/groq";
+import type { ChatMessage } from "@/types/chat";
 
 export default function SubjectsOverview() {
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [userSubjects, setUserSubjects] = useState<string[]>([]);
+  const [userPrefs, setUserPrefs] = useState<any>({});
   const [statsData, setStatsData] = useState<import("@/utils/statsStore").UserStats>({
     quizzesDone: 0, currentStreak: 0, accuracy: 0,
     conversationsCount: 0, topSubject: "None", subjectCounts: {},
   });
+  const [chatOpen, setChatOpen] = useState(false);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [input, setInput] = useState("");
+  const [typing, setTyping] = useState(false);
+  const chatEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const prefs = JSON.parse(localStorage.getItem("userPreferences") || "{}");
+    setUserPrefs(prefs);
     setUserSubjects(prefs.subjects || []);
-
-    const handleStatsUpdate = async () => {
-      const stats = await statsStore.get();
-      setStatsData(stats);
-    };
-    handleStatsUpdate();
-    window.addEventListener("statsUpdated", handleStatsUpdate);
-    return () => window.removeEventListener("statsUpdated", handleStatsUpdate);
+    statsStore.get().then(setStatsData);
+    window.addEventListener("statsUpdated", () => statsStore.get().then(setStatsData));
   }, []);
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
   const normalizedStats = useMemo(() => ({
     quizzesDone: Math.max(0, Number(statsData.quizzesDone || 0)),
@@ -50,256 +50,291 @@ export default function SubjectsOverview() {
   }), [statsData]);
 
   const subjectPerformance = useMemo(() => {
-    const rows = SUBJECT_CATALOG.map((subject) => ({
-      ...subject,
-      count: normalizedStats.subjectCounts[subject.id] || 
-             normalizedStats.subjectCounts[subject.label.toLowerCase()] || 
-             normalizedStats.subjectCounts[subject.label] || 0
+    const rows = SUBJECT_CATALOG.map((s) => ({
+      ...s,
+      count: normalizedStats.subjectCounts[s.id] || normalizedStats.subjectCounts[s.label.toLowerCase()] || 0
     }));
     const max = Math.max(1, ...rows.map(r => r.count));
-    return rows.map(r => ({
-      ...r,
-      percent: Math.round((r.count / max) * 100)
-    })).sort((a, b) => b.count - a.count);
+    return rows.map(r => ({ ...r, percent: Math.round((r.count / max) * 100) })).sort((a, b) => b.count - a.count);
   }, [normalizedStats]);
 
-  const weakestSubjects = useMemo(() => {
-    const active = subjectPerformance.filter(s => s.count > 0);
-    if (active.length === 0) return [];
-    return active.sort((a, b) => a.count - b.count).slice(0, 2);
-  }, [subjectPerformance]);
-
-  const filteredSubjects = SUBJECT_CATALOG.filter((s) => 
-    userSubjects.includes(s.id) &&
-    s.label.toLowerCase().includes(search.toLowerCase())
+  const filteredSubjects = SUBJECT_CATALOG.filter(s =>
+    userSubjects.includes(s.id) && s.label.toLowerCase().includes(search.toLowerCase())
   );
 
-  const container = {
-    hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: { staggerChildren: 0.05 }
+  const activeSubjectObjects = SUBJECT_CATALOG.filter(s => userSubjects.includes(s.id));
+
+  // Build rich page context for the AI
+  const buildContext = () => {
+    const subjectList = activeSubjectObjects.map(s => s.label).join(", ") || "none selected";
+    const topSubjects = subjectPerformance.filter(s => s.count > 0).slice(0, 3).map(s => `${s.label} (${s.count} sessions)`).join(", ") || "no activity yet";
+    return `You are a smart study assistant embedded in the student's My Subjects page of Analogix, an analogy-based learning app.
+
+PAGE CONTEXT — what's currently visible on screen:
+- Page: My Subjects overview
+- Student's enrolled subjects: ${subjectList}
+- Total subjects enrolled: ${activeSubjectObjects.length}
+- Day streak: ${normalizedStats.currentStreak}
+- Total quizzes done: ${normalizedStats.quizzesDone}
+- Total study sessions: ${normalizedStats.conversationsCount}
+- Most active subjects: ${topSubjects}
+- Grade: Year ${userPrefs.grade || "unknown"}
+- State: ${userPrefs.state || "unknown"}
+
+You can see everything the student sees. Answer questions about their subjects, recommend what to study next, explain what the stats mean, or help them decide which subject to focus on. Be concise and direct.`;
+  };
+
+  const openChat = () => {
+    if (messages.length === 0) {
+      const subjectList = activeSubjectObjects.map(s => s.label).join(", ") || "no subjects yet";
+      const topSubject = subjectPerformance.find(s => s.count > 0);
+      setMessages([{
+        role: "assistant",
+        content: `Hey! I can see your subjects page. You're enrolled in **${subjectList}**.\n\nYour streak is ${normalizedStats.currentStreak} day${normalizedStats.currentStreak !== 1 ? "s" : ""} and you've done ${normalizedStats.quizzesDone} quiz${normalizedStats.quizzesDone !== 1 ? "zes" : ""}${topSubject ? `. You've been most active in **${topSubject.label}**` : ""}.\n\nWhat do you want to work on?`,
+      }]);
+    }
+    setChatOpen(true);
+  };
+
+  const handleSend = async () => {
+    if (!input.trim() || typing) return;
+    const userMsg: ChatMessage = { role: "user", content: input.trim() };
+    setMessages(prev => [...prev, userMsg]);
+    setInput("");
+    setTyping(true);
+    const history = [...messages.slice(-8), userMsg];
+    try {
+      const response = await getGroqCompletion(history, {
+        subjects: userSubjects,
+        hobbies: userPrefs.hobbies || [],
+        grade: userPrefs.grade,
+        learningStyle: userPrefs.learningStyle || "visual",
+        responseLength: 2,
+        analogyIntensity: 0.1,
+        pageContext: buildContext(),
+      });
+      setMessages(prev => [...prev, response]);
+    } catch {
+      setMessages(prev => [...prev, { role: "assistant", content: "Couldn't reach AI. Try again." }]);
+    } finally {
+      setTyping(false);
     }
   };
 
-  const item = {
-    hidden: { opacity: 0, y: 20 },
-    show: { opacity: 1, y: 0 }
-  };
-
   return (
-    <div className="max-w-7xl mx-auto space-y-12 pb-20">
-      {/* Header */}
-      <motion.div 
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: 0 }}
-        className="flex flex-col md:flex-row md:items-center justify-between gap-6"
-      >
+    <div className="max-w-7xl mx-auto space-y-10 pb-24">
+
+      {/* ── Header ── */}
+      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
-          <h1 className="text-5xl font-black text-foreground tracking-tight mb-2">My Subjects</h1>
-          <p className="text-muted-foreground font-medium text-lg italic">The headquarters for your academic mastery.</p>
+          <p className="text-[10px] uppercase tracking-[0.35em] text-primary font-black mb-1">Overview</p>
+          <h1 className="text-4xl font-black text-foreground tracking-tight">My Subjects</h1>
+          <p className="text-muted-foreground mt-1 text-sm">{activeSubjectObjects.length} subject{activeSubjectObjects.length !== 1 ? "s" : ""} enrolled</p>
         </div>
-        <div className="relative w-full md:w-96">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground/60" />
-          <Input 
-            placeholder="Search your curriculum..." 
-            className="pl-12 h-14 bg-muted/30 border-none rounded-2xl text-lg shadow-inner focus-visible:ring-primary/20"
+        <div className="relative w-full sm:w-72">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50" />
+          <Input
+            placeholder="Search subjects…"
+            className="pl-10 h-11 bg-muted/30 border-border/40 rounded-xl text-sm"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={e => setSearch(e.target.value)}
           />
         </div>
       </motion.div>
 
-      {userSubjects.length === 0 && (
-        <div className="glass-card p-8 text-center">
-          <h2 className="text-2xl font-black text-foreground mb-2">No subjects selected yet</h2>
-          <p className="text-sm text-muted-foreground mb-6">
-            Add subjects in your profile to see them here.
-          </p>
-          <Button onClick={() => router.push("/dashboard")} className="rounded-xl">
-            Go to Dashboard
-          </Button>
+      {userSubjects.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-border/60 p-16 text-center">
+          <BookOpen className="w-10 h-10 text-muted-foreground/30 mx-auto mb-4" />
+          <h2 className="text-xl font-black text-foreground mb-2">No subjects yet</h2>
+          <p className="text-sm text-muted-foreground mb-6">Add subjects in your profile to get started.</p>
+          <Button onClick={() => router.push("/dashboard")} className="rounded-xl gradient-primary">Go to Dashboard</Button>
         </div>
-      )}
-
-      {userSubjects.length > 0 && (
-      <>
-      {/* Insights Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Next Steps */}
-        <motion.div 
-          variants={item}
-          initial="hidden"
-          animate="show"
-          className="lg:col-span-4 glass-card p-6 flex flex-col"
-        >
-          <div className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] text-primary mb-6">
-            <Compass className="w-4 h-4" />
-            Strategic Next Steps
-          </div>
-          <div className="space-y-4 flex-1">
-            {weakestSubjects.length > 0 ? (
-              weakestSubjects.map((subject) => (
-                <div key={subject.id} className="p-4 rounded-2xl bg-primary/5 border border-primary/10 hover:bg-primary/10 transition-colors">
-                  <div className="flex items-start gap-3">
-                    <Flag className="w-5 h-5 text-rose-500 mt-0.5" />
-                    <div>
-                      <p className="font-bold text-foreground">Build Strength in {subject.label}</p>
-                      <p className="text-xs text-muted-foreground leading-relaxed mt-1">Lower activity detected. Try 2-3 quick analogies to bridge core concepts.</p>
-                    </div>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="h-full flex flex-col items-center justify-center text-center p-6 bg-muted/20 rounded-3xl border border-dashed border-muted-foreground/20">
-                <Activity className="w-10 h-10 text-muted-foreground/30 mb-3" />
-                <p className="text-sm font-bold text-muted-foreground">No gaps detected yet.</p>
-                <p className="text-xs text-muted-foreground/60 mt-1">Keep studying to unlock tailored growth paths.</p>
-              </div>
-            )}
-          </div>
-          <Button 
-            onClick={() => router.push("/chat")}
-            variant="outline" 
-            className="w-full mt-6 rounded-xl border-dashed hover:border-solid transition-all font-black uppercase tracking-widest text-[10px] h-12"
-          >
-            Start New Session
-          </Button>
-        </motion.div>
-
-        {/* Subject Performance */}
-        <motion.div 
-          variants={item}
-          initial="hidden"
-          animate="show"
-          className="lg:col-span-5 glass-card p-6"
-        >
-          <div className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] text-primary mb-6">
-            <TrendingUp className="w-4 h-4" />
-            Curriculum Mastery
-          </div>
-          <div className="space-y-5">
-            {subjectPerformance.filter(s => s.count > 0).length > 0 ? (
-              subjectPerformance.filter(s => s.count > 0).slice(0, 5).map((subject) => (
-                <div key={subject.id} className="space-y-2">
-                  <div className="flex justify-between items-end px-1">
-                    <span className="text-sm font-black text-foreground">{subject.label}</span>
-                    <span className="text-[10px] font-bold text-muted-foreground uppercase">{subject.count} Analogies</span>
-                  </div>
-                  <div className="h-2 w-full rounded-full bg-muted/40 overflow-hidden">
-                    <motion.div 
-                      initial={{ width: 0 }}
-                      animate={{ width: `${subject.percent}%` }}
-                      transition={{ duration: 1, delay: 0.5 }}
-                      className={cn(
-                        "h-full rounded-full",
-                        subject.percent >= 70 ? "gradient-primary" : "bg-amber-400"
-                      )}
-                    />
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="text-center py-12 opacity-50">
-                <p className="text-sm font-bold">Academic data pending...</p>
-                <p className="text-xs mt-1">Your subject distribution will appear here.</p>
-              </div>
-            )}
-          </div>
-        </motion.div>
-
-        {/* Recent Analytics */}
-        <motion.div 
-          variants={item}
-          initial="hidden"
-          animate="show"
-          className="lg:col-span-3 glass-card p-6 flex flex-col"
-        >
-          <div className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] text-primary mb-6">
-            <Zap className="w-4 h-4" />
-            Efficiency Stats
-          </div>
-          <div className="grid grid-cols-1 gap-4 flex-1">
+      ) : (
+        <>
+          {/* ── Stats bar ── */}
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+            className="grid grid-cols-3 gap-3">
             {[
-              { label: "Day Streak", value: normalizedStats.currentStreak, icon: Zap, color: "text-amber-500", bg: "bg-amber-500/10" },
-              { label: "Learnings", value: normalizedStats.conversationsCount, icon: MessageCircle, color: "text-primary", bg: "bg-primary/10" },
-              { label: "Quizzes", value: normalizedStats.quizzesDone, icon: Medal, color: "text-emerald-500", bg: "bg-emerald-500/10" }
-            ].map((stat, i) => (
-              <div key={i} className="p-4 rounded-2xl border border-muted-foreground/10 bg-muted/5 flex items-center justify-between group hover:scale-[1.02] transition-transform">
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">{stat.label}</p>
-                  <p className="text-2xl font-black text-foreground">{stat.value}</p>
+              { label: "Day streak", value: normalizedStats.currentStreak, icon: Zap, color: "text-amber-400", bg: "bg-amber-400/10" },
+              { label: "Study sessions", value: normalizedStats.conversationsCount, icon: MessageCircle, color: "text-primary", bg: "bg-primary/10" },
+              { label: "Quizzes done", value: normalizedStats.quizzesDone, icon: Medal, color: "text-emerald-400", bg: "bg-emerald-400/10" },
+            ].map((s, i) => (
+              <div key={i} className="rounded-2xl border border-border/40 bg-background/60 px-5 py-4 flex items-center gap-4">
+                <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shrink-0", s.bg)}>
+                  <s.icon className={cn("w-5 h-5", s.color)} />
                 </div>
-                <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shadow-lg", stat.bg)}>
-                  <stat.icon className={cn("w-5 h-5", stat.color)} />
+                <div>
+                  <p className="text-2xl font-black text-foreground leading-none">{s.value}</p>
+                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground mt-0.5">{s.label}</p>
                 </div>
               </div>
             ))}
+          </motion.div>
+
+          {/* ── Activity bar ── */}
+          {subjectPerformance.filter(s => s.count > 0).length > 0 && (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
+              className="rounded-2xl border border-border/40 bg-background/60 p-6">
+              <div className="flex items-center gap-2 mb-5">
+                <TrendingUp className="w-4 h-4 text-primary" />
+                <p className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground">Activity by Subject</p>
+              </div>
+              <div className="space-y-3">
+                {subjectPerformance.filter(s => s.count > 0).slice(0, 5).map(s => (
+                  <div key={s.id} className="flex items-center gap-3">
+                    <span className="text-xs font-bold text-foreground w-28 shrink-0 truncate">{s.label}</span>
+                    <div className="flex-1 h-1.5 bg-muted/40 rounded-full overflow-hidden">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${s.percent}%` }}
+                        transition={{ duration: 0.8, delay: 0.3 }}
+                        className="h-full rounded-full gradient-primary"
+                      />
+                    </div>
+                    <span className="text-[10px] text-muted-foreground w-16 text-right shrink-0">{s.count} session{s.count !== 1 ? "s" : ""}</span>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+
+          {/* ── Subject grid ── */}
+          <div>
+            <div className="flex items-center gap-3 mb-5">
+              <h2 className="text-lg font-black text-foreground">Your Subjects</h2>
+              <div className="h-px flex-1 bg-border/40" />
+              <span className="text-xs text-muted-foreground">{filteredSubjects.length} shown</span>
+            </div>
+
+            <motion.div
+              initial="hidden"
+              animate="show"
+              variants={{ show: { transition: { staggerChildren: 0.05 } } }}
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
+            >
+              {filteredSubjects.map(subject => {
+                const Icon = subject.icon;
+                const activity = normalizedStats.subjectCounts[subject.id] || 0;
+                return (
+                  <motion.div
+                    key={subject.id}
+                    variants={{ hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0 } }}
+                    whileHover={{ y: -4 }}
+                    onClick={() => router.push(`/subjects/${subject.id}`)}
+                    className="group rounded-2xl border border-border/40 bg-background/60 p-5 cursor-pointer hover:border-primary/40 hover:bg-primary/5 transition-all duration-200 relative overflow-hidden"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <div className="relative">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="w-12 h-12 rounded-xl gradient-primary flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                          <Icon className="w-6 h-6 text-primary-foreground" />
+                        </div>
+                        {activity > 0 && (
+                          <span className="text-[9px] font-black uppercase tracking-widest text-primary bg-primary/10 px-2 py-1 rounded-full border border-primary/20">
+                            {activity} sessions
+                          </span>
+                        )}
+                      </div>
+                      <h3 className="font-black text-foreground text-base mb-1 group-hover:text-primary transition-colors">{subject.label}</h3>
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-widest line-clamp-1">
+                        {subject.descriptions.senior}
+                      </p>
+                      <div className="flex items-center justify-end mt-4 pt-3 border-t border-border/30">
+                        <span className="text-xs font-bold text-muted-foreground group-hover:text-primary transition-colors flex items-center gap-1">
+                          Open <ChevronRight className="w-3.5 h-3.5" />
+                        </span>
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </motion.div>
+
+            {filteredSubjects.length === 0 && search && (
+              <div className="text-center py-16 text-muted-foreground">
+                <p className="font-bold">No subjects match "{search}"</p>
+              </div>
+            )}
           </div>
-        </motion.div>
-      </div>
-
-      {/* Grid Content */}
-      <div className="space-y-6">
-         <div className="flex items-center gap-4 px-2">
-            <h2 className="text-2xl font-black text-foreground">Your Subjects</h2>
-            <div className="h-px flex-1 bg-border/50" />
-         </div>
-         
-         <motion.div 
-           variants={container}
-           initial="hidden"
-           animate="show"
-           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
-         >
-           {filteredSubjects.map((subject) => {
-             const Icon = subject.icon;
-
-             return (
-               <motion.div
-                 key={subject.id}
-                 variants={item}
-                 whileHover={{ y: -8, scale: 1.03 }}
-                 onClick={() => router.push(`/subjects/${subject.id}`)}
-                 className={cn(
-                   "glass-card p-6 group cursor-pointer relative overflow-hidden transition-all duration-500 border-primary/20 shadow-xl"
-                 )}
-               >
-                 {/* Background Glow */}
-                 <div className="absolute -right-12 -top-12 w-40 h-40 rounded-full bg-primary/5 group-hover:bg-primary/20 transition-all duration-700 blur-2xl" />
-
-                 <div className="relative space-y-6">
-                   <div className="flex items-start justify-between">
-                     <div className="w-16 h-16 rounded-[1.5rem] style-primary gradient-primary flex items-center justify-center text-primary-foreground text-3xl shadow-2xl border border-white/20 transform group-hover:rotate-6 transition-transform">
-                       <Icon className="w-8 h-8" />
-                     </div>
-                     <div className="px-3 py-1.5 rounded-full bg-primary/10 text-primary text-[10px] font-black uppercase tracking-widest border border-primary/20 shadow-sm">
-                       Active
-                     </div>
-                   </div>
-
-                   <div>
-                     <h3 className="text-xl font-black text-foreground group-hover:text-primary transition-colors tracking-tight">
-                       {subject.label}
-                     </h3>
-                     <p className="text-xs text-muted-foreground line-clamp-2 mt-2 leading-relaxed">
-                       {subject.descriptions.senior}
-                     </p>
-                   </div>
-
-                   <div className="flex items-center justify-end pt-4 border-t border-border/50">
-                     <Button variant="ghost" size="sm" className="h-9 rounded-xl text-xs font-bold group-hover:bg-primary/10 group-hover:text-primary border border-transparent group-hover:border-primary/20">
-                        Open <ArrowRight className="w-3.5 h-3.5 ml-2 group-hover:translate-x-1 transition-transform" />
-                     </Button>
-                   </div>
-                 </div>
-               </motion.div>
-             );
-           })}
-         </motion.div>
-      </div>
-      </>
+        </>
       )}
+
+      {/* ── Floating AI circle ── */}
+      <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
+        <AnimatePresence>
+          {chatOpen && (
+            <motion.div
+              initial={{ opacity: 0, y: 16, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 16, scale: 0.95 }}
+              className="w-80 sm:w-96 h-[460px] rounded-2xl border border-border/50 bg-background/95 backdrop-blur-xl shadow-2xl flex flex-col overflow-hidden"
+            >
+              {/* Chat header */}
+              <div className="flex items-center justify-between px-4 py-3 border-b border-border/40 bg-muted/20">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-full gradient-primary flex items-center justify-center">
+                    <Sparkles className="w-4 h-4 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-black text-foreground">Page Assistant</p>
+                    <p className="text-[9px] uppercase tracking-widest text-muted-foreground">Knows this page</p>
+                  </div>
+                </div>
+                <button onClick={() => setChatOpen(false)} className="w-7 h-7 rounded-full hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              {/* Messages */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                {messages.map((msg, i) => (
+                  <div key={i} className={cn("text-xs leading-relaxed rounded-xl px-3 py-2.5 max-w-[88%]",
+                    msg.role === "assistant"
+                      ? "bg-muted/50 text-foreground"
+                      : "bg-primary/15 text-primary ml-auto text-right")}>
+                    {msg.content}
+                  </div>
+                ))}
+                {typing && (
+                  <div className="bg-muted/40 rounded-xl px-3 py-2.5 text-xs text-muted-foreground w-16">
+                    <span className="animate-pulse">···</span>
+                  </div>
+                )}
+                <div ref={chatEndRef} />
+              </div>
+
+              {/* Input */}
+              <div className="p-3 border-t border-border/40 flex gap-2">
+                <Input
+                  value={input}
+                  onChange={e => setInput(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && handleSend()}
+                  placeholder="Ask about your subjects…"
+                  className="bg-muted/30 border-none h-9 rounded-xl text-xs"
+                />
+                <Button onClick={handleSend} size="icon" className="h-9 w-9 rounded-xl gradient-primary shrink-0">
+                  <Send className="w-3.5 h-3.5" />
+                </Button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Floating button */}
+        <motion.button
+          whileHover={{ scale: 1.08 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={chatOpen ? () => setChatOpen(false) : openChat}
+          className="w-14 h-14 rounded-full gradient-primary shadow-2xl shadow-primary/30 flex items-center justify-center text-white"
+        >
+          <AnimatePresence mode="wait">
+            {chatOpen
+              ? <motion.div key="x" initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }}><X className="w-5 h-5" /></motion.div>
+              : <motion.div key="chat" initial={{ rotate: 90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: -90, opacity: 0 }}><Sparkles className="w-5 h-5" /></motion.div>
+            }
+          </AnimatePresence>
+        </motion.button>
+      </div>
     </div>
   );
 }
