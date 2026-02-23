@@ -36,6 +36,11 @@ export const themes = [
     g: ["#fbbf24", "#f59e0b", "#d97706"]
   },
   {
+    name: "Coral Blush",
+    p: { h: "3", s: "76%", l: "70%" },
+    g: ["#ef7b76", "#e8605a", "#f4a09c"]
+  },
+  {
     name: "Cosmic Aurora",
     p: { h: "172", s: "88%", l: "45%" },
     g: ["#2dd4bf", "#3b82f6", "#a855f7"]
@@ -50,11 +55,6 @@ export const themes = [
     p: { h: "280", s: "90%", l: "60%" },
     g: ["#ff0000", "#00ff00", "#0000ff"]
   },
-  {
-    name: "Coral Blush",
-    p: { h: "3", s: "76%", l: "70%" },
-    g: ["#ef7b76", "#e8605a", "#f4a09c"]
-  }
 ];
 
 export const applyThemeByName = (themeName: string) => {
