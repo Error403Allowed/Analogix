@@ -145,7 +145,7 @@ export function AppSidebar() {
                         className={cn("flex flex-col gap-1.5 p-2 rounded-xl transition-all border text-left",
                           activeThemeName === t.name ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "border-white/5 bg-white/5 hover:bg-white/10")}>
                         <div className="w-full h-7 rounded-lg" style={{ background: `linear-gradient(135deg, ${t.g[0]}, ${t.g[1]})` }} />
-                        <span className={cn("text-[8px] font-black uppercase tracking-tight truncate", activeThemeName === t.name ? "text-primary" : "text-muted-foreground")}>{t.name}</span>
+                        <span className={cn("text-[8px] font-black uppercase tracking-tight leading-tight", activeThemeName === t.name ? "text-primary" : "text-muted-foreground")}>{t.name}</span>
                       </button>
                     ))}
                   </div>
@@ -179,8 +179,8 @@ export function AppSidebar() {
                         className={cn("flex flex-col gap-1.5 p-2 rounded-xl transition-all border text-left group",
                           activeThemeName === t.name ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "border-white/5 bg-white/5 hover:bg-white/10 hover:border-white/20")}>
                         <div className="w-full h-7 rounded-lg opacity-80 group-hover:opacity-100 transition-opacity" style={{ background: `linear-gradient(135deg, ${t.g[0]}, ${t.g[1]})` }} />
-                        <span className={cn("text-[9px] font-black uppercase tracking-tighter truncate", activeThemeName === t.name ? "text-primary" : "text-muted-foreground group-hover:text-foreground")}>
-                          {t.name.split(" ")[0]}
+                        <span className={cn("text-[9px] font-black uppercase tracking-tighter leading-tight", activeThemeName === t.name ? "text-primary" : "text-muted-foreground group-hover:text-foreground")}>
+                          {t.name}
                         </span>
                       </button>
                     ))}

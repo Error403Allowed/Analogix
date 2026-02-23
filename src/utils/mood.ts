@@ -31,7 +31,7 @@ export const moodProfiles = {
   },
   calm: {
     label: "Calm",
-    theme: "Oceanic",
+    theme: "Oceanic Blue",
     dashboard: {
       calendarTitle: "Gentle schedule",
       deadlinesTitle: "Light reminders",

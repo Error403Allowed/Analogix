@@ -16,7 +16,7 @@ export const themes = [
     g: ["#f97316", "#f43f5e", "#e11d48"]
   },
   {
-    name: "Oceanic",
+    name: "Oceanic Blue",
     p: { h: "199", s: "89%", l: "48%" },
     g: ["#0ea5e9", "#0284c7", "#0369a1"]
   },
@@ -49,6 +49,11 @@ export const themes = [
     name: "Prismatic",
     p: { h: "280", s: "90%", l: "60%" },
     g: ["#ff0000", "#00ff00", "#0000ff"]
+  },
+  {
+    name: "Coral Blush",
+    p: { h: "3", s: "76%", l: "70%" },
+    g: ["#ef7b76", "#e8605a", "#f4a09c"]
   }
 ];
 

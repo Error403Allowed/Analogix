@@ -106,7 +106,7 @@ const STEPS: Step[] = [
     id: "theme",
     selector: "[data-tutorial='theme']",
     title: "Colour Scheme & Theme",
-    description: "Make Analogix yours! Expand the sidebar to see colour theme swatches — choose from Classic Blue, Sunset, Forest, Midnight, and more. Dark/light mode is right there too.",
+    description: "Make Analogix yours! Expand the sidebar to see colour theme swatches — choose from Classic Blue, Sunset, Forest, Midnight Gold, and more. Dark/light mode is right there too.",
     placement: "right",
     padding: 6,
   },
