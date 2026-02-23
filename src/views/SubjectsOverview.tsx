@@ -3,9 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { 
-  GraduationCap, 
   ArrowRight, 
-  Star, 
   TrendingUp, 
   Search, 
   Compass, 
@@ -17,7 +15,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { SUBJECT_CATALOG, SubjectId } from "@/constants/subjects";
+import { SUBJECT_CATALOG } from "@/constants/subjects";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { statsStore } from "@/utils/statsStore";
@@ -72,6 +70,7 @@ export default function SubjectsOverview() {
   }, [subjectPerformance]);
 
   const filteredSubjects = SUBJECT_CATALOG.filter((s) => 
+    userSubjects.includes(s.id) &&
     s.label.toLowerCase().includes(search.toLowerCase())
   );
 
@@ -111,6 +110,20 @@ export default function SubjectsOverview() {
         </div>
       </motion.div>
 
+      {userSubjects.length === 0 && (
+        <div className="glass-card p-8 text-center">
+          <h2 className="text-2xl font-black text-foreground mb-2">No subjects selected yet</h2>
+          <p className="text-sm text-muted-foreground mb-6">
+            Add subjects in your profile to see them here.
+          </p>
+          <Button onClick={() => router.push("/dashboard")} className="rounded-xl">
+            Go to Dashboard
+          </Button>
+        </div>
+      )}
+
+      {userSubjects.length > 0 && (
+      <>
       {/* Insights Section */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Next Steps */}
@@ -229,7 +242,7 @@ export default function SubjectsOverview() {
       {/* Grid Content */}
       <div className="space-y-6">
          <div className="flex items-center gap-4 px-2">
-            <h2 className="text-2xl font-black text-foreground">Catalogue Explorer</h2>
+            <h2 className="text-2xl font-black text-foreground">Your Subjects</h2>
             <div className="h-px flex-1 bg-border/50" />
          </div>
          
@@ -240,7 +253,6 @@ export default function SubjectsOverview() {
            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
          >
            {filteredSubjects.map((subject) => {
-             const isEnrolled = userSubjects.includes(subject.id);
              const Icon = subject.icon;
 
              return (
@@ -250,8 +262,7 @@ export default function SubjectsOverview() {
                  whileHover={{ y: -8, scale: 1.03 }}
                  onClick={() => router.push(`/subjects/${subject.id}`)}
                  className={cn(
-                   "glass-card p-6 group cursor-pointer relative overflow-hidden transition-all duration-500",
-                   isEnrolled ? "border-primary/20 shadow-xl" : "opacity-70 grayscale-[0.3] hover:grayscale-0 hover:opacity-100"
+                   "glass-card p-6 group cursor-pointer relative overflow-hidden transition-all duration-500 border-primary/20 shadow-xl"
                  )}
                >
                  {/* Background Glow */}
@@ -262,11 +273,9 @@ export default function SubjectsOverview() {
                      <div className="w-16 h-16 rounded-[1.5rem] style-primary gradient-primary flex items-center justify-center text-primary-foreground text-3xl shadow-2xl border border-white/20 transform group-hover:rotate-6 transition-transform">
                        <Icon className="w-8 h-8" />
                      </div>
-                     {isEnrolled && (
-                       <div className="px-3 py-1.5 rounded-full bg-primary/10 text-primary text-[10px] font-black uppercase tracking-widest border border-primary/20 shadow-sm">
-                         Active
-                       </div>
-                     )}
+                     <div className="px-3 py-1.5 rounded-full bg-primary/10 text-primary text-[10px] font-black uppercase tracking-widest border border-primary/20 shadow-sm">
+                       Active
+                     </div>
                    </div>
 
                    <div>
@@ -278,15 +287,10 @@ export default function SubjectsOverview() {
                      </p>
                    </div>
 
-                   <div className="flex items-center justify-between pt-4 border-t border-border/50">
-                      <div className="flex gap-1">
-                         <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
-                         <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
-                         <Star className="w-3.5 h-3.5 text-amber-500/30" />
-                      </div>
-                       <Button variant="ghost" size="sm" className="h-9 rounded-xl text-xs font-bold group-hover:bg-primary/10 group-hover:text-primary border border-transparent group-hover:border-primary/20">
-                          {isEnrolled ? "Dive In" : "Enroll"} <ArrowRight className="w-3.5 h-3.5 ml-2 group-hover:translate-x-1 transition-transform" />
-                       </Button>
+                   <div className="flex items-center justify-end pt-4 border-t border-border/50">
+                     <Button variant="ghost" size="sm" className="h-9 rounded-xl text-xs font-bold group-hover:bg-primary/10 group-hover:text-primary border border-transparent group-hover:border-primary/20">
+                        Open <ArrowRight className="w-3.5 h-3.5 ml-2 group-hover:translate-x-1 transition-transform" />
+                     </Button>
                    </div>
                  </div>
                </motion.div>
@@ -294,6 +298,8 @@ export default function SubjectsOverview() {
            })}
          </motion.div>
       </div>
+      </>
+      )}
     </div>
   );
 }

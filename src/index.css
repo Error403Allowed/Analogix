@@ -97,9 +97,14 @@
   * {
     @apply border-border;
   }
+  html, body {
+    height: 100%;
+  }
   body {
     font-family: var(--font-sans);
     @apply bg-background text-foreground;
+    overflow-x: hidden;
+    overscroll-behavior-y: none;
     background-image:
       radial-gradient(
         900px 400px at 10% -10%,
@@ -394,4 +399,110 @@ button .markdown-content .katex {
 .dashboard-panel {
   @apply rounded-[var(--radius)] relative transition-all duration-700;
   backdrop-filter: blur(var(--blur));
+}
+
+
+/* ── TipTap Rich Editor ───────────────────────────────────────────── */
+.rich-editor-content {
+  @apply text-foreground;
+}
+
+/* Placeholder */
+.rich-editor-content p.is-editor-empty:first-child::before,
+.is-editor-empty::before {
+  content: attr(data-placeholder);
+  @apply text-muted-foreground/40 pointer-events-none float-left h-0;
+}
+
+/* Headings */
+.rich-editor-content h1 { @apply text-3xl font-black mt-6 mb-3 text-foreground; }
+.rich-editor-content h2 { @apply text-2xl font-black mt-5 mb-3 text-foreground; }
+.rich-editor-content h3 { @apply text-xl font-bold mt-4 mb-2 text-foreground; }
+
+/* Paragraphs */
+.rich-editor-content p { @apply mb-3 leading-relaxed; }
+
+/* Strong / em / strike */
+.rich-editor-content strong { @apply font-bold; }
+.rich-editor-content em { @apply italic; }
+.rich-editor-content s { @apply line-through; }
+
+/* Inline code */
+.rich-editor-content code:not(pre code) {
+  @apply bg-muted px-1.5 py-0.5 rounded text-sm font-mono text-primary;
+}
+
+/* Code blocks — styled like VS Code / GitHub */
+.rich-editor-content pre {
+  @apply my-4 rounded-xl overflow-hidden border border-border/40;
+}
+.rich-editor-content pre::before {
+  content: '';
+  display: block;
+  height: 32px;
+  @apply bg-muted/70 border-b border-border/40;
+  background-image: radial-gradient(circle at 12px 50%, #ff5f57 4px, transparent 4px),
+                    radial-gradient(circle at 28px 50%, #febc2e 4px, transparent 4px),
+                    radial-gradient(circle at 44px 50%, #28c840 4px, transparent 4px);
+  background-repeat: no-repeat;
+}
+.rich-editor-content pre code {
+  @apply block p-4 text-sm font-mono leading-relaxed bg-muted/20 overflow-x-auto;
+  background: none;
+}
+
+/* Syntax highlight colours (lowlight) */
+.rich-editor-content .hljs-keyword,
+.rich-editor-content .hljs-selector-tag { @apply text-purple-400; }
+.rich-editor-content .hljs-string,
+.rich-editor-content .hljs-attr { @apply text-green-400; }
+.rich-editor-content .hljs-number,
+.rich-editor-content .hljs-literal { @apply text-orange-400; }
+.rich-editor-content .hljs-comment { @apply text-muted-foreground italic; }
+.rich-editor-content .hljs-title,
+.rich-editor-content .hljs-function { @apply text-blue-400; }
+.rich-editor-content .hljs-built_in,
+.rich-editor-content .hljs-type { @apply text-cyan-400; }
+.rich-editor-content .hljs-variable,
+.rich-editor-content .hljs-name { @apply text-red-400; }
+
+/* Blockquote */
+.rich-editor-content blockquote {
+  @apply border-l-2 border-primary/40 pl-4 text-muted-foreground my-4 italic;
+}
+
+/* Lists */
+.rich-editor-content ul { @apply list-disc list-inside space-y-1 my-2 pl-2; }
+.rich-editor-content ol { @apply list-decimal list-inside space-y-1 my-2 pl-2; }
+.rich-editor-content li { @apply leading-relaxed; }
+
+/* Task list */
+.rich-editor-content ul[data-type="taskList"] { @apply list-none pl-0; }
+.rich-editor-content li[data-type="taskItem"] { @apply flex items-start gap-2; }
+.rich-editor-content li[data-type="taskItem"] > label { @apply flex items-center gap-2 cursor-pointer mt-0.5; }
+.rich-editor-content li[data-type="taskItem"] > label input[type="checkbox"] {
+  @apply rounded border-border accent-primary w-4 h-4 cursor-pointer;
+}
+.rich-editor-content li[data-type="taskItem"][data-checked="true"] > div {
+  @apply line-through text-muted-foreground;
+}
+
+/* Horizontal rule */
+.rich-editor-content hr { @apply border-border/40 my-6; }
+
+/* Tables */
+.rich-editor-content table {
+  @apply w-full border-collapse text-sm my-4 rounded-xl overflow-hidden;
+}
+.rich-editor-content th {
+  @apply border border-border/50 px-3 py-2 text-left bg-muted/30 font-bold;
+}
+.rich-editor-content td {
+  @apply border border-border/50 px-3 py-2 align-top;
+}
+
+/* Math — KaTeX rendered inline and block */
+.rich-editor-content .math-node { @apply cursor-default; }
+.rich-editor-content .math-node.ProseMirror-selectednode {
+  @apply outline outline-2 outline-primary/50 rounded;
 }

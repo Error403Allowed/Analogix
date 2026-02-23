@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, type ChangeEvent } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle,
@@ -15,7 +15,7 @@ import {
   BookOpen, Cpu, LineChart, Briefcase, Wallet, HeartPulse,
   Globe, Wrench, Stethoscope, Languages,
   Dumbbell, Gamepad2, Music, CookingPot, Palette, Film,
-  Leaf, Laptop, Book, Plane,
+  Leaf, Laptop, Book, Plane, Upload, Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -71,6 +71,7 @@ interface Prefs {
   hobbyIds?: string[];
   hobbyDetails?: Record<string, string>;
   hobbies?: string[];
+  avatarUrl?: string;
   onboardingComplete?: boolean;
 }
 
@@ -95,8 +96,10 @@ const ProfileSheet = ({ open, onOpenChange }: ProfileSheetProps) => {
   const [hobbyIds, setHobbyIds] = useState<string[]>(prefs.hobbyIds || []);
   const [hobbyDetails, setHobbyDetails] = useState<Record<string, string>>(prefs.hobbyDetails || {});
   const [customInputs, setCustomInputs] = useState<Record<string, string>>({});
+  const [avatarUrl, setAvatarUrl] = useState(prefs.avatarUrl || "");
   const [editingName, setEditingName] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Re-sync when sheet opens
   useEffect(() => {
@@ -109,6 +112,7 @@ const ProfileSheet = ({ open, onOpenChange }: ProfileSheetProps) => {
       setSubjects(p.subjects || []);
       setHobbyIds(p.hobbyIds || []);
       setHobbyDetails(p.hobbyDetails || {});
+      setAvatarUrl(p.avatarUrl || "");
       setCustomInputs({});
       setDirty(false);
       setEditingName(false);
@@ -155,6 +159,61 @@ const ProfileSheet = ({ open, onOpenChange }: ProfileSheetProps) => {
     mark();
   };
 
+  const readImage = (file: File) =>
+    new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ""));
+      reader.onerror = () => reject(new Error("Failed to read file."));
+      reader.readAsDataURL(file);
+    });
+
+  const loadImageElement = (src: string) =>
+    new Promise<HTMLImageElement>((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error("Failed to load image."));
+      img.src = src;
+    });
+
+  const handleAvatarChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please upload an image file.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image is too large. Please use a file under 5MB.");
+      return;
+    }
+
+    try {
+      const dataUrl = await readImage(file);
+      const img = await loadImageElement(dataUrl);
+      const size = Math.min(img.width, img.height);
+      const sx = Math.max(0, (img.width - size) / 2);
+      const sy = Math.max(0, (img.height - size) / 2);
+      const canvas = document.createElement("canvas");
+      const target = 256;
+      canvas.width = target;
+      canvas.height = target;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("Canvas not supported.");
+      ctx.drawImage(img, sx, sy, size, size, 0, 0, target, target);
+      const output = canvas.toDataURL("image/jpeg", 0.85);
+      setAvatarUrl(output);
+      mark();
+    } catch {
+      toast.error("Could not process this image.");
+    } finally {
+      if (event.target) event.target.value = "";
+    }
+  };
+
+  const handleAvatarRemove = () => {
+    setAvatarUrl("");
+    mark();
+  };
 
   const handleSave = () => {
     // Build hobbies array (label + details) same format as onboarding
@@ -173,6 +232,7 @@ const ProfileSheet = ({ open, onOpenChange }: ProfileSheetProps) => {
       hobbyIds,
       hobbyDetails,
       hobbies: hobbiesWithDetails,
+      avatarUrl: avatarUrl || undefined,
       onboardingComplete: true,
     };
     localStorage.setItem("userPreferences", JSON.stringify(next));
@@ -203,6 +263,52 @@ const ProfileSheet = ({ open, onOpenChange }: ProfileSheetProps) => {
           <div className="px-6 py-5 space-y-8">
 
             {/* ── Name ── */}
+            <section>
+              <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 mb-3 block">Profile Photo</Label>
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 rounded-2xl border border-border/60 bg-muted/30 overflow-hidden flex items-center justify-center shrink-0">
+                  {avatarUrl ? (
+                    <img src={avatarUrl} alt="Profile" className="w-full h-full object-cover" />
+                  ) : (
+                    <User className="w-6 h-6 text-muted-foreground/60" />
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="rounded-xl"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <Upload className="w-3.5 h-3.5 mr-2" />
+                    Upload
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="rounded-xl text-muted-foreground"
+                    onClick={handleAvatarRemove}
+                    disabled={!avatarUrl}
+                  >
+                    <Trash2 className="w-3.5 h-3.5 mr-2" />
+                    Remove
+                  </Button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleAvatarChange}
+                  />
+                  <p className="text-[10px] text-muted-foreground/60 w-full">
+                    JPG/PNG, cropped to a square. Max 5MB.
+                  </p>
+                </div>
+              </div>
+            </section>
+
             <section>
               <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 mb-3 block">Name</Label>
               <div className="flex items-center gap-2">

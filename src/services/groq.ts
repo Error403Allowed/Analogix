@@ -1,7 +1,7 @@
 "use client";
 
 import { ChatMessage, UserContext } from "@/types/chat";
-import { QuizData } from "@/types/quiz";
+import { QuizAnswerInput, QuizData, QuizReview } from "@/types/quiz";
 
 const fetchJson = async <T>(
   url: string,
@@ -56,7 +56,7 @@ export const getGroqCompletion = async (
     responseLength?: number;
     analogyAnchor?: string;
   },
-) => {
+): Promise<ChatMessage> => {
   try {
     return await fetchJson<{ role: "assistant"; content: string }>(
       "/api/hf/chat",
@@ -64,11 +64,12 @@ export const getGroqCompletion = async (
       30000,
     );
   } catch (error) {
-    return {
+    const fallback: ChatMessage = {
       role: "assistant",
       content:
         `I couldn't reach the AI service. ${error instanceof Error ? error.message : ""}`.trim(),
     };
+    return fallback;
   }
 };
 
@@ -182,6 +183,7 @@ export const generateQuiz = async (
   input: string,
   userContext: {
     grade?: string;
+    state?: string;
     hobbies: string[];
     subject?: string;
     difficulty?: string;
@@ -220,5 +222,26 @@ export const gradeShortAnswer = async (
     );
   } catch {
     return { isCorrect: false, feedback: "Could not grade this answer." };
+  }
+};
+
+/**
+ * AI REVIEW: Generates end-of-quiz feedback for all questions.
+ */
+export const generateQuizReview = async (payload: {
+  grade?: string;
+  subject?: string;
+  difficulty?: string;
+  answers: QuizAnswerInput[];
+}): Promise<QuizReview | null> => {
+  try {
+    const data = await fetchJson<{ review: QuizReview | null }>(
+      "/api/hf/quiz-review",
+      payload,
+      30000,
+    );
+    return data.review || null;
+  } catch {
+    return null;
   }
 };

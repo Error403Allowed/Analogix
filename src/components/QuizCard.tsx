@@ -7,12 +7,13 @@ import { Textarea } from "./ui/textarea";
 import { Loader2, Send } from "lucide-react";
 import { gradeShortAnswer } from "@/services/groq";
 import MarkdownRenderer from "./MarkdownRenderer";
+import type { QuizOption } from "@/types/quiz";
 
-interface QuizOption {
-  id: string;
-  text: string;
+type QuizAnswerPayload = {
   isCorrect: boolean;
-}
+  userAnswer: string;
+  feedback?: string;
+};
 
 interface QuizCardProps {
   type?: "multiple_choice" | "short_answer";
@@ -21,7 +22,7 @@ interface QuizCardProps {
   correctAnswer?: string;
   questionNumber: number;
   totalQuestions: number;
-  onAnswer: (isCorrect: boolean) => void;
+  onAnswer: (payload: QuizAnswerPayload) => void;
   hint?: string;
 }
 
@@ -42,7 +43,7 @@ const QuizCard = ({
   const [showConfetti, setShowConfetti] = useState(false);
   const [isGrading, setIsGrading] = useState(false);
   const [aiFeedback, setAiFeedback] = useState<string | null>(null);
-  const [isCorrectSA, setIsCorrectSA] = useState(false);
+  const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
 
   const handleSelect = (optionId: string) => {
     if (showResult) return;
@@ -50,29 +51,43 @@ const QuizCard = ({
     setSelectedOption(optionId);
     setShowResult(true);
     
-    const isCorrect = options.find(o => o.id === optionId)?.isCorrect || false;
+    const selected = options.find(o => o.id === optionId);
+    const isCorrect = selected?.isCorrect || false;
     
     if (isCorrect) {
       setShowConfetti(true);
       setTimeout(() => setShowConfetti(false), 2000);
     }
-    
-    setTimeout(() => {
-      onAnswer(isCorrect);
-      setSelectedOption(null);
-      setShowResult(false);
-      setShowHint(false);
-    }, 1200);
+
+    const correctMessages = [
+      "Brilliant work.",
+      "Great job.",
+      "Nailed it.",
+      "Perfect. Keep going.",
+    ];
+    const incorrectMessages = [
+      "Close. Keep going.",
+      "Not quite, but you're learning.",
+      "Almost there. Try again next time.",
+      "Good try. Mistakes help us grow.",
+    ];
+    const pool = isCorrect ? correctMessages : incorrectMessages;
+    setFeedbackMessage(pool[Math.floor(Math.random() * pool.length)]);
+
+    onAnswer({
+      isCorrect,
+      userAnswer: selected?.text || "",
+    });
   };
 
   const handleShortAnswerSubmit = async () => {
-    if (!shortAnswer.trim() || isGrading) return;
+    if (!shortAnswer.trim() || isGrading || showResult) return;
     
     setIsGrading(true);
     const result = await gradeShortAnswer(question, correctAnswer || "", shortAnswer);
     
-    setIsCorrectSA(result.isCorrect);
     setAiFeedback(result.feedback);
+    setFeedbackMessage(result.feedback);
     setShowResult(true);
     setIsGrading(false);
 
@@ -81,13 +96,11 @@ const QuizCard = ({
       setTimeout(() => setShowConfetti(false), 2000);
     }
 
-    setTimeout(() => {
-      onAnswer(result.isCorrect);
-      setShortAnswer("");
-      setShowResult(false);
-      setAiFeedback(null);
-      setShowHint(false);
-    }, 2000);
+    onAnswer({
+      isCorrect: result.isCorrect,
+      userAnswer: shortAnswer,
+      feedback: result.feedback,
+    });
   };
 
   const getOptionStyles = (option: QuizOption) => {
@@ -110,30 +123,10 @@ const QuizCard = ({
 
   const getMessage = () => {
     if (!showResult) return null;
-    
     if (type === "short_answer") {
-      return aiFeedback;
+      return aiFeedback || feedbackMessage;
     }
-
-    const isCorrect = options.find(o => o.id === selectedOption)?.isCorrect;
-    
-    if (isCorrect) {
-      const messages = [
-        "Brilliant work.",
-        "Great job.",
-        "Nailed it.",
-        "Perfect. Keep going.",
-      ];
-      return messages[Math.floor(Math.random() * messages.length)];
-    }
-    
-    const messages = [
-      "Close. Keep going.",
-      "Not quite, but you're learning.",
-      "Almost there. Try again next time.",
-      "Good try. Mistakes help us grow.",
-    ];
-    return messages[Math.floor(Math.random() * messages.length)];
+    return feedbackMessage;
   };
 
   return (

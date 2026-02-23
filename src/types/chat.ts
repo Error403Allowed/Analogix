@@ -8,6 +8,7 @@ export interface UserContext {
   subjects: string[];
   hobbies: string[];
   grade?: string;
+  state?: string;
   learningStyle: string;
   analogyIntensity?: number;
   responseLength?: number;

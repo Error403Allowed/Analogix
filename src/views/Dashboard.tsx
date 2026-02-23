@@ -317,7 +317,7 @@ const Dashboard = () => {
     <>
     <div className="min-h-full relative overflow-x-hidden flex flex-col">
       <div className="w-full relative z-10 flex-1 min-h-0 flex flex-col">       
-        <div className="flex flex-col gap-4 min-h-0 flex-1 overflow-y-auto pb-12 custom-scrollbar px-1">
+        <div className="flex flex-col gap-4 min-h-0 flex-1 overflow-y-auto pb-6 custom-scrollbar px-1">
 
             {/* Top Section: Calendar + Timer */}
             <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-stretch">

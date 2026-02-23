@@ -1,15 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Home, RotateCcw, Share2, Trophy, Lightbulb, Loader2, Sparkles, Clock, Brain, AlertTriangle, ChevronRight, Settings2 } from "lucide-react";
+import { ArrowLeft, Home, RotateCcw, Trophy, Lightbulb, Loader2, Sparkles, Clock, Brain, AlertTriangle, ChevronRight, Settings2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import QuizCard from "@/components/QuizCard";
 import Confetti from "@/components/Confetti";
 import { statsStore } from "@/utils/statsStore";
 import { achievementStore } from "@/utils/achievementStore";
-import { generateQuiz } from "@/services/groq";
+import { generateQuiz, generateQuizReview } from "@/services/groq";
 import TypewriterText from "@/components/TypewriterText";
 import MarkdownRenderer from "@/components/MarkdownRenderer";
 import { SUBJECT_CATALOG, SubjectId, getGradeBand } from "@/constants/subjects";
@@ -17,17 +17,25 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
+import type { QuizAnswerInput, QuizOption, QuizQuestion, QuizReview } from "@/types/quiz";
+
+type QuizAnswerRecord = QuizAnswerInput & {
+  options?: QuizOption[];
+  feedback?: string;
+};
 
 const Quiz = () => {
   const router = useRouter();
-  const [questions, setQuestions] = useState<any[]>([]);
+  const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState(0);
-  const [score, setScore] = useState(0);
   const [isComplete, setIsComplete] = useState(false);
-  const [answers, setAnswers] = useState<boolean[]>([]);
   const [showAnalogy, setShowAnalogy] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [showConfig, setShowConfig] = useState(true);
+  const [answerRecords, setAnswerRecords] = useState<Array<QuizAnswerRecord | null>>([]);
+  const [review, setReview] = useState<QuizReview | null>(null);
+  const [reviewError, setReviewError] = useState<string | null>(null);
+  const [isReviewLoading, setIsReviewLoading] = useState(false);
 
   /* Quiz Configuration State */
   const [selectedSubject, setSelectedSubject] = useState<SubjectId>("math");
@@ -77,6 +85,15 @@ const Quiz = () => {
   const timerSetting = pendingConfig?.timerDuration ?? (timeLimit * 60);
   const quizDifficulty = pendingConfig?.difficulty || difficulty;
   const HISTORY_KEY = "recentQuizQuestions";
+  const answeredRecords = useMemo(
+    () => answerRecords.filter((record): record is QuizAnswerRecord => Boolean(record)),
+    [answerRecords],
+  );
+  const score = useMemo(
+    () => answeredRecords.reduce((sum, record) => sum + (record.isCorrect ? 1 : 0), 0),
+    [answeredRecords],
+  );
+  const currentAnswer = answerRecords[currentQuestion] || null;
 
   useEffect(() => {
     try {
@@ -102,7 +119,11 @@ const Quiz = () => {
   };
 
   const normalizeQuestion = (text: string) =>
-    text.toLowerCase().replace(/\s+/g, " ").trim();
+    text
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
 
   const getRecentQuestions = (): string[] => {
     try {
@@ -113,61 +134,71 @@ const Quiz = () => {
   };
 
   const storeRecentQuestions = (questions: string[]) => {
-    const trimmed = questions.slice(-80);
+    const trimmed = questions.slice(-200);
     localStorage.setItem(HISTORY_KEY, JSON.stringify(trimmed));
   };
 
   const fetchQuiz = async () => {
     setIsLoading(true);
     const recent = getRecentQuestions();
-    const avoidList = recent.slice(-20);
+    const avoidList = recent.slice(-50);
     const baseSeed = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    let quizData: any = null;
-    let stored = false;
+    const seenThisRun = new Set(recent);
+    const collected: QuizQuestion[] = [];
+    const normalizedCollected: string[] = [];
 
-    for (let attempt = 0; attempt < 3; attempt++) {
-      quizData = await generateQuiz(
+    const maxAttempts = 6;
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      const quizData = await generateQuiz(
         topic,
         {
           grade: userPrefs.grade,
+          state: userPrefs.state,
           hobbies: userPrefs.hobbies || [],
           subject: pendingConfig?.subject || selectedSubject,
           difficulty: quizDifficulty
         },
         numQuestionsTarget,
-        { diversitySeed: `${baseSeed}-${attempt}`, avoidQuestions: avoidList }
+        {
+          diversitySeed: `${baseSeed}-${attempt}`,
+          avoidQuestions: Array.from(seenThisRun).slice(-60),
+        }
       );
 
       if (!quizData || !quizData.questions) continue;
-      const normalized = quizData.questions.map((q: any) =>
-        normalizeQuestion(q.question || "")
-      );
-      const hasBanned = quizData.questions.some((q: any) =>
-        /2\s*x\s*\+\s*5\s*=\s*11/i.test(q.question || "")
-      );
-      if (hasBanned) {
-        continue;
+
+      for (const question of quizData.questions as QuizQuestion[]) {
+        const raw = question.question || "";
+        if (/2\s*x\s*\+\s*5\s*=\s*11/i.test(raw)) continue;
+        const normalized = normalizeQuestion(raw);
+        if (!normalized) continue;
+        if (seenThisRun.has(normalized)) continue;
+
+        collected.push(question);
+        normalizedCollected.push(normalized);
+        seenThisRun.add(normalized);
+
+        if (collected.length >= numQuestionsTarget) break;
       }
-      const hasOverlap = normalized.some((q: string) => recent.includes(q));
-      if (!hasOverlap) {
-        storeRecentQuestions([...recent, ...normalized]);
-        stored = true;
-        break;
-      }
+
+      if (collected.length >= numQuestionsTarget) break;
     }
 
-    if (quizData && quizData.questions) {
-      if (!stored) {
-        const normalized = quizData.questions.map((q: any) =>
-          normalizeQuestion(q.question || "")
-        );
-        storeRecentQuestions([...recent, ...normalized]);
-      }
-      console.log("Generated Quiz Data:", quizData);
-      (window as any).generatedQuizData = quizData;
-      setQuestions(quizData.questions);
+    if (collected.length >= numQuestionsTarget) {
+      storeRecentQuestions([...recent, ...normalizedCollected]);
+      const nextQuestions = collected.slice(0, numQuestionsTarget);
+      setQuestions(nextQuestions);
+      setAnswerRecords(Array(nextQuestions.length).fill(null));
+      setCurrentQuestion(0);
+      setIsComplete(false);
+      setReview(null);
+      setReviewError(null);
+      setIsReviewLoading(false);
+      setShowAnalogy(true);
     } else {
       setQuestions([]);
+      setAnswerRecords([]);
     }
     setIsLoading(false);
   };
@@ -201,6 +232,12 @@ const Quiz = () => {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const getCorrectAnswerText = (question: QuizQuestion) => {
+    const type = question.type || "multiple_choice";
+    if (type === "short_answer") return question.correctAnswer || "";
+    return question.options?.find((option) => option.isCorrect)?.text || "";
+  };
+
   useEffect(() => {
     if (!isConfigLoaded) return;
     if (pendingConfig) {
@@ -208,23 +245,83 @@ const Quiz = () => {
     }
   }, [isConfigLoaded]);
 
+  useEffect(() => {
+    if (!isComplete) return;
+    if (isReviewLoading || review || reviewError) return;
+    if (answeredRecords.length === 0) return;
 
-  const handleAnswer = (isCorrect: boolean) => {
-    setAnswers([...answers, isCorrect]);
-    if (isCorrect) setScore(score + 1);
+    const answersForReview: QuizAnswerInput[] = answeredRecords.map((record) => ({
+      id: record.id,
+      type: record.type,
+      question: record.question,
+      correctAnswer: record.correctAnswer,
+      userAnswer: record.userAnswer,
+      isCorrect: record.isCorrect,
+    }));
+
+    setIsReviewLoading(true);
+    generateQuizReview({
+      grade: userPrefs.grade,
+      subject: pendingConfig?.subject || selectedSubject,
+      difficulty: quizDifficulty,
+      answers: answersForReview,
+    })
+      .then((data) => {
+        if (data) setReview(data);
+        else setReviewError("Couldn't generate AI feedback right now.");
+      })
+      .catch(() => setReviewError("Couldn't generate AI feedback right now."))
+      .finally(() => setIsReviewLoading(false));
+  }, [
+    isComplete,
+    isReviewLoading,
+    review,
+    reviewError,
+    answeredRecords,
+    userPrefs.grade,
+    pendingConfig?.subject,
+    selectedSubject,
+    quizDifficulty,
+  ]);
+
+
+  const handleAnswer = (payload: { isCorrect: boolean; userAnswer: string; feedback?: string }) => {
+    const question = questions[currentQuestion];
+    if (!question) return;
+
+    setAnswerRecords((prev) => {
+      if (prev[currentQuestion]) return prev;
+      const next = [...prev];
+      const type = question.type || "multiple_choice";
+      const correctAnswer = getCorrectAnswerText(question);
+
+      next[currentQuestion] = {
+        id: question.id,
+        type,
+        question: question.question,
+        options: question.options,
+        userAnswer: payload.userAnswer,
+        correctAnswer,
+        isCorrect: payload.isCorrect,
+        feedback: payload.feedback,
+      };
+      return next;
+    });
+  };
+
+  const handleNext = () => {
+    if (!currentAnswer) return;
 
     if (currentQuestion + 1 >= questions.length) {
-      setTimeout(() => {
+      if (!isComplete) {
         setIsComplete(true);
-        // Record stats
-        statsStore.addQuiz((score + (isCorrect ? 1 : 0)) / questions.length * 100);
-      }, 2000);
-    } else {
-      setTimeout(() => {
-        setCurrentQuestion(currentQuestion + 1);
-        setShowAnalogy(true);
-      }, 1200); // Reduced delay for speed
+        statsStore.addQuiz((score / (questions.length || 1)) * 100);
+      }
+      return;
     }
+
+    setCurrentQuestion(currentQuestion + 1);
+    setShowAnalogy(true);
   };
 
   const handleRestart = () => {
@@ -233,7 +330,7 @@ const Quiz = () => {
 
   if (showConfig && !isLoading) {
     return (
-      <div className="min-h-screen pb-8 relative overflow-hidden bg-background">
+      <div className="min-h-full pb-4 relative overflow-hidden bg-background">
         <div className="liquid-blob w-80 h-80 bg-primary/20 -top-40 -right-40 fixed" />
         <div className="liquid-blob w-64 h-64 bg-accent/20 bottom-20 -left-32 fixed" />
 
@@ -354,7 +451,7 @@ const Quiz = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4">
+      <div className="min-h-full flex flex-col items-center justify-center bg-background p-4">
         <motion.div
           animate={{ rotate: 360 }}
           transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
@@ -380,7 +477,7 @@ const Quiz = () => {
 
   if (questions.length === 0) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-4">
+      <div className="min-h-full flex flex-col items-center justify-center p-4">
          <div className="flex flex-col items-center text-center gap-3">
            <div className="w-14 h-14 rounded-full bg-destructive/10 text-destructive flex items-center justify-center">
              <AlertTriangle className="w-6 h-6" />
@@ -403,21 +500,22 @@ const Quiz = () => {
   };
 
   const scoreData = getScoreMessage();
+  const lastAnswer = answeredRecords[answeredRecords.length - 1];
   const encouragementMessage =
-    currentQuestion === 0
+    answeredRecords.length === 0
       ? "Use the analogy hints to connect concepts."
-      : answers[answers.length - 1]
+      : lastAnswer?.isCorrect
       ? "Nice job, keep going!"
       : "No worries. Try a different angle.";
   const EncouragementIcon =
-    currentQuestion === 0
+    answeredRecords.length === 0
       ? Lightbulb
-      : answers[answers.length - 1]
+      : lastAnswer?.isCorrect
       ? Sparkles
       : AlertTriangle;
 
   return (
-    <div className="min-h-screen pb-8 relative overflow-hidden">
+    <div className="min-h-full pb-4 relative overflow-hidden">
       {/* Background blobs */}
       <div className="liquid-blob w-80 h-80 bg-primary/20 -top-40 -right-40 fixed" />
       <div className="liquid-blob w-64 h-64 bg-accent/20 bottom-20 -left-32 fixed" style={{ animationDelay: '-2s' }} />
@@ -425,7 +523,7 @@ const Quiz = () => {
       <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-6 relative z-10">
         {/* Header */}
         <motion.header
-          className="glass-card px-6 py-4 mb-6"
+          className="glass-card px-5 py-3 mb-5"
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
         >
@@ -441,22 +539,21 @@ const Quiz = () => {
                 Back
               </Button>
             </div>
-            <div className="flex items-center gap-2 justify-self-center">
-              <Lightbulb className="w-5 h-5 text-warning" />
-              <h1 className="text-lg font-bold gradient-text">
-                <TypewriterText text="Analogy Quiz" delay={120} />
-              </h1>
-            </div>
-            <div className="flex items-center gap-4 justify-self-end">
-              {/* Timer Display */}
-              {timeLeft !== null && (
+            <div className="flex items-center justify-self-center">
+              {timeLeft !== null ? (
                 <div className={`flex items-center gap-2 font-mono font-bold text-xl ${
                   timeLeft < 30 ? "text-destructive animate-pulse" : "text-primary"
                 }`}>
                   <Clock className="w-5 h-5" />
                   {formatTime(timeLeft)}
                 </div>
+              ) : (
+                <span className="text-xs font-black uppercase tracking-[0.3em] text-muted-foreground/70">
+                  Untimed
+                </span>
               )}
+            </div>
+            <div className="flex items-center gap-4 justify-self-end">
               <div className="flex items-center gap-2">
                 <span className="text-sm text-muted-foreground">Score:</span>
                 <motion.span
@@ -509,6 +606,14 @@ const Quiz = () => {
                 onAnswer={handleAnswer}
                 hint={questions[currentQuestion].hint}
               />
+              {currentAnswer && (
+                <div className="mt-4 flex justify-end">
+                  <Button onClick={handleNext} className="gap-2">
+                    {currentQuestion + 1 >= questions.length ? "Finish Quiz" : "Next Question"}
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </div>
+              )}
             </motion.div>
           ) : (
             <motion.div
@@ -545,21 +650,25 @@ const Quiz = () => {
 
               {/* Answer Summary */}
               <div className="flex justify-center gap-2 mb-8">
-                {answers.map((isCorrect, index) => (
+                {answerRecords.map((record, index) => {
+                  const isCorrect = record?.isCorrect;
+                  const bubbleClass = record
+                    ? isCorrect
+                      ? "bg-success/20 text-success"
+                      : "bg-destructive/20 text-destructive"
+                    : "bg-muted text-muted-foreground";
+                  return (
                   <motion.div
                     key={index}
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
                     transition={{ delay: 0.5 + index * 0.1 }}
-                    className={`w-10 h-10 rounded-full flex items-center justify-center text-lg ${
-                      isCorrect
-                        ? "bg-success/20 text-success"
-                        : "bg-destructive/20 text-destructive"
-                    }`}
+                    className={`w-10 h-10 rounded-full flex items-center justify-center text-lg ${bubbleClass}`}
                   >
-                    {isCorrect ? "✓" : "✗"}
+                    {record ? (isCorrect ? "✓" : "✗") : "–"}
                   </motion.div>
-                ))}
+                );
+                })}
               </div>
 
               {/* Actions */}
@@ -573,6 +682,89 @@ const Quiz = () => {
                   Dashboard
                 </Button>
               </div>
+
+              {(isReviewLoading || review || reviewError) && (
+                <div className="mt-8 text-left space-y-4">
+                  <div className="glass-card p-6">
+                    <div className="text-xs font-black uppercase tracking-[0.3em] text-muted-foreground mb-2">
+                      AI Review
+                    </div>
+                    {isReviewLoading && (
+                      <div className="flex items-center gap-2 text-primary font-semibold">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Generating feedback...
+                      </div>
+                    )}
+                    {reviewError && (
+                      <p className="text-sm text-destructive">{reviewError}</p>
+                    )}
+                    {review && (
+                      <p className="text-sm text-muted-foreground">{review.summary}</p>
+                    )}
+                  </div>
+
+                  {questions.map((question, index) => {
+                    const record = answerRecords[index];
+                    const reviewItem = review?.questions?.find(
+                      (item) => String(item.id) === String(question.id),
+                    );
+                    const correctAnswer = getCorrectAnswerText(question);
+                    return (
+                      <div key={question.id} className="glass-card p-6">
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="text-xs font-black uppercase tracking-[0.3em] text-muted-foreground">
+                            Question {index + 1}
+                          </span>
+                          <span
+                            className={`text-xs font-bold ${
+                              record
+                                ? record.isCorrect
+                                  ? "text-success"
+                                  : "text-destructive"
+                                : "text-muted-foreground"
+                            }`}
+                          >
+                            {record ? (record.isCorrect ? "Correct" : "Needs Review") : "Unanswered"}
+                          </span>
+                        </div>
+
+                        <div className="text-sm font-semibold text-foreground mb-3">
+                          <MarkdownRenderer content={question.question} />
+                        </div>
+
+                        <div className="text-[11px] font-black uppercase tracking-[0.3em] text-muted-foreground">
+                          Your Answer
+                        </div>
+                        <div className="text-sm text-foreground mb-3">
+                          {record ? (
+                            <MarkdownRenderer content={record.userAnswer} />
+                          ) : (
+                            "No answer submitted."
+                          )}
+                        </div>
+
+                        <div className="text-[11px] font-black uppercase tracking-[0.3em] text-muted-foreground">
+                          Correct Answer
+                        </div>
+                        <div className="text-sm text-foreground mb-3">
+                          {correctAnswer ? (
+                            <MarkdownRenderer content={correctAnswer} />
+                          ) : (
+                            "Not available."
+                          )}
+                        </div>
+
+                        {reviewItem?.feedback && (
+                          <div className="text-sm text-muted-foreground">
+                            <span className="font-semibold text-foreground">Feedback:</span>{" "}
+                            {reviewItem.feedback}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
 
               {/* Achievement Unlocked */}
               {score >= 4 && (

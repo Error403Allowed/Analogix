@@ -9,7 +9,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarHeader,
   SidebarMenu, SidebarMenuButton, SidebarMenuItem,
-  SidebarGroup, SidebarGroupContent,
+  SidebarGroup, SidebarGroupContent, SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useRouter, usePathname } from "next/navigation";
@@ -71,18 +71,26 @@ export function AppSidebar() {
   };
 
   const name = userData?.name || "Student";
+  const avatarUrl = userData?.avatarUrl || "";
 
   return (
     <Sidebar collapsible="icon" className="border-r border-border/50 bg-background/95 backdrop-blur-sm" data-tutorial="sidebar">
       {/* Logo */}
-      <SidebarHeader className="h-20 flex items-center px-6 group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:justify-center transition-all duration-300">
-        <button onClick={() => router.push("/?force=true")}
-          className="flex items-center gap-3 mt-4 group-data-[collapsible=icon]:mt-0 hover:opacity-80 transition-all active:scale-95 text-left">
-          <div className="w-9 h-9 rounded-xl gradient-primary flex items-center justify-center shrink-0 shadow-lg shadow-primary/20">
-            <Brain className="w-5 h-5 text-primary-foreground" />
-          </div>
-          <span className="text-2xl font-black gradient-text tracking-tighter group-data-[collapsible=icon]:hidden">Analogix</span>
-        </button>
+      <SidebarHeader className="h-16 flex flex-col justify-center px-4 group-data-[collapsible=icon]:px-0 transition-all duration-300">
+        <div className="flex items-center justify-between w-full group-data-[collapsible=icon]:justify-center">
+          <button onClick={() => router.push("/?force=true")}
+            className="flex items-center gap-3 hover:opacity-80 transition-all active:scale-95 text-left group-data-[collapsible=icon]:hidden">
+            <div className="w-9 h-9 rounded-xl gradient-primary flex items-center justify-center shrink-0 shadow-lg shadow-primary/20">
+              <Brain className="w-5 h-5 text-primary-foreground" />
+            </div>
+            <span className="text-2xl font-black gradient-text tracking-tighter">Analogix</span>
+          </button>
+          <SidebarTrigger
+            className="h-9 w-9 rounded-xl border border-primary/30 bg-primary/10 text-primary shadow-[0_10px_20px_-12px_rgba(14,165,233,0.6)] hover:bg-primary/20 hover:text-primary"
+            data-tutorial="sidebar-trigger"
+            aria-label="Toggle sidebar"
+          />
+        </div>
       </SidebarHeader>
 
       <SidebarContent className="px-2 overflow-x-hidden">
@@ -193,8 +201,14 @@ export function AppSidebar() {
               onClick={() => setProfileOpen(true)}
               data-tutorial="profile"
               className="h-14 w-full flex items-center justify-start px-4 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0 hover:bg-primary/5 transition-all overflow-hidden cursor-pointer">
-              <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center shrink-0">
-                <User className="w-5 h-5 text-primary-foreground" />
+              <div className="w-10 h-10 rounded-xl overflow-hidden bg-primary/10 flex items-center justify-center shrink-0">
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt={`${name} profile`} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full rounded-xl gradient-primary flex items-center justify-center">
+                    <User className="w-5 h-5 text-primary-foreground" />
+                  </div>
+                )}
               </div>
               <div className="flex-1 min-w-0 ml-3 group-data-[collapsible=icon]:hidden text-left overflow-hidden">
                 <p className="text-sm font-black text-foreground truncate">{name}</p>

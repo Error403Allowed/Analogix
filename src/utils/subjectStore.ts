@@ -13,6 +13,10 @@ export interface SubjectMark {
 export interface SubjectNotes {
   content: string;
   lastUpdated: string;
+  homework?: SubjectHomework[];
+  links?: SubjectLink[];
+  title?: string;
+  documents?: SubjectDocumentItem[];
 }
 
 export interface SubjectData {
@@ -21,11 +25,78 @@ export interface SubjectData {
   notes: SubjectNotes;
 }
 
+export interface SubjectDocumentItem {
+  id: string;
+  title: string;
+  content: string;
+  createdAt: string;
+  lastUpdated: string;
+}
+
+export interface SubjectHomework {
+  id: string;
+  title: string;
+  dueDate?: string;
+  notes?: string;
+  link?: string;
+  completed?: boolean;
+  createdAt: string;
+}
+
+export interface SubjectLink {
+  id: string;
+  title: string;
+  url: string;
+  createdAt: string;
+}
+
 const LOCAL_KEY = "analogix-subject-data";
 
 const emptySubject = (subjectId: string): SubjectData => ({
-  id: subjectId, marks: [], notes: { content: "", lastUpdated: new Date().toISOString() },
+  id: subjectId,
+  marks: [],
+  notes: {
+    content: "",
+    lastUpdated: new Date().toISOString(),
+    homework: [],
+    links: [],
+    documents: [],
+  },
 });
+
+const normalizeDocuments = (
+  subjectId: string,
+  notes: SubjectNotes | undefined,
+): SubjectDocumentItem[] => {
+  if (!notes) return [];
+  const legacyContent = notes.content || "";
+  const legacyTitle = typeof notes.title === "string" ? notes.title : "";
+  const legacyUpdated = notes.lastUpdated || new Date().toISOString();
+
+  if (Array.isArray(notes.documents) && notes.documents.length > 0) {
+    return notes.documents.map((doc, index) => ({
+      id: doc?.id || `legacy-${subjectId}-${index}`,
+      title: typeof doc?.title === "string" ? doc.title : "",
+      content: doc?.content || "",
+      createdAt: doc?.createdAt || legacyUpdated,
+      lastUpdated: doc?.lastUpdated || legacyUpdated,
+    }));
+  }
+
+  if (legacyContent || legacyTitle) {
+    return [
+      {
+        id: `legacy-${subjectId}`,
+        title: legacyTitle,
+        content: legacyContent,
+        createdAt: legacyUpdated,
+        lastUpdated: legacyUpdated,
+      },
+    ];
+  }
+
+  return [];
+};
 
 export const subjectStore = {
   getAll: async (): Promise<Record<string, SubjectData>> => {
@@ -39,10 +110,19 @@ export const subjectStore = {
         .eq("user_id", user.id);
       if (data) {
         return data.reduce((acc: Record<string, SubjectData>, row: any) => {
+          const notes = row.notes ?? { content: "", lastUpdated: "" };
+          const documents = normalizeDocuments(row.subject_id, notes);
           acc[row.subject_id] = {
             id: row.subject_id,
             marks: row.marks ?? [],
-            notes: row.notes ?? { content: "", lastUpdated: "" },
+      notes: {
+        content: notes.content || "",
+        lastUpdated: notes.lastUpdated || "",
+        homework: Array.isArray(notes.homework) ? notes.homework : [],
+        links: Array.isArray(notes.links) ? notes.links : [],
+        title: typeof notes.title === "string" ? notes.title : "",
+        documents,
+      },
           };
           return acc;
         }, {});
@@ -57,7 +137,20 @@ export const subjectStore = {
 
   getSubject: async (subjectId: string): Promise<SubjectData> => {
     const all = await subjectStore.getAll();
-    return all[subjectId] || emptySubject(subjectId);
+    const stored = all[subjectId];
+    if (!stored) return emptySubject(subjectId);
+    const documents = normalizeDocuments(subjectId, stored.notes);
+    return {
+      ...stored,
+      notes: {
+        content: stored.notes?.content || "",
+        lastUpdated: stored.notes?.lastUpdated || "",
+        homework: Array.isArray(stored.notes?.homework) ? stored.notes.homework : [],
+        links: Array.isArray(stored.notes?.links) ? stored.notes.links : [],
+        title: typeof stored.notes?.title === "string" ? stored.notes.title : "",
+        documents,
+      },
+    };
   },
 
   saveSubject: async (subjectId: string, data: Partial<SubjectData>) => {
@@ -90,9 +183,92 @@ export const subjectStore = {
     await subjectStore.saveSubject(subjectId, { marks: [...current.marks, newMark] });
   },
 
-  updateNotes: async (subjectId: string, content: string) => {
+  updateNotes: async (subjectId: string, content: string, title?: string) => {
+    const current = await subjectStore.getSubject(subjectId);
     await subjectStore.saveSubject(subjectId, {
-      notes: { content, lastUpdated: new Date().toISOString() },
+      notes: {
+        ...current.notes,
+        content,
+        title: typeof title === "string" ? title : current.notes.title,
+        lastUpdated: new Date().toISOString(),
+      },
+    });
+  },
+
+  createDocument: async (subjectId: string, title?: string) => {
+    const current = await subjectStore.getSubject(subjectId);
+    const now = new Date().toISOString();
+    const normalizedTitle = typeof title === "string" ? title.trim() : "";
+    const newDoc: SubjectDocumentItem = {
+      id: crypto.randomUUID(),
+      title: normalizedTitle,
+      content: "",
+      createdAt: now,
+      lastUpdated: now,
+    };
+    const documents = [newDoc, ...(current.notes.documents || [])];
+    await subjectStore.saveSubject(subjectId, {
+      notes: {
+        ...current.notes,
+        documents,
+        lastUpdated: now,
+      },
+    });
+    return newDoc;
+  },
+
+  updateDocument: async (subjectId: string, docId: string, updates: Partial<SubjectDocumentItem>) => {
+    const current = await subjectStore.getSubject(subjectId);
+    const now = new Date().toISOString();
+    const documents = current.notes.documents || [];
+    const target = documents.find((doc) => doc.id === docId);
+    if (!target) return;
+    const updated: SubjectDocumentItem = {
+      ...target,
+      ...updates,
+      lastUpdated: now,
+    };
+    const next = [updated, ...documents.filter((doc) => doc.id !== docId)];
+    await subjectStore.saveSubject(subjectId, {
+      notes: {
+        ...current.notes,
+        documents: next,
+        lastUpdated: now,
+      },
+    });
+  },
+
+  removeDocument: async (subjectId: string, docId: string) => {
+    const current = await subjectStore.getSubject(subjectId);
+    const documents = (current.notes.documents || []).filter((doc) => doc.id !== docId);
+    await subjectStore.saveSubject(subjectId, {
+      notes: {
+        ...current.notes,
+        documents,
+        lastUpdated: new Date().toISOString(),
+      },
+    });
+  },
+
+  updateHomework: async (subjectId: string, homework: SubjectHomework[]) => {
+    const current = await subjectStore.getSubject(subjectId);
+    await subjectStore.saveSubject(subjectId, {
+      notes: {
+        ...current.notes,
+        homework,
+        lastUpdated: new Date().toISOString(),
+      },
+    });
+  },
+
+  updateLinks: async (subjectId: string, links: SubjectLink[]) => {
+    const current = await subjectStore.getSubject(subjectId);
+    await subjectStore.saveSubject(subjectId, {
+      notes: {
+        ...current.notes,
+        links,
+        lastUpdated: new Date().toISOString(),
+      },
     });
   },
 };
