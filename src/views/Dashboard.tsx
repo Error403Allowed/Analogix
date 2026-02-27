@@ -362,33 +362,33 @@ const Dashboard = () => {
     <>
     <div className="min-h-full relative overflow-x-hidden flex flex-col">
       <div className="w-full relative z-10 flex-1 min-h-0 flex flex-col">       
-        <div className="flex flex-col gap-4 min-h-0 flex-1 overflow-y-auto pb-6 custom-scrollbar px-1">
+        <div className="flex flex-col gap-4 min-h-0 flex-1 overflow-y-auto pt-4 pb-6 custom-scrollbar px-4">
 
-            {/* Top Section: Calendar + Timer */}
+            {/* Top Section: Calendar + Timer — equal height via items-stretch */}
             <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-stretch">
               {/* Calendar Section */}
               <DashboardPanel
                 as={motion.div}
                 variants={itemVariants}
                 data-tutorial="calendar"
-                className="xl:col-span-7 p-8 flex flex-col"
+                className="xl:col-span-7 p-6 flex flex-col min-h-0"
               >
-                <div className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.2em] text-muted-foreground mb-6">
+                <div className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.2em] text-muted-foreground mb-4">
                   <CalendarIcon className="w-4 h-4 text-primary" />
                   Calendar
                 </div>
-                <div className="flex-1">
+                <div className="flex-1 min-h-0 overflow-hidden">
                    <CalendarWidget streak={normalizedStats.currentStreak} streakLabel={streakLabel} />
                 </div>
               </DashboardPanel>
 
-              {/* Timer & Streak Column */}
+              {/* Timer & Streak Column — this drives the shared height */}
               <div className="xl:col-span-5 flex flex-col gap-4">
                 <DashboardPanel
                   as={motion.div}
                   variants={itemVariants}
                   data-tutorial="timer"
-                  className="p-6 flex flex-col items-center justify-center"
+                  className="flex-1 p-6 flex flex-col items-center justify-center"
                 >
                    <TimerWidget />
                 </DashboardPanel>
@@ -398,7 +398,7 @@ const Dashboard = () => {
                   variants={itemVariants}
                   whileHover={{ scale: 1.02, y: -5 }}
                   data-tutorial="streak"
-                  className="p-6 flex flex-col items-center justify-center text-center relative overflow-hidden group min-h-[140px] border border-amber-500/10 bg-amber-500/5 shadow-[0_20px_50px_rgba(245,158,11,0.05)]"
+                  className="p-6 flex flex-col items-center justify-center text-center relative overflow-hidden group border border-amber-500/10 bg-amber-500/5 shadow-[0_20px_50px_rgba(245,158,11,0.05)]"
                 >
                   <div className="absolute inset-0 bg-gradient-to-br from-amber-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                   <div className="w-14 h-14 rounded-[2rem] bg-amber-500/10 flex items-center justify-center mb-3 relative z-10 shadow-lg shadow-amber-500/10 group-hover:scale-110 transition-transform">

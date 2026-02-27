@@ -85,32 +85,40 @@
   }
 
   .dark {
-    --background: 222.2 47% 11.2%; /* Deep blue-black */
-    --foreground: 210 40% 98%;
+    /* ── Base surfaces ──────────────────────────────────────────────
+       Background is a deep near-black navy. Cards sit clearly above
+       it with a noticeably lighter surface — like a sheet of paper
+       lifted off a dark table. This is the key fix for the washed-out
+       look: enough lightness delta so things are actually visible.
+    ─────────────────────────────────────────────────────────────── */
+    --background: 220 30% 8%;       /* Deep dark navy, almost black  */
+    --foreground: 210 20% 96%;      /* Bright near-white text        */
 
-    --card: 217 33% 17%; /* Slightly lighter blue-black for cards */
-    --card-foreground: 210 40% 98%;
+    --card: 220 25% 14%;            /* Noticeably lifted card surface */
+    --card-foreground: 210 20% 96%;
 
-    --popover: 222.2 47% 11.2%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 220 25% 14%;
+    --popover-foreground: 210 20% 96%;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 220 22% 19%;
+    --secondary-foreground: 210 20% 96%;
 
-    --muted: var(--muted-dark, 217.2 32.6% 17.5%);
-    --muted-foreground: var(--muted-foreground-dark, 215 20.2% 70%);
+    --muted: 220 22% 19%;
+    --muted-foreground: 215 15% 62%; /* Clearly readable secondary text */
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
+    --border: 220 20% 22%;          /* Borders visible against cards  */
+    --input: 220 22% 19%;
     --ring: var(--p-h) var(--p-s) var(--p-l);
 
     --bg-1: var(--bg-1-dark);
     --bg-2: var(--bg-2-dark);
     --bg-3: var(--bg-3-dark);
-    --glass-bg: var(--glass-bg-dark);
-    --glass-tint: var(--glass-tint-dark);
-    --glass-border: var(--glass-border-dark);
-    --glass-shadow: 0 30px 70px -40px rgba(0, 0, 0, 0.8);
+
+    /* Glass: a translucent layer clearly above the background */
+    --glass-bg: rgba(20, 28, 46, 0.82);
+    --glass-tint: rgba(14, 165, 166, 0.06);
+    --glass-border: rgba(255, 255, 255, 0.09);
+    --glass-shadow: 0 30px 70px -40px rgba(0, 0, 0, 0.9);
   }
 }
 
@@ -168,9 +176,20 @@
   transition: all 0.4s ease;
 }
 
+/* In dark mode, give glass cards a clearly visible border so they
+   read as distinct panels rather than blending into the background */
+.dark .glass-card {
+  border-color: rgba(255, 255, 255, 0.11);
+  background: linear-gradient(135deg, rgba(14,165,166,0.07), rgba(20, 28, 46, 0.88));
+}
+
 .glass-card:hover {
-  box-shadow: 0 36px 70px -28px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 36px 70px -28px rgba(0, 0, 0, 0.35);
   border-color: hsl(var(--accent) / 0.22);
+}
+
+.dark .glass-card:hover {
+  border-color: rgba(255, 255, 255, 0.18);
 }
 
 /* Dashboard layout */
@@ -196,13 +215,18 @@
 .dashboard-panel {
   @apply rounded-[var(--radius)] relative transition-all duration-500;
   backdrop-filter: blur(var(--blur));
-}
-
-/* Only subtle gradients for depth in dark mode if needed, but keeping it flat as requested */
-.dashboard-panel {
   background: transparent;
   border: none;
   box-shadow: none;
+}
+
+/* In dark mode, dashboard panels need a visible surface so they don't
+   disappear into the background. Give them a card-level background and
+   a subtle border — like lifting a card off the table. */
+.dark .dashboard-panel {
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  box-shadow: 0 4px 24px -8px rgba(0, 0, 0, 0.5);
 }
 
 .progress-ring {
@@ -210,7 +234,7 @@
 }
 
 .progress-ring-inner {
-  @apply rounded-full bg-background dark:bg-slate-900 border border-border/60
+  @apply rounded-full bg-background border border-border/60
     shadow-inner flex flex-col items-center justify-center;
 }
 
@@ -414,10 +438,7 @@ button .markdown-content .katex {
   pointer-events: none;
 }
 
-.dashboard-panel {
-  @apply rounded-[var(--radius)] relative transition-all duration-700;
-  backdrop-filter: blur(var(--blur));
-}
+/* (duplicate rule removed — defined above with dark mode override) */
 
 
 /* ── TipTap Rich Editor ───────────────────────────────────────────── */

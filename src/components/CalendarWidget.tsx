@@ -139,25 +139,25 @@ const CalendarWidget = ({ streak = 0, streakLabel = "days" }: CalendarWidgetProp
               mode="single" selected={date} onSelect={setDate}
               className="rounded-3xl border-0 p-0 w-full"
               classNames={{
-                month: "space-y-6 w-full",
-                head_row: "flex w-full mb-2",
+                month: "space-y-2 w-full",
+                head_row: "flex w-full mb-1",
                 head_cell: "text-muted-foreground flex-1 text-center font-black text-[0.65rem] uppercase tracking-widest",
-                row: "flex w-full mt-2 gap-1",
-                cell: "flex-1 h-12 text-center text-xs p-0 relative",
-                day: cn(buttonVariants({ variant: "ghost" }), "h-12 w-12 mx-auto p-0 font-bold aria-selected:opacity-100 rounded-2xl transition-all hover:bg-primary/10 hover:text-primary"),
+                row: "flex w-full mt-1 gap-0.5",
+                cell: "flex-1 h-9 text-center text-xs p-0 relative",
+                day: cn(buttonVariants({ variant: "ghost" }), "h-9 w-9 mx-auto p-0 font-bold aria-selected:opacity-100 rounded-xl transition-all hover:bg-primary/10 hover:text-primary"),
                 day_selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground shadow-lg",
                 day_today: "bg-muted text-foreground",
                 caption_label: "text-sm font-black uppercase tracking-widest text-foreground",
-                nav_button: cn(buttonVariants({ variant: "outline" }), "h-8 w-8 bg-background/50 p-0 opacity-70 hover:opacity-100 rounded-xl"),
-                table: "w-full border-collapse space-y-1",
+                nav_button: cn(buttonVariants({ variant: "outline" }), "h-7 w-7 bg-background/50 p-0 opacity-70 hover:opacity-100 rounded-xl"),
+                table: "w-full border-collapse space-y-0",
               }}
               modifiers={{ event: d => events.some(e => isSameDay(new Date(e.date), d)) }}
               modifiersClassNames={{ event: "relative after:absolute after:bottom-1 after:left-1/2 after:-translate-x-1/2 after:w-1 after:h-1 after:bg-primary after:rounded-full" }}
             />
 
             {/* Tabs */}
-            <div className="mt-6 border-t border-border/10 pt-4">
-              <div className="flex items-center gap-1 mb-4">
+            <div className="mt-3 border-t border-border/10 pt-3">
+              <div className="flex items-center gap-1 mb-3">
                 {tabConfig.map(t => (
                   <button key={t.id} onClick={() => handleTabSwitch(t.id)}
                     className={cn("text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full transition-all flex items-center gap-1",
