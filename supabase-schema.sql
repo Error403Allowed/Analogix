@@ -200,3 +200,33 @@ CREATE POLICY "Users manage their own chat messages"
 -- Index for fast session message lookups
 CREATE INDEX IF NOT EXISTS idx_chat_messages_session_id ON public.chat_messages(session_id);
 CREATE INDEX IF NOT EXISTS idx_chat_sessions_user_id ON public.chat_sessions(user_id);
+
+
+-- ============================================================
+-- FLASHCARDS  (spaced-repetition cards per user)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS public.flashcards (
+  id                UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id           UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  subject_id        TEXT NOT NULL,
+  front             TEXT NOT NULL,
+  back              TEXT NOT NULL,
+  source_session_id UUID REFERENCES public.chat_sessions(id) ON DELETE SET NULL,
+  next_review       TIMESTAMPTZ NOT NULL DEFAULT (NOW() + INTERVAL '1 day'),
+  interval_days     INTEGER NOT NULL DEFAULT 1,
+  ease_factor       NUMERIC(4,2) NOT NULL DEFAULT 2.5,
+  repetitions       INTEGER NOT NULL DEFAULT 0,
+  created_at        TIMESTAMPTZ DEFAULT NOW(),
+  updated_at        TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.flashcards ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users manage their own flashcards"
+  ON public.flashcards FOR ALL
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+-- Indexes for fast due-card lookups
+CREATE INDEX IF NOT EXISTS idx_flashcards_user_id ON public.flashcards(user_id);
+CREATE INDEX IF NOT EXISTS idx_flashcards_next_review ON public.flashcards(user_id, next_review);

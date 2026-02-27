@@ -87,8 +87,8 @@ function AuthStep({ onAuthed, externalError }: { onAuthed: () => void; externalE
 
   return (
     <div className="grid gap-8 md:grid-cols-[1.1fr_0.9fr] items-stretch">
-      <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-primary/10 via-transparent to-accent/10 p-8 md:p-10">
-        <div className="absolute inset-0 opacity-60 bg-[radial-gradient(circle_at_20%_20%,rgba(59,130,246,0.25),transparent_55%),radial-gradient(circle_at_80%_10%,rgba(236,72,153,0.2),transparent_45%),radial-gradient(circle_at_50%_80%,rgba(34,197,94,0.18),transparent_50%)]" />
+      <div className="relative overflow-hidden rounded-3xl border border-white/6 bg-gradient-to-br from-primary/6 via-transparent to-accent/6 p-8 md:p-10">
+        <div className="absolute inset-0 opacity-35 bg-[radial-gradient(circle_at_20%_20%,rgba(59,130,246,0.18),transparent_55%),radial-gradient(circle_at_80%_10%,rgba(236,72,153,0.14),transparent_45%),radial-gradient(circle_at_50%_80%,rgba(34,197,94,0.12),transparent_50%)]" />
         <div className="relative z-10 flex h-full flex-col justify-between gap-6">
           <div className="space-y-4">
             <div className="flex items-center gap-3">
@@ -213,6 +213,9 @@ function IcsStep({ importing, imported, count, error, onFile }:
 // ── Main ──────────────────────────────────────────────────────────────────────
 // Steps: 1=Auth, 2=Year, 3=State, 4=Subjects, 5=Hobbies, 6=ICS
 const TOTAL_STEPS = 6;
+const IS_DEV = process.env.NODE_ENV === "development";
+const SKIP_AUTH = process.env.NEXT_PUBLIC_SKIP_AUTH === "true";
+const BYPASS_AUTH = IS_DEV && SKIP_AUTH;
 
 const Onboarding = () => {
   const router = useRouter();
@@ -223,11 +226,22 @@ const Onboarding = () => {
     searchParams?.get("error") === "auth_failed" ? "Authentication failed. Please try again." : null
   );
 
-  // Always start on step 1 — the gate below moves us forward once auth resolves.
-  // This prevents ?step=2 in the URL from skipping auth for unauthenticated users.
-  const [step, setStep] = useState(1);
+  // In dev, skip the auth step entirely and start at step 2.
+  // In prod, always start on step 1 — the gate below moves us forward once auth resolves.
+  const [step, setStep] = useState(BYPASS_AUTH ? 2 : 1);
 
   useEffect(() => {
+    // Dev: skip auth check — just check if onboarding is already done
+    if (BYPASS_AUTH) {
+      try {
+        const prefs = JSON.parse(localStorage.getItem("userPreferences") || "{}");
+        if (prefs?.onboardingComplete) {
+          router.replace("/dashboard");
+        }
+      } catch {}
+      return;
+    }
+
     if (authLoading) return;
 
     if (authUser) {
@@ -395,7 +409,7 @@ const Onboarding = () => {
         <AnimatePresence mode="wait">
           {!isComplete ? (
             <motion.div key={`step-${step}`} initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }}
-              className={cn("glass-card shadow-2xl border-white/20", step === 1 ? "p-6 md:p-8" : "p-8 md:p-10")}>
+              className={cn("glass-card shadow-xl border-white/8", step === 1 ? "p-6 md:p-8" : "p-8 md:p-10")}>
 
               {/* Progress bar — only show from step 2 onwards */}
               {step > 1 && (

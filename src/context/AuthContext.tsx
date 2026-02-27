@@ -15,9 +15,12 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 const getRedirectBaseUrl = () => {
+  if (typeof window !== "undefined" && process.env.NODE_ENV === "development") {
+    return window.location.origin;
+  }
   const envUrl = process.env.NEXT_PUBLIC_SITE_URL;
   if (envUrl && envUrl.length > 0) return envUrl.replace(/\/$/, "");
-  return window.location.origin;
+  return typeof window !== "undefined" ? window.location.origin : "";
 };
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {

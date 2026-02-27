@@ -12,14 +12,20 @@ import {
   Square,
   Copy,
   Check,
-  Database
+  Database,
+  Shuffle,
+  ChevronDown,
+  BookOpen,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useRouter } from "next/navigation";
-import { getGroqCompletion } from "@/services/groq";
+import { getGroqCompletion, getReExplanation, generateFlashcards } from "@/services/groq";
+import { flashcardStore } from "@/utils/flashcardStore";
 import { statsStore } from "@/utils/statsStore";
 import { chatStore } from "@/utils/chatStore";
+import { getFormulaSheet } from "@/data/formulaSheets";
 import MarkdownRenderer from "@/components/MarkdownRenderer";
 import TypewriterText from "@/components/TypewriterText";
 import { SUBJECT_CATALOG, SubjectId, getSubjectDescription } from "@/constants/subjects";
@@ -277,6 +283,17 @@ const Chat = () => {
   // ANALOGY MODE: Toggle analogies on/off (session-only)
   const [analogyModeEnabled, setAnalogyModeEnabled] = useState(true);
 
+  // RE-EXPLAIN: Track which message has the anchor picker open
+  const [reExplainOpenId, setReExplainOpenId] = useState<string | null>(null);
+  const [reExplainingId, setReExplainingId] = useState<string | null>(null);
+
+  // FLASHCARDS: Saving session as flashcards
+  const [savingFlashcards, setSavingFlashcards] = useState(false);
+  const [flashcardsSaved, setFlashcardsSaved] = useState(false);
+
+  // FORMULA SHEET: Side panel visibility
+  const [formulaPanelOpen, setFormulaPanelOpen] = useState(false);
+
   // CHAT HISTORY: Supabase session ID for saving messages
   const [chatSessionId, setChatSessionId] = useState<string | null>(null);
 
@@ -473,9 +490,75 @@ const Chat = () => {
     buildWelcomeMessage
   ]);
 
+  const handleSaveAsFlashcards = useCallback(async () => {
+    if (!selectedSubject || messages.length < 2 || savingFlashcards) return;
+    setSavingFlashcards(true);
+    setFlashcardsSaved(false);
+
+    const conversationText = messages
+      .filter(m => !m.isWelcome)
+      .map(m => `${m.role === "user" ? "Student" : "Quizzy"}: ${m.content}`)
+      .join("\n\n");
+
+    const raw = await generateFlashcards(conversationText, selectedSubject, userPrefs.grade, 5);
+    if (raw.length > 0) {
+      await flashcardStore.add(raw.map(c => ({ subjectId: selectedSubject, front: c.front, back: c.back })));
+      setFlashcardsSaved(true);
+      setTimeout(() => setFlashcardsSaved(false), 3000);
+    }
+    setSavingFlashcards(false);
+  }, [selectedSubject, messages, savingFlashcards, userPrefs.grade]);
+
+  const handleReExplain = useCallback(async (messageId: string, chosenAnchor?: string) => {
+    if (isInputLocked) return;
+    const target = messages.find(m => m.id === messageId);
+    if (!target || target.role !== "assistant") return;
+
+    setReExplainOpenId(null);
+    setReExplainingId(messageId);
+    setIsTyping(true);
+    setStopTyping(false);
+
+    try {
+      const history = messages
+        .slice(0, messages.findIndex(m => m.id === messageId))
+        .map(m => ({ role: m.role, content: m.content }));
+
+      const ctx = {
+        ...buildContext(null),
+        chosenAnchor: chosenAnchor || undefined,
+        previousExplanation: target.content,
+      };
+
+      const aiResponse = await getReExplanation(history, ctx);
+
+      setMessages(prev => prev.map(m =>
+        m.id === messageId
+          ? { ...m, id: `${messageId}-re-${Date.now()}`, content: aiResponse.content || "Let me try a different approach...", isNew: true }
+          : m
+      ));
+    } catch {
+      setMessages(prev => prev.map(m =>
+        m.id === messageId
+          ? { ...m, id: `${messageId}-re-${Date.now()}`, content: "Couldn't reach the AI. Try again in a moment.", isNew: true }
+          : m
+      ));
+    } finally {
+      setIsTyping(false);
+      setIsAnimating(true);
+      setStopTyping(false);
+      setReExplainingId(null);
+    }
+  }, [isInputLocked, messages, buildContext]);
+
+
+
   useEffect(() => {
-    // We stay on the selection screen so Quizzy can ask what you want to explore!
-  }, []);
+    if (!reExplainOpenId) return;
+    const handleClick = () => setReExplainOpenId(null);
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [reExplainOpenId]);
 
   useEffect(() => {
     return () => {
@@ -740,7 +823,24 @@ const Chat = () => {
               </Button>
 
               <Button
-                variant={analogyModeEnabled ? "default" : "outline"}
+                variant="outline"
+                size="sm"
+                onClick={handleSaveAsFlashcards}
+                disabled={isInputLocked || messages.filter(m => !m.isWelcome).length < 2}
+                className="gap-2 rounded-md h-8 px-4 text-xs font-medium"
+                title="Save this session as flashcards"
+              >
+                {savingFlashcards ? (
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                ) : flashcardsSaved ? (
+                  <Check className="w-3.5 h-3.5 text-primary" />
+                ) : (
+                  <BookOpen className="w-3.5 h-3.5" />
+                )}
+                {flashcardsSaved ? "Saved!" : "Save flashcards"}
+              </Button>
+
+              <Button
                 size="sm"
                 onClick={() => setAnalogyModeEnabled((prev) => !prev)}
                 className="gap-2 rounded-md h-8 px-4 text-xs font-medium"
@@ -762,9 +862,24 @@ const Chat = () => {
                 Memory
                 <div className="px-1 py-0.5 rounded-sm bg-primary/20 text-[8px] font-black uppercase text-primary">Plus</div>
               </Button>
+
+              {getFormulaSheet(selectedSubject || "") && (
+                <Button
+                  variant={formulaPanelOpen ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setFormulaPanelOpen(o => !o)}
+                  className="gap-2 rounded-md h-8 px-4 text-xs font-medium"
+                  title="Formula sheet"
+                >
+                  <BookOpen className="w-3.5 h-3.5" />
+                  Formulas
+                </Button>
+              )}
             </motion.div>
 
-            <div className="flex-1 min-h-0 relative">
+            <div className="flex-1 flex gap-4 min-h-0">
+              {/* Main chat column */}
+              <div className="flex-1 min-h-0 relative">
               {/* Messages - sleek chat bubbles */}
               <div
                 ref={scrollContainerRef}
@@ -789,12 +904,7 @@ const Chat = () => {
                       >
                         {message.role === "assistant" ? (
                           <div className="max-w-[88%] sm:max-w-[85%] message-bubble-assistant">
-                            <div className="flex items-center gap-2 mb-2.5">
-                              <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
-                                <Lightbulb className="w-3 h-3 text-white" />
-                              </div>
-                              <span className="text-xs font-semibold text-primary">Quizzy</span>
-                            </div>
+                            <div className="mb-2" />
                             <>
                               {(() => {
                                 const { thinking } = parseThinkingContent(message.content);
@@ -828,32 +938,86 @@ const Chat = () => {
                                   setStopTyping(false);
                                 }}
                               />
-                              <div className="mt-3 flex items-center justify-end gap-0.5 opacity-70 hover:opacity-100 transition-opacity">
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => handleCopy(parseThinkingContent(message.content).response, message.id)}
-                                  aria-label="Copy response"
-                                  title="Copy response"
-                                  className="h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                                >
-                                  {copiedId === message.id ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                                </Button>
-                                {canRegenerate && (
+                              <div className="mt-3 flex items-center justify-between gap-0.5">
+                                {/* Explain it differently */}
+                                <div className="relative">
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setReExplainOpenId(prev => prev === message.id ? null : message.id)}
+                                    disabled={isInputLocked}
+                                    className="h-7 gap-1.5 px-2 rounded-lg text-[11px] text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                                  >
+                                    {reExplainingId === message.id ? (
+                                      <RefreshCw className="w-3 h-3 animate-spin" />
+                                    ) : (
+                                      <Shuffle className="w-3 h-3" />
+                                    )}
+                                    Explain differently
+                                    <ChevronDown className="w-2.5 h-2.5 opacity-50" />
+                                  </Button>
+                                  <AnimatePresence>
+                                    {reExplainOpenId === message.id && (
+                                      <motion.div
+                                        initial={{ opacity: 0, y: -6, scale: 0.97 }}
+                                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                                        exit={{ opacity: 0, y: -6, scale: 0.97 }}
+                                        transition={{ duration: 0.15 }}
+                                        className="absolute left-0 top-9 z-50 w-56 rounded-xl border border-border bg-card shadow-xl p-2"
+                                      >
+                                        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-2 py-1">
+                                          Anchor to interest
+                                        </p>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleReExplain(message.id)}
+                                          className="w-full text-left text-xs px-2 py-1.5 rounded-lg hover:bg-muted/60 text-foreground font-medium"
+                                        >
+                                          🎲 Surprise me
+                                        </button>
+                                        {userHobbies.map(interest => (
+                                          <button
+                                            key={interest}
+                                            type="button"
+                                            onClick={() => handleReExplain(message.id, interest)}
+                                            className="w-full text-left text-xs px-2 py-1.5 rounded-lg hover:bg-muted/60 text-foreground truncate"
+                                          >
+                                            {interest}
+                                          </button>
+                                        ))}
+                                      </motion.div>
+                                    )}
+                                  </AnimatePresence>
+                                </div>
+
+                                <div className="flex items-center opacity-70 hover:opacity-100 transition-opacity">
                                   <Button
                                     type="button"
                                     variant="ghost"
                                     size="icon"
-                                    onClick={() => handleRegenerate(message.id)}
-                                    disabled={isInputLocked}
-                                    aria-label="Regenerate response"
-                                    title="Regenerate response"
+                                    onClick={() => handleCopy(parseThinkingContent(message.content).response, message.id)}
+                                    aria-label="Copy response"
+                                    title="Copy response"
                                     className="h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50"
                                   >
-                                    <RefreshCw className="w-3 h-3" />
+                                    {copiedId === message.id ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
                                   </Button>
-                                )}
+                                  {canRegenerate && (
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => handleRegenerate(message.id)}
+                                      disabled={isInputLocked}
+                                      aria-label="Regenerate response"
+                                      title="Regenerate response"
+                                      className="h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                                    >
+                                      <RefreshCw className="w-3 h-3" />
+                                    </Button>
+                                  )}
+                                </div>
                               </div>
                             </>
                           </div>
@@ -980,6 +1144,55 @@ const Chat = () => {
                   </p>
                 </div>
               </motion.div>
+            </div>
+
+              {/* Formula sheet side panel */}
+              <AnimatePresence>
+                {formulaPanelOpen && selectedSubject && (() => {
+                  const sheet = getFormulaSheet(selectedSubject);
+                  if (!sheet) return null;
+                  const topics = [...new Set(sheet.formulas.map(f => f.topic))];
+                  return (
+                    <motion.div
+                      key="formula-panel"
+                      initial={{ opacity: 0, x: 20, width: 0 }}
+                      animate={{ opacity: 1, x: 0, width: "280px" }}
+                      exit={{ opacity: 0, x: 20, width: 0 }}
+                      transition={{ type: "spring", stiffness: 300, damping: 28 }}
+                      className="hidden sm:flex flex-col border border-border rounded-xl bg-card overflow-hidden shrink-0"
+                      style={{ width: 280 }}
+                    >
+                      <div className="flex items-center justify-between px-3 py-2.5 border-b border-border">
+                        <span className="text-xs font-bold text-foreground">{sheet.label} Formulas</span>
+                        <button type="button" onClick={() => setFormulaPanelOpen(false)}
+                          className="text-muted-foreground hover:text-foreground p-1 rounded-lg hover:bg-muted">
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                      <div className="flex-1 overflow-y-auto p-2 space-y-3 formula-scroll">
+                        {topics.map(topic => (
+                          <div key={topic}>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50 px-1 mb-1.5">{topic}</p>
+                            <div className="space-y-1.5">
+                              {sheet.formulas.filter(f => f.topic === topic).map(formula => (
+                                <div key={formula.name}
+                                  className="px-2.5 py-2 rounded-lg bg-muted/40 hover:bg-muted/70 transition-colors cursor-default">
+                                  <p className="text-[11px] font-semibold text-foreground mb-1">{formula.name}</p>
+                                  <MarkdownRenderer
+                                    content={`$${formula.latex}$`}
+                                    className="text-[11px] text-primary"
+                                  />
+                                  <p className="text-[10px] text-muted-foreground mt-1 leading-snug">{formula.description}</p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </motion.div>
+                  );
+                })()}
+              </AnimatePresence>
             </div>
           </div>
         )}

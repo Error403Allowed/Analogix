@@ -4,57 +4,201 @@ import { Palette, Check, Settings2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
+type HSL = { h: string; s: string; l: string };
+type Theme = {
+  name: string;
+  p: HSL;
+  g: [string, string, string];
+  accent: HSL;
+  accent2: HSL;
+  success: HSL;
+  warning: HSL;
+  danger: HSL;
+  muted: HSL;
+  mutedFg: HSL;
+  charts?: string[];
+  bg?: [string, string, string];
+  bgDark?: [string, string, string];
+  glass?: {
+    bg?: string;
+    tint?: string;
+    border?: string;
+    darkBg?: string;
+    darkTint?: string;
+    darkBorder?: string;
+  };
+};
+
+const hsl = (h: number | string, s: number | string, l: number | string): HSL => ({
+  h: String(h),
+  s: typeof s === "number" ? `${s}%` : s,
+  l: typeof l === "number" ? `${l}%` : l,
+});
+
+const hslValue = (value: HSL) => `${value.h} ${value.s} ${value.l}`;
+const hslColor = (value: HSL) => `hsl(${hslValue(value)})`;
+
+const hexToRgba = (hex: string, alpha: number) => {
+  const cleaned = hex.replace("#", "");
+  const full = cleaned.length === 3 ? cleaned.split("").map((c) => c + c).join("") : cleaned;
+  const num = parseInt(full, 16);
+  const r = (num >> 16) & 255;
+  const g = (num >> 8) & 255;
+  const b = num & 255;
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+};
+
+const withDerived = (theme: Theme): Theme => {
+  const bg = theme.bg ?? [
+    hexToRgba(theme.g[0], 0.16),
+    hexToRgba(theme.g[1], 0.12),
+    hexToRgba(theme.g[2], 0.1),
+  ];
+  const bgDark = theme.bgDark ?? [
+    hexToRgba(theme.g[0], 0.045),
+    hexToRgba(theme.g[1], 0.035),
+    hexToRgba(theme.g[2], 0.025),
+  ];
+  const glass = theme.glass ?? {
+    bg: "rgba(255,255,255,0.72)",
+    tint: hexToRgba(theme.g[0], 0.12),
+    border: "rgba(255,255,255,0.18)",
+    darkBg: "rgba(8,12,18,0.78)",
+    darkTint: hexToRgba(theme.g[0], 0.04),
+    darkBorder: "rgba(255,255,255,0.04)",
+  };
+  const charts = theme.charts ?? [
+    theme.g[0],
+    theme.g[1],
+    theme.g[2],
+    hslColor(theme.accent),
+    hslColor(theme.warning),
+    hslColor(theme.danger),
+  ];
+  return { ...theme, bg, bgDark, glass, charts };
+};
+
 export const themes = [
-  {
+  withDerived({
     name: "Classic Blue",
-    p: { h: "221.2", s: "83.2%", l: "53.3%" },
-    g: ["#2563eb", "#4f46e5", "#4338ca"]
-  },
-  {
+    p: hsl(221.2, 83.2, 53.3),
+    g: ["#2563eb", "#4f46e5", "#4338ca"],
+    accent: hsl(197, 82, 45),
+    accent2: hsl(262, 83, 66),
+    success: hsl(142, 71, 45),
+    warning: hsl(38, 92, 55),
+    danger: hsl(0, 84, 60),
+    muted: hsl(220, 26, 96),
+    mutedFg: hsl(215, 18, 42),
+  }),
+  withDerived({
     name: "Sunset Ember",
-    p: { h: "15", s: "91%", l: "60%" },
-    g: ["#f97316", "#f43f5e", "#e11d48"]
-  },
-  {
+    p: hsl(15, 91, 60),
+    g: ["#f97316", "#f43f5e", "#e11d48"],
+    accent: hsl(330, 78, 58),
+    accent2: hsl(38, 95, 60),
+    success: hsl(142, 70, 42),
+    warning: hsl(28, 90, 55),
+    danger: hsl(0, 82, 58),
+    muted: hsl(20, 30, 96),
+    mutedFg: hsl(10, 18, 42),
+  }),
+  withDerived({
     name: "Oceanic Blue",
-    p: { h: "199", s: "89%", l: "48%" },
-    g: ["#0ea5e9", "#0284c7", "#0369a1"]
-  },
-  {
+    p: hsl(199, 89, 48),
+    g: ["#0ea5e9", "#0284c7", "#0369a1"],
+    accent: hsl(176, 72, 42),
+    accent2: hsl(220, 78, 60),
+    success: hsl(158, 64, 42),
+    warning: hsl(40, 92, 56),
+    danger: hsl(0, 82, 58),
+    muted: hsl(205, 30, 95),
+    mutedFg: hsl(210, 18, 42),
+  }),
+  withDerived({
     name: "Forest Glow",
-    p: { h: "142", s: "71%", l: "45%" },
-    g: ["#16a34a", "#22c55e", "#15803d"]
-  },
-  {
+    p: hsl(142, 71, 45),
+    g: ["#16a34a", "#22c55e", "#15803d"],
+    accent: hsl(96, 62, 42),
+    accent2: hsl(180, 70, 38),
+    success: hsl(142, 72, 40),
+    warning: hsl(45, 90, 55),
+    danger: hsl(0, 82, 58),
+    muted: hsl(140, 20, 95),
+    mutedFg: hsl(150, 16, 40),
+  }),
+  withDerived({
     name: "Cyber Neon",
-    p: { h: "292", s: "91%", l: "50%" },
-    g: ["#d946ef", "#c026d3", "#a21caf"]
-  },
-  {
+    p: hsl(292, 91, 50),
+    g: ["#d946ef", "#c026d3", "#a21caf"],
+    accent: hsl(186, 90, 45),
+    accent2: hsl(320, 90, 60),
+    success: hsl(152, 70, 40),
+    warning: hsl(38, 92, 55),
+    danger: hsl(0, 82, 58),
+    muted: hsl(285, 18, 96),
+    mutedFg: hsl(280, 16, 42),
+  }),
+  withDerived({
     name: "Midnight Gold",
-    p: { h: "45", s: "93%", l: "47%" },
-    g: ["#fbbf24", "#f59e0b", "#d97706"]
-  },
-  {
+    p: hsl(45, 93, 47),
+    g: ["#fbbf24", "#f59e0b", "#d97706"],
+    accent: hsl(210, 82, 45),
+    accent2: hsl(18, 86, 58),
+    success: hsl(152, 64, 42),
+    warning: hsl(45, 92, 52),
+    danger: hsl(0, 82, 58),
+    muted: hsl(45, 25, 95),
+    mutedFg: hsl(35, 20, 40),
+  }),
+  withDerived({
     name: "Coral Blush",
-    p: { h: "3", s: "76%", l: "70%" },
-    g: ["#ef7b76", "#e8605a", "#f4a09c"]
-  },
-  {
+    p: hsl(3, 76, 70),
+    g: ["#ef7b76", "#e8605a", "#f4a09c"],
+    accent: hsl(340, 72, 60),
+    accent2: hsl(28, 90, 60),
+    success: hsl(150, 66, 45),
+    warning: hsl(30, 90, 55),
+    danger: hsl(0, 82, 58),
+    muted: hsl(10, 24, 96),
+    mutedFg: hsl(10, 18, 44),
+  }),
+  withDerived({
     name: "Cosmic Aurora",
-    p: { h: "172", s: "88%", l: "45%" },
-    g: ["#2dd4bf", "#3b82f6", "#a855f7"]
-  },
-  {
+    p: hsl(172, 88, 45),
+    g: ["#2dd4bf", "#3b82f6", "#a855f7"],
+    accent: hsl(250, 80, 62),
+    accent2: hsl(200, 90, 50),
+    success: hsl(152, 64, 42),
+    warning: hsl(38, 92, 55),
+    danger: hsl(0, 82, 58),
+    muted: hsl(190, 24, 95),
+    mutedFg: hsl(210, 18, 42),
+  }),
+  withDerived({
     name: "Candy Pop",
-    p: { h: "316", s: "91%", l: "60%" },
-    g: ["#ec4899", "#facc15", "#06b6d4"]
-  },
-  {
+    p: hsl(316, 91, 60),
+    g: ["#ec4899", "#facc15", "#06b6d4"],
+    accent: hsl(50, 92, 55),
+    accent2: hsl(185, 80, 45),
+    success: hsl(152, 68, 42),
+    warning: hsl(45, 92, 55),
+    danger: hsl(0, 82, 58),
+    muted: hsl(320, 20, 96),
+    mutedFg: hsl(320, 18, 42),
+  }),
+  withDerived({
     name: "Prismatic",
-    p: { h: "280", s: "90%", l: "60%" },
-    g: ["#ff0000", "#00ff00", "#0000ff"]
-  },
+    p: hsl(280, 90, 60),
+    g: ["#ff005d", "#7c3aed", "#06b6d4"],
+    accent: hsl(200, 90, 50),
+    accent2: hsl(20, 90, 55),
+    success: hsl(152, 64, 42),
+    warning: hsl(45, 92, 55),
+    danger: hsl(0, 82, 58),
+    muted: hsl(280, 18, 96),
+    mutedFg: hsl(275, 16, 42),
+  }),
 ];
 
 export const applyThemeByName = (themeName: string) => {
@@ -62,12 +206,51 @@ export const applyThemeByName = (themeName: string) => {
   if (!theme) return;
 
   const root = document.documentElement;
+
+  const pickForeground = (l: string) => (parseFloat(l) >= 62 ? "222.2 47.4% 11.2%" : "210 40% 98%");
+
   root.style.setProperty("--p-h", theme.p.h);
   root.style.setProperty("--p-s", theme.p.s);
   root.style.setProperty("--p-l", theme.p.l);
+  root.style.setProperty("--primary-foreground", pickForeground(theme.p.l));
+
   root.style.setProperty("--g-1", theme.g[0]);
   root.style.setProperty("--g-2", theme.g[1]);
   root.style.setProperty("--g-3", theme.g[2]);
+
+  root.style.setProperty("--accent", hslValue(theme.accent));
+  root.style.setProperty("--accent-2", hslValue(theme.accent2));
+  root.style.setProperty("--accent-foreground", pickForeground(theme.accent.l));
+
+  root.style.setProperty("--success", hslValue(theme.success));
+  root.style.setProperty("--success-foreground", pickForeground(theme.success.l));
+  root.style.setProperty("--warning", hslValue(theme.warning));
+  root.style.setProperty("--warning-foreground", pickForeground(theme.warning.l));
+  root.style.setProperty("--destructive", hslValue(theme.danger));
+  root.style.setProperty("--destructive-foreground", pickForeground(theme.danger.l));
+
+  root.style.setProperty("--muted", hslValue(theme.muted));
+  root.style.setProperty("--muted-foreground", hslValue(theme.mutedFg));
+  root.style.setProperty("--muted-dark", hslValue({ ...theme.muted, l: "14%" }));
+  root.style.setProperty("--muted-foreground-dark", hslValue({ ...theme.mutedFg, l: "74%" }));
+
+  root.style.setProperty("--bg-1", theme.bg?.[0] || "");
+  root.style.setProperty("--bg-2", theme.bg?.[1] || "");
+  root.style.setProperty("--bg-3", theme.bg?.[2] || "");
+  root.style.setProperty("--bg-1-dark", theme.bgDark?.[0] || "");
+  root.style.setProperty("--bg-2-dark", theme.bgDark?.[1] || "");
+  root.style.setProperty("--bg-3-dark", theme.bgDark?.[2] || "");
+
+  root.style.setProperty("--glass-bg", theme.glass?.bg || "");
+  root.style.setProperty("--glass-tint", theme.glass?.tint || "");
+  root.style.setProperty("--glass-border", theme.glass?.border || "");
+  root.style.setProperty("--glass-bg-dark", theme.glass?.darkBg || "");
+  root.style.setProperty("--glass-tint-dark", theme.glass?.darkTint || "");
+  root.style.setProperty("--glass-border-dark", theme.glass?.darkBorder || "");
+
+  (theme.charts || []).forEach((color, idx) => {
+    root.style.setProperty(`--chart-${idx + 1}`, color);
+  });
 
   localStorage.setItem("app-theme", themeName);
 };

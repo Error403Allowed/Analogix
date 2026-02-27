@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import {
@@ -94,12 +94,13 @@ const CalendarPage = () => {
   const [evSubject, setEvSubject] = useState("");
   const [evDescription, setEvDescription] = useState("");
 
+  const loadEvents = useCallback(() => eventStore.getAll().then(setEvents), []);
+
   useEffect(() => {
-    const load = () => eventStore.getAll().then(setEvents);
-    load();
-    window.addEventListener("eventsUpdated", load);
-    return () => window.removeEventListener("eventsUpdated", load);
-  }, []);
+    loadEvents();
+    window.addEventListener("eventsUpdated", loadEvents);
+    return () => window.removeEventListener("eventsUpdated", loadEvents);
+  }, [loadEvents]);
 
   const userState = getStoredState();
   const termInfo = userState ? getTermInfo(date, userState) : null;
@@ -290,7 +291,7 @@ const CalendarPage = () => {
                           onKeyDown={e => (e.key === "Enter" || e.key === " ") && setDate(day)}
                           className={cn("min-h-[100px] p-2 text-left border-b border-r border-border/40 transition-colors hover:bg-muted/30 flex flex-col gap-1 cursor-pointer",
                             !inMonth && "opacity-30", isSelected && "bg-primary/5", (i + 1) % 7 === 0 && "border-r-0")}>
-                          <span className={cn("text-xs font-black w-7 h-7 flex items-center justify-center rounded-full transition-colors",
+                          <span className={cn("text-xs font-black w-7 h-4 flex items-center justify-center rounded-full transition-colors",
                             isTod ? "bg-primary text-primary-foreground" : isSelected ? "text-primary" : "text-foreground")}>
                             {format(day, "d")}
                           </span>

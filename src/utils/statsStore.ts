@@ -1,5 +1,7 @@
 import { createClient } from "@/lib/supabase/client";
 
+import { activityLog } from "./activityLog";
+
 export interface UserStats {
   quizzesDone: number;
   currentStreak: number;
@@ -78,6 +80,7 @@ export const statsStore = {
     const current = await statsStore.get();
     const newTotal = current.quizzesDone + 1;
     const newAccuracy = Math.round(((current.accuracy * current.quizzesDone) + score) / newTotal);
+    activityLog.record();
     await statsStore.update({ quizzesDone: newTotal, accuracy: newAccuracy });
   },
 
@@ -90,6 +93,7 @@ export const statsStore = {
     for (const s in counts) {
       if (counts[s] > max) { max = counts[s]; top = s; }
     }
+    activityLog.record();
     await statsStore.update({ conversationsCount: current.conversationsCount + 1, topSubject: top, subjectCounts: counts });
   },
 

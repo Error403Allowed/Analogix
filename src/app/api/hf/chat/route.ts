@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { callHfChat, formatError, classifyTaskType } from "../_utils";
 import type { ChatMessage, UserContext } from "@/types/chat";
+import { getFormulaSheetContext } from "@/data/formulaSheets";
 
 export const runtime = "nodejs";
 
@@ -57,6 +58,12 @@ export async function POST(request: Request) {
       "Use extensive analogies - almost every explanation should use hobby-based analogies.",
       "Use only analogies - explain everything through hobby-based analogies exclusively.",
     ][analogyIntensity];
+
+    // Formula sheet context — injected into prompt for formula-bearing subjects
+    const primarySubjectForFormulas = userContext?.subjects?.[0] || null;
+    const formulaSheetContext = primarySubjectForFormulas
+      ? getFormulaSheetContext(primarySubjectForFormulas)
+      : "";
 
     // Instructions for how long responses should be
     const lengthGuidance = `Calibrate response length naturally to the complexity of the question:
@@ -200,7 +207,7 @@ ${analogyIntensity === 0 ? "" : `9. OPTIONAL INLINE LABELS (NO SEPARATE MAPPING 
    - No emojis in the body of the text (titles are okay).
    - If a response feels forced, take a breath and try to find a more natural hook.
 
-REMEMBER: You aren't just an AI with an 'analogy' feature. You are the bridge between what they love and what they need to learn. Make it click.`;
+REMEMBER: You aren't just an AI with an 'analogy' feature. You are the bridge between what they love and what they need to learn. Make it click.${formulaSheetContext ? `\n\n--- FORMULA REFERENCE (use these exact formulas when relevant) ---\n${formulaSheetContext}\n--- END FORMULA REFERENCE ---` : ""}`;
 
     // ========================================================================
     // STEP 3: Detect what type of question this is (coding/reasoning/general)

@@ -74,8 +74,83 @@ export const getGroqCompletion = async (
 };
 
 /**
- * GENERATING DYNAMIC GREETINGS: This uses AI to create unique greetings for the user.
+ * RE-EXPLAIN: Ask Quizzy to explain the same concept in a completely different way.
+ * Optionally pass a chosenAnchor (specific interest) the user picked.
  */
+export const getReExplanation = async (
+  messages: ChatMessage[],
+  userContext?: Partial<UserContext> & {
+    chosenAnchor?: string;
+    previousExplanation?: string;
+  },
+): Promise<ChatMessage> => {
+  try {
+    return await fetchJson<{ role: "assistant"; content: string }>(
+      "/api/hf/reexplain",
+      { messages, userContext },
+      30000,
+    );
+  } catch (error) {
+    return {
+      role: "assistant",
+      content: `Couldn't reach the AI service. ${error instanceof Error ? error.message : ""}`.trim(),
+    };
+  }
+};
+
+/**
+ * STUDY SCHEDULE: Generate a day-by-day study plan from upcoming events.
+ */
+export const generateStudySchedule = async (payload: {
+  events: Array<{ title: string; date: string; type: string; subject?: string }>;
+  grade?: string;
+  state?: string;
+}): Promise<{ schedule: StudyDay[]; summary: string }> => {
+  try {
+    const data = await fetchJson<{ schedule: StudyDay[]; summary: string }>(
+      "/api/hf/study-schedule",
+      payload,
+      30000,
+    );
+    return { schedule: data.schedule || [], summary: data.summary || "" };
+  } catch {
+    return { schedule: [], summary: "" };
+  }
+};
+
+export interface StudySession {
+  subject: string;
+  duration: string;
+  focus: string;
+  tip?: string;
+}
+
+export interface StudyDay {
+  date: string;
+  sessions: StudySession[];
+}
+
+/**
+ * FLASHCARD GENERATION: Auto-generate flashcards from a chat conversation.
+ */
+export const generateFlashcards = async (
+  conversationText: string,
+  subjectId: string,
+  grade?: string,
+  count = 5,
+): Promise<Array<{ front: string; back: string }>> => {
+  try {
+    const data = await fetchJson<{ flashcards: Array<{ front: string; back: string }> }>(
+      "/api/hf/flashcard",
+      { conversationText, subjectId, grade, count },
+      20000,
+    );
+    return data.flashcards || [];
+  } catch {
+    return [];
+  }
+};
+
 export const getAIGreeting = async (userName: string, streak: number) => {
   const stripEmojis = (text: string) =>
     text.replace(/\p{Extended_Pictographic}/gu, "").replace(/\s+/g, " ").trim();

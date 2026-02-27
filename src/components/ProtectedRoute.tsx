@@ -15,6 +15,8 @@ interface ProtectedRouteProps {
 // if you haven't completed onboarding you'll be sent there first.
 // This block is completely tree-shaken in production builds.
 const IS_DEV = process.env.NODE_ENV === "development";
+const SKIP_AUTH = process.env.NEXT_PUBLIC_SKIP_AUTH === "true";
+const BYPASS_AUTH = IS_DEV && SKIP_AUTH;
 
 const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const { user, loading } = useAuth();
@@ -22,7 +24,7 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
 
   useEffect(() => {
     // Dev bypass: skip auth check, just ensure onboarding is done
-    if (IS_DEV) {
+    if (BYPASS_AUTH) {
       try {
         const prefs = JSON.parse(localStorage.getItem("userPreferences") || "{}");
         if (!prefs?.onboardingComplete) {
@@ -52,7 +54,7 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   }, [user, loading, router]);
 
   // Dev bypass: render immediately (skip the loading spinner)
-  if (IS_DEV) {
+  if (BYPASS_AUTH) {
     try {
       const prefs = typeof window !== "undefined"
         ? JSON.parse(localStorage.getItem("userPreferences") || "{}")
