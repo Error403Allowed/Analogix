@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Settings, User, Flame } from "lucide-react";
+import { Settings, User, Flame, Layers, Sigma } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -239,6 +239,28 @@ const Header = ({ userName = "Student", streak = 0 }: HeaderProps) => {
 
           {/* Right: Actions */}
           <div className="flex items-center gap-2 sm:gap-4 justify-self-end">
+            {/* Flashcards */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => router.push("/flashcards")}
+              title="Flashcards"
+              className="text-muted-foreground hover:text-[var(--g-1)] transition-colours"
+            >
+              <Layers className="w-5 h-5" />
+            </Button>
+
+            {/* Formula Sheets */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => router.push("/formulas")}
+              title="Formula Sheets"
+              className="text-muted-foreground hover:text-[var(--g-1)] transition-colours"
+            >
+              <Sigma className="w-5 h-5" />
+            </Button>
+
             {/* Settings */}
             <Button 
               variant="ghost" 

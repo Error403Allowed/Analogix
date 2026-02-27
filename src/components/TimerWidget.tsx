@@ -11,7 +11,7 @@ import type { TimerPhase, TimerSettings, TimerState } from "@/lib/timerStore";
 const RING_R = 54;
 const CIRCUMFERENCE = 2 * Math.PI * RING_R;
 
-export function TimerWidget() {
+export function TimerWidget({ compact = false }: { compact?: boolean }) {
   const router = useRouter();
   const initialStateRef = useRef<TimerState>(getDefaultTimerState());
   const initialState = initialStateRef.current;
@@ -139,6 +139,45 @@ export function TimerWidget() {
   const color = phase === "study" ? "hsl(var(--primary))" : "#22c55e";
   const cycleCount = sessionsTarget > 0 ? sessionsCompleted % sessionsTarget : 0;
   const filledDots = cycleCount === 0 && sessionsCompleted > 0 ? sessionsTarget : cycleCount;
+
+  // ── Compact variant: one-row strip ──────────────────────────────────────
+  if (compact) {
+    return (
+      <div className="flex items-center justify-between gap-3 w-full px-1">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className={cn("w-2 h-2 rounded-full shrink-0", phase === "study" ? "bg-primary" : "bg-emerald-500")} />
+          <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">
+            {phase === "study" ? "Study" : "Break"}
+          </span>
+          <span className="text-xl font-black tabular-nums tracking-tighter text-foreground">
+            {fmt(mins)}:{fmt(secs)}
+          </span>
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
+          {Array.from({ length: Math.min(sessionsTarget, 6) }, (_, i) => (
+            <div key={i} className={cn("w-1.5 h-1.5 rounded-full transition-all",
+              i < filledDots ? "bg-primary" : "bg-muted-foreground/20")} />
+          ))}
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
+          <button onClick={reset} className="w-7 h-7 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all">
+            <RotateCcw className="w-3 h-3" />
+          </button>
+          <button onClick={() => setIsActive(a => !a)}
+            className={cn("w-8 h-8 rounded-full flex items-center justify-center shadow-sm hover:scale-105 transition-all",
+              isActive ? "bg-destructive/90 text-destructive-foreground" : "bg-primary text-primary-foreground")}>
+            {isActive ? <Pause className="w-3.5 h-3.5 fill-current" /> : <Play className="w-3.5 h-3.5 fill-current" />}
+          </button>
+          <button onClick={skip} className="w-7 h-7 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all">
+            <SkipForward className="w-3 h-3" />
+          </button>
+          <button onClick={() => router.push("/timer")} className="w-7 h-7 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all">
+            <Maximize2 className="w-3 h-3" />
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col space-y-4 w-full">

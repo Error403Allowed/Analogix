@@ -356,6 +356,7 @@ const Chat = () => {
     subjects: selectedSubject ? [selectedSubject] : userSubjects,
     hobbies: userHobbies,
     grade: userPrefs.grade,
+    state: userPrefs.state,
     learningStyle: userPrefs.learningStyle,
     analogyIntensity: analogyModeEnabled ? 1 : 0,
     analogyAnchor: overrideAnchor ?? undefined,
@@ -365,6 +366,7 @@ const Chat = () => {
     userSubjects,
     userHobbies,
     userPrefs.grade,
+    userPrefs.state,
     userPrefs.learningStyle,
     analogyModeEnabled
   ]);

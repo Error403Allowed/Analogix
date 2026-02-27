@@ -2,8 +2,8 @@
 
 import {
   LayoutDashboard, MessageCircle, BookOpen, Calendar,
-  GraduationCap, User, Brain, Trophy, ChevronRight,
-  ChevronDown, Palette, Sun, Moon,
+  GraduationCap, Brain, Trophy, ChevronDown, Palette,
+  Sun, Moon, BookMarkedIcon, SigmaIcon, User, Flame,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -22,44 +22,53 @@ import { themes } from "@/components/ThemeSelector";
 import ProfileSheet from "@/components/ProfileSheet";
 
 const mainItems = [
-  { title: "Dashboard",    url: "/dashboard",    icon: LayoutDashboard, tutorial: "dashboard-nav"    },
-  { title: "Analogy Tutor",url: "/chat",         icon: MessageCircle,   tutorial: "chat-nav"         },
-  { title: "Quizzes",      url: "/quiz",         icon: BookOpen,        tutorial: "quiz-nav"         },
-  { title: "Calendar",     url: "/calendar",     icon: Calendar,        tutorial: "calendar-nav"     },
-  { title: "My Subjects",  url: "/subjects",     icon: GraduationCap,   tutorial: "subjects-nav"     },
-  { title: "Achievements", url: "/achievements", icon: Trophy,          tutorial: "achievements-nav" },
+  { title: "Dashboard",     url: "/dashboard",    icon: LayoutDashboard, tutorial: "dashboard-nav"    },
+  { title: "Analogy Tutor", url: "/chat",         icon: MessageCircle,   tutorial: "chat-nav"         },
+  { title: "Quizzes",       url: "/quiz",         icon: BookOpen,        tutorial: "quiz-nav"         },
+  { title: "Flashcards",    url: "/flashcards",   icon: BookMarkedIcon,  tutorial: "flashcards-nav"   },
+  { title: "Formulas",      url: "/formulas",     icon: SigmaIcon,       tutorial: "formulas-nav"     },
+  { title: "Calendar",      url: "/calendar",     icon: Calendar,        tutorial: "calendar-nav"     },
+  { title: "My Subjects",   url: "/subjects",     icon: GraduationCap,   tutorial: "subjects-nav"     },
+  { title: "Achievements",  url: "/achievements", icon: Trophy,          tutorial: "achievements-nav" },
 ];
 
-// Small coloured dot showing current mood when sidebar is icon-only
 
 export function AppSidebar() {
-  const router = useRouter();
+  const router   = useRouter();
   const pathname = usePathname();
   const { state } = useSidebar();
   const { setTheme: setMode, resolvedTheme } = useTheme();
-  const [userData, setUserData] = useState<any>(null);
-  const [activeThemeName, setActiveThemeName] = useState("Classic Blue");
-  const [mounted, setMounted] = useState(false);
-  const [themeOpen, setThemeOpen] = useState(true);
-  const [profileOpen, setProfileOpen] = useState(false);
+  const [userData,         setUserData]         = useState<any>(null);
+  const [activeThemeName,  setActiveThemeName]  = useState("Cosmic Aurora");
+  const [mounted,          setMounted]          = useState(false);
+  const [themeOpen,        setThemeOpen]        = useState(false);
+  const [profileOpen,      setProfileOpen]      = useState(false);
+  const [streak,           setStreak]           = useState(0);
   const isCollapsed = state === "collapsed";
   const isDark = resolvedTheme === "dark";
 
   useEffect(() => { setMounted(true); }, []);
 
   useEffect(() => {
-    const loadPrefs = () => setUserData(JSON.parse(localStorage.getItem("userPreferences") || "{}"));
-    loadPrefs();
-    setActiveThemeName(localStorage.getItem("app-theme") || "Classic Blue");
-
-    const onTheme = () => setActiveThemeName(localStorage.getItem("app-theme") || "Classic Blue");
-
-    window.addEventListener("storage", loadPrefs);
-    window.addEventListener("userPreferencesUpdated", loadPrefs);
+    const load = () => {
+      try {
+        const prefs = JSON.parse(localStorage.getItem("userPreferences") || "{}");
+        setUserData(prefs);
+        const stats = JSON.parse(localStorage.getItem("analogix_user_stats_v1") || "{}");
+        setStreak(Number(stats.currentStreak) || 0);
+      } catch {}
+      setActiveThemeName(localStorage.getItem("app-theme") || "Cosmic Aurora");
+    };
+    load();
+    const onTheme = () => setActiveThemeName(localStorage.getItem("app-theme") || "Cosmic Aurora");
+    window.addEventListener("storage", load);
+    window.addEventListener("userPreferencesUpdated", load);
+    window.addEventListener("statsUpdated", load);
     window.addEventListener("themeUpdated", onTheme);
     return () => {
-      window.removeEventListener("storage", loadPrefs);
-      window.removeEventListener("userPreferencesUpdated", loadPrefs);
+      window.removeEventListener("storage", load);
+      window.removeEventListener("userPreferencesUpdated", load);
+      window.removeEventListener("statsUpdated", load);
       window.removeEventListener("themeUpdated", onTheme);
     };
   }, []);
@@ -70,156 +79,200 @@ export function AppSidebar() {
     window.dispatchEvent(new Event("themeUpdated"));
   };
 
-  const name = userData?.name || "Student";
+  const name      = userData?.name || "Student";
   const avatarUrl = userData?.avatarUrl || "";
 
+
   return (
-    <Sidebar collapsible="icon" className="border-r border-border/50 bg-background/95 backdrop-blur-sm" data-tutorial="sidebar">
-      {/* Logo */}
-      <SidebarHeader className="h-16 flex flex-col justify-center px-4 group-data-[collapsible=icon]:px-0 transition-all duration-300">
-        <div className="flex items-center justify-between w-full group-data-[collapsible=icon]:justify-center">
-          <button onClick={() => router.push("/?force=true")}
-            className="flex items-center gap-3 hover:opacity-80 transition-all active:scale-95 text-left group-data-[collapsible=icon]:hidden">
-            <div className="w-9 h-9 rounded-xl gradient-primary flex items-center justify-center shrink-0 shadow-lg shadow-primary/20">
-              <Brain className="w-5 h-5 text-primary-foreground" />
-            </div>
-            <span className="text-2xl font-black gradient-text tracking-tighter">Analogix</span>
-          </button>
-          <SidebarTrigger
-            className="h-9 w-9 rounded-xl border border-primary/30 bg-primary/10 text-primary shadow-[0_10px_20px_-12px_rgba(14,165,233,0.6)] hover:bg-primary/20 hover:text-primary"
-            data-tutorial="sidebar-trigger"
-            aria-label="Toggle sidebar"
-          />
-        </div>
-      </SidebarHeader>
+    /* Outer container — liquid glass pill matching the inspiration */
+    <Sidebar
+      collapsible="icon"
+      data-tutorial="sidebar"
+      className={cn(
+        "border-r-0 bg-transparent group-data-[side=left]:border-r-0 group-data-[side=right]:border-l-0",
+        /* The sidebar itself gets the glass treatment */
+      )}
+    >
+      {/* Glass inner layer */}
+      <div className="flex flex-col h-full mx-2 my-2 rounded-3xl glass-card border-0 shadow-2xl overflow-hidden">
 
-      <SidebarContent className="px-2 overflow-x-hidden">
+        {/* ── Header: logo + collapse trigger ──────────────────────── */}
+        <SidebarHeader className="h-16 shrink-0 flex flex-col justify-center px-4 group-data-[collapsible=icon]:px-2 border-b border-white/10 dark:border-white/5">
+          <div className="flex items-center justify-between w-full group-data-[collapsible=icon]:justify-center">
+            <button
+              onClick={() => router.push("/?force=true")}
+              className="flex items-center gap-2.5 hover:opacity-80 transition-all active:scale-95 group-data-[collapsible=icon]:hidden"
+            >
+              <div className="w-8 h-8 rounded-xl gradient-primary flex items-center justify-center shrink-0 shadow-lg shadow-primary/30">
+                <Brain className="w-4 h-4 text-white" />
+              </div>
+              <span className="text-xl font-black gradient-text tracking-tighter">Analogix</span>
+            </button>
+            <SidebarTrigger
+              className="h-8 w-8 rounded-xl border border-primary/20 bg-primary/8 text-primary hover:bg-primary/15 transition-colors"
+              data-tutorial="sidebar-trigger"
+            />
+          </div>
+        </SidebarHeader>
 
-        {/* Learning nav */}
-        <SidebarGroup>
-          <p className="px-2 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 mb-2 group-data-[collapsible=icon]:hidden">Learning</p>
-          <SidebarGroupContent tabIndex={-1}>
-            <SidebarMenu>
-              {mainItems.map(item => (
-                <SidebarMenuItem key={item.title}>
-                  <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} data-tutorial={item.tutorial}>
-                    <SidebarMenuButton isActive={pathname === item.url} onClick={() => router.push(item.url)}
-                      className={cn("h-10 rounded-xl transition-all duration-200 group-data-[collapsible=icon]:justify-center overflow-hidden",
-                        pathname === item.url ? "bg-primary/10 text-primary shadow-sm" : "hover:bg-muted/50 text-muted-foreground hover:text-foreground")}>
-                      <item.icon className={cn("w-5 h-5 shrink-0", pathname === item.url ? "text-primary" : "text-muted-foreground")} />
-                      <span className="font-bold truncate group-data-[collapsible=icon]:hidden">{item.title}</span>
-                    </SidebarMenuButton>
-                  </motion.div>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-     
-
-        {/* Mood section removed */}
-
-        {/* ── Colour Scheme ── */}
-        {isCollapsed ? (
-          <SidebarGroup className="mt-2" data-tutorial="theme-section">
-            <SidebarGroupContent className="flex flex-col items-center gap-2">
-              {mounted && (
-                <button onClick={() => setMode(isDark ? "light" : "dark")}
-                  data-tutorial="theme"
-                  className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-muted transition-colors text-muted-foreground">
-                  {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-                </button>
-              )}
-              <Popover>
-                <PopoverTrigger asChild>
-                  <button className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-muted transition-colors text-muted-foreground" title="Colour scheme">
-                    <Palette className="w-5 h-5" />
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent side="right" align="start" className="w-64 p-4 glass-card border-white/10 ml-2 shadow-2xl">
-                  <p className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-3">Colour Scheme</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    {themes.map(t => (
-                      <button key={t.name} onClick={() => handleThemeSelect(t.name)}
-                        className={cn("flex flex-col gap-1.5 p-2 rounded-xl transition-all border text-left",
-                          activeThemeName === t.name ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "border-white/5 bg-white/5 hover:bg-white/10")}>
-                        <div className="w-full h-7 rounded-lg" style={{ background: `linear-gradient(135deg, ${t.g[0]}, ${t.g[1]})` }} />
-                        <span className={cn("text-[8px] font-black uppercase tracking-tight leading-tight", activeThemeName === t.name ? "text-primary" : "text-muted-foreground")}>{t.name}</span>
-                      </button>
-                    ))}
-                  </div>
-                </PopoverContent>
-              </Popover>
+        {/* ── Nav ───────────────────────────────────────────────────── */}
+        <SidebarContent className="flex-1 px-2 py-3 overflow-x-hidden overflow-y-auto">
+          <SidebarGroup>
+            <p className="px-2 mb-2 text-[9px] font-black uppercase tracking-[0.25em] text-muted-foreground/40 group-data-[collapsible=icon]:hidden">
+              Menu
+            </p>
+            <SidebarGroupContent>
+              <SidebarMenu className="gap-0.5">
+                {mainItems.map(item => {
+                  const isActive = pathname === item.url;
+                  return (
+                    <SidebarMenuItem key={item.title}>
+                      <motion.div whileTap={{ scale: 0.97 }} data-tutorial={item.tutorial}>
+                        <SidebarMenuButton
+                          isActive={isActive}
+                          onClick={() => router.push(item.url)}
+                          className={cn(
+                            "h-9 rounded-xl transition-all duration-200 relative group-data-[collapsible=icon]:justify-center",
+                            isActive
+                              ? "bg-primary/12 text-primary font-black"
+                              : "text-muted-foreground hover:text-foreground hover:bg-white/5 dark:hover:bg-white/5 font-semibold"
+                          )}
+                        >
+                          {/* Active left-border accent — like the inspiration */}
+                          {isActive && (
+                            <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-full bg-primary group-data-[collapsible=icon]:hidden" />
+                          )}
+                          <item.icon
+                            className={cn(
+                              "w-4 h-4 shrink-0 ml-1 transition-transform group-data-[collapsible=icon]:ml-0 group-data-[collapsible=icon]:-translate-x-1.5",
+                              isActive ? "text-primary" : "text-muted-foreground/70"
+                            )}
+                          />
+                          <span className="truncate group-data-[collapsible=icon]:hidden">{item.title}</span>
+                        </SidebarMenuButton>
+                      </motion.div>
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
-        ) : (
-          <SidebarGroup className="mt-2" data-tutorial="theme">
-            <div role="button" tabIndex={0}
-              onClick={() => setThemeOpen(o => !o)}
-              onKeyDown={e => (e.key === "Enter" || e.key === " ") && setThemeOpen(o => !o)}
-              className="flex items-center justify-between w-full px-2 mb-2 group cursor-pointer">
-              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 group-hover:text-muted-foreground transition-colors">Colour Scheme</span>
-              <div className="flex items-center gap-1.5">
-                {mounted && (
-                  <button onClick={e => { e.stopPropagation(); setMode(isDark ? "light" : "dark"); }}
-                    className="hover:text-primary transition-colors p-0.5 text-muted-foreground/40">
-                    {isDark ? <Sun className="w-3 h-3" /> : <Moon className="w-3 h-3" />}
-                  </button>
-                )}
-                <ChevronDown className={cn("w-3 h-3 text-muted-foreground/40 transition-transform", themeOpen && "rotate-180")} />
-              </div>
-            </div>
-            <AnimatePresence initial={false}>
-              {themeOpen && (
-                <motion.div key="theme-grid" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
-                  <div className="px-1 grid grid-cols-2 gap-2 pb-2">
-                    {themes.map(t => (
-                      <button key={t.name} onClick={() => handleThemeSelect(t.name)}
-                        className={cn("flex flex-col gap-1.5 p-2 rounded-xl transition-all border text-left group",
-                          activeThemeName === t.name ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "border-white/5 bg-white/5 hover:bg-white/10 hover:border-white/20")}>
-                        <div className="w-full h-7 rounded-lg opacity-80 group-hover:opacity-100 transition-opacity" style={{ background: `linear-gradient(135deg, ${t.g[0]}, ${t.g[1]})` }} />
-                        <span className={cn("text-[9px] font-black uppercase tracking-tighter leading-tight", activeThemeName === t.name ? "text-primary" : "text-muted-foreground group-hover:text-foreground")}>
-                          {t.name}
-                        </span>
+
+
+          {/* ── General section: theme ──────────────────────────────── */}
+          <SidebarGroup className="mt-3">
+            <p className="px-2 mb-2 text-[9px] font-black uppercase tracking-[0.25em] text-muted-foreground/40 group-data-[collapsible=icon]:hidden">
+              General
+            </p>
+            <SidebarGroupContent>
+              {isCollapsed ? (
+                <div className="flex flex-col items-center gap-1">
+                  {mounted && (
+                    <button onClick={() => setMode(isDark ? "light" : "dark")}
+                      className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-white/8 transition-colors text-muted-foreground">
+                      {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                    </button>
+                  )}
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-white/8 transition-colors text-muted-foreground">
+                        <Palette className="w-4 h-4" />
                       </button>
-                    ))}
-                  </div>
-                </motion.div>
+                    </PopoverTrigger>
+                    <PopoverContent side="right" align="start" className="w-56 p-3 glass-card border-white/10 ml-2 shadow-2xl">
+                      <p className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-2">Theme</p>
+                      <div className="grid grid-cols-2 gap-1.5">
+                        {themes.map(t => (
+                          <button key={t.name} onClick={() => handleThemeSelect(t.name)}
+                            className={cn("flex flex-col gap-1 p-1.5 rounded-xl transition-all border text-left",
+                              activeThemeName === t.name ? "border-primary/50 bg-primary/8" : "border-white/5 bg-white/5 hover:bg-white/10")}>
+                            <div className="w-full h-6 rounded-lg" style={{ background: `linear-gradient(135deg, ${t.g[0]}, ${t.g[1]})` }} />
+                            <span className={cn("text-[8px] font-black uppercase tracking-tight", activeThemeName === t.name ? "text-primary" : "text-muted-foreground")}>{t.name}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              ) : (
+                <>
+                  {/* Dark/light toggle row */}
+                  {mounted && (
+                    <button onClick={() => setMode(isDark ? "light" : "dark")}
+                      className="w-full h-9 flex items-center gap-2.5 px-3 rounded-xl hover:bg-white/5 transition-colors text-muted-foreground hover:text-foreground font-semibold text-sm">
+                      {isDark ? <Sun className="w-4 h-4 shrink-0" /> : <Moon className="w-4 h-4 shrink-0" />}
+                      <span className="truncate">{isDark ? "Light mode" : "Dark mode"}</span>
+                    </button>
+                  )}
+                  {/* Colour scheme collapsible */}
+                  <button onClick={() => setThemeOpen(o => !o)}
+                    className="w-full h-9 flex items-center gap-2.5 px-3 rounded-xl hover:bg-white/5 transition-colors text-muted-foreground hover:text-foreground font-semibold text-sm">
+                    <Palette className="w-4 h-4 shrink-0" />
+                    <span className="flex-1 text-left truncate">Colour scheme</span>
+                    <ChevronDown className={cn("w-3 h-3 transition-transform", themeOpen && "rotate-180")} />
+                  </button>
+                  <AnimatePresence initial={false}>
+                    {themeOpen && (
+                      <motion.div initial={{ height:0, opacity:0 }} animate={{ height:"auto", opacity:1 }} exit={{ height:0, opacity:0 }} transition={{ duration:0.2 }} className="overflow-hidden">
+                        <div className="px-1 pt-1 grid grid-cols-2 gap-1.5 pb-1">
+                          {themes.map(t => (
+                            <button key={t.name} onClick={() => handleThemeSelect(t.name)}
+                              className={cn("flex flex-col gap-1 p-1.5 rounded-xl transition-all border text-left",
+                                activeThemeName === t.name ? "border-primary/50 bg-primary/8" : "border-white/5 bg-white/5 hover:bg-white/10")}>
+                              <div className="w-full h-6 rounded-lg" style={{ background: `linear-gradient(135deg, ${t.g[0]}, ${t.g[1]})` }} />
+                              <span className={cn("text-[8px] font-black uppercase tracking-tight", activeThemeName === t.name ? "text-primary" : "text-muted-foreground")}>{t.name}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </>
               )}
-            </AnimatePresence>
+            </SidebarGroupContent>
           </SidebarGroup>
-        )}
+        </SidebarContent>
 
-      </SidebarContent>
 
-      {/* User footer */}
-      <SidebarFooter className="p-0 pb-8 mt-auto flex justify-center">
-        <SidebarMenu className="w-full">
-          <SidebarMenuItem className="flex justify-center">
-            <SidebarMenuButton size="lg"
-              onClick={() => setProfileOpen(true)}
-              data-tutorial="profile"
-              className="h-14 w-full flex items-center justify-start px-4 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0 hover:bg-primary/5 transition-all overflow-hidden cursor-pointer">
-              <div className="w-10 h-10 rounded-xl overflow-hidden bg-primary/10 flex items-center justify-center shrink-0">
-                {avatarUrl ? (
-                  <img src={avatarUrl} alt={`${name} profile`} className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full rounded-xl gradient-primary flex items-center justify-center">
-                    <User className="w-5 h-5 text-primary-foreground" />
+        {/* ── Footer: user profile + streak ────────────────────────── */}
+        <SidebarFooter className="shrink-0 p-3 border-t border-white/10 dark:border-white/5">
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton size="lg" onClick={() => setProfileOpen(true)} data-tutorial="profile"
+                className="h-auto w-full flex items-center gap-3 p-2 rounded-2xl hover:bg-white/8 transition-all cursor-pointer group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-1.5">
+                {/* Avatar */}
+                <div className="relative shrink-0">
+                  <div className="w-9 h-9 rounded-xl overflow-hidden">
+                    {avatarUrl ? (
+                      <img src={avatarUrl} alt={name} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full gradient-primary flex items-center justify-center">
+                        <User className="w-4 h-4 text-white" />
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-              <div className="flex-1 min-w-0 ml-3 group-data-[collapsible=icon]:hidden text-left overflow-hidden">
-                <p className="text-sm font-black text-foreground truncate">{name}</p>
-                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest opacity-60">Year {userData?.grade || "?"} · {userData?.state || "Set state"} · Edit Profile</p>
-              </div>
-              <ChevronRight className="w-4 h-4 text-muted-foreground group-data-[collapsible=icon]:hidden mr-2 shrink-0" />
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarFooter>
+                  {/* Streak badge — like the inspiration's percentage badge */}
+                  {streak > 0 && (
+                    <div className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] rounded-full bg-amber-500 flex items-center justify-center px-1 shadow-md group-data-[collapsible=icon]:hidden">
+                      <span className="text-[8px] font-black text-white leading-none flex items-center gap-0.5">
+                        <Flame className="w-2.5 h-2.5" />{streak}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                {/* Name + meta */}
+                <div className="flex-1 min-w-0 group-data-[collapsible=icon]:hidden">
+                  <p className="text-sm font-black text-foreground truncate leading-tight">{name}</p>
+                  <p className="text-[9px] font-bold text-muted-foreground/50 uppercase tracking-widest truncate">
+                    Yr {userData?.grade || "?"} · {userData?.state || "—"}
+                  </p>
+                </div>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarFooter>
 
+      </div>{/* end glass inner layer */}
       <ProfileSheet open={profileOpen} onOpenChange={setProfileOpen} />
     </Sidebar>
   );

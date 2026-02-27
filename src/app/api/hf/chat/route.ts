@@ -20,7 +20,30 @@ export async function POST(request: Request) {
 
     // How much should the AI use analogies? (0-5 scale)
     const analogyIntensity = userContext?.analogyIntensity ?? 1;
-    
+
+    // Student's grade and Australian state — used to tailor curriculum context
+    const studentGrade = userContext?.grade || "7-12";
+    const studentState = userContext?.state || null;
+
+    // Map state codes to full names for the prompt
+    const STATE_FULL_NAMES: Record<string, string> = {
+      NSW: "New South Wales",
+      VIC: "Victoria",
+      QLD: "Queensland",
+      WA: "Western Australia",
+      SA: "South Australia",
+      TAS: "Tasmania",
+      ACT: "Australian Capital Territory",
+      NT: "Northern Territory",
+    };
+    const stateFullName = studentState ? (STATE_FULL_NAMES[studentState] || studentState) : null;
+    const studentLocation = stateFullName ? `${stateFullName}, Australia` : "Australia";
+
+    // Curriculum context injected into the system prompt
+    const curriculumContext = stateFullName
+      ? `The student is in Year ${studentGrade} in ${stateFullName} (${studentState}), Australia. Always align explanations, examples, terminology, and curriculum references to the ${stateFullName} syllabus and Australian educational standards for Year ${studentGrade}. Use Australian spelling and terminology (e.g. "maths" not "math", "Year" not "Grade"). Reference relevant local context where helpful (e.g. ${stateFullName}-specific examples, the Australian curriculum framework).`
+      : `The student is in Year ${studentGrade} in Australia. Always align explanations to the Australian curriculum for Year ${studentGrade}. Use Australian spelling and terminology.`;
+
     // ========================================================================
     // STEP 2: Build AI instructions based on user preferences
     // ========================================================================
@@ -109,6 +132,9 @@ export async function POST(request: Request) {
     // Build the complete system prompt for the AI
     const systemPrompt = `You are "Quizzy", a brilliant, empathetic, and slightly quirky AI tutor. You don't just teach; you make lightbulbs go off.
 
+Student Location & Curriculum:
+${curriculumContext}
+
 Today's date: ${new Date().toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric" })}. You are fully up to date as of this date — never say your knowledge is limited to 2024 or any earlier date. If asked about recent events or developments, answer confidently based on what you know.
 
 Your Mission: Make complex ideas clear and intuitive, using analogies only when they actually help.
@@ -118,7 +144,7 @@ Response Persona:
 - Questions: If a student asks a question, first answer it directly, then (optionally) add an analogy to deepen understanding.
 - Style: Write in natural paragraphs, not labeled sections. Avoid headings like "Analogy Anchor" or "Guiding Question".
 - If the user says hi / small talk, respond briefly and naturally without forcing an analogy.
-- Student Context: Year ${userContext?.grade || "7-12"}. Match their vocabulary—don't talk down to them, but don't bury them in jargon.
+- Student Context: Year ${studentGrade}${stateFullName ? ` in ${stateFullName}` : ""}. Match their vocabulary—don't talk down to them, but don't bury them in jargon. Always use Australian English spelling and curriculum terminology.
 Allowed Interests (verbatim): ${allowedInterests}
 Analogy Anchor (single topic): ${analogyAnchor || "Choose one from Allowed Interests for this response."}
 
@@ -145,7 +171,7 @@ ${complexityGuidance}
    - If you need to note a limit, do it lightly: "It’s not a perfect match, but it gets the idea across."
 
 6. TECHNICAL REQUIREMENTS:
-   - Adjust language complexity for Year ${userContext?.grade || "7-12"} (still start simple, then gradually increase complexity as needed).
+   - Adjust language complexity for Year ${studentGrade} in ${studentLocation} (still start simple, then gradually increase complexity as needed). Reference the correct state syllabus (${stateFullName || "Australian curriculum"}) when discussing topics, assessment, or curriculum structure.
    - Use LaTeX for ALL math, including simple variables.
    - Inline Math: Use single dollar signs, e.g., $E=mc^2$ or $x$.
    - Display Math (centered on new line): Use double dollar signs, e.g., $$\\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}$$.

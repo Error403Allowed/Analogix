@@ -9,20 +9,38 @@ interface ProtectedRouteProps {
   children: React.ReactNode;
 }
 
+// ── Dev bypass ────────────────────────────────────────────────────────────────
+// In development we skip the Supabase auth gate entirely so you can work
+// without needing Google OAuth configured. Onboarding prefs still apply —
+// if you haven't completed onboarding you'll be sent there first.
+// This block is completely tree-shaken in production builds.
+const IS_DEV = process.env.NODE_ENV === "development";
+
 const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const { user, loading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
+    // Dev bypass: skip auth check, just ensure onboarding is done
+    if (IS_DEV) {
+      try {
+        const prefs = JSON.parse(localStorage.getItem("userPreferences") || "{}");
+        if (!prefs?.onboardingComplete) {
+          router.replace("/onboarding");
+        }
+      } catch {
+        // localStorage broken — let them through anyway
+      }
+      return;
+    }
+
     if (loading) return;
 
     if (!user) {
-      // Not signed in at all — go to onboarding step 1
       router.replace("/onboarding");
       return;
     }
 
-    // Signed in but hasn't finished onboarding — skip the auth step
     try {
       const prefs = JSON.parse(localStorage.getItem("userPreferences") || "{}");
       if (!prefs?.onboardingComplete) {
@@ -32,6 +50,19 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
       // If localStorage is broken, just let them through
     }
   }, [user, loading, router]);
+
+  // Dev bypass: render immediately (skip the loading spinner)
+  if (IS_DEV) {
+    try {
+      const prefs = typeof window !== "undefined"
+        ? JSON.parse(localStorage.getItem("userPreferences") || "{}")
+        : {};
+      if (!prefs?.onboardingComplete) return null; // wait for redirect
+    } catch {
+      // fall through
+    }
+    return <>{children}</>;
+  }
 
   if (loading) {
     return (
