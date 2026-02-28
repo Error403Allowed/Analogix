@@ -17,6 +17,7 @@ interface SettingsDialogProps {
 const SettingsDialog = ({ open, onOpenChange }: SettingsDialogProps) => {
   const router = useRouter();
   const { signOut } = useAuth();
+  const [deletingAccount, setDeletingAccount] = useState(false);
   const [prefs, setPrefs] = useState(() =>
     typeof window !== "undefined"
       ? JSON.parse(localStorage.getItem("userPreferences") || "{}")
@@ -43,6 +44,36 @@ const SettingsDialog = ({ open, onOpenChange }: SettingsDialogProps) => {
     await signOut();
     onOpenChange(false);
     router.replace("/onboarding");
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!confirm("This permanently deletes your account and profile data. Continue?")) return;
+    const confirmation = prompt('Type DELETE to confirm.');
+    if (confirmation !== "DELETE") {
+      toast.error("Account deletion cancelled.");
+      return;
+    }
+
+    setDeletingAccount(true);
+    try {
+      const response = await fetch("/api/account/delete", { method: "DELETE" });
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(data?.error || "Could not delete your account.");
+      }
+
+      localStorage.clear();
+      achievementStore.reset();
+      toast.success("Account deleted.");
+      onOpenChange(false);
+      router.replace("/onboarding");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Could not delete your account.";
+      toast.error(message);
+    } finally {
+      setDeletingAccount(false);
+    }
   };
 
   return (
@@ -79,8 +110,17 @@ const SettingsDialog = ({ open, onOpenChange }: SettingsDialogProps) => {
             </Button>
             <div>
               <h4 className="text-sm font-bold text-destructive mb-2">Danger Zone</h4>
-              <Button variant="destructive" size="sm" onClick={handleReset} className="w-full">
+              <Button variant="destructive" size="sm" onClick={handleReset} className="w-full mb-2">
                 Reset All Data
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleDeleteAccount}
+                className="w-full"
+                disabled={deletingAccount}
+              >
+                {deletingAccount ? "Deleting Account..." : "Delete Account"}
               </Button>
             </div>
           </div>
