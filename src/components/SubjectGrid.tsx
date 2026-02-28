@@ -10,11 +10,14 @@ export function SubjectGrid() {
   const router = useRouter();
   const [userSubjects, setUserSubjects] = useState<string[]>([]);
 
-  const subjectIds = useMemo(() => new Set(SUBJECT_CATALOG.map((subject) => subject.id)), []);
-  const subjectByLabel = useMemo(
+  const subjectIds = useMemo<Set<string>>(
+    () => new Set(SUBJECT_CATALOG.map((subject) => String(subject.id))),
+    [],
+  );
+  const subjectByLabel = useMemo<Map<string, string>>(
     () =>
       new Map(
-        SUBJECT_CATALOG.map((subject) => [subject.label.toLowerCase(), subject.id]),
+        SUBJECT_CATALOG.map((subject): [string, string] => [subject.label.toLowerCase(), String(subject.id)]),
       ),
     [],
   );
