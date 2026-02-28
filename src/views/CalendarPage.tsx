@@ -38,7 +38,7 @@ const EventPill = ({ event, onClick }: { event: AppEvent; onClick?: () => void }
 
 const EventCard = ({ event, onDelete }: { event: AppEvent; onDelete: () => void }) => (
   <motion.div layout initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-    className="flex items-start gap-4 p-4 rounded-2xl bg-card border border-border/60 hover:border-border transition-all group">
+    className="flex items-start gap-4 p-4 rounded-2xl bg-card/90 border border-border/75 hover:border-border transition-all group">
     <div className={cn("w-1 self-stretch rounded-full shrink-0 mt-0.5",
       event.type === "exam" ? "bg-destructive" : event.type === "assignment" ? "bg-amber-500" : "bg-primary")} />
     <div className="flex-1 min-w-0">
@@ -50,17 +50,17 @@ const EventCard = ({ event, onDelete }: { event: AppEvent; onDelete: () => void 
           {event.type}
         </span>
         {event.subject && (
-          <span className="flex items-center gap-1 text-[10px] text-muted-foreground font-bold uppercase tracking-widest">
+          <span className="flex items-center gap-1 text-[10px] text-foreground/70 font-bold uppercase tracking-widest">
             <Tag className="w-2.5 h-2.5" />{event.subject}
           </span>
         )}
       </div>
       <p className="text-sm font-bold text-foreground">{event.title}</p>
-      {event.description && <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{event.description}</p>}
-      <p className="text-[10px] text-muted-foreground/60 mt-1.5 font-medium">{format(new Date(event.date), "h:mm a")}</p>
+      {event.description && <p className="text-xs text-foreground/75 mt-0.5 leading-relaxed">{event.description}</p>}
+      <p className="text-[10px] text-foreground/70 mt-1.5 font-medium">{format(new Date(event.date), "h:mm a")}</p>
     </div>
     <button onClick={onDelete}
-      className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive p-1 rounded-lg hover:bg-destructive/10 shrink-0">
+      className="opacity-0 group-hover:opacity-100 transition-opacity text-foreground/60 hover:text-destructive p-1 rounded-lg hover:bg-destructive/10 shrink-0">
       <X className="w-3.5 h-3.5" />
     </button>
   </motion.div>
@@ -68,10 +68,10 @@ const EventCard = ({ event, onDelete }: { event: AppEvent; onDelete: () => void 
 
 const EmptyState = ({ icon: Icon, text }: { icon: React.ElementType; text: string }) => (
   <div className="py-12 flex flex-col items-center gap-3 text-center">
-    <div className="w-12 h-12 rounded-2xl bg-muted/50 flex items-center justify-center">
-      <Icon className="w-5 h-5 text-muted-foreground/40" />
+    <div className="w-12 h-12 rounded-2xl bg-card/70 border border-border/60 flex items-center justify-center">
+      <Icon className="w-5 h-5 text-foreground/55" />
     </div>
-    <p className="text-xs text-muted-foreground/60 font-medium max-w-[180px]">{text}</p>
+    <p className="text-xs text-foreground/70 font-medium max-w-[180px]">{text}</p>
   </div>
 );
 
@@ -159,8 +159,8 @@ const CalendarPage = () => {
             {termInfo
               ? <span className="text-xs font-black uppercase tracking-widest text-muted-foreground">{termInfo.term.label} · Week {termInfo.week} · {userState}</span>
               : userState
-              ? <span className="text-xs font-black uppercase tracking-widest text-muted-foreground/40">School Holidays · {userState}</span>
-              : <span className="text-xs font-black uppercase tracking-widest text-muted-foreground/40">Set your state in profile</span>}
+              ? <span className="text-xs font-black uppercase tracking-widest text-muted-foreground">School Holidays · {userState}</span>
+              : <span className="text-xs font-black uppercase tracking-widest text-muted-foreground">Set your state in profile</span>}
           </div>
           <button onClick={() => setShowUploader(s => !s)}
             className={cn("flex items-center gap-2 text-xs font-black uppercase tracking-widest px-3 py-1.5 rounded-xl border transition-all",
@@ -179,13 +179,13 @@ const CalendarPage = () => {
         {/* ── View switcher + nav + add button ── */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <button onClick={() => navigate(-1)} className="w-8 h-8 rounded-xl border border-border flex items-center justify-center hover:bg-muted transition-colors">
+            <button onClick={() => navigate(-1)} className="w-8 h-8 rounded-xl border border-border/70 bg-card/60 flex items-center justify-center hover:bg-card transition-colors">
               <ChevronLeft className="w-4 h-4 text-muted-foreground" />
             </button>
-            <button onClick={() => setDate(new Date())} className="px-3 py-1.5 rounded-xl border border-border text-xs font-black uppercase tracking-widest text-muted-foreground hover:bg-muted transition-colors">
+            <button onClick={() => setDate(new Date())} className="px-3 py-1.5 rounded-xl border border-border/70 bg-card/60 text-xs font-black uppercase tracking-widest text-foreground/75 hover:bg-card transition-colors">
               Today
             </button>
-            <button onClick={() => navigate(1)} className="w-8 h-8 rounded-xl border border-border flex items-center justify-center hover:bg-muted transition-colors">
+            <button onClick={() => navigate(1)} className="w-8 h-8 rounded-xl border border-border/70 bg-card/60 flex items-center justify-center hover:bg-card transition-colors">
               <ChevronRight className="w-4 h-4 text-muted-foreground" />
             </button>
             <h2 className="text-lg font-black text-foreground ml-2">{navLabel}</h2>
@@ -197,11 +197,11 @@ const CalendarPage = () => {
                 showAddEvent ? "bg-muted text-foreground border-border" : "bg-primary text-primary-foreground border-primary hover:bg-primary/90")}>
               <Plus className="w-3.5 h-3.5" />{showAddEvent ? "Cancel" : "Add Event"}
             </button>
-            <div className="flex bg-muted/50 p-1 rounded-xl border border-border/50">
+            <div className="flex bg-card/60 p-1 rounded-xl border border-border/60">
               {(["month", "week", "day"] as CalendarView[]).map(v => (
                 <button key={v} onClick={() => setView(v)}
                   className={cn("px-4 py-1.5 rounded-lg text-xs font-black uppercase tracking-widest transition-all",
-                    view === v ? "bg-background text-primary shadow-sm" : "text-muted-foreground hover:text-foreground")}>
+                    view === v ? "bg-background text-primary shadow-sm" : "text-foreground/75 hover:text-foreground")}>
                   {v}
                 </button>
               ))}
@@ -216,17 +216,17 @@ const CalendarPage = () => {
               <div className="p-5 rounded-2xl bg-card border border-border/60 space-y-4 max-w-2xl">
                 <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">New Event</p>
                 <input value={evTitle} onChange={e => setEvTitle(e.target.value)} placeholder="Event title..."
-                  className="w-full bg-transparent text-sm font-semibold text-foreground placeholder:text-muted-foreground/50 outline-none border-b border-border/40 pb-2" />
+                  className="w-full bg-transparent text-sm font-semibold text-foreground placeholder:text-foreground/55 outline-none border-b border-border/60 pb-2" />
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <div className="flex flex-col gap-1">
                     <label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/60">Date</label>
                     <input type="date" value={evDate} onChange={e => setEvDate(e.target.value)}
-                      className="bg-transparent text-xs text-foreground outline-none border border-border/40 rounded-xl px-3 py-2" />
+                      className="bg-background/70 text-xs text-foreground outline-none border border-border/60 rounded-xl px-3 py-2" />
                   </div>
                   <div className="flex flex-col gap-1">
                     <label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/60">Time</label>
                     <input type="time" value={evTime} onChange={e => setEvTime(e.target.value)}
-                      className="bg-transparent text-xs text-foreground outline-none border border-border/40 rounded-xl px-3 py-2" />
+                      className="bg-background/70 text-xs text-foreground outline-none border border-border/60 rounded-xl px-3 py-2" />
                   </div>
                   <div className="flex flex-col gap-1">
                     <label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/60">Type</label>
@@ -238,7 +238,7 @@ const CalendarPage = () => {
                               ? t === "exam" ? "bg-destructive/15 text-destructive border-destructive/30"
                                 : t === "assignment" ? "bg-amber-500/15 text-amber-400 border-amber-500/30"
                                 : "bg-primary/15 text-primary border-primary/30"
-                              : "border-border text-muted-foreground hover:text-foreground"
+                              : "border-border/70 bg-card/60 text-foreground/75 hover:text-foreground"
                           )}>
                           {t}
                         </button>
@@ -248,11 +248,11 @@ const CalendarPage = () => {
                   <div className="flex flex-col gap-1">
                     <label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/60">Subject</label>
                     <input value={evSubject} onChange={e => setEvSubject(e.target.value)} placeholder="Optional"
-                      className="bg-transparent text-xs text-foreground placeholder:text-muted-foreground/50 outline-none border border-border/40 rounded-xl px-3 py-2" />
+                      className="bg-background/70 text-xs text-foreground placeholder:text-foreground/55 outline-none border border-border/60 rounded-xl px-3 py-2" />
                   </div>
                 </div>
                 <input value={evDescription} onChange={e => setEvDescription(e.target.value)} placeholder="Description (optional)..."
-                  className="w-full bg-transparent text-xs text-foreground placeholder:text-muted-foreground/50 outline-none border border-border/40 rounded-xl px-3 py-2" />
+                  className="w-full bg-background/70 text-xs text-foreground placeholder:text-foreground/55 outline-none border border-border/60 rounded-xl px-3 py-2" />
                 <div className="flex justify-end">
                   <button onClick={handleAddEvent} disabled={!evTitle.trim() || !evDate}
                     className="text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-xl bg-primary text-primary-foreground disabled:opacity-40 transition-all hover:bg-primary/90">
@@ -270,14 +270,14 @@ const CalendarPage = () => {
           {/* ── Calendar panel ── */}
           <AnimatePresence mode="wait">
             <motion.div key={view} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.18 }}
-              className="rounded-2xl border border-border bg-card overflow-hidden">
+              className="rounded-2xl border border-border/75 bg-card/95 overflow-hidden">
 
               {/* MONTH VIEW */}
               {view === "month" && (
                 <div>
                   <div className="grid grid-cols-7 border-b border-border">
                     {["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map(d => (
-                      <div key={d} className="py-3 text-center text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">{d}</div>
+                      <div key={d} className="py-3 text-center text-[10px] font-black uppercase tracking-widest text-foreground/75">{d}</div>
                     ))}
                   </div>
                   <div className="grid grid-cols-7">
@@ -300,7 +300,7 @@ const CalendarPage = () => {
                               <EventPill key={e.id} event={e} onClick={() => { setDate(day); setSelectedEvent(e); }} />
                             ))}
                             {dayEvents.length > 3 && (
-                              <span className="text-[9px] text-muted-foreground font-bold pl-1">+{dayEvents.length - 3} more</span>
+                              <span className="text-[9px] text-foreground/70 font-bold pl-1">+{dayEvents.length - 3} more</span>
                             )}
                           </div>
                         </div>
@@ -320,7 +320,7 @@ const CalendarPage = () => {
                       return (
                         <button key={day.toISOString()} onClick={() => setDate(day)}
                           className={cn("py-4 flex flex-col items-center gap-1 transition-colors hover:bg-muted/30", isSelected && "bg-primary/5")}>
-                          <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">{format(day, "EEE")}</span>
+                          <span className="text-[10px] font-black uppercase tracking-widest text-foreground/75">{format(day, "EEE")}</span>
                           <span className={cn("text-lg font-black w-9 h-9 flex items-center justify-center rounded-full",
                             isTod ? "bg-primary text-primary-foreground" : isSelected ? "text-primary" : "text-foreground")}>
                             {format(day, "d")}
@@ -376,10 +376,10 @@ const CalendarPage = () => {
               <div className="rounded-2xl border border-border bg-card p-4">
                 <div className="flex items-center justify-between mb-4">
                   <div>
-                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">{format(date, "EEEE")}</p>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-foreground/70">{format(date, "EEEE")}</p>
                     <p className="text-sm font-black text-foreground">{format(date, "MMMM d")}</p>
                   </div>
-                  <span className="text-[10px] font-black px-2 py-1 rounded-full bg-muted text-muted-foreground">
+                  <span className="text-[10px] font-black px-2 py-1 rounded-full bg-card/70 border border-border/60 text-foreground/75">
                     {selectedDayEvents.length} event{selectedDayEvents.length !== 1 ? "s" : ""}
                   </span>
                 </div>

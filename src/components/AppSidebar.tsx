@@ -132,7 +132,7 @@ export function AppSidebar() {
                           isActive={isActive}
                           onClick={() => router.push(item.url)}
                           className={cn(
-                            "h-9 rounded-xl transition-all duration-200 relative group-data-[collapsible=icon]:justify-center",
+                            "h-9 rounded-xl transition-all duration-200 relative group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:-translate-x-1.5",
                             isActive
                               ? "bg-primary/12 text-primary font-black"
                               : "text-muted-foreground hover:text-foreground hover:bg-white/5 dark:hover:bg-white/5 font-semibold"
@@ -144,7 +144,7 @@ export function AppSidebar() {
                           )}
                           <item.icon
                             className={cn(
-                              "w-4 h-4 shrink-0 ml-1 transition-transform group-data-[collapsible=icon]:ml-0 group-data-[collapsible=icon]:-translate-x-1.5",
+                              "w-4 h-4 shrink-0 ml-1 transition-transform group-data-[collapsible=icon]:ml-0",
                               isActive ? "text-primary" : "text-muted-foreground/70"
                             )}
                           />

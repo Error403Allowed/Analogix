@@ -346,7 +346,7 @@ const ProfileSheet = ({ open, onOpenChange }: ProfileSheetProps) => {
                       "h-10 rounded-xl text-sm font-black border transition-all",
                       grade === y
                         ? "bg-primary/10 border-primary text-primary"
-                        : "border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                        : "border-border/80 bg-card/40 text-foreground/80 hover:border-primary/50 hover:text-foreground"
                     )}>
                     {y}
                   </button>
@@ -364,7 +364,7 @@ const ProfileSheet = ({ open, onOpenChange }: ProfileSheetProps) => {
                       "h-10 rounded-xl text-xs font-black border transition-all",
                       state === code
                         ? "bg-primary/10 border-primary text-primary"
-                        : "border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                        : "border-border/80 bg-card/40 text-foreground/80 hover:border-primary/50 hover:text-foreground"
                     )}>
                     {code}
                   </button>
@@ -386,7 +386,7 @@ const ProfileSheet = ({ open, onOpenChange }: ProfileSheetProps) => {
                         "relative flex items-center gap-2.5 px-3 py-2.5 rounded-xl border text-left transition-all",
                         active
                           ? "bg-primary/10 border-primary text-primary"
-                          : "border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                          : "border-border/80 bg-card/40 text-foreground/80 hover:border-primary/50 hover:text-foreground"
                       )}>
                       {active && (
                         <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-primary flex items-center justify-center">
@@ -418,7 +418,7 @@ const ProfileSheet = ({ open, onOpenChange }: ProfileSheetProps) => {
                         "relative flex items-center gap-2 px-3 py-2.5 rounded-xl border text-left transition-all",
                         active
                           ? "bg-primary/10 border-primary text-primary"
-                          : "border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                          : "border-border/80 bg-card/40 text-foreground/80 hover:border-primary/50 hover:text-foreground"
                       )}>
                       {active && (
                         <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-primary flex items-center justify-center">
@@ -450,7 +450,7 @@ const ProfileSheet = ({ open, onOpenChange }: ProfileSheetProps) => {
                       const allItems = [...popularItems, ...customItems];
 
                       return (
-                        <div key={id} className="rounded-xl border border-border/60 bg-muted/30 p-3">
+                        <div key={id} className="rounded-xl border border-border/80 bg-card/75 p-3">
                           <div className="flex items-center gap-1.5 mb-2.5">
                             <span className="text-primary">{HOBBY_ICONS[id]}</span>
                             <span className="text-xs font-black uppercase tracking-wider text-foreground">{hobbyLabel}</span>
@@ -463,7 +463,9 @@ const ProfileSheet = ({ open, onOpenChange }: ProfileSheetProps) => {
                                 <button key={item} onClick={() => toggleInterestItem(id, item)}
                                   className={cn(
                                     "px-2.5 py-1 rounded-full text-[10px] font-bold border transition-all",
-                                    active ? "bg-primary/10 border-primary text-primary" : "border-border text-muted-foreground hover:border-primary/40",
+                                    active
+                                      ? "bg-primary/12 border-primary text-primary"
+                                      : "border-border/80 bg-card/50 text-foreground/80 hover:border-primary/40 hover:text-foreground",
                                     isCustom && "border-dashed"
                                   )}>
                                   {item}
@@ -476,10 +478,10 @@ const ProfileSheet = ({ open, onOpenChange }: ProfileSheetProps) => {
                               value={customInputs[id] || ""}
                               onChange={e => setCustomInputs(prev => ({ ...prev, [id]: e.target.value }))}
                               placeholder={`Add your fave ${hobbyLabel.toLowerCase()}...`}
-                              className="h-8 text-xs rounded-lg"
+                              className="h-8 text-xs rounded-lg bg-background/90 border-border/80 placeholder:text-foreground/50"
                               onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addCustomItem(id); } }}
                             />
-                            <Button type="button" variant="outline" size="sm" className="h-8 px-3 rounded-lg text-xs shrink-0"
+                            <Button type="button" variant="outline" size="sm" className="h-8 px-3 rounded-lg text-xs shrink-0 border-border/80 bg-card/40 hover:bg-card/70"
                               onClick={() => addCustomItem(id)}>
                               Add
                             </Button>

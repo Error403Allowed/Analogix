@@ -42,12 +42,13 @@ const Landing = () => {
   const ctaRef = useRef(null);
 
   useEffect(() => {
-    setIsMounted(true);
     try {
       const prefs = JSON.parse(localStorage.getItem("userPreferences") || "{}");
       setHasCompletedOnboarding(Boolean(prefs?.onboardingComplete));
     } catch {
       setHasCompletedOnboarding(false);
+    } finally {
+      setIsMounted(true);
     }
   }, []);
 
@@ -56,10 +57,9 @@ const Landing = () => {
 
   useEffect(() => {
     if (!isMounted) return;
-    if (hasCompletedOnboarding && !forceLanding) {
-      router.replace("/dashboard");
-    }
-  }, [hasCompletedOnboarding, isMounted, router, forceLanding]);
+    if (forceLanding) return;
+    router.replace(hasCompletedOnboarding ? "/dashboard" : "/onboarding");
+  }, [forceLanding, hasCompletedOnboarding, isMounted, router]);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -188,7 +188,7 @@ const Landing = () => {
           </motion.div>
           
           <div className="hidden md:flex items-center gap-8">
-            {["Tutor", "Quizzes", "Calendar"].map((item) => (
+            {["Tutor", "Quiz", "Calendar", "Flashcards", "Formulas", "Subjects"].map((item) => (
               <button 
                 key={item}
                 onClick={() => handleNav(`/${item === 'Tutor' ? 'chat' : item.toLowerCase()}`)}

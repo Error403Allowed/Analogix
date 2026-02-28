@@ -4,7 +4,9 @@ import AchievementsLibrary from "@/views/AchievementsLibrary";
 export default function AchievementsPage() {
   return (
     <ProtectedRoute>
-      <AchievementsLibrary />
+      <div className="pt-8 md:pt-10">
+        <AchievementsLibrary />
+      </div>
     </ProtectedRoute>
   );
 }

@@ -75,7 +75,7 @@ const AchievementsLibrary = () => {
             </div>
             Achievement Library
           </h1>
-          <p className="text-muted-foreground text-lg italic ml-1">Your legacy of mastery, recorded in digital gold.</p>
+          <p className="text-muted-foreground text-lg italic ml-1">Your legacy of mastery, recorded in digital gold. Move your cursor around to see all of the achievements!</p>
         </motion.div>
         
         <motion.div 

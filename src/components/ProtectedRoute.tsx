@@ -1,72 +1,64 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import { createClient } from "@/lib/supabase/client";
 import { Loader2 } from "lucide-react";
 
-interface ProtectedRouteProps {
-  children: React.ReactNode;
-}
-
-// ── Dev bypass ────────────────────────────────────────────────────────────────
-// In development we skip the Supabase auth gate entirely so you can work
-// without needing Google OAuth configured. Onboarding prefs still apply —
-// if you haven't completed onboarding you'll be sent there first.
-// This block is completely tree-shaken in production builds.
-const IS_DEV = process.env.NODE_ENV === "development";
-const SKIP_AUTH = process.env.NEXT_PUBLIC_SKIP_AUTH === "true";
-const BYPASS_AUTH = IS_DEV && SKIP_AUTH;
-
-const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const [checking, setChecking] = useState(true);
 
   useEffect(() => {
-    // Dev bypass: skip auth check, just ensure onboarding is done
-    if (BYPASS_AUTH) {
-      try {
-        const prefs = JSON.parse(localStorage.getItem("userPreferences") || "{}");
-        if (!prefs?.onboardingComplete) {
-          router.replace("/onboarding");
-        }
-      } catch {
-        // localStorage broken — let them through anyway
-      }
-      return;
-    }
-
     if (loading) return;
 
     if (!user) {
+      // Not signed in at all — go to onboarding to sign in
       router.replace("/onboarding");
       return;
     }
 
-    try {
-      const prefs = JSON.parse(localStorage.getItem("userPreferences") || "{}");
-      if (!prefs?.onboardingComplete) {
-        router.replace("/onboarding?step=2");
-      }
-    } catch {
-      // If localStorage is broken, just let them through
-    }
+    // Signed in — check if onboarding is complete.
+    // Check localStorage first (fast), then Supabase as source of truth.
+    const checkOnboarding = async () => {
+      try {
+        const prefs = JSON.parse(localStorage.getItem("userPreferences") || "{}");
+        if (prefs?.onboardingComplete) {
+          setChecking(false);
+          return;
+        }
+      } catch {}
+
+      // localStorage incomplete or missing — check Supabase profile
+      try {
+        const supabase = createClient();
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("onboarding_complete")
+          .eq("id", user.id)
+          .single();
+
+        if (profile?.onboarding_complete) {
+          // Sync back to localStorage so next check is instant
+          try {
+            const prefs = JSON.parse(localStorage.getItem("userPreferences") || "{}");
+            localStorage.setItem("userPreferences", JSON.stringify({ ...prefs, onboardingComplete: true }));
+          } catch {}
+          setChecking(false);
+          return;
+        }
+      } catch {}
+
+      // Onboarding genuinely not complete
+      router.replace("/onboarding?step=2");
+    };
+
+    checkOnboarding();
   }, [user, loading, router]);
 
-  // Dev bypass: render immediately (skip the loading spinner)
-  if (BYPASS_AUTH) {
-    try {
-      const prefs = typeof window !== "undefined"
-        ? JSON.parse(localStorage.getItem("userPreferences") || "{}")
-        : {};
-      if (!prefs?.onboardingComplete) return null; // wait for redirect
-    } catch {
-      // fall through
-    }
-    return <>{children}</>;
-  }
-
-  if (loading) {
+  if (loading || checking) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />

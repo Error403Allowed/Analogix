@@ -15,12 +15,15 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 const getRedirectBaseUrl = () => {
-  if (typeof window !== "undefined" && process.env.NODE_ENV === "development") {
-    return window.location.origin;
+  // Always prefer the actual runtime origin in the browser.
+  // This prevents local runs from accidentally using a stale deployed URL.
+  if (typeof window !== "undefined" && window.location?.origin) {
+    return window.location.origin.replace(/\/$/, "");
   }
+
   const envUrl = process.env.NEXT_PUBLIC_SITE_URL;
   if (envUrl && envUrl.length > 0) return envUrl.replace(/\/$/, "");
-  return typeof window !== "undefined" ? window.location.origin : "";
+  return "";
 };
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {

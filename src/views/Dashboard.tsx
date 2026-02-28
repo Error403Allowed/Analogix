@@ -371,7 +371,7 @@ const Dashboard = () => {
                 as={motion.div}
                 variants={itemVariants}
                 data-tutorial="calendar"
-                className="xl:col-span-7 p-6 flex flex-col min-h-0"
+                className="xl:col-span-7 p-6 flex flex-col min-h-[620px]"
               >
                 <div className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.2em] text-muted-foreground mb-4">
                   <CalendarIcon className="w-4 h-4 text-primary" />

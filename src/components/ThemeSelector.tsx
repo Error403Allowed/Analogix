@@ -63,9 +63,9 @@ const withDerived = (theme: Theme): Theme => {
     bg: "rgba(255,255,255,0.72)",
     tint: hexToRgba(theme.g[0], 0.12),
     border: "rgba(255,255,255,0.18)",
-    darkBg: "rgba(8,12,18,0.78)",
-    darkTint: hexToRgba(theme.g[0], 0.04),
-    darkBorder: "rgba(255,255,255,0.04)",
+    darkBg: "rgba(18,28,46,0.88)",
+    darkTint: hexToRgba(theme.g[0], 0.06),
+    darkBorder: "rgba(255,255,255,0.10)",
   };
   const charts = theme.charts ?? [
     theme.g[0],
@@ -229,10 +229,10 @@ export const applyThemeByName = (themeName: string) => {
   root.style.setProperty("--destructive", hslValue(theme.danger));
   root.style.setProperty("--destructive-foreground", pickForeground(theme.danger.l));
 
-  root.style.setProperty("--muted", hslValue(theme.muted));
-  root.style.setProperty("--muted-foreground", hslValue(theme.mutedFg));
-  root.style.setProperty("--muted-dark", hslValue({ ...theme.muted, l: "14%" }));
-  root.style.setProperty("--muted-foreground-dark", hslValue({ ...theme.mutedFg, l: "74%" }));
+  root.style.setProperty("--muted-light", hslValue(theme.muted));
+  root.style.setProperty("--muted-foreground-light", hslValue(theme.mutedFg));
+  root.style.setProperty("--muted-dark", hslValue({ ...theme.muted, l: "20%" }));
+  root.style.setProperty("--muted-foreground-dark", hslValue({ ...theme.mutedFg, l: "78%" }));
 
   root.style.setProperty("--bg-1", theme.bg?.[0] || "");
   root.style.setProperty("--bg-2", theme.bg?.[1] || "");
@@ -241,9 +241,9 @@ export const applyThemeByName = (themeName: string) => {
   root.style.setProperty("--bg-2-dark", theme.bgDark?.[1] || "");
   root.style.setProperty("--bg-3-dark", theme.bgDark?.[2] || "");
 
-  root.style.setProperty("--glass-bg", theme.glass?.bg || "");
-  root.style.setProperty("--glass-tint", theme.glass?.tint || "");
-  root.style.setProperty("--glass-border", theme.glass?.border || "");
+  root.style.setProperty("--glass-bg-light", theme.glass?.bg || "");
+  root.style.setProperty("--glass-tint-light", theme.glass?.tint || "");
+  root.style.setProperty("--glass-border-light", theme.glass?.border || "");
   root.style.setProperty("--glass-bg-dark", theme.glass?.darkBg || "");
   root.style.setProperty("--glass-tint-dark", theme.glass?.darkTint || "");
   root.style.setProperty("--glass-border-dark", theme.glass?.darkBorder || "");

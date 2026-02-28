@@ -363,7 +363,7 @@ const Quiz = () => {
                         "flex items-center gap-2 p-3 rounded-xl border text-xs font-bold transition-all",
                         selectedSubject === s.id
                           ? "border-primary bg-primary/10 shadow-md text-primary"
-                          : "border-border glass hover:border-primary/50"
+                          : "border-border/70 bg-card/80 text-foreground/85 hover:border-primary/50 hover:text-foreground"
                       )}
                     >
                       <s.icon className="w-4 h-4" />
@@ -410,7 +410,7 @@ const Quiz = () => {
                 <div className="space-y-3">
                   <Label className="text-sm font-black uppercase tracking-widest text-muted-foreground">Difficulty</Label>
                   <Select value={difficulty} onValueChange={setDifficulty}>
-                    <SelectTrigger className="rounded-xl border-border glass h-12">
+                    <SelectTrigger className="rounded-xl border-border/70 bg-card/80 h-12">
                       <SelectValue placeholder="Select difficulty" />
                     </SelectTrigger>
                     <SelectContent>
@@ -482,7 +482,7 @@ const Quiz = () => {
            <div className="w-14 h-14 rounded-full bg-destructive/10 text-destructive flex items-center justify-center">
              <AlertTriangle className="w-6 h-6" />
            </div>
-           <p className="text-sm text-muted-foreground">
+           <p className="text-sm text-foreground/75">
              Oops! I couldn't generate a quiz right now. Try again later or check your internet .
            </p>
          </div>
@@ -588,7 +588,7 @@ const Quiz = () => {
                     <Lightbulb className="w-5 h-5 text-warning flex-shrink-0 mt-0.5" />
                     <div>
                       <p className="text-sm font-medium text-foreground mb-1">Analogy Hint</p>
-                      <div className="text-sm text-muted-foreground">
+                      <div className="text-sm text-foreground/80">
                         <MarkdownRenderer content={questions[currentQuestion].analogy || ""} />
                       </div>
                     </div>
@@ -699,7 +699,7 @@ const Quiz = () => {
                       <p className="text-sm text-destructive">{reviewError}</p>
                     )}
                     {review && (
-                      <p className="text-sm text-muted-foreground">{review.summary}</p>
+                      <p className="text-sm text-foreground/80">{review.summary}</p>
                     )}
                   </div>
 
@@ -755,7 +755,7 @@ const Quiz = () => {
                         </div>
 
                         {reviewItem?.feedback && (
-                          <div className="text-sm text-muted-foreground">
+                          <div className="text-sm text-foreground/80">
                             <span className="font-semibold text-foreground">Feedback:</span>{" "}
                             {reviewItem.feedback}
                           </div>
@@ -797,7 +797,7 @@ const Quiz = () => {
               <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center">
                 <EncouragementIcon className="w-4 h-4" />
               </div>
-              <span className="text-sm text-muted-foreground">{encouragementMessage}</span>
+              <span className="text-sm text-foreground/80">{encouragementMessage}</span>
             </div>
           </motion.div>
         )}

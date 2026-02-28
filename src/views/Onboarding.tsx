@@ -64,8 +64,6 @@ function AuthStep({ onAuthed, externalError }: { onAuthed: () => void; externalE
   const { signInWithGoogle, user, loading } = useAuth();
   const [googleLoading, setGoogleLoading] = useState(false);
 
-  // If they're already authed (came back from OAuth redirect), skip ahead.
-  // We wait for loading=false so we don't jump before the session cookie is read.
   useEffect(() => {
     if (!loading && user) onAuthed();
   }, [user, loading, onAuthed]);
@@ -73,10 +71,8 @@ function AuthStep({ onAuthed, externalError }: { onAuthed: () => void; externalE
   const handleGoogle = async () => {
     setGoogleLoading(true);
     await signInWithGoogle();
-    // Page will navigate away via OAuth — no need to call onAuthed()
   };
 
-  // Show a spinner while we're checking the session from the cookie
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16">
@@ -226,12 +222,9 @@ const Onboarding = () => {
     searchParams?.get("error") === "auth_failed" ? "Authentication failed. Please try again." : null
   );
 
-  // In dev, skip the auth step entirely and start at step 2.
-  // In prod, always start on step 1 — the gate below moves us forward once auth resolves.
   const [step, setStep] = useState(BYPASS_AUTH ? 2 : 1);
 
   useEffect(() => {
-    // Dev: skip auth check — just check if onboarding is already done
     if (BYPASS_AUTH) {
       try {
         const prefs = JSON.parse(localStorage.getItem("userPreferences") || "{}");
@@ -252,12 +245,10 @@ const Onboarding = () => {
           return;
         }
       } catch {}
-      // Signed in but not finished — jump to step from URL (or 2)
       const urlStep = parseInt(searchParams?.get("step") ?? "2", 10);
       const safeStep = isNaN(urlStep) || urlStep <= 1 ? 2 : Math.min(urlStep, TOTAL_STEPS);
       setStep(safeStep);
     }
-    // Not signed in — stay on step 1
   }, [authUser, authLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [name, setName] = useState("");
@@ -374,7 +365,6 @@ const Onboarding = () => {
     finally { setIcsImporting(false); }
   };
 
-  // Step 1 (auth) is complete once the user is logged in
   const canNext =
     (step === 1 && !!authUser) ||
     (step === 2 && !!grade) ||
@@ -411,7 +401,7 @@ const Onboarding = () => {
             <motion.div key={`step-${step}`} initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }}
               className={cn("glass-card shadow-xl border-white/8", step === 1 ? "p-6 md:p-8" : "p-8 md:p-10")}>
 
-              {/* Progress bar — only show from step 2 onwards */}
+              {/* Progress bar */}
               {step > 1 && (
                 <div className="flex items-center gap-2 mb-10">
                   {Array.from({ length: TOTAL_STEPS - 1 }).map((_, i) => (
@@ -434,7 +424,7 @@ const Onboarding = () => {
                     {["7","8","9","10","11","12"].map(y => (
                       <motion.button key={y} onClick={() => setGrade(y)} whileHover={{ y: -4 }} whileTap={{ scale: 0.98 }}
                         className={cn("p-6 rounded-2xl border-2 transition-all flex flex-col items-center justify-center gap-2 group",
-                          grade === y ? "border-primary bg-primary/10 shadow-lg scale-[1.02]" : "border-border glass hover:border-primary/50")}>
+                          grade === y ? "border-primary bg-primary/10 shadow-lg scale-[1.02]" : "border-border bg-card/80 hover:border-primary/50")}>
                         <span className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Year</span>
                         <span className="text-4xl font-black text-foreground group-hover:scale-110 transition-transform">{y}</span>
                       </motion.button>
@@ -454,7 +444,7 @@ const Onboarding = () => {
                     {(Object.entries(STATE_LABELS) as [AustralianState, string][]).map(([code, label]) => (
                       <motion.button key={code} onClick={() => setState(code)} whileHover={{ y: -3 }} whileTap={{ scale: 0.97 }}
                         className={cn("p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2",
-                          state === code ? "border-primary bg-primary/10 shadow-lg scale-[1.02]" : "border-border glass hover:border-primary/50")}>
+                          state === code ? "border-primary bg-primary/10 shadow-lg scale-[1.02]" : "border-border bg-card/80 hover:border-primary/50")}>
                         <span className="text-2xl font-black text-foreground">{code}</span>
                         <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider text-center leading-tight">{label}</span>
                       </motion.button>
@@ -474,7 +464,7 @@ const Onboarding = () => {
                     {SUBJECTS.map(s => (
                       <motion.button key={s.id} variants={iv} onClick={() => toggleSubject(s.id)} whileHover={{ y: -4 }} whileTap={{ scale: 0.98 }}
                         className={cn("relative p-5 rounded-2xl border-2 transition-all text-left group",
-                          selectedSubjects.includes(s.id) ? "border-primary bg-primary/10 shadow-lg scale-[1.02]" : "border-border glass hover:border-primary/50")}>
+                          selectedSubjects.includes(s.id) ? "border-primary bg-primary/10 shadow-lg scale-[1.02]" : "border-border bg-card/80 hover:border-primary/50")}>
                         {selectedSubjects.includes(s.id) && (
                           <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="absolute -top-2 -right-2 w-7 h-7 bg-primary rounded-full flex items-center justify-center shadow-lg">
                             <Check className="w-4 h-4 text-primary-foreground" />
@@ -500,7 +490,7 @@ const Onboarding = () => {
                     {HOBBY_OPTIONS.map(h => (
                       <motion.button key={h.id} variants={iv} onClick={() => toggleHobby(h.id)} whileHover={{ y: -4 }} whileTap={{ scale: 0.98 }}
                         className={cn("relative p-5 rounded-2xl border-2 transition-all group",
-                          selectedHobbies.includes(h.id) ? "border-primary bg-primary/10 shadow-lg scale-[1.02]" : "border-border glass hover:border-primary/50")}>
+                          selectedHobbies.includes(h.id) ? "border-primary bg-primary/10 shadow-lg scale-[1.02]" : "border-border bg-card/80 hover:border-primary/50")}>
                         {selectedHobbies.includes(h.id) && (
                           <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="absolute -top-2 -right-2 w-7 h-7 bg-primary rounded-full flex items-center justify-center shadow-lg">
                             <Check className="w-4 h-4 text-primary-foreground" />
@@ -520,7 +510,7 @@ const Onboarding = () => {
                         const normPop = popular.map(i => i.toLowerCase());
                         const customItems = selections.filter(i => !normPop.includes(i.toLowerCase()));
                         return (
-                          <div key={id} className="glass p-4 rounded-2xl border border-white/10">
+                          <div key={id} className="bg-card/85 border border-border/80 p-4 rounded-2xl">
                             <div className="flex items-center gap-2 text-sm font-bold text-foreground mb-3">
                               <span className="text-primary">{HOBBY_ICONS[id]}</span>
                               <span>Popular {h?.label}</span>
@@ -532,7 +522,9 @@ const Onboarding = () => {
                                 return (
                                   <button key={item} onClick={() => toggleInterestItem(id, item)}
                                     className={cn("px-3 py-2 rounded-full border text-xs font-bold transition-all",
-                                      active ? "border-primary bg-primary/10 shadow-lg" : "border-border glass hover:border-primary/50",
+                                      active
+                                        ? "border-primary bg-primary/12 text-foreground shadow-lg"
+                                        : "border-border/80 bg-card/60 text-foreground/85 hover:border-primary/50 hover:text-foreground",
                                       isCustom && "border-dashed")}>
                                     {item}{isCustom && <span className="ml-1 text-[9px] uppercase tracking-widest text-muted-foreground">Custom</span>}
                                   </button>
@@ -542,8 +534,9 @@ const Onboarding = () => {
                             <div className="flex gap-2 mt-3">
                               <Input value={customInterest[id] || ""} onChange={e => setCustomInterest(p => ({ ...p, [id]: e.target.value }))}
                                 placeholder={`Add your favourite ${h?.label.toLowerCase()}...`}
+                                className="bg-background/90 border-border/80 placeholder:text-foreground/50"
                                 onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addCustomInterest(id); } }} />
-                              <Button type="button" variant="outline" onClick={() => addCustomInterest(id)}>Add</Button>
+                              <Button type="button" variant="outline" className="border-border/80 bg-card/40 hover:bg-card/70" onClick={() => addCustomInterest(id)}>Add</Button>
                             </div>
                           </div>
                         );
@@ -558,7 +551,7 @@ const Onboarding = () => {
                 <IcsStep importing={icsImporting} imported={icsImported} count={icsCount} error={icsError} onFile={handleIcsFile} />
               )}
 
-              {/* Footer buttons — hidden on auth step since it handles its own flow */}
+              {/* Footer buttons */}
               {step > 1 && (
                 <div className="flex justify-between items-center mt-10">
                   <Button variant="ghost" onClick={() => setStep(s => s - 1)} className="px-6 rounded-xl">Back</Button>
@@ -578,7 +571,7 @@ const Onboarding = () => {
                 </div>
               )}
 
-              {/* On the auth step, show Continue if already authed */}
+              {/* Auth step continue */}
               {step === 1 && authUser && (
                 <div className="flex justify-end mt-10">
                   <Button onClick={() => setStep(2)}

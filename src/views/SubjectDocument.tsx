@@ -194,7 +194,7 @@ export default function SubjectDocument() {
       `Subject: ${subject?.label || "Unknown"}`,
       `Document title: ${title.trim() || "Untitled"}`,
       `Document content:\n${docText.slice(0, 3000) || "(empty document)"}`,
-      docText.length > 3000 ? `[…content truncated, ${docText.length} chars total]` : "",
+      docText.length > 3000 ? `[…content truncated, ${docText.length} characters total]` : "",
     ].filter(Boolean).join("\n");
 
     const history = [...helperMessages, userMessage].slice(-8);
@@ -289,7 +289,7 @@ export default function SubjectDocument() {
             <div className="flex flex-wrap items-center gap-4 text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
               <div className="flex items-center gap-2"><Sparkles className="w-3.5 h-3.5 text-primary" />Autosave on</div>
               <span>{stats.words} words</span>
-              <span>{stats.characters} chars</span>
+              <span>{stats.characters} characters</span>
             </div>
           </div>
         </div>
