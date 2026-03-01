@@ -174,7 +174,7 @@ export default function Flashcards() {
   };
 
   return (
-    <div className="min-h-[100dvh] bg-background text-foreground">
+    <div className="bg-background text-foreground">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-6">
         <div className="flex items-center justify-between">
           <Button variant="ghost" size="sm" onClick={() => router.push("/dashboard")}

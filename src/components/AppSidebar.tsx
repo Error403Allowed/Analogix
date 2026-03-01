@@ -3,7 +3,7 @@
 import {
   LayoutDashboard, MessageCircle, BookOpen, Calendar,
   GraduationCap, Brain, Trophy, ChevronDown, Palette,
-  Sun, Moon, BookMarkedIcon, SigmaIcon, User, Flame,
+  Sun, Moon, BookMarkedIcon, SigmaIcon, User, Flame, Library,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -27,6 +27,7 @@ const mainItems = [
   { title: "Quizzes",       url: "/quiz",         icon: BookOpen,        tutorial: "quiz-nav"         },
   { title: "Flashcards",    url: "/flashcards",   icon: BookMarkedIcon,  tutorial: "flashcards-nav"   },
   { title: "Formulas",      url: "/formulas",     icon: SigmaIcon,       tutorial: "formulas-nav"     },
+  { title: "Resources",     url: "/resources",    icon: Library,         tutorial: "resources-nav"    },
   { title: "Calendar",      url: "/calendar",     icon: Calendar,        tutorial: "calendar-nav"     },
   { title: "My Subjects",   url: "/subjects",     icon: GraduationCap,   tutorial: "subjects-nav"     },
   { title: "Achievements",  url: "/achievements", icon: Trophy,          tutorial: "achievements-nav" },

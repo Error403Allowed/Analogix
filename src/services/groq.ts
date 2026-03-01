@@ -2,46 +2,27 @@
 
 import { ChatMessage, UserContext } from "@/types/chat";
 import { QuizAnswerInput, QuizData, QuizReview } from "@/types/quiz";
+import { fetchJsonWithRetry } from "@/lib/fetch-wrapper";
 
+/**
+ * Wrapper for fetchJsonWithRetry that adds better error messages.
+ * Kept for backward compatibility with existing codebase.
+ */
 const fetchJson = async <T>(
   url: string,
   body: unknown,
   timeoutMs: number,
 ): Promise<T> => {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const response = await fetch(url, {
+    return await fetchJsonWithRetry<T>(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-      signal: controller.signal,
+      body,
+      timeoutMs,
+      maxRetries: 2,
     });
-    const text = await response.text();
-    let data: unknown = null;
-    try {
-      data = text ? JSON.parse(text) : null;
-    } catch {
-      data = null;
-    }
-    if (!response.ok) {
-      let errMsg = `Request failed: ${response.status}`;
-      if (data && typeof data === "object") {
-        const obj = data as Record<string, unknown>;
-        if (obj.error) {
-          errMsg = String(obj.error);
-        } else if (obj.message) {
-          errMsg = String(obj.message);
-        }
-      }
-      if (errMsg.startsWith("Request failed") && text) {
-        errMsg = text;
-      }
-      throw new Error(errMsg);
-    }
-    return (data as T) ?? ({} as T);
-  } finally {
-    clearTimeout(timeout);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    throw new Error(message);
   }
 };
 

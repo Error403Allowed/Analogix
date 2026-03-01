@@ -857,10 +857,10 @@ const Chat = () => {
                 className="gap-2 rounded-md h-8 px-4 text-xs font-medium border-dashed border-primary/30 text-muted-foreground"
                 disabled={true}
                 title="Knowledge Memory is coming soon :)"
-              >Coming Soon :) 
+              > 
                 <Database className="w-3.5 h-3.5" />
                 Memory
-                <div className="px-1 py-0.5 rounded-sm bg-primary/20 text-[8px] font-black uppercase text-primary">Plus</div>
+                <div className="px-1 py-0.5 rounded-sm bg-primary/20 text-[8px] font-black uppercase text-primary">Coming soon :)</div>
               </Button>
 
               {getFormulaSheet(selectedSubject || "") && (

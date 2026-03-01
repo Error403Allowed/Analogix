@@ -21,8 +21,8 @@ export default function DashLayout({ children }: { children: React.ReactNode }) 
       {/* Outer wrapper — full viewport */}
       <div className="flex h-screen w-full bg-background overflow-hidden font-sans">
         <AppSidebar />
-        <SidebarInset className="flex flex-col flex-1 min-w-0 bg-transparent relative overflow-hidden">
-          {/* Allow main content to scroll — no top padding so content hugs the sidebar top */}
+        <SidebarInset className="flex flex-col flex-1 min-w-0 min-h-0 bg-transparent relative">
+          {/* Scroll container — takes remaining height, children scroll within it */}
           <div className="flex-1 min-h-0 overflow-y-auto">
             {children}
           </div>
