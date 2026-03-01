@@ -21,61 +21,72 @@ const RESOURCES: SubjectResources[] = [
   {
     subjectId: "math",
     pastPapers: [
-      // Yrs 7 & 9 — ALL states
-      { title: "NAPLAN Numeracy Practice (Years 7 & 9)", url: "https://www.nap.edu.au/naplan/public-demonstration-site", description: "Official NAPLAN public demo tests — numeracy for Years 3, 5, 7 and 9", free: true },
-      // NSW — Yrs 11–12
-      { title: "NSW HSC Mathematics – NESA Exam Papers", url: "https://www.nsw.gov.au/education-and-training/nesa/curriculum/hsc-exam-papers?category=Mathematics", description: "All HSC Mathematics, Extension 1, Extension 2, Standard 1 & 2 papers", free: true, states: ["NSW"] },
-      // VIC — Yrs 11–12
+      // Official — NSW
+      { title: "NSW HSC Mathematics – NESA Exam Papers", url: "https://www.nsw.gov.au/education-and-training/nesa/curriculum/hsc-exam-papers?category=Mathematics", description: "Advanced, Ext 1, Ext 2, Standard 1 & 2 papers", free: true, states: ["NSW"] },
+      // Official — VIC
       { title: "VCE Mathematical Methods – Past Exams (VCAA)", url: "https://www.vcaa.vic.edu.au/assessment/vce/examination-specifications-past-examinations-and-examination-reports/mathematical-methods", free: true, states: ["VIC"] },
-      { title: "VCE General Mathematics – Past Exams (VCAA)", url: "https://www.vcaa.vic.edu.au/assessment/vce/examination-specifications-past-examinations-and-examination-reports/general-mathematics", free: true, states: ["VIC"] },
       { title: "VCE Specialist Mathematics – Past Exams (VCAA)", url: "https://www.vcaa.vic.edu.au/assessment/vce/examination-specifications-past-examinations-and-examination-reports/specialist-mathematics", free: true, states: ["VIC"] },
+      { title: "VCE General Mathematics – Past Exams (VCAA)", url: "https://www.vcaa.vic.edu.au/assessment/vce/examination-specifications-past-examinations-and-examination-reports/general-mathematics", free: true, states: ["VIC"] },
       { title: "VCE Foundation Mathematics – Past Exams (VCAA)", url: "https://www.vcaa.vic.edu.au/assessment/vce-assessment/past-examinations/Pages/Foundation-Mathematics.aspx", free: true, states: ["VIC"] },
-      // QLD — Yrs 11–12
-      { title: "QCAA General Mathematics – Past Papers & Samples", url: "https://www.qcaa.qld.edu.au/senior/see/subject-resources/mathematics-general", description: "Includes past SEE papers and marking guides", free: true, states: ["QLD"] },
-      { title: "QCAA Mathematical Methods – Syllabus & Sample Papers", url: "https://www.qcaa.qld.edu.au/senior/senior-subjects/syllabuses/mathematics/mathematics-methods", free: true, states: ["QLD"] },
-      { title: "QCAA Specialist Mathematics – Syllabus & Sample Papers", url: "https://www.qcaa.qld.edu.au/senior/senior-subjects/syllabuses/mathematics/specialist-mathematics", free: true, states: ["QLD"] },
-      // WA — Yrs 11–12
-      { title: "WA ATAR Mathematics Applications – Past Exams (SCSA)", url: "https://senior-secondary.scsa.wa.edu.au/further-resources/past-atar-course-exams/mathematics-past-atar-course-exams", description: "Calculator-assumed and calculator-free papers", free: true, states: ["WA"] },
+      // Official — QLD
+      { title: "QCAA General Mathematics – Past SEE Papers", url: "https://www.qcaa.qld.edu.au/senior/see/subject-resources/mathematics-general", description: "Question & response booklets with marking guides", free: true, states: ["QLD"] },
+      { title: "QCAA Mathematical Methods – Past SEE Papers", url: "https://www.qcaa.qld.edu.au/senior/see/subject-resources/mathematics-methods", free: true, states: ["QLD"] },
+      { title: "QCAA Specialist Mathematics – Past SEE Papers", url: "https://www.qcaa.qld.edu.au/senior/see/subject-resources/mathematics-specialist", free: true, states: ["QLD"] },
+      // Official — WA
+      { title: "WA ATAR Mathematics Applications – Past Exams (SCSA)", url: "https://senior-secondary.scsa.wa.edu.au/further-resources/past-atar-course-exams/mathematics-past-atar-course-exams", free: true, states: ["WA"] },
       { title: "WA ATAR Mathematics Methods – Past Exams (SCSA)", url: "https://senior-secondary.scsa.wa.edu.au/further-resources/past-atar-course-exams/mathematics-methods-past-atar-course-exams", free: true, states: ["WA"] },
       { title: "WA ATAR Mathematics Specialist – Past Exams (SCSA)", url: "https://senior-secondary.scsa.wa.edu.au/further-resources/past-atar-course-exams/mathematics-specialist-past-atar-course-exams", free: true, states: ["WA"] },
-      // SA/NT — Yrs 11–12
-      { title: "SACE General Mathematics – Past Exams", url: "https://www.sace.sa.edu.au/web/general-mathematics/external-assessment", description: "2023–2025 papers with marking guides", free: true, states: ["SA", "NT"] },
+      // Official — SA/NT
+      { title: "SACE General Mathematics – Past Exams", url: "https://www.sace.sa.edu.au/web/general-mathematics/external-assessment", free: true, states: ["SA", "NT"] },
       { title: "SACE Mathematical Methods – Past Exams", url: "https://www.sace.sa.edu.au/web/mathematical-methods/external-assessment", free: true, states: ["SA", "NT"] },
       { title: "SACE Specialist Mathematics – Past Exams", url: "https://www.sace.sa.edu.au/web/specialist-mathematics/external-assessment", free: true, states: ["SA", "NT"] },
-      // TAS — Yrs 11–12
-      { title: "TASC Mathematics – Previous Exam Papers", url: "https://www.tasc.tas.gov.au/students/years-11-and-12/preparing-for-exams/previous-exam-papers/", description: "All current Level 3 & 4 TASC maths course papers", free: true, states: ["TAS"] },
-      // ACT — Yrs 11–12
+      // Official — TAS
+      { title: "TASC Mathematics – Previous Exam Papers", url: "https://www.tasc.tas.gov.au/students/years-11-and-12/preparing-for-exams/previous-exam-papers/", free: true, states: ["TAS"] },
+      // Official — ACT
       { title: "BSSS Mathematics – ACT Senior Secondary", url: "https://www.bsss.act.edu.au/student_programs/courses/mathematics", free: true, states: ["ACT"] },
-      // Third-party trial papers & solutions — all states
-      { title: "THSC Online – Maths Trial Papers (Yrs 9–12)", url: "https://thsconline.github.io/s/yr12/Maths/trialpapers_advanced.html", description: "Large collection of school trial papers — Advanced, Ext 1, Ext 2, Standard", free: true },
-      { title: "AceHSC – Mathematics Past Trial Papers", url: "https://www.acehsc.net/category/past-trial-papers/", description: "Searchable library of trial papers, study notes and multiple-choice quizzes", free: true },
-      { title: "Art of Smart – HSC Maths Past Papers", url: "https://artofsmart.com.au/learn/hsc-past-papers/", description: "HSC, QCE & VCE maths papers with tips", free: true },
-      { title: "Matrix Education – Maths Exam Solutions", url: "https://www.matrix.edu.au/hsc-solutions/", description: "Free worked solutions to recent HSC maths exams", free: true },
-      { title: "Talent 100 – Free Maths Downloads", url: "https://talent-100.com.au/free-downloads/", description: "Free HSC maths notes and practice papers", free: true },
-      // Practice paper sites — All states, Yrs 9–12
-      { title: "THSC Online – Maths Trial Papers (NSW, Yrs 9–12)", url: "https://thsconline.github.io/s/yr12/Mathematics/", description: "100+ school trial papers across all maths courses, free", free: true },
-      { title: "itute.com – Free VCE & NSW Maths Exams + Solutions", url: "https://www.itute.com/download-free-vce-maths-resources/free-maths-exams/", description: "Trial exams with full worked solutions for Methods, Specialist, HSC Advanced, Ext 1 & 2", free: true, states: ["VIC", "NSW"] },
-      { title: "ACED VCE – Free Maths Practice Exams", url: "https://acedvce.com/free-practice-exams/", description: "Free previous-edition VCE practice exams from a leading VCE publisher", free: true, states: ["VIC"] },
-      { title: "Art of Smart – HSC Maths Practice Papers", url: "https://artofsmart.com.au/learn/hsc-past-papers/", description: "Curated HSC maths papers + study guides and tips", free: true, states: ["NSW"] },
-      { title: "Physics & Maths Tutor – Maths Questions by Topic", url: "https://www.physicsandmathstutor.com/maths-revision/", description: "Thousands of free exam-style questions grouped by topic — A-Level content matches HSC/VCE well", free: true },
-      { title: "Khan Academy – Maths Practice (Adaptive)", url: "https://www.khanacademy.org/math", description: "Free adaptive practice tests across all maths topics", free: true },
-      // Competitions — All states, Yrs 7–12
-      { title: "AMT Australian Mathematics Competition", url: "https://www.amt.edu.au/competitions/amc", description: "Years 7–12 competition papers and past problems", free: true },
-      { title: "UNSW Maths Competition", url: "https://www.unsw.edu.au/engage/schools/competition-programs/maths-competition", description: "University-run national competition for Years 3–12", free: true },
+      // Official — All states
+      { title: "NAPLAN Numeracy Practice (Years 7 & 9)", url: "https://www.nap.edu.au/naplan/public-demonstration-site", description: "Official NAPLAN demo tests", free: true },
+      // Third-party — NSW focused
+      { title: "THSC Online – Maths Trial Papers", url: "https://thsconline.github.io/s/yr12/Mathematics/", description: "100+ school trial papers — Advanced, Ext 1, Ext 2, Standard", free: true, states: ["NSW"] },
+      { title: "AceHSC – Mathematics Trial Papers", url: "https://www.acehsc.net/category/past-trial-papers/", description: "Searchable trial paper library with notes and quizzes", free: true, states: ["NSW"] },
+      { title: "Matrix Education – HSC Maths Worked Solutions", url: "https://www.matrix.edu.au/hsc-solutions/", description: "Free worked solutions to recent HSC maths exams", free: true, states: ["NSW"] },
+      { title: "Talent 100 – Free Maths Downloads", url: "https://talent-100.com.au/free-downloads/", description: "Free HSC maths notes and practice papers", free: true, states: ["NSW"] },
+      { title: "HSCPastPapers.com – Mathematics", url: "https://www.hscpastpapers.com/", description: "Aggregated NESA papers, easy navigation", free: true, states: ["NSW"] },
+      // Third-party — VIC focused
+      { title: "itute.com – Free VCE Maths Exams & Solutions", url: "https://www.itute.com/download-free-vce-maths-resources/free-maths-exams/", description: "Methods & Specialist trial exams with full worked solutions", free: true, states: ["VIC"] },
+      { title: "ACED VCE – Free Maths Practice Exams", url: "https://acedvce.com/free-practice-exams/", description: "Free previous-edition VCE practice exams", free: true, states: ["VIC"] },
+      { title: "Kilbaha Multimedia – VCE Maths Samples", url: "https://kilbaha.com.au/", description: "Sample trial exams for Methods and Specialist", free: false, states: ["VIC"] },
+      // Third-party — All states
+      { title: "Art of Smart – Maths Past Papers", url: "https://artofsmart.com.au/learn/hsc-past-papers/", description: "HSC, QCE & VCE papers with tips", free: true },
+      { title: "Physics & Maths Tutor – Maths by Topic", url: "https://www.physicsandmathstutor.com/maths-revision/", description: "Thousands of free exam-style questions by topic", free: true },
+      { title: "Khan Academy – Maths Practice", url: "https://www.khanacademy.org/math", description: "Adaptive practice tests across all topics", free: true },
+      { title: "Integral Maths – Topic Tests", url: "https://integralmaths.org/", description: "Topic-based practice papers used by UK/Aus schools", free: false },
+      { title: "AMT Australian Mathematics Competition – Past Papers", url: "https://www.amt.edu.au/competitions/amc", description: "Years 7–12 competition papers", free: true },
+      { title: "UNSW Maths Competition", url: "https://www.unsw.edu.au/engage/schools/competition-programs/maths-competition", description: "National competition for Years 3–12", free: true },
     ],
     textbooks: [
-      { title: "OpenStax Algebra and Trigonometry 2e", url: "https://openstax.org/details/books/algebra-and-trigonometry-2e", description: "Free peer-reviewed textbook", free: true },
+      { title: "OpenStax Algebra and Trigonometry 2e", url: "https://openstax.org/details/books/algebra-and-trigonometry-2e", free: true },
+      { title: "OpenStax College Algebra 2e", url: "https://openstax.org/details/books/college-algebra-2e", free: true },
       { title: "OpenStax Precalculus 2e", url: "https://openstax.org/details/books/precalculus-2e", free: true },
       { title: "OpenStax Calculus Volume 1", url: "https://openstax.org/details/books/calculus-volume-1", free: true },
       { title: "OpenStax Calculus Volume 2", url: "https://openstax.org/details/books/calculus-volume-2", free: true },
-      { title: "OpenStax Statistics", url: "https://openstax.org/details/books/introductory-statistics", free: true },
-      { title: "Khan Academy – Mathematics", url: "https://www.khanacademy.org/math", description: "Arithmetic through calculus, all free", free: true },
-      { title: "Paul's Online Math Notes", url: "https://tutorial.math.lamar.edu/", description: "Free notes on algebra, calculus, differential equations", free: true },
-      { title: "MIT OpenCourseWare – Mathematics", url: "https://ocw.mit.edu/courses/", description: "Free university lectures and problem sets", free: true },
-      { title: "3Blue1Brown (YouTube)", url: "https://www.youtube.com/c/3blue1brown", description: "Visual explanations of calculus and linear algebra", free: true },
-      { title: "Professor Leonard (YouTube)", url: "https://www.youtube.com/user/professorleonard57", description: "Full calculus and algebra course", free: true },
-      { title: "Wolfram MathWorld", url: "https://mathworld.wolfram.com/", description: "Comprehensive math reference", free: true },
-      { title: "Brilliant.org – Free Tier", url: "https://brilliant.org/", description: "Some free interactive problems available", free: true },
+      { title: "OpenStax Calculus Volume 3", url: "https://openstax.org/details/books/calculus-volume-3", free: true },
+      { title: "OpenStax Introductory Statistics", url: "https://openstax.org/details/books/introductory-statistics", free: true },
+      { title: "OpenStax Elementary Algebra 2e", url: "https://openstax.org/details/books/elementary-algebra-2e", free: true },
+      { title: "OpenStax Intermediate Algebra 2e", url: "https://openstax.org/details/books/intermediate-algebra-2e", free: true },
+      { title: "Paul's Online Math Notes", url: "https://tutorial.math.lamar.edu/", description: "Notes on algebra, calculus, differential equations", free: true },
+      { title: "Khan Academy – Mathematics", url: "https://www.khanacademy.org/math", description: "Arithmetic through calculus", free: true },
+      { title: "MIT OpenCourseWare – Mathematics", url: "https://ocw.mit.edu/courses/mathematics/", description: "Free university lectures and problem sets", free: true },
+      { title: "3Blue1Brown (YouTube)", url: "https://www.youtube.com/c/3blue1brown", description: "Visual maths — calculus, linear algebra, and more", free: true },
+      { title: "Professor Leonard (YouTube)", url: "https://www.youtube.com/user/professorleonard57", description: "Full university calculus and algebra courses", free: true },
+      { title: "Wolfram MathWorld", url: "https://mathworld.wolfram.com/", description: "Comprehensive maths reference encyclopedia", free: true },
+      { title: "Brilliant.org – Mathematics", url: "https://brilliant.org/", description: "Interactive problem-solving courses", free: false },
+      { title: "LibreTexts Mathematics", url: "https://math.libretexts.org/", description: "Open-source maths textbooks, all levels", free: true },
+      { title: "Desmos Graphing Calculator", url: "https://www.desmos.com/calculator", description: "Free powerful graphing tool for functions and data", free: true },
+      { title: "GeoGebra – Interactive Maths", url: "https://www.geogebra.org/", description: "Free geometry, algebra and calculus tools", free: true },
+      { title: "Art of Problem Solving", url: "https://artofproblemsolving.com/", description: "Challenging problem sets and community for competition maths", free: false },
+      { title: "Mathway – Step-by-Step Solver", url: "https://www.mathway.com/", description: "Step-by-step solutions for algebra through calculus", free: false },
+      { title: "Calc Workshop – Calculus Tutorials", url: "https://calcworkshop.com/", description: "Clear video lessons on calculus topics", free: true },
     ],
   },
 
@@ -85,47 +96,51 @@ const RESOURCES: SubjectResources[] = [
   {
     subjectId: "physics",
     pastPapers: [
-      // Yrs 7 & 9 — ALL states (science component of NAPLAN covers numeracy/reasoning relevant to physics)
-      { title: "NAPLAN Numeracy – Years 7 & 9 (Measurement & Reasoning)", url: "https://www.nap.edu.au/naplan/public-demonstration-site", description: "Official NAPLAN demo — numeracy reasoning aligned with junior science", free: true },
-      // NSW
-      { title: "NSW HSC Physics – NESA Exam Papers", url: "https://www.nsw.gov.au/education-and-training/nesa/curriculum/hsc-exam-papers?category=Physics", description: "All HSC Physics exam packs", free: true, states: ["NSW"] },
-      // VIC
+      { title: "NSW HSC Physics – NESA Exam Papers", url: "https://www.nsw.gov.au/education-and-training/nesa/curriculum/hsc-exam-papers?category=Physics", free: true, states: ["NSW"] },
       { title: "VCE Physics – Past Exams (VCAA)", url: "https://www.vcaa.vic.edu.au/assessment/vce/examination-specifications-past-examinations-and-examination-reports/physics", free: true, states: ["VIC"] },
-      // QLD
-      { title: "QCAA Physics – Syllabus, Samples & Past Papers", url: "https://www.qcaa.qld.edu.au/senior/senior-subjects/syllabuses/science/physics", free: true, states: ["QLD"] },
-      // WA
-      { title: "WA ATAR Physics – Past Exams (SCSA)", url: "https://senior-secondary.scsa.wa.edu.au/further-resources/past-atar-course-exams/physics-past-atar-course-exams", description: "2021–2025 exams with marking keys", free: true, states: ["WA"] },
-      // SA/NT
+      { title: "QCAA Physics – Past SEE Papers", url: "https://www.qcaa.qld.edu.au/senior/see/subject-resources/physics", free: true, states: ["QLD"] },
+      { title: "WA ATAR Physics – Past Exams (SCSA)", url: "https://senior-secondary.scsa.wa.edu.au/further-resources/past-atar-course-exams/physics-past-atar-course-exams", free: true, states: ["WA"] },
       { title: "SACE Physics – Past Exams", url: "https://www.sace.sa.edu.au/web/physics/external-assessment", free: true, states: ["SA", "NT"] },
-      // TAS
-      { title: "TASC Physics – Previous Exam Papers", url: "https://www.tasc.tas.gov.au/students/years-11-and-12/preparing-for-exams/previous-exam-papers/", description: "Level 3 & 4 TASC Physics papers", free: true, states: ["TAS"] },
-      // ACT
+      { title: "TASC Physics – Previous Exam Papers", url: "https://www.tasc.tas.gov.au/students/years-11-and-12/preparing-for-exams/previous-exam-papers/", free: true, states: ["TAS"] },
       { title: "BSSS Physics – ACT Senior Secondary", url: "https://www.bsss.act.edu.au/student_programs/courses/physics", free: true, states: ["ACT"] },
-      // Third-party trial papers & solutions — all states
-      { title: "THSC Online – Physics Trial Papers (Yr 12)", url: "https://thsconline.github.io/s/yr12/Physics/trialpapers.html", description: "School trial papers from across NSW", free: true },
-      { title: "AceHSC – Physics Past Trial Papers", url: "https://www.acehsc.net/category/past-trial-papers/", description: "Trial papers, study notes, and multiple-choice quizzes", free: true },
-      { title: "Art of Smart – HSC Physics Past Papers", url: "https://artofsmart.com.au/learn/hsc-past-papers/", description: "HSC & VCE physics papers with study guides", free: true },
-      { title: "Matrix Education – Physics Exam Solutions", url: "https://www.matrix.edu.au/hsc-solutions/", description: "Free worked solutions to recent HSC Physics exams", free: true },
-      // Practice paper sites — All states
-      { title: "THSC Online – Physics Trial Papers (NSW, Yrs 11–12)", url: "https://thsconline.github.io/s/yr12/Physics/", description: "Dozens of school trial papers, free", free: true, states: ["NSW"] },
-      { title: "itute.com – Free VCE Physics Exams + Solutions", url: "https://www.itute.com/download-free-vce-physics-resources/free-physics-exams/", description: "VCE trial exams with full worked solutions", free: true, states: ["VIC"] },
-      { title: "ACED VCE – Free Physics Practice Exams", url: "https://acedvce.com/free-practice-exams/", description: "Free previous-edition VCE practice exams", free: true, states: ["VIC"] },
-      { title: "Physics & Maths Tutor – A-Level Physics Questions", url: "https://www.physicsandmathstutor.com/physics-revision/", description: "Free topic-by-topic questions and past papers — content aligns well with HSC/VCE", free: true },
-      { title: "Art of Smart – HSC Physics Study Guides & Papers", url: "https://artofsmart.com.au/learn/hsc-past-papers/", description: "Curated HSC Physics papers, guides and tips", free: true, states: ["NSW"] },
-      // Competitions
+      { title: "NAPLAN Numeracy – Years 7 & 9", url: "https://www.nap.edu.au/naplan/public-demonstration-site", description: "Numeracy reasoning aligned with junior science", free: true },
+      { title: "THSC Online – Physics Trial Papers", url: "https://thsconline.github.io/s/yr12/Physics/", description: "NSW school trial papers, free", free: true, states: ["NSW"] },
+      { title: "AceHSC – Physics Trial Papers", url: "https://www.acehsc.net/category/past-trial-papers/", free: true, states: ["NSW"] },
+      { title: "Matrix Education – HSC Physics Worked Solutions", url: "https://www.matrix.edu.au/hsc-solutions/", free: true, states: ["NSW"] },
+      { title: "Art of Smart – HSC Physics Papers", url: "https://artofsmart.com.au/learn/hsc-past-papers/", free: true, states: ["NSW"] },
+      { title: "Talent 100 – Free Physics Downloads", url: "https://talent-100.com.au/free-downloads/", free: true, states: ["NSW"] },
+      { title: "itute.com – Free VCE Physics Exams + Solutions", url: "https://www.itute.com/download-free-vce-physics-resources/free-physics-exams/", free: true, states: ["VIC"] },
+      { title: "ACED VCE – Free Physics Practice Exams", url: "https://acedvce.com/free-practice-exams/", free: true, states: ["VIC"] },
+      { title: "Physics & Maths Tutor – Physics by Topic", url: "https://www.physicsandmathstutor.com/physics-revision/", description: "Free topic-by-topic questions — aligns well with HSC/VCE", free: true },
+      { title: "Save My Exams – A-Level Physics", url: "https://www.savemyexams.com/a-level/physics/", description: "Topic questions with mark schemes", free: false },
+      { title: "Isaac Physics – Problem Sets", url: "https://isaacphysics.org/", description: "Free adaptive physics problems from Cambridge University", free: true },
       { title: "Australian Science Olympiad – Physics Papers", url: "https://www.aso.edu.au/", description: "Challenge papers for Years 10–12", free: true },
-      { title: "Physics Aptitude Test (PAT) – Oxford", url: "https://www.physics.ox.ac.uk/study-here/undergraduates/physics-aptitude-test-pat", description: "University entrance test with practice papers", free: true },
+      { title: "Oxford PAT – Physics Aptitude Test", url: "https://www.physics.ox.ac.uk/study-here/undergraduates/physics-aptitude-test-pat", description: "University entrance practice papers", free: true },
+      { title: "A-Level Physics Pastpapers.co – Sorted by Topic", url: "https://www.a-levelphysicstutor.com/", description: "Free mechanics, waves, fields questions", free: true },
+      { title: "Khan Academy – Physics Practice", url: "https://www.khanacademy.org/science/physics", description: "Worked examples and practice exercises", free: true },
     ],
     textbooks: [
-      { title: "The Feynman Lectures on Physics (free online)", url: "https://www.feynmanlectures.caltech.edu/", description: "Official free online version of classic physics lectures", free: true },
+      { title: "The Feynman Lectures on Physics", url: "https://www.feynmanlectures.caltech.edu/", description: "Classic lectures, free online", free: true },
       { title: "OpenStax University Physics Vol 1 (Mechanics)", url: "https://openstax.org/details/books/university-physics-volume-1", free: true },
-      { title: "OpenStax University Physics Vol 2 (Thermo/E&M)", url: "https://openstax.org/details/books/university-physics-volume-2", free: true },
+      { title: "OpenStax University Physics Vol 2 (E&M, Thermo)", url: "https://openstax.org/details/books/university-physics-volume-2", free: true },
       { title: "OpenStax University Physics Vol 3 (Modern Physics)", url: "https://openstax.org/details/books/university-physics-volume-3", free: true },
+      { title: "OpenStax College Physics 2e", url: "https://openstax.org/details/books/college-physics-2e", description: "Algebra-based, great for HSC level", free: true },
       { title: "Khan Academy – Physics", url: "https://www.khanacademy.org/science/physics", free: true },
-      { title: "HyperPhysics", url: "http://hyperphysics.phy-astr.gsu.edu/hbase/hframe.html", description: "Free concept-map style physics reference", free: true },
-      { title: "PhET Interactive Simulations – Physics", url: "https://phet.colorado.edu/en/simulations/filter?subjects=physics", description: "Interactive physics simulations", free: true },
-      { title: "CrashCourse Physics (YouTube)", url: "https://www.youtube.com/playlist?list=PL8dPuuaLjXtN06puRjUQAKlmYVcRj2-5H", free: true },
+      { title: "HyperPhysics", url: "http://hyperphysics.phy-astr.gsu.edu/hbase/hframe.html", description: "Concept-map style reference", free: true },
+      { title: "PhET – Physics Simulations", url: "https://phet.colorado.edu/en/simulations/filter?subjects=physics", description: "Interactive simulations for all topics", free: true },
       { title: "LibreTexts Physics", url: "https://phys.libretexts.org/", description: "Free peer-reviewed physics texts", free: true },
+      { title: "CrashCourse Physics (YouTube)", url: "https://www.youtube.com/playlist?list=PL8dPuuaLjXtN06puRjUQAKlmYVcRj2-5H", free: true },
+      { title: "MIT OCW – Physics Courses", url: "https://ocw.mit.edu/courses/physics/", description: "Free lecture notes and problem sets", free: true },
+      { title: "Isaac Physics – Skill Levels", url: "https://isaacphysics.org/", description: "Progressive physics problems from Cambridge", free: true },
+      { title: "Physics Classroom", url: "https://www.physicsclassroom.com/", description: "Clear conceptual explanations and practice problems", free: true },
+      { title: "Andrew Dotson (YouTube)", url: "https://www.youtube.com/c/AndrewDotsonvideos", description: "Fun conceptual and university-level physics", free: true },
+      { title: "Michel van Biezen Physics (YouTube)", url: "https://www.youtube.com/user/ilectureonline", description: "Huge library of worked physics problems", free: true },
+      { title: "Brilliant.org – Physics", url: "https://brilliant.org/", description: "Interactive courses on mechanics, E&M, relativity", free: false },
+      { title: "Flipping Physics (YouTube)", url: "https://www.youtube.com/user/flippingphysics", description: "AP/HSC-level physics demonstrations", free: true },
+      { title: "NASA Physics Resources", url: "https://www.nasa.gov/audience/foreducators/stem-on-station/ditl_photosynthesis.html", description: "Real-world physics applications", free: true },
+      { title: "MinutePhysics (YouTube)", url: "https://www.youtube.com/user/minutephysics", description: "Short conceptual explainers", free: true },
+      { title: "Veritasium (YouTube)", url: "https://www.youtube.com/user/1veritasium", description: "Deep dives into physics concepts and experiments", free: true },
+      { title: "David Tong – Lectures on Theoretical Physics", url: "https://www.damtp.cam.ac.uk/user/tong/teaching.html", description: "Free Cambridge University lecture notes", free: true },
     ],
   },
 
@@ -135,43 +150,49 @@ const RESOURCES: SubjectResources[] = [
   {
     subjectId: "chemistry",
     pastPapers: [
-      // NSW
       { title: "NSW HSC Chemistry – NESA Exam Papers", url: "https://www.nsw.gov.au/education-and-training/nesa/curriculum/hsc-exam-papers?category=Chemistry", free: true, states: ["NSW"] },
-      // VIC
       { title: "VCE Chemistry – Past Exams (VCAA)", url: "https://www.vcaa.vic.edu.au/assessment/vce/examination-specifications-past-examinations-and-examination-reports/chemistry", free: true, states: ["VIC"] },
-      // QLD
-      { title: "QCAA Chemistry – Syllabus, Samples & Past Papers", url: "https://www.qcaa.qld.edu.au/senior/senior-subjects/syllabuses/science/chemistry", free: true, states: ["QLD"] },
-      // WA
-      { title: "WA ATAR Chemistry – Past Exams (SCSA)", url: "https://senior-secondary.scsa.wa.edu.au/further-resources/past-atar-course-exams/chemistry-past-atar-course-exams", description: "2021–2025 exams with marking keys", free: true, states: ["WA"] },
-      // SA/NT
+      { title: "QCAA Chemistry – Past SEE Papers", url: "https://www.qcaa.qld.edu.au/senior/see/subject-resources/chemistry", free: true, states: ["QLD"] },
+      { title: "WA ATAR Chemistry – Past Exams (SCSA)", url: "https://senior-secondary.scsa.wa.edu.au/further-resources/past-atar-course-exams/chemistry-past-atar-course-exams", free: true, states: ["WA"] },
       { title: "SACE Chemistry – Past Exams", url: "https://www.sace.sa.edu.au/web/chemistry/external-assessment", free: true, states: ["SA", "NT"] },
-      // TAS
-      { title: "TASC Chemistry – Previous Exam Papers", url: "https://www.tasc.tas.gov.au/students/years-11-and-12/preparing-for-exams/previous-exam-papers/", description: "Level 3 & 4 TASC Chemistry papers", free: true, states: ["TAS"] },
-      // ACT
+      { title: "TASC Chemistry – Previous Exam Papers", url: "https://www.tasc.tas.gov.au/students/years-11-and-12/preparing-for-exams/previous-exam-papers/", free: true, states: ["TAS"] },
       { title: "BSSS Chemistry – ACT Senior Secondary", url: "https://www.bsss.act.edu.au/student_programs/courses/chemistry", free: true, states: ["ACT"] },
-      // Third-party trial papers & solutions — all states
-      { title: "THSC Online – Chemistry Trial Papers (Yr 12)", url: "https://thsconline.github.io/s/yr12/Chemistry/trialpapers.html", description: "School trial papers from across NSW", free: true },
-      { title: "AceHSC – Chemistry Past Trial Papers", url: "https://www.acehsc.net/category/past-trial-papers/", description: "Trial papers, study notes, and multiple-choice quizzes", free: true },
-      { title: "Art of Smart – HSC Chemistry Past Papers", url: "https://artofsmart.com.au/learn/hsc-past-papers/", description: "HSC & VCE chemistry papers with study guides", free: true },
-      { title: "Matrix Education – Chemistry Exam Solutions", url: "https://www.matrix.edu.au/hsc-solutions/", description: "Free worked solutions to recent HSC Chemistry exams", free: true },
-      // Practice paper sites
-      { title: "THSC Online – Chemistry Trial Papers (NSW, Yrs 11–12)", url: "https://thsconline.github.io/s/yr12/Chemistry/", description: "School trial papers, free", free: true, states: ["NSW"] },
-      { title: "ACED VCE – Free Chemistry Practice Exams", url: "https://acedvce.com/free-practice-exams/", description: "Free previous-edition VCE practice exams", free: true, states: ["VIC"] },
-      { title: "Physics & Maths Tutor – A-Level Chemistry Questions", url: "https://www.physicsandmathstutor.com/chemistry-revision/", description: "Free topic-by-topic questions — A-Level content closely mirrors HSC/VCE", free: true },
-      { title: "Art of Smart – HSC Chemistry Papers & Guides", url: "https://artofsmart.com.au/learn/hsc-past-papers/", description: "Curated HSC Chemistry papers and study tips", free: true, states: ["NSW"] },
-      { title: "Save My Exams – A-Level Chemistry Questions", url: "https://www.savemyexams.com/a-level/chemistry/", description: "Topic-by-topic exam practice, free tier available — aligns well with HSC/VCE content", free: false },
-      // Competitions
-      { title: "Australian Science Olympiad – Chemistry Papers", url: "https://www.aso.edu.au/", description: "Challenge papers for Years 10–12", free: true },
+      { title: "THSC Online – Chemistry Trial Papers", url: "https://thsconline.github.io/s/yr12/Chemistry/", free: true, states: ["NSW"] },
+      { title: "AceHSC – Chemistry Trial Papers", url: "https://www.acehsc.net/category/past-trial-papers/", free: true, states: ["NSW"] },
+      { title: "Matrix Education – HSC Chemistry Worked Solutions", url: "https://www.matrix.edu.au/hsc-solutions/", free: true, states: ["NSW"] },
+      { title: "Art of Smart – HSC Chemistry Papers", url: "https://artofsmart.com.au/learn/hsc-past-papers/", free: true, states: ["NSW"] },
+      { title: "Talent 100 – Free Chemistry Downloads", url: "https://talent-100.com.au/free-downloads/", free: true, states: ["NSW"] },
+      { title: "itute.com – Free VCE Chemistry Exams", url: "https://www.itute.com/", free: true, states: ["VIC"] },
+      { title: "ACED VCE – Free Chemistry Practice Exams", url: "https://acedvce.com/free-practice-exams/", free: true, states: ["VIC"] },
+      { title: "Physics & Maths Tutor – Chemistry by Topic", url: "https://www.physicsandmathstutor.com/chemistry-revision/", free: true },
+      { title: "Save My Exams – A-Level Chemistry", url: "https://www.savemyexams.com/a-level/chemistry/", description: "Topic questions with mark schemes", free: false },
+      { title: "Australian Science Olympiad – Chemistry Papers", url: "https://www.aso.edu.au/", free: true },
+      { title: "Royal Society of Chemistry – Olympiad Papers", url: "https://www.rsc.org/prizes-funding/prizes/find-a-prize/chemistry-olympiad/", description: "Free UK chemistry olympiad papers — great extension practice", free: true },
+      { title: "Khan Academy – Chemistry Practice", url: "https://www.khanacademy.org/science/chemistry", free: true },
+      { title: "Chemsheets – Worksheet Library", url: "https://chemsheets.co.uk/", description: "Printable worksheets by topic, used widely in Australian schools", free: false },
+      { title: "GCE Guide – A-Level Chemistry Papers", url: "https://www.gcecompilation.com/", description: "Compiled past papers from Cambridge and other boards", free: true },
     ],
     textbooks: [
       { title: "OpenStax Chemistry 2e", url: "https://openstax.org/details/books/chemistry-2e", free: true },
       { title: "OpenStax Chemistry: Atoms First 2e", url: "https://openstax.org/details/books/chemistry-atoms-first-2e", free: true },
-      { title: "LibreTexts Chemistry", url: "https://chem.libretexts.org/", description: "Open-source chemistry texts covering all levels", free: true },
+      { title: "LibreTexts Chemistry", url: "https://chem.libretexts.org/", description: "Open-source texts covering all levels", free: true },
       { title: "Khan Academy – Chemistry", url: "https://www.khanacademy.org/science/chemistry", free: true },
-      { title: "ChemGuide (free revision notes)", url: "https://www.chemguide.co.uk/", description: "Excellent free HSC/A-Level chemistry notes", free: true },
-      { title: "PhET – Chemistry Simulations", url: "https://phet.colorado.edu/en/simulations/filter?subjects=chemistry", description: "Free interactive chemistry simulations", free: true },
+      { title: "ChemGuide", url: "https://www.chemguide.co.uk/", description: "Excellent free HSC/A-Level chemistry notes", free: true },
+      { title: "PhET – Chemistry Simulations", url: "https://phet.colorado.edu/en/simulations/filter?subjects=chemistry", free: true },
       { title: "CrashCourse Chemistry (YouTube)", url: "https://www.youtube.com/playlist?list=PL8dPuuaLjXtN06puRjUQAKlmYVcRj2-5H", free: true },
-      { title: "Royal Australian Chemical Institute – Resources", url: "https://www.raci.org.au/education", description: "Educational materials from RACI", free: true },
+      { title: "RACI – Royal Australian Chemical Institute", url: "https://www.raci.org.au/education", free: true },
+      { title: "MIT OCW – Chemistry Courses", url: "https://ocw.mit.edu/courses/chemistry/", free: true },
+      { title: "Tyler DeWitt Chemistry (YouTube)", url: "https://www.youtube.com/user/tdewitt451", description: "Beginner-friendly chemistry explanations", free: true },
+      { title: "The Organic Chemistry Tutor (YouTube)", url: "https://www.youtube.com/c/TheOrganicChemistryTutor", description: "Massive library of worked chemistry problems", free: true },
+      { title: "Chemist Confessions (YouTube)", url: "https://www.youtube.com/@ChemistConfessions", description: "Applied and organic chemistry concepts", free: true },
+      { title: "Periodic Table – Royal Society of Chemistry", url: "https://www.rsc.org/periodic-table/", description: "Interactive periodic table with element data", free: true },
+      { title: "Chemspider – Chemical Database", url: "https://www.chemspider.com/", description: "Free structure and property database", free: true },
+      { title: "Brilliant.org – Chemistry", url: "https://brilliant.org/", description: "Interactive chemistry courses", free: false },
+      { title: "ACE Chemistry – Notes & Summaries", url: "https://www.acehsc.net/", description: "Community-submitted HSC chemistry notes", free: true },
+      { title: "Clutch Prep – General Chemistry", url: "https://www.clutchprep.com/chemistry/", description: "Video lessons and practice problems", free: false },
+      { title: "Neso Academy – Chemistry (YouTube)", url: "https://www.youtube.com/user/nesoacademy", free: true },
+      { title: "Science Ready – HSC Chemistry Notes", url: "https://scienceready.com.au/", description: "Detailed HSC-aligned notes and resources", free: false },
+      { title: "OpenStax Organic Chemistry", url: "https://openstax.org/details/books/organic-chemistry", free: true },
     ],
   },
 
@@ -181,42 +202,50 @@ const RESOURCES: SubjectResources[] = [
   {
     subjectId: "biology",
     pastPapers: [
-      // NSW
       { title: "NSW HSC Biology – NESA Exam Papers", url: "https://www.nsw.gov.au/education-and-training/nesa/curriculum/hsc-exam-papers?category=Biology", free: true, states: ["NSW"] },
-      // VIC
       { title: "VCE Biology – Past Exams (VCAA)", url: "https://www.vcaa.vic.edu.au/assessment/vce/examination-specifications-past-examinations-and-examination-reports/biology", free: true, states: ["VIC"] },
-      // QLD
-      { title: "QCAA Biology – Syllabus, Samples & Past Papers", url: "https://www.qcaa.qld.edu.au/senior/senior-subjects/syllabuses/science/biology", free: true, states: ["QLD"] },
-      // WA
+      { title: "QCAA Biology – Past SEE Papers", url: "https://www.qcaa.qld.edu.au/senior/see/subject-resources/biology", free: true, states: ["QLD"] },
       { title: "WA ATAR Biology – Past Exams (SCSA)", url: "https://senior-secondary.scsa.wa.edu.au/further-resources/past-atar-course-exams/biology-past-atar-course-exams", free: true, states: ["WA"] },
-      // SA/NT
       { title: "SACE Biology – Past Exams", url: "https://www.sace.sa.edu.au/web/biology/external-assessment", free: true, states: ["SA", "NT"] },
-      // TAS
-      { title: "TASC Biology – Previous Exam Papers", url: "https://www.tasc.tas.gov.au/students/years-11-and-12/preparing-for-exams/previous-exam-papers/", description: "Level 3 & 4 TASC Biology papers", free: true, states: ["TAS"] },
-      // ACT
+      { title: "TASC Biology – Previous Exam Papers", url: "https://www.tasc.tas.gov.au/students/years-11-and-12/preparing-for-exams/previous-exam-papers/", free: true, states: ["TAS"] },
       { title: "BSSS Biology – ACT Senior Secondary", url: "https://www.bsss.act.edu.au/student_programs/courses/biology", free: true, states: ["ACT"] },
-      // Third-party trial papers & solutions — all states
-      { title: "THSC Online – Biology Trial Papers (Yr 12)", url: "https://thsconline.github.io/s/yr12/Biology/trialpapers.html", description: "School trial papers from across NSW", free: true },
-      { title: "AceHSC – Biology Past Trial Papers", url: "https://www.acehsc.net/category/past-trial-papers/", description: "Trial papers, study notes, and multiple-choice quizzes", free: true },
-      { title: "Art of Smart – HSC Biology Past Papers", url: "https://artofsmart.com.au/learn/hsc-past-papers/", description: "HSC & VCE biology papers with study guides", free: true },
-      { title: "Matrix Education – Biology Exam Solutions", url: "https://www.matrix.edu.au/hsc-solutions/", description: "Free worked solutions to recent HSC Biology exams", free: true },
-      // Practice paper sites
-      { title: "THSC Online – Biology Trial Papers (NSW, Yrs 11–12)", url: "https://thsconline.github.io/s/yr12/Biology/", description: "School trial papers, free", free: true, states: ["NSW"] },
-      { title: "ACED VCE – Free Biology Practice Exams", url: "https://acedvce.com/free-practice-exams/", description: "Free previous-edition VCE Biology and Health practice exams", free: true, states: ["VIC"] },
-      { title: "Physics & Maths Tutor – A-Level Biology Questions", url: "https://www.physicsandmathstutor.com/biology-revision/", description: "Free topic-by-topic questions — content closely mirrors HSC/VCE", free: true },
-      { title: "Art of Smart – HSC Biology Papers & Guides", url: "https://artofsmart.com.au/learn/hsc-past-papers/", description: "Curated HSC Biology papers and study tips", free: true, states: ["NSW"] },
-      { title: "Save My Exams – A-Level Biology Questions", url: "https://www.savemyexams.com/a-level/biology/", description: "Topic-organised exam questions with mark schemes, free tier available", free: false },
-      // Competitions
-      { title: "Australian Science Olympiad – Biology Papers", url: "https://www.aso.edu.au/", description: "Challenge papers for Years 10–12", free: true },
+      { title: "THSC Online – Biology Trial Papers", url: "https://thsconline.github.io/s/yr12/Biology/", free: true, states: ["NSW"] },
+      { title: "AceHSC – Biology Trial Papers", url: "https://www.acehsc.net/category/past-trial-papers/", free: true, states: ["NSW"] },
+      { title: "Matrix Education – HSC Biology Worked Solutions", url: "https://www.matrix.edu.au/hsc-solutions/", free: true, states: ["NSW"] },
+      { title: "Art of Smart – HSC Biology Papers", url: "https://artofsmart.com.au/learn/hsc-past-papers/", free: true, states: ["NSW"] },
+      { title: "Talent 100 – Free Biology Downloads", url: "https://talent-100.com.au/free-downloads/", free: true, states: ["NSW"] },
+      { title: "ACED VCE – Free Biology Practice Exams", url: "https://acedvce.com/free-practice-exams/", free: true, states: ["VIC"] },
+      { title: "Physics & Maths Tutor – Biology by Topic", url: "https://www.physicsandmathstutor.com/biology-revision/", free: true },
+      { title: "Save My Exams – A-Level Biology", url: "https://www.savemyexams.com/a-level/biology/", free: false },
+      { title: "Australian Science Olympiad – Biology Papers", url: "https://www.aso.edu.au/", free: true },
+      { title: "International Biology Olympiad – Past Papers", url: "https://www.ibo-info.org/en/info/past-ibos.html", description: "Challenge papers for top students", free: true },
+      { title: "Khan Academy – Biology Practice", url: "https://www.khanacademy.org/science/biology", free: true },
+      { title: "Biol Chall – A-Level Biology Questions", url: "https://www.biologychallenge.org.uk/past-papers", description: "UK biology challenge papers — extension content", free: true },
+      { title: "Science Ready – HSC Biology Notes & Quizzes", url: "https://scienceready.com.au/", description: "HSC-aligned notes and practice questions", free: false },
+      { title: "GCE Guide – A-Level Biology Papers", url: "https://www.gcecompilation.com/", description: "Compiled past papers", free: true },
     ],
     textbooks: [
       { title: "OpenStax Biology 2e", url: "https://openstax.org/details/books/biology-2e", free: true },
-      { title: "OpenStax Concepts of Biology", url: "https://openstax.org/details/books/concepts-biology", description: "Gentler intro-level biology text", free: true },
+      { title: "OpenStax Concepts of Biology", url: "https://openstax.org/details/books/concepts-biology", free: true },
       { title: "OpenStax Anatomy and Physiology 2e", url: "https://openstax.org/details/books/anatomy-and-physiology-2e", free: true },
+      { title: "OpenStax Microbiology", url: "https://openstax.org/details/books/microbiology", free: true },
+      { title: "LibreTexts Biology", url: "https://bio.libretexts.org/", free: true },
       { title: "Khan Academy – Biology", url: "https://www.khanacademy.org/science/biology", free: true },
-      { title: "NCBI Bookshelf – Molecular Biology of the Cell", url: "https://www.ncbi.nlm.nih.gov/books/", description: "Free online edition of classic Alberts textbook", free: true },
-      { title: "CrashCourse Biology (YouTube)", url: "https://www.youtube.com/playlist?list=PL3EED4C1D684D3ADF", description: "Fast-paced, engaging video series", free: true },
-      { title: "LibreTexts Biology", url: "https://bio.libretexts.org/", description: "Free open-source biology texts", free: true },
+      { title: "NCBI Bookshelf – Molecular Biology of the Cell", url: "https://www.ncbi.nlm.nih.gov/books/", free: true },
+      { title: "CrashCourse Biology (YouTube)", url: "https://www.youtube.com/playlist?list=PL3EED4C1D684D3ADF", free: true },
+      { title: "Amoeba Sisters (YouTube)", url: "https://www.youtube.com/user/AmoebaSisters", description: "Clear, fun biology explanations", free: true },
+      { title: "MIT OCW – Biology Courses", url: "https://ocw.mit.edu/courses/biology/", free: true },
+      { title: "Bozeman Science Biology (YouTube)", url: "https://www.youtube.com/user/bozemanbiology", description: "Comprehensive HSC/AP level topic coverage", free: true },
+      { title: "Biology Online Dictionary", url: "https://www.biologyonline.com/", description: "Free biological terms and concept explanations", free: true },
+      { title: "Scitable by Nature Education", url: "https://www.nature.com/scitable", description: "Free genetics and cell biology resources from Nature", free: true },
+      { title: "HHMI Biointeractive", url: "https://www.biointeractive.org/", description: "Free classroom resources from Howard Hughes Medical Institute", free: true },
+      { title: "PhET – Biology Simulations", url: "https://phet.colorado.edu/en/simulations/filter?subjects=biology", free: true },
+      { title: "Science Ready – HSC Biology", url: "https://scienceready.com.au/", free: false },
+      { title: "Brilliant.org – Biology", url: "https://brilliant.org/", free: false },
+      { title: "The Biology Corner – Worksheets", url: "https://www.biologycorner.com/", description: "Free worksheets and notes", free: true },
+      { title: "Visible Body – 3D Anatomy Atlas", url: "https://www.visiblebody.com/", description: "3D anatomy visualisation tool", free: false },
+      { title: "Kurzgesagt – Biology Videos (YouTube)", url: "https://www.youtube.com/user/Kurzgesagt", description: "High-quality animated biology explainers", free: true },
+      { title: "National Centre for Biotechnology Information", url: "https://www.ncbi.nlm.nih.gov/", description: "Free access to research databases and textbooks", free: true },
     ],
   },
 
@@ -226,42 +255,49 @@ const RESOURCES: SubjectResources[] = [
   {
     subjectId: "english",
     pastPapers: [
-      // Yrs 7 & 9 — ALL states
-      { title: "NAPLAN Reading & Writing Practice (Years 7 & 9)", url: "https://www.nap.edu.au/naplan/public-demonstration-site", description: "Official NAPLAN demo tests — reading, writing, grammar & punctuation", free: true },
-      // NSW
-      { title: "NSW HSC English – NESA Exam Papers", url: "https://www.nsw.gov.au/education-and-training/nesa/curriculum/hsc-exam-papers?category=English", description: "Advanced, Standard 1 & 2, Extension 1 & 2, EAL/D papers", free: true, states: ["NSW"] },
-      // VIC
+      { title: "NSW HSC English – NESA Exam Papers", url: "https://www.nsw.gov.au/education-and-training/nesa/curriculum/hsc-exam-papers?category=English", description: "Advanced, Standard, Extension, EAL/D", free: true, states: ["NSW"] },
       { title: "VCE English – Past Exams (VCAA)", url: "https://www.vcaa.vic.edu.au/assessment/vce/examination-specifications-past-examinations-and-examination-reports/english", free: true, states: ["VIC"] },
-      { title: "VCE English as an Additional Language – Past Exams (VCAA)", url: "https://vcaa.vic.edu.au/assessment/vce/examination-specifications-past-examinations-and-examination-reports/english-additional-language-eal", free: true, states: ["VIC"] },
-      // QLD
-      { title: "QCAA English – Past Papers & Samples", url: "https://www.qcaa.qld.edu.au/senior/see/subject-resources/english", description: "Senior External Exam papers and marking guides", free: true, states: ["QLD"] },
-      // WA
+      { title: "VCE English Language – Past Exams (VCAA)", url: "https://www.vcaa.vic.edu.au/assessment/vce/examination-specifications-past-examinations-and-examination-reports/english-language", free: true, states: ["VIC"] },
+      { title: "VCE EAL – Past Exams (VCAA)", url: "https://vcaa.vic.edu.au/assessment/vce/examination-specifications-past-examinations-and-examination-reports/english-additional-language-eal", free: true, states: ["VIC"] },
+      { title: "QCAA English – Past SEE Papers", url: "https://www.qcaa.qld.edu.au/senior/see/subject-resources/english", free: true, states: ["QLD"] },
       { title: "WA ATAR English – Past Exams (SCSA)", url: "https://senior-secondary.scsa.wa.edu.au/further-resources/past-atar-course-exams/english-past-atar-course-exams", free: true, states: ["WA"] },
-      // SA/NT
       { title: "SACE English – Past Exams", url: "https://www.sace.sa.edu.au/web/english/external-assessment", free: true, states: ["SA", "NT"] },
-      // TAS
       { title: "TASC English – Previous Exam Papers", url: "https://www.tasc.tas.gov.au/students/years-11-and-12/preparing-for-exams/previous-exam-papers/", free: true, states: ["TAS"] },
-      // Third-party trial papers — all states
-      { title: "THSC Online – English Trial Papers (Yr 12)", url: "https://thsconline.github.io/s/yr12/English/trialpapers_paper1.html", description: "School trial papers — Advanced, Standard, Extension 1", free: true },
-      { title: "AceHSC – English Past Trial Papers", url: "https://www.acehsc.net/category/past-trial-papers/", description: "Trial papers, essays, and study notes across English levels", free: true },
-      { title: "Art of Smart – HSC English Past Papers", url: "https://artofsmart.com.au/learn/hsc-past-papers/", description: "HSC, QCE & VCE English papers and essay guides", free: true },
-      { title: "Matrix Education – English Exam Solutions", url: "https://www.matrix.edu.au/hsc-solutions/", description: "Free HSC English exam analysis and sample responses", free: true },
-      // Practice paper sites
-      { title: "THSC Online – English Trial Papers (NSW, Yrs 9–12)", url: "https://thsconline.github.io/s/yr12/English/", description: "106+ trial papers for Advanced, Standard, Extension — free", free: true, states: ["NSW"] },
-      { title: "Art of Smart – HSC English Practice Papers", url: "https://artofsmart.com.au/learn/hsc-past-papers/", description: "Free downloadable HSC English practice papers with marking guidelines", free: true, states: ["NSW"] },
-      { title: "Matrix Education – HSC English Practice Paper 1", url: "https://www.matrix.edu.au/english-standard-practice-paper-1-common-module-free-download/", description: "Free practice paper with sample responses — Common Module", free: true, states: ["NSW"] },
-      { title: "HSCPastPapers.com – English", url: "https://www.hscpastpapers.com/", description: "Aggregated NESA past papers with marking guidelines, easy navigation", free: true, states: ["NSW"] },
-      { title: "Physics & Maths Tutor – A-Level English Resources", url: "https://www.physicsandmathstutor.com/english-revision/", description: "Free essay guides and exam questions — useful for technique practice", free: true },
+      { title: "BSSS English – ACT Senior Secondary", url: "https://www.bsss.act.edu.au/student_programs/courses/english", free: true, states: ["ACT"] },
+      { title: "NAPLAN Reading & Writing Practice (Years 7 & 9)", url: "https://www.nap.edu.au/naplan/public-demonstration-site", free: true },
+      { title: "THSC Online – English Trial Papers", url: "https://thsconline.github.io/s/yr12/English/", description: "Advanced, Standard, Extension trial papers", free: true, states: ["NSW"] },
+      { title: "AceHSC – English Trial Papers & Essays", url: "https://www.acehsc.net/category/past-trial-papers/", free: true, states: ["NSW"] },
+      { title: "Matrix Education – HSC English Solutions", url: "https://www.matrix.edu.au/hsc-solutions/", free: true, states: ["NSW"] },
+      { title: "Art of Smart – HSC English Papers", url: "https://artofsmart.com.au/learn/hsc-past-papers/", free: true, states: ["NSW"] },
+      { title: "HSCPastPapers.com – English", url: "https://www.hscpastpapers.com/", free: true, states: ["NSW"] },
+      { title: "Talent 100 – Free English Downloads", url: "https://talent-100.com.au/free-downloads/", free: true, states: ["NSW"] },
+      { title: "Physics & Maths Tutor – English Resources", url: "https://www.physicsandmathstutor.com/english-revision/", free: true },
+      { title: "Marked by Teachers – Sample Essays", url: "https://www.markedbyteachers.com/", description: "Peer and teacher-marked essays for reference", free: false },
+      { title: "VCAA Insight Series (VCE English)", url: "https://www.vcaa.vic.edu.au/assessment/vce/assessment/Pages/vce-insight.aspx", description: "Official VCAA scored student writing samples", free: true, states: ["VIC"] },
+      { title: "IB English Past Papers – Revision Village", url: "https://www.revisionvillage.com/", description: "IB-style essay practice", free: false },
+      { title: "ReadWriteThink – Writing Practice", url: "https://www.readwritethink.org/", description: "Free writing tools and practice activities", free: true },
     ],
     textbooks: [
-      { title: "Purdue OWL – Writing Lab", url: "https://owl.purdue.edu/owl/purdue_owl.html", description: "Free grammar, writing, and referencing resource", free: true },
+      { title: "Purdue OWL – Writing Lab", url: "https://owl.purdue.edu/owl/purdue_owl.html", description: "Grammar, writing, and referencing", free: true },
       { title: "Project Gutenberg – Classic Literature", url: "https://www.gutenberg.org/", description: "Free ebooks of public-domain texts", free: true },
-      { title: "SparkNotes – Study Guides", url: "https://www.sparknotes.com/", description: "Free summaries and analysis of literary texts", free: true },
-      { title: "LitCharts – Literary Analysis", url: "https://www.litcharts.com/", description: "Detailed character, theme, and scene analysis", free: true },
+      { title: "SparkNotes – Study Guides", url: "https://www.sparknotes.com/", description: "Summaries and analysis of literary texts", free: true },
+      { title: "LitCharts – Literary Analysis", url: "https://www.litcharts.com/", description: "Character, theme, and scene analysis", free: true },
       { title: "No Fear Shakespeare", url: "https://www.sparknotes.com/nofear/", description: "Side-by-side modern English translation", free: true },
       { title: "Khan Academy – Grammar", url: "https://www.khanacademy.org/humanities/grammar", free: true },
-      { title: "CrashCourse Literature (YouTube)", url: "https://www.youtube.com/playlist?list=PL8dPuuaLjXtOeEc9ME62zTfqc0h6Pe8vb", description: "Literary analysis for major works", free: true },
-      { title: "BBC Learning English", url: "https://www.bbc.co.uk/learningenglish/", description: "Grammar and vocabulary lessons", free: true },
+      { title: "CrashCourse Literature (YouTube)", url: "https://www.youtube.com/playlist?list=PL8dPuuaLjXtOeEc9ME62zTfqc0h6Pe8vb", free: true },
+      { title: "BBC Learning English", url: "https://www.bbc.co.uk/learningenglish/", free: true },
+      { title: "The Elements of Style – Strunk & White", url: "https://www.gutenberg.org/ebooks/37134", description: "Classic free writing style guide", free: true },
+      { title: "Daily Writing Tips", url: "https://www.dailywritingtips.com/", description: "Grammar and style tips", free: true },
+      { title: "Grammarly Blog – Writing Resources", url: "https://www.grammarly.com/blog/", free: true },
+      { title: "Open Learn – English Literature (Open University)", url: "https://www.open.edu/openlearn/history-the-arts/literature-creative-writing/", free: true },
+      { title: "Standard Ebooks – Literary Classics", url: "https://standardebooks.org/", description: "Beautifully typeset free ebooks", free: true },
+      { title: "Essays by George Orwell (free)", url: "https://www.orwellfoundation.com/the-orwell-foundation/orwell/essays-and-other-works/", description: "Model analytical writing by a master essayist", free: true },
+      { title: "Write101x (edX) – English for Academic Purposes", url: "https://www.edx.org/", description: "Free essay writing course", free: true },
+      { title: "Hemingway App", url: "https://hemingwayapp.com/", description: "Free writing clarity and readability tool", free: true },
+      { title: "Vocabulary.com", url: "https://www.vocabulary.com/", description: "Free vocab building with spaced repetition", free: true },
+      { title: "Online Etymology Dictionary", url: "https://www.etymonline.com/", description: "Free word origin and history lookups", free: true },
+      { title: "Merriam-Webster Thesaurus", url: "https://www.merriam-webster.com/thesaurus", description: "Free synonym and antonym finder", free: true },
+      { title: "ReadTheory – Reading Comprehension Practice", url: "https://readtheory.org/", description: "Free adaptive reading comprehension exercises", free: true },
     ],
   },
 
@@ -271,35 +307,48 @@ const RESOURCES: SubjectResources[] = [
   {
     subjectId: "history",
     pastPapers: [
-      // NSW
-      { title: "NSW HSC History – NESA Exam Papers", url: "https://www.nsw.gov.au/education-and-training/nesa/curriculum/hsc-exam-papers?category=History", description: "Modern, Ancient, and History Extension papers", free: true, states: ["NSW"] },
-      // VIC
+      { title: "NSW HSC History – NESA Exam Papers", url: "https://www.nsw.gov.au/education-and-training/nesa/curriculum/hsc-exam-papers?category=History", description: "Modern, Ancient, Extension", free: true, states: ["NSW"] },
       { title: "VCE History – Past Exams (VCAA)", url: "https://www.vcaa.vic.edu.au/assessment/vce/examination-specifications-past-examinations-and-examination-reports/history", free: true, states: ["VIC"] },
-      // QLD
-      { title: "QCAA Modern History – Syllabus & Sample Papers", url: "https://www.qcaa.qld.edu.au/senior/senior-subjects/syllabuses/humanities/modern-history", free: true, states: ["QLD"] },
-      { title: "QCAA Ancient History – Syllabus & Sample Papers", url: "https://www.qcaa.qld.edu.au/senior/senior-subjects/syllabuses/humanities/ancient-history", free: true, states: ["QLD"] },
-      // WA
+      { title: "QCAA Modern History – Past SEE Papers", url: "https://www.qcaa.qld.edu.au/senior/see/subject-resources/modern-history", free: true, states: ["QLD"] },
+      { title: "QCAA Ancient History – Syllabus & Samples", url: "https://www.qcaa.qld.edu.au/senior/senior-subjects/syllabuses/humanities/ancient-history", free: true, states: ["QLD"] },
       { title: "WA ATAR Modern History – Past Exams (SCSA)", url: "https://senior-secondary.scsa.wa.edu.au/further-resources/past-atar-course-exams/modern-history-past-atar-course-exams", free: true, states: ["WA"] },
       { title: "WA ATAR Ancient History – Past Exams (SCSA)", url: "https://senior-secondary.scsa.wa.edu.au/further-resources/past-atar-course-exams/ancient-history-past-atar-course-exams", free: true, states: ["WA"] },
-      // SA/NT
       { title: "SACE Modern History – Past Exams", url: "https://www.sace.sa.edu.au/web/modern-history/external-assessment", free: true, states: ["SA", "NT"] },
-      // TAS
-      { title: "TASC Modern History – Previous Exam Papers", url: "https://www.tasc.tas.gov.au/students/years-11-and-12/preparing-for-exams/previous-exam-papers/", free: true, states: ["TAS"] },
-      // ACT
+      { title: "TASC History – Previous Exam Papers", url: "https://www.tasc.tas.gov.au/students/years-11-and-12/preparing-for-exams/previous-exam-papers/", free: true, states: ["TAS"] },
       { title: "BSSS History – ACT Senior Secondary", url: "https://www.bsss.act.edu.au/student_programs/courses/history", free: true, states: ["ACT"] },
-      // Practice paper sites
-      { title: "THSC Online – History Trial Papers (NSW, Yrs 11–12)", url: "https://thsconline.github.io/s/yr12/History/", description: "Modern and Ancient History trial papers from NSW schools", free: true, states: ["NSW"] },
-      { title: "Art of Smart – HSC History Papers & Guides", url: "https://artofsmart.com.au/learn/hsc-past-papers/", description: "Curated Modern and Ancient History papers and study tips", free: true, states: ["NSW"] },
-      { title: "Physics & Maths Tutor – A-Level History Questions", url: "https://www.physicsandmathstutor.com/history-revision/", description: "Free essay practice and source analysis questions", free: true },
+      { title: "THSC Online – History Trial Papers", url: "https://thsconline.github.io/s/yr12/History/", free: true, states: ["NSW"] },
+      { title: "AceHSC – History Trial Papers & Essays", url: "https://www.acehsc.net/category/past-trial-papers/", free: true, states: ["NSW"] },
+      { title: "Art of Smart – HSC History Papers", url: "https://artofsmart.com.au/learn/hsc-past-papers/", free: true, states: ["NSW"] },
+      { title: "Physics & Maths Tutor – History Questions", url: "https://www.physicsandmathstutor.com/history-revision/", description: "Essay and source analysis practice", free: true },
+      { title: "Save My Exams – A-Level History", url: "https://www.savemyexams.com/a-level/history/", free: false },
+      { title: "Seneca Learning – History", url: "https://www.senecalearning.com/", description: "Free adaptive revision quizzes", free: true },
+      { title: "Matrix Education – HSC History Resources", url: "https://www.matrix.edu.au/hsc-solutions/", free: true, states: ["NSW"] },
+      { title: "IB History Paper 1 & 2 – Revision Village", url: "https://www.revisionvillage.com/", free: false },
+      { title: "Alpha History – Study Guides", url: "https://alphahistory.com/", description: "Free in-depth notes on revolutions, wars, and ideologies", free: true },
+      { title: "Historylearningsite – Topic Notes", url: "https://www.historylearningsite.co.uk/", description: "Free modern history topic summaries", free: true },
+      { title: "Quizlet – HSC Modern History Flashcards", url: "https://quizlet.com/subject/hsc-history/", description: "Community-made history flashcard sets", free: true },
     ],
     textbooks: [
-      { title: "Khan Academy – World History", url: "https://www.khanacademy.org/humanities/world-history", description: "Free world history from ancient to modern times", free: true },
+      { title: "Khan Academy – World History", url: "https://www.khanacademy.org/humanities/world-history", free: true },
       { title: "CrashCourse World History (YouTube)", url: "https://www.youtube.com/playlist?list=PLBDA2A52596A5DCCC", free: true },
-      { title: "Internet History Sourcebooks Project", url: "https://sourcebooks.fordham.edu/", description: "Free primary sources for ancient, medieval, and modern history", free: true },
+      { title: "CrashCourse US History (YouTube)", url: "https://www.youtube.com/playlist?list=PL8dPuuaLjXtMwmepBjTSG593eG7ObzO7s", free: true },
+      { title: "Internet History Sourcebooks Project", url: "https://sourcebooks.fordham.edu/", description: "Free primary sources from ancient to modern", free: true },
       { title: "National Archives of Australia", url: "https://www.naa.gov.au/", description: "Primary source documents from Australian history", free: true },
-      { title: "Australian War Memorial", url: "https://www.awm.gov.au/", description: "Military history resources and documents", free: true },
-      { title: "BBC – History", url: "https://www.bbc.co.uk/history/", description: "Articles and timelines on world history", free: true },
-      { title: "History Crunch – Study Guides", url: "https://www.historycrunch.com/", description: "Free historical period guides and essays", free: true },
+      { title: "Australian War Memorial", url: "https://www.awm.gov.au/", description: "Military history and archive", free: true },
+      { title: "BBC History", url: "https://www.bbc.co.uk/history/", description: "Articles and timelines", free: true },
+      { title: "History Crunch – Study Guides", url: "https://www.historycrunch.com/", free: true },
+      { title: "Alpha History", url: "https://alphahistory.com/", description: "In-depth notes on revolutions, Cold War, fascism", free: true },
+      { title: "JSTOR – Free Articles", url: "https://www.jstor.org/", description: "Access to free academic history articles", free: true },
+      { title: "Open Library – History Texts", url: "https://openlibrary.org/subjects/history", description: "Free ebooks on history topics", free: true },
+      { title: "Britannica – History", url: "https://www.britannica.com/history", free: true },
+      { title: "Facing History – Teaching Resources", url: "https://www.facinghistory.org/", description: "Free lessons on genocide, democracy, and identity", free: true },
+      { title: "Cold War International History Project", url: "https://www.wilsoncenter.org/program/cold-war-international-history-project", description: "Free primary sources on the Cold War", free: true },
+      { title: "Holocaust Museum – Educational Resources", url: "https://www.ushmm.org/teach", description: "Free teaching resources from the USHMM", free: true },
+      { title: "Smithsonian – History Resources", url: "https://www.si.edu/educators", free: true },
+      { title: "Historyonthenet – Revision Notes", url: "https://www.historyonthenet.com/", free: true },
+      { title: "Australian Curriculum – History", url: "https://www.australiancurriculum.edu.au/f-10-curriculum/humanities-and-social-sciences/history/", free: true },
+      { title: "World History Encyclopedia", url: "https://www.worldhistory.org/", description: "Free peer-reviewed articles on world history", free: true },
+      { title: "Verso Books – Free Essays", url: "https://www.versobooks.com/blogs", description: "Critical historical essays and commentary", free: true },
     ],
   },
 
@@ -309,35 +358,48 @@ const RESOURCES: SubjectResources[] = [
   {
     subjectId: "computing",
     pastPapers: [
-      // NSW
       { title: "NSW HSC Software Design & Development – NESA", url: "https://www.nsw.gov.au/education-and-training/nesa/curriculum/hsc-exam-papers?category=Software%20Design%20and%20Development", free: true, states: ["NSW"] },
       { title: "NSW HSC Information Processes & Technology – NESA", url: "https://www.nsw.gov.au/education-and-training/nesa/curriculum/hsc-exam-papers?category=Information%20Processes%20and%20Technology", free: true, states: ["NSW"] },
-      // VIC
+      { title: "NSW HSC Information and Digital Technology – NESA", url: "https://www.nsw.gov.au/education-and-training/nesa/curriculum/hsc-exam-papers?category=Information%20and%20Digital%20Technology", description: "Current syllabus from 2023", free: true, states: ["NSW"] },
       { title: "VCE Software Development – Past Exams (VCAA)", url: "https://www.vcaa.vic.edu.au/assessment/vce/examination-specifications-past-examinations-and-examination-reports/software-development", free: true, states: ["VIC"] },
-      // QLD
       { title: "QCAA Digital Solutions – Syllabus & Sample Papers", url: "https://www.qcaa.qld.edu.au/senior/senior-subjects/syllabuses/technologies/digital-solutions", free: true, states: ["QLD"] },
-      // WA
       { title: "WA ATAR Computer Science – Past Exams (SCSA)", url: "https://senior-secondary.scsa.wa.edu.au/further-resources/past-atar-course-exams/computer-science-past-atar-course-exams", free: true, states: ["WA"] },
-      // SA/NT
-      { title: "SACE Digital Technologies – External Assessment", url: "https://www.sace.sa.edu.au/web/digital-technologies/external-assessment", free: true, states: ["SA", "NT"] },
-      // TAS
+      { title: "SACE Digital Technologies – Past Exams", url: "https://www.sace.sa.edu.au/web/digital-technologies/external-assessment", free: true, states: ["SA", "NT"] },
       { title: "TASC Computing – Previous Exam Papers", url: "https://www.tasc.tas.gov.au/students/years-11-and-12/preparing-for-exams/previous-exam-papers/", free: true, states: ["TAS"] },
-      // ACT
-      { title: "BSSS Information Technology – ACT Senior Secondary", url: "https://www.bsss.act.edu.au/student_programs/courses/information_technology", free: true, states: ["ACT"] },
-      // Practice paper sites
-      { title: "THSC Online – Software Design Trial Papers (NSW)", url: "https://thsconline.github.io/s/yr12/Software%20Design%20and%20Development/", description: "School trial papers for SDD and IPT, free", free: true, states: ["NSW"] },
-      { title: "Physics & Maths Tutor – A-Level Computer Science", url: "https://www.physicsandmathstutor.com/computer-science-revision/", description: "Free topic questions covering algorithms, data structures, programming — aligns with Australian CS curriculum", free: true },
+      { title: "BSSS Information Technology – ACT", url: "https://www.bsss.act.edu.au/student_programs/courses/information_technology", free: true, states: ["ACT"] },
+      { title: "THSC Online – SDD & IPT Trial Papers", url: "https://thsconline.github.io/s/yr12/Software%20Design%20and%20Development/", free: true, states: ["NSW"] },
+      { title: "AceHSC – Computing Trial Papers", url: "https://www.acehsc.net/category/past-trial-papers/", free: true, states: ["NSW"] },
+      { title: "Physics & Maths Tutor – A-Level Computer Science", url: "https://www.physicsandmathstutor.com/computer-science-revision/", description: "Algorithms, data structures, programming questions", free: true },
       { title: "CS50 Problem Sets (Harvard)", url: "https://cs50.harvard.edu/x/2024/psets/", description: "Real coding problems from the world's most popular CS course", free: true },
-      { title: "Exercism – Practice Coding Challenges", url: "https://exercism.org/", description: "Free coding practice in 70+ languages with mentor feedback", free: true },
+      { title: "Exercism – Coding Challenges", url: "https://exercism.org/", description: "Free coding practice in 70+ languages", free: true },
+      { title: "LeetCode – Algorithm Practice", url: "https://leetcode.com/", description: "Coding problems from easy to hard", free: false },
+      { title: "HackerRank – Programming Challenges", url: "https://www.hackerrank.com/", description: "Free coding practice and competitions", free: true },
+      { title: "Cambridge IGCSE CS – Past Papers (GCE Guide)", url: "https://www.gcecompilation.com/", description: "A-Level and IGCSE CS papers with marking schemes", free: true },
+      { title: "AQA A-Level Computer Science Papers", url: "https://www.aqa.org.uk/subjects/computer-science-and-it/as-and-a-level/computer-science-7516-7517/assessment-resources", description: "A-Level CS papers closely aligned to Australian curriculum", free: true },
+      { title: "Edabit – Coding Challenges by Difficulty", url: "https://edabit.com/", description: "Free bite-sized coding challenges", free: true },
+      { title: "USACO – Competitive Programming Problems", url: "http://www.usaco.org/", description: "Challenge problems for advanced CS students", free: true },
     ],
     textbooks: [
-      { title: "CS50 – Harvard Intro to Computer Science", url: "https://cs50.harvard.edu/x/", description: "The world's most popular intro to CS course", free: true },
-      { title: "The Odin Project", url: "https://www.theodinproject.com/", description: "Complete free full-stack web development curriculum", free: true },
-      { title: "Automate the Boring Stuff with Python", url: "https://automatetheboringstuff.com/", description: "Free practical Python book", free: true },
+      { title: "CS50 – Harvard Intro to Computer Science", url: "https://cs50.harvard.edu/x/", description: "World's most popular intro CS course", free: true },
+      { title: "The Odin Project", url: "https://www.theodinproject.com/", description: "Full-stack web development curriculum", free: true },
+      { title: "Automate the Boring Stuff with Python", url: "https://automatetheboringstuff.com/", free: true },
       { title: "Python.org Official Tutorial", url: "https://docs.python.org/3/tutorial/", free: true },
       { title: "freeCodeCamp", url: "https://www.freecodecamp.org/", description: "Free certifications in web dev, Python, data science", free: true },
-      { title: "Eloquent JavaScript", url: "https://eloquentjavascript.net/", description: "Modern JavaScript programming book, free online", free: true },
-      { title: "Neso Academy – CS (YouTube)", url: "https://www.youtube.com/user/nesoacademy", description: "Computer science fundamentals videos", free: true },
+      { title: "Eloquent JavaScript", url: "https://eloquentjavascript.net/", free: true },
+      { title: "Think Python (free ebook)", url: "https://greenteapress.com/wp/think-python-2e/", free: true },
+      { title: "Introduction to Algorithms (MIT)", url: "https://mitpress.mit.edu/9780262046305/introduction-to-algorithms/", description: "Classic algorithms textbook", free: false },
+      { title: "Khan Academy – Computing", url: "https://www.khanacademy.org/computing", free: true },
+      { title: "Neso Academy – CS (YouTube)", url: "https://www.youtube.com/user/nesoacademy", free: true },
+      { title: "Fireship (YouTube)", url: "https://www.youtube.com/c/Fireship", description: "Fast, modern programming tutorials", free: true },
+      { title: "Traversy Media (YouTube)", url: "https://www.youtube.com/user/TechGuyWeb", description: "Practical web development tutorials", free: true },
+      { title: "MIT OCW – Introduction to CS", url: "https://ocw.mit.edu/courses/electrical-engineering-and-computer-science/6-0001-introduction-to-computer-science-and-programming-in-python-fall-2016/", free: true },
+      { title: "Structure and Interpretation of Computer Programs", url: "https://mitpress.mit.edu/9780262510875/", description: "Classic free textbook from MIT", free: true },
+      { title: "Codecademy – Python & Java", url: "https://www.codecademy.com/", description: "Interactive coding courses", free: false },
+      { title: "Replit – Code in Browser", url: "https://replit.com/", description: "Free online IDE for all languages", free: true },
+      { title: "Real Python – Python Tutorials", url: "https://realpython.com/", description: "In-depth Python tutorials", free: true },
+      { title: "GeeksforGeeks – CS Fundamentals", url: "https://www.geeksforgeeks.org/", description: "Data structures, algorithms, programming", free: true },
+      { title: "Computer Science Field Guide (NZ)", url: "https://www.csfieldguide.org.nz/", description: "Free CS theory guide for high school", free: true },
+      { title: "Stanford CS Education Library", url: "http://cslibrary.stanford.edu/", description: "Free documents on CS fundamentals", free: true },
     ],
   },
 
@@ -347,33 +409,48 @@ const RESOURCES: SubjectResources[] = [
   {
     subjectId: "economics",
     pastPapers: [
-      // NSW
-      { title: "NSW HSC Economics – NESA Exam Papers", url: "https://www.nsw.gov.au/education-and-training/nesa/curriculum/hsc-exam-resources?resource_types=Archive%2520HSC%2520exam%2520pack%2CHSC%2520exam%2520pack&category=HSIE", free: true, states: ["NSW"] },
-      // VIC
+      { title: "NSW HSC Economics – NESA Exam Papers", url: "https://www.nsw.gov.au/education-and-training/nesa/curriculum/hsc-exam-papers?category=Economics", free: true, states: ["NSW"] },
       { title: "VCE Economics – Past Exams (VCAA)", url: "https://www.vcaa.vic.edu.au/assessment/vce/examination-specifications-past-examinations-and-examination-reports/economics", free: true, states: ["VIC"] },
-      // QLD
       { title: "QCAA Economics – Syllabus & Sample Papers", url: "https://www.qcaa.qld.edu.au/senior/senior-subjects/syllabuses/humanities/economics", free: true, states: ["QLD"] },
-      // WA
       { title: "WA ATAR Economics – Past Exams (SCSA)", url: "https://senior-secondary.scsa.wa.edu.au/further-resources/past-atar-course-exams/economics-past-atar-course-exams", free: true, states: ["WA"] },
-      // SA/NT
       { title: "SACE Economics – Past Exams", url: "https://www.sace.sa.edu.au/web/economics/external-assessment", free: true, states: ["SA", "NT"] },
-      // TAS
       { title: "TASC Economics – Previous Exam Papers", url: "https://www.tasc.tas.gov.au/students/years-11-and-12/preparing-for-exams/previous-exam-papers/", free: true, states: ["TAS"] },
-      // ACT
       { title: "BSSS Economics – ACT Senior Secondary", url: "https://www.bsss.act.edu.au/student_programs/courses/economics", free: true, states: ["ACT"] },
-      // Practice paper sites
-      { title: "THSC Online – Economics Trial Papers (NSW)", url: "https://thsconline.github.io/s/yr12/Economics/", description: "School trial papers for HSC Economics, free", free: true, states: ["NSW"] },
-      { title: "Art of Smart – HSC Economics Papers & Guides", url: "https://artofsmart.com.au/learn/hsc-past-papers/", description: "Curated HSC Economics papers and study tips", free: true, states: ["NSW"] },
-      { title: "Physics & Maths Tutor – A-Level Economics Questions", url: "https://www.physicsandmathstutor.com/economics-revision/", description: "Free exam-style essay and multiple choice questions", free: true },
+      { title: "THSC Online – Economics Trial Papers", url: "https://thsconline.github.io/s/yr12/Economics/", free: true, states: ["NSW"] },
+      { title: "AceHSC – Economics Trial Papers", url: "https://www.acehsc.net/category/past-trial-papers/", free: true, states: ["NSW"] },
+      { title: "Art of Smart – HSC Economics Papers", url: "https://artofsmart.com.au/learn/hsc-past-papers/", free: true, states: ["NSW"] },
+      { title: "Matrix Education – HSC Economics Resources", url: "https://www.matrix.edu.au/hsc-solutions/", free: true, states: ["NSW"] },
+      { title: "Physics & Maths Tutor – A-Level Economics", url: "https://www.physicsandmathstutor.com/economics-revision/", description: "Free essay and MCQ practice", free: true },
+      { title: "Save My Exams – A-Level Economics", url: "https://www.savemyexams.com/a-level/economics/", free: false },
+      { title: "Tutor2u – Economics Revision", url: "https://www.tutor2u.net/economics", description: "Free notes, quizzes, and past paper practice", free: true },
+      { title: "Seneca Learning – Economics", url: "https://www.senecalearning.com/", description: "Free adaptive revision quizzes", free: true },
+      { title: "AQA A-Level Economics Papers", url: "https://www.aqa.org.uk/subjects/economics/as-and-a-level/economics-7135-7136/assessment-resources", description: "A-Level papers with mark schemes", free: true },
+      { title: "OECD Economic Outlook Reports", url: "https://www.oecd.org/economic-outlook/", description: "Free real-world economic data and analysis", free: true },
+      { title: "Reserve Bank of Australia – Education", url: "https://www.rba.gov.au/education/", description: "Monetary policy and inflation resources", free: true },
+      { title: "IB Economics – Revision Village", url: "https://www.revisionvillage.com/", free: false },
+      { title: "Quizlet – HSC Economics Flashcards", url: "https://quizlet.com/subject/hsc-economics/", description: "Community-made economics flashcard sets", free: true },
     ],
     textbooks: [
       { title: "OpenStax Principles of Economics 3e", url: "https://openstax.org/details/books/principles-economics-3e", free: true },
-      { title: "OpenStax Microeconomics", url: "https://openstax.org/details/books/principles-microeconomics-3e", free: true },
-      { title: "OpenStax Macroeconomics", url: "https://openstax.org/details/books/principles-macroeconomics-3e", free: true },
+      { title: "OpenStax Microeconomics 3e", url: "https://openstax.org/details/books/principles-microeconomics-3e", free: true },
+      { title: "OpenStax Macroeconomics 3e", url: "https://openstax.org/details/books/principles-macroeconomics-3e", free: true },
+      { title: "OpenStax International Economics", url: "https://openstax.org/details/books/principles-economics-3e", description: "Trade and global economics chapters", free: true },
       { title: "Khan Academy – Macroeconomics", url: "https://www.khanacademy.org/economics-finance-domain/macroeconomics", free: true },
       { title: "Khan Academy – Microeconomics", url: "https://www.khanacademy.org/economics-finance-domain/microeconomics", free: true },
       { title: "CrashCourse Economics (YouTube)", url: "https://www.youtube.com/playlist?list=PL1oDmcs0xTD-dJN1PL2N1urX0EKupBJkQ", free: true },
-      { title: "Reserve Bank of Australia – Education", url: "https://www.rba.gov.au/education/", description: "Monetary policy and inflation explanations", free: true },
+      { title: "Reserve Bank of Australia – Education", url: "https://www.rba.gov.au/education/", free: true },
+      { title: "Tutor2u – Economics Notes", url: "https://www.tutor2u.net/economics", free: true },
+      { title: "MRUniversity – Economics Videos", url: "https://mru.org/", description: "Free economics courses from George Mason University", free: true },
+      { title: "Econlib – Library of Economics and Liberty", url: "https://www.econlib.org/", description: "Free essays, encyclopedia, and textbooks", free: true },
+      { title: "The Economist – Free Articles", url: "https://www.economist.com/", description: "Some free articles on current economics", free: false },
+      { title: "Australian Bureau of Statistics – Education", url: "https://www.abs.gov.au/", description: "Real Australian economic data", free: true },
+      { title: "World Bank Open Data", url: "https://data.worldbank.org/", description: "Free global economic indicators", free: true },
+      { title: "IMF – World Economic Outlook", url: "https://www.imf.org/en/Publications/WEO", description: "Free global economic analysis", free: true },
+      { title: "Planet Money Podcast (NPR)", url: "https://www.npr.org/podcasts/510289/planet-money", description: "Accessible economics stories", free: true },
+      { title: "Freakonomics Podcast", url: "https://freakonomics.com/", free: true },
+      { title: "MIT OCW – Principles of Microeconomics", url: "https://ocw.mit.edu/courses/economics/", free: true },
+      { title: "edX – Economics Courses", url: "https://www.edx.org/learn/economics", description: "Free university economics courses", free: true },
+      { title: "CORE Economics Textbook", url: "https://www.core-econ.org/", description: "Free modern economics textbook used at top universities", free: true },
     ],
   },
 
@@ -383,31 +460,48 @@ const RESOURCES: SubjectResources[] = [
   {
     subjectId: "geography",
     pastPapers: [
-      // NSW
-      { title: "NSW HSC Geography – NESA Exam Papers", url: "https://www.nsw.gov.au/education-and-training/nesa/curriculum/hsc-exam-resources?resource_types=Archive%2520HSC%2520exam%2520pack%2CHSC%2520exam%2520pack&category=HSIE", free: true, states: ["NSW"] },
-      // VIC
+      { title: "NSW HSC Geography – NESA Exam Papers", url: "https://www.nsw.gov.au/education-and-training/nesa/curriculum/hsc-exam-papers?category=Geography", free: true, states: ["NSW"] },
       { title: "VCE Geography – Past Exams (VCAA)", url: "https://www.vcaa.vic.edu.au/assessment/vce/examination-specifications-past-examinations-and-examination-reports/geography", free: true, states: ["VIC"] },
-      // QLD
       { title: "QCAA Geography – Syllabus & Sample Papers", url: "https://www.qcaa.qld.edu.au/senior/senior-subjects/syllabuses/humanities/geography", free: true, states: ["QLD"] },
-      // WA
       { title: "WA ATAR Geography – Past Exams (SCSA)", url: "https://senior-secondary.scsa.wa.edu.au/further-resources/past-atar-course-exams/geography-past-atar-course-exams", free: true, states: ["WA"] },
-      // SA/NT
       { title: "SACE Geography – Past Exams", url: "https://www.sace.sa.edu.au/web/geography/external-assessment", free: true, states: ["SA", "NT"] },
-      // TAS
       { title: "TASC Geography – Previous Exam Papers", url: "https://www.tasc.tas.gov.au/students/years-11-and-12/preparing-for-exams/previous-exam-papers/", free: true, states: ["TAS"] },
-      // ACT
       { title: "BSSS Geography – ACT Senior Secondary", url: "https://www.bsss.act.edu.au/student_programs/courses/geography", free: true, states: ["ACT"] },
-      // Practice paper sites
-      { title: "THSC Online – Geography Trial Papers (NSW)", url: "https://thsconline.github.io/s/yr12/Geography/", description: "School trial papers for HSC Geography, free", free: true, states: ["NSW"] },
-      { title: "Art of Smart – HSC Geography Papers", url: "https://artofsmart.com.au/learn/hsc-past-papers/", description: "Curated HSC Geography papers and study tips", free: true, states: ["NSW"] },
-      { title: "Physics & Maths Tutor – A-Level Geography Questions", url: "https://www.physicsandmathstutor.com/geography-revision/", description: "Free exam-style questions on physical and human geography", free: true },
+      { title: "THSC Online – Geography Trial Papers", url: "https://thsconline.github.io/s/yr12/Geography/", free: true, states: ["NSW"] },
+      { title: "AceHSC – Geography Trial Papers", url: "https://www.acehsc.net/category/past-trial-papers/", free: true, states: ["NSW"] },
+      { title: "Art of Smart – HSC Geography Papers", url: "https://artofsmart.com.au/learn/hsc-past-papers/", free: true, states: ["NSW"] },
+      { title: "Physics & Maths Tutor – A-Level Geography", url: "https://www.physicsandmathstutor.com/geography-revision/", description: "Physical and human geography questions", free: true },
+      { title: "Save My Exams – A-Level Geography", url: "https://www.savemyexams.com/a-level/geography/", free: false },
+      { title: "Seneca Learning – Geography", url: "https://www.senecalearning.com/", free: true },
+      { title: "Tutor2u – Geography Revision", url: "https://www.tutor2u.net/geography", description: "Free notes and exam practice", free: true },
+      { title: "AQA A-Level Geography Papers", url: "https://www.aqa.org.uk/subjects/geography/as-and-a-level/geography-7036-7037/assessment-resources", description: "UK papers with mark schemes — content aligns well", free: true },
+      { title: "Geography All The Way – Case Studies", url: "https://geographyalltheway.com/", description: "Free structured case study notes", free: true },
+      { title: "Cool Geography – Revision Notes", url: "https://www.coolgeography.co.uk/", description: "Free human and physical geography notes", free: true },
+      { title: "GeographyFieldwork.com – Case Studies", url: "https://www.geographyfieldwork.com/", free: true },
+      { title: "USGS – Earth Science Topics", url: "https://www.usgs.gov/education", free: true },
+      { title: "Bureau of Meteorology – Climate Data", url: "http://www.bom.gov.au/climate/", description: "Australian climate data for case studies", free: true },
     ],
     textbooks: [
-      { title: "National Geographic Education", url: "https://education.nationalgeographic.org/", description: "Free maps, articles, and geography resources", free: true },
-      { title: "Geoscience Australia – Education", url: "https://www.ga.gov.au/education", description: "Australian geology and geography data", free: true },
-      { title: "Bureau of Meteorology – Climate Education", url: "http://www.bom.gov.au/climate/", description: "Australian climate and weather education", free: true },
+      { title: "National Geographic Education", url: "https://education.nationalgeographic.org/", free: true },
+      { title: "Geoscience Australia – Education", url: "https://www.ga.gov.au/education", free: true },
+      { title: "Bureau of Meteorology – Climate Education", url: "http://www.bom.gov.au/climate/", free: true },
       { title: "CrashCourse Geography (YouTube)", url: "https://www.youtube.com/playlist?list=PL8dPuuaLjXtO85HnzPmR8EDfxDsaJXPiK", free: true },
-      { title: "USGS – Earth Sciences Education", url: "https://www.usgs.gov/education", description: "Geological and geophysical data and explanations", free: true },
+      { title: "USGS – Earth Sciences", url: "https://www.usgs.gov/education", free: true },
+      { title: "Khan Academy – Earth and Space Science", url: "https://www.khanacademy.org/science/cosmology-and-astronomy", free: true },
+      { title: "OpenLearn – Geography (Open University)", url: "https://www.open.edu/openlearn/nature-environment/", free: true },
+      { title: "Tutor2u – Geography Notes", url: "https://www.tutor2u.net/geography", free: true },
+      { title: "Cool Geography", url: "https://www.coolgeography.co.uk/", free: true },
+      { title: "Geography All The Way", url: "https://geographyalltheway.com/", free: true },
+      { title: "Our World in Data", url: "https://ourworldindata.org/", description: "Free data visualisations on population, climate, economics", free: true },
+      { title: "UN Environment Programme – Resources", url: "https://www.unep.org/", description: "Free reports on environmental geography", free: true },
+      { title: "WorldMapper – Data Visualisations", url: "https://worldmapper.org/", description: "Maps that show global statistics visually", free: true },
+      { title: "NASA Earth Observatory", url: "https://earthobservatory.nasa.gov/", description: "Free satellite imagery and earth science articles", free: true },
+      { title: "Google Earth", url: "https://earth.google.com/", description: "Free 3D geography exploration tool", free: true },
+      { title: "IPCC – Climate Change Reports", url: "https://www.ipcc.ch/reports/", description: "Free official climate change assessment reports", free: true },
+      { title: "GeoGuessr (educational)", url: "https://www.geoguessr.com/", description: "Geography skills through map exploration", free: false },
+      { title: "LibreTexts – Earth Science", url: "https://earth.libretexts.org/", free: true },
+      { title: "Scootle – Australian Geography Resources", url: "https://www.scootle.edu.au/", description: "Australian curriculum-aligned digital resources", free: true },
+      { title: "Population Reference Bureau", url: "https://www.prb.org/", description: "Free population data and analysis for case studies", free: true },
     ],
   },
 
@@ -417,67 +511,99 @@ const RESOURCES: SubjectResources[] = [
   {
     subjectId: "business",
     pastPapers: [
-      // NSW
-      { title: "NSW HSC Business Studies – NESA Exam Papers", url: "https://www.nsw.gov.au/education-and-training/nesa/curriculum/hsc-exam-resources?resource_types=Archive%2520HSC%2520exam%2520pack%2CHSC%2520exam%2520pack&category=HSIE", free: true, states: ["NSW"] },
-      // VIC
+      { title: "NSW HSC Business Studies – NESA Exam Papers", url: "https://www.nsw.gov.au/education-and-training/nesa/curriculum/hsc-exam-papers?category=Business%20Studies", free: true, states: ["NSW"] },
       { title: "VCE Business Management – Past Exams (VCAA)", url: "https://www.vcaa.vic.edu.au/assessment/vce/examination-specifications-past-examinations-and-examination-reports/business-management", free: true, states: ["VIC"] },
-      // QLD
       { title: "QCAA Business – Syllabus & Sample Papers", url: "https://www.qcaa.qld.edu.au/senior/senior-subjects/syllabuses/business/business", free: true, states: ["QLD"] },
-      // WA
-      { title: "WA ATAR Business Management & Enterprise – Past Exams (SCSA)", url: "https://senior-secondary.scsa.wa.edu.au/further-resources/past-atar-course-exams/business-management-and-enterprise-past-atar-course-exams", free: true, states: ["WA"] },
-      // SA/NT
+      { title: "WA ATAR Business Management – Past Exams (SCSA)", url: "https://senior-secondary.scsa.wa.edu.au/further-resources/past-atar-course-exams/business-management-and-enterprise-past-atar-course-exams", free: true, states: ["WA"] },
       { title: "SACE Business & Enterprise – Past Exams", url: "https://www.sace.sa.edu.au/web/business-and-enterprise/external-assessment", free: true, states: ["SA", "NT"] },
-      // TAS
       { title: "TASC Business Studies – Previous Exam Papers", url: "https://www.tasc.tas.gov.au/students/years-11-and-12/preparing-for-exams/previous-exam-papers/", free: true, states: ["TAS"] },
-      // ACT
       { title: "BSSS Business – ACT Senior Secondary", url: "https://www.bsss.act.edu.au/student_programs/courses/business", free: true, states: ["ACT"] },
-      // Practice paper sites
-      { title: "THSC Online – Business Studies Trial Papers (NSW)", url: "https://thsconline.github.io/s/yr12/Business%20Studies/", description: "School trial papers for HSC Business Studies, free", free: true, states: ["NSW"] },
-      { title: "Art of Smart – HSC Business Studies Papers", url: "https://artofsmart.com.au/learn/hsc-past-papers/", description: "Curated HSC Business papers and study tips", free: true, states: ["NSW"] },
-      { title: "ACED VCE – Free Business Management Exams", url: "https://acedvce.com/free-practice-exams/", description: "Free previous-edition VCE Business Management practice exams", free: true, states: ["VIC"] },
+      { title: "THSC Online – Business Studies Trial Papers", url: "https://thsconline.github.io/s/yr12/Business%20Studies/", free: true, states: ["NSW"] },
+      { title: "AceHSC – Business Studies Trial Papers", url: "https://www.acehsc.net/category/past-trial-papers/", free: true, states: ["NSW"] },
+      { title: "Art of Smart – HSC Business Papers", url: "https://artofsmart.com.au/learn/hsc-past-papers/", free: true, states: ["NSW"] },
+      { title: "Matrix Education – Business Studies Resources", url: "https://www.matrix.edu.au/hsc-solutions/", free: true, states: ["NSW"] },
+      { title: "ACED VCE – Free Business Management Exams", url: "https://acedvce.com/free-practice-exams/", free: true, states: ["VIC"] },
+      { title: "Tutor2u – Business Revision", url: "https://www.tutor2u.net/business", description: "Free notes, quizzes, and exam practice", free: true },
+      { title: "Physics & Maths Tutor – A-Level Business", url: "https://www.physicsandmathstutor.com/business-studies-revision/", free: true },
+      { title: "Save My Exams – A-Level Business Studies", url: "https://www.savemyexams.com/a-level/business/", free: false },
+      { title: "Seneca Learning – Business", url: "https://www.senecalearning.com/", free: true },
+      { title: "AQA A-Level Business Papers", url: "https://www.aqa.org.uk/subjects/business/as-and-a-level/business-7131-7132/assessment-resources", description: "Papers with mark schemes", free: true },
+      { title: "Quizlet – HSC Business Studies", url: "https://quizlet.com/subject/hsc-business-studies/", description: "Community flashcard sets", free: true },
+      { title: "ASIC MoneySmart – Teaching Resources", url: "https://moneysmart.gov.au/teaching/", description: "Financial literacy resources", free: true },
+      { title: "Harvard Business Review – Free Articles", url: "https://hbr.org/", description: "Some free business case studies and articles", free: false },
     ],
     textbooks: [
       { title: "OpenStax Introduction to Business", url: "https://openstax.org/details/books/introduction-business", free: true },
       { title: "OpenStax Entrepreneurship", url: "https://openstax.org/details/books/entrepreneurship", free: true },
+      { title: "OpenStax Business Law I Essentials", url: "https://openstax.org/details/books/business-law-i-essentials", free: true },
+      { title: "OpenStax Principles of Management", url: "https://openstax.org/details/books/principles-management", free: true },
       { title: "Khan Academy – Finance & Markets", url: "https://www.khanacademy.org/economics-finance-domain/core-finance", free: true },
       { title: "CrashCourse Business (YouTube)", url: "https://www.youtube.com/playlist?list=PL8dPuuaLjXtMBsfHkuOBGZFBHlhCQDi2X", free: true },
-      { title: "ASIC MoneySmart – Teaching Resources", url: "https://moneysmart.gov.au/teaching/", description: "Australian government financial literacy resources", free: true },
+      { title: "ASIC MoneySmart", url: "https://moneysmart.gov.au/", description: "Australian financial literacy", free: true },
+      { title: "Tutor2u – Business Notes", url: "https://www.tutor2u.net/business", free: true },
+      { title: "Inc.com – Business Learning", url: "https://www.inc.com/", description: "Free articles on entrepreneurship and management", free: true },
+      { title: "MIT OCW – Sloan Management Courses", url: "https://ocw.mit.edu/courses/sloan-school-of-management/", description: "Free business and management course materials", free: true },
+      { title: "edX – Business Courses", url: "https://www.edx.org/learn/business-administration", description: "Free university business courses", free: true },
+      { title: "Coursera – Business Fundamentals", url: "https://www.coursera.org/", description: "Free audit available on many courses", free: false },
+      { title: "Australian Taxation Office – Business Education", url: "https://www.ato.gov.au/Business/", description: "Tax basics for business students", free: true },
+      { title: "ACCC – Consumer Law Education", url: "https://www.accc.gov.au/business/", description: "Australian competition and consumer law resources", free: true },
+      { title: "Business Insider – Case Studies", url: "https://www.businessinsider.com.au/", description: "Real business case studies and news", free: true },
+      { title: "Quizlet – Business Flashcards", url: "https://quizlet.com/subject/business/", free: true },
+      { title: "Brilliant.org – Logic and Business", url: "https://brilliant.org/", free: false },
+      { title: "IBIS World Industry Reports (free summaries)", url: "https://www.ibisworld.com/", description: "Industry snapshots for case study research", free: false },
+      { title: "Small Business Development Corporation", url: "https://www.smallbusiness.wa.gov.au/", description: "Real Australian business resources", free: true },
+      { title: "Business Dictionary Online", url: "https://www.businessdictionary.com/", description: "Free business terms reference", free: true },
     ],
   },
 
   // ─────────────────────────────────────────────────────────────────────────
-  // PDHPE / HEALTH & PHYSICAL EDUCATION
+  // PDHPE
   // ─────────────────────────────────────────────────────────────────────────
   {
     subjectId: "pdhpe",
     pastPapers: [
-      // NSW
-      { title: "NSW HSC PDHPE – NESA Exam Papers", url: "https://www.nsw.gov.au/education-and-training/nesa/curriculum/hsc-exam-resources?resource_types=Archive%2520HSC%2520exam%2520pack%2CHSC%2520exam%2520pack&category=PDHPE", free: true, states: ["NSW"] },
-      // VIC
+      { title: "NSW HSC PDHPE – NESA Exam Papers", url: "https://www.nsw.gov.au/education-and-training/nesa/curriculum/hsc-exam-papers?category=Personal%20Development%2C%20Health%20and%20Physical%20Education", free: true, states: ["NSW"] },
       { title: "VCE Health & Human Development – Past Exams (VCAA)", url: "https://www.vcaa.vic.edu.au/assessment/vce/examination-specifications-past-examinations-and-examination-reports/health-and-human-development", free: true, states: ["VIC"] },
       { title: "VCE Physical Education – Past Exams (VCAA)", url: "https://www.vcaa.vic.edu.au/assessment/vce/examination-specifications-past-examinations-and-examination-reports/physical-education", free: true, states: ["VIC"] },
-      // QLD
-      { title: "QCAA Physical Education – Syllabus & Sample Papers", url: "https://www.qcaa.qld.edu.au/senior/senior-subjects/syllabuses/health-pe/physical-education", free: true, states: ["QLD"] },
-      { title: "QCAA Health – Syllabus & Sample Papers", url: "https://www.qcaa.qld.edu.au/senior/senior-subjects/syllabuses/health-pe/health", free: true, states: ["QLD"] },
-      // WA
+      { title: "QCAA Physical Education – Syllabus & Samples", url: "https://www.qcaa.qld.edu.au/senior/senior-subjects/syllabuses/health-pe/physical-education", free: true, states: ["QLD"] },
+      { title: "QCAA Health – Syllabus & Samples", url: "https://www.qcaa.qld.edu.au/senior/senior-subjects/syllabuses/health-pe/health", free: true, states: ["QLD"] },
       { title: "WA ATAR Physical Education Studies – Past Exams (SCSA)", url: "https://senior-secondary.scsa.wa.edu.au/further-resources/past-atar-course-exams/physical-education-studies-past-atar-course-exams", free: true, states: ["WA"] },
-      // SA/NT
       { title: "SACE Health – Past Exams", url: "https://www.sace.sa.edu.au/web/health/external-assessment", free: true, states: ["SA", "NT"] },
-      // TAS
-      { title: "TASC Sport Science / Health – Previous Exam Papers", url: "https://www.tasc.tas.gov.au/students/years-11-and-12/preparing-for-exams/previous-exam-papers/", free: true, states: ["TAS"] },
-      // ACT
-      { title: "BSSS Physical Education – ACT Senior Secondary", url: "https://www.bsss.act.edu.au/student_programs/courses/physical_education", free: true, states: ["ACT"] },
-      // Practice paper sites
-      { title: "THSC Online – PDHPE Trial Papers (NSW)", url: "https://thsconline.github.io/s/yr12/Personal%20Development%2C%20Health%20and%20Physical%20Education/", description: "School trial papers for HSC PDHPE, free", free: true, states: ["NSW"] },
-      { title: "Art of Smart – HSC PDHPE Papers & Guides", url: "https://artofsmart.com.au/learn/hsc-past-papers/", description: "Curated HSC PDHPE papers and study tips", free: true, states: ["NSW"] },
-      { title: "ACED VCE – Free Physical Education Practice Exams", url: "https://acedvce.com/free-practice-exams/", description: "Free previous-edition VCE PE practice exams", free: true, states: ["VIC"] },
+      { title: "TASC Sport Science / Health – Previous Exams", url: "https://www.tasc.tas.gov.au/students/years-11-and-12/preparing-for-exams/previous-exam-papers/", free: true, states: ["TAS"] },
+      { title: "BSSS Physical Education – ACT", url: "https://www.bsss.act.edu.au/student_programs/courses/physical_education", free: true, states: ["ACT"] },
+      { title: "THSC Online – PDHPE Trial Papers", url: "https://thsconline.github.io/s/yr12/Personal%20Development%2C%20Health%20and%20Physical%20Education/", free: true, states: ["NSW"] },
+      { title: "AceHSC – PDHPE Trial Papers", url: "https://www.acehsc.net/category/past-trial-papers/", free: true, states: ["NSW"] },
+      { title: "Art of Smart – HSC PDHPE Papers", url: "https://artofsmart.com.au/learn/hsc-past-papers/", free: true, states: ["NSW"] },
+      { title: "ACED VCE – Free PE Practice Exams", url: "https://acedvce.com/free-practice-exams/", free: true, states: ["VIC"] },
+      { title: "Physics & Maths Tutor – A-Level PE Questions", url: "https://www.physicsandmathstutor.com/pe-revision/", free: true },
+      { title: "Save My Exams – A-Level PE", url: "https://www.savemyexams.com/a-level/pe/", free: false },
+      { title: "AQA A-Level PE Papers", url: "https://www.aqa.org.uk/subjects/physical-education/as-and-a-level/physical-education-7581-7582/assessment-resources", description: "Papers with mark schemes — closely aligned to HSC content", free: true },
+      { title: "Seneca Learning – PE Revision", url: "https://www.senecalearning.com/", free: true },
+      { title: "Tutor2u – PE Revision", url: "https://www.tutor2u.net/physical-education", free: true },
+      { title: "Khan Academy – Health & Medicine", url: "https://www.khanacademy.org/science/health-and-medicine", free: true },
+      { title: "Quizlet – HSC PDHPE Flashcards", url: "https://quizlet.com/subject/pdhpe/", free: true },
     ],
     textbooks: [
-      { title: "Better Health Channel", url: "https://www.betterhealth.vic.gov.au/", description: "Evidence-based health information", free: true },
       { title: "OpenStax Anatomy & Physiology 2e", url: "https://openstax.org/details/books/anatomy-and-physiology-2e", free: true },
       { title: "Khan Academy – Health & Medicine", url: "https://www.khanacademy.org/science/health-and-medicine", free: true },
-      { title: "Australian Institute of Sport – Resources", url: "https://www.ais.gov.au/", description: "Sport science and performance information", free: true },
-      { title: "Sport Australia", url: "https://www.sportaus.gov.au/", description: "Physical activity and sport information", free: true },
+      { title: "Better Health Channel", url: "https://www.betterhealth.vic.gov.au/", free: true },
+      { title: "Australian Institute of Sport", url: "https://www.ais.gov.au/", free: true },
+      { title: "Sport Australia", url: "https://www.sportaus.gov.au/", free: true },
+      { title: "CrashCourse Anatomy & Physiology (YouTube)", url: "https://www.youtube.com/playlist?list=PL8dPuuaLjXtOAKed_MxxWBNaPno5h3Zs8", free: true },
+      { title: "Visible Body – 3D Anatomy", url: "https://www.visiblebody.com/", free: false },
+      { title: "WHO – Health Data", url: "https://www.who.int/data", description: "Global health statistics for case studies", free: true },
+      { title: "Australian Institute of Health and Welfare", url: "https://www.aihw.gov.au/", description: "Australian health data and reports", free: true },
+      { title: "PubMed – Sports Science Research", url: "https://pubmed.ncbi.nlm.nih.gov/", description: "Free access to sports science journal articles", free: true },
+      { title: "Tutor2u – PE Notes", url: "https://www.tutor2u.net/physical-education", free: true },
+      { title: "BBC Sport – Sports Science", url: "https://www.bbc.com/sport/get-inspired/25748892", free: true },
+      { title: "Sports Dietitians Australia", url: "https://www.sportsdietitians.com.au/", description: "Nutrition for sport performance", free: true },
+      { title: "Exercise Right – Physical Activity Resources", url: "https://exerciseright.com.au/", free: true },
+      { title: "OpenStax Psychology 2e", url: "https://openstax.org/details/books/psychology-2e", description: "Sport psychology concepts", free: true },
+      { title: "ESSA – Exercise & Sports Science Australia", url: "https://www.essa.org.au/", free: true },
+      { title: "Active Healthy Kids Australia", url: "https://www.activehealthykidsaustralia.com/", free: true },
+      { title: "LibreTexts – Kinesiology", url: "https://kinesiology.libretexts.org/", description: "Free open-source kinesiology texts", free: true },
+      { title: "NCBI Bookshelf – Exercise Physiology", url: "https://www.ncbi.nlm.nih.gov/books/", free: true },
+      { title: "Physiopedia – Sports Medicine Topics", url: "https://www.physio-pedia.com/", description: "Free physiotherapy and sports medicine reference", free: true },
     ],
   },
 
@@ -487,32 +613,48 @@ const RESOURCES: SubjectResources[] = [
   {
     subjectId: "engineering",
     pastPapers: [
-      // NSW
-      { title: "NSW HSC Engineering Studies – NESA Exam Papers", url: "https://www.nsw.gov.au/education-and-training/nesa/curriculum/hsc-exam-resources?resource_types=Archive%2520HSC%2520exam%2520pack%2CHSC%2520exam%2520pack&category=Technological%2520and%2520Applied%2520Studies", free: true, states: ["NSW"] },
-      // VIC
+      { title: "NSW HSC Engineering Studies – NESA Exam Papers", url: "https://www.nsw.gov.au/education-and-training/nesa/curriculum/hsc-exam-papers?category=Engineering%20Studies", free: true, states: ["NSW"] },
       { title: "VCE Engineering & Technology – Past Exams (VCAA)", url: "https://www.vcaa.vic.edu.au/assessment/vce/examination-specifications-past-examinations-and-examination-reports/engineering-and-technology", free: true, states: ["VIC"] },
-      // QLD
       { title: "QCAA Engineering – Syllabus & Sample Papers", url: "https://www.qcaa.qld.edu.au/senior/senior-subjects/syllabuses/technologies/engineering", free: true, states: ["QLD"] },
-      // WA
       { title: "WA ATAR Engineering Science – Past Exams (SCSA)", url: "https://senior-secondary.scsa.wa.edu.au/further-resources/past-atar-course-exams/engineering-science-past-atar-course-exams", free: true, states: ["WA"] },
-      // SA/NT
       { title: "SACE Engineering – Past Exams", url: "https://www.sace.sa.edu.au/web/engineering/external-assessment", free: true, states: ["SA", "NT"] },
-      // TAS
       { title: "TASC Engineering – Previous Exam Papers", url: "https://www.tasc.tas.gov.au/students/years-11-and-12/preparing-for-exams/previous-exam-papers/", free: true, states: ["TAS"] },
-      // ACT
       { title: "BSSS Engineering – ACT Senior Secondary", url: "https://www.bsss.act.edu.au/student_programs/courses/engineering", free: true, states: ["ACT"] },
-      // Practice paper sites
-      { title: "THSC Online – Engineering Studies Trial Papers (NSW)", url: "https://thsconline.github.io/s/yr12/Engineering%20Studies/", description: "School trial papers for HSC Engineering Studies, free", free: true, states: ["NSW"] },
-      { title: "Physics & Maths Tutor – A-Level Physics (Engineering foundation)", url: "https://www.physicsandmathstutor.com/physics-revision/", description: "Free mechanics and electricity questions — core engineering content", free: true },
-      // University entrance tests
-      { title: "Engineering Admissions Test (EAT) – Cambridge", url: "https://www.undergraduate.study.cam.ac.uk/courses/engineering/admissions-assessments", description: "University entrance test with practice papers", free: true },
+      { title: "THSC Online – Engineering Studies Trial Papers", url: "https://thsconline.github.io/s/yr12/Engineering%20Studies/", free: true, states: ["NSW"] },
+      { title: "AceHSC – Engineering Trial Papers", url: "https://www.acehsc.net/category/past-trial-papers/", free: true, states: ["NSW"] },
+      { title: "Art of Smart – HSC Engineering Papers", url: "https://artofsmart.com.au/learn/hsc-past-papers/", free: true, states: ["NSW"] },
+      { title: "Physics & Maths Tutor – A-Level Physics (Engineering)", url: "https://www.physicsandmathstutor.com/physics-revision/", description: "Mechanics and electricity — core engineering content", free: true },
+      { title: "Isaac Physics – Engineering Problems", url: "https://isaacphysics.org/", description: "Free mechanics and thermodynamics problems", free: true },
+      { title: "Cambridge Engineering Admissions Test (EAT)", url: "https://www.undergraduate.study.cam.ac.uk/courses/engineering/admissions-assessments", description: "University entrance practice papers", free: true },
+      { title: "IMechE – Schools Engineering Challenge", url: "https://www.imeche.org/career-education-and-professional-development/education/schools/the-schools-challenge", description: "Design challenges and practice problems", free: true },
+      { title: "Engineers Australia – Education Resources", url: "https://www.engineersaustralia.org.au/education", free: true },
+      { title: "NCEES – Engineering Fundamentals (FE) Practice", url: "https://ncees.org/exams/fe-exam/", description: "First Year Engineering exam practice", free: false },
+      { title: "Engineering Council UK – Past Papers", url: "https://www.engc.org.uk/", description: "Professional engineering exam samples", free: true },
+      { title: "Statics & Dynamics Practice – MIT OCW", url: "https://ocw.mit.edu/courses/2-001-mechanics-materials-i-fall-2006/", description: "Free problem sets from MIT Mechanics", free: true },
+      { title: "Khan Academy – Electrical Engineering", url: "https://www.khanacademy.org/science/electrical-engineering", free: true },
+      { title: "Khan Academy – AP Physics (Mechanics)", url: "https://www.khanacademy.org/science/ap-physics-1", description: "Free mechanics practice aligned to engineering", free: true },
     ],
     textbooks: [
-      { title: "OpenStax University Physics Vol 1 (Mechanics)", url: "https://openstax.org/details/books/university-physics-volume-1", description: "Engineering mechanics foundation", free: true },
-      { title: "MIT OCW – Engineering Mechanics", url: "https://ocw.mit.edu/courses/", description: "Free university engineering mechanics", free: true },
+      { title: "OpenStax University Physics Vol 1 (Mechanics)", url: "https://openstax.org/details/books/university-physics-volume-1", free: true },
+      { title: "OpenStax University Physics Vol 2 (E&M)", url: "https://openstax.org/details/books/university-physics-volume-2", free: true },
+      { title: "MIT OCW – Engineering Mechanics", url: "https://ocw.mit.edu/courses/civil-and-environmental-engineering/", free: true },
       { title: "The Engineering Toolbox", url: "https://www.engineeringtoolbox.com/", description: "Free engineering data and calculators", free: true },
       { title: "CrashCourse Engineering (YouTube)", url: "https://www.youtube.com/playlist?list=PL8dPuuaLjXtO4A_tL6DLZRotxEb114cMR", free: true },
-      { title: "Engineers Without Borders Australia", url: "https://www.ewb.org.au/", description: "Engineering in real-world contexts", free: true },
+      { title: "Engineers Without Borders Australia", url: "https://www.ewb.org.au/", free: true },
+      { title: "Khan Academy – Electrical Engineering", url: "https://www.khanacademy.org/science/electrical-engineering", free: true },
+      { title: "HyperPhysics – Mechanics & Thermodynamics", url: "http://hyperphysics.phy-astr.gsu.edu/hbase/hframe.html", free: true },
+      { title: "3Blue1Brown – Essence of Linear Algebra (YouTube)", url: "https://www.youtube.com/playlist?list=PLZHQObOWTQDPD3MizzM2xVFitgF8hE_ab", free: true },
+      { title: "Real Engineering (YouTube)", url: "https://www.youtube.com/c/RealEngineering", description: "How real-world engineering works", free: true },
+      { title: "Practical Engineering (YouTube)", url: "https://www.youtube.com/user/gradyhillhouse", description: "Civil engineering explanations with models", free: true },
+      { title: "OpenStax Calculus Vol 1", url: "https://openstax.org/details/books/calculus-volume-1", description: "Mathematical foundation for engineering", free: true },
+      { title: "Engineering Explained (YouTube)", url: "https://www.youtube.com/user/EngineeringExplained", free: true },
+      { title: "LibreTexts – Engineering", url: "https://eng.libretexts.org/", description: "Free open-source engineering texts", free: true },
+      { title: "Wolfram Engineering Resources", url: "https://www.wolframalpha.com/", description: "Free computation and formula lookups", free: true },
+      { title: "SciPy Lectures – Scientific Python", url: "https://scipy-lectures.org/", description: "Free Python for engineering computation", free: true },
+      { title: "NASA Technical Reports Server", url: "https://ntrs.nasa.gov/", description: "Free aerospace and engineering research", free: true },
+      { title: "edX – Engineering Courses", url: "https://www.edx.org/learn/engineering", description: "Free university engineering courses", free: true },
+      { title: "Autodesk Fusion 360 – Free for Students", url: "https://www.autodesk.com/education/edu-software/overview", description: "Free CAD software for engineering design", free: true },
+      { title: "Tinkercad – Free Circuit and 3D Design", url: "https://www.tinkercad.com/", description: "Free online CAD and circuit simulation", free: true },
     ],
   },
 
@@ -522,28 +664,48 @@ const RESOURCES: SubjectResources[] = [
   {
     subjectId: "medicine",
     pastPapers: [
-      // University entrance tests (all states, yr 12+)
       { title: "UCAT ANZ – Official Practice Tests", url: "https://www.ucat.edu.au/ucat-anz/practice-tests/", description: "Official free UCAT ANZ practice materials", free: true },
-      { title: "BMAT Past Papers", url: "https://www.admissionstesting.org/for-test-takers/bmat/preparing-for-bmat/", description: "BioMedical Admissions Test free past papers", free: true },
-      { title: "MedEntry UCAT Practice", url: "https://www.medentry.edu.au/ucat-prep/free-trial", description: "Leading Aus UCAT prep — free trial materials available", free: false },
-      { title: "Save My Exams – A-Level Biology (pre-med content)", url: "https://www.savemyexams.com/a-level/biology/", description: "Detailed topic questions on cell biology, genetics, physiology", free: false },
-      // NSW — HSC Biology and Chemistry as foundation
-      { title: "NSW HSC Biology – NESA Exam Papers", url: "https://www.nsw.gov.au/education-and-training/nesa/curriculum/hsc-exam-papers?category=Biology", description: "Core HSC biology", free: true, states: ["NSW"] },
-      { title: "NSW HSC Chemistry – NESA Exam Papers", url: "https://www.nsw.gov.au/education-and-training/nesa/curriculum/hsc-exam-papers?category=Chemistry", description: "Core HSC chemistry", free: true, states: ["NSW"] },
-      // VIC
+      { title: "BMAT Past Papers", url: "https://www.admissionstesting.org/for-test-takers/bmat/preparing-for-bmat/", description: "BioMedical Admissions Test past papers", free: true },
+      { title: "MedEntry UCAT Practice", url: "https://www.medentry.edu.au/ucat-prep/free-trial", description: "Leading Australian UCAT prep — free trial available", free: false },
+      { title: "UCAT Ninja – Free Practice", url: "https://www.ucat.ninja/", description: "Free UCAT practice questions and mocks", free: true },
+      { title: "Medify UCAT Practice", url: "https://www.medify.co.uk/", description: "Popular UCAT practice platform", free: false },
+      { title: "NSW HSC Biology – NESA Exam Papers", url: "https://www.nsw.gov.au/education-and-training/nesa/curriculum/hsc-exam-papers?category=Biology", description: "Core pre-med biology", free: true, states: ["NSW"] },
+      { title: "NSW HSC Chemistry – NESA Exam Papers", url: "https://www.nsw.gov.au/education-and-training/nesa/curriculum/hsc-exam-papers?category=Chemistry", description: "Core pre-med chemistry", free: true, states: ["NSW"] },
       { title: "VCE Biology – Past Exams (VCAA)", url: "https://www.vcaa.vic.edu.au/assessment/vce/examination-specifications-past-examinations-and-examination-reports/biology", free: true, states: ["VIC"] },
       { title: "VCE Chemistry – Past Exams (VCAA)", url: "https://www.vcaa.vic.edu.au/assessment/vce/examination-specifications-past-examinations-and-examination-reports/chemistry", free: true, states: ["VIC"] },
-      // WA
       { title: "WA ATAR Biology – Past Exams (SCSA)", url: "https://senior-secondary.scsa.wa.edu.au/further-resources/past-atar-course-exams/biology-past-atar-course-exams", free: true, states: ["WA"] },
       { title: "WA ATAR Chemistry – Past Exams (SCSA)", url: "https://senior-secondary.scsa.wa.edu.au/further-resources/past-atar-course-exams/chemistry-past-atar-course-exams", free: true, states: ["WA"] },
+      { title: "Save My Exams – A-Level Biology", url: "https://www.savemyexams.com/a-level/biology/", description: "Cell biology, genetics, physiology questions", free: false },
+      { title: "Save My Exams – A-Level Chemistry", url: "https://www.savemyexams.com/a-level/chemistry/", description: "Organic and biochemistry questions", free: false },
+      { title: "Australian Science Olympiad – Biology Papers", url: "https://www.aso.edu.au/", free: true },
+      { title: "GAMSAT Practice Questions – ACER", url: "https://gamsat.acer.org/preparation/", description: "Official GAMSAT sample questions", free: true },
+      { title: "Khan Academy – MCAT Biology Practice", url: "https://www.khanacademy.org/test-prep/mcat", description: "Comprehensive pre-med practice questions — aligns closely with GAMSAT", free: true },
+      { title: "Osmosis – Pre-Med Quizzes", url: "https://www.osmosis.org/", description: "Free quiz questions on anatomy, physiology, pathology", free: false },
+      { title: "Sketchy – Medical Mnemonics", url: "https://sketchy.com/", description: "Visual medical science learning", free: false },
+      { title: "Passmedicine – GAMSAT Practice", url: "https://www.passmedicine.com/", description: "Medical science question bank", free: false },
+      { title: "Ninja Nerd Science (YouTube)", url: "https://www.youtube.com/c/NinjaNerdScience", description: "Detailed anatomy, physiology and pharmacology questions", free: true },
     ],
     textbooks: [
       { title: "OpenStax Anatomy & Physiology 2e", url: "https://openstax.org/details/books/anatomy-and-physiology-2e", free: true },
       { title: "OpenStax Biology 2e", url: "https://openstax.org/details/books/biology-2e", free: true },
       { title: "OpenStax Chemistry 2e", url: "https://openstax.org/details/books/chemistry-2e", free: true },
-      { title: "Khan Academy – Health & Medicine", url: "https://www.khanacademy.org/science/health-and-medicine", free: true },
+      { title: "OpenStax Microbiology", url: "https://openstax.org/details/books/microbiology", free: true },
+      { title: "Khan Academy – MCAT Prep", url: "https://www.khanacademy.org/test-prep/mcat", description: "Biology, chemistry, physics, and psychology", free: true },
       { title: "Medscape – Medical Reference", url: "https://reference.medscape.com/", description: "Free clinical reference tool", free: true },
-      { title: "NCBI Bookshelf – Medical Texts", url: "https://www.ncbi.nlm.nih.gov/books/", description: "Free online medical textbooks", free: true },
+      { title: "NCBI Bookshelf – Medical Texts", url: "https://www.ncbi.nlm.nih.gov/books/", description: "Free online medical and science textbooks", free: true },
+      { title: "Ninja Nerd Science (YouTube)", url: "https://www.youtube.com/c/NinjaNerdScience", free: true },
+      { title: "Armando Hasudungan (YouTube)", url: "https://www.youtube.com/user/armandohasudungan", description: "Detailed biological and medical science illustrations", free: true },
+      { title: "Osmosis (YouTube)", url: "https://www.youtube.com/c/osmosis", description: "Animated disease and anatomy explanations", free: true },
+      { title: "Amoeba Sisters (YouTube)", url: "https://www.youtube.com/user/AmoebaSisters", free: true },
+      { title: "Zero to Finals – Clinical Notes", url: "https://zerotofinals.com/", description: "Free medical notes for early clinical concepts", free: true },
+      { title: "Teach Me Anatomy", url: "https://teachmeanatomy.info/", description: "Free detailed anatomy notes", free: true },
+      { title: "Teach Me Physiology", url: "https://teachmephysiology.com/", description: "Free physiology notes with diagrams", free: true },
+      { title: "Visible Body – 3D Anatomy", url: "https://www.visiblebody.com/", free: false },
+      { title: "Kenhub – Anatomy Learning", url: "https://www.kenhub.com/", description: "Anatomy quizzes and atlas", free: false },
+      { title: "Acland's Atlas of Human Anatomy (free)", url: "https://aclandanatomy.com/", description: "Free video anatomy dissections", free: true },
+      { title: "LibreTexts – Medicine & Anatomy", url: "https://med.libretexts.org/", free: true },
+      { title: "HHMI Biointeractive – Medical Biology", url: "https://www.biointeractive.org/", free: true },
+      { title: "Amboss – Pre-Med Question Bank", url: "https://www.amboss.com/", description: "Detailed medical science question bank", free: false },
     ],
   },
 
@@ -553,31 +715,48 @@ const RESOURCES: SubjectResources[] = [
   {
     subjectId: "commerce",
     pastPapers: [
-      // NSW
       { title: "NSW HSC Commerce – NESA Exam Papers", url: "https://www.nsw.gov.au/education-and-training/nesa/curriculum/hsc-exam-papers?category=Commerce", free: true, states: ["NSW"] },
-      // VIC
       { title: "VCE Accounting – Past Exams (VCAA)", url: "https://www.vcaa.vic.edu.au/assessment/vce/examination-specifications-past-examinations-and-examination-reports/accounting", free: true, states: ["VIC"] },
-      // QLD
       { title: "QCAA Accounting – Syllabus & Sample Papers", url: "https://www.qcaa.qld.edu.au/senior/senior-subjects/syllabuses/business/accounting", free: true, states: ["QLD"] },
-      // WA
       { title: "WA ATAR Accounting & Finance – Past Exams (SCSA)", url: "https://senior-secondary.scsa.wa.edu.au/further-resources/past-atar-course-exams/accounting-and-finance-past-atar-course-exams", free: true, states: ["WA"] },
-      // SA/NT
       { title: "SACE Accounting – Past Exams", url: "https://www.sace.sa.edu.au/web/accounting/external-assessment", free: true, states: ["SA", "NT"] },
-      // TAS
       { title: "TASC Accounting – Previous Exam Papers", url: "https://www.tasc.tas.gov.au/students/years-11-and-12/preparing-for-exams/previous-exam-papers/", free: true, states: ["TAS"] },
-      // ACT
       { title: "BSSS Accounting – ACT Senior Secondary", url: "https://www.bsss.act.edu.au/student_programs/courses/accounting", free: true, states: ["ACT"] },
-      // Practice paper sites
-      { title: "THSC Online – Commerce Trial Papers (NSW)", url: "https://thsconline.github.io/s/yr12/Commerce/", description: "School trial papers for HSC Commerce, free", free: true, states: ["NSW"] },
-      { title: "Art of Smart – HSC Commerce Papers & Guides", url: "https://artofsmart.com.au/learn/hsc-past-papers/", description: "Curated HSC Commerce papers and study tips", free: true, states: ["NSW"] },
-      { title: "ACED VCE – Free Accounting Practice Exams", url: "https://acedvce.com/free-practice-exams/", description: "Free previous-edition VCE Accounting practice exams", free: true, states: ["VIC"] },
+      { title: "THSC Online – Commerce Trial Papers", url: "https://thsconline.github.io/s/yr12/Commerce/", free: true, states: ["NSW"] },
+      { title: "AceHSC – Commerce Trial Papers", url: "https://www.acehsc.net/category/past-trial-papers/", free: true, states: ["NSW"] },
+      { title: "Art of Smart – HSC Commerce Papers", url: "https://artofsmart.com.au/learn/hsc-past-papers/", free: true, states: ["NSW"] },
+      { title: "ACED VCE – Free Accounting Practice Exams", url: "https://acedvce.com/free-practice-exams/", free: true, states: ["VIC"] },
+      { title: "Physics & Maths Tutor – A-Level Accounting", url: "https://www.physicsandmathstutor.com/accounting-revision/", free: true },
+      { title: "Save My Exams – A-Level Accounting", url: "https://www.savemyexams.com/a-level/accounting/", free: false },
+      { title: "AQA A-Level Accounting Papers", url: "https://www.aqa.org.uk/subjects/accounting/as-and-a-level/accounting-7126-7127/assessment-resources", description: "Papers with mark schemes", free: true },
+      { title: "Tutor2u – Accounting Revision", url: "https://www.tutor2u.net/accounting", description: "Free notes, quizzes, and practice questions", free: true },
+      { title: "Seneca Learning – Accounting", url: "https://www.senecalearning.com/", free: true },
+      { title: "ICAA – Past Exam Practice (CA Program)", url: "https://www.charteredaccountantsanz.com/", description: "Professional accounting exam materials", free: false },
+      { title: "Quizlet – HSC Commerce Flashcards", url: "https://quizlet.com/subject/hsc-commerce/", free: true },
+      { title: "Khan Academy – Accounting and Financial Statements", url: "https://www.khanacademy.org/economics-finance-domain/core-finance/accounting-and-financial-stateme", free: true },
+      { title: "AccountingCoach – Free Practice Quizzes", url: "https://www.accountingcoach.com/", description: "Free quizzes on all accounting topics", free: true },
     ],
     textbooks: [
       { title: "OpenStax Financial Accounting", url: "https://openstax.org/details/books/principles-financial-accounting", free: true },
       { title: "OpenStax Managerial Accounting", url: "https://openstax.org/details/books/principles-managerial-accounting", free: true },
-      { title: "ASIC MoneySmart", url: "https://moneysmart.gov.au/", description: "Australian government financial literacy", free: true },
-      { title: "Khan Academy – Finance", url: "https://www.khanacademy.org/economics-finance-domain/core-finance", free: true },
-      { title: "Australian Tax Office – Tax Education", url: "https://www.ato.gov.au/", description: "Tax basics and regulations", free: true },
+      { title: "OpenStax Business Law I Essentials", url: "https://openstax.org/details/books/business-law-i-essentials", free: true },
+      { title: "Khan Academy – Finance & Accounting", url: "https://www.khanacademy.org/economics-finance-domain/core-finance", free: true },
+      { title: "ASIC MoneySmart", url: "https://moneysmart.gov.au/", free: true },
+      { title: "Australian Tax Office – Tax Education", url: "https://www.ato.gov.au/", free: true },
+      { title: "AccountingCoach", url: "https://www.accountingcoach.com/", description: "Free lessons on all accounting fundamentals", free: true },
+      { title: "Tutor2u – Accounting Notes", url: "https://www.tutor2u.net/accounting", free: true },
+      { title: "CrashCourse Economics (YouTube)", url: "https://www.youtube.com/playlist?list=PL1oDmcs0xTD-dJN1PL2N1urX0EKupBJkQ", free: true },
+      { title: "Accounting Stuff (YouTube)", url: "https://www.youtube.com/c/AccountingStuff", description: "Clear double-entry and financial statements tutorials", free: true },
+      { title: "MIT OCW – Financial Accounting", url: "https://ocw.mit.edu/courses/sloan-school-of-management/15-501-introduction-to-financial-and-managerial-accounting-spring-2004/", free: true },
+      { title: "CORE Finance Textbook", url: "https://www.core-econ.org/", description: "Free economics and finance text used at universities", free: true },
+      { title: "edX – Accounting Courses", url: "https://www.edx.org/learn/accounting", description: "Free audit available on many courses", free: true },
+      { title: "LibreTexts – Business & Accounting", url: "https://biz.libretexts.org/", free: true },
+      { title: "CPA Australia – Student Resources", url: "https://www.cpaaustralia.com.au/", description: "Professional accounting body resources", free: true },
+      { title: "ASIC – Financial Reports Database", url: "https://www.asic.gov.au/", description: "Real company reports for case studies", free: true },
+      { title: "Investopedia – Accounting Terms", url: "https://www.investopedia.com/accounting-4427738", description: "Free reference for financial terms", free: true },
+      { title: "Quizlet – Accounting Flashcards", url: "https://quizlet.com/subject/accounting/", free: true },
+      { title: "Principles of Accounting (free textbook)", url: "https://www.principlesofaccounting.com/", description: "Free comprehensive online accounting textbook", free: true },
+      { title: "MyAccountingCourse – Lessons & Quizzes", url: "https://www.myaccountingcourse.com/", description: "Free financial accounting lessons", free: true },
     ],
   },
 
@@ -587,36 +766,48 @@ const RESOURCES: SubjectResources[] = [
   {
     subjectId: "languages",
     pastPapers: [
-      // NSW
-      { title: "NSW HSC Languages – NESA Exam Papers", url: "https://www.nsw.gov.au/education-and-training/nesa/curriculum/hsc-exam-resources?resource_types=Archive%2520HSC%2520exam%2520pack%2CHSC%2520exam%2520pack&category=Languages", description: "French, Japanese, Chinese, Spanish, German, Italian, Korean, Arabic, and more", free: true, states: ["NSW"] },
-      // VIC
+      { title: "NSW HSC Languages – NESA Exam Papers", url: "https://www.nsw.gov.au/education-and-training/nesa/curriculum/hsc-exam-papers?category=Languages", description: "French, Japanese, Chinese, Spanish, German, Italian, Korean, Arabic, and more", free: true, states: ["NSW"] },
       { title: "VCE Languages – Past Exams (VCAA)", url: "https://www.vcaa.vic.edu.au/assessment/vce/examination-specifications-past-examinations-and-examination-reports/languages", description: "All VCE language subjects", free: true, states: ["VIC"] },
-      // QLD
       { title: "QCAA Languages – Syllabuses & Sample Papers", url: "https://www.qcaa.qld.edu.au/senior/senior-subjects/syllabuses/languages", free: true, states: ["QLD"] },
-      // WA
-      { title: "WA ATAR Languages – Past Exams (SCSA)", url: "https://senior-secondary.scsa.wa.edu.au/further-resources/past-atar-course-exams", description: "Browse by language from the SCSA list", free: true, states: ["WA"] },
-      // SA/NT
-      { title: "SACE Languages – Past Exams", url: "https://www.sace.sa.edu.au/studying/subjects/languages", description: "SACE language subject external assessments", free: true, states: ["SA", "NT"] },
-      // TAS
-      { title: "TASC Languages – Previous Exam Papers", url: "https://www.tasc.tas.gov.au/students/years-11-and-12/preparing-for-exams/previous-exam-papers/", description: "Includes Italian, Japanese, French and more", free: true, states: ["TAS"] },
-      // ACT
+      { title: "WA ATAR Languages – Past Exams (SCSA)", url: "https://senior-secondary.scsa.wa.edu.au/further-resources/past-atar-course-exams", free: true, states: ["WA"] },
+      { title: "SACE Languages – Past Exams", url: "https://www.sace.sa.edu.au/studying/subjects/languages", free: true, states: ["SA", "NT"] },
+      { title: "TASC Languages – Previous Exam Papers", url: "https://www.tasc.tas.gov.au/students/years-11-and-12/preparing-for-exams/previous-exam-papers/", free: true, states: ["TAS"] },
       { title: "BSSS Languages – ACT Senior Secondary", url: "https://www.bsss.act.edu.au/student_programs/courses/languages", free: true, states: ["ACT"] },
-      // Practice paper sites
-      { title: "THSC Online – Languages Trial Papers (NSW)", url: "https://thsconline.github.io/s/yr12/Languages/", description: "School trial papers for HSC language subjects, free", free: true, states: ["NSW"] },
-      // International proficiency tests (all states)
+      { title: "THSC Online – Languages Trial Papers", url: "https://thsconline.github.io/s/yr12/Languages/", free: true, states: ["NSW"] },
+      { title: "AceHSC – Languages Trial Papers", url: "https://www.acehsc.net/category/past-trial-papers/", free: true, states: ["NSW"] },
       { title: "JLPT Sample Questions (Japanese)", url: "https://www.jlpt.jp/e/samples/sampleindex.html", description: "Official Japanese Language Proficiency Test samples", free: true },
       { title: "DELF Sample Papers (French)", url: "https://www.france-education-international.fr/diplome/delf-dalf", description: "Official French proficiency test samples", free: true },
       { title: "Goethe-Institut Practice Tests (German)", url: "https://www.goethe.de/en/spr/kup/ueb.html", description: "Official German language test samples", free: true },
       { title: "Instituto Cervantes – Spanish DELE Samples", url: "https://examenes.cervantes.es/es/dele/preparacion", description: "Official Spanish DELE practice materials", free: true },
+      { title: "HSK Sample Tests (Chinese Mandarin)", url: "https://www.chinesetest.cn/gosampletest.do", description: "Official Chinese proficiency test samples", free: true },
+      { title: "Physics & Maths Tutor – A-Level French Papers", url: "https://www.physicsandmathstutor.com/french-revision/", description: "A-Level French listening, reading, and writing", free: true },
+      { title: "Physics & Maths Tutor – A-Level German Papers", url: "https://www.physicsandmathstutor.com/german-revision/", free: true },
+      { title: "Physics & Maths Tutor – A-Level Spanish Papers", url: "https://www.physicsandmathstutor.com/spanish-revision/", free: true },
+      { title: "Past Papers – IB Language B (Revision Village)", url: "https://www.revisionvillage.com/", description: "IB language papers for extra practice", free: false },
+      { title: "Alliance Française – French Language Tests", url: "https://www.alliancefrancaise.com.au/", description: "French practice tests from Australia's main French institute", free: false },
+      { title: "Japan Foundation – Japanese Proficiency Resources", url: "https://jpf.org.au/", description: "Free Japanese language learning resources and practice", free: true },
     ],
     textbooks: [
-      { title: "Duolingo", url: "https://www.duolingo.com/", description: "Free gamified language learning, 40+ languages", free: true },
-      { title: "BBC Learning English", url: "https://www.bbc.co.uk/learningenglish/", description: "English and other languages free courses", free: true },
+      { title: "Duolingo", url: "https://www.duolingo.com/", description: "Gamified language learning — 40+ languages", free: true },
+      { title: "BBC Learning English", url: "https://www.bbc.co.uk/learningenglish/", free: true },
       { title: "Lingolia – Grammar & Exercises", url: "https://www.lingolia.com/en/", description: "Free French, German, Spanish, Italian grammar", free: true },
-      { title: "Anki – Flashcard App", url: "https://apps.ankiweb.net/", description: "Free spaced-repetition vocabulary app", free: true },
-      { title: "Forvo – Pronunciation Dictionary", url: "https://forvo.com/", description: "Free native speaker pronunciations", free: true },
-      { title: "Language Transfer – Free Audio", url: "https://www.languagetransfer.org/", description: "Free audio-based language courses", free: true },
-      { title: "NHK World Japanese Lessons", url: "https://www3.nhk.or.jp/nhkworld/en/learnjapanese/", description: "Free Japanese from Japan's broadcaster", free: true },
+      { title: "Anki – Spaced Repetition Flashcards", url: "https://apps.ankiweb.net/", description: "Free vocabulary app used by language learners worldwide", free: true },
+      { title: "Forvo – Pronunciation Dictionary", url: "https://forvo.com/", description: "Native speaker pronunciations for any word", free: true },
+      { title: "Language Transfer – Free Audio Courses", url: "https://www.languagetransfer.org/", description: "Free Thinking Method audio courses for French, Spanish, Arabic, German, Swahili", free: true },
+      { title: "NHK World – Japanese Lessons", url: "https://www3.nhk.or.jp/nhkworld/en/learnjapanese/", description: "Free Japanese from Japan's national broadcaster", free: true },
+      { title: "Clozemaster – Grammar in Context", url: "https://www.clozemaster.com/", description: "Free fill-in-the-blank sentences for vocabulary in context", free: true },
+      { title: "Memrise", url: "https://www.memrise.com/", description: "Vocabulary building with native video clips", free: false },
+      { title: "Italki – Conversation Practice", url: "https://www.italki.com/", description: "Find language exchange partners and tutors", free: false },
+      { title: "Tandem – Language Exchange App", url: "https://www.tandem.net/", description: "Free language exchange with native speakers", free: true },
+      { title: "TV5Monde – French Media Resources", url: "https://apprendre.tv5monde.com/", description: "Free French language learning from French TV", free: true },
+      { title: "Deutsche Welle – German Courses", url: "https://www.dw.com/en/learn-german/s-2469", description: "Free German from Germany's international broadcaster", free: true },
+      { title: "Instituto Cervantes – Spanish Library", url: "https://www.cervantes.es/default.htm", description: "Free Spanish language resources", free: true },
+      { title: "FluentU – Language Learning with Videos", url: "https://www.fluentu.com/", description: "Learn from real-world video content", free: false },
+      { title: "Linguee – Context Dictionary", url: "https://www.linguee.com/", description: "Free bilingual dictionary with real usage examples", free: true },
+      { title: "WordReference – Dictionary & Forums", url: "https://www.wordreference.com/", description: "Free multilingual dictionary and native speaker forums", free: true },
+      { title: "Tatoeba – Example Sentences", url: "https://tatoeba.org/", description: "Free database of translated sentences", free: true },
+      { title: "Lang-8 / HiNative – Writing Correction", url: "https://hinative.com/", description: "Get your writing corrected by native speakers", free: true },
+      { title: "JapanesePod101", url: "https://www.japanesepod101.com/", description: "Structured Japanese lessons, some free content", free: false },
     ],
   },
 ];
