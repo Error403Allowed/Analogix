@@ -123,7 +123,7 @@ export async function POST(request: Request) {
    - "In [interest], X happens because of Y."
    - "In [concept], the same thing happens: [mechanism]."
    - "That's why they work the same way."
-   - Return to the analogy at the end to reinforce understanding — close the loop.`;`;
+   - Return to the analogy at the end to reinforce understanding — close the loop.`;
 
     // Core teaching philosophy
     const teachingApproach =
