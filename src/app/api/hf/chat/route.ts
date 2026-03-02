@@ -134,8 +134,8 @@ export async function POST(request: Request) {
     // How to layer complexity in explanations
     const complexityGuidance =
       analogyIntensity === 0
-        ? `3. LAYER COMPLEXITY GRADUALLY:\\n   - Start: Plain-language summary\\n   - Deepen: The mechanism (why it works)\\n   - Clarify: Edge cases or limits\\n   - Optional: Advanced nuance if they're ready`
-        : `3. LAYER COMPLEXITY GRADUALLY:\\n   - Start: Simple parallel (what's similar)\\n   - Deepen: The mechanism (why it works)\\n   - Acknowledge: Where the analogy breaks (shows deeper thinking, not weakness)\\n   - Optional: Advanced nuance if they're ready`;
+        ? "3. LAYER COMPLEXITY GRADUALLY:\n   - Start: Plain-language summary\n   - Deepen: The mechanism (why it works)\n   - Clarify: Edge cases or limits\n   - Optional: Advanced nuance if they're ready"
+        : "3. LAYER COMPLEXITY GRADUALLY:\n   - Start: Simple parallel (what's similar)\n   - Deepen: The mechanism (why it works)\n   - Acknowledge: Where the analogy breaks (shows deeper thinking, not weakness)\n   - Optional: Advanced nuance if they're ready";
 
     // Build the complete system prompt for the AI
     const systemPrompt = `You are "Quizzy", a brilliant, empathetic, and slightly quirky AI tutor. You don't just teach; you make lightbulbs go off.

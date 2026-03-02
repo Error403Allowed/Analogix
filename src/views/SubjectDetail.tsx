@@ -6,12 +6,14 @@ import {
   ArrowLeft, FileText, ClipboardList, Link as LinkIcon,
   CheckCircle2, Circle, ExternalLink, Send,
   Plus, Trash2, TrendingUp, Sparkles, X, ChevronRight,
+  Upload, BookOpen, Calendar, ChevronDown, Loader2, AlertCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SUBJECT_CATALOG } from "@/constants/subjects";
 import {
   subjectStore, type SubjectData, type SubjectHomework, type SubjectLink,
+  type AssessmentNotification,
 } from "@/utils/subjectStore";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -43,6 +45,118 @@ export default function SubjectDetail() {
   const [linkDraft, setLinkDraft] = useState({ title: "", url: "" });
   const [docDraft, setDocDraft] = useState("");
   const [userPrefs, setUserPrefs] = useState<any>({});
+
+  // Assessment notification state
+  const [assessmentUploading, setAssessmentUploading] = useState(false);
+  const [assessmentError, setAssessmentError] = useState<string | null>(null);
+  const [expandedAssessments, setExpandedAssessments] = useState<Set<string>>(new Set());
+  const assessmentInputRef = useRef<HTMLInputElement>(null);
+
+  const assessments = data.notes.assessments || [];
+
+  const [pasteMode, setPasteMode] = useState(false);
+  const [pasteText, setPasteText] = useState("");
+
+  const submitAssessmentText = async (text: string, title?: string) => {
+    setAssessmentUploading(true);
+    setAssessmentError(null);
+    try {
+      const res = await fetch("/api/hf/assessment-guide", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text,
+          subjectLabel: subject!.label,
+          grade: userPrefs.grade,
+          state: userPrefs.state,
+        }),
+      });
+      const parsed = await res.json();
+      if (!res.ok) { setAssessmentError(parsed.error || "Failed to process assessment"); return; }
+
+      const newAssessment: AssessmentNotification = {
+        id: crypto.randomUUID(),
+        title: parsed.title || title || "Assessment",
+        subject: subject!.label,
+        dueDate: parsed.dueDate || "",
+        createdAt: new Date().toISOString(),
+        studyGuide: parsed.studyGuide || [],
+        rawText: parsed.rawText || "",
+      };
+      await subjectStore.addAssessment(subjectId, newAssessment);
+      setData(await subjectStore.getSubject(subjectId));
+      setExpandedAssessments(prev => new Set([...prev, newAssessment.id]));
+      setPasteMode(false);
+      setPasteText("");
+      toast.success("Study guide created!");
+    } catch {
+      setAssessmentError("Something went wrong. Try again.");
+    } finally {
+      setAssessmentUploading(false);
+      if (assessmentInputRef.current) assessmentInputRef.current.value = "";
+    }
+  };
+
+  const handleAssessmentUpload = async (file: File) => {
+    if (file.type !== "application/pdf") {
+      setAssessmentError(null);
+      setPasteMode(true);
+      toast.info("Images can't be read directly — paste the text from your notification instead.");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) { setAssessmentError("File must be under 10MB."); return; }
+
+    setAssessmentUploading(true);
+    setAssessmentError(null);
+    try {
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve((reader.result as string).split(",")[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const res = await fetch("/api/hf/assessment-guide", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ base64, mimeType: file.type, subjectLabel: subject!.label, grade: userPrefs.grade, state: userPrefs.state }),
+      });
+      const parsed = await res.json();
+      if (!res.ok) { setAssessmentError(parsed.error || "Failed to process PDF"); return; }
+
+      const newAssessment: AssessmentNotification = {
+        id: crypto.randomUUID(),
+        title: parsed.title || file.name.replace(".pdf", ""),
+        subject: subject!.label,
+        dueDate: parsed.dueDate || "",
+        createdAt: new Date().toISOString(),
+        studyGuide: parsed.studyGuide || [],
+        rawText: parsed.rawText || "",
+      };
+      await subjectStore.addAssessment(subjectId, newAssessment);
+      setData(await subjectStore.getSubject(subjectId));
+      setExpandedAssessments(prev => new Set([...prev, newAssessment.id]));
+      toast.success("Study guide created!");
+    } catch {
+      setAssessmentError("Couldn't read the PDF. Try pasting the text instead.");
+    } finally {
+      setAssessmentUploading(false);
+      if (assessmentInputRef.current) assessmentInputRef.current.value = "";
+    }
+  };
+
+  const toggleAssessment = (id: string) => {
+    setExpandedAssessments(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const getDaysUntil = (dueDate: string) => {
+    if (!dueDate) return null;
+    const diff = Math.ceil((new Date(dueDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+    return diff;
+  };
 
   // Floating AI state
   const [chatOpen, setChatOpen] = useState(false);
@@ -391,6 +505,211 @@ You can see everything the student sees on this page. Help them understand their
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+          </section>
+          {/* Assessment Notifications */}
+          <section className="rounded-2xl border border-border/40 bg-background/60 p-5 space-y-4">
+            <div className="flex items-center gap-2">
+              <BookOpen className="w-4 h-4 text-primary" />
+              <h3 className="font-black text-foreground">Assessment Notifications</h3>
+              {assessments.length > 0 && (
+                <span className="text-[9px] font-black bg-primary/10 text-primary px-2 py-0.5 rounded-full border border-primary/20">
+                  {assessments.length} saved
+                </span>
+              )}
+            </div>
+
+            {/* Upload area / paste mode toggle */}
+            {!pasteMode ? (
+              <div
+                className={cn(
+                  "relative border-2 border-dashed rounded-xl transition-all",
+                  assessmentUploading
+                    ? "border-primary/40 bg-primary/5"
+                    : "border-border/50 hover:border-primary/50 hover:bg-primary/5 cursor-pointer"
+                )}
+                onClick={() => !assessmentUploading && assessmentInputRef.current?.click()}
+                onDragOver={e => e.preventDefault()}
+                onDrop={e => { e.preventDefault(); const file = e.dataTransfer.files?.[0]; if (file) handleAssessmentUpload(file); }}
+              >
+                <input
+                  ref={assessmentInputRef}
+                  type="file"
+                  accept=".pdf,application/pdf"
+                  className="hidden"
+                  onChange={e => { const file = e.target.files?.[0]; if (file) handleAssessmentUpload(file); }}
+                />
+                <div className="flex flex-col items-center justify-center py-6 px-4 text-center gap-2">
+                  {assessmentUploading ? (
+                    <>
+                      <Loader2 className="w-7 h-7 text-primary animate-spin" />
+                      <p className="text-sm font-bold text-primary">Reading your assessment...</p>
+                      <p className="text-[11px] text-muted-foreground">Building your personalised study guide</p>
+                    </>
+                  ) : (
+                    <>
+                      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                        <Upload className="w-5 h-5 text-primary" />
+                      </div>
+                      <p className="text-sm font-bold text-foreground">Upload assessment notification</p>
+                      <p className="text-[11px] text-muted-foreground">PDF only • drag & drop or click • max 10MB</p>
+                      <button
+                        onClick={e => { e.stopPropagation(); setPasteMode(true); setAssessmentError(null); }}
+                        className="text-[11px] text-primary hover:underline mt-1"
+                      >
+                        Got an image or screenshot? Paste the text instead →
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <textarea
+                  className="w-full h-36 rounded-xl bg-muted/30 border border-border/40 text-sm p-3 resize-none focus:outline-none focus:ring-2 focus:ring-primary/40 placeholder:text-muted-foreground/50"
+                  placeholder="Paste the text from your assessment notification here..."
+                  value={pasteText}
+                  onChange={e => setPasteText(e.target.value)}
+                  disabled={assessmentUploading}
+                />
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => submitAssessmentText(pasteText)}
+                    disabled={!pasteText.trim() || assessmentUploading}
+                    className="flex-1 gradient-primary h-9 rounded-xl text-xs font-black uppercase tracking-widest"
+                  >
+                    {assessmentUploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Generate Study Guide"}
+                  </Button>
+                  <Button
+                    onClick={() => { setPasteMode(false); setPasteText(""); setAssessmentError(null); }}
+                    variant="outline"
+                    className="h-9 rounded-xl text-xs px-3"
+                    disabled={assessmentUploading}
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Error */}
+            {assessmentError && (
+              <div className="flex items-start gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/20">
+                <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                <p className="text-xs text-red-400">{assessmentError}</p>
+              </div>
+            )}
+
+            {/* Saved assessments */}
+            {assessments.length > 0 && (
+              <div className="space-y-3">
+                <AnimatePresence>
+                  {assessments.map(assessment => {
+                    const isExpanded = expandedAssessments.has(assessment.id);
+                    const daysUntil = getDaysUntil(assessment.dueDate);
+                    const urgencyColor = daysUntil === null ? "text-muted-foreground"
+                      : daysUntil < 0 ? "text-red-400"
+                      : daysUntil <= 7 ? "text-amber-400"
+                      : "text-emerald-400";
+                    const urgencyBg = daysUntil === null ? "bg-muted/20 border-border/30"
+                      : daysUntil < 0 ? "bg-red-500/10 border-red-500/20"
+                      : daysUntil <= 7 ? "bg-amber-400/10 border-amber-400/20"
+                      : "bg-emerald-400/10 border-emerald-400/20";
+
+                    return (
+                      <motion.div
+                        key={assessment.id}
+                        initial={{ opacity: 0, y: -8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.97 }}
+                        className="rounded-xl border border-border/40 bg-muted/10 overflow-hidden"
+                      >
+                        {/* Header row */}
+                        <div
+                          className="flex items-center gap-3 p-3 cursor-pointer hover:bg-muted/20 transition-colors"
+                          onClick={() => toggleAssessment(assessment.id)}
+                        >
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-bold text-foreground truncate">{assessment.title}</p>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              {assessment.dueDate && (
+                                <span className={cn("text-[10px] font-bold flex items-center gap-1", urgencyColor)}>
+                                  <Calendar className="w-2.5 h-2.5" />
+                                  {daysUntil === null ? "" : daysUntil < 0 ? "Overdue" : daysUntil === 0 ? "Due today" : `${daysUntil}d left`}
+                                  {" · "}{new Date(assessment.dueDate).toLocaleDateString("en-AU", { day: "numeric", month: "short" })}
+                                </span>
+                              )}
+                              <span className="text-[10px] text-muted-foreground">{assessment.studyGuide.length} week plan</span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <button
+                              onClick={async e => {
+                                e.stopPropagation();
+                                await subjectStore.removeAssessment(subjectId, assessment.id);
+                                setData(await subjectStore.getSubject(subjectId));
+                                toast.success("Removed.");
+                              }}
+                              className="w-6 h-6 rounded-lg flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                            <motion.div animate={{ rotate: isExpanded ? 180 : 0 }} transition={{ duration: 0.2 }}>
+                              <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                            </motion.div>
+                          </div>
+                        </div>
+
+                        {/* Expanded study guide */}
+                        <AnimatePresence>
+                          {isExpanded && (
+                            <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: "auto", opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              transition={{ duration: 0.2 }}
+                              className="overflow-hidden"
+                            >
+                              <div className="px-3 pb-3 space-y-3 border-t border-border/30">
+                                {/* Summary */}
+                                {assessment.rawText && (
+                                  <p className="text-[11px] text-muted-foreground pt-3 leading-relaxed italic">{assessment.rawText}</p>
+                                )}
+
+                                {/* Due date badge */}
+                                {assessment.dueDate && (
+                                  <div className={cn("inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-[11px] font-bold", urgencyBg, urgencyColor)}>
+                                    <Calendar className="w-3 h-3" />
+                                    Due {new Date(assessment.dueDate).toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "long", year: "numeric" })}
+                                    {daysUntil !== null && daysUntil >= 0 && ` · ${daysUntil} days away`}
+                                  </div>
+                                )}
+
+                                {/* Week-by-week guide */}
+                                <div className="space-y-2">
+                                  {assessment.studyGuide.map((week, wi) => (
+                                    <div key={wi} className="space-y-1.5">
+                                      <p className="text-[10px] font-black uppercase tracking-widest text-primary">{week.label}</p>
+                                      <ul className="space-y-1">
+                                        {week.tasks.map((task, ti) => (
+                                          <li key={ti} className="flex items-start gap-2 text-[11px] text-foreground/80">
+                                            <span className="w-1 h-1 rounded-full bg-primary/50 mt-1.5 shrink-0" />
+                                            {task}
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </motion.div>
+                    );
+                  })}
+                </AnimatePresence>
               </div>
             )}
           </section>

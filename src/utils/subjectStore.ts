@@ -17,6 +17,7 @@ export interface SubjectNotes {
   links?: SubjectLink[];
   title?: string;
   documents?: SubjectDocumentItem[];
+  assessments?: AssessmentNotification[];
 }
 
 export interface SubjectData {
@@ -48,6 +49,22 @@ export interface SubjectLink {
   title: string;
   url: string;
   createdAt: string;
+}
+
+export interface AssessmentNotification {
+  id: string;
+  title: string;
+  subject: string;
+  dueDate: string;
+  createdAt: string;
+  studyGuide: StudyGuideWeek[];
+  rawText: string;
+}
+
+export interface StudyGuideWeek {
+  week: number;
+  label: string;
+  tasks: string[];
 }
 
 const emptySubject = (subjectId: string): SubjectData => ({
@@ -94,6 +111,7 @@ const normalizeNotes = (subjectId: string, notes: SubjectNotes | undefined): Sub
   links: Array.isArray(notes?.links) ? notes!.links : [],
   title: typeof notes?.title === "string" ? notes.title : "",
   documents: normalizeDocuments(subjectId, notes),
+  assessments: Array.isArray(notes?.assessments) ? notes!.assessments : [],
 });
 
 export const subjectStore = {
@@ -216,6 +234,22 @@ export const subjectStore = {
     const current = await subjectStore.getSubject(subjectId);
     await subjectStore.saveSubject(subjectId, {
       notes: { ...current.notes, links, lastUpdated: new Date().toISOString() },
+    });
+  },
+
+  addAssessment: async (subjectId: string, assessment: AssessmentNotification): Promise<void> => {
+    const current = await subjectStore.getSubject(subjectId);
+    const existing = current.notes.assessments || [];
+    await subjectStore.saveSubject(subjectId, {
+      notes: { ...current.notes, assessments: [assessment, ...existing], lastUpdated: new Date().toISOString() },
+    });
+  },
+
+  removeAssessment: async (subjectId: string, assessmentId: string): Promise<void> => {
+    const current = await subjectStore.getSubject(subjectId);
+    const filtered = (current.notes.assessments || []).filter(a => a.id !== assessmentId);
+    await subjectStore.saveSubject(subjectId, {
+      notes: { ...current.notes, assessments: filtered, lastUpdated: new Date().toISOString() },
     });
   },
 };
