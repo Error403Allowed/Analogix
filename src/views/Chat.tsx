@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
@@ -17,6 +18,9 @@ import {
   ChevronDown,
   BookOpen,
   X,
+  Plus,
+  MessageSquare,
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -24,7 +28,7 @@ import { useRouter } from "next/navigation";
 import { getGroqCompletion, getReExplanation, generateFlashcards } from "@/services/groq";
 import { flashcardStore } from "@/utils/flashcardStore";
 import { statsStore } from "@/utils/statsStore";
-import { chatStore } from "@/utils/chatStore";
+import { chatStore, ChatSession } from "@/utils/chatStore";
 import { getFormulaSheet } from "@/data/formulaSheets";
 import MarkdownRenderer from "@/components/MarkdownRenderer";
 import TypewriterText from "@/components/TypewriterText";
@@ -261,7 +265,8 @@ const allSubjects = SUBJECT_CATALOG;
  */
 const Chat = () => {
   const router = useRouter();
-  
+  const searchParams = useSearchParams();
+
   // CURRENT TOPIC: Which subject are we talking about right now?
   const [selectedSubject, setSelectedSubject] = useState<SubjectId | null>(null);
   
@@ -293,9 +298,19 @@ const Chat = () => {
 
   // FORMULA SHEET: Side panel visibility
   const [formulaPanelOpen, setFormulaPanelOpen] = useState(false);
+  const [expandedTopics, setExpandedTopics] = useState<Set<string>>(new Set());
+  const [formulaSearch, setFormulaSearch] = useState("");
 
   // CHAT HISTORY: Supabase session ID for saving messages
   const [chatSessionId, setChatSessionId] = useState<string | null>(null);
+
+  // THREADS SIDEBAR: All previous chat sessions
+  const [allSessions, setAllSessions] = useState<ChatSession[]>([]);
+  const [sessionsLoading, setSessionsLoading] = useState(false);
+  const [threadSearch, setThreadSearch] = useState("");
+  const [renamingThreadId, setRenamingThreadId] = useState<string | null>(null);
+  const [renamingThreadName, setRenamingThreadName] = useState("");
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const copyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -560,6 +575,55 @@ const Chat = () => {
     return () => document.removeEventListener("mousedown", handleClick);
   }, [reExplainOpenId]);
 
+  // RESUME SESSION: Load a past session from Supabase if ?session=<id> is in the URL
+  useEffect(() => {
+    const sessionId = searchParams.get("session");
+    const subjectParam = searchParams.get("subject") as SubjectId | null;
+    if (!sessionId || !subjectParam) return;
+
+    // Validate subject
+    if (!allSubjects.find(s => s.id === subjectParam)) return;
+
+    (async () => {
+      const msgs = await chatStore.getMessages(sessionId);
+      setSelectedSubject(subjectParam);
+      setChatSessionId(sessionId);
+
+      if (msgs.length === 0) {
+        // Session exists but no messages — show a fresh welcome
+        const subject = allSubjects.find(s => s.id === subjectParam);
+        const welcomeContent = buildWelcomeMessage(subject?.label || subjectParam);
+        setMessages([{
+          id: `welcome-${Date.now()}`,
+          role: "assistant",
+          content: welcomeContent,
+          isNew: true,
+          isWelcome: true,
+        }]);
+        setIsAnimating(true);
+      } else {
+        setMessages(msgs.map(m => ({
+          id: m.id,
+          role: m.role,
+          content: m.content,
+          isNew: false,
+        })));
+      }
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [buildWelcomeMessage]);
+
+  // LOAD ALL SESSIONS: Fetch the user's chat history on mount
+  useEffect(() => {
+    const loadSessions = async () => {
+      setSessionsLoading(true);
+      const sessions = await chatStore.getSessions();
+      setAllSessions(sessions);
+      setSessionsLoading(false);
+    };
+    loadSessions();
+  }, []);
+
   useEffect(() => {
     return () => {
       if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
@@ -582,11 +646,38 @@ const Chat = () => {
     setIsAnimating(false);
     setStopTyping(false);
 
-    // Create a Supabase session for this chat
     if (!availableSubjectIds.has(subjectId)) return;
     const subject = allSubjects.find(s => s.id === subjectId);
-    const sessionId = await chatStore.createSession(subjectId, `${subject?.label || subjectId} — ${new Date().toLocaleDateString()}`);
+
+    // Show welcome message immediately
+    const welcomeContent = buildWelcomeMessage(subject?.label || subjectId);
+    const welcomeMsg: Message = {
+      id: `welcome-${Date.now()}`,
+      role: "assistant",
+      content: welcomeContent,
+      isNew: true,
+      isWelcome: true,
+    };
+    setMessages([welcomeMsg]);
+    setIsAnimating(true);
+
+    // Create a Supabase session for this chat
+    const sessionId = await chatStore.createSession(subjectId, "New chat");
     setChatSessionId(sessionId);
+    
+    // Add the new session to the sidebar immediately
+    if (sessionId) {
+      const newSession: ChatSession = {
+        id: sessionId,
+        subjectId,
+        title: "New chat",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      setAllSessions(prev => [newSession, ...prev]);
+    }
+    
+    window.dispatchEvent(new Event("chatSessionCreated"));
   };
 
   // TALKING TO THE AI: This is where the magic happens!
@@ -619,6 +710,17 @@ const Chat = () => {
     // Save user message to Supabase
     if (chatSessionId) {
       chatStore.addMessage(chatSessionId, "user", input);
+      
+      // Update the session's updatedAt timestamp in sidebar
+      setAllSessions(prev => {
+        const updated = prev.map(s => 
+          s.id === chatSessionId 
+            ? { ...s, updatedAt: new Date().toISOString() }
+            : s
+        );
+        // Move to top by sorting by updatedAt descending
+        return updated.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+      });
     }
     
     // 2. We talk to the AI brain behind the scenes.
@@ -651,6 +753,37 @@ const Chat = () => {
         // Save assistant reply to Supabase
         if (chatSessionId) {
           chatStore.addMessage(chatSessionId, "assistant", response.content);
+          
+          // Update the session's updatedAt timestamp in sidebar
+          setAllSessions(prev => {
+            const updated = prev.map(s => 
+              s.id === chatSessionId 
+                ? { ...s, updatedAt: new Date().toISOString() }
+                : s
+            );
+            return updated.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+          });
+          
+          // If this is the first exchange (welcome + user message + assistant response), generate a chat title from AI
+          // At this point: messages still has old state, so we check if it's just the welcome message before we added the user message
+          const isFirstExchange = messages.length === 1 && messages[0].isWelcome;
+          if (isFirstExchange) {
+            try {
+              // Ask AI to generate a short, descriptive title for this conversation
+              const titlePrompt = [
+                { role: "user" as const, content: `Based on this question: "${input}", generate a very short (2-4 words) title for this chat. Only respond with the title, nothing else.` }
+              ];
+              const titleResponse = await getGroqCompletion(titlePrompt, buildContext(null));
+              const chatTitle = (titleResponse.content || "New chat").trim().slice(0, 50);
+              
+              await chatStore.updateSessionTitle(chatSessionId, chatTitle);
+              setAllSessions(prev => prev.map(s =>
+                s.id === chatSessionId ? { ...s, title: chatTitle } : s
+              ));
+            } catch (err) {
+              console.error("Failed to generate or update session title:", err);
+            }
+          }
         }
       } catch {
         setMessages(prev => [...prev, {
@@ -710,9 +843,220 @@ const Chat = () => {
     }
   };
 
+  const handleSwitchThread = async (session: ChatSession) => {
+    setSelectedSubject(session.subjectId as SubjectId);
+    setChatSessionId(session.id);
+    setMessages([]);
+    setIsAnimating(false);
+    setStopTyping(false);
+
+    const msgs = await chatStore.getMessages(session.id);
+    if (msgs.length === 0) {
+      const subject = allSubjects.find(s => s.id === session.subjectId);
+      const welcomeContent = buildWelcomeMessage(subject?.label || session.subjectId);
+      setMessages([{
+        id: `welcome-${Date.now()}`,
+        role: "assistant",
+        content: welcomeContent,
+        isNew: true,
+        isWelcome: true,
+      }]);
+      setIsAnimating(true);
+    } else {
+      setMessages(msgs.map(m => ({
+        id: m.id,
+        role: m.role,
+        content: m.content,
+        isNew: false,
+      })));
+    }
+  };
+
+  const handleStartNewChat = () => {
+    setSelectedSubject(null);
+    setMessages([]);
+    setChatSessionId(null);
+    setInput("");
+  };
+
+  const handleDeleteThread = async (sessionId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    await chatStore.deleteSession(sessionId);
+    setAllSessions(prev => prev.filter(s => s.id !== sessionId));
+    if (chatSessionId === sessionId) {
+      handleStartNewChat();
+    }
+  };
+
+  const handleRenameThread = async (sessionId: string) => {
+    if (!renamingThreadName.trim()) {
+      setRenamingThreadId(null);
+      return;
+    }
+    // Update the session in the store
+    await chatStore.updateSessionTitle(sessionId, renamingThreadName);
+    setAllSessions(prev => prev.map(s => 
+      s.id === sessionId ? { ...s, title: renamingThreadName } : s
+    ));
+    setRenamingThreadId(null);
+    setRenamingThreadName("");
+  };
+
   return (
-    <div className="min-h-[100dvh] flex flex-col relative overflow-hidden bg-background">
-      <div className="flex-1 flex flex-col max-w-4xl mx-auto w-full px-3 sm:px-6 py-4 sm:py-6 relative">
+    <div className="min-h-[100dvh] flex flex-row relative overflow-hidden bg-background">
+      {/* Threads Sidebar - Claude/ChatGPT Style */}
+      <motion.div
+        animate={{ width: sidebarOpen ? 320 : 0, opacity: sidebarOpen ? 1 : 0 }}
+        transition={{ duration: 0.3, ease: "easeInOut" }}
+        className="hidden sm:flex flex-col border-r border-border/30 bg-background h-screen overflow-hidden flex-shrink-0"
+        style={{ minWidth: sidebarOpen ? 320 : 0 }}
+      >
+        {/* New Chat Button */}
+        <div className="flex-shrink-0 p-3 border-b border-border/30">
+          <Button
+            onClick={handleStartNewChat}
+            className="w-full gap-2 rounded-lg h-9 bg-primary/10 hover:bg-primary/20 text-primary font-medium text-sm justify-center"
+          >
+            <Plus className="w-4 h-4" />
+            New Chat
+          </Button>
+        </div>
+
+        {/* Search bar */}
+        <div className="flex-shrink-0 px-3 py-2 border-b border-border/30">
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Search chats..."
+              value={threadSearch}
+              onChange={(e) => setThreadSearch(e.target.value)}
+              className="w-full text-xs px-3 py-2 rounded-lg bg-muted/40 border border-border/30 placeholder-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary/50 focus:border-transparent transition-all"
+            />
+          </div>
+        </div>
+
+        {/* Threads list */}
+        <div className="overflow-y-auto flex-1 min-h-0 px-2 py-3 space-y-1">
+          {sessionsLoading ? (
+            <div className="flex items-center justify-center h-20 text-muted-foreground text-xs">
+              Loading...
+            </div>
+          ) : (() => {
+            // Filter sessions: if a subject is selected, only show threads for that subject
+            let filteredSessions = selectedSubject 
+              ? allSessions.filter(s => s.subjectId === selectedSubject)
+              : allSessions;
+            
+            // Apply search filter
+            if (threadSearch.trim()) {
+              const searchLower = threadSearch.toLowerCase();
+              filteredSessions = filteredSessions.filter(s => {
+                const subjectInfo = allSubjects.find(sub => sub.id === s.subjectId);
+                const subjectName = (subjectInfo?.label || s.subjectId).toLowerCase();
+                return subjectName.includes(searchLower) || s.title.toLowerCase().includes(searchLower);
+              });
+            }
+            
+            return filteredSessions.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-20 text-muted-foreground text-xs text-center px-2">
+                <MessageSquare className="w-4 h-4 mb-1.5 opacity-40" />
+                <p>{selectedSubject ? "No chats for this subject" : threadSearch ? "No matching threads" : "No chats yet"}</p>
+              </div>
+            ) : (
+              <div>
+                {filteredSessions.map((session) => {
+                  const subjectInfo = allSubjects.find(s => s.id === session.subjectId);
+                  const isActive = chatSessionId === session.id;
+                  const isRenaming = renamingThreadId === session.id;
+                  const subjectLabel = subjectInfo?.label || session.subjectId;
+                  
+                  return (
+                    <motion.div
+                      key={session.id}
+                      className={`group relative rounded-lg transition-all ${
+                        isActive 
+                          ? "bg-primary/15" 
+                          : "hover:bg-muted/40"
+                      }`}
+                    >
+                      <button
+                        onClick={() => handleSwitchThread(session)}
+                        className="w-full text-left px-3 py-2.5 flex items-center gap-2 min-h-[44px]"
+                      >
+                        {/* Thread content */}
+                        {isRenaming ? (
+                          <input
+                            autoFocus
+                            type="text"
+                            value={renamingThreadName}
+                            onChange={(e) => setRenamingThreadName(e.target.value)}
+                            onBlur={() => handleRenameThread(session.id)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                handleRenameThread(session.id);
+                              } else if (e.key === "Escape") {
+                                setRenamingThreadId(null);
+                              }
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="flex-1 px-2 py-1 rounded text-sm bg-muted border border-border focus:outline-none focus:ring-1 focus:ring-primary"
+                          />
+                        ) : (
+                          <div className="flex-1 min-w-0">
+                            <div className="relative overflow-hidden">
+                              <p className={`text-sm whitespace-nowrap ${isActive ? "font-semibold text-foreground" : "text-foreground/80 font-normal"}`}>
+                                {session.title}
+                              </p>
+                              {session.title.length > 30 && (
+                                <div className="absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-card group-hover:from-muted/40 pointer-events-none transition-colors" />
+                              )}
+                            </div>
+                            <p className="text-xs text-muted-foreground/60">
+                              {subjectLabel}
+                            </p>
+                          </div>
+                        )}
+                      </button>
+
+                      {/* Action buttons (appear on hover) */}
+                      {!isRenaming && (
+                        <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setRenamingThreadId(session.id);
+                              setRenamingThreadName(session.title);
+                            }}
+                            className="h-8 w-8 rounded hover:bg-muted/60"
+                            title="Rename thread"
+                          >
+                            <RefreshCw className="w-3.5 h-3.5 text-muted-foreground" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={(e) => handleDeleteThread(session.id, e)}
+                            className="h-8 w-8 rounded hover:bg-destructive/20 hover:text-destructive"
+                            title="Delete thread"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                      )}
+                    </motion.div>
+                  );
+                })}
+              </div>
+            );
+          })()}
+        </div>
+      </motion.div>
+
+      <div className="flex-1 flex flex-col w-full px-3 sm:px-6 py-4 sm:py-6 relative">
         {/* Simple header */}
         <motion.header
           className="flex items-center justify-between py-2 sm:py-3 px-3 sm:px-4 -mx-3 sm:-mx-6 mb-3 sm:mb-4 border-b border-border"
@@ -720,15 +1064,28 @@ const Chat = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ type: "spring", stiffness: 300, damping: 24 }}
         >
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => router.push("/dashboard")}
-            className="gap-2 -ml-2 text-muted-foreground hover:text-foreground rounded-xl"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="hidden sm:inline-flex gap-2 -ml-2 text-muted-foreground hover:text-foreground rounded-xl"
+              title={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => router.push("/dashboard")}
+              className="gap-2 -ml-2 text-muted-foreground hover:text-foreground rounded-xl"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back
+            </Button>
+          </div>
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
               <Lightbulb className="w-4 h-4 text-white" />
@@ -849,18 +1206,6 @@ const Chat = () => {
               >
                 <Brain className="w-3.5 h-3.5" />
                 Analogy: {analogyModeEnabled ? "On" : "Off"}
-              </Button>
-
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-2 rounded-md h-8 px-4 text-xs font-medium border-dashed border-primary/30 text-muted-foreground"
-                disabled={true}
-                title="Knowledge Memory is coming soon :)"
-              > 
-                <Database className="w-3.5 h-3.5" />
-                Memory
-                <div className="px-1 py-0.5 rounded-sm bg-primary/20 text-[8px] font-black uppercase text-primary">Coming soon :)</div>
               </Button>
 
               {getFormulaSheet(selectedSubject || "") && (
@@ -1159,7 +1504,7 @@ const Chat = () => {
                       animate={{ opacity: 1, x: 0, width: "280px" }}
                       exit={{ opacity: 0, x: 20, width: 0 }}
                       transition={{ type: "spring", stiffness: 300, damping: 28 }}
-                      className="hidden sm:flex flex-col border border-border rounded-xl bg-card overflow-hidden shrink-0"
+                      className="hidden sm:flex flex-col border border-border rounded-xl bg-card overflow-hidden shrink-0 max-h-[calc(100vh-180px)]"
                       style={{ width: 280 }}
                     >
                       <div className="flex items-center justify-between px-3 py-2.5 border-b border-border">
@@ -1169,25 +1514,84 @@ const Chat = () => {
                           <X className="w-3.5 h-3.5" />
                         </button>
                       </div>
-                      <div className="flex-1 overflow-y-auto p-2 space-y-3 formula-scroll">
-                        {topics.map(topic => (
-                          <div key={topic}>
-                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50 px-1 mb-1.5">{topic}</p>
-                            <div className="space-y-1.5">
-                              {sheet.formulas.filter(f => f.topic === topic).map(formula => (
-                                <div key={formula.name}
-                                  className="px-2.5 py-2 rounded-lg bg-muted/40 hover:bg-muted/70 transition-colors cursor-default">
-                                  <p className="text-[11px] font-semibold text-foreground mb-1">{formula.name}</p>
-                                  <MarkdownRenderer
-                                    content={`$${formula.latex}$`}
-                                    className="text-[11px] text-primary"
-                                  />
-                                  <p className="text-[10px] text-muted-foreground mt-1 leading-snug">{formula.description}</p>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        ))}
+                      <div className="px-2 py-1.5 border-b border-border/60">
+                        <input
+                          type="text"
+                          placeholder="Search formulas..."
+                          value={formulaSearch}
+                          onChange={(e) => setFormulaSearch(e.target.value)}
+                          className="w-full text-xs px-2.5 py-1.5 rounded-md bg-muted/50 border border-border/40 placeholder-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary/50 focus:border-transparent transition-all"
+                        />
+                      </div>
+                      <div className="flex-1 overflow-y-auto p-2 space-y-1 formula-scroll">
+                        {(() => {
+                          const query = formulaSearch.trim().toLowerCase();
+                          if (query) {
+                            // Flat search results mode
+                            const results = sheet.formulas.filter(f =>
+                              f.name.toLowerCase().includes(query) ||
+                              f.description.toLowerCase().includes(query) ||
+                              f.topic.toLowerCase().includes(query)
+                            );
+                            if (results.length === 0) {
+                              return <p className="text-xs text-muted-foreground/60 text-center py-4">No formulas found</p>;
+                            }
+                            return results.map(formula => (
+                              <div key={formula.name}
+                                className="px-2.5 py-2 rounded-lg bg-muted/40 hover:bg-muted/70 transition-colors cursor-default">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50 mb-0.5">{formula.topic}</p>
+                                <p className="text-[11px] font-semibold text-foreground mb-1">{formula.name}</p>
+                                <MarkdownRenderer content={`$${formula.latex}$`} className="text-[11px] text-primary" />
+                                <p className="text-[10px] text-muted-foreground mt-1 leading-snug">{formula.description}</p>
+                              </div>
+                            ));
+                          }
+                          // Default grouped topic view
+                          return topics.map(topic => {
+                            const isExpanded = expandedTopics.has(topic);
+                            const topicFormulas = sheet.formulas.filter(f => f.topic === topic);
+                            return (
+                              <div key={topic} className="space-y-1">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const newExpanded = new Set(expandedTopics);
+                                    if (newExpanded.has(topic)) { newExpanded.delete(topic); } else { newExpanded.add(topic); }
+                                    setExpandedTopics(newExpanded);
+                                  }}
+                                  className="w-full flex items-center justify-between px-2.5 py-2 rounded-lg hover:bg-muted/50 transition-colors group"
+                                >
+                                  <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/70 group-hover:text-foreground/80 flex-1 text-left">
+                                    {topic} <span className="font-normal opacity-50">({topicFormulas.length})</span>
+                                  </span>
+                                  <motion.div animate={{ rotate: isExpanded ? 90 : 0 }} transition={{ duration: 0.2 }} className="flex-shrink-0 ml-1">
+                                    <ChevronDown className="w-3.5 h-3.5 text-muted-foreground/60" />
+                                  </motion.div>
+                                </button>
+                                <AnimatePresence>
+                                  {isExpanded && (
+                                    <motion.div
+                                      initial={{ height: 0, opacity: 0 }}
+                                      animate={{ height: "auto", opacity: 1 }}
+                                      exit={{ height: 0, opacity: 0 }}
+                                      transition={{ duration: 0.2 }}
+                                      className="overflow-hidden space-y-1.5 pl-1"
+                                    >
+                                      {topicFormulas.map(formula => (
+                                        <div key={formula.name}
+                                          className="px-2.5 py-2 rounded-lg bg-muted/40 hover:bg-muted/70 transition-colors cursor-default">
+                                          <p className="text-[11px] font-semibold text-foreground mb-1">{formula.name}</p>
+                                          <MarkdownRenderer content={`$${formula.latex}$`} className="text-[11px] text-primary" />
+                                          <p className="text-[10px] text-muted-foreground mt-1 leading-snug">{formula.description}</p>
+                                        </div>
+                                      ))}
+                                    </motion.div>
+                                  )}
+                                </AnimatePresence>
+                              </div>
+                            );
+                          });
+                        })()}
                       </div>
                     </motion.div>
                   );

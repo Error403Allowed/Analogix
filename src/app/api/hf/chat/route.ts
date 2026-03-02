@@ -53,7 +53,7 @@ export async function POST(request: Request) {
     const analogyGuidance = [
       "Use no analogies at all - focus exclusively on raw facts and concepts.",
       "Use minimal analogies - mostly facts with rare hobby-based comparisons.",
-      "Use some analogies - balance facts with occasional hobby-based analogies.",
+      "Use analogies as the primary teaching tool - lead with a hobby-based analogy, then back it up with facts.",
       "Use frequent analogies - explain most concepts using hobby-based analogies.",
       "Use extensive analogies - almost every explanation should use hobby-based analogies.",
       "Use only analogies - explain everything through hobby-based analogies exclusively.",
@@ -105,8 +105,8 @@ export async function POST(request: Request) {
     // Detailed instructions on how to use analogies
     const analogyInstructions =
       analogyIntensity === 0
-        ? `ANALOGY MODE: OFF\\nUse no analogies. Explain directly, factually, and clearly. Do not reference hobbies or comparisons.`
-        : `1. ANALOGY-OPTIONAL: Use an analogy only when it improves clarity. If a direct explanation is already clear, skip the analogy.
+        ? `ANALOGY MODE: OFF\nUse no analogies. Explain directly, factually, and clearly. Do not reference hobbies or comparisons.`
+        : `1. ANALOGY-FIRST: Lead with an analogy drawn from the student's interests whenever explaining a concept. Don't wait to see if the explanation is clear first — use the analogy as the primary vehicle for the explanation.
    - For TV/Movies: Use specific moments, scenes, character quirks, or plot beats (not vague settings). E.g., "Like when [character] does [specific action] in [episode], here's why..."
    - For Games: Reference mechanics, progression systems, or narrative beats that create the same dynamic as the concept.
    - For Sports/Music: Use specific athletes, plays, songs, or albums as parallels.
@@ -114,21 +114,22 @@ export async function POST(request: Request) {
    - Only use interests from the Allowed Interests list. If none apply, ask a brief clarification question instead of guessing.
    - Choose ONE analogy anchor from the Allowed Interests per response. Never switch mid-response.
    - If an Analogy Anchor is provided, you MUST use ONLY that anchor for this response.
-   - Use at most ONE analogy thread per response; keep the rest factual and direct.
+   - Use 1–2 analogy threads per response woven throughout; don't confine the analogy to just one sentence.
    - Never mention other sports, games, or genres outside the anchor. No cross-sport/game references.
-   - If the user is asking how to solve a problem, help them solve it directly first, then use the analogy to deepen understanding, not as a crutch for the entire explanation.
-   - If the user is greeting or making small talk, respond naturally without an analogy.
+   - If the user is asking how to solve a problem, introduce the analogy first to frame the approach, then work through the solution with the analogy in mind.
+   - If the user is greeting or making small talk, respond naturally without forcing an analogy.
 
 2. BUILD THROUGH MAPPING: Explicitly connect the analogy to the concept as you explain:
    - "In [interest], X happens because of Y."
    - "In [concept], the same thing happens: [mechanism]."
-   - "That's why they work the same way."`;
+   - "That's why they work the same way."
+   - Return to the analogy at the end to reinforce understanding — close the loop.`;`;
 
     // Core teaching philosophy
     const teachingApproach =
       analogyIntensity === 0
         ? "Build understanding through clear, direct explanations grounded in facts."
-        : "Build understanding THROUGH the analogy, not around it. Start with what they know, layer the concept through that lens, then reveal complexity.";
+        : "Lead with the analogy, build understanding THROUGH it, and close the loop by returning to it at the end. Start with what they know, layer the concept through that lens, then reveal complexity.";
 
     // How to layer complexity in explanations
     const complexityGuidance =

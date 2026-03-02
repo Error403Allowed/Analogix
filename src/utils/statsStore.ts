@@ -1,5 +1,4 @@
 import { createClient } from "@/lib/supabase/client";
-
 import { activityLog } from "./activityLog";
 
 export interface UserStats {
@@ -12,11 +11,13 @@ export interface UserStats {
 }
 
 const DEFAULT_STATS: UserStats = {
-  quizzesDone: 0, currentStreak: 0, accuracy: 0,
-  conversationsCount: 0, topSubject: "None", subjectCounts: {},
+  quizzesDone: 0,
+  currentStreak: 0,
+  accuracy: 0,
+  conversationsCount: 0,
+  topSubject: "None",
+  subjectCounts: {},
 };
-
-const LOCAL_KEY = "analogix_user_stats_v1";
 
 const toRow = (s: UserStats) => ({
   quizzes_done: s.quizzesDone,
@@ -41,50 +42,44 @@ export const statsStore = {
   get: async (): Promise<UserStats> => {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return DEFAULT_STATS;
 
-    if (user) {
-      const { data } = await supabase
-        .from("user_stats")
-        .select("*")
-        .eq("user_id", user.id)
-        .maybeSingle();
-      if (data) return fromRow(data);
-    }
+    const { data, error } = await supabase
+      .from("user_stats")
+      .select("*")
+      .eq("user_id", user.id)
+      .maybeSingle();
 
-    // Fallback to localStorage
-    try {
-      const saved = localStorage.getItem(LOCAL_KEY);
-      if (!saved) return DEFAULT_STATS;
-      return { ...DEFAULT_STATS, ...JSON.parse(saved) };
-    } catch { return DEFAULT_STATS; }
+    if (error) console.warn("[statsStore] get failed:", error);
+    return data ? fromRow(data) : DEFAULT_STATS;
   },
 
-  update: async (updates: Partial<UserStats>) => {
+  update: async (updates: Partial<UserStats>): Promise<void> => {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
     const current = await statsStore.get();
     const updated = { ...current, ...updates };
 
-    if (user) {
-      await supabase.from("user_stats").upsert({
-        user_id: user.id,
-        ...toRow(updated),
-      }, { onConflict: "user_id" });
-    }
+    const { error } = await supabase.from("user_stats").upsert({
+      user_id: user.id,
+      ...toRow(updated),
+    }, { onConflict: "user_id" });
 
-    try { localStorage.setItem(LOCAL_KEY, JSON.stringify(updated)); } catch {}
+    if (error) console.warn("[statsStore] update failed:", error);
     window.dispatchEvent(new Event("statsUpdated"));
   },
 
-  addQuiz: async (score: number) => {
+  addQuiz: async (score: number): Promise<void> => {
     const current = await statsStore.get();
     const newTotal = current.quizzesDone + 1;
     const newAccuracy = Math.round(((current.accuracy * current.quizzesDone) + score) / newTotal);
-    activityLog.record();
+    await activityLog.record();
     await statsStore.update({ quizzesDone: newTotal, accuracy: newAccuracy });
   },
 
-  recordChat: async (subject: string) => {
+  recordChat: async (subject: string): Promise<void> => {
     const current = await statsStore.get();
     const counts = { ...current.subjectCounts };
     counts[subject] = (counts[subject] || 0) + 1;
@@ -93,11 +88,11 @@ export const statsStore = {
     for (const s in counts) {
       if (counts[s] > max) { max = counts[s]; top = s; }
     }
-    activityLog.record();
+    await activityLog.record();
     await statsStore.update({ conversationsCount: current.conversationsCount + 1, topSubject: top, subjectCounts: counts });
   },
 
-  updateStreak: async (newStreak: number) => {
+  updateStreak: async (newStreak: number): Promise<void> => {
     await statsStore.update({ currentStreak: newStreak });
   },
 };

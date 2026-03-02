@@ -177,7 +177,7 @@ const Dashboard = () => {
     const handleStatsUpdate = async () => {
       const stats = await statsStore.get();
       setStatsData(stats);
-      setWeekActivity(activityLog.getLast7());
+      setWeekActivity(await activityLog.getLast7());
     };
     
     const handleAchievementsUpdate = async () => {
@@ -204,7 +204,6 @@ const Dashboard = () => {
     // Initial Load
     handleStatsUpdate();
     handleAchievementsUpdate();
-    setWeekActivity(activityLog.getLast7());
     
     return () => {
       window.removeEventListener("statsUpdated", handleStatsUpdate);

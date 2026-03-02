@@ -211,7 +211,9 @@ export const callHfChat = async (
     } catch (error) {
       const message = formatError(error);
       lastError = error;
-      console.error(`[Groq] Request failed for model ${model} (attempt ${retryCount + 1})`, message);
+      const statusMatch = message.match(/Groq API Error: (\d+)/);
+      const statusCode = statusMatch ? statusMatch[1] : "ERR";
+      console.error(`[Groq] ${model} ❌ ${statusCode}`);
       
       if (retryCount < apiKeys.length - 1) {
         return tryModelWithApiKey(model, retryCount + 1);
@@ -223,16 +225,18 @@ export const callHfChat = async (
   const taskModels = getModelsForTaskType(taskType);
   const modelsToTry = [...new Set([...taskModels, DEFAULT_MODEL])];
   
-  console.log(`[Groq] Question type: "${taskType}" → Trying models:`, modelsToTry);
+  console.log(`[Groq] Task: "${taskType}" → ${modelsToTry.join(" → ")}`);
 
   for (const model of modelsToTry) {
     try {
-      console.log(`[Groq] Attempting with model: ${model}`);
+      console.log(`[Groq] Trying: ${model}`);
       return await tryModelWithApiKey(model);
     } catch (error) {
       const message = formatError(error);
       lastError = error;
-      console.warn(`[Groq] Model ${model} failed: ${message}. Trying next model...`);
+      const statusMatch = message.match(/Groq API Error: (\d+)/);
+      const statusCode = statusMatch ? statusMatch[1] : "ERR";
+      console.warn(`[Groq] ${model} failed (${statusCode}), next...`);
       continue;
     }
   }

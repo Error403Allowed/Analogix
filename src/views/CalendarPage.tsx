@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft, Upload, X, Tag, ChevronLeft, ChevronRight,
-  Plus, Clock, CalendarDays,
+  Plus, Clock, CalendarDays, Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -168,6 +168,18 @@ const CalendarPage = () => {
             <Upload className="w-3.5 h-3.5" />
             {showUploader ? "Close" : "Import .ics"}
           </button>
+          {events.length > 0 && (
+            <button
+              onClick={() => {
+                if (confirm(`Delete all ${events.length} events? This can't be undone.`)) {
+                  eventStore.clearAll();
+                }
+              }}
+              className="flex items-center gap-2 text-xs font-black uppercase tracking-widest px-3 py-1.5 rounded-xl border border-destructive/30 text-destructive hover:bg-destructive/10 transition-all">
+              <Trash2 className="w-3.5 h-3.5" />
+              Clear All
+            </button>
+          )}
         </div>
 
         {showUploader && (

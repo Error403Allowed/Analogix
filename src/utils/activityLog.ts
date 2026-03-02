@@ -1,44 +1,71 @@
-// activityLog.ts — stores per-day session counts for the last 30 days
-const KEY = "analogix_activity_log_v1";
+import { createClient } from "@/lib/supabase/client";
 
-export interface DayActivity { date: string; count: number; } // date = "YYYY-MM-DD"
+export interface DayActivity {
+  date: string; // "YYYY-MM-DD"
+  count: number;
+}
 
 function today(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-function load(): DayActivity[] {
-  try {
-    const r = typeof window !== "undefined" && localStorage.getItem(KEY);
-    return r ? JSON.parse(r) : [];
-  } catch { return []; }
-}
-
-function save(log: DayActivity[]) {
-  try { localStorage.setItem(KEY, JSON.stringify(log)); } catch {}
-}
-
 export const activityLog = {
-  record() {
-    const log = load();
-    const d = today();
-    const idx = log.findIndex(e => e.date === d);
-    if (idx >= 0) log[idx].count++;
-    else log.push({ date: d, count: 1 });
-    // keep last 30 days only
-    const trimmed = log.sort((a, b) => a.date.localeCompare(b.date)).slice(-30);
-    save(trimmed);
+  async record(): Promise<void> {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    // Upsert: increment count for today, insert with count=1 if not exists
+    const { error } = await supabase.rpc("increment_activity", {
+      p_user_id: user.id,
+      p_date: today(),
+    });
+
+    if (error) {
+      // Fallback: manual upsert if RPC not available yet
+      const { data: existing } = await supabase
+        .from("activity_log")
+        .select("id, count")
+        .eq("user_id", user.id)
+        .eq("date", today())
+        .maybeSingle();
+
+      if (existing) {
+        await supabase
+          .from("activity_log")
+          .update({ count: existing.count + 1, updated_at: new Date().toISOString() })
+          .eq("id", existing.id);
+      } else {
+        await supabase
+          .from("activity_log")
+          .insert({ user_id: user.id, date: today(), count: 1 });
+      }
+    }
   },
 
-  getLast7(): DayActivity[] {
-    const log = load();
+  async getLast7(): Promise<DayActivity[]> {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
     const result: DayActivity[] = [];
+    const dates: string[] = [];
     for (let i = 6; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
-      const dateStr = d.toISOString().slice(0, 10);
-      const found = log.find(e => e.date === dateStr);
-      result.push({ date: dateStr, count: found?.count ?? 0 });
+      dates.push(d.toISOString().slice(0, 10));
+    }
+
+    if (!user) return dates.map(date => ({ date, count: 0 }));
+
+    const { data } = await supabase
+      .from("activity_log")
+      .select("date, count")
+      .eq("user_id", user.id)
+      .in("date", dates);
+
+    const map = new Map((data ?? []).map((r: any) => [r.date, r.count]));
+    for (const date of dates) {
+      result.push({ date, count: map.get(date) ?? 0 });
     }
     return result;
   },

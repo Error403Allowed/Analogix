@@ -108,4 +108,16 @@ export const chatStore = {
     if (!user) return;
     await supabase.from("chat_sessions").delete().eq("id", sessionId).eq("user_id", user.id);
   },
+
+  /** Update session title */
+  updateSessionTitle: async (sessionId: string, title: string): Promise<void> => {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    await supabase
+      .from("chat_sessions")
+      .update({ title })
+      .eq("id", sessionId)
+      .eq("user_id", user.id);
+  },
 };

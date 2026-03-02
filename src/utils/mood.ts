@@ -1,3 +1,4 @@
+import { createClient } from "@/lib/supabase/client";
 import { applyThemeByName } from "@/components/ThemeSelector";
 
 export type MoodProfile = {
@@ -17,8 +18,8 @@ export const moodProfiles = {
     dashboard: {
       calendarTitle: "Upcoming lessons",
       deadlinesTitle: "Due soon",
-      tutorSubtitle: "Tight, focused explanations that keep you on track."
-    }
+      tutorSubtitle: "Tight, focused explanations that keep you on track.",
+    },
   },
   energized: {
     label: "Energized",
@@ -26,8 +27,8 @@ export const moodProfiles = {
     dashboard: {
       calendarTitle: "Let us move",
       deadlinesTitle: "Next sprints",
-      tutorSubtitle: "Fast-paced analogies to keep momentum high."
-    }
+      tutorSubtitle: "Fast-paced analogies to keep momentum high.",
+    },
   },
   calm: {
     label: "Calm",
@@ -35,8 +36,8 @@ export const moodProfiles = {
     dashboard: {
       calendarTitle: "Gentle schedule",
       deadlinesTitle: "Light reminders",
-      tutorSubtitle: "Slow, steady explanations with breathing room."
-    }
+      tutorSubtitle: "Slow, steady explanations with breathing room.",
+    },
   },
   grounded: {
     label: "Grounded",
@@ -44,8 +45,8 @@ export const moodProfiles = {
     dashboard: {
       calendarTitle: "Today in focus",
       deadlinesTitle: "Rooted priorities",
-      tutorSubtitle: "Clear, practical explanations with real-world anchors."
-    }
+      tutorSubtitle: "Clear, practical explanations with real-world anchors.",
+    },
   },
   bold: {
     label: "Bold",
@@ -53,8 +54,8 @@ export const moodProfiles = {
     dashboard: {
       calendarTitle: "Big moves",
       deadlinesTitle: "High impact",
-      tutorSubtitle: "Punchy analogies that make the point fast."
-    }
+      tutorSubtitle: "Punchy analogies that make the point fast.",
+    },
   },
   dreamy: {
     label: "Dreamy",
@@ -62,8 +63,8 @@ export const moodProfiles = {
     dashboard: {
       calendarTitle: "Drift ahead",
       deadlinesTitle: "Soft checkpoints",
-      tutorSubtitle: "Story-like explanations that spark imagination."
-    }
+      tutorSubtitle: "Story-like explanations that spark imagination.",
+    },
   },
   focused: {
     label: "Focus",
@@ -71,38 +72,53 @@ export const moodProfiles = {
     dashboard: {
       calendarTitle: "Upcoming lessons",
       deadlinesTitle: "Due soon",
-      tutorSubtitle: "Tight, focused explanations that keep you on track."
-    }
-  }
+      tutorSubtitle: "Tight, focused explanations that keep you on track.",
+    },
+  },
 } as const satisfies Record<string, MoodProfile>;
 
 export type MoodId = keyof typeof moodProfiles;
 
 const DEFAULT_MOOD_ID: MoodId = "focus";
 
-const resolveMoodId = (id: string | null | undefined): MoodId => {
-  if (id && id in moodProfiles) return id as MoodId;
-  return DEFAULT_MOOD_ID;
-};
+const resolveMoodId = (id: string | null | undefined): MoodId =>
+  id && id in moodProfiles ? (id as MoodId) : DEFAULT_MOOD_ID;
 
-export const getMoodProfile = (id: MoodId | string): MoodProfile => {
-  const resolved = resolveMoodId(id);
-  return moodProfiles[resolved];
-};
+export const getMoodProfile = (id: MoodId | string): MoodProfile =>
+  moodProfiles[resolveMoodId(id)];
 
-export const getStoredMoodId = (): MoodId => {
+/** Load mood from Supabase. Falls back to 'focus' if not authenticated or no row yet. */
+export const getStoredMoodId = async (): Promise<MoodId> => {
   if (typeof window === "undefined") return DEFAULT_MOOD_ID;
-  const stored = localStorage.getItem("mood-theme");
-  return resolveMoodId(stored);
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return DEFAULT_MOOD_ID;
+
+  const { data } = await supabase
+    .from("user_preferences")
+    .select("mood")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  return resolveMoodId(data?.mood);
 };
 
-export const applyMoodVisuals = (id: MoodId | string) => {
+/** Apply mood visuals and persist to Supabase. */
+export const applyMoodVisuals = async (id: MoodId | string): Promise<void> => {
   if (typeof window === "undefined") return;
   const resolvedId = resolveMoodId(id);
   const profile = moodProfiles[resolvedId];
 
-  localStorage.setItem("mood-theme", resolvedId);
   applyThemeByName(profile.theme);
   window.dispatchEvent(new Event("themeUpdated"));
   window.dispatchEvent(new Event("moodUpdated"));
+
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+
+  await supabase.from("user_preferences").upsert(
+    { user_id: user.id, mood: resolvedId, theme: profile.theme, updated_at: new Date().toISOString() },
+    { onConflict: "user_id" }
+  );
 };

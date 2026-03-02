@@ -20,6 +20,7 @@ import { useSidebar } from "@/components/ui/sidebar";
 import { applyThemeByName } from "@/components/ThemeSelector";
 import { themes } from "@/components/ThemeSelector";
 import ProfileSheet from "@/components/ProfileSheet";
+import ChatHistoryPanel from "@/components/ChatHistoryPanel";
 
 const mainItems = [
   { title: "Dashboard",     url: "/dashboard",    icon: LayoutDashboard, tutorial: "dashboard-nav"    },
@@ -158,7 +159,6 @@ export function AppSidebar() {
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
-
 
           {/* ── General section: theme ──────────────────────────────── */}
           <SidebarGroup className="mt-3">

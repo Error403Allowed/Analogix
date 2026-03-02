@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, BookOpen, Check, Edit3, RotateCcw, Search, Sparkles, Trash2, X } from "lucide-react";
+import { ArrowLeft, BookOpen, Check, Edit3, RotateCcw, Search, Sparkles, Trash2, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -367,56 +368,146 @@ export default function Flashcards() {
 
             {view === "review" && (
               <div className="space-y-4">
-                <div className="rounded-2xl border border-border bg-card p-4">
-                  <p className="text-sm font-semibold">Review Session</p>
-                  <p className="text-xs text-muted-foreground">Flip the card, then rate how you did.</p>
-                </div>
-
                 {!currentCard ? (
-                  <div className="rounded-2xl border border-dashed border-border p-10 text-center text-sm text-muted-foreground">
-                    No flashcards due right now.
+                  <div className="min-h-[600px] flex flex-col items-center justify-center">
+                    <div className="rounded-2xl border border-dashed border-border bg-card p-10 text-center space-y-4">
+                      <BookOpen className="w-12 h-12 mx-auto text-muted-foreground/40" />
+                      <div>
+                        <p className="text-sm font-semibold">No flashcards due right now</p>
+                        <p className="text-xs text-muted-foreground mt-1">Great work! You're all caught up.</p>
+                      </div>
+                      <Button onClick={() => setView("library")} variant="outline">Back to Library</Button>
+                    </div>
                   </div>
                 ) : (
-                  <div className="rounded-2xl border border-border bg-card p-6 space-y-4">
-                    <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span>{reviewIndex + 1} of {dueCards.length}</span>
-                      <Badge variant="outline" className="text-[10px] uppercase tracking-wide">
-                        {subjectLabel(currentCard.subjectId)}
-                      </Badge>
+                  <div className="min-h-[100dvh] flex flex-col items-center justify-center py-8 px-4">
+                    {/* Progress bar */}
+                    <div className="w-full max-w-2xl mb-8">
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-sm font-semibold">{reviewIndex + 1} / {dueCards.length}</span>
+                        <Badge variant="outline" className="text-[10px] uppercase tracking-wide">
+                          {subjectLabel(currentCard.subjectId)}
+                        </Badge>
+                      </div>
+                      <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-primary transition-all duration-300"
+                          style={{ width: `${((reviewIndex + 1) / dueCards.length) * 100}%` }}
+                        />
+                      </div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setFlipped(f => !f)}
-                      className="w-full rounded-2xl border border-border/60 bg-background/60 p-6 text-left hover:border-primary/60 transition"
+
+                    {/* Large flashcard */}
+                    <motion.div
+                      key={currentCard.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3 }}
+                      className="w-full max-w-2xl mb-8"
                     >
-                      <p className="text-xs text-muted-foreground uppercase tracking-widest">
-                        {flipped ? "Answer" : "Prompt"}
-                      </p>
-                      <p className="mt-3 text-lg font-semibold">
-                        {flipped ? currentCard.back : currentCard.front}
-                      </p>
-                    </button>
-                    <div className="flex flex-wrap gap-2">
-                      {[0, 2, 3, 4, 5].map(rating => (
-                        <Button key={rating} variant={rating < 3 ? "outline" : "default"}
-                          onClick={() => handleRate(rating as FlashcardRating)}
-                          className="flex-1 min-w-[120px]">
-                          {rating <= 1 && "Forgot"}
-                          {rating === 2 && "Hard"}
-                          {rating === 3 && "Okay"}
-                          {rating === 4 && "Easy"}
-                          {rating === 5 && "Perfect"}
-                        </Button>
-                      ))}
+                      <motion.button
+                        type="button"
+                        onClick={() => setFlipped(f => !f)}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        className="w-full aspect-video rounded-3xl border-2 border-primary/30 bg-gradient-to-br from-primary/5 to-primary/10 p-8 text-center flex flex-col items-center justify-center cursor-pointer hover:border-primary/60 transition-colors shadow-lg"
+                      >
+                        <p className="text-sm font-semibold text-primary/70 uppercase tracking-widest mb-4">
+                          {flipped ? "Answer" : "Question"}
+                        </p>
+                        <p className="text-3xl sm:text-4xl font-bold text-foreground leading-tight">
+                          {flipped ? currentCard.back : currentCard.front}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-6">Click to {flipped ? "reveal question" : "reveal answer"}</p>
+                      </motion.button>
+                    </motion.div>
+
+                    {/* Rating buttons */}
+                    <div className="w-full max-w-2xl space-y-4 mb-8">
+                      {flipped && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.2 }}
+                          className="grid grid-cols-2 sm:grid-cols-5 gap-2"
+                        >
+                          {[
+                            { rating: 0, label: "Again", color: "bg-red-500/20 hover:bg-red-500/30 text-red-600" },
+                            { rating: 2, label: "Hard", color: "bg-orange-500/20 hover:bg-orange-500/30 text-orange-600" },
+                            { rating: 3, label: "Good", color: "bg-blue-500/20 hover:bg-blue-500/30 text-blue-600" },
+                            { rating: 4, label: "Easy", color: "bg-green-500/20 hover:bg-green-500/30 text-green-600" },
+                            { rating: 5, label: "Perfect", color: "bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-600" },
+                          ].map(({ rating, label, color }) => (
+                            <motion.button
+                              key={rating}
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
+                              type="button"
+                              onClick={() => handleRate(rating as FlashcardRating)}
+                              className={`py-3 rounded-xl font-semibold text-sm transition-colors ${color}`}
+                            >
+                              {label}
+                            </motion.button>
+                          ))}
+                        </motion.div>
+                      )}
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Button variant="ghost" onClick={() => setFlipped(false)} className="gap-1">
-                        <RotateCcw className="w-4 h-4" />Reset
+
+                    {/* Navigation */}
+                    <div className="w-full max-w-2xl flex items-center justify-between">
+                      <Button
+                        variant="outline"
+                        size="lg"
+                        onClick={() => {
+                          setFlipped(false);
+                          if (reviewIndex > 0) {
+                            setReviewIndex(reviewIndex - 1);
+                            setReviewedCount(Math.max(0, reviewedCount - 1));
+                          }
+                        }}
+                        disabled={reviewIndex === 0}
+                        className="gap-2"
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                        Previous
                       </Button>
-                      <Button variant="ghost" onClick={() => setView("library")} className="gap-1">
-                        <X className="w-4 h-4" />Exit
+
+                      <div className="text-center">
+                        <p className="text-xs text-muted-foreground uppercase tracking-widest mb-2">Progress</p>
+                        <p className="text-2xl font-bold text-foreground">{reviewedCount}</p>
+                      </div>
+
+                      <Button
+                        variant="outline"
+                        size="lg"
+                        onClick={() => {
+                          setFlipped(false);
+                          if (reviewIndex < dueCards.length - 1) {
+                            setReviewIndex(reviewIndex + 1);
+                          }
+                        }}
+                        disabled={reviewIndex === dueCards.length - 1}
+                        className="gap-2"
+                      >
+                        Next
+                        <ChevronRight className="w-4 h-4" />
                       </Button>
                     </div>
+
+                    {/* Exit button */}
+                    <Button
+                      variant="ghost"
+                      onClick={() => {
+                        setView("library");
+                        setFlipped(false);
+                        setReviewIndex(0);
+                        setReviewedCount(0);
+                      }}
+                      className="mt-8 gap-2"
+                    >
+                      <X className="w-4 h-4" />
+                      Exit Review
+                    </Button>
                   </div>
                 )}
               </div>

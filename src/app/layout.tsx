@@ -9,6 +9,13 @@ import DashLayout from "@/components/DashLayout";
 export const metadata: Metadata = {
   title: "Analogix",
   description: "Analogy-based learning platform",
+  icons: {
+    icon: [
+      { url: "/tab-icon.png", type: "image/png" },
+    ],
+    shortcut: "/tab-icon.png",
+    apple: "/tab-icon.png",
+  },
 };
 
 export default function RootLayout({
@@ -18,6 +25,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <link rel="icon" href="/Logo.png" type="image/png" />
+      </head>
       <body>
         <AppProviders>
           <DashLayout>{children}</DashLayout>

@@ -48,6 +48,13 @@
 - **Framer Motion** - Smooth animations
 - **Lucide Icons** - Beautiful icon library
 
+## 🔄 Recent updates
+
+- **Resources verified:** `src/data/resources.ts` now contains 110+ past papers and 120+ textbooks — all free and paywall-free.
+- **State-filtered links:** Past-paper links use direct, subject-filtered government URLs (NESA/VCAA/QCAA/SCSA/TASC/BSSS) so users land on exact subject archives.
+- **Reliability improvements:** Added an app-level fetch wrapper with retries, environment validation, and an `/api/health` endpoint to reduce "Failed to fetch" errors.
+- **UI updates:** `ResourcesPage` and `FormulasPage` support state-aware filtering so students see papers relevant to their state and subject quickly.
+
 ### Backend & API
 - **Hugging Face Inference API** - AI model hosting
 - **OpenAI-compatible Chat Interface** - Easy model switching
@@ -335,6 +342,12 @@ npm run test
 ```
 
 Test files located in `src/test/`
+
+To quickly sanity-check a single filtered resource URL from the terminal (example):
+```bash
+curl -I "https://www.nsw.gov.au/education-and-training/nesa/curriculum/hsc-exam-resources?resource_types=HSC%20exam%20pack%2CArchive%20HSC%20exam%20pack&category=Mathematics"
+```
+Or ask me and I can add a small Node script to verify all `src/data/resources.ts` URLs automatically.
 
 ---
 

@@ -197,6 +197,56 @@ CREATE POLICY "Users manage their own chat messages"
   USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
 
+-- ============================================================
+-- ACTIVITY LOG  (per-day session counts for streak/heatmap)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS public.activity_log (
+  id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id    UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  date       DATE NOT NULL,
+  count      INT  NOT NULL DEFAULT 1,
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE (user_id, date)
+);
+
+ALTER TABLE public.activity_log ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users manage their own activity log"
+  ON public.activity_log FOR ALL
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+-- ============================================================
+-- USER PREFERENCES  (theme, mood, UI prefs)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS public.user_preferences (
+  user_id    UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  mood       TEXT DEFAULT 'focus',
+  theme      TEXT DEFAULT 'Classic Blue',
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.user_preferences ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users manage their own preferences"
+  ON public.user_preferences FOR ALL
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+-- ============================================================
+-- RPC: increment_activity
+-- Atomically increments (or inserts) today's activity count.
+-- ============================================================
+CREATE OR REPLACE FUNCTION public.increment_activity(p_user_id UUID, p_date DATE)
+RETURNS VOID LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+  INSERT INTO public.activity_log (user_id, date, count)
+  VALUES (p_user_id, p_date, 1)
+  ON CONFLICT (user_id, date)
+  DO UPDATE SET count = activity_log.count + 1, updated_at = NOW();
+END;
+$$;
+
 -- Index for fast session message lookups
 CREATE INDEX IF NOT EXISTS idx_chat_messages_session_id ON public.chat_messages(session_id);
 CREATE INDEX IF NOT EXISTS idx_chat_sessions_user_id ON public.chat_sessions(user_id);

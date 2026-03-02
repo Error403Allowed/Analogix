@@ -484,7 +484,7 @@ const Onboarding = () => {
                 <div className="space-y-8">
                   <div>
                     <h1 className="text-3xl font-black text-foreground tracking-tight">Almost there!</h1>
-                    <p className="text-muted-foreground text-lg">Tell me about your interests for analogies.</p>
+                    <p className="text-muted-foreground text-lg">Tell me about your interests so I can help you learn.</p>
                   </div>
                   <motion.div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3" variants={cv} initial="hidden" animate="visible">
                     {HOBBY_OPTIONS.map(h => (
