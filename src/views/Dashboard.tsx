@@ -16,18 +16,17 @@ import {
   Laptop,
   Book,
   BookOpen,
-  Plane
+  Plane,
+  Target,
+  Brain,
+  Flame,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DashboardPanel } from "@/components/ui/panels";
-import Header from "@/components/Header";
 import AchievementBadge from "@/components/AchievementBadge";
 import QuizCreator from "@/components/QuizCreator";
 import ExamManager from "@/components/ExamManager";
 import CalendarWidget from "@/components/CalendarWidget";
 import { TimerWidget } from "@/components/TimerWidget";
-import { SubjectGrid } from "@/components/SubjectGrid";
 import { useRouter } from "next/navigation";
 import { achievementStore } from "@/utils/achievementStore";
 import { statsStore } from "@/utils/statsStore";
@@ -361,77 +360,197 @@ const Dashboard = () => {
     <>
     <div className="min-h-full relative overflow-x-hidden flex flex-col">
       <div className="w-full relative z-10 flex-1 min-h-0 flex flex-col">       
-        <div className="flex flex-col gap-4 min-h-0 flex-1 overflow-y-auto pt-4 pb-6 custom-scrollbar px-4">
+        <div className="flex flex-col gap-6 min-h-0 flex-1 overflow-y-auto pt-6 pb-6 custom-scrollbar px-6">
 
-            {/* Top Section: Calendar + Timer — equal height via items-stretch */}
-            <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-stretch">
-              {/* Calendar Section */}
-              <DashboardPanel
-                as={motion.div}
-                variants={itemVariants}
-                data-tutorial="calendar"
-                className="xl:col-span-7 p-6 flex flex-col min-h-[620px]"
-              >
-                <div className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.2em] text-muted-foreground mb-4">
-                  <CalendarIcon className="w-4 h-4 text-primary" />
-                  Calendar
-                </div>
-                <div className="flex-1 min-h-0 overflow-hidden">
-                   <CalendarWidget streak={normalizedStats.currentStreak} streakLabel={streakLabel} />
+          {/* ── Page heading ─────────────────────────────────────── */}
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.25em] text-muted-foreground/60 mb-0.5">Welcome back</p>
+              <h1 className="text-3xl font-display font-black text-foreground tracking-tight leading-none">{userName}</h1>
+            </div>
+            <div className="text-right">
+              <p className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground/60">Today</p>
+              <p className="text-sm font-bold text-foreground">{new Date().toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short" })}</p>
+            </div>
+          </div>
+
+          {/* ── Stats row ────────────────────────────────────────── */}
+          <motion.div
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+            className="grid grid-cols-2 xl:grid-cols-4 gap-3"
+          >
+            {/* Streak */}
+            <motion.div variants={itemVariants} whileHover={statCardVariants.hover}>
+              <DashboardPanel className="p-5 relative overflow-hidden group border border-amber-500/15 bg-amber-500/5">
+                <div className="absolute inset-0 bg-gradient-to-br from-amber-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-[var(--radius)]" />
+                <div className="relative z-10">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="w-10 h-10 rounded-2xl bg-amber-500/15 flex items-center justify-center shadow-inner">
+                      <Zap className="w-5 h-5 text-amber-500 fill-amber-500/30" />
+                    </div>
+                    {normalizedStats.currentStreak > 0 && (
+                      <div className="flex gap-0.5 items-center">
+                        {Array.from({ length: Math.min(normalizedStats.currentStreak, 7) }, (_, i) => (
+                          <div key={i} className={`rounded-full transition-all ${i < Math.min(normalizedStats.currentStreak, 7) ? "w-1.5 h-3 bg-amber-500" : "w-1.5 h-1.5 bg-amber-500/20"}`}
+                            style={{ height: `${6 + (i / Math.min(normalizedStats.currentStreak, 7)) * 10}px` }} />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-3xl font-display font-black text-foreground tracking-tighter leading-none mb-1">{normalizedStats.currentStreak}</p>
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-500/80">{streakLabel} streak</p>
+                  <div className="mt-3 flex gap-1 items-end">
+                    {weekActivity.length > 0
+                      ? weekActivity.map((d, i) => (
+                          <div key={i} className="flex-1 flex flex-col items-center gap-0.5">
+                            <div className={`w-full rounded-sm transition-all ${d.count > 0 ? "bg-amber-500" : "bg-amber-500/15"}`}
+                              style={{ height: `${d.count > 0 ? Math.max(4, Math.min(16, 4 + d.count * 3)) : 4}px` }} />
+                            <span className="text-[8px] text-muted-foreground/40 font-bold">{dayLabel(d.date)}</span>
+                          </div>
+                        ))
+                      : Array.from({ length: 7 }, (_, i) => (
+                          <div key={i} className="flex-1 flex flex-col items-center gap-0.5">
+                            <div className="w-full rounded-sm bg-amber-500/15" style={{ height: "4px" }} />
+                            <span className="text-[8px] text-muted-foreground/40 font-bold">{DAY_SH[i]}</span>
+                          </div>
+                        ))
+                    }
+                  </div>
                 </div>
               </DashboardPanel>
+            </motion.div>
 
-              {/* Timer & Streak Column — this drives the shared height */}
-              <div className="xl:col-span-5 flex flex-col gap-4">
-                <DashboardPanel
-                  as={motion.div}
-                  variants={itemVariants}
-                  data-tutorial="timer"
-                  className="flex-1 p-6 flex flex-col items-center justify-center"
-                >
-                   <TimerWidget />
-                </DashboardPanel>
-                
-                <DashboardPanel
-                  as={motion.div}
-                  variants={itemVariants}
-                  whileHover={{ scale: 1.02, y: -5 }}
-                  data-tutorial="streak"
-                  className="p-6 flex flex-col items-center justify-center text-center relative overflow-hidden group border border-amber-500/10 bg-amber-500/5 shadow-[0_20px_50px_rgba(245,158,11,0.05)]"
-                >
-                  <div className="absolute inset-0 bg-gradient-to-br from-amber-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                  <div className="w-14 h-14 rounded-[2rem] bg-amber-500/10 flex items-center justify-center mb-3 relative z-10 shadow-lg shadow-amber-500/10 group-hover:scale-110 transition-transform">
-                    <Zap className="w-7 h-7 text-amber-500 fill-amber-500/20" />
+            {/* Quizzes done */}
+            <motion.div variants={itemVariants} whileHover={statCardVariants.hover}>
+              <DashboardPanel className="p-5 relative overflow-hidden group border border-primary/10 bg-primary/5">
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-[var(--radius)]" />
+                <div className="relative z-10">
+                  <div className="w-10 h-10 rounded-2xl bg-primary/15 flex items-center justify-center shadow-inner mb-3">
+                    <Target className="w-5 h-5 text-primary" />
                   </div>
-                  <div className="relative z-10">
-                    <p className="text-4xl font-black text-foreground mb-0.5 tracking-tighter">
-                      {normalizedStats.currentStreak}
-                    </p>
-                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground/80">
-                      {streakLabel} Active Streak
-                    </p>
-                  </div>
-                </DashboardPanel>
-              </div>
-            </div>
+                  <p className="text-3xl font-display font-black text-foreground tracking-tighter leading-none mb-1">{normalizedStats.quizzesDone}</p>
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary/70">Quizzes done</p>
+                </div>
+              </DashboardPanel>
+            </motion.div>
 
-            {/* Middle Section: Subjects (Persistent & Prominent) */}
+            {/* Accuracy */}
+            <motion.div variants={itemVariants} whileHover={statCardVariants.hover}>
+              <DashboardPanel className="p-5 relative overflow-hidden group border border-emerald-500/15 bg-emerald-500/5">
+                <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-[var(--radius)]" />
+                <div className="relative z-10">
+                  <div className="w-10 h-10 rounded-2xl bg-emerald-500/15 flex items-center justify-center shadow-inner mb-3">
+                    <TrendingUp className="w-5 h-5 text-emerald-500" />
+                  </div>
+                  <p className="text-3xl font-display font-black text-foreground tracking-tighter leading-none mb-1">{normalizedStats.accuracy}<span className="text-lg text-muted-foreground font-bold">%</span></p>
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-500/80">Accuracy</p>
+                  {normalizedStats.accuracy > 0 && (
+                    <div className="mt-3 h-1.5 bg-emerald-500/15 rounded-full overflow-hidden">
+                      <div className="h-full bg-emerald-500 rounded-full transition-all duration-700" style={{ width: `${normalizedStats.accuracy}%` }} />
+                    </div>
+                  )}
+                </div>
+              </DashboardPanel>
+            </motion.div>
+
+            {/* Analogies / conversations */}
+            <motion.div variants={itemVariants} whileHover={statCardVariants.hover}>
+              <DashboardPanel className="p-5 relative overflow-hidden group border border-violet-500/15 bg-violet-500/5">
+                <div className="absolute inset-0 bg-gradient-to-br from-violet-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-[var(--radius)]" />
+                <div className="relative z-10">
+                  <div className="w-10 h-10 rounded-2xl bg-violet-500/15 flex items-center justify-center shadow-inner mb-3">
+                    <Brain className="w-5 h-5 text-violet-500" />
+                  </div>
+                  <p className="text-3xl font-display font-black text-foreground tracking-tighter leading-none mb-1">{normalizedStats.conversationsCount}</p>
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-violet-500/80">{activityLabel}</p>
+                </div>
+              </DashboardPanel>
+            </motion.div>
+          </motion.div>
+
+          {/* ── Calendar + Timer ─────────────────────────────────── */}
+          <motion.div
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+            className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-stretch"
+          >
             <DashboardPanel
               as={motion.div}
               variants={itemVariants}
-              data-tutorial="subjects"
-              className="p-6"
+              data-tutorial="calendar"
+              className="xl:col-span-7 p-6 flex flex-col"
             >
-               <SubjectGrid />
+              <div className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.2em] text-muted-foreground mb-4">
+                <CalendarIcon className="w-4 h-4 text-primary" />
+                Calendar
+              </div>
+              <div className="flex-1 min-h-0">
+                <CalendarWidget streak={normalizedStats.currentStreak} streakLabel={streakLabel} />
+              </div>
             </DashboardPanel>
-            
-          </div>
-    </div>
-  </div>
 
-  {/* Tutorial — shown once right after onboarding */}
-  {showTutorial && <TutorialOverlay onComplete={handleTutorialComplete} />}
-  </>
+            <div className="xl:col-span-5 flex flex-col gap-4">
+              <DashboardPanel
+                as={motion.div}
+                variants={itemVariants}
+                data-tutorial="timer"
+                className="flex-1 p-6 flex flex-col items-center justify-center"
+              >
+                <TimerWidget />
+              </DashboardPanel>
+
+              {/* Weekly activity sparkline */}
+              {weeklyTotal > 0 && (
+                <DashboardPanel as={motion.div} variants={itemVariants} className="p-5">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">This week</p>
+                    <p className="text-[10px] font-black text-primary">{weeklyTotal} sessions</p>
+                  </div>
+                  <div className="h-16">
+                    <Sparkline data={weeklyCounts} />
+                  </div>
+                </DashboardPanel>
+              )}
+            </div>
+          </motion.div>
+
+          {/* ── Subject performance ──────────────────────────────── */}
+          {hasSubjectActivity && (
+            <DashboardPanel as={motion.div} variants={itemVariants} className="p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <TrendingUp className="w-4 h-4 text-primary" />
+                <h3 className="text-sm font-black uppercase tracking-[0.2em] text-muted-foreground">Subject activity</h3>
+              </div>
+              <div className="space-y-3">
+                {subjectPerformanceDesc.map(s => (
+                  <div key={s.label} className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-foreground">{s.label}</span>
+                      <span className="text-[10px] font-black text-muted-foreground">{s.count} sessions</span>
+                    </div>
+                    <div className="h-1.5 bg-primary/10 rounded-full overflow-hidden">
+                      <motion.div
+                        className="h-full bg-primary rounded-full"
+                        initial={{ width: 0 }}
+                        animate={{ width: `${s.percent}%` }}
+                        transition={{ duration: 0.6, ease: "easeOut" }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </DashboardPanel>
+          )}
+
+        </div>
+      </div>
+    </div>
+
+    {showTutorial && <TutorialOverlay onComplete={handleTutorialComplete} />}
+    </>
   );
 };
 

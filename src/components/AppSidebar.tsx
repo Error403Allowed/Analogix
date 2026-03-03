@@ -22,16 +22,31 @@ import { themes } from "@/components/ThemeSelector";
 import ProfileSheet from "@/components/ProfileSheet";
 import ChatHistoryPanel from "@/components/ChatHistoryPanel";
 
-const mainItems = [
-  { title: "Dashboard",     url: "/dashboard",    icon: LayoutDashboard, tutorial: "dashboard-nav"    },
-  { title: "Analogy Tutor", url: "/chat",         icon: MessageCircle,   tutorial: "chat-nav"         },
-  { title: "Quizzes",       url: "/quiz",         icon: BookOpen,        tutorial: "quiz-nav"         },
-  { title: "Flashcards",    url: "/flashcards",   icon: BookMarkedIcon,  tutorial: "flashcards-nav"   },
-  { title: "Formulas",      url: "/formulas",     icon: SigmaIcon,       tutorial: "formulas-nav"     },
-  { title: "Resources",     url: "/resources",    icon: Library,         tutorial: "resources-nav"    },
-  { title: "Calendar",      url: "/calendar",     icon: Calendar,        tutorial: "calendar-nav"     },
-  { title: "My Subjects",   url: "/subjects",     icon: GraduationCap,   tutorial: "subjects-nav"     },
-  { title: "Achievements",  url: "/achievements", icon: Trophy,          tutorial: "achievements-nav" },
+const navGroups = [
+  {
+    label: "Learn",
+    items: [
+      { title: "Dashboard",     url: "/dashboard",    icon: LayoutDashboard, tutorial: "dashboard-nav"    },
+      { title: "Analogy Tutor", url: "/chat",         icon: MessageCircle,   tutorial: "chat-nav"         },
+      { title: "Quizzes",       url: "/quiz",         icon: BookOpen,        tutorial: "quiz-nav"         },
+      { title: "Flashcards",    url: "/flashcards",   icon: BookMarkedIcon,  tutorial: "flashcards-nav"   },
+    ],
+  },
+  {
+    label: "Reference",
+    items: [
+      { title: "Formulas",      url: "/formulas",     icon: SigmaIcon,       tutorial: "formulas-nav"     },
+      { title: "Resources",     url: "/resources",    icon: Library,         tutorial: "resources-nav"    },
+      { title: "My Subjects",   url: "/subjects",     icon: GraduationCap,   tutorial: "subjects-nav"     },
+    ],
+  },
+  {
+    label: "Plan",
+    items: [
+      { title: "Calendar",      url: "/calendar",     icon: Calendar,        tutorial: "calendar-nav"     },
+      { title: "Achievements",  url: "/achievements", icon: Trophy,          tutorial: "achievements-nav" },
+    ],
+  },
 ];
 
 
@@ -99,14 +114,14 @@ export function AppSidebar() {
       <div className="flex flex-col h-full mx-2 my-2 rounded-3xl glass-card border-0 shadow-2xl overflow-hidden">
 
         {/* ── Header: logo + collapse trigger ──────────────────────── */}
-        <SidebarHeader className="h-16 shrink-0 flex flex-col justify-center px-4 group-data-[collapsible=icon]:px-2 border-b border-white/10 dark:border-white/5">
+        <SidebarHeader className="h-16 shrink-0 flex flex-col justify-center px-5 group-data-[collapsible=icon]:px-2 border-b border-white/10 dark:border-white/5">
           <div className="flex items-center justify-between w-full group-data-[collapsible=icon]:justify-center">
             <button
               onClick={() => router.push("/?force=true")}
-              className="flex items-center gap-2.5 hover:opacity-80 transition-all active:scale-95 group-data-[collapsible=icon]:hidden"
+              className="flex items-center gap-3.5 pl-1 hover:opacity-80 transition-all active:scale-95 group-data-[collapsible=icon]:hidden"
             >
-              <div className="w-8 h-8 rounded-xl gradient-primary flex items-center justify-center shrink-0 shadow-lg shadow-primary/30">
-                <Brain className="w-4 h-4 text-white" />
+              <div className="w-9 h-9 rounded-xl overflow-hidden shrink-0 shadow-lg shadow-primary/30">
+                <img src="/tab-icon.png" alt="Analogix" className="w-full h-full object-cover" />
               </div>
               <span className="text-xl font-black gradient-text tracking-tighter">Analogix</span>
             </button>
@@ -119,48 +134,47 @@ export function AppSidebar() {
 
         {/* ── Nav ───────────────────────────────────────────────────── */}
         <SidebarContent className="flex-1 px-2 py-3 overflow-x-hidden overflow-y-auto">
-          <SidebarGroup>
-            <p className="px-2 mb-2 text-[9px] font-black uppercase tracking-[0.25em] text-muted-foreground/40 group-data-[collapsible=icon]:hidden">
-              Menu
-            </p>
-            <SidebarGroupContent>
-              <SidebarMenu className="gap-0.5">
-                {mainItems.map(item => {
-                  const isActive = pathname === item.url;
-                  return (
-                    <SidebarMenuItem key={item.title}>
-                      <motion.div whileTap={{ scale: 0.97 }} data-tutorial={item.tutorial}>
-                        <SidebarMenuButton
-                          isActive={isActive}
-                          onClick={() => router.push(item.url)}
-                          className={cn(
-                            "h-9 rounded-xl transition-all duration-200 relative group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:-translate-x-1.5",
-                            isActive
-                              ? "bg-primary/12 text-primary font-black"
-                              : "text-muted-foreground hover:text-foreground hover:bg-white/5 dark:hover:bg-white/5 font-semibold"
-                          )}
-                        >
-                          {/* Active left-border accent — like the inspiration */}
-                          {isActive && (
-                            <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-full bg-primary group-data-[collapsible=icon]:hidden" />
-                          )}
-                          <item.icon
+          {navGroups.map((group) => (
+            <SidebarGroup key={group.label}>
+              <p className="px-2 mb-1 mt-2 text-[9px] font-black uppercase tracking-[0.25em] text-muted-foreground/40 group-data-[collapsible=icon]:hidden">
+                {group.label}
+              </p>
+              <SidebarGroupContent>
+                <SidebarMenu className="gap-0.5">
+                  {group.items.map(item => {
+                    const isActive = pathname === item.url;
+                    return (
+                      <SidebarMenuItem key={item.title}>
+                        <motion.div whileTap={{ scale: 0.97 }} data-tutorial={item.tutorial}>
+                          <SidebarMenuButton
+                            isActive={isActive}
+                            onClick={() => router.push(item.url)}
                             className={cn(
-                              "w-4 h-4 shrink-0 ml-1 transition-transform group-data-[collapsible=icon]:ml-0",
-                              isActive ? "text-primary" : "text-muted-foreground/70"
+                              "h-9 rounded-xl transition-all duration-200 relative group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:-translate-x-1.5",
+                              isActive
+                                ? "bg-primary/12 text-primary font-black"
+                                : "text-muted-foreground hover:text-foreground hover:bg-white/5 dark:hover:bg-white/5 font-semibold"
                             )}
-                          />
-                          <span className="truncate group-data-[collapsible=icon]:hidden">{item.title}</span>
-                        </SidebarMenuButton>
-                      </motion.div>
-                    </SidebarMenuItem>
-                  );
-                })}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-
-          {/* ── General section: theme ──────────────────────────────── */}
+                          >
+                            {isActive && (
+                              <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-full bg-primary group-data-[collapsible=icon]:hidden" />
+                            )}
+                            <item.icon
+                              className={cn(
+                                "w-4 h-4 shrink-0 ml-1 transition-transform group-data-[collapsible=icon]:ml-0",
+                                isActive ? "text-primary" : "text-muted-foreground/70"
+                              )}
+                            />
+                            <span className="truncate group-data-[collapsible=icon]:hidden">{item.title}</span>
+                          </SidebarMenuButton>
+                        </motion.div>
+                      </SidebarMenuItem>
+                    );
+                  })}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          ))}
           <SidebarGroup className="mt-3">
             <p className="px-2 mb-2 text-[9px] font-black uppercase tracking-[0.25em] text-muted-foreground/40 group-data-[collapsible=icon]:hidden">
               General

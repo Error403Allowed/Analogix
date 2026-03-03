@@ -51,9 +51,9 @@
     --bg-2-dark: rgba(37, 99, 235, 0.035);
     --bg-3-dark: rgba(15, 118, 110, 0.025);
 
-    --glass-bg-light: rgba(255, 255, 255, 0.72);
-    --glass-tint-light: rgba(14, 165, 166, 0.12);
-    --glass-border-light: rgba(255, 255, 255, 0.18);
+    --glass-bg-light: rgba(255, 255, 255, 0.85);
+    --glass-tint-light: rgba(14, 165, 166, 0.08);
+    --glass-border-light: rgba(0, 0, 0, 0.10);
     --glass-bg-dark: rgba(18, 28, 46, 0.88);
     --glass-tint-dark: rgba(14, 165, 166, 0.06);
     --glass-border-dark: rgba(255, 255, 255, 0.1);
@@ -158,14 +158,19 @@
     background-attachment: fixed;
   }
 
-  h1, h2, h3, .font-display {
+  h1, h2, h3 {
     font-family: var(--font-display);
     letter-spacing: -0.01em;
   }
 }
 
+/* ── Utility: Fraunces display font on any element ─────────────── */
+.font-display {
+  font-family: var(--font-display) !important;
+  letter-spacing: -0.02em;
+}
+
 .glass {
-  background: linear-gradient(135deg, var(--glass-tint), var(--glass-bg));
   border: 1px solid var(--glass-border);
   box-shadow: var(--glass-shadow);
   backdrop-filter: blur(var(--blur));
@@ -175,7 +180,7 @@
 .glass-card {
   background: linear-gradient(135deg, var(--glass-tint), var(--glass-bg));
   border: 1px solid var(--glass-border);
-  box-shadow: var(--glass-shadow);
+  box-shadow: var(--glass-shadow), 0 1px 3px rgba(0,0,0,0.08);
   border-radius: 3rem;
   backdrop-filter: blur(var(--blur));
   transition: all 0.4s ease;
@@ -220,9 +225,9 @@
 .dashboard-panel {
   @apply rounded-[var(--radius)] relative transition-all duration-500;
   backdrop-filter: blur(var(--blur));
-  background: transparent;
-  border: none;
-  box-shadow: none;
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(0, 0, 0, 0.07);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04);
 }
 
 /* In dark mode, dashboard panels need a visible surface so they don't

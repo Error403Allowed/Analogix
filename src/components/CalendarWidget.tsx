@@ -30,14 +30,14 @@ const TermBadge = () => {
   if (info) {
     const pct = Math.round((info.week / info.weeksTotal) * 100);
     return (
-      <div className="px-3 py-2.5 rounded-2xl bg-primary/5 border border-primary/10 flex items-center justify-between gap-3">
+      <div className="px-2 py-1.5 rounded-xl bg-primary/5 border border-primary/10 flex items-center justify-between gap-3">
         <div>
-          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-primary/70">{info.term.label} · {userState}</p>
-          <p className="text-sm font-black text-foreground leading-tight">Week {info.week} <span className="text-muted-foreground font-medium">of {info.weeksTotal}</span></p>
+      <p className="text-[9px] font-black uppercase tracking-[0.18em] text-primary/70">{info.term.label} · {userState}</p>
+          <p className="text-[10px] font-black text-foreground leading-tight">Week {info.week} <span className="text-muted-foreground font-medium">of {info.weeksTotal}</span></p>
         </div>
-        <div className="flex flex-col items-end gap-1.5 shrink-0">
-          <span className="text-[10px] font-black text-primary">{pct}%</span>
-          <div className="w-20 h-1.5 bg-primary/10 rounded-full overflow-hidden">
+        <div className="flex flex-col items-end gap-1 shrink-0">
+          <span className="text-[9px] font-black text-primary">{pct}%</span>
+          <div className="w-16 h-1 bg-primary/10 rounded-full overflow-hidden">
             <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${pct}%` }} />
           </div>
         </div>
@@ -110,7 +110,7 @@ const CalendarWidget = ({ streak = 0, streakLabel = "days" }: CalendarWidgetProp
   ];
 
   return (
-    <div className="flex h-full min-h-[540px] flex-col space-y-3">
+    <div className="flex flex-col space-y-2">
       <div className="flex items-center justify-between px-1">
         <h3 className="text-muted-foreground font-black text-sm uppercase tracking-[0.2em]">Schedule</h3>
         <div className="flex gap-4">
@@ -130,25 +130,25 @@ const CalendarWidget = ({ streak = 0, streakLabel = "days" }: CalendarWidgetProp
 
       <AnimatePresence mode="wait">
         {showUploader ? (
-          <motion.div key="uploader" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="min-h-[380px]">
+          <motion.div key="uploader" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
             <ICSUploader />
           </motion.div>
         ) : (
-          <motion.div key="calendar" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} className="glass-card p-3 flex min-h-[460px] flex-col bg-card/85 border border-border/70">
+          <motion.div key="calendar" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} className="glass-card p-2 flex flex-col bg-card/85 border border-border/70">
             <Calendar
               mode="single" selected={date} onSelect={setDate}
               className="rounded-3xl border-0 p-0 w-full"
               classNames={{
-                month: "space-y-2 w-full",
-                head_row: "flex w-full mb-1",
-                head_cell: "text-foreground/75 flex-1 text-center font-black text-[0.65rem] uppercase tracking-widest",
-                row: "flex w-full mt-1 gap-0.5",
-                cell: "flex-1 h-9 text-center text-xs p-0 relative",
-                day: cn(buttonVariants({ variant: "ghost" }), "h-9 w-9 mx-auto p-0 font-bold aria-selected:opacity-100 rounded-xl transition-all hover:bg-primary/10 hover:text-primary"),
+                month: "space-y-0.5 w-full",
+                head_row: "flex w-full mb-0.5",
+                head_cell: "text-foreground/75 flex-1 text-center font-black text-[0.6rem] uppercase tracking-widest",
+                row: "flex w-full mt-0.5 gap-0.5",
+                cell: "flex-1 h-7 text-center text-xs p-0 relative",
+                day: cn(buttonVariants({ variant: "ghost" }), "h-7 w-7 mx-auto p-0 font-bold aria-selected:opacity-100 rounded-lg transition-all hover:bg-primary/10 hover:text-primary text-xs"),
                 day_selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground shadow-lg",
                 day_today: "bg-muted text-foreground",
-                caption_label: "text-sm font-black uppercase tracking-widest text-foreground",
-                nav_button: cn(buttonVariants({ variant: "outline" }), "h-7 w-7 bg-card/80 border-border/70 p-0 opacity-85 hover:opacity-100 rounded-xl"),
+                caption_label: "text-xs font-black uppercase tracking-widest text-foreground",
+                nav_button: cn(buttonVariants({ variant: "outline" }), "h-6 w-6 bg-card/80 border-border/70 p-0 opacity-85 hover:opacity-100 rounded-lg"),
                 table: "w-full border-collapse space-y-0",
               }}
               modifiers={{ event: d => events.some(e => isSameDay(new Date(e.date), d)) }}
@@ -156,11 +156,11 @@ const CalendarWidget = ({ streak = 0, streakLabel = "days" }: CalendarWidgetProp
             />
 
             {/* Tabs */}
-            <div className="mt-3 border-t border-border/10 pt-3">
-              <div className="flex items-center gap-1 mb-3">
+            <div className="mt-1.5 border-t border-border/10 pt-1.5">
+              <div className="flex items-center gap-1 mb-1.5">
                 {tabConfig.map(t => (
                   <button key={t.id} onClick={() => handleTabSwitch(t.id)}
-                    className={cn("text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full transition-all flex items-center gap-1",
+                    className={cn("text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full transition-all flex items-center gap-1",
                       tab === t.id ? "bg-primary/12 text-primary" : "bg-card/50 text-foreground/75 hover:text-foreground")}>
                     {t.id === "add" && <Plus className="w-2.5 h-2.5" />}
                     {t.label}
@@ -174,7 +174,7 @@ const CalendarWidget = ({ streak = 0, streakLabel = "days" }: CalendarWidgetProp
               <AnimatePresence mode="wait">
                 {tab === "day" && (
                   <motion.div key="day" initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 8 }} transition={{ duration: 0.15 }}
-                    className="space-y-2 max-h-[240px] overflow-y-auto pr-1 custom-scrollbar">
+                    className="space-y-1 max-h-[120px] overflow-y-auto pr-1 custom-scrollbar">
                     {selectedDayEvents.length > 0
                       ? selectedDayEvents.map(e => <EventRow key={e.id} event={e} onDelete={() => eventStore.remove(e.id)} />)
                       : <EmptyState text="No events for this day." />}
@@ -227,7 +227,7 @@ const CalendarWidget = ({ streak = 0, streakLabel = "days" }: CalendarWidgetProp
 const EventRow = ({ event, onDelete }: { event: AppEvent; onDelete: () => void }) => {
   const isExam = event.type === "exam";
   return (
-    <div className="flex items-center gap-3 p-3 rounded-2xl bg-card/70 border border-border/60 hover:bg-card/90 transition-all group">
+    <div className="flex items-center gap-2 p-1.5 rounded-lg bg-card/70 border border-border/60 hover:bg-card/90 transition-all group">
       <div className={cn("w-1 self-stretch rounded-full shrink-0",
         isExam ? "bg-destructive" : event.type === "assignment" ? "bg-amber-500" : "bg-primary")} />
       <div className="flex-1 min-w-0">
