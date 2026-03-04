@@ -11,8 +11,8 @@ export interface UserStats {
   conversationsCount: number;
   quizzesDone: number;
   currentStreak: number;
+  accuracy: number;
   topSubject: string;
   // Dynamic subject counts
-  subjectCounts: Record<string, number>; 
-  accuracy?: number; // Optional derived stat
+  subjectCounts: Record<string, number>;
 }

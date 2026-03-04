@@ -106,6 +106,18 @@ const Quiz = () => {
         }
       }
       sessionStorage.removeItem("pendingQuizConfig");
+
+      // Check for pre-generated quiz from document
+      const pendingQuizRaw = sessionStorage.getItem("pendingQuiz");
+      if (pendingQuizRaw) {
+        const pendingQuiz = JSON.parse(pendingQuizRaw);
+        if (pendingQuiz && pendingQuiz.questions) {
+          setQuestions(pendingQuiz.questions);
+          setIsLoading(false);
+          setShowConfig(false);
+          sessionStorage.removeItem("pendingQuiz");
+        }
+      }
     } catch {
       // no-op
     } finally {
@@ -710,7 +722,7 @@ const Quiz = () => {
                     );
                     const correctAnswer = getCorrectAnswerText(question);
                     return (
-                      <div key={question.id} className="glass-card p-6">
+                      <div key={`${question.id}-${index}`} className="glass-card p-6">
                         <div className="flex items-center justify-between mb-3">
                           <span className="text-xs font-black uppercase tracking-[0.3em] text-muted-foreground">
                             Question {index + 1}

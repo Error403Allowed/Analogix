@@ -134,8 +134,8 @@ export default function ResourcesPage() {
   ];
 
   return (
-    <div className="bg-background text-foreground">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-6">
+    <div className="bg-background text-foreground min-h-screen">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-6">
 
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -156,10 +156,10 @@ export default function ResourcesPage() {
           <div className="w-24" />
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-[240px_1fr]">
+        <div className="grid gap-6 lg:grid-cols-[220px_1fr] items-start">
 
           {/* Sidebar */}
-          <div className="space-y-4">
+          <div className="space-y-4 lg:sticky lg:top-24">
             <div className="rounded-2xl border border-border bg-card p-4">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">Subjects</p>
               <div className="relative mb-3">

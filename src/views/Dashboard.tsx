@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { motion } from "framer-motion";
+
 import { 
   Trophy,
   Zap,
@@ -24,12 +25,13 @@ import {
 import { DashboardPanel } from "@/components/ui/panels";
 import AchievementBadge from "@/components/AchievementBadge";
 import QuizCreator from "@/components/QuizCreator";
-import ExamManager from "@/components/ExamManager";
+import StudyGuideManager from "@/components/StudyGuideManager";
 import CalendarWidget from "@/components/CalendarWidget";
 import { TimerWidget } from "@/components/TimerWidget";
 import { useRouter } from "next/navigation";
 import { achievementStore } from "@/utils/achievementStore";
 import { statsStore } from "@/utils/statsStore";
+import type { UserStats } from "@/types/stats";
 import { useAchievementChecker } from "@/hooks/useAchievementChecker";
 import { SUBJECT_CATALOG } from "@/constants/subjects";
 import { HOBBY_OPTIONS } from "@/utils/interests";
@@ -168,8 +170,9 @@ const Dashboard = () => {
       currentStreak: toNonNegativeInt(statsData.currentStreak),
       accuracy: toPercent(statsData.accuracy),
       conversationsCount: toNonNegativeInt(statsData.conversationsCount),
-      subjectCounts: normalizeSubjectCounts(statsData.subjectCounts)
-    };
+      subjectCounts: normalizeSubjectCounts(statsData.subjectCounts),
+      topSubject: typeof statsData.topSubject === "string" ? statsData.topSubject : "None"
+    } as UserStats;
   }, [statsData]);
 
   useEffect(() => {
@@ -379,11 +382,11 @@ const Dashboard = () => {
             variants={containerVariants}
             initial="hidden"
             animate="visible"
-            className="grid grid-cols-2 xl:grid-cols-4 gap-3"
+            className="grid grid-cols-2 xl:grid-cols-4 gap-3 items-stretch"
           >
             {/* Streak */}
-            <motion.div variants={itemVariants} whileHover={statCardVariants.hover}>
-              <DashboardPanel className="p-5 relative overflow-hidden group border border-amber-500/15 bg-amber-500/5">
+            <motion.div variants={itemVariants} whileHover={statCardVariants.hover} className="h-full">
+              <DashboardPanel className="h-full p-5 relative overflow-hidden group border border-amber-500/15 bg-amber-500/5">
                 <div className="absolute inset-0 bg-gradient-to-br from-amber-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-[var(--radius)]" />
                 <div className="relative z-10">
                   <div className="flex items-start justify-between mb-3">
@@ -423,10 +426,10 @@ const Dashboard = () => {
             </motion.div>
 
             {/* Quizzes done */}
-            <motion.div variants={itemVariants} whileHover={statCardVariants.hover}>
-              <DashboardPanel className="p-5 relative overflow-hidden group border border-primary/10 bg-primary/5">
+            <motion.div variants={itemVariants} whileHover={statCardVariants.hover} className="h-full">
+              <DashboardPanel className="h-full p-5 relative overflow-hidden group border border-primary/10 bg-primary/5">
                 <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-[var(--radius)]" />
-                <div className="relative z-10">
+                <div className="relative z-10 flex flex-col h-full">
                   <div className="w-10 h-10 rounded-2xl bg-primary/15 flex items-center justify-center shadow-inner mb-3">
                     <Target className="w-5 h-5 text-primary" />
                   </div>
@@ -437,8 +440,8 @@ const Dashboard = () => {
             </motion.div>
 
             {/* Accuracy */}
-            <motion.div variants={itemVariants} whileHover={statCardVariants.hover}>
-              <DashboardPanel className="p-5 relative overflow-hidden group border border-emerald-500/15 bg-emerald-500/5">
+            <motion.div variants={itemVariants} whileHover={statCardVariants.hover} className="h-full">
+              <DashboardPanel className="h-full p-5 relative overflow-hidden group border border-emerald-500/15 bg-emerald-500/5">
                 <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-[var(--radius)]" />
                 <div className="relative z-10">
                   <div className="w-10 h-10 rounded-2xl bg-emerald-500/15 flex items-center justify-center shadow-inner mb-3">
@@ -456,15 +459,23 @@ const Dashboard = () => {
             </motion.div>
 
             {/* Analogies / conversations */}
-            <motion.div variants={itemVariants} whileHover={statCardVariants.hover}>
-              <DashboardPanel className="p-5 relative overflow-hidden group border border-violet-500/15 bg-violet-500/5">
+            <motion.div variants={itemVariants} whileHover={statCardVariants.hover} className="h-full">
+              <DashboardPanel className="h-full p-5 relative overflow-hidden group border border-violet-500/15 bg-violet-500/5">
                 <div className="absolute inset-0 bg-gradient-to-br from-violet-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-[var(--radius)]" />
-                <div className="relative z-10">
+                <div className="relative z-10 flex flex-col h-full">
                   <div className="w-10 h-10 rounded-2xl bg-violet-500/15 flex items-center justify-center shadow-inner mb-3">
                     <Brain className="w-5 h-5 text-violet-500" />
                   </div>
                   <p className="text-3xl font-display font-black text-foreground tracking-tighter leading-none mb-1">{normalizedStats.conversationsCount}</p>
                   <p className="text-[10px] font-black uppercase tracking-[0.2em] text-violet-500/80">{activityLabel}</p>
+                  {normalizedStats.topSubject && normalizedStats.topSubject !== "None" && (
+                    <div className="mt-3">
+                      <span className="text-[9px] text-violet-500/70 font-bold">Most discussed: </span>
+                      <span className="text-[9px] px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-500 font-bold">
+                        {normalizedStats.topSubject}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </DashboardPanel>
             </motion.div>
@@ -544,6 +555,11 @@ const Dashboard = () => {
               </div>
             </DashboardPanel>
           )}
+
+          {/* ── Study Guides ─────────────────────────────────────── */}
+          <DashboardPanel as={motion.div} variants={itemVariants} className="p-6">
+            <StudyGuideManager />
+          </DashboardPanel>
 
         </div>
       </div>

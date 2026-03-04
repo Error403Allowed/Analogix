@@ -301,3 +301,94 @@ export const generateQuizReview = async (payload: {
     return null;
   }
 };
+
+/**
+ * STUDY GUIDE GENERATION: Creates a comprehensive study guide from assessment details.
+ */
+export interface StudyGuideSection {
+  title: string;
+  content: string;
+}
+
+export interface GeneratedStudyGuide {
+  title: string;
+  assessmentDate: string;
+  assessmentType: string;
+  topics: string[];
+  studySchedule: Array<{
+    week: number;
+    label: string;
+    tasks: string[];
+  }>;
+  keyConcepts: StudyGuideSection[];
+  practiceQuestions: Array<{
+    question: string;
+    answer: string;
+  }>;
+  resources: string[];
+  tips: string[];
+  commonMistakes?: string[];
+  glossary?: Array<{ term: string; definition: string }>;
+}
+
+export const generateStudyGuide = async (payload: {
+  assessmentDetails: string;
+  fileName?: string;
+  subject?: string;
+  grade?: string;
+}): Promise<GeneratedStudyGuide | null> => {
+  try {
+    const data = await fetchJson<{ studyGuide: GeneratedStudyGuide | null }>(
+      "/api/hf/study-guide",
+      payload,
+      45000,
+    );
+    return data.studyGuide || null;
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * QUIZ FROM DOCUMENT: Generates a quiz from uploaded document content.
+ */
+export const generateQuizFromDocument = async (payload: {
+  documentContent: string;
+  fileName?: string;
+  subject?: string;
+  grade?: string;
+  numberOfQuestions?: number;
+}): Promise<QuizData | null> => {
+  try {
+    const data = await fetchJson<{ quiz: QuizData | null }>(
+      "/api/hf/quiz-from-doc",
+      payload,
+      45000,
+    );
+    return data.quiz || null;
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * FLASHCARDS FROM DOCUMENT: Generates flashcards from uploaded document content.
+ */
+export const generateFlashcardsFromDocument = async (payload: {
+  documentContent: string;
+  fileName?: string;
+  subject?: string;
+  grade?: string;
+  count?: number;
+}): Promise<Array<{ front: string; back: string }>> => {
+  try {
+    const data = await fetchJson<{ flashcards: Array<{ front: string; back: string }> }>(
+      "/api/hf/flashcard-from-doc",
+      payload,
+      45000,
+    );
+    return data.flashcards || [];
+  } catch {
+    return [];
+  }
+};

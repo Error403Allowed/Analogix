@@ -2,6 +2,10 @@ import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
 const getOrigin = (request: Request) => {
+  // First, check the environment variable (most reliable for Vercel)
+  const envUrl = process.env.NEXT_PUBLIC_SITE_URL;
+  if (envUrl) return envUrl;
+
   // Prefer the actual callback request URL to avoid cross-host redirects.
   try {
     const urlOrigin = new URL(request.url).origin;
@@ -11,10 +15,13 @@ const getOrigin = (request: Request) => {
   }
 
   const hdrs = request.headers;
-  const forwardedProto = hdrs.get("x-forwarded-proto") ?? "http";
+  const forwardedProto = hdrs.get("x-forwarded-proto") ?? "https";
   const forwardedHost = hdrs.get("x-forwarded-host") ?? hdrs.get("host");
   const host = forwardedHost?.split(",")[0]?.trim();
-  return host ? `${forwardedProto}://${host}` : process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  if (host) return `${forwardedProto}://${host}`;
+
+  // Last resort fallback
+  return "https://localhost:3000";
 };
 
 export async function GET(request: Request) {

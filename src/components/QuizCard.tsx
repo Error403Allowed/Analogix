@@ -45,13 +45,15 @@ const QuizCard = ({
   const [aiFeedback, setAiFeedback] = useState<string | null>(null);
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
 
+  const safeOptions = Array.isArray(options) ? options : [];
+
   const handleSelect = (optionId: string) => {
     if (showResult) return;
     
     setSelectedOption(optionId);
     setShowResult(true);
     
-    const selected = options.find(o => o.id === optionId);
+    const selected = safeOptions.find(o => o.id === optionId);
     const isCorrect = selected?.isCorrect || false;
     
     if (isCorrect) {
@@ -110,6 +112,7 @@ const QuizCard = ({
         : "border-border hover:border-primary/50 hover:bg-primary/5";
     }
     
+    if (!safeOptions.length) return "border-border";
     if (option.isCorrect) {
       return "border-success bg-success/10";
     }
@@ -198,7 +201,7 @@ const QuizCard = ({
       {/* Selection Area */}
       {type === "multiple_choice" ? (
         <div className="space-y-3 mb-6">
-          {options.map((option, index) => (
+          {safeOptions.map((option, index) => (
             <motion.button
               key={option.id}
               className={`w-full p-4 rounded-xl border-2 text-left transition-all ${getOptionStyles(option)}`}

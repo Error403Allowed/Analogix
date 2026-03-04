@@ -9,12 +9,22 @@ interface MarkdownRendererProps {
   className?: string;
 }
 
+// Normalise LaTeX delimiters so remark-math always sees $...$ / $$...$$
+// Models often output \(...\) for inline and \[...\] for display math.
+const normaliseLatex = (text: string): string =>
+  text
+    .replace(/\\\[\s*/g, "$$\n")
+    .replace(/\s*\\\]/g, "\n$$")
+    .replace(/\\\(/g, "$")
+    .replace(/\\\)/g, "$");
+
 // In react-markdown v10, code blocks are rendered as:
 //   <pre><code>...</code></pre>
 // and inline code as just <code>...</code> without a parent <pre>.
 // We override `pre` to apply block styling, and `code` for inline styling.
 
 const MarkdownRenderer = ({ content, className }: MarkdownRendererProps) => {
+  const normalised = normaliseLatex(content);
   return (
     <div className={cn("markdown-content", className)}>
       <ReactMarkdown
@@ -64,7 +74,7 @@ const MarkdownRenderer = ({ content, className }: MarkdownRendererProps) => {
           li: ({ children }) => <li className="leading-relaxed">{children}</li>,
         }}
       >
-        {content}
+        {normalised}
       </ReactMarkdown>
     </div>
   );

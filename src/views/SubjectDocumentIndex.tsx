@@ -70,25 +70,23 @@ export default function SubjectDocumentIndex() {
   }
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-5xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="rounded-full hover:bg-primary/10 hover:text-primary transition-colors"
-            onClick={() => router.push(`/subjects/${subjectId}`)}
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </Button>
-          <div>
-            <p className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground">Documents</p>
-            <h1 className="text-2xl font-black text-foreground">{subject?.label || "Subject"}</h1>
-          </div>
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-3xl mx-auto space-y-6">
+      <div className="flex items-center gap-3 pb-2">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="rounded-full hover:bg-primary/10 hover:text-primary transition-colors"
+          onClick={() => router.push(`/subjects/${subjectId}`)}
+        >
+          <ArrowLeft className="w-5 h-5" />
+        </Button>
+        <div>
+          <p className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground">Documents</p>
+          <h1 className="text-2xl font-black text-foreground">{subject?.label || "Subject"}</h1>
         </div>
       </div>
 
-      <div className="glass-card p-6 space-y-4">
+      <div className="space-y-4">
         <div className="flex flex-col md:flex-row gap-3">
           <Input
             placeholder="New document title (optional)"
@@ -102,7 +100,7 @@ export default function SubjectDocumentIndex() {
           </Button>
         </div>
 
-        <div className="space-y-3">
+        <div className="border-t border-border/30 pt-4">
           {documents.length === 0 ? (
             <p className="text-xs text-muted-foreground/60">No documents yet.</p>
           ) : (
@@ -111,7 +109,7 @@ export default function SubjectDocumentIndex() {
                 key={doc.id}
                 onClick={() => router.push(`/subjects/${subjectId}/document/${doc.id}`)}
                 className={cn(
-                  "w-full text-left p-4 rounded-2xl border border-border/50 bg-muted/10 hover:border-primary/30 transition-all",
+                  "w-full text-left py-3 px-1 rounded-lg hover:bg-muted/30 transition-all",
                 )}
               >
                 <p className="text-sm font-bold text-foreground truncate">{doc.title || "Untitled"}</p>

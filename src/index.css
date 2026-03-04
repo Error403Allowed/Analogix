@@ -361,7 +361,7 @@ button .markdown-content .katex {
 
 /* User message bubble - blue, right-aligned */
 .message-bubble-user {
-  @apply px-4 py-2.5 text-sm leading-relaxed;
+  @apply px-4 py-2.5 text-sm leading-relaxed mr-4;
   background: hsl(var(--primary));
   color: white;
   border-radius: 18px;

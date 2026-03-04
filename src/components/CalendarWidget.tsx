@@ -112,7 +112,6 @@ const CalendarWidget = ({ streak = 0, streakLabel = "days" }: CalendarWidgetProp
   return (
     <div className="flex flex-col space-y-2">
       <div className="flex items-center justify-between px-1">
-        <h3 className="text-muted-foreground font-black text-sm uppercase tracking-[0.2em]">Schedule</h3>
         <div className="flex gap-4">
           <button onClick={() => router.push("/calendar")}
             className="text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-primary transition-all">

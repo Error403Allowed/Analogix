@@ -21,14 +21,18 @@ import {
   Plus,
   MessageSquare,
   Trash2,
+  Paperclip,
+  Target,
+  FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useRouter } from "next/navigation";
-import { getGroqCompletion, getReExplanation, generateFlashcards } from "@/services/groq";
+import { getGroqCompletion, getReExplanation, generateFlashcards, generateStudyGuide, type GeneratedStudyGuide, generateQuizFromDocument, generateFlashcardsFromDocument } from "@/services/groq";
 import { flashcardStore } from "@/utils/flashcardStore";
 import { statsStore } from "@/utils/statsStore";
 import { chatStore, ChatSession } from "@/utils/chatStore";
+import { subjectStore } from "@/utils/subjectStore";
 import { getFormulaSheet } from "@/data/formulaSheets";
 import MarkdownRenderer from "@/components/MarkdownRenderer";
 import TypewriterText from "@/components/TypewriterText";
@@ -249,6 +253,7 @@ interface Message {
   content: string;
   analogy?: string;
   imageUrl?: string;
+  attachments?: Array<{ name: string; size: number; type: string; content: string }>;
   isNew?: boolean; // Track if this is a new message for typewriter effect
   isWelcome?: boolean;
 }
@@ -311,6 +316,22 @@ const Chat = () => {
   const [renamingThreadId, setRenamingThreadId] = useState<string | null>(null);
   const [renamingThreadName, setRenamingThreadName] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  // FILE UPLOADS
+  const [attachedFiles, setAttachedFiles] = useState<Array<{ name: string; size: number; type: string; content: string }>>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // STUDY GUIDE GENERATION
+  const [generatingStudyGuide, setGeneratingStudyGuide] = useState(false);
+  const [studyGuideGenerated, setStudyGuideGenerated] = useState(false);
+
+  // QUIZ GENERATION
+  const [generatingQuiz, setGeneratingQuiz] = useState(false);
+  const [quizGenerated, setQuizGenerated] = useState(false);
+
+  // FLASHCARD GENERATION
+  const [generatingFlashcards, setGeneratingFlashcards] = useState(false);
+  const [flashcardsGenerated, setFlashcardsGenerated] = useState(false);
 
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const copyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -681,14 +702,328 @@ const Chat = () => {
   };
 
   // TALKING TO THE AI: This is where the magic happens!
+  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    const newAttachments: Array<{ name: string; size: number; type: string; content: string }> = [];
+    
+    Array.from(files).forEach(file => {
+      // Limit file size to 1MB
+      if (file.size > 1024 * 1024) {
+        return; // Skip files > 1MB
+      }
+      
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const content = event.target?.result as string;
+        newAttachments.push({
+          name: file.name,
+          size: file.size,
+          type: file.type,
+          content: content?.split(',')[1] || '' // Remove data URL prefix
+        });
+        
+        if (newAttachments.length === files.length) {
+          setAttachedFiles(prev => [...prev, ...newAttachments]);
+        }
+      };
+      
+      // Read as data URL for text/images
+      if (file.type.startsWith('text/') || file.type.startsWith('image/')) {
+        reader.readAsDataURL(file);
+      } else {
+        // For other files, just store metadata
+        newAttachments.push({
+          name: file.name,
+          size: file.size,
+          type: file.type,
+          content: ''
+        });
+        if (newAttachments.length === files.length) {
+          setAttachedFiles(prev => [...prev, ...newAttachments]);
+        }
+      }
+    });
+    
+    // Reset input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  }, []);
+
+  const removeAttachment = useCallback((index: number) => {
+    setAttachedFiles(prev => prev.filter((_, i) => i !== index));
+  }, []);
+
+  // Convert study guide to HTML for RichEditor
+  const convertStudyGuideToHtml = (guide: GeneratedStudyGuide): string => {
+    const escapeHtml = (text: string) => text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+
+    let html = `
+      <h1 style="font-size: 2em; margin-bottom: 0.5em; color: var(--primary);">${escapeHtml(guide.title)}</h1>
+      <div style="display: flex; gap: 1em; margin-bottom: 1.5em; padding: 1em; background: var(--muted); border-radius: 8px;">
+        <div><strong>Assessment Type:</strong> ${escapeHtml(guide.assessmentType)}</div>
+        <div><strong>Due Date:</strong> ${escapeHtml(guide.assessmentDate)}</div>
+      </div>
+
+      <h2 style="font-size: 1.5em; margin: 1.5em 0 0.75em; color: var(--foreground);">📚 Topics Covered</h2>
+      <ul style="list-style-type: disc; padding-left: 1.5em; margin-bottom: 1.5em;">
+        ${guide.topics.map(t => `<li>${escapeHtml(t)}</li>`).join('')}
+      </ul>
+
+      <h2 style="font-size: 1.5em; margin: 1.5em 0 0.75em; color: var(--foreground);">📅 Study Schedule</h2>
+      <div style="display: flex; flex-direction: column; gap: 1em; margin-bottom: 1.5em;">
+        ${guide.studySchedule.map(week => `
+          <div style="padding: 1em; border: 1px solid var(--border); border-radius: 8px; background: var(--card);">
+            <h3 style="font-size: 1.1em; margin-bottom: 0.5em; color: var(--primary);">Week ${week.week}: ${escapeHtml(week.label)}</h3>
+            <ul style="list-style-type: disc; padding-left: 1.5em;">
+              ${week.tasks.map(t => `<li style="margin-bottom: 0.25em;">${escapeHtml(t)}</li>`).join('')}
+            </ul>
+          </div>
+        `).join('')}
+      </div>
+
+      <h2 style="font-size: 1.5em; margin: 1.5em 0 0.75em; color: var(--foreground);">🧠 Key Concepts</h2>
+      <div style="display: flex; flex-direction: column; gap: 1em; margin-bottom: 1.5em;">
+        ${guide.keyConcepts.map(concept => `
+          <div style="padding: 1em; border-left: 3px solid var(--primary); background: var(--muted); border-radius: 0 8px 8px 0;">
+            <h3 style="font-size: 1.1em; margin-bottom: 0.5em; color: var(--foreground);">${escapeHtml(concept.title)}</h3>
+            <p style="line-height: 1.7; white-space: pre-wrap;">${escapeHtml(concept.content)}</p>
+          </div>
+        `).join('')}
+      </div>
+
+      <h2 style="font-size: 1.5em; margin: 1.5em 0 0.75em; color: var(--foreground);">✏️ Practice Questions</h2>
+      <div style="display: flex; flex-direction: column; gap: 1.5em; margin-bottom: 1.5em;">
+        ${guide.practiceQuestions.map((pq, i) => `
+          <div style="padding: 1em; border: 1px solid var(--border); border-radius: 8px;">
+            <p style="font-weight: 600; margin-bottom: 0.75em;">Q${i + 1}: ${escapeHtml(pq.question)}</p>
+            <div style="padding: 0.75em; background: var(--success)/10; border-radius: 6px; color: var(--success); white-space: pre-wrap;">
+              <strong>Answer:</strong> ${escapeHtml(pq.answer)}
+            </div>
+          </div>
+        `).join('')}
+      </div>
+
+      <h2 style="font-size: 1.5em; margin: 1.5em 0 0.75em; color: var(--foreground);">📖 Recommended Resources</h2>
+      <ul style="list-style-type: disc; padding-left: 1.5em; margin-bottom: 1.5em;">
+        ${guide.resources.map(r => `<li>${escapeHtml(r)}</li>`).join('')}
+      </ul>
+
+      <h2 style="font-size: 1.5em; margin: 1.5em 0 0.75em; color: var(--foreground);">💡 Study Tips</h2>
+      <ul style="list-style-type: disc; padding-left: 1.5em; margin-bottom: 1.5em;">
+        ${guide.tips.map(t => `<li>${escapeHtml(t)}</li>`).join('')}
+      </ul>
+
+      ${guide.commonMistakes && guide.commonMistakes.length > 0 ? `
+        <h2 style="font-size: 1.5em; margin: 1.5em 0 0.75em; color: var(--foreground);">⚠️ Common Mistakes to Avoid</h2>
+        <ul style="list-style-type: disc; padding-left: 1.5em; margin-bottom: 1.5em;">
+          ${guide.commonMistakes.map(m => `<li>${escapeHtml(m)}</li>`).join('')}
+        </ul>
+      ` : ''}
+
+      ${guide.glossary && guide.glossary.length > 0 ? `
+        <h2 style="font-size: 1.5em; margin: 1.5em 0 0.75em; color: var(--foreground);">📖 Glossary</h2>
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 0.75em; margin-bottom: 1.5em;">
+          ${guide.glossary.map(g => `
+            <div style="padding: 0.75em; background: var(--muted); border-radius: 6px;">
+              <strong style="color: var(--primary);">${escapeHtml(g.term)}</strong>
+              <p style="margin-top: 0.25em; font-size: 0.9em; line-height: 1.5;">${escapeHtml(g.definition)}</p>
+            </div>
+          `).join('')}
+        </div>
+      ` : ''}
+    `;
+
+    return html;
+  };
+
+  // Generate study guide from attached files
+  const handleGenerateStudyGuide = useCallback(async () => {
+    if (!selectedSubject || attachedFiles.length === 0 || generatingStudyGuide) return;
+
+    setGeneratingStudyGuide(true);
+
+    try {
+      // Combine file contents and metadata
+      const fileDescriptions = attachedFiles.map(f => {
+        let content = `File: ${f.name} (Type: ${f.type || 'Unknown'})\n`;
+        if (f.content) {
+          // For text files, include the actual content
+          if (f.type.startsWith('text/') || f.type === 'application/json') {
+            try {
+              const decoded = atob(f.content);
+              content += `Content:\n${decoded.slice(0, 5000)}\n`;
+            } catch {
+              content += `Content: [Binary file]\n`;
+            }
+          } else {
+            content += `Content: [File uploaded]\n`;
+          }
+        }
+        return content;
+      }).join('\n---\n');
+
+      const subject = SUBJECT_CATALOG.find(s => s.id === selectedSubject);
+
+      const result = await generateStudyGuide({
+        assessmentDetails: fileDescriptions,
+        fileName: attachedFiles.map(f => f.name).join(', '),
+        subject: subject?.label,
+        grade: userPrefs.grade,
+      });
+
+      if (!result) {
+        throw new Error('Failed to generate study guide');
+      }
+
+      // Create the document
+      const htmlContent = convertStudyGuideToHtml(result);
+      const doc = await subjectStore.createDocument(selectedSubject, result.title);
+      await subjectStore.updateDocument(selectedSubject, doc.id, { content: htmlContent });
+
+      // Show success and redirect
+      setStudyGuideGenerated(true);
+      setTimeout(() => setStudyGuideGenerated(false), 3000);
+
+      // Navigate to the new document
+      router.push(`/subjects/${selectedSubject}/document/${doc.id}`);
+
+    } catch (error) {
+      console.error('Failed to generate study guide:', error);
+      // Could add error toast here
+    } finally {
+      setGeneratingStudyGuide(false);
+    }
+  }, [selectedSubject, attachedFiles, generatingStudyGuide, userPrefs.grade, router]);
+
+  // Generate quiz from attached files
+  const handleGenerateQuiz = useCallback(async () => {
+    if (!selectedSubject || attachedFiles.length === 0 || generatingQuiz) return;
+
+    setGeneratingQuiz(true);
+
+    try {
+      // Combine file contents
+      const fileDescriptions = attachedFiles.map(f => {
+        let content = `File: ${f.name} (Type: ${f.type || 'Unknown'})\n`;
+        if (f.content) {
+          if (f.type.startsWith('text/') || f.type === 'application/json') {
+            try {
+              const decoded = atob(f.content);
+              content += `Content:\n${decoded.slice(0, 5000)}\n`;
+            } catch {
+              content += `Content: [Binary file]\n`;
+            }
+          } else {
+            content += `Content: [File uploaded]\n`;
+          }
+        }
+        return content;
+      }).join('\n---\n');
+
+      const subject = SUBJECT_CATALOG.find(s => s.id === selectedSubject);
+
+      const result = await generateQuizFromDocument({
+        documentContent: fileDescriptions,
+        fileName: attachedFiles.map(f => f.name).join(', '),
+        subject: subject?.label,
+        grade: userPrefs.grade,
+        numberOfQuestions: 10,
+      });
+
+      if (!result) {
+        throw new Error('Failed to generate quiz');
+      }
+
+      // Navigate to quiz page with the generated quiz
+      // Store quiz in sessionStorage for the quiz page to pick up
+      sessionStorage.setItem('pendingQuiz', JSON.stringify(result));
+      
+      setQuizGenerated(true);
+      setTimeout(() => setQuizGenerated(false), 3000);
+
+      router.push(`/quiz?subject=${selectedSubject}`);
+
+    } catch (error) {
+      console.error('Failed to generate quiz:', error);
+    } finally {
+      setGeneratingQuiz(false);
+    }
+  }, [selectedSubject, attachedFiles, generatingQuiz, userPrefs.grade, router]);
+
+  // Generate flashcards from attached files
+  const handleGenerateFlashcards = useCallback(async () => {
+    if (!selectedSubject || attachedFiles.length === 0 || generatingFlashcards) return;
+
+    setGeneratingFlashcards(true);
+
+    try {
+      // Combine file contents
+      const fileDescriptions = attachedFiles.map(f => {
+        let content = `File: ${f.name} (Type: ${f.type || 'Unknown'})\n`;
+        if (f.content) {
+          if (f.type.startsWith('text/') || f.type === 'application/json') {
+            try {
+              const decoded = atob(f.content);
+              content += `Content:\n${decoded.slice(0, 5000)}\n`;
+            } catch {
+              content += `Content: [Binary file]\n`;
+            }
+          } else {
+            content += `Content: [File uploaded]\n`;
+          }
+        }
+        return content;
+      }).join('\n---\n');
+
+      const subject = SUBJECT_CATALOG.find(s => s.id === selectedSubject);
+
+      const result = await generateFlashcardsFromDocument({
+        documentContent: fileDescriptions,
+        fileName: attachedFiles.map(f => f.name).join(', '),
+        subject: subject?.label,
+        grade: userPrefs.grade,
+        count: 20,
+      });
+
+      if (result.length === 0) {
+        throw new Error('Failed to generate flashcards');
+      }
+
+      // Save flashcards to the flashcard store
+      await flashcardStore.add(result.map(f => ({
+        subjectId: selectedSubject,
+        front: f.front,
+        back: f.back,
+      })));
+
+      setFlashcardsGenerated(true);
+      setTimeout(() => setFlashcardsGenerated(false), 3000);
+
+      router.push(`/flashcards?subject=${selectedSubject}`);
+
+    } catch (error) {
+      console.error('Failed to generate flashcards:', error);
+    } finally {
+      setGeneratingFlashcards(false);
+    }
+  }, [selectedSubject, attachedFiles, generatingFlashcards, userPrefs.grade, router]);
+
   const handleSend = () => {
-    if (!input.trim() || !selectedSubject || isInputLocked) return;
+    if ((!input.trim() && attachedFiles.length === 0) || !selectedSubject || isInputLocked) return;
 
     // 1. We show your message on the screen immediately.
     const userMessage: Message = {
       id: Date.now().toString(),
       role: "user",
-      content: input
+      content: input,
+      attachments: attachedFiles.length > 0 ? [...attachedFiles] : undefined
     };
 
     const anchorForRequest =
@@ -698,6 +1033,7 @@ const Chat = () => {
 
     setMessages(prev => [...prev, userMessage]);
     setInput("");
+    setAttachedFiles([]); // Clear attachments after sending
     shouldAutoScrollRef.current = true;
     lockedToBottomRef.current = true;
     setIsTyping(true); // Show the "thinking" dots.
@@ -706,10 +1042,11 @@ const Chat = () => {
     if (selectedSubject) {
       statsStore.recordChat(allSubjects.find(s => s.id === selectedSubject)?.label || selectedSubject);
     }
-    
+
     // Save user message to Supabase
     if (chatSessionId) {
-      chatStore.addMessage(chatSessionId, "user", input);
+      const messageWithFiles = input + (attachedFiles.length > 0 ? `\n\n[Attached files: ${attachedFiles.map(f => f.name).join(', ')}]` : '');
+      chatStore.addMessage(chatSessionId, "user", messageWithFiles);
       
       // Update the session's updatedAt timestamp in sidebar
       setAllSessions(prev => {
@@ -725,13 +1062,26 @@ const Chat = () => {
     
     // 2. We talk to the AI brain behind the scenes.
     (async () => {
+      // Build content with file attachments included
+      let userContent = input;
+      if (attachedFiles.length > 0) {
+        const fileList = attachedFiles.map(f => `- ${f.name} (${f.type || 'file'})`).join('\n');
+        userContent = `${input}\n\n[Attached files]\n${fileList}`;
+        
+        // Include file content for text files
+        const textFiles = attachedFiles.filter(f => f.type.startsWith('text/') || f.type === 'application/json');
+        if (textFiles.length > 0) {
+          userContent += '\n\n[File contents]\n' + textFiles.map(f => `--- ${f.name} ---\n${f.content}`).join('\n\n');
+        }
+      }
+
       // We package up the chat history so the AI remembers what we've already said.
-      const messagesHistory = messages.map(m => ({ 
-        role: m.role, 
-        content: m.content 
+      const messagesHistory = messages.map(m => ({
+        role: m.role,
+        content: m.content
       }));
-      
-      const newHistory = [...messagesHistory, { role: "user" as const, content: input }];
+
+      const newHistory = [...messagesHistory, { role: "user" as const, content: userContent }];
       
       // We also give the AI "Context" (your hobbies and style).
     const context = buildContext(anchorForRequest);
@@ -904,86 +1254,71 @@ const Chat = () => {
 
   return (
     <div className="min-h-[100dvh] flex flex-row relative overflow-hidden bg-background">
-      {/* Threads Sidebar - Claude/ChatGPT Style */}
+      {/* Threads Sidebar */}
       <motion.div
-        animate={{ width: sidebarOpen ? 320 : 0, opacity: sidebarOpen ? 1 : 0 }}
-        transition={{ duration: 0.3, ease: "easeInOut" }}
-        className="hidden sm:flex flex-col border-r border-border/30 bg-background h-screen overflow-hidden flex-shrink-0"
-        style={{ minWidth: sidebarOpen ? 320 : 0 }}
+        animate={{ width: sidebarOpen ? 300 : 0, opacity: sidebarOpen ? 1 : 0 }}
+        transition={{ duration: 0.25, ease: "easeInOut" }}
+        className="hidden sm:flex flex-col border-r border-border/20 h-screen overflow-hidden flex-shrink-0 bg-muted/30"
+        style={{ minWidth: sidebarOpen ? 300 : 0 }}
       >
-        {/* New Chat Button */}
-        <div className="flex-shrink-0 p-3 border-b border-border/30">
-          <Button
+        {/* New Chat */}
+        <div className="flex-shrink-0 p-3 pt-4">
+          <button
             onClick={handleStartNewChat}
-            className="w-full gap-2 rounded-lg h-9 bg-primary/10 hover:bg-primary/20 text-primary font-medium text-sm justify-center"
+            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-all"
           >
             <Plus className="w-4 h-4" />
-            New Chat
-          </Button>
+            New chat
+          </button>
         </div>
 
-        {/* Search bar */}
-        <div className="flex-shrink-0 px-3 py-2 border-b border-border/30">
+        {/* Search */}
+        <div className="px-3 pb-2">
           <div className="relative">
             <input
               type="text"
-              placeholder="Search chats..."
+              placeholder="Search…"
               value={threadSearch}
               onChange={(e) => setThreadSearch(e.target.value)}
-              className="w-full text-xs px-3 py-2 rounded-lg bg-muted/40 border border-border/30 placeholder-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary/50 focus:border-transparent transition-all"
+              className="w-full text-xs px-3 py-1.5 rounded-md bg-muted/40 border-0 placeholder-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-border transition-all"
             />
           </div>
         </div>
 
-        {/* Threads list */}
-        <div className="overflow-y-auto flex-1 min-h-0 px-2 py-3 space-y-1">
+        {/* Thread list */}
+        <div className="overflow-y-auto flex-1 min-h-0 px-2 py-1 space-y-0.5">
           {sessionsLoading ? (
-            <div className="flex items-center justify-center h-20 text-muted-foreground text-xs">
-              Loading...
-            </div>
+            <div className="flex items-center justify-center h-16 text-muted-foreground/50 text-xs">Loading…</div>
           ) : (() => {
-            // Filter sessions: if a subject is selected, only show threads for that subject
-            let filteredSessions = selectedSubject 
+            let filteredSessions = selectedSubject
               ? allSessions.filter(s => s.subjectId === selectedSubject)
               : allSessions;
-            
-            // Apply search filter
             if (threadSearch.trim()) {
-              const searchLower = threadSearch.toLowerCase();
+              const q = threadSearch.toLowerCase();
               filteredSessions = filteredSessions.filter(s => {
-                const subjectInfo = allSubjects.find(sub => sub.id === s.subjectId);
-                const subjectName = (subjectInfo?.label || s.subjectId).toLowerCase();
-                return subjectName.includes(searchLower) || s.title.toLowerCase().includes(searchLower);
+                const sub = allSubjects.find(x => x.id === s.subjectId);
+                return (sub?.label || s.subjectId).toLowerCase().includes(q) || s.title.toLowerCase().includes(q);
               });
             }
-            
             return filteredSessions.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-20 text-muted-foreground text-xs text-center px-2">
-                <MessageSquare className="w-4 h-4 mb-1.5 opacity-40" />
-                <p>{selectedSubject ? "No chats for this subject" : threadSearch ? "No matching threads" : "No chats yet"}</p>
+              <div className="flex flex-col items-center justify-center h-20 text-muted-foreground/40 text-xs text-center px-3">
+                <p>{selectedSubject ? "No chats for this subject" : threadSearch ? "No results" : "No chats yet"}</p>
               </div>
             ) : (
-              <div>
+              <>
                 {filteredSessions.map((session) => {
-                  const subjectInfo = allSubjects.find(s => s.id === session.subjectId);
                   const isActive = chatSessionId === session.id;
                   const isRenaming = renamingThreadId === session.id;
-                  const subjectLabel = subjectInfo?.label || session.subjectId;
-                  
+                  const subjectInfo = allSubjects.find(s => s.id === session.subjectId);
                   return (
-                    <motion.div
+                    <div
                       key={session.id}
-                      className={`group relative rounded-lg transition-all ${
-                        isActive 
-                          ? "bg-primary/15" 
-                          : "hover:bg-muted/40"
-                      }`}
+                      className={`group relative rounded-md transition-all ${isActive ? "bg-muted/70" : "hover:bg-muted/40"}`}
                     >
                       <button
                         onClick={() => handleSwitchThread(session)}
-                        className="w-full text-left px-3 py-2.5 flex items-center gap-2 min-h-[44px]"
+                        className="w-full text-left px-3 py-2 flex flex-col gap-0.5 min-h-[40px]"
                       >
-                        {/* Thread content */}
                         {isRenaming ? (
                           <input
                             autoFocus
@@ -992,107 +1327,87 @@ const Chat = () => {
                             onChange={(e) => setRenamingThreadName(e.target.value)}
                             onBlur={() => handleRenameThread(session.id)}
                             onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                handleRenameThread(session.id);
-                              } else if (e.key === "Escape") {
-                                setRenamingThreadId(null);
-                              }
+                              if (e.key === "Enter") handleRenameThread(session.id);
+                              else if (e.key === "Escape") setRenamingThreadId(null);
                             }}
                             onClick={(e) => e.stopPropagation()}
-                            className="flex-1 px-2 py-1 rounded text-sm bg-muted border border-border focus:outline-none focus:ring-1 focus:ring-primary"
+                            className="w-full px-1 text-sm bg-transparent border-b border-border focus:outline-none"
                           />
                         ) : (
-                          <div className="flex-1 min-w-0">
-                            <div className="relative overflow-hidden">
-                              <p className={`text-sm whitespace-nowrap ${isActive ? "font-semibold text-foreground" : "text-foreground/80 font-normal"}`}>
-                                {session.title}
-                              </p>
-                              {session.title.length > 30 && (
-                                <div className="absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-card group-hover:from-muted/40 pointer-events-none transition-colors" />
-                              )}
-                            </div>
-                            <p className="text-xs text-muted-foreground/60">
-                              {subjectLabel}
+                          <>
+                            <p className={`text-sm truncate leading-snug ${isActive ? "text-foreground font-medium" : "text-foreground/70"}`}>
+                              {session.title}
                             </p>
-                          </div>
+                            <p className="text-[10px] text-muted-foreground/50 truncate">{subjectInfo?.label || session.subjectId}</p>
+                          </>
                         )}
                       </button>
-
-                      {/* Action buttons (appear on hover) */}
                       {!isRenaming && (
-                        <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setRenamingThreadId(session.id);
-                              setRenamingThreadName(session.title);
-                            }}
-                            className="h-8 w-8 rounded hover:bg-muted/60"
-                            title="Rename thread"
-                          >
-                            <RefreshCw className="w-3.5 h-3.5 text-muted-foreground" />
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            onClick={(e) => handleDeleteThread(session.id, e)}
-                            className="h-8 w-8 rounded hover:bg-destructive/20 hover:text-destructive"
-                            title="Delete thread"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </Button>
+                        <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button onClick={(e) => { e.stopPropagation(); setRenamingThreadId(session.id); setRenamingThreadName(session.title); }}
+                            className="w-6 h-6 rounded flex items-center justify-center text-muted-foreground/50 hover:text-foreground hover:bg-muted/60">
+                            <RefreshCw className="w-3 h-3" />
+                          </button>
+                          <button onClick={(e) => handleDeleteThread(session.id, e)}
+                            className="w-6 h-6 rounded flex items-center justify-center text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10">
+                            <Trash2 className="w-3 h-3" />
+                          </button>
                         </div>
                       )}
-                    </motion.div>
+                    </div>
                   );
                 })}
-              </div>
+              </>
             );
           })()}
         </div>
       </motion.div>
 
-      <div className="flex-1 flex flex-col w-full px-3 sm:px-6 py-4 sm:py-6 relative">
-        {/* Simple header */}
+      <div className="flex-1 flex flex-col w-full relative overflow-hidden">
+        {/* Header */}
         <motion.header
-          className="flex items-center justify-between py-2 sm:py-3 px-3 sm:px-4 -mx-3 sm:-mx-6 mb-3 sm:mb-4 border-b border-border"
-          initial={{ opacity: 0, y: -12 }}
+          className="flex items-center justify-between py-2.5 px-4 border-b border-border/20"
+          initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ type: "spring", stiffness: 300, damping: 24 }}
+          transition={{ duration: 0.2 }}
         >
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
+          <div className="flex items-center gap-1">
+            <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="hidden sm:inline-flex gap-2 -ml-2 text-muted-foreground hover:text-foreground rounded-xl"
-              title={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
+              className="hidden sm:flex w-8 h-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 6h16M4 12h16M4 18h16" />
               </svg>
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
+            </button>
+            <button
               onClick={() => router.push("/dashboard")}
-              className="gap-2 -ml-2 text-muted-foreground hover:text-foreground rounded-xl"
+              className="w-8 h-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all"
             >
               <ArrowLeft className="w-4 h-4" />
-              Back
-            </Button>
+            </button>
           </div>
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
-              <Lightbulb className="w-4 h-4 text-white" />
-            </div>
-            <h1 className="text-base font-semibold text-foreground">Quizzy</h1>
+
+          {/* Right: actions only */}
+          <div className="flex items-center gap-1">
+            {selectedSubject && (
+              <button
+                onClick={handleNewTopic}
+                disabled={isInputLocked}
+                className="w-8 h-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all disabled:opacity-40"
+                title="New topic"
+              >
+                <RefreshCw className="w-4 h-4" />
+              </button>
+            )}
+            <button
+              onClick={handleStartNewChat}
+              className="w-8 h-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all"
+              title="New chat"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
           </div>
-          <div className="w-16" />
         </motion.header>
 
         {!selectedSubject ? (
@@ -1144,83 +1459,57 @@ const Chat = () => {
           </motion.div>
         ) : (
           /* Chat Interface */
-          <div className="flex-1 flex flex-col">
-            {/* Controls bar */}
-            <motion.div
-              className="flex items-center justify-center gap-2 sm:gap-3 mb-4 sm:mb-6 flex-wrap"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
-            >
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setSelectedSubject(null);
-                  setMessages([]);
-                }}
-                className="gap-2 rounded-md h-8 px-4 text-xs font-medium"
+          <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+            {/* Slim toolbar — subject name left-anchored, actions right */}
+            <div className="flex items-center px-4 py-1.5 border-b border-border/10 gap-3">
+              {/* Left: subject name + change link */}
+              <button
+                onClick={() => { setSelectedSubject(null); setMessages([]); }}
+                className="flex items-center gap-1.5 text-xs font-medium text-foreground/70 hover:text-foreground transition-all group"
               >
-                {(() => {
-                  const current = allSubjects.find((s) => s.id === selectedSubject);
-                  const Icon = current?.icon;
-                  return Icon ? <Icon className="w-3.5 h-3.5" /> : null;
-                })()}
+                {(() => { const s = allSubjects.find(x => x.id === selectedSubject); const Icon = s?.icon; return Icon ? <Icon className="w-3.5 h-3.5 text-muted-foreground group-hover:text-foreground/70 transition-colors" /> : null; })()}
                 {allSubjects.find(s => s.id === selectedSubject)?.label}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleNewTopic}
-                className="gap-2 rounded-md h-8 px-4 text-xs font-medium"
-                disabled={isInputLocked}
-              >
-                <RefreshCw className="w-3.5 h-3.5" />
-                New Topic
-              </Button>
+              </button>
 
-              <Button
-                variant="outline"
-                size="sm"
+              <div className="h-3.5 w-px bg-border/40" />
+
+              {/* Analogy toggle */}
+              <button
+                onClick={() => setAnalogyModeEnabled(p => !p)}
+                disabled={isInputLocked}
+                className={`text-xs px-0 py-0 transition-all ${analogyModeEnabled ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
+              >
+                Analogies {analogyModeEnabled ? "on" : "off"}
+              </button>
+
+              <div className="h-3.5 w-px bg-border/40" />
+
+              {/* Flashcards */}
+              <button
                 onClick={handleSaveAsFlashcards}
                 disabled={isInputLocked || messages.filter(m => !m.isWelcome).length < 2}
-                className="gap-2 rounded-md h-8 px-4 text-xs font-medium"
-                title="Save this session as flashcards"
+                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-all disabled:opacity-30"
               >
-                {savingFlashcards ? (
-                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                ) : flashcardsSaved ? (
-                  <Check className="w-3.5 h-3.5 text-primary" />
-                ) : (
-                  <BookOpen className="w-3.5 h-3.5" />
-                )}
-                {flashcardsSaved ? "Saved!" : "Save flashcards"}
-              </Button>
-
-              <Button
-                size="sm"
-                onClick={() => setAnalogyModeEnabled((prev) => !prev)}
-                className="gap-2 rounded-md h-8 px-4 text-xs font-medium"
-                disabled={isInputLocked}
-                aria-pressed={analogyModeEnabled}
-              >
-                <Brain className="w-3.5 h-3.5" />
-                Analogy: {analogyModeEnabled ? "On" : "Off"}
-              </Button>
+                {savingFlashcards ? <RefreshCw className="w-3 h-3 animate-spin" /> : flashcardsSaved ? <Check className="w-3 h-3 text-primary" /> : <BookOpen className="w-3 h-3" />}
+                {flashcardsSaved ? "Saved to flashcards" : "Save as flashcards"}
+              </button>
 
               {getFormulaSheet(selectedSubject || "") && (
-                <Button
-                  variant={formulaPanelOpen ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setFormulaPanelOpen(o => !o)}
-                  className="gap-2 rounded-md h-8 px-4 text-xs font-medium"
-                  title="Formula sheet"
-                >
-                  <BookOpen className="w-3.5 h-3.5" />
-                  Formulas
-                </Button>
+                <>
+                  <div className="h-3.5 w-px bg-border/40" />
+                  <button
+                    onClick={() => setFormulaPanelOpen(o => !o)}
+                    className={`text-xs transition-all ${formulaPanelOpen ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
+                  >
+                    Formula sheet
+                  </button>
+                </>
               )}
-            </motion.div>
+
+              <div className="ml-auto text-[10px] text-muted-foreground/40">
+                Quizzy may make mistakes — always verify
+              </div>
+            </div>
 
             <div className="flex-1 flex gap-4 min-h-0">
               {/* Main chat column */}
@@ -1368,6 +1657,16 @@ const Chat = () => {
                           </div>
                         ) : (
                           <div className="flex flex-col items-end gap-2">
+                            {message.attachments && message.attachments.length > 0 && (
+                              <div className="flex flex-wrap gap-2 mb-2 mr-4">
+                                {message.attachments.map((file, idx) => (
+                                  <div key={idx} className="flex items-center gap-2 px-3 py-2 rounded-xl bg-primary/10 border border-primary/20">
+                                    <FileText className="w-3.5 h-3.5 text-primary" />
+                                    <span className="text-xs text-foreground max-w-[120px] truncate">{file.name}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                             <div className="max-w-full w-fit message-bubble-user">
                               <div className="whitespace-pre-wrap text-sm leading-relaxed">
                                 <MarkdownRenderer content={message.content} />
@@ -1436,57 +1735,135 @@ const Chat = () => {
 
               <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-background via-background/90 to-transparent z-20" />
 
-              {/* Input - terminal style */}
+              {/* Input */}
               <motion.div
-                className="absolute bottom-0 left-0 right-0 z-30 pt-2 pb-[calc(env(safe-area-inset-bottom)+0.25rem)] -mx-1 pointer-events-auto"
+                className="absolute bottom-0 left-0 right-0 z-30 px-4 pb-4 pt-2 pointer-events-auto"
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3 }}
               >
-                <div className="message-input-container rounded-lg border border-border bg-background">
-                  <form
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      handleSend();
+                {/* Attached files preview */}
+                {attachedFiles.length > 0 && (
+                  <div className="mb-2 flex flex-wrap items-center gap-2">
+                    {attachedFiles.map((file, index) => (
+                      <div key={index} className="flex items-center gap-2 px-3 py-2 rounded-xl bg-muted/60 border border-border/40">
+                        <FileText className="w-3.5 h-3.5 text-muted-foreground" />
+                        <span className="text-xs text-foreground max-w-[120px] truncate">{file.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => removeAttachment(index)}
+                          className="text-muted-foreground hover:text-destructive transition-colors"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                    {selectedSubject && (
+                      <div className="ml-auto flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={handleGenerateFlashcards}
+                          disabled={generatingFlashcards}
+                          className="flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-500/10 text-emerald-600 border border-emerald-500/30 text-xs font-bold hover:bg-emerald-500/20 transition-all disabled:opacity-50"
+                          title="Generate flashcards from uploaded documents"
+                        >
+                          {generatingFlashcards ? (
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                          ) : flashcardsGenerated ? (
+                            <Check className="w-3.5 h-3.5" />
+                          ) : (
+                            <Brain className="w-3.5 h-3.5" />
+                          )}
+                          {generatingFlashcards ? 'Generating...' : flashcardsGenerated ? 'Created!' : 'Flashcards'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleGenerateQuiz}
+                          disabled={generatingQuiz}
+                          className="flex items-center gap-2 px-3 py-2 rounded-xl bg-amber-500/10 text-amber-600 border border-amber-500/30 text-xs font-bold hover:bg-amber-500/20 transition-all disabled:opacity-50"
+                          title="Generate quiz from uploaded documents"
+                        >
+                          {generatingQuiz ? (
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                          ) : quizGenerated ? (
+                            <Check className="w-3.5 h-3.5" />
+                          ) : (
+                            <Target className="w-3.5 h-3.5" />
+                          )}
+                          {generatingQuiz ? 'Generating...' : quizGenerated ? 'Created!' : 'Quiz'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleGenerateStudyGuide}
+                          disabled={generatingStudyGuide}
+                          className="flex items-center gap-2 px-4 py-2 rounded-xl gradient-primary text-white text-xs font-bold hover:opacity-90 transition-opacity disabled:opacity-50"
+                          title="Generate comprehensive study guide"
+                        >
+                          {generatingStudyGuide ? (
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                          ) : studyGuideGenerated ? (
+                            <Check className="w-3.5 h-3.5" />
+                          ) : (
+                            <BookOpen className="w-3.5 h-3.5" />
+                          )}
+                          {generatingStudyGuide ? 'Generating...' : studyGuideGenerated ? 'Guide Created!' : 'Study Guide'}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                <div className="relative rounded-2xl border border-border/60 bg-card shadow-sm overflow-hidden">
+                  <Textarea
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSend();
+                      }
                     }}
-                    className="flex gap-2 sm:gap-3 items-end p-2.5 sm:p-3"
-                  >
-                    <Textarea
-                      value={input}
-                      onChange={(e) => setInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && !e.shiftKey) {
-                          e.preventDefault();
-                          handleSend();
-                        }
-                      }}
-                      placeholder={`Ask anything about ${allSubjects.find(s => s.id === selectedSubject)?.label || "this subject"}...`}
-                      rows={Math.max(1, Math.min(12, Math.ceil(input.length / 70) || 1))}
-                      className="flex-1 !min-h-10 sm:!min-h-12 px-3 py-2.5 rounded-md border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/70 font-mono text-sm resize-none overflow-y-auto max-h-64"
+                    placeholder={`Ask anything about ${allSubjects.find(s => s.id === selectedSubject)?.label || "this subject"}…`}
+                    rows={Math.max(1, Math.min(8, Math.ceil(input.length / 80) || 1))}
+                    className="w-full px-4 pt-3.5 pb-12 text-sm bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/50 resize-none overflow-y-auto max-h-48 leading-relaxed"
+                  />
+                  {/* Bottom row of input */}
+                  <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between px-3 pb-3">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      multiple
+                      onChange={handleFileSelect}
+                      className="hidden"
+                      accept="text/*,image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
                     />
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="w-8 h-8 rounded-full bg-muted/40 hover:bg-primary/10 flex items-center justify-center text-muted-foreground hover:text-primary transition-all"
+                      title="Attach files"
+                    >
+                      <Paperclip className="w-3.5 h-3.5" />
+                    </button>
                     {(isTyping || isAnimating) ? (
-                      <Button
+                      <button
                         type="button"
                         onClick={() => setStopTyping(true)}
-                        size="icon"
-                        className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-destructive/90 hover:bg-destructive text-destructive-foreground border-0 shrink-0"
+                        className="w-8 h-8 rounded-full bg-foreground/10 hover:bg-foreground/20 flex items-center justify-center text-foreground/70 transition-all"
                       >
-                        <Square className="w-4 h-4" />
-                      </Button>
+                        <Square className="w-3.5 h-3.5" />
+                      </button>
                     ) : (
-                      <Button
-                        type="submit"
-                        disabled={!input.trim()}
-                        size="icon"
-                        className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-primary text-white border-0 shrink-0 hover:bg-primary/90 active:scale-95 transition-all disabled:opacity-50 disabled:hover:bg-primary"
+                      <button
+                        type="button"
+                        onClick={handleSend}
+                        disabled={!input.trim() && attachedFiles.length === 0}
+                        className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white transition-all hover:bg-primary/90 active:scale-95 disabled:opacity-30 disabled:pointer-events-none"
                       >
-                        <Send className="w-4 h-4" />
-                      </Button>
+                        <Send className="w-3.5 h-3.5" />
+                      </button>
                     )}
-                  </form>
-                  <p className="text-[10px] sm:text-xs text-muted-foreground/70 text-center pb-2 font-mono">
-                    Quizzy can make mistakes. Verify important information.
-                  </p>
+                  </div>
                 </div>
               </motion.div>
             </div>

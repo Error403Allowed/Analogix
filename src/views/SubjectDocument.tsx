@@ -232,7 +232,7 @@ export default function SubjectDocument() {
   const initials = subject.label.split(" ").filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase()).join("");
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-7xl mx-auto space-y-6">
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-5xl mx-auto space-y-8">
       {/* Math dialog */}
       <Dialog open={mathOpen} onOpenChange={(o) => { if (!o) setMathOpen(false); }}>
         <DialogContent className="sm:max-w-md glass-card border-border/40">
@@ -253,7 +253,7 @@ export default function SubjectDocument() {
         </DialogContent>
       </Dialog>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 pb-4">
         <Button variant="ghost" size="icon" className="rounded-full hover:bg-primary/10 hover:text-primary transition-colors" onClick={() => router.push(`/subjects/${subjectId}`)}>
           <ArrowLeft className="w-5 h-5" />
         </Button>
@@ -263,41 +263,38 @@ export default function SubjectDocument() {
         </div>
       </div>
 
-      <motion.section className="space-y-4" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
-        {/* Document header */}
-        <div className="rounded-[2rem] border border-border/40 bg-background/70 overflow-hidden">
-          <div className="h-16 bg-gradient-to-r from-primary/10 via-transparent to-transparent" />
-          <div className="p-6 sm:p-8 space-y-4">
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl border border-border/40 bg-muted/40 flex items-center justify-center text-lg font-black text-foreground">{initials || "ND"}</div>
-                <div>
-                  <p className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground">Document</p>
-                  <h2 className="text-2xl font-black text-foreground">{title || "Untitled"}</h2>
-                </div>
-              </div>
-              <div className="text-right text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                {!canSave ? "Add a title to save" : isSaving ? "Saving..." : formatSavedLabel(lastSavedAt)}
+      <motion.section className="space-y-6" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
+        {/* Document header - minimal, not contained */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl border border-border/40 bg-muted/40 flex items-center justify-center text-base font-black text-foreground">{initials || "ND"}</div>
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground">Document</p>
+                <h2 className="text-xl font-black text-foreground">{title || "Untitled"}</h2>
               </div>
             </div>
-            <Input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Untitled"
-              className={cn("h-14 text-3xl font-black tracking-tight bg-transparent border-none shadow-none px-0 focus-visible:ring-0", !canSave && "text-muted-foreground")}
-            />
-            <div className="flex flex-wrap items-center gap-4 text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
-              <div className="flex items-center gap-2"><Sparkles className="w-3.5 h-3.5 text-primary" />Autosave on</div>
-              <span>{stats.words} words</span>
-              <span>{stats.characters} characters</span>
+            <div className="text-right text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+              {!canSave ? "Add a title to save" : isSaving ? "Saving..." : formatSavedLabel(lastSavedAt)}
             </div>
+          </div>
+          <Input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Untitled"
+            className={cn("h-12 text-2xl font-black tracking-tight bg-transparent border-none shadow-none px-0 focus-visible:ring-0", !canSave && "text-muted-foreground")}
+          />
+          <div className="flex flex-wrap items-center gap-4 text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
+            <div className="flex items-center gap-2"><Sparkles className="w-3.5 h-3.5 text-primary" />Autosave on</div>
+            <span>{stats.words} words</span>
+            <span>{stats.characters} characters</span>
           </div>
         </div>
 
-        {/* Editor card */}
-        <div className="rounded-[2rem] border border-border/40 bg-background/60 overflow-hidden">
-          {/* Toolbar */}
-          <div className="flex flex-wrap items-center gap-1.5 px-4 py-3 border-b border-border/40 bg-muted/20">
+        {/* Editor - open, infinite canvas feel */}
+        <div className="border-t border-border/30 pt-6">
+          {/* Toolbar - floating, minimal */}
+          <div className="flex flex-wrap items-center gap-1.5 pb-4">
             {toolbarGroups.map((group, gi) => (
               <div key={gi} className="flex items-center gap-1">
                 {group.map((item) => (
@@ -338,8 +335,8 @@ export default function SubjectDocument() {
             </button>
           </div>
 
-          {/* Rich editor — only mount once initialContent is loaded */}
-          <div className="p-6 sm:p-8">
+          {/* Rich editor — infinite canvas */}
+          <div className="min-h-[60vh]">
             {initialContent !== null ? (
               <RichEditor
                 ref={editorRef}
