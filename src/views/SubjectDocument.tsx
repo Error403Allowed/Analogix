@@ -6,14 +6,14 @@ import {
   ArrowLeft, FileText, Sparkles, Bold, Italic, Strikethrough, Code,
   Heading1, Heading2, Heading3, List, ListOrdered, CheckSquare, Quote,
   Link as LinkIcon, Image as ImageIcon, Table, Minus, Sigma,
-  MessageCircle, Send, X, Braces,
+  MessageCircle, Send, X, Braces, BookOpen, Brain, HelpCircle, Layers,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { SUBJECT_CATALOG } from "@/constants/subjects";
 import { subjectStore, type SubjectDocumentItem } from "@/utils/subjectStore";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { getGroqCompletion } from "@/services/groq";
 import type { ChatMessage } from "@/types/chat";
@@ -38,8 +38,17 @@ const formatSavedLabel = (iso?: string | null) => {
   return `Saved ${days}d ago`;
 };
 
-// Detect if a string is HTML (TipTap output) or plain markdown
 const isHtmlContent = (s: string) => s.trimStart().startsWith("<");
+
+// ── Tabs ──────────────────────────────────────────────────────────────────────
+type DocTab = "guide" | "notes" | "flashcards" | "quiz";
+
+const TABS: { id: DocTab; label: string; icon: React.ElementType; studyGuideOnly?: boolean }[] = [
+  { id: "guide",      label: "Study Guide",  icon: BookOpen,     studyGuideOnly: true  },
+  { id: "notes",      label: "Notes",        icon: FileText                            },
+  { id: "flashcards", label: "Flashcards",   icon: Layers                              },
+  { id: "quiz",       label: "Quiz",         icon: HelpCircle                          },
+];
 
 export default function SubjectDocument() {
   const params = useParams();
@@ -48,26 +57,27 @@ export default function SubjectDocument() {
   const docId = (params?.docId as string) || "";
   const subject = SUBJECT_CATALOG.find((s) => s.id === subjectId);
 
-  const [documents, setDocuments] = useState<SubjectDocumentItem[]>([]);
-  const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");          // HTML string (TipTap output)
-  const [initialContent, setInitialContent] = useState<string | null>(null); // null = not loaded yet
-  const [isSaving, setIsSaving] = useState(false);
+  const [documents, setDocuments]     = useState<SubjectDocumentItem[]>([]);
+  const [title, setTitle]             = useState("");
+  const [content, setContent]         = useState("");
+  const [initialContent, setInitialContent] = useState<string | null>(null);
+  const [isSaving, setIsSaving]       = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
-  const [docMissing, setDocMissing] = useState(false);
+  const [docMissing, setDocMissing]   = useState(false);
+  const [studyGuide, setStudyGuide]   = useState<GeneratedStudyGuide | null>(null);
+  const [activeTab, setActiveTab]     = useState<DocTab>("notes");
 
   const [mathOpen, setMathOpen] = useState(false);
   const [codeOpen, setCodeOpen] = useState(false);
-  const [studyGuide, setStudyGuide] = useState<GeneratedStudyGuide | null>(null);
 
   const [userPrefs, setUserPrefs] = useState<{ grade?: string; hobbies?: string[]; learningStyle?: string }>({});
   const [helperMessages, setHelperMessages] = useState<ChatMessage[]>([]);
-  const [helperInput, setHelperInput] = useState("");
-  const [helperTyping, setHelperTyping] = useState(false);
-  const [chatOpen, setChatOpen] = useState(false);
+  const [helperInput, setHelperInput]       = useState("");
+  const [helperTyping, setHelperTyping]     = useState(false);
+  const [chatOpen, setChatOpen]             = useState(false);
 
-  const editorRef = useRef<RichEditorHandle>(null);
-  const lastSavedRef = useRef<{ title: string; content: string }>({ title: "", content: "" });
+  const editorRef      = useRef<RichEditorHandle>(null);
+  const lastSavedRef   = useRef<{ title: string; content: string }>({ title: "", content: "" });
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -79,7 +89,10 @@ export default function SubjectDocument() {
 
   useEffect(() => {
     if (!subject) return;
-    setHelperMessages([{ role: "assistant", content: `Hey! Ask me anything about ${subject.label}. I can help with explanations, feedback, or checking your notes.` }]);
+    setHelperMessages([{
+      role: "assistant",
+      content: `Hey! Ask me anything about ${subject.label}. I can explain concepts, check your notes, or quiz you.`,
+    }]);
   }, [subject?.label]);
 
   useEffect(() => {
@@ -101,17 +114,15 @@ export default function SubjectDocument() {
         return;
       }
       setDocMissing(false);
-      const rawTitle = typeof doc.title === "string" ? doc.title : "";
+      const rawTitle   = typeof doc.title === "string" ? doc.title : "";
       const rawContent = doc.content || "";
       setTitle(rawTitle);
-      // If legacy markdown, wrap in a paragraph so TipTap can accept it gracefully
-      // TipTap will just render it as plain text — better than crashing
-      // Check for structured study guide format first
       const parsed = decodeStudyGuide(rawContent);
       if (parsed) {
         setStudyGuide(parsed);
         setContent(rawContent);
         setInitialContent(rawContent);
+        setActiveTab("guide");
         lastSavedRef.current = { title: rawTitle, content: rawContent };
         setLastSavedAt(doc.lastUpdated || data.notes.lastUpdated || null);
         return;
@@ -119,6 +130,7 @@ export default function SubjectDocument() {
       const html = isHtmlContent(rawContent) ? rawContent : (rawContent ? `<p>${rawContent.replace(/\n/g, "</p><p>")}</p>` : "");
       setContent(html);
       setInitialContent(html);
+      setActiveTab("notes");
       lastSavedRef.current = { title: rawTitle, content: html };
       setLastSavedAt(doc.lastUpdated || data.notes.lastUpdated || null);
     };
@@ -150,13 +162,11 @@ export default function SubjectDocument() {
   }, []);
 
   const stats = useMemo(() => {
-    // Strip HTML tags to count words
     const text = content.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
     const words = text ? text.split(" ").length : 0;
-    return { words, characters: text.length };
+    return { words };
   }, [content]);
 
-  // Toolbar actions — all go through TipTap editor chain
   const cmd = () => editorRef.current?.editor;
 
   const toolbarGroups = [
@@ -166,37 +176,33 @@ export default function SubjectDocument() {
       { label: "H3", icon: Heading3, action: () => cmd()?.chain().focus().toggleHeading({ level: 3 }).run() },
     ],
     [
-      { label: "Bold", icon: Bold, action: () => cmd()?.chain().focus().toggleBold().run() },
-      { label: "Italic", icon: Italic, action: () => cmd()?.chain().focus().toggleItalic().run() },
-      { label: "Strike", icon: Strikethrough, action: () => cmd()?.chain().focus().toggleStrike().run() },
-      { label: "Code", icon: Code, action: () => cmd()?.chain().focus().toggleCode().run() },
+      { label: "Bold",   icon: Bold,          action: () => cmd()?.chain().focus().toggleBold().run()        },
+      { label: "Italic", icon: Italic,        action: () => cmd()?.chain().focus().toggleItalic().run()      },
+      { label: "Strike", icon: Strikethrough, action: () => cmd()?.chain().focus().toggleStrike().run()      },
+      { label: "Code",   icon: Code,          action: () => cmd()?.chain().focus().toggleCode().run()        },
     ],
     [
-      { label: "Bullet list", icon: List, action: () => cmd()?.chain().focus().toggleBulletList().run() },
-      { label: "Ordered list", icon: ListOrdered, action: () => cmd()?.chain().focus().toggleOrderedList().run() },
-      { label: "Task list", icon: CheckSquare, action: () => cmd()?.chain().focus().toggleTaskList().run() },
-      { label: "Blockquote", icon: Quote, action: () => cmd()?.chain().focus().toggleBlockquote().run() },
+      { label: "Bullet list",   icon: List,          action: () => cmd()?.chain().focus().toggleBulletList().run()   },
+      { label: "Ordered list",  icon: ListOrdered,   action: () => cmd()?.chain().focus().toggleOrderedList().run()  },
+      { label: "Task list",     icon: CheckSquare,   action: () => cmd()?.chain().focus().toggleTaskList().run()     },
+      { label: "Blockquote",    icon: Quote,         action: () => cmd()?.chain().focus().toggleBlockquote().run()   },
     ],
     [
-      { label: "Link", icon: LinkIcon, action: () => { const url = prompt("URL:"); if (url) cmd()?.chain().focus().setLink({ href: url }).run(); } },
-      { label: "Image", icon: ImageIcon, action: () => { const url = prompt("Image URL:"); if (url) cmd()?.chain().focus().insertContent(`<img src="${url}" />`).run(); } },
-      { label: "Table", icon: Table, action: () => cmd()?.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run() },
-      { label: "Divider", icon: Minus, action: () => cmd()?.chain().focus().setHorizontalRule().run() },
+      { label: "Link",    icon: LinkIcon,  action: () => { const u = prompt("URL:"); if (u) cmd()?.chain().focus().setLink({ href: u }).run(); } },
+      { label: "Image",   icon: ImageIcon, action: () => { const u = prompt("Image URL:"); if (u) cmd()?.chain().focus().insertContent(`<img src="${u}" />`).run(); } },
+      { label: "Table",   icon: Table,     action: () => cmd()?.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run() },
+      { label: "Divider", icon: Minus,     action: () => cmd()?.chain().focus().setHorizontalRule().run() },
     ],
   ];
 
   const handleInsertMath = (latex: string, mode: "inline" | "block") => {
     setMathOpen(false);
-    setTimeout(() => {
-      editorRef.current?.insertMath(latex, mode);
-    }, 50);
+    setTimeout(() => editorRef.current?.insertMath(latex, mode), 50);
   };
 
   const handleInsertCode = (code: string, language: string) => {
     setCodeOpen(false);
-    setTimeout(() => {
-      editorRef.current?.insertCodeBlock(code, language);
-    }, 50);
+    setTimeout(() => editorRef.current?.insertCodeBlock(code, language), 50);
   };
 
   const handleHelperSend = async () => {
@@ -205,23 +211,18 @@ export default function SubjectDocument() {
     setHelperMessages((prev) => [...prev, userMessage]);
     setHelperInput("");
     setHelperTyping(true);
-
-    // Strip HTML tags and truncate to keep context within token limits
     const docText = content.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
     const pageContext = [
       `Subject: ${subject?.label || "Unknown"}`,
       `Document title: ${title.trim() || "Untitled"}`,
       `Document content:\n${docText.slice(0, 3000) || "(empty document)"}`,
-      docText.length > 3000 ? `[…content truncated, ${docText.length} characters total]` : "",
     ].filter(Boolean).join("\n");
-
     const history = [...helperMessages, userMessage].slice(-8);
     try {
       const response = await getGroqCompletion(history, {
         subjects: [subjectId], hobbies: userPrefs.hobbies || [],
         grade: userPrefs.grade, learningStyle: userPrefs.learningStyle || "visual",
-        responseLength: 2, analogyIntensity: 0.2,
-        pageContext,
+        responseLength: 2, analogyIntensity: 0.2, pageContext,
       });
       setHelperMessages((prev) => [...prev, response]);
     } catch {
@@ -232,25 +233,30 @@ export default function SubjectDocument() {
   };
 
   if (!subject) return (
-    <div className="flex flex-col items-center justify-center p-12 text-center">
-      <FileText className="w-16 h-16 text-muted-foreground mb-4" />
-      <h2 className="text-2xl font-black text-foreground mb-2">Subject not found</h2>
-      <Button onClick={() => router.push("/subjects")}>Go back to subjects</Button>
+    <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-8">
+      <FileText className="w-12 h-12 text-muted-foreground/20 mb-4" />
+      <h2 className="text-xl font-black text-foreground mb-2">Subject not found</h2>
+      <Button onClick={() => router.push("/subjects")} size="sm">Go back to subjects</Button>
     </div>
   );
 
   if (!docId || docMissing) return (
-    <div className="flex flex-col items-center justify-center p-12 text-center">
-      <FileText className="w-16 h-16 text-muted-foreground mb-4" />
-      <h2 className="text-2xl font-black text-foreground mb-2">Document not found</h2>
-      <Button onClick={() => router.push(`/subjects/${subjectId}`)}>Go back to subject</Button>
+    <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-8">
+      <FileText className="w-12 h-12 text-muted-foreground/20 mb-4" />
+      <h2 className="text-xl font-black text-foreground mb-2">Document not found</h2>
+      <Button onClick={() => router.push(`/subjects/${subjectId}`)} size="sm">Go back</Button>
     </div>
   );
 
-  const initials = subject.label.split(" ").filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase()).join("");
+  // Visible tabs — if it's a study guide, show all 4; otherwise hide the guide tab
+  const visibleTabs = studyGuide ? TABS : TABS.filter(t => !t.studyGuideOnly);
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-5xl mx-auto space-y-8">
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="flex flex-col min-h-full"
+    >
       {/* Math dialog */}
       <Dialog open={mathOpen} onOpenChange={(o) => { if (!o) setMathOpen(false); }}>
         <DialogContent className="sm:max-w-md glass-card border-border/40">
@@ -271,144 +277,284 @@ export default function SubjectDocument() {
         </DialogContent>
       </Dialog>
 
-      <div className="flex items-center gap-3 pb-4">
-        <Button variant="ghost" size="icon" className="rounded-full hover:bg-primary/10 hover:text-primary transition-colors" onClick={() => router.push(`/subjects/${subjectId}`)}>
-          <ArrowLeft className="w-5 h-5" />
-        </Button>
-        <div>
-          <p className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground">Subject documents</p>
-          <h1 className="text-2xl font-black text-foreground">{subject.label}</h1>
+      {/* ── TOP BAR: breadcrumb + save status ─────────────────────────────── */}
+      <div className="sticky top-0 z-20 bg-background/90 backdrop-blur-sm border-b border-border/50">
+        <div className="max-w-4xl mx-auto px-8 h-11 flex items-center justify-between gap-4">
+          {/* Breadcrumb */}
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground min-w-0">
+            <button
+              onClick={() => router.push(`/subjects/${subjectId}`)}
+              className="flex items-center gap-1 hover:text-foreground transition-colors shrink-0"
+            >
+              <ArrowLeft className="w-3 h-3" />
+              {subject.label}
+            </button>
+            <span className="text-muted-foreground/30">/</span>
+            <span className="truncate text-foreground/70">{title || "Untitled"}</span>
+          </div>
+
+          {/* Save status */}
+          <span className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground/40 shrink-0">
+            {!canSave ? "Title required to save" : isSaving ? "Saving…" : formatSavedLabel(lastSavedAt)}
+          </span>
         </div>
       </div>
 
-      <motion.section className="space-y-6" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
-        {/* Document header - minimal, not contained */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl border border-border/40 bg-muted/40 flex items-center justify-center text-base font-black text-foreground">{initials || "ND"}</div>
-              <div>
-                <p className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground">Document</p>
-                <h2 className="text-xl font-black text-foreground">{title || "Untitled"}</h2>
-              </div>
-            </div>
-            <div className="text-right text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-              {!canSave ? "Add a title to save" : isSaving ? "Saving..." : formatSavedLabel(lastSavedAt)}
-            </div>
+      {/* ── DOCUMENT HEADER ───────────────────────────────────────────────── */}
+      <div className="max-w-4xl mx-auto w-full px-8 pt-10 pb-2">
+        <div className="flex items-start gap-4 mb-6">
+          {/* Subject colour dot + icon */}
+          <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0 mt-1">
+            <BookOpen className="w-4.5 h-4.5 text-primary" />
           </div>
-          <Input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Untitled"
-            className={cn("h-12 text-2xl font-black tracking-tight bg-transparent border-none shadow-none px-0 focus-visible:ring-0", !canSave && "text-muted-foreground")}
-          />
-          <div className="flex flex-wrap items-center gap-4 text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
-            <div className="flex items-center gap-2"><Sparkles className="w-3.5 h-3.5 text-primary" />Autosave on</div>
-            <span>{stats.words} words</span>
-            <span>{stats.characters} characters</span>
+
+          <div className="flex-1 min-w-0">
+            {studyGuide ? (
+              <h1 className="text-3xl font-black text-foreground leading-tight font-display">{title}</h1>
+            ) : (
+              <Input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Untitled document"
+                className="h-auto text-3xl font-black tracking-tight bg-transparent border-none shadow-none px-0 py-0 focus-visible:ring-0 text-foreground font-display placeholder:text-muted-foreground/25"
+              />
+            )}
+            <div className="flex items-center gap-3 mt-1.5 text-[11px] text-muted-foreground/50">
+              <span className="px-2 py-0.5 rounded-md bg-muted/50 font-semibold">{subject.label}</span>
+              {!studyGuide && <span>{stats.words} words</span>}
+              <span className="flex items-center gap-1">
+                <Sparkles className="w-2.5 h-2.5 text-primary/50" />
+                Autosave
+              </span>
+            </div>
           </div>
         </div>
 
-        {/* ── Study guide structured view ── */}
-        {studyGuide && (
-            <div className="border-t border-border/30 pt-6">
+        {/* ── TAB BAR ───────────────────────────────────────────────────────── */}
+        <div className="flex items-center gap-0.5 border-b border-border/50">
+          {visibleTabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-2 text-xs font-semibold transition-all relative -mb-px rounded-t-lg",
+                  isActive
+                    ? "text-foreground bg-background border border-border/50 border-b-background"
+                    : "text-muted-foreground/60 hover:text-foreground hover:bg-muted/30"
+                )}
+              >
+                <Icon className="w-3 h-3" />
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── TAB CONTENT ───────────────────────────────────────────────────── */}
+      <div className="flex-1 max-w-4xl mx-auto w-full px-8 py-8">
+        <AnimatePresence mode="wait">
+          {/* STUDY GUIDE TAB */}
+          {activeTab === "guide" && studyGuide && (
+            <motion.div
+              key="guide"
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+            >
               <StudyGuideView guide={studyGuide} onChange={handleStudyGuideChange} />
-            </div>
+            </motion.div>
           )}
 
-          {/* Editor - open, infinite canvas feel */}
-          <div className={cn("border-t border-border/30 pt-6", studyGuide && "hidden")}>
-          {/* Toolbar - floating, minimal */}
-          <div className="flex flex-wrap items-center gap-1.5 pb-4">
-            {toolbarGroups.map((group, gi) => (
-              <div key={gi} className="flex items-center gap-1">
-                {group.map((item) => (
-                  <button
-                    key={item.label}
-                    type="button"
-                    title={item.label}
-                    onMouseDown={(e) => { e.preventDefault(); item.action(); }}
-                    className="h-8 w-8 rounded-lg border border-transparent bg-background/40 hover:bg-primary/10 hover:border-primary/30 text-muted-foreground hover:text-primary transition-all flex items-center justify-center"
-                  >
-                    <item.icon className="w-3.5 h-3.5" />
-                  </button>
+          {/* NOTES TAB */}
+          {activeTab === "notes" && (
+            <motion.div
+              key="notes"
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+            >
+              {/* Toolbar */}
+              <div className="flex flex-wrap items-center gap-0.5 mb-5 pb-4 border-b border-border/40">
+                {toolbarGroups.map((group, gi) => (
+                  <div key={gi} className="flex items-center gap-0.5">
+                    {group.map((item) => (
+                      <button
+                        key={item.label}
+                        type="button"
+                        title={item.label}
+                        onMouseDown={(e) => { e.preventDefault(); item.action(); }}
+                        className="h-7 w-7 rounded-md hover:bg-muted/60 text-muted-foreground/60 hover:text-foreground transition-all flex items-center justify-center"
+                      >
+                        <item.icon className="w-3.5 h-3.5" />
+                      </button>
+                    ))}
+                    {gi < toolbarGroups.length - 1 && (
+                      <span className="h-4 w-px bg-border/50 mx-1" />
+                    )}
+                  </div>
                 ))}
-                <span className="h-5 w-px bg-border/40 mx-0.5" />
+                <span className="h-4 w-px bg-border/50 mx-1" />
+                <button
+                  type="button"
+                  onMouseDown={(e) => { e.preventDefault(); setMathOpen(true); }}
+                  className="h-7 px-2 rounded-md hover:bg-muted/60 text-muted-foreground/60 hover:text-foreground transition-all flex items-center gap-1.5 text-xs font-semibold"
+                >
+                  <Sigma className="w-3.5 h-3.5" /> Math
+                </button>
+                <button
+                  type="button"
+                  onMouseDown={(e) => { e.preventDefault(); setCodeOpen(true); }}
+                  className="h-7 px-2 rounded-md hover:bg-muted/60 text-muted-foreground/60 hover:text-foreground transition-all flex items-center gap-1.5 text-xs font-semibold"
+                >
+                  <Braces className="w-3.5 h-3.5" /> Code
+                </button>
               </div>
-            ))}
 
-            {/* Math */}
-            <button
-              type="button"
-              title="Insert Math (⌘M)"
-              onMouseDown={(e) => { e.preventDefault(); setMathOpen(true); }}
-              className="h-8 px-2.5 rounded-lg border border-transparent bg-background/40 hover:bg-primary/10 hover:border-primary/30 text-muted-foreground hover:text-primary transition-all flex items-center gap-1.5 text-xs font-bold"
-            >
-              <Sigma className="w-3.5 h-3.5" />
-              <span>Math</span>
-            </button>
-
-            {/* Code block */}
-            <button
-              type="button"
-              title="Insert Code Block"
-              onMouseDown={(e) => { e.preventDefault(); setCodeOpen(true); }}
-              className="h-8 px-2.5 rounded-lg border border-transparent bg-background/40 hover:bg-primary/10 hover:border-primary/30 text-muted-foreground hover:text-primary transition-all flex items-center gap-1.5 text-xs font-bold"
-            >
-              <Braces className="w-3.5 h-3.5" />
-              <span>Code</span>
-            </button>
-          </div>
-
-          {/* Rich editor — infinite canvas */}
-          <div className="min-h-[60vh]">
-            {initialContent !== null ? (
-              <RichEditor
-                ref={editorRef}
-                initialContent={initialContent}
-                onChange={setContent}
-                placeholder="Start writing… select text to format, or use the toolbar above."
-              />
-            ) : (
-              <div className="min-h-[55vh] flex items-center justify-center">
-                <div className="w-5 h-5 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
+              {/* Editor canvas */}
+              <div className="min-h-[65vh]">
+                {initialContent !== null ? (
+                  <RichEditor
+                    ref={editorRef}
+                    initialContent={studyGuide ? "" : initialContent}
+                    onChange={setContent}
+                    placeholder="Start writing… select text to format, or use the toolbar above."
+                  />
+                ) : (
+                  <div className="min-h-[55vh] flex items-center justify-center">
+                    <div className="w-5 h-5 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-        </div>
-      </motion.section>
+            </motion.div>
+          )}
 
-      {/* Floating AI chat */}
+          {/* FLASHCARDS TAB — placeholder */}
+          {activeTab === "flashcards" && (
+            <motion.div
+              key="flashcards"
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="flex flex-col items-center justify-center min-h-[50vh] text-center"
+            >
+              <Layers className="w-12 h-12 text-muted-foreground/15 mb-4" />
+              <h3 className="text-lg font-bold text-foreground mb-1">Flashcards</h3>
+              <p className="text-sm text-muted-foreground/60 mb-6 max-w-xs">
+                Generate a flashcard deck from this document to drill the key concepts.
+              </p>
+              <Button
+                size="sm"
+                className="gradient-primary"
+                onClick={() => router.push(`/flashcards?subjectId=${subjectId}&docId=${docId}`)}
+              >
+                <Layers className="w-3.5 h-3.5 mr-1.5" />
+                Go to Flashcards
+              </Button>
+            </motion.div>
+          )}
+
+          {/* QUIZ TAB — placeholder */}
+          {activeTab === "quiz" && (
+            <motion.div
+              key="quiz"
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="flex flex-col items-center justify-center min-h-[50vh] text-center"
+            >
+              <HelpCircle className="w-12 h-12 text-muted-foreground/15 mb-4" />
+              <h3 className="text-lg font-bold text-foreground mb-1">Quiz yourself</h3>
+              <p className="text-sm text-muted-foreground/60 mb-6 max-w-xs">
+                Test your knowledge on the material in this document.
+              </p>
+              <Button
+                size="sm"
+                className="gradient-primary"
+                onClick={() => router.push(`/quiz?subjectId=${subjectId}&docId=${docId}`)}
+              >
+                <HelpCircle className="w-3.5 h-3.5 mr-1.5" />
+                Start a Quiz
+              </Button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* ── Floating AI chat ────────────────────────────────────────────────── */}
       <div className="fixed bottom-6 right-6 z-50">
         {!chatOpen ? (
-          <button type="button" onClick={() => setChatOpen(true)} className="h-14 w-14 rounded-full gradient-primary shadow-2xl flex items-center justify-center">
-            <MessageCircle className="w-6 h-6 text-white" />
+          <button
+            type="button"
+            onClick={() => setChatOpen(true)}
+            className="h-12 w-12 rounded-2xl gradient-primary shadow-xl shadow-primary/20 flex items-center justify-center"
+          >
+            <MessageCircle className="w-5 h-5 text-white" />
           </button>
         ) : (
-          <div className="w-80 sm:w-96 h-[460px] glass-card p-4 flex flex-col border border-border/50 shadow-2xl">
+          <div className="w-80 sm:w-96 h-[440px] rounded-2xl border border-border/50 bg-card/95 backdrop-blur-xl p-4 flex flex-col shadow-2xl">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
-                <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center"><MessageCircle className="w-4 h-4 text-primary" /></div>
+                <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <MessageCircle className="w-3.5 h-3.5 text-primary" />
+                </div>
                 <div>
                   <h3 className="text-sm font-black text-foreground">AI Helper</h3>
-                  <p className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground">Your personal assistant</p>
+                  <p className="text-[9px] uppercase tracking-[0.2em] text-muted-foreground/60">{subject.label}</p>
                 </div>
               </div>
-              <button type="button" onClick={() => setChatOpen(false)} className="h-8 w-8 rounded-full border border-border/40 bg-background/40 hover:bg-primary/10 flex items-center justify-center text-muted-foreground hover:text-primary">
-                <X className="w-4 h-4" />
+              <button
+                type="button"
+                onClick={() => setChatOpen(false)}
+                className="h-7 w-7 rounded-lg hover:bg-muted/60 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <X className="w-3.5 h-3.5" />
               </button>
             </div>
-            <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+            <div className="flex-1 overflow-y-auto space-y-2.5 pr-1">
               {helperMessages.map((msg, i) => (
-                <div key={i} className={cn("p-3 rounded-2xl text-xs leading-relaxed", msg.role === "assistant" ? "bg-muted/40 text-foreground" : "bg-primary/10 text-primary ml-6")}>
+                <div
+                  key={i}
+                  className={cn(
+                    "px-3 py-2.5 rounded-xl text-xs leading-relaxed",
+                    msg.role === "assistant"
+                      ? "bg-muted/40 text-foreground"
+                      : "bg-primary/10 text-primary ml-8"
+                  )}
+                >
                   {msg.content}
                 </div>
               ))}
-              {helperTyping && <div className="p-3 rounded-2xl text-xs bg-muted/30 text-muted-foreground">Thinking...</div>}
+              {helperTyping && (
+                <div className="px-3 py-2.5 rounded-xl text-xs bg-muted/30 text-muted-foreground flex items-center gap-1.5">
+                  <span className="typing-dot" />
+                  <span className="typing-dot" />
+                  <span className="typing-dot" />
+                </div>
+              )}
             </div>
-            <div className="flex items-center gap-2 pt-3 mt-3 border-t border-border/40">
-              <Input placeholder="Ask about this document..." value={helperInput} onChange={(e) => setHelperInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") handleHelperSend(); }} className="bg-muted/30 border-none h-10 rounded-xl text-sm" />
-              <Button onClick={handleHelperSend} size="icon" className="h-10 w-10 rounded-xl gradient-primary"><Send className="w-4 h-4" /></Button>
+            <div className="flex items-center gap-2 pt-3 mt-3 border-t border-border/30">
+              <Input
+                placeholder="Ask anything…"
+                value={helperInput}
+                onChange={(e) => setHelperInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") handleHelperSend(); }}
+                className="bg-muted/30 border-none h-9 rounded-xl text-sm"
+              />
+              <Button
+                onClick={handleHelperSend}
+                size="icon"
+                className="h-9 w-9 rounded-xl gradient-primary shrink-0"
+              >
+                <Send className="w-3.5 h-3.5" />
+              </Button>
             </div>
           </div>
         )}

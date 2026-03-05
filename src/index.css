@@ -23,8 +23,8 @@
 
     --muted-light: 210 40% 96.1%;
     --muted-foreground-light: 215.4 16.3% 40%;
-    --muted-dark: 217.2 26% 20%;
-    --muted-foreground-dark: 215 18% 78%;
+    --muted-dark: 0 0% 18%;
+    --muted-foreground-dark: 0 0% 62%;
     --muted: var(--muted-light);
     --muted-foreground: var(--muted-foreground-light);
 
@@ -54,9 +54,9 @@
     --glass-bg-light: rgba(255, 255, 255, 0.85);
     --glass-tint-light: rgba(14, 165, 166, 0.08);
     --glass-border-light: rgba(0, 0, 0, 0.10);
-    --glass-bg-dark: rgba(18, 28, 46, 0.88);
-    --glass-tint-dark: rgba(14, 165, 166, 0.06);
-    --glass-border-dark: rgba(255, 255, 255, 0.1);
+    --glass-bg-dark: rgba(26, 26, 26, 0.92);    /* neutral dark, no navy tint */
+    --glass-tint-dark: rgba(255, 255, 255, 0.02);
+    --glass-border-dark: rgba(255, 255, 255, 0.08);
     --glass-bg: var(--glass-bg-light);
     --glass-tint: var(--glass-tint-light);
     --glass-border: var(--glass-border-light);
@@ -90,39 +90,33 @@
   }
 
   .dark {
-    /* ── Base surfaces ──────────────────────────────────────────────
-       Background is a deep near-black navy. Cards sit clearly above
-       it with a noticeably lighter surface — like a sheet of paper
-       lifted off a dark table. This is the key fix for the washed-out
-       look: enough lightness delta so things are actually visible.
-    ─────────────────────────────────────────────────────────────── */
-    --background: 220 30% 8%;       /* Deep dark navy, almost black  */
-    --foreground: 210 20% 96%;      /* Bright near-white text        */
+    /* ── Notion-style near-black surfaces ───────────────────────── */
+    --background: 0 0% 10%;         /* #191919 — Notion's exact bg   */
+    --foreground: 0 0% 93%;         /* Near-white text               */
 
-    --card: 220 25% 14%;            /* Noticeably lifted card surface */
-    --card-foreground: 210 20% 96%;
+    --card: 0 0% 13%;               /* #202020 — barely lifted card  */
+    --card-foreground: 0 0% 93%;
 
-    --popover: 220 25% 14%;
-    --popover-foreground: 210 20% 96%;
+    --popover: 0 0% 13%;
+    --popover-foreground: 0 0% 93%;
 
-    --secondary: 220 22% 19%;
-    --secondary-foreground: 210 20% 96%;
+    --secondary: 0 0% 16%;
+    --secondary-foreground: 0 0% 93%;
 
     --muted: var(--muted-dark);
-    --muted-foreground: var(--muted-foreground-dark); /* Clearly readable secondary text */
+    --muted-foreground: var(--muted-foreground-dark);
 
-    --border: 220 20% 22%;          /* Borders visible against cards  */
-    --input: 220 22% 19%;
+    --border: 0 0% 20%;             /* Subtle borders                */
+    --input: 0 0% 16%;
     --ring: var(--p-h) var(--p-s) var(--p-l);
 
     --bg-1: var(--bg-1-dark);
     --bg-2: var(--bg-2-dark);
     --bg-3: var(--bg-3-dark);
 
-    /* Glass: a translucent layer clearly above the background */
-    --glass-bg: var(--glass-bg-dark);
-    --glass-tint: var(--glass-tint-dark);
-    --glass-border: var(--glass-border-dark);
+    --glass-bg: rgba(20, 20, 20, 0.90);
+    --glass-tint: rgba(14, 165, 166, 0.04);
+    --glass-border: rgba(255, 255, 255, 0.08);
     --glass-shadow: 0 30px 70px -40px rgba(0, 0, 0, 0.9);
   }
 }
@@ -139,23 +133,15 @@
     @apply bg-background text-foreground;
     overflow-x: hidden;
     overscroll-behavior-y: none;
+    /* Light mode keeps the subtle gradient; dark mode is flat like Notion */
     background-image:
-      radial-gradient(
-        900px 400px at 10% -10%,
-        var(--bg-1),
-        transparent 60%
-      ),
-      radial-gradient(
-      800px 500px at 100% 10%,
-      var(--bg-2),
-      transparent 65%
-    ),
-      radial-gradient(
-      700px 400px at 50% 100%,
-      var(--bg-3),
-      transparent 60%
-    );
+      radial-gradient(900px 400px at 10% -10%, var(--bg-1), transparent 60%),
+      radial-gradient(800px 500px at 100% 10%, var(--bg-2), transparent 65%),
+      radial-gradient(700px 400px at 50% 100%, var(--bg-3), transparent 60%);
     background-attachment: fixed;
+  }
+  .dark body, body.dark {
+    background-image: none;
   }
 
   h1, h2, h3 {
@@ -189,8 +175,8 @@
 /* In dark mode, give glass cards a clearly visible border so they
    read as distinct panels rather than blending into the background */
 .dark .glass-card {
-  border-color: rgba(255, 255, 255, 0.11);
-  background: linear-gradient(135deg, rgba(14,165,166,0.07), rgba(20, 28, 46, 0.88));
+  border-color: rgba(255, 255, 255, 0.09);
+  background: linear-gradient(135deg, rgba(255,255,255,0.02), rgba(26, 26, 26, 0.95));
 }
 
 .glass-card:hover {
@@ -236,7 +222,7 @@
 .dark .dashboard-panel {
   background: hsl(var(--card));
   border: 1px solid hsl(var(--border));
-  box-shadow: 0 4px 24px -8px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 2px 16px -4px rgba(0, 0, 0, 0.4);
 }
 
 .progress-ring {

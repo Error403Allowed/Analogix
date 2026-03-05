@@ -38,6 +38,8 @@ import MarkdownRenderer from "@/components/MarkdownRenderer";
 import TypewriterText from "@/components/TypewriterText";
 import { SUBJECT_CATALOG, SubjectId, getSubjectDescription } from "@/constants/subjects";
 import { buildInterestList } from "@/utils/interests";
+import { extractFileText, ACCEPTED_FILE_TYPES } from "@/utils/extractFileText";
+import { encodeStudyGuide } from "@/components/StudyGuideView";
 
 // Splits AI response into { thinking, response } based on <think>...</think> tags.
 // Handles: leading whitespace before <think>, missing </think> (model cut off mid-think),
@@ -318,7 +320,8 @@ const Chat = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   // FILE UPLOADS
-  const [attachedFiles, setAttachedFiles] = useState<Array<{ name: string; size: number; type: string; content: string }>>([]);
+  const [attachedFiles, setAttachedFiles] = useState<Array<{ name: string; size: number; type: string; content: string; extractedText: string }>>([]);
+  const [fileExtracting, setFileExtracting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // STUDY GUIDE GENERATION
@@ -702,54 +705,32 @@ const Chat = () => {
   };
 
   // TALKING TO THE AI: This is where the magic happens!
-  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
+    if (fileInputRef.current) fileInputRef.current.value = "";
 
-    const newAttachments: Array<{ name: string; size: number; type: string; content: string }> = [];
-    
-    Array.from(files).forEach(file => {
-      // Limit file size to 1MB
-      if (file.size > 1024 * 1024) {
-        return; // Skip files > 1MB
-      }
-      
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const content = event.target?.result as string;
+    setFileExtracting(true);
+    const newAttachments: Array<{ name: string; size: number; type: string; content: string; extractedText: string }> = [];
+
+    for (const file of Array.from(files)) {
+      try {
+        const extractedText = await extractFileText(file);
         newAttachments.push({
           name: file.name,
           size: file.size,
           type: file.type,
-          content: content?.split(',')[1] || '' // Remove data URL prefix
+          content: "", // not used anymore
+          extractedText,
         });
-        
-        if (newAttachments.length === files.length) {
-          setAttachedFiles(prev => [...prev, ...newAttachments]);
-        }
-      };
-      
-      // Read as data URL for text/images
-      if (file.type.startsWith('text/') || file.type.startsWith('image/')) {
-        reader.readAsDataURL(file);
-      } else {
-        // For other files, just store metadata
-        newAttachments.push({
-          name: file.name,
-          size: file.size,
-          type: file.type,
-          content: ''
-        });
-        if (newAttachments.length === files.length) {
-          setAttachedFiles(prev => [...prev, ...newAttachments]);
-        }
+      } catch (err) {
+        // skip unreadable files silently
+        console.warn("Could not extract", file.name, err);
       }
-    });
-    
-    // Reset input
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
     }
+
+    setAttachedFiles(prev => [...prev, ...newAttachments]);
+    setFileExtracting(false);
   }, []);
 
   const removeAttachment = useCallback((index: number) => {
@@ -843,115 +824,48 @@ const Chat = () => {
     return html;
   };
 
-  // Generate study guide from attached files
+  // Generate study guide from attached files — redirect to full loading page
   const handleGenerateStudyGuide = useCallback(async () => {
     if (!selectedSubject || attachedFiles.length === 0 || generatingStudyGuide) return;
 
-    setGeneratingStudyGuide(true);
+    const combinedText = attachedFiles
+      .map(f => `File: ${f.name}\n\n${f.extractedText}`)
+      .join("\n\n---\n\n");
 
-    try {
-      // Combine file contents and metadata
-      const fileDescriptions = attachedFiles.map(f => {
-        let content = `File: ${f.name} (Type: ${f.type || 'Unknown'})\n`;
-        if (f.content) {
-          // For text files, include the actual content
-          if (f.type.startsWith('text/') || f.type === 'application/json') {
-            try {
-              const decoded = atob(f.content);
-              content += `Content:\n${decoded.slice(0, 5000)}\n`;
-            } catch {
-              content += `Content: [Binary file]\n`;
-            }
-          } else {
-            content += `Content: [File uploaded]\n`;
-          }
-        }
-        return content;
-      }).join('\n---\n');
+    const subject = SUBJECT_CATALOG.find(s => s.id === selectedSubject);
+    const fileName = attachedFiles.map(f => f.name).join(", ");
 
-      const subject = SUBJECT_CATALOG.find(s => s.id === selectedSubject);
+    sessionStorage.setItem("studyGuideJob", JSON.stringify({
+      assessmentText: combinedText,
+      fileName,
+      subjectId: selectedSubject,
+      grade: userPrefs.grade,
+    }));
 
-      const result = await generateStudyGuide({
-        assessmentDetails: fileDescriptions,
-        fileName: attachedFiles.map(f => f.name).join(', '),
-        subject: subject?.label,
-        grade: userPrefs.grade,
-      });
-
-      if (!result) {
-        throw new Error('Failed to generate study guide');
-      }
-
-      // Create the document
-      const htmlContent = convertStudyGuideToHtml(result);
-      const doc = await subjectStore.createDocument(selectedSubject, result.title);
-      await subjectStore.updateDocument(selectedSubject, doc.id, { content: htmlContent });
-
-      // Show success and redirect
-      setStudyGuideGenerated(true);
-      setTimeout(() => setStudyGuideGenerated(false), 3000);
-
-      // Navigate to the new document
-      router.push(`/subjects/${selectedSubject}/document/${doc.id}`);
-
-    } catch (error) {
-      console.error('Failed to generate study guide:', error);
-      // Could add error toast here
-    } finally {
-      setGeneratingStudyGuide(false);
-    }
+    router.push("/study-guide-loading");
   }, [selectedSubject, attachedFiles, generatingStudyGuide, userPrefs.grade, router]);
 
   // Generate quiz from attached files
   const handleGenerateQuiz = useCallback(async () => {
     if (!selectedSubject || attachedFiles.length === 0 || generatingQuiz) return;
-
     setGeneratingQuiz(true);
-
     try {
-      // Combine file contents
-      const fileDescriptions = attachedFiles.map(f => {
-        let content = `File: ${f.name} (Type: ${f.type || 'Unknown'})\n`;
-        if (f.content) {
-          if (f.type.startsWith('text/') || f.type === 'application/json') {
-            try {
-              const decoded = atob(f.content);
-              content += `Content:\n${decoded.slice(0, 5000)}\n`;
-            } catch {
-              content += `Content: [Binary file]\n`;
-            }
-          } else {
-            content += `Content: [File uploaded]\n`;
-          }
-        }
-        return content;
-      }).join('\n---\n');
-
+      const combinedText = attachedFiles.map(f => `File: ${f.name}\n\n${f.extractedText}`).join("\n\n---\n\n");
       const subject = SUBJECT_CATALOG.find(s => s.id === selectedSubject);
-
       const result = await generateQuizFromDocument({
-        documentContent: fileDescriptions,
-        fileName: attachedFiles.map(f => f.name).join(', '),
+        documentContent: combinedText,
+        fileName: attachedFiles.map(f => f.name).join(", "),
         subject: subject?.label,
         grade: userPrefs.grade,
         numberOfQuestions: 10,
       });
-
-      if (!result) {
-        throw new Error('Failed to generate quiz');
-      }
-
-      // Navigate to quiz page with the generated quiz
-      // Store quiz in sessionStorage for the quiz page to pick up
-      sessionStorage.setItem('pendingQuiz', JSON.stringify(result));
-      
+      if (!result) throw new Error("Failed to generate quiz");
+      sessionStorage.setItem("pendingQuiz", JSON.stringify(result));
       setQuizGenerated(true);
       setTimeout(() => setQuizGenerated(false), 3000);
-
       router.push(`/quiz?subject=${selectedSubject}`);
-
     } catch (error) {
-      console.error('Failed to generate quiz:', error);
+      console.error("Failed to generate quiz:", error);
     } finally {
       setGeneratingQuiz(false);
     }
@@ -960,56 +874,24 @@ const Chat = () => {
   // Generate flashcards from attached files
   const handleGenerateFlashcards = useCallback(async () => {
     if (!selectedSubject || attachedFiles.length === 0 || generatingFlashcards) return;
-
     setGeneratingFlashcards(true);
-
     try {
-      // Combine file contents
-      const fileDescriptions = attachedFiles.map(f => {
-        let content = `File: ${f.name} (Type: ${f.type || 'Unknown'})\n`;
-        if (f.content) {
-          if (f.type.startsWith('text/') || f.type === 'application/json') {
-            try {
-              const decoded = atob(f.content);
-              content += `Content:\n${decoded.slice(0, 5000)}\n`;
-            } catch {
-              content += `Content: [Binary file]\n`;
-            }
-          } else {
-            content += `Content: [File uploaded]\n`;
-          }
-        }
-        return content;
-      }).join('\n---\n');
-
+      const combinedText = attachedFiles.map(f => `File: ${f.name}\n\n${f.extractedText}`).join("\n\n---\n\n");
       const subject = SUBJECT_CATALOG.find(s => s.id === selectedSubject);
-
       const result = await generateFlashcardsFromDocument({
-        documentContent: fileDescriptions,
-        fileName: attachedFiles.map(f => f.name).join(', '),
+        documentContent: combinedText,
+        fileName: attachedFiles.map(f => f.name).join(", "),
         subject: subject?.label,
         grade: userPrefs.grade,
         count: 20,
       });
-
-      if (result.length === 0) {
-        throw new Error('Failed to generate flashcards');
-      }
-
-      // Save flashcards to the flashcard store
-      await flashcardStore.add(result.map(f => ({
-        subjectId: selectedSubject,
-        front: f.front,
-        back: f.back,
-      })));
-
+      if (result.length === 0) throw new Error("Failed to generate flashcards");
+      await flashcardStore.add(result.map(f => ({ subjectId: selectedSubject, front: f.front, back: f.back })));
       setFlashcardsGenerated(true);
       setTimeout(() => setFlashcardsGenerated(false), 3000);
-
       router.push(`/flashcards?subject=${selectedSubject}`);
-
     } catch (error) {
-      console.error('Failed to generate flashcards:', error);
+      console.error("Failed to generate flashcards:", error);
     } finally {
       setGeneratingFlashcards(false);
     }
@@ -1065,14 +947,9 @@ const Chat = () => {
       // Build content with file attachments included
       let userContent = input;
       if (attachedFiles.length > 0) {
-        const fileList = attachedFiles.map(f => `- ${f.name} (${f.type || 'file'})`).join('\n');
-        userContent = `${input}\n\n[Attached files]\n${fileList}`;
-        
-        // Include file content for text files
-        const textFiles = attachedFiles.filter(f => f.type.startsWith('text/') || f.type === 'application/json');
-        if (textFiles.length > 0) {
-          userContent += '\n\n[File contents]\n' + textFiles.map(f => `--- ${f.name} ---\n${f.content}`).join('\n\n');
-        }
+        const fileList = attachedFiles.map(f => `- ${f.name}`).join("\n");
+        userContent = `${input}\n\n[Attached files]\n${fileList}\n\n[File contents]\n` +
+          attachedFiles.map(f => `--- ${f.name} ---\n${f.extractedText}`).join("\n\n");
       }
 
       // We package up the chat history so the AI remembers what we've already said.
@@ -1835,15 +1712,18 @@ const Chat = () => {
                       multiple
                       onChange={handleFileSelect}
                       className="hidden"
-                      accept="text/*,image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
+                      accept={ACCEPTED_FILE_TYPES}
                     />
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      className="w-8 h-8 rounded-full bg-muted/40 hover:bg-primary/10 flex items-center justify-center text-muted-foreground hover:text-primary transition-all"
-                      title="Attach files"
+                      disabled={fileExtracting}
+                      className="w-8 h-8 rounded-full bg-muted/40 hover:bg-primary/10 flex items-center justify-center text-muted-foreground hover:text-primary transition-all disabled:opacity-50"
+                      title={fileExtracting ? "Extracting file…" : "Attach files"}
                     >
-                      <Paperclip className="w-3.5 h-3.5" />
+                      {fileExtracting
+                        ? <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                        : <Paperclip className="w-3.5 h-3.5" />}
                     </button>
                     {(isTyping || isAnimating) ? (
                       <button

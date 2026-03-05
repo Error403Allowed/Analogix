@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { getGroqCompletion } from "@/services/groq";
 import type { ChatMessage } from "@/types/chat";
+import { extractFileText, ACCEPTED_FILE_TYPES, ACCEPTED_FILE_LABEL } from "@/utils/extractFileText";
 
 const normalizeUrl = (url: string) => {
   const t = url.trim();
@@ -46,95 +47,41 @@ export default function SubjectDetail() {
   const [userPrefs, setUserPrefs] = useState<any>({});
 
   const [assessmentUploading, setAssessmentUploading] = useState(false);
-  const [assessmentError, setAssessmentError] = useState<string | null>(null);
+  const [assessmentError, setAssessmentError]         = useState<string | null>(null);
   const assessmentInputRef = useRef<HTMLInputElement>(null);
   const [pasteMode, setPasteMode] = useState(false);
   const [pasteText, setPasteText] = useState("");
 
-  const submitAssessmentText = async (text: string, fileName?: string) => {
-    setAssessmentUploading(true);
-    setAssessmentError(null);
-    try {
-      const res = await fetch("/api/hf/study-guide", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          assessmentDetails: text,
-          fileName: fileName || "Pasted text",
-          subject: subject!.label,
-          grade: userPrefs.grade,
-        }),
-      });
-      const parsed = await res.json();
-      if (!res.ok) { setAssessmentError(parsed.error || "Failed to generate guide"); return; }
-      const guide = parsed.studyGuide;
-      if (!guide) { setAssessmentError("No guide returned."); return; }
-
-      // Build HTML and save as a subject document
-      const esc = (t: string) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-      const html = `
-        <h1 style="font-size:2em;margin-bottom:.5em">${esc(guide.title || "Study Guide")}</h1>
-        <h2 style="font-size:1.3em;margin:1.2em 0 .6em">📅 Study Schedule</h2>
-        ${(guide.studySchedule || []).map((w: any) => `
-          <div style="margin-bottom:.75em;padding:1em;border:1px solid var(--border);border-radius:8px">
-            <strong>Week ${w.week}: ${esc(w.label)}</strong>
-            <ul style="list-style:disc;padding-left:1.5em;margin-top:.4em">
-              ${(w.tasks || []).map((t: string) => `<li>${esc(t)}</li>`).join("")}
-            </ul>
-          </div>`).join("")}
-        <h2 style="font-size:1.3em;margin:1.2em 0 .6em">🧠 Key Concepts</h2>
-        ${(guide.keyConcepts || []).map((c: any) => `
-          <div style="margin-bottom:.75em;padding:1em;border-left:3px solid var(--primary);background:var(--muted);border-radius:0 8px 8px 0">
-            <strong>${esc(c.title)}</strong>
-            <p style="margin-top:.4em;line-height:1.7">${esc(c.content)}</p>
-          </div>`).join("")}
-        <h2 style="font-size:1.3em;margin:1.2em 0 .6em">✏️ Practice Questions</h2>
-        ${(guide.practiceQuestions || []).map((q: any, i: number) => `
-          <div style="margin-bottom:.75em;padding:1em;border:1px solid var(--border);border-radius:8px">
-            <p style="font-weight:600">Q${i + 1}: ${esc(q.question)}</p>
-            <div style="margin-top:.5em;padding:.75em;background:var(--muted);border-radius:6px">
-              <strong>Answer:</strong> ${esc(q.answer)}
-            </div>
-          </div>`).join("")}
-      `;
-
-      const doc = await subjectStore.createDocument(subjectId, guide.title || "Study Guide");
-      await subjectStore.updateDocument(subjectId, doc.id, { content: html });
-      setData(await subjectStore.getSubject(subjectId));
-      setPasteMode(false); setPasteText("");
-      toast.success("Study guide created!");
-      router.push(`/subjects/${subjectId}/document/${doc.id}`);
-    } catch { setAssessmentError("Something went wrong. Try again."); }
-    finally { setAssessmentUploading(false); if (assessmentInputRef.current) assessmentInputRef.current.value = ""; }
+  // Shared redirect helper — sends job to sessionStorage then navigates to loading page
+  const redirectToLoadingPage = (assessmentText: string, fileName: string) => {
+    sessionStorage.setItem("studyGuideJob", JSON.stringify({
+      assessmentText,
+      fileName,
+      subjectId,
+      grade: userPrefs.grade,
+    }));
+    router.push("/study-guide-loading");
   };
 
   const handleAssessmentUpload = async (file: File) => {
-    if (file.size > 10 * 1024 * 1024) { setAssessmentError("File must be under 10MB."); return; }
-    setAssessmentUploading(true); setAssessmentError(null);
+    setAssessmentUploading(true);
+    setAssessmentError(null);
     try {
-      let text = "";
-      if (file.type === "application/pdf") {
-        // Send PDF as base64 to the study-guide endpoint
-        const base64 = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve((reader.result as string).split(",")[1]);
-          reader.onerror = reject; reader.readAsDataURL(file);
-        });
-        const res = await fetch("/api/groq/assessment-guide", {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ base64, mimeType: file.type, subjectLabel: subject!.label, grade: userPrefs.grade, state: userPrefs.state }),
-        });
-        const parsed = await res.json();
-        if (!res.ok) { setAssessmentError(parsed.error || "Failed to read PDF"); return; }
-        text = parsed.rawText || "";
-        if (!text.trim()) { setAssessmentError("Couldn't extract text from PDF. Try pasting instead."); return; }
-      } else {
-        // Read as plain text
-        text = await file.text();
-      }
-      await submitAssessmentText(text, file.name);
-    } catch { setAssessmentError("Couldn't read the file. Try pasting the text instead."); }
-    finally { setAssessmentUploading(false); if (assessmentInputRef.current) assessmentInputRef.current.value = ""; }
+      const text = await extractFileText(file);
+      redirectToLoadingPage(text, file.name);
+    } catch (err) {
+      setAssessmentError(err instanceof Error ? err.message : "Couldn't read file. Try pasting instead.");
+    } finally {
+      setAssessmentUploading(false);
+      if (assessmentInputRef.current) assessmentInputRef.current.value = "";
+    }
+  };
+
+  const submitAssessmentText = (text: string, fileName = "Pasted text") => {
+    if (!text.trim()) return;
+    redirectToLoadingPage(text, fileName);
+    setPasteMode(false);
+    setPasteText("");
   };
 
 
@@ -446,7 +393,7 @@ export default function SubjectDetail() {
                 ref={assessmentInputRef}
                 type="file"
                 className="hidden"
-                accept=".txt,.pdf,.doc,.docx,text/*"
+                accept={ACCEPTED_FILE_TYPES}
                 onChange={e => {
                   const file = e.target.files?.[0];
                   if (file) handleAssessmentUpload(file);

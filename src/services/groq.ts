@@ -312,18 +312,35 @@ export interface StudyGuideSection {
 
 export interface GeneratedStudyGuide {
   title: string;
+  overview: string;
   assessmentDate: string;
   assessmentType: string;
+  weighting?: string;
+  totalMarks?: string;
+  keyPoints: string[];
   topics: string[];
+  requiredMaterials?: string[];
+  taskStructure?: {
+    practical?: string[];
+    written?: string[];
+  };
   studySchedule: Array<{
     week: number;
     label: string;
     tasks: string[];
   }>;
   keyConcepts: StudyGuideSection[];
+  keyTable?: {
+    headers: string[];
+    rows: string[][];
+  };
   practiceQuestions: Array<{
     question: string;
     answer: string;
+  }>;
+  gradeExpectations?: Array<{
+    grade: string;
+    criteria: string[];
   }>;
   resources: string[];
   tips: string[];

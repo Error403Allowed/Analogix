@@ -2,15 +2,11 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  BookOpen, ChevronDown, ChevronUp, Pencil, Check, Plus, Trash2,
-  GraduationCap, Calendar, Hash, Lightbulb, AlertTriangle,
-  BookMarked, ClipboardList, Beaker, BarChart3,
-} from "lucide-react";
+import { Pencil, Plus, Trash2, ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { GeneratedStudyGuide } from "@/services/groq";
 
-// ── Serialisation helpers ────────────────────────────────────────────────────
+// ── Serialisation ─────────────────────────────────────────────────────────────
 
 export const STUDY_GUIDE_V2_PREFIX = "__STUDY_GUIDE_V2__";
 
@@ -26,16 +22,19 @@ export const decodeStudyGuide = (raw: string): GeneratedStudyGuide | null => {
   }
 };
 
-// ── Grade colour map ──────────────────────────────────────────────────────────
-const gradeColors: Record<string, string> = {
-  A: "text-emerald-500 border-emerald-500 bg-emerald-500",
-  B: "text-blue-500 border-blue-500 bg-blue-500",
-  C: "text-amber-500 border-amber-500 bg-amber-500",
-  D: "text-red-500 border-red-500 bg-red-500",
-  E: "text-rose-700 border-rose-700 bg-rose-700",
-};
+// ── Grade colours ─────────────────────────────────────────────────────────────
 
-// ── Tiny inline-editable text ────────────────────────────────────────────────
+const GRADE_STYLES: Record<string, { topBorder: string; badge: string; dot: string }> = {
+  A: { topBorder: "border-t-emerald-500", badge: "bg-emerald-500 text-white", dot: "text-emerald-500" },
+  B: { topBorder: "border-t-blue-500",   badge: "bg-blue-500 text-white",    dot: "text-blue-500"   },
+  C: { topBorder: "border-t-amber-500",  badge: "bg-amber-500 text-white",   dot: "text-amber-500"  },
+  D: { topBorder: "border-t-red-500",    badge: "bg-red-500 text-white",     dot: "text-red-500"    },
+  E: { topBorder: "border-t-rose-700",   badge: "bg-rose-700 text-white",    dot: "text-rose-700"   },
+};
+const gradeStyle = (g: string) =>
+  GRADE_STYLES[g.toUpperCase()] ?? { topBorder: "border-t-primary", badge: "bg-primary text-primary-foreground", dot: "text-primary" };
+
+// ── Inline editable text ──────────────────────────────────────────────────────
 
 interface EditProps {
   value: string;
@@ -43,39 +42,34 @@ interface EditProps {
   multiline?: boolean;
   placeholder?: string;
   className?: string;
-  disabled?: boolean;
 }
 
-function EditableText({ value, onChange, multiline, placeholder, className, disabled }: EditProps) {
+function E({ value, onChange, multiline, placeholder, className }: EditProps) {
   const [editing, setEditing] = useState(false);
   const ref = useRef<HTMLInputElement & HTMLTextAreaElement>(null);
 
-  useEffect(() => {
-    if (editing) ref.current?.focus();
-  }, [editing]);
+  useEffect(() => { if (editing) ref.current?.focus(); }, [editing]);
 
-  if (disabled) return <span className={className}>{value}</span>;
+  const sharedClass = cn(
+    "bg-primary/10 border border-primary/30 rounded px-1.5 py-0.5 outline-none w-full",
+    "text-foreground placeholder:text-muted-foreground/40 resize-none",
+    className,
+  );
+  const sharedHandlers = {
+    value,
+    placeholder: placeholder ?? "…",
+    onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => onChange(e.target.value),
+    onBlur: () => setEditing(false),
+    onKeyDown: (e: React.KeyboardEvent) => {
+      if (!multiline && e.key === "Enter") { e.preventDefault(); setEditing(false); }
+      if (e.key === "Escape") setEditing(false);
+    },
+  };
 
   if (editing) {
-    const shared = {
-      ref,
-      value,
-      placeholder,
-      onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => onChange(e.target.value),
-      onBlur: () => setEditing(false),
-      onKeyDown: (e: React.KeyboardEvent) => {
-        if (!multiline && e.key === "Enter") { e.preventDefault(); setEditing(false); }
-        if (e.key === "Escape") setEditing(false);
-      },
-      className: cn(
-        "bg-primary/10 border border-primary/40 rounded-md px-2 py-0.5 outline-none w-full",
-        "text-foreground placeholder:text-muted-foreground/40 resize-none",
-        className,
-      ),
-    };
     return multiline
-      ? <textarea {...shared} rows={3} />
-      : <input {...shared} />;
+      ? <textarea ref={ref} {...sharedHandlers} rows={4} className={sharedClass} />
+      : <input    ref={ref} {...sharedHandlers} className={sharedClass} />;
   }
 
   return (
@@ -83,7 +77,7 @@ function EditableText({ value, onChange, multiline, placeholder, className, disa
       onClick={() => setEditing(true)}
       title="Click to edit"
       className={cn(
-        "cursor-text rounded px-0.5 hover:bg-primary/10 transition-colors",
+        "cursor-text rounded-sm px-0.5 hover:bg-primary/10 transition-colors break-words",
         !value && "italic text-muted-foreground/40",
         className,
       )}
@@ -95,87 +89,137 @@ function EditableText({ value, onChange, multiline, placeholder, className, disa
 
 // ── Editable bullet list ──────────────────────────────────────────────────────
 
-interface BulletListProps {
-  items: string[];
-  onChange: (items: string[]) => void;
-  numbered?: boolean;
-  accentClass?: string;
-}
-
-function EditableBulletList({ items, onChange, numbered, accentClass = "text-primary" }: BulletListProps) {
-  const update = (i: number, val: string) => onChange(items.map((x, idx) => (idx === i ? val : x)));
+function BulletList({
+  items, onChange, numbered, dotClass = "text-primary",
+}: {
+  items: string[]; onChange: (v: string[]) => void; numbered?: boolean; dotClass?: string;
+}) {
+  const update = (i: number, v: string) => onChange(items.map((x, idx) => (idx === i ? v : x)));
   const remove = (i: number) => onChange(items.filter((_, idx) => idx !== i));
-  const add = () => onChange([...items, ""]);
 
   return (
     <ul className="space-y-1.5">
       {items.map((item, i) => (
-        <li key={i} className="flex items-start gap-2 group">
-          <span className={cn("shrink-0 mt-0.5 text-xs font-bold w-4 text-right select-none", accentClass)}>
+        <li key={i} className="flex items-start gap-2 group/bullet">
+          <span className={cn("shrink-0 mt-0.5 text-xs font-bold select-none w-4 text-right", dotClass)}>
             {numbered ? `${i + 1}.` : "•"}
           </span>
-          <EditableText
-            value={item}
-            onChange={(v) => update(i, v)}
-            placeholder="Add text…"
-            className="flex-1 text-sm leading-relaxed"
-          />
-          <button
+          <E value={item} onChange={(v) => update(i, v)} placeholder="Item…" className="flex-1 text-sm leading-relaxed" />
+          {/* div wrapper prevents nested-button; uses div role=button pattern */}
+          <div
+            role="button"
+            tabIndex={0}
             onClick={() => remove(i)}
-            className="opacity-0 group-hover:opacity-100 shrink-0 text-muted-foreground/40 hover:text-destructive transition-all"
+            onKeyDown={(e) => e.key === "Enter" && remove(i)}
+            className="opacity-0 group-hover/bullet:opacity-100 shrink-0 text-muted-foreground/30 hover:text-destructive transition-all mt-0.5 cursor-pointer"
           >
             <Trash2 className="w-3 h-3" />
-          </button>
+          </div>
         </li>
       ))}
       <li>
-        <button
-          onClick={add}
-          className="flex items-center gap-1 text-xs text-muted-foreground/50 hover:text-primary transition-colors mt-1 ml-6"
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => onChange([...items, ""])}
+          onKeyDown={(e) => e.key === "Enter" && onChange([...items, ""])}
+          className="ml-6 flex items-center gap-1 text-xs text-muted-foreground/40 hover:text-primary transition-colors mt-1 cursor-pointer"
         >
           <Plus className="w-3 h-3" /> Add item
-        </button>
+        </div>
       </li>
     </ul>
   );
 }
 
-// ── Section wrapper ───────────────────────────────────────────────────────────
+// ── Section card (collapsible) ────────────────────────────────────────────────
 
-interface SectionProps {
-  icon: React.ReactNode;
-  title: string;
-  children: React.ReactNode;
-  defaultOpen?: boolean;
-  accent?: string;
-}
-
-function Section({ icon, title, children, defaultOpen = true, accent }: SectionProps) {
+function Card({
+  emoji, title, children, defaultOpen = true,
+}: {
+  emoji: string; title: string; children: React.ReactNode; defaultOpen?: boolean;
+}) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="rounded-2xl border border-border/50 bg-card/60 backdrop-blur-sm overflow-hidden">
-      <button
+    <div className="rounded-xl border border-border/50 bg-card/70 backdrop-blur-sm overflow-hidden">
+      {/* header is a div, not a button, to allow nested interactive content safely */}
+      <div
+        role="button"
+        tabIndex={0}
         onClick={() => setOpen((o) => !o)}
-        className={cn(
-          "w-full flex items-center gap-3 px-5 py-4 text-left hover:bg-muted/20 transition-colors",
-          accent,
-        )}
+        onKeyDown={(e) => e.key === "Enter" && setOpen((o) => !o)}
+        className="w-full flex items-center gap-2.5 px-5 py-3.5 text-left hover:bg-muted/20 transition-colors cursor-pointer select-none"
       >
-        <span className="text-primary">{icon}</span>
-        <span className="flex-1 text-sm font-black uppercase tracking-widest text-muted-foreground">{title}</span>
-        {open ? <ChevronUp className="w-4 h-4 text-muted-foreground/40" /> : <ChevronDown className="w-4 h-4 text-muted-foreground/40" />}
-      </button>
+        <span className="text-base leading-none">{emoji}</span>
+        <span className="flex-1 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">
+          {title}
+        </span>
+        {open
+          ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground/40 shrink-0 pointer-events-none" />
+          : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground/40 shrink-0 pointer-events-none" />}
+      </div>
       <AnimatePresence initial={false}>
         {open && (
           <motion.div
-            key="content"
+            key="body"
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
+            transition={{ duration: 0.18, ease: "easeInOut" }}
             className="overflow-hidden"
           >
-            <div className="px-5 pb-5 pt-1">{children}</div>
+            <div className="px-5 pb-5 pt-2 border-t border-border/30">{children}</div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// ── Accordion row (concepts / questions) — div-based to avoid nested buttons ─
+
+function AccordionRow({
+  header, children, onDelete,
+}: {
+  header: React.ReactNode;
+  children: React.ReactNode;
+  onDelete: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="rounded-xl border border-border/40 overflow-hidden">
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => setOpen((o) => !o)}
+        onKeyDown={(e) => e.key === "Enter" && setOpen((o) => !o)}
+        className="w-full flex items-center gap-2.5 px-4 py-3 text-left bg-muted/20 hover:bg-muted/40 transition-colors cursor-pointer select-none"
+      >
+        {header}
+        {/* stop-propagation wrapper so clicking delete doesn't toggle accordion */}
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={(e) => { e.stopPropagation(); onDelete(); }}
+          onKeyDown={(e) => { e.stopPropagation(); if (e.key === "Enter") onDelete(); }}
+          className="text-muted-foreground/20 hover:text-destructive transition-colors mr-1 shrink-0 cursor-pointer"
+        >
+          <Trash2 className="w-3 h-3" />
+        </div>
+        {open
+          ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground/40 shrink-0 pointer-events-none" />
+          : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground/40 shrink-0 pointer-events-none" />}
+      </div>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="overflow-hidden"
+          >
+            <div className="px-4 pb-4 pt-3 border-t border-border/30">{children}</div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -185,366 +229,452 @@ function Section({ icon, title, children, defaultOpen = true, accent }: SectionP
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-interface StudyGuideViewProps {
+export default function StudyGuideView({
+  guide, onChange,
+}: {
   guide: GeneratedStudyGuide;
-  onChange: (guide: GeneratedStudyGuide) => void;
-}
-
-export default function StudyGuideView({ guide, onChange }: StudyGuideViewProps) {
-  const upd = useCallback(
-    <K extends keyof GeneratedStudyGuide>(key: K, val: GeneratedStudyGuide[K]) =>
-      onChange({ ...guide, [key]: val }),
+  onChange: (g: GeneratedStudyGuide) => void;
+}) {
+  const set = useCallback(
+    <K extends keyof GeneratedStudyGuide>(k: K, v: GeneratedStudyGuide[K]) =>
+      onChange({ ...guide, [k]: v }),
     [guide, onChange],
   );
 
-  // ── Key concepts collapse state ──────────────────────────────────────────
-  const [expandedConcept, setExpandedConcept] = useState<number | null>(0);
-
-  // ── Practice questions collapse ──────────────────────────────────────────
-  const [expandedQ, setExpandedQ] = useState<number | null>(null);
+  // safe arrays
+  const keyPoints  = guide.keyPoints  ?? [];
+  const topics     = guide.topics     ?? [];
+  const materials  = guide.requiredMaterials ?? [];
+  const schedule   = guide.studySchedule ?? [];
+  const concepts   = guide.keyConcepts ?? [];
+  const questions  = guide.practiceQuestions ?? [];
+  const grades     = guide.gradeExpectations ?? [];
+  const tips       = guide.tips ?? [];
+  const mistakes   = guide.commonMistakes ?? [];
+  const resources  = guide.resources ?? [];
+  const glossary   = guide.glossary ?? [];
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-3 pb-8">
 
-      {/* ── Hero header ──────────────────────────────────────────────────── */}
-      <div className="rounded-3xl border border-border/50 bg-gradient-to-br from-card/80 to-primary/5 p-6 space-y-4">
-        {/* Title row */}
+      {/* ── HERO HEADER ──────────────────────────────────────────────────── */}
+      <div className="rounded-xl border border-border/50 bg-gradient-to-br from-card/90 to-primary/5 p-6 space-y-5">
         <div className="flex items-start gap-3">
-          <BookOpen className="w-6 h-6 text-primary shrink-0 mt-1" />
-          <h1 className="text-2xl font-black text-foreground leading-tight flex-1">
-            <EditableText
-              value={guide.title}
-              onChange={(v) => upd("title", v)}
-              placeholder="Study Guide Title"
-              className="font-display"
-            />
+          <span className="text-2xl mt-0.5">📚</span>
+          <h1 className="text-2xl font-black leading-tight text-foreground font-display flex-1">
+            <E value={guide.title} onChange={(v) => set("title", v)} placeholder="Study Guide Title" />
           </h1>
         </div>
 
+        <p className="text-sm text-muted-foreground leading-relaxed">
+          <E value={guide.overview ?? ""} onChange={(v) => set("overview", v)} multiline placeholder="Brief overview…" className="w-full" />
+        </p>
+
         {/* Meta badges */}
         <div className="flex flex-wrap gap-2">
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted/60 border border-border/40 text-xs font-bold text-muted-foreground">
-            <Calendar className="w-3 h-3 text-primary" />
-            <EditableText
-              value={guide.assessmentDate}
-              onChange={(v) => upd("assessmentDate", v)}
-              placeholder="Due date"
-            />
-          </div>
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted/60 border border-border/40 text-xs font-bold text-muted-foreground">
-            <GraduationCap className="w-3 h-3 text-primary" />
-            <EditableText
-              value={guide.assessmentType}
-              onChange={(v) => upd("assessmentType", v)}
-              placeholder="Assessment type"
-            />
-          </div>
+          {(["assessmentType", "assessmentDate", "weighting", "totalMarks"] as const).map((k) => {
+            const labels: Record<string, string> = { assessmentType: "Type", assessmentDate: "Due", weighting: "Weighting", totalMarks: "Marks" };
+            const val = guide[k] as string | undefined;
+            if (!val) return null;
+            return (
+              <div key={k} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted/60 border border-border/40 text-xs font-bold text-muted-foreground">
+                <span className="text-primary/60">{labels[k]}:</span>
+                <E value={val} onChange={(v) => set(k, v)} placeholder={labels[k]} />
+              </div>
+            );
+          })}
         </div>
 
-        {/* Topics chip cloud */}
+        {/* Key points */}
         <div>
-          <p className="text-[10px] font-black uppercase tracking-[0.25em] text-muted-foreground mb-2">Topics covered</p>
-          <div className="flex flex-wrap gap-1.5">
-            {guide.topics.map((topic, i) => (
-              <span
-                key={i}
-                className="group flex items-center gap-1 px-2.5 py-1 rounded-full bg-primary/10 border border-primary/20 text-xs font-semibold text-primary"
-              >
-                <EditableText
-                  value={topic}
-                  onChange={(v) => upd("topics", guide.topics.map((t, ti) => (ti === i ? v : t)))}
-                  placeholder="Topic"
-                />
-                <button
-                  onClick={() => upd("topics", guide.topics.filter((_, ti) => ti !== i))}
-                  className="opacity-0 group-hover:opacity-100 text-primary/50 hover:text-destructive transition-all"
-                >
-                  <Trash2 className="w-2.5 h-2.5" />
-                </button>
-              </span>
-            ))}
-            <button
-              onClick={() => upd("topics", [...guide.topics, "New topic"])}
-              className="px-2.5 py-1 rounded-full border border-dashed border-primary/30 text-xs text-primary/50 hover:text-primary hover:border-primary transition-colors"
-            >
-              <Plus className="w-3 h-3" />
-            </button>
-          </div>
+          <p className="text-[10px] font-black uppercase tracking-[0.25em] text-muted-foreground mb-2.5">Key Points</p>
+          <BulletList items={keyPoints} onChange={(v) => set("keyPoints", v)} dotClass="text-primary" />
         </div>
       </div>
 
-      {/* ── Study Schedule ───────────────────────────────────────────────── */}
-      <Section icon={<Calendar className="w-4 h-4" />} title="Study Schedule">
+      {/* ── REQUIRED MATERIALS ───────────────────────────────────────────── */}
+      {materials.length > 0 && (
+        <Card emoji="🛒" title="Required Materials">
+          <div className="pt-2">
+            <BulletList items={materials} onChange={(v) => set("requiredMaterials", v)} />
+          </div>
+        </Card>
+      )}
+
+      {/* ── TASK STRUCTURE ───────────────────────────────────────────────── */}
+      {guide.taskStructure && (
+        <Card emoji="📋" title="Task Structure">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+            {(["practical", "written"] as const).map((side) => {
+              const items = guide.taskStructure?.[side] ?? [];
+              if (!items.length) return null;
+              return (
+                <div key={side} className="rounded-lg bg-muted/20 border border-border/30 p-4">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary mb-2.5 capitalize">
+                    {side} Component
+                  </p>
+                  <BulletList
+                    items={items}
+                    onChange={(v) => set("taskStructure", { ...guide.taskStructure, [side]: v })}
+                    dotClass="text-primary"
+                  />
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      )}
+
+      {/* ── TOPICS ───────────────────────────────────────────────────────── */}
+      <Card emoji="🎯" title="Topics Covered">
+        <div className="pt-2 flex flex-wrap gap-2">
+          {topics.map((topic, i) => (
+            <span key={i} className="group/chip flex items-center gap-1 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-xs font-semibold text-primary">
+              <E value={topic} onChange={(v) => set("topics", topics.map((t, ti) => (ti === i ? v : t)))} placeholder="Topic" />
+              <div
+                role="button" tabIndex={0}
+                onClick={() => set("topics", topics.filter((_, ti) => ti !== i))}
+                onKeyDown={(e) => e.key === "Enter" && set("topics", topics.filter((_, ti) => ti !== i))}
+                className="opacity-0 group-hover/chip:opacity-100 text-primary/40 hover:text-destructive transition-all cursor-pointer ml-0.5"
+              >
+                <Trash2 className="w-2.5 h-2.5" />
+              </div>
+            </span>
+          ))}
+          <div
+            role="button" tabIndex={0}
+            onClick={() => set("topics", [...topics, "New topic"])}
+            onKeyDown={(e) => e.key === "Enter" && set("topics", [...topics, "New topic"])}
+            className="px-3 py-1.5 rounded-full border border-dashed border-primary/30 text-xs text-primary/50 hover:text-primary hover:border-primary transition-colors flex items-center gap-1 cursor-pointer"
+          >
+            <Plus className="w-3 h-3" />
+          </div>
+        </div>
+      </Card>
+
+      {/* ── STUDY SCHEDULE ───────────────────────────────────────────────── */}
+      <Card emoji="📅" title="Study Schedule">
         <div className="space-y-3 pt-2">
-          {guide.studySchedule.map((week, wi) => (
-            <div
-              key={wi}
-              className="rounded-xl border border-border/40 bg-muted/20 p-4"
-            >
+          {schedule.map((week, wi) => (
+            <div key={wi} className="rounded-lg border border-border/40 bg-muted/20 p-4">
               <div className="flex items-center gap-2 mb-3">
-                <span className="w-6 h-6 rounded-full bg-primary/10 border border-primary/30 text-primary text-[10px] font-black flex items-center justify-center">
+                <span className="w-6 h-6 rounded-full bg-primary/15 border border-primary/30 text-primary text-[10px] font-black flex items-center justify-center shrink-0">
                   {week.week}
                 </span>
-                <EditableText
+                <E
                   value={week.label}
-                  onChange={(v) =>
-                    upd("studySchedule", guide.studySchedule.map((w, i) => (i === wi ? { ...w, label: v } : w)))
-                  }
+                  onChange={(v) => set("studySchedule", schedule.map((w, i) => (i === wi ? { ...w, label: v } : w)))}
                   placeholder="Week label"
-                  className="text-sm font-bold text-foreground"
+                  className="text-sm font-bold text-foreground flex-1"
                 />
-                <button
-                  onClick={() => upd("studySchedule", guide.studySchedule.filter((_, i) => i !== wi))}
-                  className="ml-auto text-muted-foreground/30 hover:text-destructive transition-colors"
+                <div
+                  role="button" tabIndex={0}
+                  onClick={() => set("studySchedule", schedule.filter((_, i) => i !== wi))}
+                  onKeyDown={(e) => e.key === "Enter" && set("studySchedule", schedule.filter((_, i) => i !== wi))}
+                  className="text-muted-foreground/20 hover:text-destructive transition-colors cursor-pointer"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
-                </button>
+                </div>
               </div>
-              <EditableBulletList
+              <BulletList
                 items={week.tasks}
-                onChange={(tasks) =>
-                  upd("studySchedule", guide.studySchedule.map((w, i) => (i === wi ? { ...w, tasks } : w)))
-                }
+                onChange={(tasks) => set("studySchedule", schedule.map((w, i) => (i === wi ? { ...w, tasks } : w)))}
               />
             </div>
           ))}
-          <button
-            onClick={() =>
-              upd("studySchedule", [
-                ...guide.studySchedule,
-                { week: guide.studySchedule.length + 1, label: "New week", tasks: [""] },
-              ])
-            }
-            className="flex items-center gap-1.5 text-xs text-muted-foreground/50 hover:text-primary transition-colors mt-1"
+          <div
+            role="button" tabIndex={0}
+            onClick={() => set("studySchedule", [...schedule, { week: schedule.length + 1, label: "New Week", tasks: [""] }])}
+            onKeyDown={(e) => e.key === "Enter" && set("studySchedule", [...schedule, { week: schedule.length + 1, label: "New Week", tasks: [""] }])}
+            className="flex items-center gap-1.5 text-xs text-muted-foreground/40 hover:text-primary transition-colors cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" /> Add week
-          </button>
+          </div>
         </div>
-      </Section>
+      </Card>
 
-      {/* ── Key Concepts ─────────────────────────────────────────────────── */}
-      <Section icon={<Lightbulb className="w-4 h-4" />} title="Key Concepts">
+      {/* ── KEY CONCEPTS ─────────────────────────────────────────────────── */}
+      <Card emoji="🧠" title="Key Concepts">
         <div className="space-y-2 pt-2">
-          {guide.keyConcepts.map((concept, ci) => (
-            <div key={ci} className="rounded-xl border border-border/40 overflow-hidden">
-              <button
-                className="w-full flex items-center gap-3 px-4 py-3 text-left bg-muted/20 hover:bg-muted/40 transition-colors"
-                onClick={() => setExpandedConcept(expandedConcept === ci ? null : ci)}
-              >
-                <Hash className="w-3.5 h-3.5 text-primary shrink-0" />
-                <EditableText
-                  value={concept.title}
-                  onChange={(v) =>
-                    upd("keyConcepts", guide.keyConcepts.map((c, i) => (i === ci ? { ...c, title: v } : c)))
-                  }
-                  placeholder="Concept title"
-                  className="flex-1 text-sm font-bold text-foreground"
-                />
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    upd("keyConcepts", guide.keyConcepts.filter((_, i) => i !== ci));
-                  }}
-                  className="text-muted-foreground/30 hover:text-destructive transition-colors mr-2"
-                >
-                  <Trash2 className="w-3 h-3" />
-                </button>
-                {expandedConcept === ci
-                  ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground/40 shrink-0" />
-                  : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground/40 shrink-0" />}
-              </button>
-              <AnimatePresence initial={false}>
-                {expandedConcept === ci && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.18 }}
-                    className="overflow-hidden"
-                  >
-                    <div className="px-4 pb-4 pt-3 border-t border-border/30">
-                      <EditableText
-                        value={concept.content}
-                        onChange={(v) =>
-                          upd("keyConcepts", guide.keyConcepts.map((c, i) => (i === ci ? { ...c, content: v } : c)))
-                        }
-                        multiline
-                        placeholder="Explanation…"
-                        className="text-sm leading-relaxed text-muted-foreground w-full"
-                      />
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
+          {concepts.map((concept, ci) => (
+            <AccordionRow
+              key={ci}
+              onDelete={() => set("keyConcepts", concepts.filter((_, i) => i !== ci))}
+              header={
+                <>
+                  <span className="text-xs font-black text-primary shrink-0">#</span>
+                  <E
+                    value={concept.title}
+                    onChange={(v) => set("keyConcepts", concepts.map((c, i) => (i === ci ? { ...c, title: v } : c)))}
+                    placeholder="Concept title"
+                    className="flex-1 text-sm font-bold text-foreground"
+                  />
+                </>
+              }
+            >
+              <E
+                value={concept.content}
+                onChange={(v) => set("keyConcepts", concepts.map((c, i) => (i === ci ? { ...c, content: v } : c)))}
+                multiline
+                placeholder="Detailed explanation, formulas, worked examples…"
+                className="text-sm leading-relaxed text-muted-foreground w-full"
+              />
+            </AccordionRow>
           ))}
-          <button
-            onClick={() =>
-              upd("keyConcepts", [...guide.keyConcepts, { title: "New Concept", content: "" }])
-            }
-            className="flex items-center gap-1.5 text-xs text-muted-foreground/50 hover:text-primary transition-colors mt-1"
+          <div
+            role="button" tabIndex={0}
+            onClick={() => set("keyConcepts", [...concepts, { title: "New Concept", content: "" }])}
+            onKeyDown={(e) => e.key === "Enter" && set("keyConcepts", [...concepts, { title: "New Concept", content: "" }])}
+            className="flex items-center gap-1.5 text-xs text-muted-foreground/40 hover:text-primary transition-colors cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" /> Add concept
-          </button>
+          </div>
         </div>
-      </Section>
+      </Card>
 
-      {/* ── Practice Questions ────────────────────────────────────────────── */}
-      <Section icon={<ClipboardList className="w-4 h-4" />} title="Practice Questions">
-        <div className="space-y-2 pt-2">
-          {guide.practiceQuestions.map((pq, qi) => (
-            <div key={qi} className="rounded-xl border border-border/40 overflow-hidden">
-              <button
-                className="w-full flex items-start gap-3 px-4 py-3 text-left bg-muted/20 hover:bg-muted/40 transition-colors"
-                onClick={() => setExpandedQ(expandedQ === qi ? null : qi)}
-              >
-                <span className="shrink-0 mt-0.5 text-[10px] font-black text-primary w-5 text-right">Q{qi + 1}</span>
-                <EditableText
-                  value={pq.question}
-                  onChange={(v) =>
-                    upd("practiceQuestions", guide.practiceQuestions.map((q, i) => (i === qi ? { ...q, question: v } : q)))
-                  }
-                  placeholder="Question…"
-                  className="flex-1 text-sm font-semibold text-foreground"
-                />
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    upd("practiceQuestions", guide.practiceQuestions.filter((_, i) => i !== qi));
-                  }}
-                  className="text-muted-foreground/30 hover:text-destructive transition-colors mr-2 shrink-0"
-                >
-                  <Trash2 className="w-3 h-3" />
-                </button>
-                {expandedQ === qi
-                  ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground/40 shrink-0" />
-                  : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground/40 shrink-0" />}
-              </button>
-              <AnimatePresence initial={false}>
-                {expandedQ === qi && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.18 }}
-                    className="overflow-hidden"
-                  >
-                    <div className="px-4 pb-4 pt-3 border-t border-border/30">
-                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary mb-1.5">Answer</p>
-                      <div className="bg-primary/5 border border-primary/15 rounded-lg p-3">
-                        <EditableText
-                          value={pq.answer}
-                          onChange={(v) =>
-                            upd("practiceQuestions", guide.practiceQuestions.map((q, i) => (i === qi ? { ...q, answer: v } : q)))
-                          }
-                          multiline
-                          placeholder="Model answer…"
-                          className="text-sm leading-relaxed text-muted-foreground w-full"
+      {/* ── KEY TABLE ────────────────────────────────────────────────────── */}
+      {guide.keyTable && guide.keyTable.headers.length > 0 && (
+        <Card emoji="📊" title="Key Reference Table">
+          <div className="pt-2 overflow-x-auto">
+            <table className="w-full text-sm border-collapse">
+              <thead>
+                <tr>
+                  {guide.keyTable.headers.map((h, hi) => (
+                    <th
+                      key={hi}
+                      className="text-left px-3 py-2.5 text-[10px] font-black uppercase tracking-[0.15em] text-primary-foreground bg-primary border-b border-primary/50 first:rounded-tl-lg last:rounded-tr-lg"
+                    >
+                      <E
+                        value={h}
+                        onChange={(v) => {
+                          const headers = guide.keyTable!.headers.map((x, i) => (i === hi ? v : x));
+                          set("keyTable", { ...guide.keyTable!, headers });
+                        }}
+                        placeholder="Column"
+                        className="text-primary-foreground"
+                      />
+                    </th>
+                  ))}
+                  <th className="w-8 bg-primary border-b border-primary/50 rounded-tr-lg" />
+                </tr>
+              </thead>
+              <tbody>
+                {guide.keyTable.rows.map((row, ri) => (
+                  <tr key={ri} className={ri % 2 === 0 ? "bg-muted/10" : "bg-muted/25"}>
+                    {row.map((cell, ci) => (
+                      <td key={ci} className="px-3 py-2.5 border-b border-border/20 text-sm text-foreground/80 align-top">
+                        <E
+                          value={cell}
+                          onChange={(v) => {
+                            const rows = guide.keyTable!.rows.map((r, rri) =>
+                              rri === ri ? r.map((c, cci) => (cci === ci ? v : c)) : r
+                            );
+                            set("keyTable", { ...guide.keyTable!, rows });
+                          }}
+                          placeholder="Cell"
                         />
+                      </td>
+                    ))}
+                    <td className="px-2 py-2 border-b border-border/20 text-center align-middle">
+                      <div
+                        role="button" tabIndex={0}
+                        onClick={() => set("keyTable", { ...guide.keyTable!, rows: guide.keyTable!.rows.filter((_, i) => i !== ri) })}
+                        onKeyDown={(e) => e.key === "Enter" && set("keyTable", { ...guide.keyTable!, rows: guide.keyTable!.rows.filter((_, i) => i !== ri) })}
+                        className="text-muted-foreground/20 hover:text-destructive transition-colors cursor-pointer flex items-center justify-center"
+                      >
+                        <Trash2 className="w-3 h-3" />
                       </div>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div className="flex items-center gap-4 mt-2.5">
+              <div
+                role="button" tabIndex={0}
+                onClick={() => {
+                  const blankRow = new Array(guide.keyTable!.headers.length).fill("");
+                  set("keyTable", { ...guide.keyTable!, rows: [...guide.keyTable!.rows, blankRow] });
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    const blankRow = new Array(guide.keyTable!.headers.length).fill("");
+                    set("keyTable", { ...guide.keyTable!, rows: [...guide.keyTable!.rows, blankRow] });
+                  }
+                }}
+                className="flex items-center gap-1 text-xs text-muted-foreground/40 hover:text-primary transition-colors cursor-pointer"
+              >
+                <Plus className="w-3 h-3" /> Add row
+              </div>
+              <div
+                role="button" tabIndex={0}
+                onClick={() => {
+                  const headers = [...guide.keyTable!.headers, "New column"];
+                  const rows = guide.keyTable!.rows.map((r) => [...r, ""]);
+                  set("keyTable", { headers, rows });
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    const headers = [...guide.keyTable!.headers, "New column"];
+                    const rows = guide.keyTable!.rows.map((r) => [...r, ""]);
+                    set("keyTable", { headers, rows });
+                  }
+                }}
+                className="flex items-center gap-1 text-xs text-muted-foreground/40 hover:text-primary transition-colors cursor-pointer"
+              >
+                <Plus className="w-3 h-3" /> Add column
+              </div>
             </div>
+          </div>
+        </Card>
+      )}
+
+      {/* ── PRACTICE QUESTIONS ───────────────────────────────────────────── */}
+      <Card emoji="✏️" title="Practice Questions">
+        <div className="space-y-2 pt-2">
+          {questions.map((pq, qi) => (
+            <AccordionRow
+              key={qi}
+              onDelete={() => set("practiceQuestions", questions.filter((_, i) => i !== qi))}
+              header={
+                <>
+                  <span className="shrink-0 text-[10px] font-black text-primary mt-0.5 w-5 text-right">Q{qi + 1}</span>
+                  <E
+                    value={pq.question}
+                    onChange={(v) => set("practiceQuestions", questions.map((q, i) => (i === qi ? { ...q, question: v } : q)))}
+                    placeholder="Question…"
+                    className="flex-1 text-sm font-semibold text-foreground"
+                  />
+                </>
+              }
+            >
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary mb-2">Answer</p>
+              <div className="bg-primary/5 border border-primary/15 rounded-lg p-3">
+                <E
+                  value={pq.answer}
+                  onChange={(v) => set("practiceQuestions", questions.map((q, i) => (i === qi ? { ...q, answer: v } : q)))}
+                  multiline
+                  placeholder="Model answer…"
+                  className="text-sm leading-relaxed text-muted-foreground w-full"
+                />
+              </div>
+            </AccordionRow>
           ))}
-          <button
-            onClick={() =>
-              upd("practiceQuestions", [...guide.practiceQuestions, { question: "", answer: "" }])
-            }
-            className="flex items-center gap-1.5 text-xs text-muted-foreground/50 hover:text-primary transition-colors mt-1"
+          <div
+            role="button" tabIndex={0}
+            onClick={() => set("practiceQuestions", [...questions, { question: "", answer: "" }])}
+            onKeyDown={(e) => e.key === "Enter" && set("practiceQuestions", [...questions, { question: "", answer: "" }])}
+            className="flex items-center gap-1.5 text-xs text-muted-foreground/40 hover:text-primary transition-colors cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" /> Add question
-          </button>
-        </div>
-      </Section>
-
-      {/* ── Two column: Tips + Common Mistakes ───────────────────────────── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        <Section icon={<Beaker className="w-4 h-4" />} title="Study Tips" defaultOpen>
-          <div className="pt-2">
-            <EditableBulletList
-              items={guide.tips}
-              onChange={(items) => upd("tips", items)}
-              accentClass="text-emerald-500"
-            />
           </div>
-        </Section>
+        </div>
+      </Card>
 
-        {guide.commonMistakes && guide.commonMistakes.length > 0 && (
-          <Section icon={<AlertTriangle className="w-4 h-4" />} title="Common Mistakes" defaultOpen>
+      {/* ── GRADE EXPECTATIONS ───────────────────────────────────────────── */}
+      {grades.length > 0 && (
+        <Card emoji="📈" title="Assessment Criteria">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+            {grades.map((g, gi) => {
+              const s = gradeStyle(g.grade);
+              return (
+                <div key={gi} className={cn("rounded-xl border border-border/40 bg-card/60 p-4 border-t-2", s.topBorder)}>
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className={cn("w-7 h-7 rounded-lg text-sm font-black flex items-center justify-center shrink-0", s.badge)}>
+                      {g.grade}
+                    </span>
+                    <div
+                      role="button" tabIndex={0}
+                      onClick={() => set("gradeExpectations", grades.filter((_, i) => i !== gi))}
+                      onKeyDown={(e) => e.key === "Enter" && set("gradeExpectations", grades.filter((_, i) => i !== gi))}
+                      className="ml-auto text-muted-foreground/20 hover:text-destructive transition-colors cursor-pointer"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </div>
+                  </div>
+                  <BulletList
+                    items={g.criteria}
+                    onChange={(criteria) =>
+                      set("gradeExpectations", grades.map((x, i) => (i === gi ? { ...x, criteria } : x)))
+                    }
+                    dotClass={s.dot}
+                  />
+                </div>
+              );
+            })}
+          </div>
+          <div
+            role="button" tabIndex={0}
+            onClick={() => set("gradeExpectations", [...grades, { grade: String.fromCharCode(65 + grades.length), criteria: [""] }])}
+            onKeyDown={(e) => e.key === "Enter" && set("gradeExpectations", [...grades, { grade: String.fromCharCode(65 + grades.length), criteria: [""] }])}
+            className="flex items-center gap-1.5 text-xs text-muted-foreground/40 hover:text-primary transition-colors mt-3 cursor-pointer"
+          >
+            <Plus className="w-3.5 h-3.5" /> Add grade
+          </div>
+        </Card>
+      )}
+
+      {/* ── TIPS + MISTAKES ──────────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <Card emoji="💡" title="Study Tips">
+          <div className="pt-2">
+            <BulletList items={tips} onChange={(v) => set("tips", v)} dotClass="text-emerald-500" />
+          </div>
+        </Card>
+        {mistakes.length > 0 && (
+          <Card emoji="⚠️" title="Common Mistakes">
             <div className="pt-2">
-              <EditableBulletList
-                items={guide.commonMistakes}
-                onChange={(items) => upd("commonMistakes", items)}
-                accentClass="text-amber-500"
-              />
+              <BulletList items={mistakes} onChange={(v) => set("commonMistakes", v)} dotClass="text-amber-500" />
             </div>
-          </Section>
+          </Card>
         )}
       </div>
 
-      {/* ── Resources ────────────────────────────────────────────────────── */}
-      <Section icon={<BookMarked className="w-4 h-4" />} title="Resources" defaultOpen={false}>
+      {/* ── RESOURCES ────────────────────────────────────────────────────── */}
+      <Card emoji="📖" title="Resources" defaultOpen={false}>
         <div className="pt-2">
-          <EditableBulletList
-            items={guide.resources}
-            onChange={(items) => upd("resources", items)}
-          />
+          <BulletList items={resources} onChange={(v) => set("resources", v)} />
         </div>
-      </Section>
+      </Card>
 
-      {/* ── Glossary ─────────────────────────────────────────────────────── */}
-      {guide.glossary && guide.glossary.length > 0 && (
-        <Section icon={<BookOpen className="w-4 h-4" />} title="Glossary" defaultOpen={false}>
+      {/* ── GLOSSARY ─────────────────────────────────────────────────────── */}
+      {glossary.length > 0 && (
+        <Card emoji="📖" title="Glossary" defaultOpen={false}>
           <div className="pt-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {guide.glossary.map((entry, gi) => (
-              <div key={gi} className="group rounded-xl bg-muted/30 border border-border/40 p-3">
+            {glossary.map((entry, gi) => (
+              <div key={gi} className="group/gloss rounded-xl bg-muted/20 border border-border/30 p-3">
                 <div className="flex items-start gap-1.5">
                   <div className="flex-1 min-w-0">
-                    <EditableText
-                      value={entry.term}
-                      onChange={(v) =>
-                        upd("glossary", guide.glossary!.map((g, i) => (i === gi ? { ...g, term: v } : g)))
-                      }
-                      placeholder="Term"
-                      className="text-xs font-black text-primary block"
-                    />
-                    <EditableText
-                      value={entry.definition}
-                      onChange={(v) =>
-                        upd("glossary", guide.glossary!.map((g, i) => (i === gi ? { ...g, definition: v } : g)))
-                      }
-                      multiline
-                      placeholder="Definition…"
-                      className="text-xs text-muted-foreground mt-1 block"
-                    />
+                    <E value={entry.term} onChange={(v) => set("glossary", glossary.map((g, i) => (i === gi ? { ...g, term: v } : g)))} placeholder="Term" className="text-xs font-black text-primary block" />
+                    <E value={entry.definition} onChange={(v) => set("glossary", glossary.map((g, i) => (i === gi ? { ...g, definition: v } : g)))} multiline placeholder="Definition…" className="text-xs text-muted-foreground mt-1 block" />
                   </div>
-                  <button
-                    onClick={() => upd("glossary", guide.glossary!.filter((_, i) => i !== gi))}
-                    className="opacity-0 group-hover:opacity-100 text-muted-foreground/30 hover:text-destructive transition-all shrink-0"
+                  <div
+                    role="button" tabIndex={0}
+                    onClick={() => set("glossary", glossary.filter((_, i) => i !== gi))}
+                    onKeyDown={(e) => e.key === "Enter" && set("glossary", glossary.filter((_, i) => i !== gi))}
+                    className="opacity-0 group-hover/gloss:opacity-100 text-muted-foreground/20 hover:text-destructive transition-all cursor-pointer shrink-0"
                   >
                     <Trash2 className="w-3 h-3" />
-                  </button>
+                  </div>
                 </div>
               </div>
             ))}
-            <button
-              onClick={() =>
-                upd("glossary", [...(guide.glossary ?? []), { term: "", definition: "" }])
-              }
-              className="rounded-xl border border-dashed border-border/40 p-3 text-xs text-muted-foreground/50 hover:text-primary hover:border-primary/30 transition-colors flex items-center justify-center gap-1.5"
+            <div
+              role="button" tabIndex={0}
+              onClick={() => set("glossary", [...glossary, { term: "", definition: "" }])}
+              onKeyDown={(e) => e.key === "Enter" && set("glossary", [...glossary, { term: "", definition: "" }])}
+              className="rounded-xl border border-dashed border-border/30 p-3 text-xs text-muted-foreground/40 hover:text-primary hover:border-primary/30 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
             >
               <Plus className="w-3 h-3" /> Add term
-            </button>
+            </div>
           </div>
-        </Section>
+        </Card>
       )}
 
-      {/* ── Edit hint footer ──────────────────────────────────────────────── */}
-      <p className="text-center text-[11px] text-muted-foreground/30 pb-2">
-        <Pencil className="w-3 h-3 inline mr-1 mb-0.5" />
-        Click any text to edit it — changes save automatically
+      {/* Footer hint */}
+      <p className="text-center text-[11px] text-muted-foreground/25 pb-2 flex items-center justify-center gap-1.5">
+        <Pencil className="w-3 h-3" />
+        Click any text to edit — changes save automatically
       </p>
     </div>
   );
