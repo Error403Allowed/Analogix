@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   ArrowLeft, FileText, Sparkles, Bold, Italic, Strikethrough, Code,
@@ -20,6 +20,8 @@ import type { ChatMessage } from "@/types/chat";
 import MathInput from "@/components/MathInput";
 import CodeBlockInput from "@/components/CodeBlockInput";
 import RichEditor, { type RichEditorHandle } from "@/components/RichEditor";
+import StudyGuideView, { decodeStudyGuide, encodeStudyGuide } from "@/components/StudyGuideView";
+import type { GeneratedStudyGuide } from "@/services/groq";
 
 const formatSavedLabel = (iso?: string | null) => {
   if (!iso) return "Not saved yet";
@@ -56,6 +58,7 @@ export default function SubjectDocument() {
 
   const [mathOpen, setMathOpen] = useState(false);
   const [codeOpen, setCodeOpen] = useState(false);
+  const [studyGuide, setStudyGuide] = useState<GeneratedStudyGuide | null>(null);
 
   const [userPrefs, setUserPrefs] = useState<{ grade?: string; hobbies?: string[]; learningStyle?: string }>({});
   const [helperMessages, setHelperMessages] = useState<ChatMessage[]>([]);
@@ -103,6 +106,16 @@ export default function SubjectDocument() {
       setTitle(rawTitle);
       // If legacy markdown, wrap in a paragraph so TipTap can accept it gracefully
       // TipTap will just render it as plain text — better than crashing
+      // Check for structured study guide format first
+      const parsed = decodeStudyGuide(rawContent);
+      if (parsed) {
+        setStudyGuide(parsed);
+        setContent(rawContent);
+        setInitialContent(rawContent);
+        lastSavedRef.current = { title: rawTitle, content: rawContent };
+        setLastSavedAt(doc.lastUpdated || data.notes.lastUpdated || null);
+        return;
+      }
       const html = isHtmlContent(rawContent) ? rawContent : (rawContent ? `<p>${rawContent.replace(/\n/g, "</p><p>")}</p>` : "");
       setContent(html);
       setInitialContent(html);
@@ -130,6 +143,11 @@ export default function SubjectDocument() {
     }, 800);
     return () => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current); };
   }, [title, content, subjectId, docId, docMissing, canSave]);
+
+  const handleStudyGuideChange = useCallback((updated: GeneratedStudyGuide) => {
+    setStudyGuide(updated);
+    setContent(encodeStudyGuide(updated));
+  }, []);
 
   const stats = useMemo(() => {
     // Strip HTML tags to count words
@@ -291,8 +309,15 @@ export default function SubjectDocument() {
           </div>
         </div>
 
-        {/* Editor - open, infinite canvas feel */}
-        <div className="border-t border-border/30 pt-6">
+        {/* ── Study guide structured view ── */}
+        {studyGuide && (
+            <div className="border-t border-border/30 pt-6">
+              <StudyGuideView guide={studyGuide} onChange={handleStudyGuideChange} />
+            </div>
+          )}
+
+          {/* Editor - open, infinite canvas feel */}
+          <div className={cn("border-t border-border/30 pt-6", studyGuide && "hidden")}>
           {/* Toolbar - floating, minimal */}
           <div className="flex flex-wrap items-center gap-1.5 pb-4">
             {toolbarGroups.map((group, gi) => (

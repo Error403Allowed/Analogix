@@ -11,77 +11,11 @@ import { Button } from "@/components/ui/button";
 import { SUBJECT_CATALOG } from "@/constants/subjects";
 import { subjectStore, type SubjectDocumentItem } from "@/utils/subjectStore";
 import { generateStudyGuide, type GeneratedStudyGuide } from "@/services/groq";
+import { encodeStudyGuide } from "@/components/StudyGuideView";
 import { toast } from "sonner";
 
-// ── Shared helper: converts a GeneratedStudyGuide to HTML for the rich editor ─
-export const studyGuideToHtml = (guide: GeneratedStudyGuide): string => {
-  const esc = (t: string) =>
-    t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-
-  return `
-    <h1 style="font-size:2em;margin-bottom:.5em;color:var(--primary)">${esc(guide.title)}</h1>
-    <div style="display:flex;gap:1em;margin-bottom:1.5em;padding:1em;background:var(--muted);border-radius:8px;flex-wrap:wrap">
-      <div><strong>Type:</strong> ${esc(guide.assessmentType)}</div>
-      <div><strong>Due:</strong> ${esc(guide.assessmentDate)}</div>
-    </div>
-
-    <h2 style="font-size:1.4em;margin:1.5em 0 .75em">📚 Topics</h2>
-    <ul style="list-style:disc;padding-left:1.5em;margin-bottom:1.5em">
-      ${guide.topics.map(t => `<li>${esc(t)}</li>`).join("")}
-    </ul>
-
-    <h2 style="font-size:1.4em;margin:1.5em 0 .75em">📅 Study Schedule</h2>
-    ${guide.studySchedule.map(w => `
-      <div style="padding:1em;border:1px solid var(--border);border-radius:8px;background:var(--card);margin-bottom:.75em">
-        <h3 style="font-size:1.05em;margin-bottom:.5em;color:var(--primary)">Week ${w.week}: ${esc(w.label)}</h3>
-        <ul style="list-style:disc;padding-left:1.5em">
-          ${w.tasks.map(t => `<li style="margin-bottom:.2em">${esc(t)}</li>`).join("")}
-        </ul>
-      </div>`).join("")}
-
-    <h2 style="font-size:1.4em;margin:1.5em 0 .75em">🧠 Key Concepts</h2>
-    ${guide.keyConcepts.map(c => `
-      <div style="padding:1em;border-left:3px solid var(--primary);background:var(--muted);border-radius:0 8px 8px 0;margin-bottom:.75em">
-        <h3 style="font-size:1.05em;margin-bottom:.4em">${esc(c.title)}</h3>
-        <p style="line-height:1.7;white-space:pre-wrap">${esc(c.content)}</p>
-      </div>`).join("")}
-
-    <h2 style="font-size:1.4em;margin:1.5em 0 .75em">✏️ Practice Questions</h2>
-    ${guide.practiceQuestions.map((pq, i) => `
-      <div style="padding:1em;border:1px solid var(--border);border-radius:8px;margin-bottom:.75em">
-        <p style="font-weight:600;margin-bottom:.6em">Q${i + 1}: ${esc(pq.question)}</p>
-        <div style="padding:.75em;background:var(--muted);border-radius:6px;white-space:pre-wrap">
-          <strong>Answer:</strong> ${esc(pq.answer)}
-        </div>
-      </div>`).join("")}
-
-    <h2 style="font-size:1.4em;margin:1.5em 0 .75em">📖 Resources</h2>
-    <ul style="list-style:disc;padding-left:1.5em;margin-bottom:1.5em">
-      ${guide.resources.map(r => `<li>${esc(r)}</li>`).join("")}
-    </ul>
-
-    <h2 style="font-size:1.4em;margin:1.5em 0 .75em">💡 Study Tips</h2>
-    <ul style="list-style:disc;padding-left:1.5em;margin-bottom:1.5em">
-      ${guide.tips.map(t => `<li>${esc(t)}</li>`).join("")}
-    </ul>
-
-    ${guide.commonMistakes?.length ? `
-      <h2 style="font-size:1.4em;margin:1.5em 0 .75em">⚠️ Common Mistakes</h2>
-      <ul style="list-style:disc;padding-left:1.5em;margin-bottom:1.5em">
-        ${guide.commonMistakes.map(m => `<li>${esc(m)}</li>`).join("")}
-      </ul>` : ""}
-
-    ${guide.glossary?.length ? `
-      <h2 style="font-size:1.4em;margin:1.5em 0 .75em">📖 Glossary</h2>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:.75em;margin-bottom:1.5em">
-        ${guide.glossary.map(g => `
-          <div style="padding:.75em;background:var(--muted);border-radius:6px">
-            <strong style="color:var(--primary)">${esc(g.term)}</strong>
-            <p style="margin-top:.25em;font-size:.9em;line-height:1.5">${esc(g.definition)}</p>
-          </div>`).join("")}
-      </div>` : ""}
-  `;
-};
+// Kept for backward compat but no longer used for new guides
+export const studyGuideToHtml = (_guide: GeneratedStudyGuide): string => "";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -123,7 +57,7 @@ const StudyGuideManager = () => {
         Object.entries(all).forEach(([subjectId, data]) => {
           (data.notes.documents || []).forEach(doc => {
             // Tag guides by looking for the study guide HTML marker in content
-            if (doc.content.includes("📅 Study Schedule") || doc.content.includes("🧠 Key Concepts")) {
+            if (doc.content.startsWith("__STUDY_GUIDE_V2__") || doc.content.includes("📅 Study Schedule") || doc.content.includes("🧠 Key Concepts")) {
               entries.push({ docId: doc.id, subjectId, title: doc.title || "Untitled Guide", lastUpdated: doc.lastUpdated });
             }
           });
@@ -197,9 +131,9 @@ const StudyGuideManager = () => {
 
       if (!result) throw new Error("No result returned");
 
-      const html = studyGuideToHtml(result);
+      const encoded = encodeStudyGuide(result);
       const doc = await subjectStore.createDocument(selectedSubject, result.title);
-      await subjectStore.updateDocument(selectedSubject, doc.id, { content: html });
+      await subjectStore.updateDocument(selectedSubject, doc.id, { content: encoded });
 
       setGenerated(true);
       setAttachedFile(null);
