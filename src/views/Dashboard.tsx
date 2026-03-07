@@ -6,6 +6,7 @@ import {
   TrendingUp, Zap, Target, Brain, Flame,
 } from "lucide-react";
 import { DashboardPanel } from "@/components/ui/panels";
+import { SpeedInsights } from "@vercel/speed-insights/next"
 import { TimerWidget } from "@/components/TimerWidget";
 import UpcomingEvents from "@/components/UpcomingEvents";
 import RecentDocs from "@/components/RecentDocs";
