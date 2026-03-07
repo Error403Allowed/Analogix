@@ -28,6 +28,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { getGroqCompletion, getReExplanation, generateFlashcards, generateStudyGuide, type GeneratedStudyGuide, generateQuizFromDocument, generateFlashcardsFromDocument } from "@/services/groq";
 import { flashcardStore } from "@/utils/flashcardStore";
 import { statsStore } from "@/utils/statsStore";
@@ -255,7 +256,7 @@ interface Message {
   content: string;
   analogy?: string;
   imageUrl?: string;
-  attachments?: Array<{ name: string; size: number; type: string; content: string }>;
+  attachments?: Array<{ name: string; size: number; type: string; content: string; previewUrl?: string; isImage?: boolean }>;
   isNew?: boolean; // Track if this is a new message for typewriter effect
   isWelcome?: boolean;
 }
@@ -320,7 +321,7 @@ const Chat = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   // FILE UPLOADS
-  const [attachedFiles, setAttachedFiles] = useState<Array<{ name: string; size: number; type: string; content: string; extractedText: string }>>([]);
+  const [attachedFiles, setAttachedFiles] = useState<Array<{ name: string; size: number; type: string; content: string; extractedText: string; previewUrl?: string; isImage?: boolean }>>([]);
   const [fileExtracting, setFileExtracting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -705,36 +706,105 @@ const Chat = () => {
   };
 
   // TALKING TO THE AI: This is where the magic happens!
-  const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
+  const [isDraggingFiles, setIsDraggingFiles] = useState(false);
+
+  const processFiles = useCallback(async (fileList: File[]) => {
+    if (fileList.length === 0) {
+      console.warn("[Chat] No files selected");
+      return;
+    }
     if (fileInputRef.current) fileInputRef.current.value = "";
 
+    console.log("[Chat] Setting fileExtracting to true");
     setFileExtracting(true);
-    const newAttachments: Array<{ name: string; size: number; type: string; content: string; extractedText: string }> = [];
+    const newAttachments: Array<{ name: string; size: number; type: string; content: string; extractedText: string; previewUrl?: string; isImage?: boolean }> = [];
 
-    for (const file of Array.from(files)) {
+    for (const file of fileList) {
+      console.log("[Chat] Processing file:", file.name, file.type, file.size, "bytes");
+      const isImage = file.type.startsWith("image/");
+      const previewUrl = isImage ? URL.createObjectURL(file) : undefined;
       try {
         const extractedText = await extractFileText(file);
+        console.log("[Chat] Successfully extracted text from:", file.name, "length:", extractedText.length);
         newAttachments.push({
           name: file.name,
           size: file.size,
           type: file.type,
           content: "", // not used anymore
           extractedText,
+          previewUrl,
+          isImage,
         });
       } catch (err) {
-        // skip unreadable files silently
-        console.warn("Could not extract", file.name, err);
+        const errorMessage = err instanceof Error ? err.message : "Unknown error";
+        console.error("[Chat] Could not extract", file.name, err);
+        if (isImage) {
+          newAttachments.push({
+            name: file.name,
+            size: file.size,
+            type: file.type,
+            content: "",
+            extractedText: `[Image attached: ${file.name}. No text could be extracted.]`,
+            previewUrl,
+            isImage,
+          });
+          toast.message(`Added "${file.name}" without text extraction.`);
+        } else {
+          if (previewUrl) URL.revokeObjectURL(previewUrl);
+          toast.error(`Failed to upload "${file.name}": ${errorMessage}`);
+        }
       }
     }
 
-    setAttachedFiles(prev => [...prev, ...newAttachments]);
+    console.log("[Chat] Final attachments:", newAttachments);
+    console.log("[Chat] Current attachedFiles before update:", attachedFiles.length);
+    setAttachedFiles(prev => {
+      const updated = [...prev, ...newAttachments];
+      console.log("[Chat] attachedFiles updated from", prev.length, "to", updated.length);
+      return updated;
+    });
+    console.log("[Chat] Setting fileExtracting to false");
     setFileExtracting(false);
+  }, [attachedFiles.length]);
+
+  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const fileList = e.target.files ? Array.from(e.target.files) : [];
+    console.log("[Chat] File input changed. Files:", fileList);
+    console.log("[Chat] Files length:", fileList.length);
+    processFiles(fileList);
+  }, [processFiles]);
+
+  const isFileDrag = useCallback((e: React.DragEvent) =>
+    Array.from(e.dataTransfer.types || []).includes("Files"), []);
+
+  const handleFileDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isFileDrag(e)) return;
+    setIsDraggingFiles(false);
+    const fileList = Array.from(e.dataTransfer.files || []);
+    console.log("[Chat] Files dropped:", fileList);
+    processFiles(fileList);
+  }, [processFiles, isFileDrag]);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    if (!isFileDrag(e)) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "copy";
+    setIsDraggingFiles(true);
+  }, [isFileDrag]);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+    setIsDraggingFiles(false);
   }, []);
 
   const removeAttachment = useCallback((index: number) => {
-    setAttachedFiles(prev => prev.filter((_, i) => i !== index));
+    setAttachedFiles(prev => {
+      const target = prev[index];
+      if (target?.previewUrl) URL.revokeObjectURL(target.previewUrl);
+      return prev.filter((_, i) => i !== index);
+    });
   }, []);
 
   // Convert study guide to HTML for RichEditor
@@ -1390,7 +1460,20 @@ const Chat = () => {
 
             <div className="flex-1 flex gap-4 min-h-0">
               {/* Main chat column */}
-              <div className="flex-1 min-h-0 relative">
+              <div
+                className="flex-1 min-h-0 relative"
+                onDragEnter={handleDragOver}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleFileDrop}
+              >
+              {isDraggingFiles && (
+                <div className="absolute inset-3 z-40 rounded-2xl border-2 border-dashed border-primary/60 bg-primary/5 pointer-events-none flex items-center justify-center">
+                  <div className="text-xs font-semibold text-primary">
+                    Drop files to attach
+                  </div>
+                </div>
+              )}
               {/* Messages - sleek chat bubbles */}
               <div
                 ref={scrollContainerRef}
@@ -1538,7 +1621,15 @@ const Chat = () => {
                               <div className="flex flex-wrap gap-2 mb-2 mr-4">
                                 {message.attachments.map((file, idx) => (
                                   <div key={idx} className="flex items-center gap-2 px-3 py-2 rounded-xl bg-primary/10 border border-primary/20">
-                                    <FileText className="w-3.5 h-3.5 text-primary" />
+                                    {file.isImage && file.previewUrl ? (
+                                      <img
+                                        src={file.previewUrl}
+                                        alt={file.name}
+                                        className="w-6 h-6 rounded-md object-cover border border-primary/30"
+                                      />
+                                    ) : (
+                                      <FileText className="w-3.5 h-3.5 text-primary" />
+                                    )}
                                     <span className="text-xs text-foreground max-w-[120px] truncate">{file.name}</span>
                                   </div>
                                 ))}
@@ -1624,7 +1715,15 @@ const Chat = () => {
                   <div className="mb-2 flex flex-wrap items-center gap-2">
                     {attachedFiles.map((file, index) => (
                       <div key={index} className="flex items-center gap-2 px-3 py-2 rounded-xl bg-muted/60 border border-border/40">
-                        <FileText className="w-3.5 h-3.5 text-muted-foreground" />
+                        {file.isImage && file.previewUrl ? (
+                          <img
+                            src={file.previewUrl}
+                            alt={file.name}
+                            className="w-6 h-6 rounded-md object-cover border border-border/40"
+                          />
+                        ) : (
+                          <FileText className="w-3.5 h-3.5 text-muted-foreground" />
+                        )}
                         <span className="text-xs text-foreground max-w-[120px] truncate">{file.name}</span>
                         <button
                           type="button"
@@ -1706,25 +1805,30 @@ const Chat = () => {
                   />
                   {/* Bottom row of input */}
                   <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between px-3 pb-3">
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      multiple
-                      onChange={handleFileSelect}
-                      className="hidden"
-                      accept={ACCEPTED_FILE_TYPES}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={fileExtracting}
-                      className="w-8 h-8 rounded-full bg-muted/40 hover:bg-primary/10 flex items-center justify-center text-muted-foreground hover:text-primary transition-all disabled:opacity-50"
-                      title={fileExtracting ? "Extracting file…" : "Attach files"}
-                    >
-                      {fileExtracting
-                        ? <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                        : <Paperclip className="w-3.5 h-3.5" />}
-                    </button>
+                    <div className="relative w-8 h-8 group">
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        multiple
+                        onChange={handleFileSelect}
+                        className="absolute inset-0 z-10 cursor-pointer opacity-0 disabled:cursor-not-allowed"
+                        accept={ACCEPTED_FILE_TYPES}
+                        disabled={fileExtracting}
+                        aria-label="Attach files"
+                      />
+                      <button
+                        type="button"
+                        disabled={fileExtracting}
+                        className="w-8 h-8 rounded-full bg-muted/40 flex items-center justify-center text-muted-foreground transition-all disabled:opacity-50 group-hover:bg-primary/10 group-hover:text-primary"
+                        title={fileExtracting ? "Extracting file…" : "Attach files"}
+                        aria-hidden="true"
+                        tabIndex={-1}
+                      >
+                        {fileExtracting
+                          ? <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                          : <Paperclip className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
                     {(isTyping || isAnimating) ? (
                       <button
                         type="button"

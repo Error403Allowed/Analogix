@@ -243,3 +243,86 @@ export const callHfChat = async (
 
   throw lastError instanceof Error ? lastError : new Error("AI request failed after trying all models");
 };
+
+// ============================================================================
+// MAIN API CALL - STREAMING VERSION
+// ============================================================================
+
+export const callHfChatStream = async (
+  payload: {
+    messages: Array<{ role: "system" | "user" | "assistant"; content: string }>;
+    max_tokens: number;
+    temperature: number;
+  },
+  taskType: TaskType = "default"
+) => {
+  assertApiKeys();
+  let lastError: unknown = null;
+
+  const tryModelWithApiKey = async (model: string, retryCount = 0): Promise<ReadableStream> => {
+    const keyIndexBase = getNextApiKeyIndex();
+    const activeKey = getApiKeyAtIndex(keyIndexBase, retryCount);
+
+    if (!activeKey) throw new Error("No Groq API keys available");
+
+    try {
+      const response = await fetch(GROQ_CHAT_URL, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${activeKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model,
+          stream: true,
+          messages: model === REASONING_MODEL
+            ? foldSystemIntoUser(payload.messages)
+            : payload.messages,
+          max_tokens: payload.max_tokens,
+          temperature: payload.temperature,
+          ...(model === REASONING_MODEL && { reasoning_effort: "none" }),
+        }),
+      });
+
+      if (!response.ok) {
+        const errorMessage = await parseErrorMessage(response);
+        throw new Error(`Groq API Error: ${response.status} - ${errorMessage}`);
+      }
+
+      return response.body!;
+
+    } catch (error) {
+      const message = formatError(error);
+      lastError = error;
+      const statusMatch = message.match(/Groq API Error: (\d+)/);
+      const statusCode = statusMatch ? statusMatch[1] : "ERR";
+      console.error(`[Groq] ${model} ❌ ${statusCode}`);
+
+      if (retryCount < apiKeys.length - 1) {
+        return tryModelWithApiKey(model, retryCount + 1);
+      }
+      throw error;
+    }
+  };
+
+  const taskModels = getModelsForTaskType(taskType);
+  const modelsToTry = [...new Set([...taskModels, DEFAULT_MODEL])];
+
+  console.log(`[Groq] Task: "${taskType}" → ${modelsToTry.join(" → ")}`);
+
+  for (const model of modelsToTry) {
+    try {
+      console.log(`[Groq] Trying: ${model}`);
+      return await tryModelWithApiKey(model);
+    } catch (error) {
+      const message = formatError(error);
+      lastError = error;
+      const statusMatch = message.match(/Groq API Error: (\d+)/);
+      const statusCode = statusMatch ? statusMatch[1] : "ERR";
+      console.warn(`[Groq] ${model} failed (${statusCode}), next...`);
+      continue;
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error("AI request failed after trying all models");
+};

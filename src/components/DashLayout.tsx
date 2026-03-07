@@ -9,10 +9,10 @@ import AgentPanel from "@/components/AgentPanel";
 export default function DashLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
-  const isLanding = pathname === "/" || !pathname;
-  const isOnboarding = pathname === "/onboarding";
-  const isTimerFullscreen = pathname === "/timer";
-  const isChat = pathname === "/chat";
+  const isLanding          = pathname === "/" || !pathname;
+  const isOnboarding       = pathname === "/onboarding";
+  const isTimerFullscreen  = pathname === "/timer";
+  const isChat             = pathname === "/chat";
   const isStudyGuideLoading = pathname === "/study-guide-loading";
 
   if (isLanding || isOnboarding || isTimerFullscreen || isChat || isStudyGuideLoading) {
@@ -23,18 +23,17 @@ export default function DashLayout({ children }: { children: React.ReactNode }) 
     <>
       <AgentPanel />
       <SidebarProvider defaultOpen={false}>
-        <div className="flex h-screen w-full bg-background overflow-hidden font-sans">
+        <div className="flex h-screen w-full bg-background overflow-hidden">
           <AppSidebar />
-          <SidebarInset className="flex flex-col flex-1 min-w-0 min-h-0 bg-transparent relative">
-            {/* Scroll container */}
+          <SidebarInset className="flex flex-col flex-1 min-w-0 min-h-0">
             <div className="flex-1 min-h-0 overflow-y-auto">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={pathname}
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  transition={{ duration: 0.18, ease: "easeOut" }}
+                  transition={{ duration: 0.12 }}
                   className="min-h-full"
                 >
                   {children}

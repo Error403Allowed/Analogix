@@ -69,7 +69,9 @@ export default {
   		borderRadius: {
   			lg: 'var(--radius)',
   			md: 'calc(var(--radius) - 2px)',
-  			sm: 'calc(var(--radius) - 4px)'
+  			sm: 'calc(var(--radius) - 4px)',
+  			xl: 'calc(var(--radius) + 4px)',
+  			'2xl': 'calc(var(--radius) + 8px)',
   		},
 		keyframes: {
 			'accordion-down': {
@@ -127,20 +129,16 @@ export default {
 		},
   		fontFamily: {
   			sans: [
-  				'Manrope',
-  				'Inter',
+  				'DM Sans',
   				'ui-sans-serif',
   				'system-ui',
   				'-apple-system',
-  				'BlinkMacSystemFont',
-  				'Segoe UI',
   				'sans-serif'
   			],
   			display: [
-  				'Fraunces',
+  				'Instrument Serif',
   				'ui-serif',
   				'Georgia',
-  				'Times New Roman',
   				'serif'
   			],
   			serif: [
