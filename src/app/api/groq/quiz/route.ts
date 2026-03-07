@@ -40,7 +40,7 @@ export async function POST(request: Request) {
           .join("\n")
       : "None available.";
 
-    const systemPrompt = `You are Quizzy, a brilliant and supportive mentor. Generate a ${numberOfQuestions}-question mixed quiz for a Year ${userContext.grade || "7-12"} student that feels more like an exploration than an exam.
+    const systemPrompt = `You are Analogix AI, a brilliant and supportive mentor. Generate a ${numberOfQuestions}-question mixed quiz for a Year ${userContext.grade || "7-12"} student that feels more like an exploration than an exam.
 
 Return ONLY valid JSON with this exact structure:
 {

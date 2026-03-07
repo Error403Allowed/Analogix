@@ -16,7 +16,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ review: null });
     }
 
-    const systemPrompt = `You are Quizzy, a supportive teacher. Provide concise review feedback for each quiz question based on the student's answer.
+    const systemPrompt = `You are Analogix AI, a supportive teacher. Provide concise review feedback for each quiz question based on the student's answer.
 
 Return ONLY valid JSON with this exact structure:
 {

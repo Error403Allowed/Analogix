@@ -76,7 +76,8 @@ export const statsStore = {
     const newTotal = current.quizzesDone + 1;
     const newAccuracy = Math.round(((current.accuracy * current.quizzesDone) + score) / newTotal);
     await activityLog.record();
-    await statsStore.update({ quizzesDone: newTotal, accuracy: newAccuracy });
+    const newStreak = await statsStore.computeStreak();
+    await statsStore.update({ quizzesDone: newTotal, accuracy: newAccuracy, currentStreak: newStreak });
   },
 
   recordChat: async (subject: string): Promise<void> => {
@@ -89,7 +90,42 @@ export const statsStore = {
       if (counts[s] > max) { max = counts[s]; top = s; }
     }
     await activityLog.record();
-    await statsStore.update({ conversationsCount: current.conversationsCount + 1, topSubject: top, subjectCounts: counts });
+    const newStreak = await statsStore.computeStreak();
+    await statsStore.update({ conversationsCount: current.conversationsCount + 1, topSubject: top, subjectCounts: counts, currentStreak: newStreak });
+  },
+
+  /** Recompute streak from activity log: count consecutive days up to and including today */
+  computeStreak: async (): Promise<number> => {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return 0;
+
+    // Fetch last 365 days of activity
+    const { data } = await supabase
+      .from("activity_log")
+      .select("date, count")
+      .eq("user_id", user.id)
+      .order("date", { ascending: false })
+      .limit(365);
+
+    if (!data || data.length === 0) return 1; // first ever use = 1 day streak
+
+    const activeDates = new Set(data.filter((r: any) => r.count > 0).map((r: any) => r.date as string));
+
+    let streak = 0;
+    const d = new Date();
+    // Walk backwards from today — include today immediately (counts as day 1)
+    while (true) {
+      const iso = d.toISOString().slice(0, 10);
+      if (activeDates.has(iso)) {
+        streak++;
+        d.setDate(d.getDate() - 1);
+      } else {
+        break;
+      }
+    }
+    // Always count at least 1 (the act of calling this means they used the app today)
+    return Math.max(streak, 1);
   },
 
   updateStreak: async (newStreak: number): Promise<void> => {

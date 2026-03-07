@@ -506,9 +506,9 @@ button .markdown-content .katex {
   @apply border-l-2 border-primary/40 pl-4 text-muted-foreground my-4 italic;
 }
 
-/* Lists */
-.rich-editor-content ul { @apply list-disc list-inside space-y-1 my-2 pl-2; }
-.rich-editor-content ol { @apply list-decimal list-inside space-y-1 my-2 pl-2; }
+/* Lists — outside so bullets/numbers sit in the margin, not inside text */
+.rich-editor-content ul { @apply list-disc my-2 pl-6 space-y-1; }
+.rich-editor-content ol { @apply list-decimal my-2 pl-6 space-y-1; }
 .rich-editor-content li { @apply leading-relaxed; }
 
 /* Task list */
@@ -536,8 +536,66 @@ button .markdown-content .katex {
   @apply border border-border/50 px-3 py-2 align-top;
 }
 
-/* Math — KaTeX rendered inline and block */
-.rich-editor-content .math-node { @apply cursor-default; }
-.rich-editor-content .math-node.ProseMirror-selectednode {
-  @apply outline outline-2 outline-primary/50 rounded;
+/* ── Math — @tiptap/extension-mathematics ─────────────────────────────────
+   The extension renders:
+     Inline: <span class="tiptap-mathematics-render [tiptap-mathematics-render--editable]">
+     Block:  <div  class="tiptap-mathematics-render [tiptap-mathematics-render--editable]">
+               <div class="block-math-inner">…katex…</div>
+             </div>
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* Shared wrapper — pointer cursor so it's clickable */
+.rich-editor-content .tiptap-mathematics-render {
+  cursor: default;
+}
+.rich-editor-content .ProseMirror-selectednode.tiptap-mathematics-render {
+  outline: 2px solid hsl(var(--primary) / 0.5);
+  border-radius: 4px;
+}
+
+/* Inline math — sits neatly beside text */
+.rich-editor-content span.tiptap-mathematics-render {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+}
+.rich-editor-content span.tiptap-mathematics-render .katex {
+  font-size: 1.05em;
+  line-height: 1.4;
+}
+
+/* Block / display math */
+.rich-editor-content div.tiptap-mathematics-render {
+  display: block;
+  margin: 1.25rem 0;
+  padding: 1rem 1.5rem;
+  border-radius: 0.75rem;
+  text-align: center;
+  background: hsl(var(--muted) / 0.4);
+  border: 1px solid hsl(var(--border) / 0.5);
+}
+.rich-editor-content div.tiptap-mathematics-render .block-math-inner {
+  display: flex;
+  justify-content: center;
+}
+.rich-editor-content div.tiptap-mathematics-render .katex {
+  font-size: 1.25em;
+}
+.rich-editor-content div.tiptap-mathematics-render .katex-display {
+  margin: 0;
+}
+
+/* Dark mode — KaTeX inherits foreground colour */
+.dark .rich-editor-content .tiptap-mathematics-render .katex,
+.dark .rich-editor-content .tiptap-mathematics-render .katex * {
+  color: hsl(var(--foreground));
+}
+.dark .rich-editor-content .tiptap-mathematics-render .katex .frac-line,
+.dark .rich-editor-content .tiptap-mathematics-render .katex .sqrt-line,
+.dark .rich-editor-content .tiptap-mathematics-render .katex .overline-line {
+  background: hsl(var(--foreground));
+}
+.dark .rich-editor-content .tiptap-mathematics-render .katex svg {
+  fill: hsl(var(--foreground));
+  stroke: hsl(var(--foreground));
 }

@@ -81,8 +81,8 @@ const STEPS: Step[] = [
   {
     id: "ai-tutor",
     selector: "[data-tutorial='ai-tutor']",
-    title: "AI Tutor — Quizzy",
-    description: "Quizzy is your personal AI study buddy. Ask any question and it explains concepts using analogies tailored to YOUR hobbies. Pick a subject to start a session.",
+    title: "AI Tutor — Analogix AI",
+    description: "Analogix AI is your personal AI study buddy. Ask any question and it explains concepts using analogies tailored to YOUR hobbies. Pick a subject to start a session.",
     placement: "top",
     padding: 6,
   },
@@ -98,7 +98,7 @@ const STEPS: Step[] = [
     id: "profile",
     selector: "[data-tutorial='profile']",
     title: "Your Profile",
-    description: "Click your name at the bottom of the sidebar to edit your profile — update your subjects, interests, year, and state. Quizzy instantly adapts its analogies to match.",
+    description: "Click your name at the bottom of the sidebar to edit your profile — update your subjects, interests, year, and state. Analogix AI instantly adapts its analogies to match.",
     placement: "right",
     padding: 8,
   },
@@ -122,7 +122,7 @@ const STEPS: Step[] = [
     id: "done",
     selector: null,
     title: "You're all set! 🚀",
-    description: "That's the full tour. Start by asking Quizzy a question — you might be surprised how clear things become when explained through your own interests. Happy studying!",
+    description: "That's the full tour. Start by asking Analogix AI a question — you might be surprised how clear things become when explained through your own interests. Happy studying!",
     placement: "center",
   },
 ];

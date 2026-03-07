@@ -25,7 +25,7 @@ export async function POST(request: Request) {
       .map(e => `- ${e.type.toUpperCase()}: "${e.title}"${e.subject ? ` (${e.subject})` : ""} on ${e.date}`)
       .join("\n");
 
-    const systemPrompt = `You are Quizzy, a study coach for Australian high school students.
+    const systemPrompt = `You are Analogix AI, a study coach for Australian high school students.
 Today is ${today}. The student is in Year ${grade} in ${state}.
 
 Your job: Create a practical, day-by-day study schedule leading up to their upcoming exams and assignments.

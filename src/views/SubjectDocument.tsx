@@ -8,6 +8,7 @@ import {
   Link as LinkIcon, Image as ImageIcon, Table, Minus, Sigma,
   MessageCircle, Send, X, Braces, BookOpen, Brain, HelpCircle, Layers,
 } from "lucide-react";
+import MarkdownRenderer from "@/components/MarkdownRenderer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -75,6 +76,8 @@ export default function SubjectDocument() {
   const [helperInput, setHelperInput]       = useState("");
   const [helperTyping, setHelperTyping]     = useState(false);
   const [chatOpen, setChatOpen]             = useState(false);
+  const [isInserting, setIsInserting]       = useState(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const editorRef      = useRef<RichEditorHandle>(null);
   const lastSavedRef   = useRef<{ title: string; content: string }>({ title: "", content: "" });
@@ -205,30 +208,114 @@ export default function SubjectDocument() {
     setTimeout(() => editorRef.current?.insertCodeBlock(code, language), 50);
   };
 
-  const handleHelperSend = async () => {
+  const handleHelperSend = async (insertIntoDoc = false) => {
     if (!helperInput.trim() || helperTyping) return;
+    
     const userMessage: ChatMessage = { role: "user", content: helperInput.trim() };
     setHelperMessages((prev) => [...prev, userMessage]);
     setHelperInput("");
     setHelperTyping(true);
+    
     const docText = content.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
     const pageContext = [
       `Subject: ${subject?.label || "Unknown"}`,
       `Document title: ${title.trim() || "Untitled"}`,
       `Document content:\n${docText.slice(0, 3000) || "(empty document)"}`,
     ].filter(Boolean).join("\n");
+    
     const history = [...helperMessages, userMessage].slice(-8);
-    try {
-      const response = await getGroqCompletion(history, {
-        subjects: [subjectId], hobbies: userPrefs.hobbies || [],
-        grade: userPrefs.grade, learningStyle: userPrefs.learningStyle || "visual",
-        responseLength: 2, analogyIntensity: 0.2, pageContext,
-      });
-      setHelperMessages((prev) => [...prev, response]);
-    } catch {
-      setHelperMessages((prev) => [...prev, { role: "assistant", content: "I couldn't reach the AI service. Try again in a moment." }]);
-    } finally {
-      setHelperTyping(false);
+    
+    if (insertIntoDoc) {
+      // Streaming insertion into document
+      setIsInserting(true);
+      abortControllerRef.current = new AbortController();
+      
+      try {
+        const response = await fetch("/api/groq/doc-chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          signal: abortControllerRef.current.signal,
+          body: JSON.stringify({
+            messages: history,
+            userContext: {
+              subjects: [subjectId],
+              hobbies: userPrefs.hobbies || [],
+              grade: userPrefs.grade,
+              learningStyle: userPrefs.learningStyle || "visual",
+              responseLength: 2,
+              analogyIntensity: 0.2,
+              pageContext,
+            },
+          }),
+        });
+
+        if (!response.ok) throw new Error("AI service unavailable");
+        if (!response.body) throw new Error("No response body");
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let accumulatedContent = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value);
+          const lines = chunk.split("\n");
+          
+          for (const line of lines) {
+            if (!line.startsWith("data: ")) continue;
+            const data = line.slice(6).trim();
+            if (data === "[DONE]") break;
+            
+            try {
+              const parsed = JSON.parse(data);
+              if (parsed.error) throw new Error(parsed.error);
+              if (parsed.choices?.[0]?.delta?.content) {
+                accumulatedContent += parsed.choices[0].delta.content;
+              }
+            } catch {
+              // Non-JSON or malformed, treat as raw content
+              if (data && data !== "[DONE]") {
+                accumulatedContent += data;
+              }
+            }
+          }
+        }
+
+        // Insert the accumulated content into the editor
+        if (accumulatedContent && editorRef.current?.editor) {
+          const editor = editorRef.current.editor;
+          // Insert at cursor position or at end
+          const pos = editor.state.selection.from;
+          editor.chain().focus().insertContentAt(pos, accumulatedContent).run();
+        }
+
+      } catch (error: any) {
+        if (error?.name !== "AbortError") {
+          setHelperMessages((prev) => [...prev, { 
+            role: "assistant", 
+            content: "I couldn't reach the AI service. Try again in a moment." 
+          }]);
+        }
+      } finally {
+        setIsInserting(false);
+        abortControllerRef.current = null;
+      }
+    } else {
+      // Standard chat response (non-streaming for backward compatibility)
+      try {
+        const response = await getGroqCompletion(history, {
+          subjects: [subjectId], hobbies: userPrefs.hobbies || [],
+          grade: userPrefs.grade, learningStyle: userPrefs.learningStyle || "visual",
+          responseLength: 2, analogyIntensity: 0.2, pageContext,
+        });
+        setHelperMessages((prev) => [...prev, response]);
+      } catch {
+        setHelperMessages((prev) => [...prev, { role: "assistant", content: "I couldn't reach the AI service. Try again in a moment." }]);
+      } finally {
+        setHelperTyping(false);
+      }
     }
   };
 
@@ -423,7 +510,8 @@ export default function SubjectDocument() {
                     ref={editorRef}
                     initialContent={studyGuide ? "" : initialContent}
                     onChange={setContent}
-                    placeholder="Start writing… select text to format, or use the toolbar above."
+                    placeholder="Start writing… or type /ai for AI help."
+                    subject={subject?.label}
                   />
                 ) : (
                   <div className="min-h-[55vh] flex items-center justify-center">
@@ -529,7 +617,7 @@ export default function SubjectDocument() {
                       : "bg-primary/10 text-primary ml-8"
                   )}
                 >
-                  {msg.content}
+                  <MarkdownRenderer content={msg.content} className="text-xs" />
                 </div>
               ))}
               {helperTyping && (
@@ -539,22 +627,40 @@ export default function SubjectDocument() {
                   <span className="typing-dot" />
                 </div>
               )}
+              {isInserting && (
+                <div className="px-3 py-2.5 rounded-xl text-xs bg-primary/10 text-primary flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
+                  <span>Inserting into document…</span>
+                </div>
+              )}
             </div>
             <div className="flex items-center gap-2 pt-3 mt-3 border-t border-border/30">
               <Input
                 placeholder="Ask anything…"
                 value={helperInput}
                 onChange={(e) => setHelperInput(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") handleHelperSend(); }}
+                onKeyDown={(e) => { if (e.key === "Enter") handleHelperSend(false); }}
                 className="bg-muted/30 border-none h-9 rounded-xl text-sm"
               />
-              <Button
-                onClick={handleHelperSend}
-                size="icon"
-                className="h-9 w-9 rounded-xl gradient-primary shrink-0"
-              >
-                <Send className="w-3.5 h-3.5" />
-              </Button>
+              <div className="flex items-center gap-1">
+                <Button
+                  onClick={() => handleHelperSend(true)}
+                  size="sm"
+                  disabled={helperTyping || isInserting}
+                  className="h-9 px-3 rounded-xl bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20"
+                  title="Insert into document"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                </Button>
+                <Button
+                  onClick={() => handleHelperSend(false)}
+                  size="icon"
+                  disabled={helperTyping || isInserting}
+                  className="h-9 w-9 rounded-xl gradient-primary shrink-0"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                </Button>
+              </div>
             </div>
           </div>
         )}

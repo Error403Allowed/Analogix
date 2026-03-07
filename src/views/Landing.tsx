@@ -100,8 +100,8 @@ const Landing = () => {
 
   const bentoFeatures = [
     {
-      title: "Analogy Tutor",
-      desc: "Complex topics explained through your hobbies, so stuff actually makes sense.",
+      title: "AI Tutor",
+      desc: "Teaching through your interests so you actually know how to do stuff, not just getting the answer. Oh and it's all free with unlimited use.",
       icon: MessageCircle,
       size: "lg",
       color: "bg-blue-500/10 text-blue-500 border-blue-500/20",
@@ -109,14 +109,14 @@ const Landing = () => {
     },
     {
       title: "Smart Calendar",
-      desc: "Study plans that actually fit your life and adapt as you go. Because plans should be flexible, not rigid.",
+      desc: "Study plans that actually fit your life and adapt as you go. Now you don't have to check a crappy website like sentral just to see your next class.",
       icon: Lightbulb,
       size: "sm",
       color: "bg-amber-500/10 text-amber-500 border-amber-500/20"
     },
     {
       title: "Knowledge Lab",
-      desc: "Practice with quizzes that adapt to you and track your progress with real-time analytics.",
+      desc: "Practice with quizzes that adapt to you and track your progress with real-time analytics. So you know how to improve, instead of just being told to 'study more'.",
       icon: FlaskConical,
       size: "sm",
       color: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"

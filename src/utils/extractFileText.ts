@@ -1,7 +1,7 @@
 /**
  * extractFileText — browser-side utility
  * Handles: .txt .md .csv .rtf  →  read directly
- *          .pdf .docx .pptx    →  send to /api/hf/extract-text
+ *          .pdf .docx .pptx    →  send to /api/groq/extract-text
  * Returns the extracted string, or throws with a user-friendly message.
  */
 
@@ -44,7 +44,7 @@ export async function extractFileText(file: File): Promise<string> {
   if (SERVER_TYPES.has(mimeType) || SERVER_EXTS.has(fileExt)) {
     const form = new FormData();
     form.append("file", file);
-    const res = await fetch("/api/hf/extract-text", { method: "POST", body: form });
+    const res = await fetch("/api/groq/extract-text", { method: "POST", body: form });
     const json = await res.json();
     if (!res.ok) throw new Error(json.error || "Extraction failed.");
     if (!json.text?.trim()) throw new Error("Couldn't extract text from this file. Try a .txt or .pdf.");
@@ -55,7 +55,7 @@ export async function extractFileText(file: File): Promise<string> {
   if (mimeType.startsWith("image/")) {
     const form = new FormData();
     form.append("file", file);
-    const res = await fetch("/api/hf/extract-text", { method: "POST", body: form });
+    const res = await fetch("/api/groq/extract-text", { method: "POST", body: form });
     const json = await res.json();
     if (!res.ok) throw new Error(json.error || "Image extraction failed.");
     return json.text || "";

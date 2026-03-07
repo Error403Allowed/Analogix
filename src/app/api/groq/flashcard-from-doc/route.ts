@@ -22,33 +22,12 @@ Your job: Create effective, educational flashcards based on the provided documen
 
 The student is in Year ${grade}${subject ? ` studying ${subject}` : ""}.
 
-Generate ${count} high-quality flashcards with the following requirements:
-
-1. **Flashcard Quality**:
-   - Front: Clear, specific question or term (concise)
-   - Back: Complete answer with context and explanation (2-4 sentences)
-   - Focus on understanding, not just memorisation
-
-2. **Content Coverage**:
-   - Cover all major topics from the document
-   - Include key terms and definitions
-   - Include concept explanations
-   - Include application questions
-
-3. **Variety**:
-   - 40% definition/term cards
-   - 40% concept explanation cards
-   - 20% application/example cards
-
-4. **Best Practices**:
-   - One idea per card
-   - Use simple, clear language
-   - Include examples where helpful
-   - Make connections between related concepts
-
-5. **Australian Context**:
-   - Use Australian English spelling
-   - Reference Australian curriculum where relevant
+Generate ${count} high-quality flashcards:
+- Front: Clear, specific question or term (concise)
+- Back: Complete answer with context and explanation (2-4 sentences)
+- 40% definition/term cards, 40% concept explanation cards, 20% application/example cards
+- One idea per card, simple clear language, include examples where helpful
+- Use Australian English spelling
 
 Return ONLY valid JSON — no markdown, no preamble:
 {
@@ -90,7 +69,7 @@ Return ONLY valid JSON — no markdown, no preamble:
     return NextResponse.json({ flashcards });
   } catch (error) {
     const message = formatError(error);
-    console.error("[/api/hf/flashcard-from-doc] Error:", message);
+    console.error("[/api/groq/flashcard-from-doc] Error:", message);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

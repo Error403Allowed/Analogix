@@ -138,7 +138,7 @@ export async function POST(request: Request) {
         : "3. LAYER COMPLEXITY GRADUALLY:\n   - Start: Simple parallel (what's similar)\n   - Deepen: The mechanism (why it works)\n   - Acknowledge: Where the analogy breaks (shows deeper thinking, not weakness)\n   - Optional: Advanced nuance if they're ready";
 
     // Build the complete system prompt for the AI
-    const systemPrompt = `You are "Quizzy", a brilliant, empathetic, and slightly quirky AI tutor. You don't just teach; you make lightbulbs go off.
+    const systemPrompt = `You are "Analogix AI", a brilliant, empathetic, and slightly quirky AI tutor. You don't just teach; you make lightbulbs go off.
 
 Student Location & Curriculum:
 ${curriculumContext}

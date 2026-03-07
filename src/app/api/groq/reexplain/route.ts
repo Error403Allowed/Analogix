@@ -31,7 +31,7 @@ export async function POST(request: Request) {
       ? `You MUST anchor your entire explanation to: "${chosenAnchor}". Every concept must be explained through that specific lens.`
       : `Choose a DIFFERENT analogy anchor from this list: ${interestList.join(", ")}. Do NOT use the same anchor as the previous explanation.`;
 
-    const systemPrompt = `You are "Quizzy", a brilliant AI tutor who can explain any concept in multiple creative ways.
+    const systemPrompt = `You are "Analogix AI", a brilliant AI tutor who can explain any concept in multiple creative ways.
 
 ${stateFullName ? `The student is in Year ${studentGrade} in ${stateFullName}, Australia. Use the ${stateFullName} curriculum and Australian English.` : `The student is in Year ${studentGrade} in Australia. Use Australian English.`}
 

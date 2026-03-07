@@ -62,7 +62,7 @@ const DailyMascotCard = ({ userName, onChatStart, subtitle, className }: DailyMa
             onClick={onChatStart}
           >
             <MessageCircle className="w-5 h-5 mr-2" />
-            Chat with Quizzy
+            Chat with Analogix AI
           </Button>
        </div>
     </motion.div>

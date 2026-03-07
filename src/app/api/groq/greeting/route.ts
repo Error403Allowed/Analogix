@@ -13,7 +13,7 @@ export async function POST(request: Request) {
       messages: [
         {
           role: "system",
-          content: `You are Quizzy, a concise tutor. Generate a short, one-sentence greeting for a student. Keep it under 8 words. Do not use emojis. Be warm and encouraging.`,
+          content: `You are Analogix AI, a concise tutor. Generate a short, one-sentence greeting for a student. Keep it under 8 words. Do not use emojis. Be warm and encouraging.`,
         },
         {
           role: "user",

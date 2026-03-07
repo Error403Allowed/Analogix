@@ -267,7 +267,7 @@ const allSubjects = SUBJECT_CATALOG;
 
 
 /**
- * ANALOGY TUTOR: This is where you actually talk to Quizzy (the AI).
+ * ANALOGY TUTOR: This is where you actually talk to Analogix AI (the AI).
  * It uses your preferences to explain things in a way that makes sense to YOU.
  */
 const Chat = () => {
@@ -536,7 +536,7 @@ const Chat = () => {
 
     const conversationText = messages
       .filter(m => !m.isWelcome)
-      .map(m => `${m.role === "user" ? "Student" : "Quizzy"}: ${m.content}`)
+      .map(m => `${m.role === "user" ? "Student" : "Analogix AI"}: ${m.content}`)
       .join("\n\n");
 
     const raw = await generateFlashcards(conversationText, selectedSubject, userPrefs.grade, 5);
@@ -1384,7 +1384,7 @@ const Chat = () => {
               )}
 
               <div className="ml-auto text-[10px] text-muted-foreground/40">
-                Quizzy may make mistakes — always verify
+                Analogix AI may make mistakes — always verify
               </div>
             </div>
 

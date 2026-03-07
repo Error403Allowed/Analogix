@@ -12,9 +12,9 @@
 ## 🎯 Features
 
 ### Core Learning
-- **Dynamic Analogy Tutor ("Quizzy")**: Real-time AI conversations that explain complex subjects through personalized analogies
+- **Dynamic Analogy Tutor ("Analogix AI")**: Real-time AI conversations that explain complex subjects through personalized analogies
 - **Smart Model Routing**: Automatically selects the best AI model based on question type (coding, reasoning, or general)
-- **Re-Explain**: Ask Quizzy to explain the same concept in a completely different way, optionally anchored to a specific interest
+- **Re-Explain**: Ask Analogix AI to explain the same concept in a completely different way, optionally anchored to a specific interest
 - **Interactive Quizzes**: Auto-generated practice questions with AI-powered review
 - **Flashcards**: AI-generated spaced-repetition flashcards from your chat conversations
 - **15+ Subjects**: Mathematics, Physics, Chemistry, Biology, English, History, Geography, Computing, Economics, Business, Commerce, PDHPE, Engineering, Medicine, and Languages
@@ -168,7 +168,7 @@ Analogix/
 │   │   ├── login/                  # Login page
 │   │   ├── onboarding/             # Onboarding wizard
 │   │   ├── dashboard/              # Main dashboard
-│   │   ├── chat/                   # AI tutor (Quizzy)
+│   │   ├── chat/                   # AI tutor (Analogix AI)
 │   │   ├── quiz/                   # Practice quizzes
 │   │   ├── flashcards/             # Spaced-repetition flashcards
 │   │   ├── subjects/               # Subject overview & detail
@@ -231,7 +231,7 @@ Landing Page → Google Sign-In → Onboarding (subjects, hobbies, grade, state)
 Dashboard (stats, streaks, activity heatmap, quick access)
   ↓
 Choose Activity:
-  ├─ Chat with Quizzy (AI tutor)
+  ├─ Chat with Analogix AI (AI tutor)
   ├─ Take a Quiz → AI Review
   ├─ Study Flashcards
   ├─ View Subject Notes & Marks

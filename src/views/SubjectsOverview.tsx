@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   ArrowRight, TrendingUp, Search, Zap, MessageCircle,
   Medal, Send, X, ChevronRight, BookOpen, Sparkles,
+  LayoutGrid, List,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +19,7 @@ import type { ChatMessage } from "@/types/chat";
 export default function SubjectsOverview() {
   const router = useRouter();
   const [search, setSearch] = useState("");
+  const [layout, setLayout] = useState<"list" | "grid">("list"); // default list; hydrated below
   const [userSubjects, setUserSubjects] = useState<string[]>([]);
   const [userPrefs, setUserPrefs] = useState<any>({});
   const [statsData, setStatsData] = useState<import("@/utils/statsStore").UserStats>({
@@ -29,6 +31,12 @@ export default function SubjectsOverview() {
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    // Hydrate layout preference client-side (avoids SSR mismatch)
+    const saved = localStorage.getItem("subjectsLayout") as "list" | "grid" | null;
+    if (saved === "grid") setLayout("grid");
+  }, []);
 
   useEffect(() => {
     const prefs = JSON.parse(localStorage.getItem("userPreferences") || "{}");
@@ -121,6 +129,11 @@ You can see everything the student sees. Answer questions about their subjects, 
     }
   };
 
+  const toggleLayout = (l: "list" | "grid") => {
+    setLayout(l);
+    localStorage.setItem("subjectsLayout", l);
+  };
+
   return (
     <div className="max-w-4xl mx-auto pb-24">
 
@@ -140,15 +153,44 @@ You can see everything the student sees. Answer questions about their subjects, 
         </div>
       ) : (
         <>
-          {/* ── Search bar — inline, Notion-style ── */}
-          <div className="relative mb-6 px-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/40" />
-            <input
-              placeholder="Filter subjects…"
-              className="w-full sm:w-64 text-sm pl-9 pr-3 py-1.5 rounded-md bg-muted/40 border border-transparent focus:border-border focus:bg-background outline-none transition-all placeholder:text-muted-foreground/40"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-            />
+          {/* ── Search bar + layout toggle ── */}
+          <div className="flex items-center justify-between gap-3 mb-6 px-1">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/40" />
+              <input
+                placeholder="Filter subjects…"
+                className="w-full sm:w-64 text-sm pl-9 pr-3 py-1.5 rounded-md bg-muted/40 border border-transparent focus:border-border focus:bg-background outline-none transition-all placeholder:text-muted-foreground/40"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+              />
+            </div>
+            {/* Layout toggle */}
+            <div className="flex items-center gap-0.5 bg-muted/40 rounded-md p-0.5">
+              <button
+                onClick={() => toggleLayout("list")}
+                title="List view"
+                className={cn(
+                  "w-7 h-7 rounded flex items-center justify-center transition-all",
+                  layout === "list"
+                    ? "bg-background shadow-sm text-foreground"
+                    : "text-muted-foreground/50 hover:text-muted-foreground"
+                )}
+              >
+                <List className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => toggleLayout("grid")}
+                title="Grid view"
+                className={cn(
+                  "w-7 h-7 rounded flex items-center justify-center transition-all",
+                  layout === "grid"
+                    ? "bg-background shadow-sm text-foreground"
+                    : "text-muted-foreground/50 hover:text-muted-foreground"
+                )}
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
 
           {/* ── Stats row — Notion database-property style ── */}
@@ -166,51 +208,128 @@ You can see everything the student sees. Answer questions about their subjects, 
             ))}
           </div>
 
-          {/* ── Subject list — Notion page list style ── */}
-          <div className="divide-y divide-border/40">
-            <div className="flex items-center gap-3 px-2 py-1.5 text-xs text-muted-foreground/60 uppercase tracking-wider font-medium">
-              <span className="w-5" />
-              <span className="flex-1">Subject</span>
-              <span className="w-20 text-right hidden sm:block">Activity</span>
-              <span className="w-8" />
-            </div>
+          {/* ── Subject list OR grid ── */}
+          <AnimatePresence mode="wait">
+            {layout === "list" ? (
+              <motion.div
+                key="list"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
+                className="divide-y divide-border/40"
+              >
+                <div className="flex items-center gap-3 px-2 py-1.5 text-xs text-muted-foreground/60 uppercase tracking-wider font-medium">
+                  <span className="w-5" />
+                  <span className="flex-1">Subject</span>
+                  <span className="w-20 text-right hidden sm:block">Activity</span>
+                  <span className="w-8" />
+                </div>
 
-            {filteredSubjects.map((subject, i) => {
-              const Icon = subject.icon;
-              const activity = normalizedStats.subjectCounts[subject.id] || 0;
-              return (
-                <motion.div
-                  key={subject.id}
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.04 }}
-                  onClick={() => router.push(`/subjects/${subject.id}`)}
-                  className="group flex items-center gap-3 px-2 py-3 rounded-lg cursor-pointer hover:bg-muted/40 transition-colors"
-                >
-                  <Icon className="w-5 h-5 text-muted-foreground/60 group-hover:text-foreground/80 transition-colors shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground group-hover:text-foreground truncate">{subject.label}</p>
-                    <p className="text-xs text-muted-foreground/60 truncate hidden sm:block">{subject.descriptions?.senior || ""}</p>
+                {filteredSubjects.map((subject, i) => {
+                  const Icon = subject.icon;
+                  const activity = normalizedStats.subjectCounts[subject.id] || 0;
+                  return (
+                    <motion.div
+                      key={subject.id}
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.04 }}
+                      onClick={() => router.push(`/subjects/${subject.id}`)}
+                      className="group flex items-center gap-3 px-2 py-3 rounded-lg cursor-pointer hover:bg-muted/40 transition-colors"
+                    >
+                      <Icon className="w-5 h-5 text-muted-foreground/60 group-hover:text-foreground/80 transition-colors shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground group-hover:text-foreground truncate">{subject.label}</p>
+                        <p className="text-xs text-muted-foreground/60 truncate hidden sm:block">{subject.descriptions?.senior || ""}</p>
+                      </div>
+                      {activity > 0 && (
+                        <span className="hidden sm:block w-20 text-right text-xs text-muted-foreground">
+                          {activity} session{activity !== 1 ? "s" : ""}
+                        </span>
+                      )}
+                      {activity === 0 && <span className="hidden sm:block w-20" />}
+                      <svg className="w-4 h-4 text-muted-foreground/30 group-hover:text-muted-foreground/70 transition-colors shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </motion.div>
+                  );
+                })}
+
+                {filteredSubjects.length === 0 && search && (
+                  <div className="py-12 text-center text-sm text-muted-foreground">
+                    No subjects match "<span className="font-medium">{search}</span>"
                   </div>
-                  {activity > 0 && (
-                    <span className="hidden sm:block w-20 text-right text-xs text-muted-foreground">
-                      {activity} session{activity !== 1 ? "s" : ""}
-                    </span>
-                  )}
-                  {activity === 0 && <span className="hidden sm:block w-20" />}
-                  <svg className="w-4 h-4 text-muted-foreground/30 group-hover:text-muted-foreground/70 transition-colors shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5l7 7-7 7" />
-                  </svg>
-                </motion.div>
-              );
-            })}
+                )}
+              </motion.div>
+            ) : (
+              <motion.div
+                key="grid"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
+                className="grid grid-cols-2 sm:grid-cols-3 gap-3"
+              >
+                {filteredSubjects.map((subject, i) => {
+                  const Icon = subject.icon;
+                  const activity = normalizedStats.subjectCounts[subject.id] || 0;
+                  const maxActivity = Math.max(1, ...filteredSubjects.map(s => normalizedStats.subjectCounts[s.id] || 0));
+                  const pct = Math.round((activity / maxActivity) * 100);
+                  return (
+                    <motion.div
+                      key={subject.id}
+                      initial={{ opacity: 0, scale: 0.97 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: i * 0.04 }}
+                      onClick={() => router.push(`/subjects/${subject.id}`)}
+                      className="group relative flex flex-col gap-3 p-4 rounded-xl border border-border/50 bg-card/60 hover:bg-card/90 hover:border-border hover:shadow-sm cursor-pointer transition-all"
+                    >
+                      {/* Icon */}
+                      <div className="w-9 h-9 rounded-lg bg-muted/60 group-hover:bg-primary/10 flex items-center justify-center transition-colors">
+                        <Icon className="w-4.5 h-4.5 text-muted-foreground group-hover:text-primary transition-colors" />
+                      </div>
 
-            {filteredSubjects.length === 0 && search && (
-              <div className="py-12 text-center text-sm text-muted-foreground">
-                No subjects match "<span className="font-medium">{search}</span>"
-              </div>
+                      {/* Label + description */}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-foreground leading-tight mb-0.5">{subject.label}</p>
+                        <p className="text-[11px] text-muted-foreground/60 leading-snug line-clamp-2">
+                          {subject.descriptions?.senior || ""}
+                        </p>
+                      </div>
+
+                      {/* Activity bar */}
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] text-muted-foreground/40 font-medium uppercase tracking-wider">Activity</span>
+                          <span className="text-[10px] text-muted-foreground/60 font-semibold">
+                            {activity > 0 ? `${activity} session${activity !== 1 ? "s" : ""}` : "No activity"}
+                          </span>
+                        </div>
+                        <div className="h-1 bg-muted/40 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-primary/50 group-hover:bg-primary rounded-full transition-all duration-300"
+                            style={{ width: `${activity > 0 ? Math.max(pct, 8) : 0}%` }}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Arrow */}
+                      <svg className="absolute top-3.5 right-3.5 w-3.5 h-3.5 text-muted-foreground/20 group-hover:text-primary/40 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </motion.div>
+                  );
+                })}
+
+                {filteredSubjects.length === 0 && search && (
+                  <div className="col-span-full py-12 text-center text-sm text-muted-foreground">
+                    No subjects match "<span className="font-medium">{search}</span>"
+                  </div>
+                )}
+              </motion.div>
             )}
-          </div>
+          </AnimatePresence>
         </>
       )}
 

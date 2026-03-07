@@ -40,7 +40,7 @@ export const getGroqCompletion = async (
 ): Promise<ChatMessage> => {
   try {
     return await fetchJson<{ role: "assistant"; content: string }>(
-      "/api/hf/chat",
+      "/api/groq/chat",
       { messages, userContext },
       30000,
     );
@@ -55,7 +55,7 @@ export const getGroqCompletion = async (
 };
 
 /**
- * RE-EXPLAIN: Ask Quizzy to explain the same concept in a completely different way.
+ * RE-EXPLAIN: Ask Analogix AI to explain the same concept in a completely different way.
  * Optionally pass a chosenAnchor (specific interest) the user picked.
  */
 export const getReExplanation = async (
@@ -67,7 +67,7 @@ export const getReExplanation = async (
 ): Promise<ChatMessage> => {
   try {
     return await fetchJson<{ role: "assistant"; content: string }>(
-      "/api/hf/reexplain",
+      "/api/groq/reexplain",
       { messages, userContext },
       30000,
     );
@@ -89,7 +89,7 @@ export const generateStudySchedule = async (payload: {
 }): Promise<{ schedule: StudyDay[]; summary: string }> => {
   try {
     const data = await fetchJson<{ schedule: StudyDay[]; summary: string }>(
-      "/api/hf/study-schedule",
+      "/api/groq/study-schedule",
       payload,
       30000,
     );
@@ -122,7 +122,7 @@ export const generateFlashcards = async (
 ): Promise<Array<{ front: string; back: string }>> => {
   try {
     const data = await fetchJson<{ flashcards: Array<{ front: string; back: string }> }>(
-      "/api/hf/flashcard",
+      "/api/groq/flashcard",
       { conversationText, subjectId, grade, count },
       20000,
     );
@@ -138,7 +138,7 @@ export const getAIGreeting = async (userName: string, streak: number) => {
 
   try {
     const data = await fetchJson<{ text: string }>(
-      "/api/hf/greeting",
+      "/api/groq/greeting",
       { userName, streak },
       15000,
     );
@@ -211,7 +211,7 @@ export const getAIBannerPhrase = async (userName: string, subjects: string[]) =>
 
   try {
     const data = await fetchJson<{ text: string }>(
-      "/api/hf/banner",
+      "/api/groq/banner",
       { userName, subjects },
       15000,
     );
@@ -252,7 +252,7 @@ export const generateQuiz = async (
 ): Promise<QuizData | null> => {
   try {
     const data = await fetchJson<{ quiz: QuizData | null }>(
-      "/api/hf/quiz",
+      "/api/groq/quiz",
       { input, userContext, numberOfQuestions, options },
       30000,
     );
@@ -272,7 +272,7 @@ export const gradeShortAnswer = async (
 ) => {
   try {
     return await fetchJson<{ isCorrect: boolean; feedback: string }>(
-      "/api/hf/grade",
+      "/api/groq/grade",
       { question, targetAnswer, userAnswer },
       15000,
     );
@@ -292,7 +292,7 @@ export const generateQuizReview = async (payload: {
 }): Promise<QuizReview | null> => {
   try {
     const data = await fetchJson<{ review: QuizReview | null }>(
-      "/api/hf/quiz-review",
+      "/api/groq/quiz-review",
       payload,
       30000,
     );
@@ -356,7 +356,7 @@ export const generateStudyGuide = async (payload: {
 }): Promise<GeneratedStudyGuide | null> => {
   try {
     const data = await fetchJson<{ studyGuide: GeneratedStudyGuide | null }>(
-      "/api/hf/study-guide",
+      "/api/groq/study-guide",
       payload,
       45000,
     );
@@ -378,7 +378,7 @@ export const generateQuizFromDocument = async (payload: {
 }): Promise<QuizData | null> => {
   try {
     const data = await fetchJson<{ quiz: QuizData | null }>(
-      "/api/hf/quiz-from-doc",
+      "/api/groq/quiz-from-doc",
       payload,
       45000,
     );
@@ -400,7 +400,7 @@ export const generateFlashcardsFromDocument = async (payload: {
 }): Promise<Array<{ front: string; back: string }>> => {
   try {
     const data = await fetchJson<{ flashcards: Array<{ front: string; back: string }> }>(
-      "/api/hf/flashcard-from-doc",
+      "/api/groq/flashcard-from-doc",
       payload,
       45000,
     );

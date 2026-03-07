@@ -67,7 +67,7 @@ export const ACHIEVEMENTS_LIBRARY: Achievement[] = [
   { id: "perfect_score", title: "Perfectionist", description: "Get 100% on a quiz", icon: <Target className="w-5 h-5" />, category: "mastery", condition: (stats) => stats.quizzesDone >= 1 && stats.accuracy >= 100 },
 
   // CHAT / SOCIAL
-  { id: "chat_1", title: "Hello World", description: "Send a message to Quizzy", icon: <MessageSquare className="w-5 h-5" />, category: "social", condition: (stats) => stats.conversationsCount >= 1 },
+  { id: "chat_1", title: "Hello World", description: "Send a message to Analogix AI", icon: <MessageSquare className="w-5 h-5" />, category: "social", condition: (stats) => stats.conversationsCount >= 1 },
   { id: "chat_5", title: "Talkative", description: "Have 5 conversations", icon: <MessageSquare className="w-5 h-5" />, category: "social", condition: (stats) => stats.conversationsCount >= 5 },
   { id: "chat_10", title: "Chat Regular", description: "Have 10 conversations", icon: <MessageSquare className="w-5 h-5" />, category: "social", condition: (stats) => stats.conversationsCount >= 10 },
   { id: "chat_25", title: "Conversation Streak", description: "Have 25 conversations", icon: <MessageSquare className="w-5 h-5" />, category: "social", condition: (stats) => stats.conversationsCount >= 25 },
