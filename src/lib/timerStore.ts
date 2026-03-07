@@ -42,17 +42,6 @@ export function loadTimerState(): TimerState {
     let lastTick = typeof saved.lastTick === "number" && Number.isFinite(saved.lastTick)
       ? saved.lastTick
       : Date.now();
-    if (isReloadNavigation()) {
-      return {
-        phase: "study",
-        timeLeft: settings.study,
-        isActive: false,
-        sessionsCompleted: 0,
-        sessionsTarget,
-        settings,
-        lastTick: Date.now(),
-      };
-    }
     // If timer was active, account for elapsed time while page was closed
     if (isActive && lastTick) {
       const elapsed = Math.floor((Date.now() - lastTick) / 1000);
@@ -123,12 +112,4 @@ function toNonNegativeInt(value: unknown): number {
   const n = typeof value === "number" ? value : Number(value);
   if (!Number.isFinite(n)) return 0;
   return Math.max(0, Math.floor(n));
-}
-
-function isReloadNavigation(): boolean {
-  if (typeof window === "undefined") return false;
-  const navEntry = window.performance?.getEntriesByType?.("navigation")?.[0] as PerformanceNavigationTiming | undefined;
-  if (navEntry?.type) return navEntry.type === "reload";
-  const legacyType = window.performance?.navigation?.type;
-  return legacyType === 1;
 }

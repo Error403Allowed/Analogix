@@ -27,6 +27,7 @@ export function TimerWidget({ compact = false }: { compact?: boolean }) {
   const [editSecs, setEditSecs] = useState("00");
   const [editingSessions, setEditingSessions] = useState(false);
   const [editSessionsValue, setEditSessionsValue] = useState(String(initialState.sessionsTarget));
+  const [compactMenuOpen, setCompactMenuOpen] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const phaseRef = useRef(phase);
@@ -143,7 +144,7 @@ export function TimerWidget({ compact = false }: { compact?: boolean }) {
   // ── Compact variant: one-row strip ──────────────────────────────────────
   if (compact) {
     return (
-      <div className="flex items-center justify-between gap-3 w-full px-1">
+      <div className="relative flex items-center justify-between gap-3 w-full px-1">
         <div className="flex items-center gap-2 min-w-0">
           <div className={cn("w-2 h-2 rounded-full shrink-0", phase === "study" ? "bg-primary" : "bg-emerald-500")} />
           <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">
@@ -160,6 +161,14 @@ export function TimerWidget({ compact = false }: { compact?: boolean }) {
           ))}
         </div>
         <div className="flex items-center gap-1 shrink-0">
+          <button
+            onClick={() => setCompactMenuOpen(o => !o)}
+            className={cn("w-7 h-7 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all",
+              compactMenuOpen && "bg-muted/60 text-foreground")}
+            title="Edit study/break durations"
+          >
+            <Pencil className="w-3 h-3" />
+          </button>
           <button onClick={reset} className="w-7 h-7 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all">
             <RotateCcw className="w-3 h-3" />
           </button>
@@ -175,6 +184,59 @@ export function TimerWidget({ compact = false }: { compact?: boolean }) {
             <Maximize2 className="w-3 h-3" />
           </button>
         </div>
+
+        {compactMenuOpen && (
+          <div className="absolute right-0 top-full mt-2 w-60 rounded-xl border border-border/60 bg-card/95 backdrop-blur shadow-xl p-3 z-30">
+            <div className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/70 mb-2">
+              Edit durations
+            </div>
+            {(["study", "break"] as TimerPhase[]).map((p) => {
+              const isEditingPhase = editing && editingPhase === p;
+              return (
+                <div key={p} className="flex items-center justify-between gap-3 py-1.5">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                    {p === "study" ? "Study" : "Break"}
+                  </span>
+                  {isEditingPhase ? (
+                    <div className="flex items-center gap-1">
+                      <input
+                        className="w-8 text-[11px] font-bold bg-transparent border-b border-primary text-foreground text-center tabular-nums outline-none"
+                        value={editMins}
+                        maxLength={2}
+                        onChange={e => setEditMins(e.target.value.replace(/\D/g, ""))}
+                        onKeyDown={e => e.key === "Enter" && confirmEdit()}
+                        autoFocus
+                      />
+                      <span className="text-[11px] font-bold text-foreground">:</span>
+                      <input
+                        className="w-8 text-[11px] font-bold bg-transparent border-b border-primary text-foreground text-center tabular-nums outline-none"
+                        value={editSecs}
+                        maxLength={2}
+                        onChange={e => setEditSecs(e.target.value.replace(/\D/g, ""))}
+                        onKeyDown={e => e.key === "Enter" && confirmEdit()}
+                      />
+                      <button
+                        onClick={confirmEdit}
+                        className="p-0.5 text-muted-foreground hover:text-foreground transition-colors"
+                        title="Save"
+                      >
+                        <Check className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => startEdit(p)}
+                      className="flex items-center gap-1.5 text-[11px] font-bold text-foreground hover:text-primary transition-colors"
+                    >
+                      {fmt(Math.floor(settings[p] / 60))}:{fmt(settings[p] % 60)}
+                      <Pencil className="w-3 h-3 text-muted-foreground" />
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     );
   }

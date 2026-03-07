@@ -106,7 +106,7 @@ export const themes = [
   withDerived({
     name: "Oceanic Blue",
     p: hsl(199, 89, 48),
-    g: ["#0ea5e9", "#0284c7", "#0369a1"],
+    g: ["#38bdf8", "#0ea5e9", "#0284c7"],
     accent: hsl(176, 72, 42),
     accent2: hsl(220, 78, 60),
     success: hsl(158, 64, 42),
@@ -114,6 +114,16 @@ export const themes = [
     danger: hsl(0, 82, 58),
     muted: hsl(205, 30, 95),
     mutedFg: hsl(210, 18, 42),
+    bg: [
+      hexToRgba("#38bdf8", 0.20),
+      hexToRgba("#0ea5e9", 0.15),
+      hexToRgba("#0284c7", 0.12),
+    ],
+    bgDark: [
+      hexToRgba("#38bdf8", 0.06),
+      hexToRgba("#0ea5e9", 0.05),
+      hexToRgba("#0284c7", 0.035),
+    ],
   }),
   withDerived({
     name: "Forest Glow",
