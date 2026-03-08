@@ -3,7 +3,7 @@
 import {
   LayoutDashboard, MessageCircle, BookOpen, Calendar,
   GraduationCap, Brain, Trophy, ChevronDown, Palette,
-  Sun, Moon, BookMarkedIcon, SigmaIcon, User, Flame, Library,
+  Sun, Moon, BookMarkedIcon, SigmaIcon, User, Flame, Library, Scan,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -30,6 +30,7 @@ const navGroups = [
       { title: "Analogy Tutor", url: "/chat",         icon: MessageCircle,   tutorial: "chat-nav"         },
       { title: "Quizzes",       url: "/quiz",         icon: BookOpen,        tutorial: "quiz-nav"         },
       { title: "Flashcards",    url: "/flashcards",   icon: BookMarkedIcon,  tutorial: "flashcards-nav"   },
+      { title: "AR Visualiser", url: "/ar",           icon: Scan,            tutorial: "ar-nav"           },
     ],
   },
   {

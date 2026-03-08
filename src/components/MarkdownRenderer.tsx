@@ -3,10 +3,17 @@ import remarkMath from "remark-math";
 import remarkGfm from "remark-gfm";
 import rehypeKatex from "rehype-katex";
 import { cn } from "@/lib/utils";
+import dynamic from "next/dynamic";
+
+// Desmos is client-only (browser APIs), so load it dynamically with no SSR
+const DesmosGraph = dynamic(() => import("@/components/DesmosGraph"), { ssr: false });
 
 interface MarkdownRendererProps {
   content: string;
   className?: string;
+  // When true, closes any dangling fences/delimiters so partial markdown
+  // doesn't break layout mid-stream
+  streaming?: boolean;
 }
 
 // Normalise LaTeX delimiters so remark-math always sees $...$ / $$...$$
@@ -18,13 +25,36 @@ const normaliseLatex = (text: string): string =>
     .replace(/\\\(/g, "$")
     .replace(/\\\)/g, "$");
 
+// Close any unclosed markdown fences/delimiters so partial content mid-stream
+// doesn't cause KaTeX or ReactMarkdown to throw or render garbage.
+// Think of it like auto-saving — we always keep the doc valid even mid-sentence.
+const closePartialMarkdown = (text: string): string => {
+  // Close unclosed triple-backtick code fences
+  const fenceMatches = (text.match(/^```/gm) || []).length;
+  if (fenceMatches % 2 !== 0) text += "\n```";
+
+  // Close unclosed $$ display math
+  const displayMatches = (text.match(/\$\$/g) || []).length;
+  if (displayMatches % 2 !== 0) text += "$$";
+
+  // Close unclosed $ inline math (rough heuristic — only on same line)
+  const lines = text.split("\n");
+  const closedLines = lines.map(line => {
+    const dollarCount = (line.match(/(?<!\\)\$/g) || []).length;
+    if (dollarCount % 2 !== 0) return line + "$";
+    return line;
+  });
+  return closedLines.join("\n");
+};
+
 // In react-markdown v10, code blocks are rendered as:
 //   <pre><code>...</code></pre>
 // and inline code as just <code>...</code> without a parent <pre>.
 // We override `pre` to apply block styling, and `code` for inline styling.
 
-const MarkdownRenderer = ({ content, className }: MarkdownRendererProps) => {
-  const normalised = normaliseLatex(content);
+const MarkdownRenderer = ({ content, className, streaming = false }: MarkdownRendererProps) => {
+  const raw = streaming ? closePartialMarkdown(content) : content;
+  const normalised = normaliseLatex(raw);
   return (
     <div className={cn("markdown-content", className)}>
       <ReactMarkdown
@@ -41,12 +71,21 @@ const MarkdownRenderer = ({ content, className }: MarkdownRendererProps) => {
               {children}
             </blockquote>
           ),
-          // pre wraps block code — apply the styled container here
-          pre: ({ children }) => (
-            <pre className="bg-muted/40 border border-border/40 rounded-xl p-4 overflow-x-auto text-sm my-4">
-              {children}
-            </pre>
-          ),
+          // pre wraps block code — intercept desmos blocks, style the rest
+          pre: ({ children }) => {
+            // Dig out the <code> child to check if it's a desmos block
+            const codeEl = (children as React.ReactElement);
+            const lang = codeEl?.props?.className as string | undefined;
+            if (lang === "language-desmos") {
+              const raw = String(codeEl?.props?.children ?? "").replace(/\n$/, "");
+              return <DesmosGraph expressions={raw} />;
+            }
+            return (
+              <pre className="bg-muted/40 border border-border/40 rounded-xl p-4 overflow-x-auto text-sm my-4">
+                {children}
+              </pre>
+            );
+          },
           // code is inline when NOT wrapped in a pre — the pre override handles block code
           code: ({ children, className: codeClassName }) => {
             // If className has a language- prefix, it's a block code element inside <pre>

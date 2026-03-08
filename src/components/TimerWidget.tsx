@@ -144,13 +144,13 @@ export function TimerWidget({ compact = false }: { compact?: boolean }) {
   // ── Compact variant: one-row strip ──────────────────────────────────────
   if (compact) {
     return (
-      <div className="relative flex items-center justify-between gap-3 w-full px-1">
+      <div className="relative flex items-center justify-between gap-2 w-full">
         <div className="flex items-center gap-2 min-w-0">
           <div className={cn("w-2 h-2 rounded-full shrink-0", phase === "study" ? "bg-primary" : "bg-emerald-500")} />
-          <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">
+          <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/60">
             {phase === "study" ? "Study" : "Break"}
           </span>
-          <span className="text-xl font-black tabular-nums tracking-tighter text-foreground">
+          <span className="text-lg font-black tabular-nums tracking-tighter text-foreground">
             {fmt(mins)}:{fmt(secs)}
           </span>
         </div>

@@ -4,6 +4,51 @@ import { ChatMessage, UserContext } from "@/types/chat";
 import { QuizAnswerInput, QuizData, QuizReview } from "@/types/quiz";
 import { fetchJsonWithRetry } from "@/lib/fetch-wrapper";
 
+// ─── Streaming helper ────────────────────────────────────────────────────────
+// Calls /api/groq/chat-stream and yields token chunks as they arrive.
+// Think of it like a garden hose — instead of waiting for a full bucket,
+// water (tokens) flows out the moment it comes through.
+export async function* getGroqStream(
+  messages: ChatMessage[],
+  userContext?: Partial<UserContext> & { analogyIntensity?: number; analogyAnchor?: string },
+): AsyncGenerator<string> {
+  const response = await fetch("/api/groq/chat-stream", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ messages, userContext }),
+  });
+
+  if (!response.ok || !response.body) {
+    throw new Error(`Stream failed: ${response.status}`);
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() ?? ""; // keep incomplete line in buffer
+
+    for (const line of lines) {
+      if (!line.startsWith("data: ")) continue;
+      const payload = line.slice(6).trim();
+      if (payload === "[DONE]") return;
+      try {
+        const parsed = JSON.parse(payload);
+        const token: string = parsed?.choices?.[0]?.delta?.content ?? "";
+        if (token) yield token;
+      } catch {
+        // malformed chunk — skip
+      }
+    }
+  }
+}
+
 /**
  * Wrapper for fetchJsonWithRetry that adds better error messages.
  * Kept for backward compatibility with existing codebase.

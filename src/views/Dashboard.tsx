@@ -220,7 +220,7 @@ export default function Dashboard() {
           {/* COL 1: Timer + Quick links */}
           <div className="col-span-3 flex flex-col gap-3 min-h-0">
             <DashboardPanel className="p-4 shrink-0 z-20 overflow-visible" data-tutorial="timer">
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-3">
+              <p className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">
                 Pomodoro
               </p>
               <TimerWidget compact />

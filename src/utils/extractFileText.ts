@@ -51,14 +51,14 @@ export async function extractFileText(file: File): Promise<string> {
     return json.text;
   }
 
-  // ── Image — send to server for OCR / description ────────────────────────
-  if (mimeType.startsWith("image/")) {
+  // ── Image — send to server vision API ──────────────────────────────────────
+  if (mimeType.startsWith("image/") || /\.(png|jpe?g|webp|gif|heic|heif|bmp|tiff?)$/i.test(file.name)) {
     const form = new FormData();
     form.append("file", file);
     const res = await fetch("/api/groq/extract-text", { method: "POST", body: form });
     const json = await res.json();
-    if (!res.ok) throw new Error(json.error || "Image extraction failed.");
-    return json.text || "";
+    if (!res.ok) throw new Error(json.error || "Image reading failed.");
+    return json.text || `[Image: ${file.name}]`;
   }
 
   // ── Fallback: try reading as text ───────────────────────────────────────
@@ -73,8 +73,8 @@ export async function extractFileText(file: File): Promise<string> {
 
 /** Human-readable accepted formats string for <input accept=""> */
 export const ACCEPTED_FILE_TYPES =
-  ".pdf,.docx,.doc,.pptx,.txt,.md,.csv,.rtf,text/*,image/*";
+  ".pdf,.docx,.doc,.pptx,.txt,.md,.csv,.rtf,.png,.jpg,.jpeg,.webp,.gif,.heic,.heif,text/*,image/*";
 
 /** Label for upload UI */
 export const ACCEPTED_FILE_LABEL =
-  "PDF, Word, PowerPoint, TXT, CSV, RTF, or image";
+  "PDF, Word, PowerPoint, TXT, CSV, images (PNG, JPG, HEIC, etc.)";

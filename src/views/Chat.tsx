@@ -13,13 +13,11 @@ import {
   Square,
   Copy,
   Check,
-  Database,
   Shuffle,
   ChevronDown,
   BookOpen,
   X,
   Plus,
-  MessageSquare,
   Trash2,
   Paperclip,
   Target,
@@ -29,15 +27,14 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { getGroqCompletion, getReExplanation, generateFlashcards, generateStudyGuide, type GeneratedStudyGuide, generateQuizFromDocument, generateFlashcardsFromDocument } from "@/services/groq";
+import { getGroqCompletion, getGroqStream, getReExplanation, generateFlashcards, generateStudyGuide, type GeneratedStudyGuide, generateQuizFromDocument, generateFlashcardsFromDocument } from "@/services/groq";
 import { flashcardStore } from "@/utils/flashcardStore";
 import { statsStore } from "@/utils/statsStore";
 import { chatStore, ChatSession } from "@/utils/chatStore";
 import { subjectStore } from "@/utils/subjectStore";
 import { getFormulaSheet } from "@/data/formulaSheets";
 import MarkdownRenderer from "@/components/MarkdownRenderer";
-import TypewriterText from "@/components/TypewriterText";
-import { SUBJECT_CATALOG, SubjectId, getSubjectDescription } from "@/constants/subjects";
+import { SUBJECT_CATALOG, SubjectId } from "@/constants/subjects";
 import { buildInterestList } from "@/utils/interests";
 import { extractFileText, ACCEPTED_FILE_TYPES } from "@/utils/extractFileText";
 import { encodeStudyGuide } from "@/components/StudyGuideView";
@@ -116,139 +113,22 @@ const ThinkingBlock = ({ content }: { content: string }) => {
   );
 };
 
-// Typewriter animation component for AI messages - uses refs to prevent restart on parent re-renders
-const TypewriterMessage = ({ 
-  content, 
-  isNew, 
-  onComplete,
-  shouldStop
-}: { 
-  content: string; 
-  isNew: boolean; 
-  onComplete?: () => void;
-  shouldStop?: boolean;
+// ─── StreamingMessage ──────────────────────────────────────────────────────
+// Simple streaming display - just render the content as it arrives
+const StreamingMessage = ({
+  content,
+  isStreaming,
+}: {
+  content: string;
+  isStreaming: boolean;
 }) => {
-  const [displayedContent, setDisplayedContent] = useState(isNew ? "" : content);
-  const [isTyping, setIsTyping] = useState(isNew);
-  const charIndexRef = useRef(0);
-  const contentRef = useRef(content);
-
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const mathSpansRef = useRef<Array<{ start: number; end: number }>>([]);
-
-  const computeMathSpans = (text: string) => {
-    const spans: Array<{ start: number; end: number }> = [];
-    let i = 0;
-    while (i < text.length) {
-      if (text[i] === "\\" && text[i + 1] === "$") {
-        i += 2;
-        continue;
-      }
-      if (text[i] === "$") {
-        const isDisplay = text[i + 1] === "$";
-        const delim = isDisplay ? "$$" : "$";
-        const start = i;
-        i += delim.length;
-        while (i < text.length) {
-          if (text[i] === "\\" && text[i + 1] === "$") {
-            i += 2;
-            continue;
-          }
-          if (delim === "$$" && text[i] === "$" && text[i + 1] === "$") {
-            i += 2;
-            spans.push({ start, end: i });
-            break;
-          }
-          if (delim === "$" && text[i] === "$") {
-            i += 1;
-            spans.push({ start, end: i });
-            break;
-          }
-          i += 1;
-        }
-        continue;
-      }
-      i += 1;
-    }
-    return spans;
-  };
-
-  // Update content ref when content changes
-  useEffect(() => {
-    contentRef.current = content;
-    mathSpansRef.current = computeMathSpans(content);
-  }, [content]);
-
-  // Handle stop command
-  useEffect(() => {
-    if (shouldStop && isTyping) {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-      // Show full content immediately when stopped
-      setDisplayedContent(contentRef.current);
-      setIsTyping(false);
-      onComplete?.();
-    }
-  }, [shouldStop, isTyping, onComplete]);
-
-  useEffect(() => {
-    // If not new, show content immediately
-    if (!isNew) {
-      setDisplayedContent(content);
-      return;
-    }
-
-    charIndexRef.current = 0;
-
-    const typeNextChar = () => {
-      const currentContent = contentRef.current;
-      if (charIndexRef.current < currentContent.length) {
-        const nextIndex = charIndexRef.current;
-        const mathSpan = mathSpansRef.current.find((span) => span.start === nextIndex);
-        if (mathSpan) {
-          charIndexRef.current = mathSpan.end;
-        } else {
-          charIndexRef.current++;
-        }
-        setDisplayedContent(currentContent.slice(0, charIndexRef.current));
-        // Variable speed: faster for spaces/newlines, slower for punctuation
-        const char = currentContent[charIndexRef.current - 1];
-        let speed = 15; // Base speed (fast for chat)
-        if (char === " " || char === "\n") speed = 8;
-        else if (char === "." || char === "!" || char === "?" || char === ",") speed = 80;
-        else if (char === "*") speed = 5; // Fast for markdown
-        timeoutRef.current = setTimeout(typeNextChar, speed);
-      } else {
-        setIsTyping(false);
-        onComplete?.();
-      }
-    };
-
-    timeoutRef.current = setTimeout(typeNextChar, 100);
-    
-    return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-    };
-  }, [isNew]); // Only depend on isNew, not content or onComplete
-
-  // Render Markdown/LaTeX during typing with a cursor
   return (
-    <span className="whitespace-pre-wrap text-sm leading-relaxed">
-      <MarkdownRenderer content={displayedContent} className="text-sm leading-relaxed" />
-      {isTyping && (
-        <motion.span
-          animate={{ opacity: [1, 0, 1] }}
-          transition={{ duration: 0.8, repeat: Infinity }}
-          className="inline-block w-[2px] h-[1em] ml-0.5 bg-primary align-middle rounded-sm"
-          style={{ verticalAlign: "text-bottom" }}
-        />
-      )}
-    </span>
+    <div className="text-sm leading-relaxed">
+      <MarkdownRenderer content={content} className="text-sm leading-relaxed" />
+    </div>
   );
 };
+
 
 interface Message {
   id: string;
@@ -257,7 +137,8 @@ interface Message {
   analogy?: string;
   imageUrl?: string;
   attachments?: Array<{ name: string; size: number; type: string; content: string; previewUrl?: string; isImage?: boolean }>;
-  isNew?: boolean; // Track if this is a new message for typewriter effect
+  isStreaming?: boolean; // true while this message is still receiving tokens
+  isNew?: boolean;       // kept for welcome message compat
   isWelcome?: boolean;
 }
 
@@ -275,8 +156,12 @@ const Chat = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // CURRENT TOPIC: Which subject are we talking about right now?
+  // CURRENT TOPIC: Detected or manually selected subject.
+  // Starts null — detected automatically from first message, or set by user via badge.
   const [selectedSubject, setSelectedSubject] = useState<SubjectId | null>(null);
+  const [subjectDetecting, setSubjectDetecting] = useState(false);
+  const [showSubjectPicker, setShowSubjectPicker] = useState(false);
+  const subjectPickerRef = useRef<HTMLDivElement>(null);
   
   // CONVERSATION: All the messages you and the AI have exchanged.
   const [messages, setMessages] = useState<Message[]>([]);
@@ -284,14 +169,12 @@ const Chat = () => {
   // INPUT: What you're currently typing in the box.
   const [input, setInput] = useState("");
   
-  // THINKING: This is true while we're waiting for the AI to reply.
+  // THINKING: true while waiting for the first token
   const [isTyping, setIsTyping] = useState(false);
   
-  // STOP RESPONSE: Used to stop the typewriter animation
-  const [stopTyping, setStopTyping] = useState(false);
-  
-  // ANIMATING: Track if typewriter is currently running
-  const [isAnimating, setIsAnimating] = useState(false);
+  // STREAMING: id of the message currently receiving tokens (null = idle)
+  const [streamingId, setStreamingId] = useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
   
   // ANALOGY MODE: Toggle analogies on/off (session-only)
   const [analogyModeEnabled, setAnalogyModeEnabled] = useState(true);
@@ -343,8 +226,8 @@ const Chat = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
-  const shouldAutoScrollRef = useRef(false);
   const lockedToBottomRef = useRef(true);
+  const lastContentLengthRef = useRef<number>(0);
 
   // RETRIEVING MEMORY: We pull your hobbies and subjects from the browser.
   const userPrefs =
@@ -362,7 +245,7 @@ const Chat = () => {
     () => new Set(availableSubjects.map((subject) => subject.id)),
     [availableSubjects],
   );
-  const isInputLocked = isTyping || isAnimating;
+  const isInputLocked = isTyping || !!streamingId;
 
   const latestAssistantId = [...messages].reverse().find((m) => m.role === "assistant")?.id;
 
@@ -376,7 +259,7 @@ const Chat = () => {
     const el = scrollContainerRef.current;
     if (!el) return;
     const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
-    const isNearBottom = distanceFromBottom <= 24;
+    const isNearBottom = distanceFromBottom <= 80;
     lockedToBottomRef.current = isNearBottom;
     setShowScrollToBottom(!isNearBottom);
   }, []);
@@ -466,11 +349,9 @@ const Chat = () => {
       const nextContent = buildWelcomeMessage(subjectLabel, target.content);
       setMessages((prev) => prev.map((m) => (
         m.id === messageId
-          ? { ...m, id: `welcome-${Date.now()}`, content: nextContent, isNew: true, isWelcome: true }
+          ? { ...m, id: `welcome-${Date.now()}`, content: nextContent, isWelcome: true }
           : m
       )));
-      setIsAnimating(true);
-      setStopTyping(false);
       return;
     }
 
@@ -485,7 +366,6 @@ const Chat = () => {
     if (!selectedSubject) return;
 
     setIsTyping(true);
-    setStopTyping(false);
 
     try {
       const previousUser = messages[targetIndex - 1]?.role === "user"
@@ -493,32 +373,19 @@ const Chat = () => {
         : "";
       const explicitAnchor = previousUser ? findAnchor(previousUser) : null;
       const aiResponse = await getGroqCompletion(history, buildContext(explicitAnchor));
-
       setMessages((prev) => prev.map((m) => (
         m.id === messageId
-          ? {
-              ...m,
-              id: `${messageId}-regen-${Date.now()}`,
-              content: aiResponse.content || "I'm not sure how to answer that.",
-              isNew: true
-            }
+          ? { ...m, id: `${messageId}-regen-${Date.now()}`, content: aiResponse.content || "I'm not sure how to answer that." }
           : m
       )));
     } catch {
       setMessages((prev) => prev.map((m) => (
         m.id === messageId
-          ? {
-              ...m,
-              id: `${messageId}-regen-${Date.now()}`,
-              content: "I couldn't reach the AI service. Try again in a moment.",
-              isNew: true
-            }
+          ? { ...m, id: `${messageId}-regen-${Date.now()}`, content: "I couldn't reach the AI service. Try again in a moment." }
           : m
       )));
     } finally {
       setIsTyping(false);
-      setIsAnimating(true);
-      setStopTyping(false);
     }
   }, [
     isInputLocked,
@@ -557,36 +424,28 @@ const Chat = () => {
     setReExplainOpenId(null);
     setReExplainingId(messageId);
     setIsTyping(true);
-    setStopTyping(false);
 
     try {
       const history = messages
         .slice(0, messages.findIndex(m => m.id === messageId))
         .map(m => ({ role: m.role, content: m.content }));
 
-      const ctx = {
-        ...buildContext(null),
-        chosenAnchor: chosenAnchor || undefined,
-        previousExplanation: target.content,
-      };
-
+      const ctx = { ...buildContext(null), chosenAnchor: chosenAnchor || undefined, previousExplanation: target.content };
       const aiResponse = await getReExplanation(history, ctx);
 
       setMessages(prev => prev.map(m =>
         m.id === messageId
-          ? { ...m, id: `${messageId}-re-${Date.now()}`, content: aiResponse.content || "Let me try a different approach...", isNew: true }
+          ? { ...m, id: `${messageId}-re-${Date.now()}`, content: aiResponse.content || "Let me try a different approach..." }
           : m
       ));
     } catch {
       setMessages(prev => prev.map(m =>
         m.id === messageId
-          ? { ...m, id: `${messageId}-re-${Date.now()}`, content: "Couldn't reach the AI. Try again in a moment.", isNew: true }
+          ? { ...m, id: `${messageId}-re-${Date.now()}`, content: "Couldn't reach the AI. Try again in a moment." }
           : m
       ));
     } finally {
       setIsTyping(false);
-      setIsAnimating(true);
-      setStopTyping(false);
       setReExplainingId(null);
     }
   }, [isInputLocked, messages, buildContext]);
@@ -599,6 +458,41 @@ const Chat = () => {
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, [reExplainOpenId]);
+
+  // Close subject picker on outside click
+  useEffect(() => {
+    if (!showSubjectPicker) return;
+    const handleClick = (e: MouseEvent) => {
+      if (subjectPickerRef.current && !subjectPickerRef.current.contains(e.target as Node)) {
+        setShowSubjectPicker(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [showSubjectPicker]);
+
+  // AUTO-DETECT SUBJECT: lightweight call after first user message.
+  // Like Shazam for school subjects — listen to what the student typed,
+  // figure out what subject it belongs to.
+  const detectSubjectFromMessage = useCallback(async (userMessage: string): Promise<SubjectId | null> => {
+    try {
+      const prompt = [
+        { role: "user" as const, content:
+          `You are a subject classifier for an Australian secondary school app. ` +
+          `Given this student message, return ONLY the most appropriate subject ID from this list: ` +
+          `math, biology, history, physics, chemistry, english, computing, economics, business, commerce, pdhpe, geography, engineering, medicine, languages. ` +
+          `Student message: "${userMessage.slice(0, 300)}" ` +
+          `Respond with ONLY the subject ID, nothing else. If unsure, return the closest match.`
+        }
+      ];
+      const res = await getGroqCompletion(prompt, { analogyIntensity: 0 });
+      const raw = (res.content || "").trim().toLowerCase().replace(/[^a-z]/g, "");
+      const valid: SubjectId[] = ["math","biology","history","physics","chemistry","english","computing","economics","business","commerce","pdhpe","geography","engineering","medicine","languages"];
+      return valid.find(s => s === raw) ?? null;
+    } catch {
+      return null;
+    }
+  }, []);
 
   // RESUME SESSION: Load a past session from Supabase if ?session=<id> is in the URL
   useEffect(() => {
@@ -625,7 +519,6 @@ const Chat = () => {
           isNew: true,
           isWelcome: true,
         }]);
-        setIsAnimating(true);
       } else {
         setMessages(msgs.map(m => ({
           id: m.id,
@@ -649,6 +542,13 @@ const Chat = () => {
     loadSessions();
   }, []);
 
+  // Lock to bottom when streaming starts
+  useEffect(() => {
+    if (streamingId || isTyping) {
+      lockedToBottomRef.current = true;
+    }
+  }, [streamingId, isTyping]);
+
   useEffect(() => {
     return () => {
       if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
@@ -657,19 +557,13 @@ const Chat = () => {
 
   useEffect(() => {
     updateScrollButton();
-    if (shouldAutoScrollRef.current || lockedToBottomRef.current) {
-      const behavior: ScrollBehavior = shouldAutoScrollRef.current ? "smooth" : "auto";
-      shouldAutoScrollRef.current = false;
-      requestAnimationFrame(() => scrollToBottom(behavior));
-    }
-  }, [messages.length, isTyping, updateScrollButton, scrollToBottom]);
+  }, [messages.length, updateScrollButton]);
 
   // PICKING A TOPIC: This runs when you select a subject icon.
   const handleSubjectSelect = async (subjectId: SubjectId) => {
     setSelectedSubject(subjectId);
     setMessages([]);
-    setIsAnimating(false);
-    setStopTyping(false);
+    setStreamingId(null);
 
     if (!availableSubjectIds.has(subjectId)) return;
     const subject = allSubjects.find(s => s.id === subjectId);
@@ -684,7 +578,6 @@ const Chat = () => {
       isWelcome: true,
     };
     setMessages([welcomeMsg]);
-    setIsAnimating(true);
 
     // Create a Supabase session for this chat
     const sessionId = await chatStore.createSession(subjectId, "New chat");
@@ -968,7 +861,7 @@ const Chat = () => {
   }, [selectedSubject, attachedFiles, generatingFlashcards, userPrefs.grade, router]);
 
   const handleSend = () => {
-    if ((!input.trim() && attachedFiles.length === 0) || !selectedSubject || isInputLocked) return;
+    if ((!input.trim() && attachedFiles.length === 0) || isInputLocked) return;
 
     // 1. We show your message on the screen immediately.
     const userMessage: Message = {
@@ -986,9 +879,18 @@ const Chat = () => {
     setMessages(prev => [...prev, userMessage]);
     setInput("");
     setAttachedFiles([]); // Clear attachments after sending
-    shouldAutoScrollRef.current = true;
     lockedToBottomRef.current = true;
     setIsTyping(true); // Show the "thinking" dots.
+
+    // AUTO-DETECT SUBJECT: fire on first real message if subject not yet known
+    const isFirstMessage = messages.filter(m => m.role === "user").length === 0;
+    if (isFirstMessage && !selectedSubject && input.trim()) {
+      setSubjectDetecting(true);
+      detectSubjectFromMessage(input).then(detected => {
+        if (detected) setSelectedSubject(detected);
+        setSubjectDetecting(false);
+      });
+    }
 
     // Record the conversation
     if (selectedSubject) {
@@ -1034,52 +936,64 @@ const Chat = () => {
     const context = buildContext(anchorForRequest);
 
       try {
-        // FETCH: We send the request over the internet and wait.
-        const aiResponse = await getGroqCompletion(newHistory, context);
-
-        // 3. We show the AI's reply on the screen.
-        const response: Message = {
-          id: (Date.now() + 1).toString(),
+        // Create a placeholder message that we'll fill with streaming tokens
+        const responseId = (Date.now() + 1).toString();
+        setMessages(prev => [...prev, {
+          id: responseId,
           role: "assistant",
-          content: aiResponse.content || "I'm not sure how to answer that.",
-          isNew: true
-        };
+          content: "",
+          isStreaming: true,
+        }]);
+        setIsTyping(false);
+        setStreamingId(responseId);
+        lockedToBottomRef.current = true;
 
-        setMessages(prev => [...prev, response]);
+        const abort = new AbortController();
+        abortRef.current = abort;
+        let accumulated = "";
 
-        // Save assistant reply to Supabase
+        const stream = getGroqStream(newHistory, context);
+        for await (const token of stream) {
+          if (abort.signal.aborted) break;
+          accumulated += token;
+          
+          // Update state with accumulated content
+          setMessages(prev => prev.map(m =>
+            m.id === responseId ? { ...m, content: accumulated } : m
+          ));
+          
+          // Keep scrolled to bottom while streaming
+          if (lockedToBottomRef.current) {
+            const el = scrollContainerRef.current;
+            if (el) el.scrollTop = el.scrollHeight;
+          }
+        }
+
+        // Final update
+        setMessages(prev => prev.map(m =>
+          m.id === responseId ? { ...m, isStreaming: false, content: accumulated || "I'm not sure how to answer that." } : m
+        ));
+        // Ensure scrolled to bottom
+        const el = scrollContainerRef.current;
+        if (el) el.scrollTop = el.scrollHeight;
+        setStreamingId(null);
+
+        // Save to Supabase
         if (chatSessionId) {
-          chatStore.addMessage(chatSessionId, "assistant", response.content);
-          
-          // Update the session's updatedAt timestamp in sidebar
-          setAllSessions(prev => {
-            const updated = prev.map(s => 
-              s.id === chatSessionId 
-                ? { ...s, updatedAt: new Date().toISOString() }
-                : s
-            );
-            return updated.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-          });
-          
-          // If this is the first exchange (welcome + user message + assistant response), generate a chat title from AI
-          // At this point: messages still has old state, so we check if it's just the welcome message before we added the user message
+          chatStore.addMessage(chatSessionId, "assistant", accumulated);
+          setAllSessions(prev =>
+            [...prev.map(s => s.id === chatSessionId ? { ...s, updatedAt: new Date().toISOString() } : s)]
+              .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+          );
           const isFirstExchange = messages.length === 1 && messages[0].isWelcome;
           if (isFirstExchange) {
             try {
-              // Ask AI to generate a short, descriptive title for this conversation
-              const titlePrompt = [
-                { role: "user" as const, content: `Based on this question: "${input}", generate a very short (2-4 words) title for this chat. Only respond with the title, nothing else.` }
-              ];
+              const titlePrompt = [{ role: "user" as const, content: `Based on this question: "${input}", generate a very short (2-4 words) title for this chat. Only respond with the title, nothing else.` }];
               const titleResponse = await getGroqCompletion(titlePrompt, buildContext(null));
               const chatTitle = (titleResponse.content || "New chat").trim().slice(0, 50);
-              
               await chatStore.updateSessionTitle(chatSessionId, chatTitle);
-              setAllSessions(prev => prev.map(s =>
-                s.id === chatSessionId ? { ...s, title: chatTitle } : s
-              ));
-            } catch (err) {
-              console.error("Failed to generate or update session title:", err);
-            }
+              setAllSessions(prev => prev.map(s => s.id === chatSessionId ? { ...s, title: chatTitle } : s));
+            } catch {}
           }
         }
       } catch {
@@ -1087,12 +1001,11 @@ const Chat = () => {
           id: (Date.now() + 1).toString(),
           role: "assistant",
           content: "I couldn't reach the AI service. Try again in a moment.",
-          isNew: true
         }]);
+        setStreamingId(null);
       } finally {
         setIsTyping(false);
-        setIsAnimating(true);
-        setStopTyping(false);
+        abortRef.current = null;
       }
     })();
   };
@@ -1122,7 +1035,6 @@ const Chat = () => {
         role: "assistant",
         content: aiResponse.content || "Hmm, I'm having trouble thinking of a new topic. Try asking me a specific question!",
         analogy: `ai-generated-${newMsgId}`,
-        isNew: true
       }]);
     } catch {
       const newMsgId = Date.now().toString();
@@ -1131,12 +1043,9 @@ const Chat = () => {
         role: "assistant",
         content: "I couldn't reach the AI service. Try again in a moment.",
         analogy: `ai-generated-${newMsgId}`,
-        isNew: true
       }]);
     } finally {
       setIsTyping(false);
-      setIsAnimating(true);
-      setStopTyping(false);
     }
   };
 
@@ -1144,8 +1053,7 @@ const Chat = () => {
     setSelectedSubject(session.subjectId as SubjectId);
     setChatSessionId(session.id);
     setMessages([]);
-    setIsAnimating(false);
-    setStopTyping(false);
+    setStreamingId(null);
 
     const msgs = await chatStore.getMessages(session.id);
     if (msgs.length === 0) {
@@ -1158,7 +1066,6 @@ const Chat = () => {
         isNew: true,
         isWelcome: true,
       }]);
-      setIsAnimating(true);
     } else {
       setMessages(msgs.map(m => ({
         id: m.id,
@@ -1171,9 +1078,13 @@ const Chat = () => {
 
   const handleStartNewChat = () => {
     setSelectedSubject(null);
+    setSubjectDetecting(false);
+    setShowSubjectPicker(false);
     setMessages([]);
     setChatSessionId(null);
     setInput("");
+    setStreamingId(null);
+    abortRef.current?.abort();
   };
 
   const handleDeleteThread = async (sessionId: string, e: React.MouseEvent) => {
@@ -1357,66 +1268,63 @@ const Chat = () => {
           </div>
         </motion.header>
 
-        {!selectedSubject ? (
-          /* Subject Selection - refined cards */
-          <motion.div
-            className="flex-1 flex flex-col items-center justify-center py-2"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.4 }}
-          >
-            <div className="text-center mb-6">
-              <h2 className="text-2xl sm:text-3xl font-semibold text-foreground mb-2 tracking-tight">
-                <TypewriterText text="What shall we explore today?" delay={150} />
-              </h2>
-              <p className="text-muted-foreground text-sm sm:text-base">
-                Pick a subject — I'll explain with clear, personalised analogies.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-5 w-full max-w-2xl">
-              {availableSubjects.length === 0 ? (
-                <div className="col-span-full rounded-xl border border-dashed border-border bg-muted/30 p-6 text-center text-sm text-muted-foreground">
-                  You haven’t selected any subjects yet. Add subjects in your profile to start a session.
-                </div>
-              ) : availableSubjects.map((subject, index) => {
-                const Icon = subject.icon;
-                return (
-                  <motion.button
-                    key={subject.id}
-                    onClick={() => handleSubjectSelect(subject.id)}
-                    className="p-5 text-left group border border-border rounded-xl bg-card hover:bg-muted/50 transition-colors"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.08, type: "spring", stiffness: 180, damping: 18 }}
-                    whileHover={{ scale: 1.03 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    <div className="w-12 h-12 rounded-lg bg-primary flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                      <Icon className="w-6 h-6 text-white" />
-                    </div>
-                    <div className="font-bold text-foreground text-sm">{subject.label}</div>
-                    <div className="text-xs text-muted-foreground mt-1">
-                      {getSubjectDescription(subject.id, userPrefs.grade)}
-                    </div>
-                  </motion.button>
-                );
-              })}
-            </div>
-          </motion.div>
-        ) : (
-          /* Chat Interface */
+          {/* Chat always visible — subject auto-detected from first message */}
           <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-            {/* Slim toolbar — subject name left-anchored, actions right */}
+            {/* Slim toolbar */}
             <div className="flex items-center px-4 py-1.5 border-b border-border/10 gap-3">
-              {/* Left: subject name + change link */}
-              <button
-                onClick={() => { setSelectedSubject(null); setMessages([]); }}
-                className="flex items-center gap-1.5 text-xs font-medium text-foreground/70 hover:text-foreground transition-all group"
-              >
-                {(() => { const s = allSubjects.find(x => x.id === selectedSubject); const Icon = s?.icon; return Icon ? <Icon className="w-3.5 h-3.5 text-muted-foreground group-hover:text-foreground/70 transition-colors" /> : null; })()}
-                {allSubjects.find(s => s.id === selectedSubject)?.label}
-              </button>
+              {/* Subject badge — auto-detected, tappable to override */}
+              <div className="relative" ref={subjectPickerRef}>
+                <button
+                  onClick={() => setShowSubjectPicker(o => !o)}
+                  className="flex items-center gap-1.5 text-xs font-medium text-foreground/70 hover:text-foreground transition-all group"
+                >
+                  {subjectDetecting ? (
+                    <RefreshCw className="w-3 h-3 animate-spin text-muted-foreground" />
+                  ) : selectedSubject ? (
+                    (() => { const s = allSubjects.find(x => x.id === selectedSubject); const Icon = s?.icon; return Icon ? <Icon className="w-3.5 h-3.5 text-muted-foreground group-hover:text-foreground/70 transition-colors" /> : null; })()
+                  ) : (
+                    <BookOpen className="w-3.5 h-3.5 text-muted-foreground/50" />
+                  )}
+                  <span className={selectedSubject ? "" : "text-muted-foreground/50"}>
+                    {subjectDetecting ? "Detecting…" : selectedSubject ? allSubjects.find(s => s.id === selectedSubject)?.label : "Subject"}
+                  </span>
+                  <ChevronDown className="w-2.5 h-2.5 opacity-40" />
+                </button>
+                <AnimatePresence>
+                  {showSubjectPicker && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -6, scale: 0.97 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -6, scale: 0.97 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute left-0 top-8 z-50 w-52 rounded-xl border border-border bg-card shadow-xl p-1.5 max-h-72 overflow-y-auto"
+                    >
+                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-2 py-1">Set subject</p>
+                      {availableSubjects.map(subject => {
+                        const Icon = subject.icon;
+                        return (
+                          <button
+                            key={subject.id}
+                            type="button"
+                            onClick={() => { setSelectedSubject(subject.id); setShowSubjectPicker(false); }}
+                            className={`w-full flex items-center gap-2 text-left text-xs px-2 py-1.5 rounded-lg transition-colors ${
+                              selectedSubject === subject.id
+                                ? "bg-primary/10 text-primary font-medium"
+                                : "hover:bg-muted/60 text-foreground"
+                            }`}
+                          >
+                            <Icon className="w-3.5 h-3.5 shrink-0" />
+                            {subject.label}
+                          </button>
+                        );
+                      })}
+                      {availableSubjects.length === 0 && (
+                        <p className="text-xs text-muted-foreground/60 px-2 py-2">No subjects set. Add them in your profile.</p>
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
 
               <div className="h-3.5 w-px bg-border/40" />
 
@@ -1480,7 +1388,28 @@ const Chat = () => {
                 onScroll={updateScrollButton}
                 className="absolute inset-0 overflow-y-auto min-h-0 chat-scroll"
               >
-                <div className="flex-grow flex flex-col justify-end space-y-6 pb-28 sm:pb-24 pt-1">
+                <div className="mx-auto w-full max-w-3xl px-4 flex flex-col space-y-6 pb-28 sm:pb-24 pt-4">
+                  {/* Empty state — shown before any messages */}
+                  {messages.length === 0 && !isTyping && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.4 }}
+                      className="flex flex-col items-center justify-center h-full min-h-[40vh] gap-3 text-center"
+                    >
+                      <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center">
+                        <Lightbulb className="w-6 h-6 text-primary/70" />
+                      </div>
+                      <div>
+                        <p className="text-base font-semibold text-foreground/80">
+                          {userName ? `Hey ${userName}, what are you studying?` : "What are you studying?"}
+                        </p>
+                        <p className="text-sm text-muted-foreground/60 mt-1">
+                          Ask about any concept — I’ll explain it with a clear analogy.
+                        </p>
+                      </div>
+                    </motion.div>
+                  )}
                   <AnimatePresence>
                     {messages.map((message, index) => {
                       const canRegenerate =
@@ -1519,18 +1448,9 @@ const Chat = () => {
                                   />
                                 </a>
                               )}
-                              <TypewriterMessage 
-                                content={parseThinkingContent(message.content).response} 
-                                isNew={message.isNew || false}
-                                shouldStop={stopTyping}
-                                onComplete={() => {
-                                  // Mark message as no longer new after typing completes
-                                  setMessages(prev => prev.map(m => 
-                                    m.id === message.id ? { ...m, isNew: false } : m
-                                  ));
-                                  setIsAnimating(false);
-                                  setStopTyping(false);
-                                }}
+                              <StreamingMessage
+                                content={parseThinkingContent(message.content).response}
+                                isStreaming={!!message.isStreaming}
                               />
                               <div className="mt-3 flex items-center justify-between gap-0.5">
                                 {/* Explain it differently */}
@@ -1691,7 +1611,7 @@ const Chat = () => {
                   size="icon"
                   onClick={() => {
                     lockedToBottomRef.current = true;
-                    scrollToBottom();
+                    scrollToBottom("smooth");
                   }}
                   aria-label="Scroll to latest"
                   title="Scroll to latest"
@@ -1705,11 +1625,12 @@ const Chat = () => {
 
               {/* Input */}
               <motion.div
-                className="absolute bottom-0 left-0 right-0 z-30 px-4 pb-4 pt-2 pointer-events-auto"
+              className="absolute bottom-0 left-0 right-0 z-30 px-4 pb-4 pt-2 pointer-events-auto"
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3 }}
               >
+                <div className="mx-auto w-full max-w-3xl">
                 {/* Attached files preview */}
                 {attachedFiles.length > 0 && (
                   <div className="mb-2 flex flex-wrap items-center gap-2">
@@ -1799,7 +1720,7 @@ const Chat = () => {
                         handleSend();
                       }
                     }}
-                    placeholder={`Ask anything about ${allSubjects.find(s => s.id === selectedSubject)?.label || "this subject"}…`}
+                    placeholder={selectedSubject ? `Ask anything about ${allSubjects.find(s => s.id === selectedSubject)?.label}…` : `Ask me anything — maths, science, history…`}
                     rows={Math.max(1, Math.min(8, Math.ceil(input.length / 80) || 1))}
                     className="w-full px-4 pt-3.5 pb-12 text-sm bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/50 resize-none overflow-y-auto max-h-48 leading-relaxed"
                   />
@@ -1829,10 +1750,10 @@ const Chat = () => {
                           : <Paperclip className="w-3.5 h-3.5" />}
                       </button>
                     </div>
-                    {(isTyping || isAnimating) ? (
+                    {(isTyping || streamingId) ? (
                       <button
                         type="button"
-                        onClick={() => setStopTyping(true)}
+                        onClick={() => { abortRef.current?.abort(); setStreamingId(null); setIsTyping(false); }}
                         className="w-8 h-8 rounded-full bg-foreground/10 hover:bg-foreground/20 flex items-center justify-center text-foreground/70 transition-all"
                       >
                         <Square className="w-3.5 h-3.5" />
@@ -1849,6 +1770,7 @@ const Chat = () => {
                     )}
                   </div>
                 </div>
+                </div> {/* end max-w-3xl wrapper */}
               </motion.div>
             </div>
 
@@ -1960,7 +1882,6 @@ const Chat = () => {
               </AnimatePresence>
             </div>
           </div>
-        )}
       </div>
     </div>
   );

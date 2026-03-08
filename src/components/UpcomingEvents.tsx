@@ -76,16 +76,15 @@ export default function UpcomingEvents() {
           events.map(e => (
             <div
               key={e.id}
-              className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg bg-muted/20 hover:bg-muted/40 transition-colors group"
+              className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-muted/20 hover:bg-muted/40 transition-colors group"
             >
               {/* Date badge */}
-              <div className="shrink-0 text-center w-9">
-                <p className="text-[9px] font-black uppercase text-muted-foreground/50 leading-none">
+              <div className="shrink-0 text-right w-[3.8rem]">
+                <p className="text-[8px] font-black uppercase text-muted-foreground/50 leading-none tracking-wider">
                   {label(new Date(e.date))}
                 </p>
-                <p className="text-[10px] font-black text-muted-foreground/60 tabular-nums leading-tight">
-                  {format(new Date(e.date), "h:mm")}
-                  <span className="text-[8px]">{format(new Date(e.date), "a")}</span>
+                <p className="text-[9px] font-bold text-muted-foreground/60 tabular-nums leading-tight">
+                  {format(new Date(e.date), "h:mma").toLowerCase()}
                 </p>
               </div>
 
@@ -94,9 +93,9 @@ export default function UpcomingEvents() {
 
               {/* Title */}
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold text-foreground truncate leading-tight">{e.title}</p>
+                <p className="text-[11px] font-bold text-foreground truncate leading-tight">{e.title}</p>
                 {e.subject && (
-                  <p className="text-[10px] text-muted-foreground/50 truncate">{e.subject}</p>
+                  <p className="text-[9px] text-muted-foreground/50 truncate">{e.subject}</p>
                 )}
               </div>
 
