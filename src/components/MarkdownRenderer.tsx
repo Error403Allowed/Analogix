@@ -12,18 +12,32 @@ interface MarkdownRendererProps {
   content: string;
   className?: string;
   // When true, closes any dangling fences/delimiters so partial markdown
-  // doesn't break layout mid-stream
+  // doesn't break layout mid-stream. Also defers Desmos graph rendering.
   streaming?: boolean;
 }
 
 // Normalise LaTeX delimiters so remark-math always sees $...$ / $$...$$
 // Models often output \(...\) for inline and \[...\] for display math.
-const normaliseLatex = (text: string): string =>
-  text
-    .replace(/\\\[\s*/g, "$$\n")
-    .replace(/\s*\\\]/g, "\n$$")
-    .replace(/\\\(/g, "$")
-    .replace(/\\\)/g, "$");
+// Also handles \begin{aligned}...\end{aligned} environments.
+const normaliseLatex = (text: string): string => {
+  let result = text;
+  
+  // Handle \begin{...}...\end{...} environments - wrap in $$ for display math
+  // These are always display math, never inline
+  result = result.replace(
+    /(\\begin\{(?:aligned|align|gather|gathered|matrix|pmatrix|bmatrix|vmatrix|cases|equation|eqnarray)\*?\})\s*([\s\S]*?)\s*(\\end\{\1\})/g,
+    '$$\n$2\n$$'
+  );
+  
+  // Normalize LaTeX delimiters
+  result = result
+    .replace(/\\\[\s*/g, "$$\n")      // \[ → $$
+    .replace(/\s*\\\]/g, "\n$$")      // \] → $$
+    .replace(/\\\(/g, "$")            // \( → $
+    .replace(/\\\)/g, "$");           // \) → $
+  
+  return result;
+};
 
 // Close any unclosed markdown fences/delimiters so partial content mid-stream
 // doesn't cause KaTeX or ReactMarkdown to throw or render garbage.
@@ -33,14 +47,45 @@ const closePartialMarkdown = (text: string): string => {
   const fenceMatches = (text.match(/^```/gm) || []).length;
   if (fenceMatches % 2 !== 0) text += "\n```";
 
-  // Close unclosed $$ display math
+  // Close unclosed $$ display math (count occurrences, add closing if odd)
   const displayMatches = (text.match(/\$\$/g) || []).length;
-  if (displayMatches % 2 !== 0) text += "$$";
+  if (displayMatches % 2 !== 0) text += "\n$$";
 
-  // Close unclosed $ inline math (rough heuristic — only on same line)
+  // Close unclosed \begin{...} environments
+  const beginMatches = (text.match(/\\begin\{/g) || []).length;
+  const endMatches = (text.match(/\\end\{/g) || []).length;
+  if (beginMatches > endMatches) {
+    // Find the last unclosed \begin and add matching \end
+    const lastBegin = text.match(/\\begin\{([^}]+)\}/g);
+    if (lastBegin) {
+      const envName = lastBegin[lastBegin.length - 1].match(/\\begin\{([^}]+)\}/)?.[1];
+      if (envName) {
+        text += `\n\\end{${envName}}`;
+      }
+    }
+  }
+
+  // Close unclosed $ inline math per line
+  // Be more careful - only close if we're confident it's unclosed
   const lines = text.split("\n");
   const closedLines = lines.map(line => {
-    const dollarCount = (line.match(/(?<!\\)\$/g) || []).length;
+    // Skip lines that are already closed or don't have math
+    if (!line.includes("$") || line.includes("$$")) return line;
+    
+    // Count unescaped $ that are likely math delimiters
+    // Ignore $ at end of line (probably currency or incomplete)
+    const trimmed = line.trimEnd();
+    if (trimmed.endsWith("$")) return line;
+    
+    // Count $ not preceded by backslash
+    let dollarCount = 0;
+    for (let i = 0; i < trimmed.length; i++) {
+      if (trimmed[i] === "$" && (i === 0 || trimmed[i-1] !== "\\")) {
+        dollarCount++;
+      }
+    }
+    
+    // If odd number of $, close it
     if (dollarCount % 2 !== 0) return line + "$";
     return line;
   });
@@ -53,13 +98,20 @@ const closePartialMarkdown = (text: string): string => {
 // We override `pre` to apply block styling, and `code` for inline styling.
 
 const MarkdownRenderer = ({ content, className, streaming = false }: MarkdownRendererProps) => {
+  // Always apply closePartialMarkdown during streaming to prevent KaTeX errors
+  // from incomplete LaTeX delimiters
   const raw = streaming ? closePartialMarkdown(content) : content;
   const normalised = normaliseLatex(raw);
+  
   return (
     <div className={cn("markdown-content", className)}>
       <ReactMarkdown
         remarkPlugins={[remarkMath, remarkGfm]}
-        rehypePlugins={[[rehypeKatex, { strict: false }]]}
+        rehypePlugins={[[rehypeKatex, { 
+          strict: false,
+          throwOnError: false,
+          errorColor: "hsl(var(--muted-foreground))",
+        }]]}
         components={{
           h1: ({ children }) => <h1 className="text-3xl font-black text-foreground mt-6 mb-3">{children}</h1>,
           h2: ({ children }) => <h2 className="text-2xl font-black text-foreground mt-5 mb-3">{children}</h2>,
@@ -78,6 +130,14 @@ const MarkdownRenderer = ({ content, className, streaming = false }: MarkdownRen
             const lang = codeEl?.props?.className as string | undefined;
             if (lang === "language-desmos") {
               const raw = String(codeEl?.props?.children ?? "").replace(/\n$/, "");
+              // During streaming, show placeholder instead of rendering Desmos
+              if (streaming) {
+                return (
+                  <div className="my-4 rounded-2xl overflow-hidden border border-border/40 bg-muted/30 p-8 flex items-center justify-center">
+                    <p className="text-xs text-muted-foreground italic">Graph will appear after response completes...</p>
+                  </div>
+                );
+              }
               return <DesmosGraph expressions={raw} />;
             }
             return (

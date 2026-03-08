@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import { Loader2, RefreshCw } from "lucide-react";
 import MarkdownRenderer from "@/components/MarkdownRenderer";
 
@@ -85,22 +85,44 @@ const DESMOS_COLORS = [
   "#6366f1", "#06b6d4", "#f59e0b", "#10b981", "#ef4444", "#8b5cf6", "#ec4899",
 ];
 
-export default function DesmosGraph({ expressions, height = 320 }: DesmosGraphProps) {
+// Memoize the parsed result so it doesn't re-parse on every render
+const parseBlockMemo = (raw: string) => {
+  const lines = raw.trim().split("\n").map(l => l.trim()).filter(Boolean);
+  let bounds: { left: number; right: number; bottom: number; top: number } | undefined;
+  const exprs: string[] = [];
+
+  for (const line of lines) {
+    const boundsMatch = line.match(/^\[bounds:\s*([-\d.]+),\s*([-\d.]+),\s*([-\d.]+),\s*([-\d.]+)\]$/i);
+    if (boundsMatch) {
+      bounds = {
+        left: parseFloat(boundsMatch[1]),
+        right: parseFloat(boundsMatch[2]),
+        bottom: parseFloat(boundsMatch[3]),
+        top: parseFloat(boundsMatch[4]),
+      };
+    } else {
+      exprs.push(line);
+    }
+  }
+  return { exprs, bounds };
+};
+
+function DesmosGraph({ expressions, height = 320 }: DesmosGraphProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const calcRef = useRef<DesmosCalculator | null>(null);
   const [ready, setReady] = useState(false);
-  const [key, setKey] = useState(0); // bump to force full remount
+  const [key, setKey] = useState(0);
 
-  // Parse once — stable reference for the effect deps
-  const { exprs, bounds } = parseBlock(expressions);
+  // Parse once and memoize — prevents re-parsing on parent re-renders
+  const parsedData = useMemo(() => parseBlockMemo(expressions), [expressions]);
+  const { exprs, bounds } = parsedData;
 
   // Load the Desmos script once globally
   useEffect(() => {
     loadDesmosScript(() => setReady(true));
   }, []);
 
-  // Mount the calculator once when ready. Never destroy/recreate on expression changes —
-  // that's what caused the flicker. Instead we update expressions in-place below.
+  // Mount the calculator once when ready. Never destroy/recreate on expression changes.
   useEffect(() => {
     if (!ready || !containerRef.current) return;
     if (!window.Desmos) return;
@@ -128,13 +150,11 @@ export default function DesmosGraph({ expressions, height = 320 }: DesmosGraphPr
   }, [ready, key]);
 
   // Update expressions on the existing calculator instance without remounting.
-  // Think of it like changing what's written on a whiteboard without replacing the board.
+  // Only run when expressions actually change (memoized above prevents false changes)
   useEffect(() => {
     const calc = calcRef.current;
     if (!calc || !ready) return;
 
-    // Remove all old expressions by setting an empty state, then re-add
-    // Desmos doesn't expose a "removeAll" method, so we set each expr individually
     exprs.forEach((latex, i) => {
       calc.setExpression({
         id: `expr_${i}`,
@@ -145,7 +165,7 @@ export default function DesmosGraph({ expressions, height = 320 }: DesmosGraphPr
 
     if (bounds) calc.setMathBounds(bounds);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, expressions]);
+  }, [ready, exprs, bounds]); // Use parsed values as deps, not raw string
 
   return (
     <div className="my-4 rounded-2xl overflow-hidden border border-white/10 bg-[#1a1a2e]/60 backdrop-blur shadow-lg">
@@ -203,3 +223,6 @@ export default function DesmosGraph({ expressions, height = 320 }: DesmosGraphPr
     </div>
   );
 }
+
+// Memoize the entire component to prevent re-renders when parent updates during streaming
+export default React.memo(DesmosGraph);

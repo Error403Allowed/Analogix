@@ -124,7 +124,7 @@ const StreamingMessage = ({
 }) => {
   return (
     <div className="text-sm leading-relaxed">
-      <MarkdownRenderer content={content} className="text-sm leading-relaxed" />
+      <MarkdownRenderer content={content} className="text-sm leading-relaxed" streaming={isStreaming} />
     </div>
   );
 };
@@ -947,33 +947,47 @@ const Chat = () => {
         setIsTyping(false);
         setStreamingId(responseId);
         lockedToBottomRef.current = true;
+        
+        // Scroll to bottom immediately when streaming starts
+        requestAnimationFrame(() => {
+          const el = scrollContainerRef.current;
+          if (el) el.scrollTop = el.scrollHeight;
+        });
 
         const abort = new AbortController();
         abortRef.current = abort;
         let accumulated = "";
 
+        // Throttle renders for readability - update every ~100ms (about 10 updates/second)
+        // This lets users follow along comfortably without feeling rushed
+        let lastRenderTime = 0;
+        const RENDER_INTERVAL = 100;
+
         const stream = getGroqStream(newHistory, context);
         for await (const token of stream) {
           if (abort.signal.aborted) break;
           accumulated += token;
-          
-          // Update state with accumulated content
-          setMessages(prev => prev.map(m =>
-            m.id === responseId ? { ...m, content: accumulated } : m
-          ));
-          
-          // Keep scrolled to bottom while streaming
-          if (lockedToBottomRef.current) {
-            const el = scrollContainerRef.current;
-            if (el) el.scrollTop = el.scrollHeight;
+
+          const now = Date.now();
+          // Only render if enough time has passed
+          if (now - lastRenderTime > RENDER_INTERVAL) {
+            setMessages(prev => prev.map(m =>
+              m.id === responseId ? { ...m, content: accumulated } : m
+            ));
+            lastRenderTime = now;
+
+            // Keep scrolled to bottom while streaming
+            if (lockedToBottomRef.current) {
+              const el = scrollContainerRef.current;
+              if (el) el.scrollTop = el.scrollHeight;
+            }
           }
         }
 
-        // Final update
+        // Final update with any remaining content
         setMessages(prev => prev.map(m =>
           m.id === responseId ? { ...m, isStreaming: false, content: accumulated || "I'm not sure how to answer that." } : m
         ));
-        // Ensure scrolled to bottom
         const el = scrollContainerRef.current;
         if (el) el.scrollTop = el.scrollHeight;
         setStreamingId(null);
@@ -1111,12 +1125,12 @@ const Chat = () => {
   };
 
   return (
-    <div className="min-h-[100dvh] flex flex-row relative overflow-hidden bg-background">
-      {/* Threads Sidebar */}
+    <div className="min-h-[100dvh] h-[100dvh] flex flex-row relative overflow-hidden bg-background">
+      {/* Threads Sidebar - hidden on mobile, shown on sm+ */}
       <motion.div
         animate={{ width: sidebarOpen ? 300 : 0, opacity: sidebarOpen ? 1 : 0 }}
         transition={{ duration: 0.25, ease: "easeInOut" }}
-        className="hidden sm:flex flex-col border-r border-border/20 h-screen overflow-hidden flex-shrink-0 bg-muted/30"
+        className="hidden sm:flex flex-col border-r border-border/20 h-[100dvh] overflow-hidden flex-shrink-0 bg-muted/30"
         style={{ minWidth: sidebarOpen ? 300 : 0 }}
       >
         {/* New Chat */}
@@ -1148,9 +1162,8 @@ const Chat = () => {
           {sessionsLoading ? (
             <div className="flex items-center justify-center h-16 text-muted-foreground/50 text-xs">Loading…</div>
           ) : (() => {
-            let filteredSessions = selectedSubject
-              ? allSessions.filter(s => s.subjectId === selectedSubject)
-              : allSessions;
+            // Show all sessions, not filtered by subject
+            let filteredSessions = allSessions;
             if (threadSearch.trim()) {
               const q = threadSearch.toLowerCase();
               filteredSessions = filteredSessions.filter(s => {
@@ -1160,7 +1173,7 @@ const Chat = () => {
             }
             return filteredSessions.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-20 text-muted-foreground/40 text-xs text-center px-3">
-                <p>{selectedSubject ? "No chats for this subject" : threadSearch ? "No results" : "No chats yet"}</p>
+                <p>{threadSearch ? "No results" : "No chats yet"}</p>
               </div>
             ) : (
               <>
@@ -1240,9 +1253,9 @@ const Chat = () => {
             </button>
             <button
               onClick={() => router.push("/dashboard")}
-              className="w-8 h-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all"
+              className="w-9 h-9 sm:w-8 sm:h-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all"
             >
-              <ArrowLeft className="w-4 h-4" />
+              <ArrowLeft className="w-5 h-5 sm:w-4 sm:h-4" />
             </button>
           </div>
 
@@ -1252,18 +1265,18 @@ const Chat = () => {
               <button
                 onClick={handleNewTopic}
                 disabled={isInputLocked}
-                className="w-8 h-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all disabled:opacity-40"
+                className="w-9 h-9 sm:w-8 sm:h-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all disabled:opacity-40"
                 title="New topic"
               >
-                <RefreshCw className="w-4 h-4" />
+                <RefreshCw className="w-5 h-5 sm:w-4 sm:h-4" />
               </button>
             )}
             <button
               onClick={handleStartNewChat}
-              className="w-8 h-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all"
+              className="w-9 h-9 sm:w-8 sm:h-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all"
               title="New chat"
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="w-5 h-5 sm:w-4 sm:h-4" />
             </button>
           </div>
         </motion.header>
@@ -1271,7 +1284,7 @@ const Chat = () => {
           {/* Chat always visible — subject auto-detected from first message */}
           <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
             {/* Slim toolbar */}
-            <div className="flex items-center px-4 py-1.5 border-b border-border/10 gap-3">
+            <div className="flex items-center px-2 sm:px-4 py-2 sm:py-1.5 border-b border-border/10 gap-2 sm:gap-3">
               {/* Subject badge — auto-detected, tappable to override */}
               <div className="relative" ref={subjectPickerRef}>
                 <button
@@ -1388,7 +1401,7 @@ const Chat = () => {
                 onScroll={updateScrollButton}
                 className="absolute inset-0 overflow-y-auto min-h-0 chat-scroll"
               >
-                <div className="mx-auto w-full max-w-3xl px-4 flex flex-col space-y-6 pb-28 sm:pb-24 pt-4">
+                <div className="mx-auto w-full max-w-3xl px-4 flex flex-col space-y-6 pb-40 sm:pb-28 pt-4 sm:pt-4">
                   {/* Empty state — shown before any messages */}
                   {messages.length === 0 && !isTyping && (
                     <motion.div
@@ -1426,7 +1439,7 @@ const Chat = () => {
                         className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
                       >
                         {message.role === "assistant" ? (
-                          <div className="max-w-[88%] sm:max-w-[85%] message-bubble-assistant">
+                          <div className="max-w-[90%] sm:max-w-[85%] message-bubble-assistant">
                             <div className="mb-2" />
                             <>
                               {(() => {
@@ -1555,7 +1568,7 @@ const Chat = () => {
                                 ))}
                               </div>
                             )}
-                            <div className="max-w-full w-fit message-bubble-user">
+                            <div className="max-w-[85%] sm:max-w-[75%] message-bubble-user">
                               <div className="whitespace-pre-wrap text-sm leading-relaxed">
                                 <MarkdownRenderer content={message.content} />
                               </div>
@@ -1567,9 +1580,9 @@ const Chat = () => {
                               onClick={() => handleCopy(message.content, message.id)}
                               aria-label="Copy prompt"
                               title="Copy prompt"
-                              className="h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+                              className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors sm:h-7 sm:w-7"
                             >
-                              {copiedId === message.id ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                              {copiedId === message.id ? <Check className="w-4 h-4 sm:w-3 sm:h-3" /> : <Copy className="w-4 h-4 sm:w-3 sm:h-3" />}
                             </Button>
                           </div>
                         )}
@@ -1615,17 +1628,17 @@ const Chat = () => {
                   }}
                   aria-label="Scroll to latest"
                   title="Scroll to latest"
-                  className="absolute bottom-24 left-1/2 -translate-x-1/2 z-40 h-9 w-9 rounded-full bg-primary/40 text-white/90 shadow-md backdrop-blur hover:bg-primary/60"
+                  className="absolute bottom-32 sm:bottom-24 left-1/2 -translate-x-1/2 z-40 h-9 w-9 rounded-full bg-primary/40 text-white/90 shadow-md backdrop-blur hover:bg-primary/60"
                 >
                   <ArrowDown className="w-4 h-4" />
                 </Button>
               )}
 
-              <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-background via-background/90 to-transparent z-20" />
+              <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-20 sm:h-16 bg-gradient-to-t from-background via-background/90 to-transparent z-20" />
 
               {/* Input */}
               <motion.div
-              className="absolute bottom-0 left-0 right-0 z-30 px-4 pb-4 pt-2 pointer-events-auto"
+              className="absolute bottom-0 left-0 right-0 z-30 px-3 sm:px-4 pb-[max(env(safe-area-inset-bottom,0px)+8px)] sm:pb-4 pt-2 pointer-events-auto"
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3 }}
@@ -1722,11 +1735,11 @@ const Chat = () => {
                     }}
                     placeholder={selectedSubject ? `Ask anything about ${allSubjects.find(s => s.id === selectedSubject)?.label}…` : `Ask me anything — maths, science, history…`}
                     rows={Math.max(1, Math.min(8, Math.ceil(input.length / 80) || 1))}
-                    className="w-full px-4 pt-3.5 pb-12 text-sm bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/50 resize-none overflow-y-auto max-h-48 leading-relaxed"
+                    className="w-full px-3 sm:px-4 pt-3.5 pb-12 text-sm sm:text-base bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/50 resize-none overflow-y-auto max-h-48 leading-relaxed"
                   />
                   {/* Bottom row of input */}
-                  <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between px-3 pb-3">
-                    <div className="relative w-8 h-8 group">
+                  <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between px-2 sm:px-3 pb-2 sm:pb-3">
+                    <div className="relative w-9 h-9 sm:w-8 sm:h-8 group">
                       <input
                         ref={fileInputRef}
                         type="file"
@@ -1740,32 +1753,32 @@ const Chat = () => {
                       <button
                         type="button"
                         disabled={fileExtracting}
-                        className="w-8 h-8 rounded-full bg-muted/40 flex items-center justify-center text-muted-foreground transition-all disabled:opacity-50 group-hover:bg-primary/10 group-hover:text-primary"
+                        className="w-9 h-9 sm:w-8 sm:h-8 rounded-full bg-muted/40 flex items-center justify-center text-muted-foreground transition-all disabled:opacity-50 group-hover:bg-primary/10 group-hover:text-primary"
                         title={fileExtracting ? "Extracting file…" : "Attach files"}
                         aria-hidden="true"
                         tabIndex={-1}
                       >
                         {fileExtracting
-                          ? <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                          : <Paperclip className="w-3.5 h-3.5" />}
+                          ? <RefreshCw className="w-4 h-4 sm:w-3.5 sm:h-3.5 animate-spin" />
+                          : <Paperclip className="w-4 h-4 sm:w-3.5 sm:h-3.5" />}
                       </button>
                     </div>
                     {(isTyping || streamingId) ? (
                       <button
                         type="button"
                         onClick={() => { abortRef.current?.abort(); setStreamingId(null); setIsTyping(false); }}
-                        className="w-8 h-8 rounded-full bg-foreground/10 hover:bg-foreground/20 flex items-center justify-center text-foreground/70 transition-all"
+                        className="w-9 h-9 sm:w-8 sm:h-8 rounded-full bg-foreground/10 hover:bg-foreground/20 flex items-center justify-center text-foreground/70 transition-all"
                       >
-                        <Square className="w-3.5 h-3.5" />
+                        <Square className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
                       </button>
                     ) : (
                       <button
                         type="button"
                         onClick={handleSend}
                         disabled={!input.trim() && attachedFiles.length === 0}
-                        className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white transition-all hover:bg-primary/90 active:scale-95 disabled:opacity-30 disabled:pointer-events-none"
+                        className="w-9 h-9 sm:w-8 sm:h-8 rounded-full bg-primary flex items-center justify-center text-white transition-all hover:bg-primary/90 active:scale-95 disabled:opacity-30 disabled:pointer-events-none"
                       >
-                        <Send className="w-3.5 h-3.5" />
+                        <Send className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
                       </button>
                     )}
                   </div>
