@@ -149,7 +149,7 @@ export default function Dashboard() {
       ) : null,
     },
     {
-      label: "Analogies",
+      label: "Conversations",
       value: con,
       suffix: null,
       colour: "violet",

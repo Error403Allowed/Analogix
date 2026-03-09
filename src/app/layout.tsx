@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Analytics } from "@vercel/analytics/react";
 import AppProviders from "@/components/AppProviders";
 import "@/index.css";
@@ -9,17 +9,6 @@ import DashLayout from "@/components/DashLayout";
 export const metadata: Metadata = {
   title: "Analogix",
   description: "Analogy-based learning platform",
-  viewport: {
-    width: "device-width",
-    initialScale: 1,
-    maximumScale: 1,
-    userScalable: false,
-    viewportFit: "cover",
-  },
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#09090b" },
-  ],
   icons: {
     icon: [
       { url: "/tab-icon.png", type: "image/png" },
@@ -27,6 +16,18 @@ export const metadata: Metadata = {
     shortcut: "/tab-icon.png",
     apple: "/tab-icon.png",
   },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#09090b" },
+  ],
 };
 
 export default function RootLayout({

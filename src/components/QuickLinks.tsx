@@ -13,7 +13,7 @@ import { AnimatePresence, motion } from "framer-motion";
 // ── All available pages in the app ─────────────────────────────────────────
 
 export const APP_PAGES = [
-  { label: "Analogy Tutor",  path: "/chat",          icon: "MessageCircle"  },
+  { label: "AI Tutor",  path: "/chat",          icon: "MessageCircle"  },
   { label: "My Subjects",    path: "/subjects",       icon: "GraduationCap"  },
   { label: "Dashboard",      path: "/dashboard",      icon: "LayoutDashboard"},
   { label: "Flashcards",     path: "/flashcards",     icon: "Brain"          },

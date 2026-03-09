@@ -44,11 +44,11 @@ export const STATE_LABELS: Record<AustralianState, string> = {
 
 // Dates verified against official sources. Month is 0-indexed (Jan = 0).
 export const TERM_DATA: Record<AustralianState, Term[]> = {
-  // NSW: students start 2 Feb; official planner labels that week as "Week 2"
-  // because Week 1 = 26-30 Jan (school development days only).
-  // We store the MONDAY of Week 1 as weekAnchor for correct counting.
+  // NSW: Week 1 starts Mon 26 Jan (staff development days).
+  // Students arrive 2 Feb (Week 2), but official week numbering counts from 26 Jan.
+  // Term 1 start is set to Mon 26 Jan so the week anchor is correct.
   NSW: [
-    { id: 1, label: "Term 1", start: new Date(2026, 0, 28), end: new Date(2026, 3, 9)  },
+    { id: 1, label: "Term 1", start: new Date(2026, 0, 26), end: new Date(2026, 3, 9)  },
     { id: 2, label: "Term 2", start: new Date(2026, 3, 28), end: new Date(2026, 6, 3)  },
     { id: 3, label: "Term 3", start: new Date(2026, 6, 20), end: new Date(2026, 8, 25) },
     { id: 4, label: "Term 4", start: new Date(2026, 9, 12), end: new Date(2026, 11, 18)},

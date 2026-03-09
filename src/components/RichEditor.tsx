@@ -26,6 +26,7 @@ export interface RichEditorHandle {
   insertMath: (latex: string, mode: "inline" | "block") => void;
   insertCodeBlock: (code: string, language: string) => void;
   focus: () => void;
+  setContent: (html: string) => void;
 }
 
 interface RichEditorProps {
@@ -168,6 +169,7 @@ const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(
       return () => document.removeEventListener("mousedown", handle);
     }, []);
 
+    // Set content on first mount
     useEffect(() => {
       if (!editor || !initialContent) return;
       if (editor.isEmpty && initialContent !== "<p></p>") {
@@ -175,6 +177,20 @@ const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(
       }
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [editor]);
+
+    // When initialContent changes externally (e.g. agent edit), push it into
+    // the editor — but only if the new content genuinely differs from what
+    // the editor already has, to avoid clobbering in-progress user edits.
+    const prevInitialContent = useRef(initialContent);
+    useEffect(() => {
+      if (!editor) return;
+      if (initialContent === prevInitialContent.current) return;
+      prevInitialContent.current = initialContent;
+      const currentHtml = editor.getHTML();
+      if (currentHtml !== initialContent) {
+        editor.commands.setContent(initialContent, { emitUpdate: false });
+      }
+    }, [editor, initialContent]);
 
     useImperativeHandle(ref, () => ({
       editor: editor ?? null,
@@ -192,6 +208,10 @@ const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(
         editor.chain().focus().insertContent(code).run();
       },
       focus: () => editor?.commands.focus(),
+      setContent: (html: string) => {
+        if (!editor) return;
+        editor.commands.setContent(html, { emitUpdate: false });
+      },
     }));
 
     return (

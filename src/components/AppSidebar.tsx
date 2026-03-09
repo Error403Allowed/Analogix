@@ -27,10 +27,9 @@ const navGroups = [
     label: "Learn",
     items: [
       { title: "Dashboard",     url: "/dashboard",    icon: LayoutDashboard, tutorial: "dashboard-nav"    },
-      { title: "Analogy Tutor", url: "/chat",         icon: MessageCircle,   tutorial: "chat-nav"         },
+      { title: "AI Tutor", url: "/chat",         icon: MessageCircle,   tutorial: "chat-nav"         },
       { title: "Quizzes",       url: "/quiz",         icon: BookOpen,        tutorial: "quiz-nav"         },
       { title: "Flashcards",    url: "/flashcards",   icon: BookMarkedIcon,  tutorial: "flashcards-nav"   },
-      { title: "AR Visualiser", url: "/ar",           icon: Scan,            tutorial: "ar-nav"           },
     ],
   },
   {

@@ -120,14 +120,29 @@ export const subjectStore = {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return {};
 
+    // Add cache-busting to prevent browser caching
     const { data, error } = await supabase
       .from("subject_data")
       .select("*")
-      .eq("user_id", user.id);
+      .eq("user_id", user.id)
+      .order("updated_at", { ascending: false });
 
     if (error) {
       console.warn("[subjectStore] getAll failed:", error);
       return {};
+    }
+
+    console.log("[subjectStore] getAll - fetched rows:", data?.length || 0);
+    if (data && data.length > 0) {
+      data.forEach(row => {
+        const docs = row.notes?.documents || [];
+        console.log(`[subjectStore] getAll - ${row.subject_id}: ${docs.length} documents`);
+        if (docs.length > 0) {
+          docs.forEach((d: any, i: number) => {
+            console.log(`  [subjectStore]   doc ${i}: "${d.title}" - content length: ${d.content?.length || 0}`);
+          });
+        }
+      });
     }
 
     return (data ?? []).reduce((acc: Record<string, SubjectData>, row: any) => {

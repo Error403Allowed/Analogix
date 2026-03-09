@@ -22,7 +22,7 @@ export const DEFAULT_SETTINGS: TimerSettings = {
   break: 5 * 60,
 };
 export const DEFAULT_SESSIONS_TARGET = 4;
-export const MAX_SESSIONS_TARGET = 12;
+export const MAX_SESSIONS_TARGET = 8;
 
 const KEY = "analogix_timer_state";
 

@@ -67,6 +67,7 @@ export default function SubjectDocument() {
   const [docMissing, setDocMissing]   = useState(false);
   const [studyGuide, setStudyGuide]   = useState<GeneratedStudyGuide | null>(null);
   const [activeTab, setActiveTab]     = useState<DocTab>("notes");
+  const hasSetInitialTab = useRef(false);
 
   const [mathOpen, setMathOpen] = useState(false);
   const [codeOpen, setCodeOpen] = useState(false);
@@ -98,15 +99,23 @@ export default function SubjectDocument() {
     }]);
   }, [subject?.label]);
 
+  // Track whether this is the very first load so we can set the tab once
+  const isFirstLoad = useRef(true);
+  // Track the last remote content we loaded so we only apply real changes
+  const lastRemoteContent = useRef<string | null>(null);
+
   useEffect(() => {
     let active = true;
-    const load = async () => {
+    const load = async (isExternal = false) => {
+      console.log("[SubjectDocument] load called, isExternal:", isExternal, "subjectId:", subjectId, "docId:", docId);
       if (!subjectId) return;
       const data = await subjectStore.getSubject(subjectId);
+      console.log("[SubjectDocument] fetched data, documents count:", data.notes.documents?.length || 0);
       if (!active) return;
       const docs = data.notes.documents || [];
       setDocuments(docs);
       const doc = docs.find((item) => item.id === docId);
+      console.log("[SubjectDocument] found doc:", doc ? doc.title : "not found");
       if (!doc) {
         setDocMissing(true);
         setTitle(subject ? `${subject.label} Notes` : "Untitled");
@@ -119,26 +128,78 @@ export default function SubjectDocument() {
       setDocMissing(false);
       const rawTitle   = typeof doc.title === "string" ? doc.title : "";
       const rawContent = doc.content || "";
+
+      // On external updates (agent edits), skip if content hasn't changed remotely
+      if (isExternal && rawContent === lastRemoteContent.current) {
+        console.log("[SubjectDocument] skipping update, content unchanged");
+        return;
+      }
+      console.log("[SubjectDocument] content changed, updating state");
+      lastRemoteContent.current = rawContent;
+
       setTitle(rawTitle);
       const parsed = decodeStudyGuide(rawContent);
       if (parsed) {
+        // Always update the study guide data so the UI reflects the edit
         setStudyGuide(parsed);
         setContent(rawContent);
         setInitialContent(rawContent);
-        setActiveTab("guide");
+        // Only set tab on the very first load
+        if (isFirstLoad.current) setActiveTab("guide");
         lastSavedRef.current = { title: rawTitle, content: rawContent };
         setLastSavedAt(doc.lastUpdated || data.notes.lastUpdated || null);
+        isFirstLoad.current = false;
         return;
       }
       const html = isHtmlContent(rawContent) ? rawContent : (rawContent ? `<p>${rawContent.replace(/\n/g, "</p><p>")}</p>` : "");
       setContent(html);
       setInitialContent(html);
-      setActiveTab("notes");
+      if (isFirstLoad.current) setActiveTab("notes");
       lastSavedRef.current = { title: rawTitle, content: html };
       setLastSavedAt(doc.lastUpdated || data.notes.lastUpdated || null);
+      isFirstLoad.current = false;
     };
-    load();
-    const handler = () => load();
+    isFirstLoad.current = true;
+    lastRemoteContent.current = null;
+    load(false);
+    // Handler for generic refresh (no payload) — re-fetches from Supabase
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { results?: Array<Record<string, unknown>> } | undefined;
+
+      // If the event carries an update_document result for THIS doc, apply
+      // the new content directly — skipping the Supabase re-read entirely.
+      // This mirrors Notion's optimistic-update pattern: local state is
+      // mutated instantly so the editor always shows the latest version.
+      if (detail?.results) {
+        const docUpdate = detail.results.find(
+          (r) =>
+            (r.type === "update_document" || r.type === "update_study_guide" || r.type === "replace_study_guide") &&
+            r.success === true &&
+            r.subjectId === subjectId &&
+            r.docId === docId
+        );
+        if (docUpdate && typeof docUpdate.newContent === "string") {
+          const raw = docUpdate.newContent as string;
+          const parsed = decodeStudyGuide(raw);
+          if (parsed) {
+            setStudyGuide(parsed);
+            setContent(raw);
+            setInitialContent(raw);
+            lastSavedRef.current = { title, content: raw };
+            lastRemoteContent.current = raw;
+          } else {
+            const html = isHtmlContent(raw) ? raw : (raw ? `<p>${raw.replace(/\n/g, "</p><p>")}</p>` : "");
+            setContent(html);
+            setInitialContent(html);
+            lastSavedRef.current = { title, content: html };
+            lastRemoteContent.current = html;
+          }
+          return; // no need to re-fetch
+        }
+      }
+
+      load(true);
+    };
     window.addEventListener("subjectDataUpdated", handler);
     return () => { active = false; window.removeEventListener("subjectDataUpdated", handler); };
   }, [subjectId, docId, subject?.label]);
@@ -492,14 +553,14 @@ export default function SubjectDocument() {
                   onMouseDown={(e) => { e.preventDefault(); setMathOpen(true); }}
                   className="h-7 px-2 rounded-md hover:bg-muted/60 text-muted-foreground/60 hover:text-foreground transition-all flex items-center gap-1.5 text-xs font-semibold"
                 >
-                  <Sigma className="w-3.5 h-3.5" /> Math
+                  <Sigma className="w-3.5 h-3.5" />
                 </button>
                 <button
                   type="button"
                   onMouseDown={(e) => { e.preventDefault(); setCodeOpen(true); }}
                   className="h-7 px-2 rounded-md hover:bg-muted/60 text-muted-foreground/60 hover:text-foreground transition-all flex items-center gap-1.5 text-xs font-semibold"
                 >
-                  <Braces className="w-3.5 h-3.5" /> Code
+                  <Braces className="w-3.5 h-3.5" />
                 </button>
               </div>
 

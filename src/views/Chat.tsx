@@ -149,7 +149,7 @@ const allSubjects = SUBJECT_CATALOG;
 
 
 /**
- * ANALOGY TUTOR: This is where you actually talk to Analogix AI (the AI).
+ * AI Tutor: This is where you actually talk to Analogix AI (the AI).
  * It uses your preferences to explain things in a way that makes sense to YOU.
  */
 const Chat = () => {
@@ -971,8 +971,10 @@ const Chat = () => {
           const now = Date.now();
           // Only render if enough time has passed
           if (now - lastRenderTime > RENDER_INTERVAL) {
+            // Hide the <ACTIONS> block while streaming so user never sees raw JSON
+            const displayAccumulated = accumulated.replace(/<ACTIONS>[\s\S]*?(<\/ACTIONS>|$)/i, "").trim();
             setMessages(prev => prev.map(m =>
-              m.id === responseId ? { ...m, content: accumulated } : m
+              m.id === responseId ? { ...m, content: displayAccumulated } : m
             ));
             lastRenderTime = now;
 
@@ -984,9 +986,39 @@ const Chat = () => {
           }
         }
 
+        // ── Parse and execute any <ACTIONS> block from the response ──────────
+        let displayContent = accumulated || "I'm not sure how to answer that.";
+        const actionsMatch = accumulated.match(/<ACTIONS>([\s\S]*?)<\/ACTIONS>/i);
+        if (actionsMatch) {
+          // Strip the actions block from what the user sees
+          displayContent = accumulated.replace(/<ACTIONS>[\s\S]*?<\/ACTIONS>/i, "").trim();
+          try {
+            const cleaned = actionsMatch[1].trim().replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "").trim();
+            const parsed = JSON.parse(cleaned);
+            const actions = Array.isArray(parsed) ? parsed : [parsed];
+            console.log("[Chat] dispatching", actions.length, "action(s)");
+            // Fire-and-forget — don't block the UI
+            fetch("/api/groq/agent-action", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ actions }),
+            })
+              .then(r => r.json())
+              .then(data => {
+                console.log("[Chat] agent-action results:", data.results);
+                if (data.results?.length) {
+                  window.dispatchEvent(new CustomEvent("subjectDataUpdated", { detail: { results: data.results } }));
+                }
+              })
+              .catch(err => console.error("[Chat] agent-action error:", err));
+          } catch (e) {
+            console.warn("[Chat] Failed to parse ACTIONS block:", e);
+          }
+        }
+
         // Final update with any remaining content
         setMessages(prev => prev.map(m =>
-          m.id === responseId ? { ...m, isStreaming: false, content: accumulated || "I'm not sure how to answer that." } : m
+          m.id === responseId ? { ...m, isStreaming: false, content: displayContent } : m
         ));
         const el = scrollContainerRef.current;
         if (el) el.scrollTop = el.scrollHeight;
@@ -1346,8 +1378,9 @@ const Chat = () => {
                 onClick={() => setAnalogyModeEnabled(p => !p)}
                 disabled={isInputLocked}
                 className={`text-xs px-0 py-0 transition-all ${analogyModeEnabled ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
+                title={analogyModeEnabled ? "Switch to school-focused answers" : "Switch to real-world learning with analogies"}
               >
-                Analogies {analogyModeEnabled ? "on" : "off"}
+                {analogyModeEnabled ? "Real learning enabled" : "This is for school!"}
               </button>
 
               <div className="h-3.5 w-px bg-border/40" />

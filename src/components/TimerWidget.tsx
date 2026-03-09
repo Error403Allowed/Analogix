@@ -141,47 +141,54 @@ export function TimerWidget({ compact = false }: { compact?: boolean }) {
   const cycleCount = sessionsTarget > 0 ? sessionsCompleted % sessionsTarget : 0;
   const filledDots = cycleCount === 0 && sessionsCompleted > 0 ? sessionsTarget : cycleCount;
 
-  // ── Compact variant: one-row strip ──────────────────────────────────────
+  // ── Compact variant: two-row strip ──────────────────────────────────────
   if (compact) {
     return (
-      <div className="relative flex items-center justify-between gap-2 w-full">
-        <div className="flex items-center gap-2 min-w-0">
-          <div className={cn("w-2 h-2 rounded-full shrink-0", phase === "study" ? "bg-primary" : "bg-emerald-500")} />
-          <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/60">
-            {phase === "study" ? "Study" : "Break"}
-          </span>
-          <span className="text-lg font-black tabular-nums tracking-tighter text-foreground">
-            {fmt(mins)}:{fmt(secs)}
-          </span>
+      <div className="relative flex flex-col gap-2 w-full">
+        {/* Row 1: phase indicator + time + session dots */}
+        <div className="flex items-center justify-between gap-3 w-full">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className={cn("w-2 h-2 rounded-full shrink-0", phase === "study" ? "bg-primary" : "bg-emerald-500")} />
+            <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/70">
+              {phase === "study" ? "Study" : "Break"}
+            </span>
+            <span className="text-2xl font-black tabular-nums tracking-tighter text-foreground leading-none">
+              {fmt(mins)}:{fmt(secs)}
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5 shrink-0">
+            {Array.from({ length: Math.min(sessionsTarget, 8) }, (_, i) => (
+              <div key={i} className={cn("w-1.5 h-1.5 rounded-full transition-all",
+                i < filledDots ? "bg-primary" : "bg-muted-foreground/20")} />
+            ))}
+          </div>
         </div>
-        <div className="flex items-center gap-1 shrink-0">
-          {Array.from({ length: Math.min(sessionsTarget, 6) }, (_, i) => (
-            <div key={i} className={cn("w-1.5 h-1.5 rounded-full transition-all",
-              i < filledDots ? "bg-primary" : "bg-muted-foreground/20")} />
-          ))}
-        </div>
-        <div className="flex items-center gap-1 shrink-0">
+
+        {/* Row 2: controls */}
+        <div className="flex items-center gap-1.5">
           <button
             onClick={() => setCompactMenuOpen(o => !o)}
-            className={cn("w-7 h-7 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all",
+            className={cn("w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all",
               compactMenuOpen && "bg-muted/60 text-foreground")}
             title="Edit study/break durations"
           >
-            <Pencil className="w-3 h-3" />
+            <Pencil className="w-3.5 h-3.5" />
           </button>
-          <button onClick={reset} className="w-7 h-7 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all">
-            <RotateCcw className="w-3 h-3" />
+          <button onClick={reset} className="w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all">
+            <RotateCcw className="w-3.5 h-3.5" />
           </button>
           <button onClick={() => setIsActive(a => !a)}
-            className={cn("w-8 h-8 rounded-full flex items-center justify-center shadow-sm hover:scale-105 transition-all",
+            className={cn("flex-1 h-8 rounded-full flex items-center justify-center gap-1.5 text-xs font-black uppercase tracking-wider shadow-sm hover:scale-[1.02] transition-all",
               isActive ? "bg-destructive/90 text-destructive-foreground" : "bg-primary text-primary-foreground")}>
-            {isActive ? <Pause className="w-3.5 h-3.5 fill-current" /> : <Play className="w-3.5 h-3.5 fill-current" />}
+            {isActive
+              ? <><Pause className="w-3.5 h-3.5 fill-current" /><span>Pause</span></>
+              : <><Play className="w-3.5 h-3.5 fill-current" /><span>Start</span></>}
           </button>
-          <button onClick={skip} className="w-7 h-7 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all">
-            <SkipForward className="w-3 h-3" />
+          <button onClick={skip} className="w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all">
+            <SkipForward className="w-3.5 h-3.5" />
           </button>
-          <button onClick={() => router.push("/timer")} className="w-7 h-7 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all">
-            <Maximize2 className="w-3 h-3" />
+          <button onClick={() => router.push("/timer")} className="w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all">
+            <Maximize2 className="w-3.5 h-3.5" />
           </button>
         </div>
 
@@ -189,6 +196,37 @@ export function TimerWidget({ compact = false }: { compact?: boolean }) {
           <div className="absolute right-0 top-full mt-2 w-60 rounded-xl border border-border/60 bg-card/95 backdrop-blur shadow-xl p-3 z-30">
             <div className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/70 mb-2">
               Edit durations
+            </div>
+            {/* Sessions goal row */}
+            <div className="flex items-center justify-between gap-3 py-1.5 mb-1 border-b border-border/40 pb-2.5">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Sessions</span>
+              {editingSessions ? (
+                <div className="flex items-center gap-1">
+                  <input
+                    className="w-10 text-[11px] font-bold bg-transparent border-b border-primary text-foreground text-center tabular-nums outline-none"
+                    value={editSessionsValue}
+                    maxLength={2}
+                    onChange={e => setEditSessionsValue(e.target.value.replace(/\D/g, ""))}
+                    onKeyDown={e => { if (e.key === "Enter") { confirmEditSessions(); } }}
+                    autoFocus
+                  />
+                  <button
+                    onClick={confirmEditSessions}
+                    className="p-0.5 text-muted-foreground hover:text-foreground transition-colors"
+                    title="Save sessions goal"
+                  >
+                    <Check className="w-3 h-3" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={startEditSessions}
+                  className="flex items-center gap-1.5 text-[11px] font-bold text-foreground hover:text-primary transition-colors"
+                >
+                  {sessionsTarget} sessions
+                  <Pencil className="w-3 h-3 text-muted-foreground" />
+                </button>
+              )}
             </div>
             {(["study", "break"] as TimerPhase[]).map((p) => {
               const isEditingPhase = editing && editingPhase === p;

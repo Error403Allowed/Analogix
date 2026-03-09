@@ -4,12 +4,26 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Brain, X, Send, Loader2, Sparkles, Trash2, ChevronDown,
-  BookOpen, FileText, MessageSquare,
+  BookOpen, FileText, MessageSquare, CheckCircle2, AlertCircle, Zap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePathname } from "next/navigation";
 import MarkdownRenderer from "@/components/MarkdownRenderer";
 import type { ChatMessage } from "@/types/chat";
+
+// ── Action result types ────────────────────────────────────────────────────
+interface ActionResult {
+  type: string;
+  success: boolean;
+  detail?: string;
+}
+
+const ACTION_LABELS: Record<string, string> = {
+  create_document:     "Document created",
+  update_document:     "Document updated",
+  replace_study_guide: "Study guide updated",
+  add_flashcards:      "Flashcards added",
+};
 
 // ── Pages where the agent should NOT appear ────────────────────────────────
 const HIDDEN_ON = ["/", "/onboarding", "/login", "/timer", "/chat", "/study-guide-loading"];
@@ -19,7 +33,7 @@ const QUICK_PROMPTS = [
   { label: "Summarise my notes", icon: FileText },
   { label: "Quiz me on my docs", icon: BookOpen },
   { label: "What have I been studying?", icon: MessageSquare },
-  { label: "Explain a concept from my notes", icon: Sparkles },
+  { label: "Add flashcards for my last topic", icon: Sparkles },
 ];
 
 // ── Typing animation ───────────────────────────────────────────────────────
@@ -46,6 +60,7 @@ export default function AgentPanel() {
   const pathname = usePathname();
   const [open, setOpen]         = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [actionResults, setActionResults] = useState<Record<number, ActionResult[]>>({});
   const [input, setInput]       = useState("");
   const [loading, setLoading]   = useState(false);
   const [error, setError]       = useState("");
@@ -93,11 +108,31 @@ export default function AgentPanel() {
       if (!res.ok) throw new Error(`Request failed: ${res.status}`);
       const data = await res.json();
 
+      const assistantMsgIndex = newMessages.length; // index of the message we're about to add
       setMessages(prev => [
         ...prev,
         { role: "assistant", content: data.content || "Sorry, no response." },
       ]);
-    } catch (e) {
+
+      // If the AI returned actions, execute them server-side
+      if (data.actions && data.actions.length > 0) {
+        console.log("[AgentPanel] Executing actions:", data.actions);
+        const actionRes = await fetch("/api/groq/agent-action", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ actions: data.actions }),
+        });
+        console.log("[AgentPanel] agent-action status:", actionRes.status);
+        const actionData = await actionRes.json();
+        console.log("[AgentPanel] agent-action results:", actionData);
+        if (actionData.results) {
+          setActionResults(prev => ({ ...prev, [assistantMsgIndex]: actionData.results }));
+          window.dispatchEvent(new CustomEvent("subjectDataUpdated", {
+            detail: { results: actionData.results },
+          }));
+        }
+      }
+    } catch {
       setError("Couldn't reach the AI. Check your connection and try again.");
     } finally {
       setLoading(false);
@@ -111,7 +146,7 @@ export default function AgentPanel() {
     }
   };
 
-  const clearChat = () => setMessages([]);
+  const clearChat = () => { setMessages([]); setActionResults({}); };
 
   const isEmpty = messages.length === 0;
 
@@ -167,8 +202,9 @@ export default function AgentPanel() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-bold text-foreground leading-tight">Analogix AI</p>
-                <p className="text-[10px] text-muted-foreground/60 leading-tight">
-                  Your full workspace, at a glance
+                <p className="text-[10px] text-muted-foreground/60 leading-tight flex items-center gap-1">
+                  <Zap className="w-2.5 h-2.5 text-primary/60" />
+                  Can read &amp; edit your workspace
                 </p>
               </div>
               <div className="flex items-center gap-1">
@@ -206,7 +242,7 @@ export default function AgentPanel() {
                       Ask me anything about your workspace
                     </p>
                     <p className="text-xs text-muted-foreground/50">
-                      I can see your documents, study guides, flashcards, and chat history.
+                      I can read your workspace — and write to it too. Ask me to create notes, add flashcards, or update a document.
                     </p>
                   </div>
                   <div className="grid grid-cols-2 gap-2 pt-1">
@@ -235,32 +271,59 @@ export default function AgentPanel() {
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.18 }}
-                  className={cn(
-                    "flex",
-                    msg.role === "user" ? "justify-end" : "justify-start"
-                  )}
+                  className="flex flex-col gap-1.5"
                 >
-                  {msg.role === "assistant" && (
-                    <div className="w-6 h-6 rounded-lg bg-primary/15 flex items-center justify-center shrink-0 mr-2 mt-0.5">
-                      <Brain className="w-3 h-3 text-primary" />
+                  <div className={cn("flex", msg.role === "user" ? "justify-end" : "justify-start")}>
+                    {msg.role === "assistant" && (
+                      <div className="w-6 h-6 rounded-lg bg-primary/15 flex items-center justify-center shrink-0 mr-2 mt-0.5">
+                        <Brain className="w-3 h-3 text-primary" />
+                      </div>
+                    )}
+                    <div
+                      className={cn(
+                        "max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm",
+                        msg.role === "user"
+                          ? "bg-primary text-primary-foreground rounded-br-sm"
+                          : "bg-muted/50 text-foreground rounded-bl-sm"
+                      )}
+                    >
+                      {msg.role === "assistant" ? (
+                        <div className="prose prose-sm dark:prose-invert max-w-none text-[13px] leading-relaxed">
+                          <MarkdownRenderer content={msg.content} />
+                        </div>
+                      ) : (
+                        <p className="leading-relaxed">{msg.content}</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Action result pills — shown below assistant messages */}
+                  {msg.role === "assistant" && actionResults[i] && actionResults[i].length > 0 && (
+                    <div className="ml-8 flex flex-col gap-1">
+                      {actionResults[i].map((result, j) => (
+                        <motion.div
+                          key={j}
+                          initial={{ opacity: 0, scale: 0.95 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ delay: j * 0.06 }}
+                          className={cn(
+                            "flex items-center gap-2 px-3 py-1.5 rounded-xl text-[11px] font-semibold",
+                            result.success
+                              ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
+                              : "bg-destructive/10 text-destructive border border-destructive/20"
+                          )}
+                        >
+                          {result.success
+                            ? <CheckCircle2 className="w-3 h-3 shrink-0" />
+                            : <AlertCircle className="w-3 h-3 shrink-0" />}
+                          <span>{result.success ? (ACTION_LABELS[result.type] || result.type) : result.detail}</span>
+                          {result.success && result.detail && (
+                            <span className="text-muted-foreground/50 font-normal truncate">— {result.detail.split(" in ")[0]}</span>
+                          )}
+                        </motion.div>
+                      ))}
                     </div>
                   )}
-                  <div
-                    className={cn(
-                      "max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm",
-                      msg.role === "user"
-                        ? "bg-primary text-primary-foreground rounded-br-sm"
-                        : "bg-muted/50 text-foreground rounded-bl-sm"
-                    )}
-                  >
-                    {msg.role === "assistant" ? (
-                      <div className="prose prose-sm dark:prose-invert max-w-none text-[13px] leading-relaxed">
-                        <MarkdownRenderer content={msg.content} />
-                      </div>
-                    ) : (
-                      <p className="leading-relaxed">{msg.content}</p>
-                    )}
-                  </div>
                 </motion.div>
               ))}
 
