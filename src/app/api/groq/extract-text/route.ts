@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 // Vision-capable model for image reading
-const VISION_MODEL = "meta-llama/llama-4-maverick-17b-128e-instruct";
+const VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct";
 
 export async function POST(request: Request) {
   console.log("[extract-text] POST request received");

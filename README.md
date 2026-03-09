@@ -43,8 +43,8 @@ Analogix is an analogy-first study platform for Australian secondary students. I
 ## AI Models (Groq)
 
 Analogix uses Groq’s OpenAI-compatible API with task-based routing:
-- `meta-llama/llama-4-maverick-17b-128e-instruct` (default + coding)
-- `meta-llama/llama-4-scout-17b-16e-instruct` (default fallback)
+- `meta-llama/llama-4-scout-17b-16e-instruct` (default + coding)
+- `meta-llama/llama-3.3-70b-versatile` (default fallback)
 - `qwen/qwen3-32b` (reasoning)
 - `openai/gpt-oss-120b` (reasoning fallback)
 

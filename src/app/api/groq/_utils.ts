@@ -6,9 +6,9 @@ const GROQ_CHAT_URL =
   process.env.GROQ_CHAT_URL || "https://api.groq.com/openai/v1/chat/completions";
 
 // Groq model lineup — all free tier, best-in-class per task
-const DEFAULT_MODEL   = "meta-llama/llama-4-maverick-17b-128e-instruct"; // Llama 4, 128K ctx, fast & smart
-const DEFAULT_FALLBACK_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"; // Scout as fallback
-const CODING_MODEL    = "meta-llama/llama-4-maverick-17b-128e-instruct"; // Maverick handles code well too
+const DEFAULT_MODEL   = "meta-llama/llama-4-scout-17b-16e-instruct"; // Llama 4, 128K ctx, fast & smart
+const DEFAULT_FALLBACK_MODEL = "meta-llama/llama-3.3-70b-versatile"; // Llama 3 as fallback
+const CODING_MODEL    = "meta-llama/llama-4-scout-17b-16e-instruct"; // Maverick handles code well too
 const REASONING_MODEL = "qwen/qwen3-32b";                                // Strong reasoning model
 const REASONING_FALLBACK_MODEL = "openai/gpt-oss-120b";                  // Fallback reasoning model
 
