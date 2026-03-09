@@ -1157,13 +1157,14 @@ const Chat = () => {
   };
 
   return (
-    <div className="min-h-[100dvh] h-[100dvh] flex flex-row relative overflow-hidden bg-background">
-      {/* Threads Sidebar - hidden on mobile, shown on sm+ */}
+    <div className="h-full flex flex-row relative overflow-hidden bg-background">
+      {/* Threads Sidebar */}
+      <div className="flex-shrink-0 overflow-hidden" style={{ width: sidebarOpen ? 272 : 0, transition: 'width 0.25s ease' }}>
       <motion.div
-        animate={{ width: sidebarOpen ? 300 : 0, opacity: sidebarOpen ? 1 : 0 }}
-        transition={{ duration: 0.25, ease: "easeInOut" }}
-        className="hidden sm:flex flex-col border-r border-border/20 h-[100dvh] overflow-hidden flex-shrink-0 bg-muted/30"
-        style={{ minWidth: sidebarOpen ? 300 : 0 }}
+        animate={{ opacity: sidebarOpen ? 1 : 0 }}
+        transition={{ duration: 0.2 }}
+        className="flex flex-col my-2 ml-2 mr-0 rounded-2xl border border-border/20 overflow-hidden bg-card/60 backdrop-blur-sm shadow-sm"
+        style={{ width: 256, height: 'calc(100% - 16px)' }}
       >
         {/* New Chat */}
         <div className="flex-shrink-0 p-3 pt-4">
@@ -1265,6 +1266,7 @@ const Chat = () => {
           })()}
         </div>
       </motion.div>
+      </div>{/* end sidebar wrapper */}
 
       <div className="flex-1 flex flex-col w-full relative overflow-hidden">
         {/* Header */}
@@ -1277,7 +1279,8 @@ const Chat = () => {
           <div className="flex items-center gap-1">
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="hidden sm:flex w-8 h-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all"
+              className="w-8 h-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all"
+              title="Toggle chat history"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 6h16M4 12h16M4 18h16" />

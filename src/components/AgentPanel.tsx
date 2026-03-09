@@ -67,11 +67,10 @@ export default function AgentPanel() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef  = useRef<HTMLTextAreaElement>(null);
 
-  // Hide on certain pages
+  // Hide on certain pages — computed here but the early return is AFTER all hooks
   const isHidden = HIDDEN_ON.some(p =>
     pathname === p || pathname.startsWith(p + "/")
   );
-  if (isHidden) return null;
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
@@ -149,6 +148,8 @@ export default function AgentPanel() {
   const clearChat = () => { setMessages([]); setActionResults({}); };
 
   const isEmpty = messages.length === 0;
+
+  if (isHidden) return null;
 
   return (
     <>
