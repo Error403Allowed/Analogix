@@ -341,11 +341,12 @@ const callFastChat = async (
 
   console.log(`[Groq] FAST PATH: ${model} with key #${keyIndex + 1}`);
 
+  let controller: AbortController | null = null;
   let timeoutId: NodeJS.Timeout | null = null;
 
   try {
-    const controller = new AbortController();
-    timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout for fast path
+    controller = new AbortController();
+    timeoutId = setTimeout(() => controller?.abort(), 15000); // 15s timeout for fast path
 
     const response = await fetch(GROQ_CHAT_URL, {
       method: "POST",
@@ -434,16 +435,17 @@ export const callHfChat = async (
         continue;
       }
 
+      let controller: AbortController | null = null;
       let timeoutId: NodeJS.Timeout | null = null;
 
       try {
         console.log(`[Groq] Trying: ${model} with key #${keyIndex + 1}`);
 
         // Set up timeout for the request (60 seconds)
-        const controller = new AbortController();
+        controller = new AbortController();
         timeoutId = setTimeout(() => {
           console.warn(`[Groq] Request timeout for ${model} after 60s`);
-          controller.abort();
+          controller!.abort();
         }, 60000);
 
         const response = await fetch(GROQ_CHAT_URL, {
@@ -583,16 +585,17 @@ export const callHfChatStream = async (
         continue;
       }
 
+      let controller: AbortController | null = null;
       let timeoutId: NodeJS.Timeout | null = null;
 
       try {
         console.log(`[Groq] Trying: ${model} with key #${keyIndex + 1} (streaming)`);
 
         // Set up timeout for the request (90 seconds for streaming)
-        const controller = new AbortController();
+        controller = new AbortController();
         timeoutId = setTimeout(() => {
           console.warn(`[Groq] Streaming request timeout for ${model} after 90s`);
-          controller.abort();
+          controller!.abort();
         }, 90000);
 
         const response = await fetch(GROQ_CHAT_URL, {

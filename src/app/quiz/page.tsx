@@ -1,10 +1,7 @@
-import ProtectedRoute from "@/components/ProtectedRoute";
-import Quiz from "@/views/Quiz";
+// Quiz has been merged into the Flashcards page.
+// Redirect /quiz → /flashcards?tab=quiz
+import { redirect } from "next/navigation";
 
 export default function QuizPage() {
-  return (
-    <ProtectedRoute>
-      <Quiz />
-    </ProtectedRoute>
-  );
+  redirect("/flashcards?tab=quiz");
 }

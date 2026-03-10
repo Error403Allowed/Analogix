@@ -1439,7 +1439,7 @@ const Chat = () => {
                 onScroll={updateScrollButton}
                 className="absolute inset-0 overflow-y-auto min-h-0 chat-scroll"
               >
-                <div className="mx-auto w-full max-w-10xl px-4 flex flex-col space-y-6 pb-40 sm:pb-28 pt-4 sm:pt-4">
+                <div className="mx-auto w-full max-w-6xl px-4 flex flex-col space-y-6 pb-40 sm:pb-28 pt-4 sm:pt-4">
                   {/* Empty state — shown before any messages */}
                   {messages.length === 0 && !isTyping && (
                     <motion.div

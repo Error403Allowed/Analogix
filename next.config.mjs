@@ -1,3 +1,8 @@
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -7,6 +12,11 @@ const nextConfig = {
     serverActions: {
       bodySizeLimit: '50mb',
     },
+  },
+  turbopack: {
+    // Tell Next.js the project root is here, not the home directory.
+    // Fixes: "detected multiple lockfiles" warning.
+    root: __dirname,
   },
 };
 
