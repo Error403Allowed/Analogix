@@ -293,7 +293,7 @@ const Chat = () => {
   }, [welcomeTemplates]);
 
   const buildContext = useCallback((overrideAnchor?: string | null) => ({
-    subjects: selectedSubject ? [selectedSubject] : userSubjects,
+    subjects: selectedSubject ? [selectedSubject] : [],
     hobbies: userHobbies,
     grade: userPrefs.grade,
     state: userPrefs.state,
@@ -882,9 +882,11 @@ const Chat = () => {
     lockedToBottomRef.current = true;
     setIsTyping(true); // Show the "thinking" dots.
 
-    // AUTO-DETECT SUBJECT: fire on first real message if subject not yet known
+    // AUTO-DETECT SUBJECT: only fire if the message looks academic (>3 words, not just a greeting)
     const isFirstMessage = messages.filter(m => m.role === "user").length === 0;
-    if (isFirstMessage && !selectedSubject && input.trim()) {
+    const looksAcademic = input.trim().split(/\s+/).length > 3 &&
+      !/^(hi|hello|hey|sup|yo|howdy|hiya|g'day|heya)[\s!?.]*$/i.test(input.trim());
+    if (isFirstMessage && !selectedSubject && looksAcademic) {
       setSubjectDetecting(true);
       detectSubjectFromMessage(input).then(detected => {
         if (detected) setSelectedSubject(detected);

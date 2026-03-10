@@ -88,7 +88,8 @@ function buildSystemPrompt(
     "Use only analogies.",
   ][analogyIntensity];
 
-  const primarySubjectForFormulas = userContext?.subjects?.[0] || null;
+  const hasExplicitSubject = (userContext?.subjects?.length ?? 0) > 0;
+  const primarySubjectForFormulas = hasExplicitSubject ? userContext!.subjects![0] : null;
   const formulaSheetContext = primarySubjectForFormulas ? getFormulaSheetContext(primarySubjectForFormulas) : "";
 
   const workspaceSection = workspaceContext || calendarContext ? `
@@ -148,8 +149,10 @@ Analogy Intensity: ${analogyIntensity}/5 — ${analogyGuidance}
 
 Core rules:
 - Match Year ${studentGrade} vocabulary. Australian English always.
-- Use LaTeX for ALL maths: inline $x$, display $$\\frac{a}{b}$$.
+- Use LaTeX for ALL maths: inline $x$, display $\\frac{a}{b}$.
 - No emojis in body text.
+- IMPORTANT: If the student says something casual like "hi", "hello", or anything not related to a subject, just greet them warmly and ask what they'd like to study. Do NOT launch into a subject or analogy unprompted.
+- IMPORTANT: Only discuss a specific subject if the student has clearly brought it up. Never assume or invent a subject.
 ${workspaceSection}
 GRAPHING RULE: When explaining any plottable function or equation, include a Desmos block BEFORE the explanation:
 \`\`\`desmos
