@@ -106,7 +106,7 @@ export const themes = [
   withDerived({
     name: "Oceanic Blue",
     p: hsl(199, 89, 48),
-    g: ["#38bdf8", "#0ea5e9", "#0284c7"],
+    g: ["#38bdf8", "#0ea5e9", "#0369a1"],
     accent: hsl(176, 72, 42),
     accent2: hsl(220, 78, 60),
     success: hsl(158, 64, 42),
@@ -115,15 +115,23 @@ export const themes = [
     muted: hsl(205, 30, 95),
     mutedFg: hsl(210, 18, 42),
     bg: [
-      hexToRgba("#38bdf8", 0.20),
-      hexToRgba("#0ea5e9", 0.15),
-      hexToRgba("#0284c7", 0.12),
+      hexToRgba("#38bdf8", 0.28),
+      hexToRgba("#0ea5e9", 0.20),
+      hexToRgba("#0369a1", 0.18),
     ],
     bgDark: [
-      hexToRgba("#38bdf8", 0.06),
-      hexToRgba("#0ea5e9", 0.05),
-      hexToRgba("#0284c7", 0.035),
+      hexToRgba("#38bdf8", 0.10),
+      hexToRgba("#0ea5e9", 0.08),
+      hexToRgba("#0369a1", 0.06),
     ],
+    glass: {
+      bg: "rgba(235, 248, 255, 0.80)",
+      tint: "rgba(56, 189, 248, 0.18)",
+      border: "rgba(14, 165, 233, 0.25)",
+      darkBg: "rgba(7, 20, 40, 0.88)",
+      darkTint: "rgba(56, 189, 248, 0.10)",
+      darkBorder: "rgba(56, 189, 248, 0.18)",
+    },
   }),
   withDerived({
     name: "Forest Glow",
@@ -263,6 +271,9 @@ export const applyThemeByName = (themeName: string) => {
   });
 
   localStorage.setItem("app-theme", themeName);
+
+  // Set data-theme attribute for theme-specific CSS
+  document.documentElement.setAttribute("data-theme", themeName.toLowerCase().replace(/\s+/g, "-"));
 };
 
 const ThemeSelector = () => {
@@ -273,8 +284,8 @@ const ThemeSelector = () => {
 
   // On mount, apply saved theme
   useEffect(() => {
-    const saved = localStorage.getItem("app-theme");
-    if (saved) applyThemeByName(saved);
+    const saved = localStorage.getItem("app-theme") || "Classic Blue";
+    applyThemeByName(saved);
   }, []);
 
   return (

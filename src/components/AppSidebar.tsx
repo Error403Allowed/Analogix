@@ -188,26 +188,28 @@ export function AppSidebar() {
                       {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
                     </button>
                   )}
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <button className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-white/8 transition-colors text-muted-foreground">
-                        <Palette className="w-4 h-4" />
-                      </button>
-                    </PopoverTrigger>
-                    <PopoverContent side="right" align="start" className="w-56 p-3 glass-card border-white/10 ml-2 shadow-2xl">
-                      <p className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-2">Theme</p>
-                      <div className="grid grid-cols-2 gap-1.5">
-                        {themes.map(t => (
-                          <button key={t.name} onClick={() => handleThemeSelect(t.name)}
-                            className={cn("flex flex-col gap-1 p-1.5 rounded-xl transition-all border text-left",
-                              activeThemeName === t.name ? "border-primary/50 bg-primary/8" : "border-white/5 bg-white/5 hover:bg-white/10")}>
-                            <div className="w-full h-6 rounded-lg" style={{ background: `linear-gradient(135deg, ${t.g[0]}, ${t.g[1]})` }} />
-                            <span className={cn("text-[8px] font-black uppercase tracking-tight", activeThemeName === t.name ? "text-primary" : "text-muted-foreground")}>{t.name}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </PopoverContent>
-                  </Popover>
+                  {mounted && (
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <button className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-white/8 transition-colors text-muted-foreground">
+                          <Palette className="w-4 h-4" />
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent side="right" align="start" className="w-56 p-3 glass-card border-white/10 ml-2 shadow-2xl">
+                        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-2">Theme</p>
+                        <div className="grid grid-cols-2 gap-1.5">
+                          {themes.map(t => (
+                            <button key={t.name} onClick={() => handleThemeSelect(t.name)}
+                              className={cn("flex flex-col gap-1 p-1.5 rounded-xl transition-all border text-left",
+                                activeThemeName === t.name ? "border-primary/50 bg-primary/8" : "border-white/5 bg-white/5 hover:bg-white/10")}>
+                              <div className="w-full h-6 rounded-lg" style={{ background: `linear-gradient(135deg, ${t.g[0]}, ${t.g[1]})` }} />
+                              <span className={cn("text-[8px] font-black uppercase tracking-tight", activeThemeName === t.name ? "text-primary" : "text-muted-foreground")}>{t.name}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                  )}
                 </div>
               ) : (
                 <>

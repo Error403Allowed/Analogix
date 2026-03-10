@@ -6,6 +6,56 @@ import { buildCalendarContext } from "../_calendarContext";
 
 export const runtime = "nodejs";
 
+// Token estimation: ~4 chars per token for English text
+const estimateTokens = (text: string): number => Math.ceil(text.length / 4);
+
+// Truncate workspace documents to fit within token budget
+const truncateWorkspaceDocs = (
+  allDocs: Array<{ subjectId: string; title: string; type: string; preview: string; fullJson?: string }>,
+  maxTokens: number
+): { docs: typeof allDocs; truncated: boolean } => {
+  let totalTokens = allDocs.reduce((sum, d) => sum + estimateTokens(d.preview + d.title + d.subjectId), 0);
+  
+  if (totalTokens <= maxTokens) {
+    return { docs: allDocs, truncated: false };
+  }
+
+  // Sort by type (keep study guides first) then truncate previews
+  const sorted = [...allDocs].sort((a, b) => {
+    if (a.type === "STUDY-GUIDE" && b.type !== "STUDY-GUIDE") return -1;
+    if (b.type === "STUDY-GUIDE" && a.type !== "STUDY-GUIDE") return 1;
+    return 0;
+  });
+
+  const result: typeof allDocs = [];
+  let runningTokens = 0;
+  let truncated = false;
+
+  for (const doc of sorted) {
+    const docTokens = estimateTokens(doc.preview + doc.title + doc.subjectId);
+    
+    if (runningTokens + docTokens <= maxTokens) {
+      result.push(doc);
+      runningTokens += docTokens;
+    } else {
+      // Try to truncate this doc's preview
+      const remainingTokens = maxTokens - runningTokens - estimateTokens(doc.title + doc.subjectId);
+      if (remainingTokens > 100) {
+        const maxChars = remainingTokens * 4;
+        if (doc.preview.length > maxChars) {
+          result.push({ ...doc, preview: truncate(doc.preview, maxChars) });
+          truncated = true;
+          runningTokens += estimateTokens(truncate(doc.preview, maxChars)) + estimateTokens(doc.title + doc.subjectId);
+          continue;
+        }
+      }
+      truncated = true;
+    }
+  }
+
+  return { docs: result, truncated };
+};
+
 const STUDY_GUIDE_PREFIX = "__STUDY_GUIDE_V2__";
 
 const stripHtml = (html: string) =>
@@ -132,7 +182,7 @@ For [STUDY-GUIDE] docs ONLY. Send the COMPLETE new study guide JSON.
 Student Location & Curriculum: ${curriculumContext}
 Today's date: ${new Date().toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric" })}.
 
-${analogyIntensity === 0 ? `MODE: SCHOOL / ASSESSMENT ("This is for school!")
+${analogyIntensity === 0 ? `MODE: SCHOOL / ASSESSMENT ("Schoolwork!")
 The student wants help succeeding in formal academic contexts — exams, essays, assignments.
 - Formal, precise tone. Write like a model answer a teacher would give top marks.
 - Use correct subject-specific terminology and ${stateFullName || "Australian"} syllabus language.
@@ -140,7 +190,7 @@ The student wants help succeeding in formal academic contexts — exams, essays,
 - For English/Humanities: model analytical paragraphs (TEEL, PEEL, etc.) and use proper literary terminology.
 - For Maths/Science: show working clearly, label every step, use correct notation.
 - Reference assessment criteria and marking standards where helpful.
-- No analogies. No hobby references. No casual filler.` : `MODE: REAL LEARNING ("Real learning enabled")
+- No analogies. No hobby references. No casual filler.` : `MODE: REAL LEARNING ("Learning Mode")
 Allowed Interests (verbatim): ${allowedInterests}
 Analogy Anchor: ${analogyAnchor || "Choose one from Allowed Interests."}
 Analogy Intensity: ${analogyIntensity}/5 — ${analogyGuidance}
@@ -204,18 +254,46 @@ export async function POST(request: Request) {
           }
 
           if (allDocs.length > 0) {
-            const docContext = allDocs.map(d =>
+            // Token budget for workspace context (leave room for system prompt, messages, and response)
+            // Model limit is 12000 TPM, reserve ~4000 for response + ~2000 for messages = ~6000 for context
+            const WORKSPACE_TOKEN_BUDGET = 5000;
+            const { docs: truncatedDocs, truncated } = truncateWorkspaceDocs(allDocs, WORKSPACE_TOKEN_BUDGET);
+            
+            if (truncated) {
+              console.log(`[chat-stream] Workspace truncated: ${allDocs.length} → ${truncatedDocs.length} docs to fit token budget`);
+            }
+
+            const docContext = truncatedDocs.map(d =>
               `[${d.subjectId.toUpperCase()} — ${d.type}: "${d.title}"]\n${d.preview}`
             ).join("\n\n---\n\n");
 
-            const docIndex = allDocs.map(d =>
+            const docIndex = truncatedDocs.map(d =>
               `  • "${d.title}" [${d.type}] subjectId="${d.subjectId}"`
             ).join("\n");
 
-            const studyGuideJsonSection = allDocs
-              .filter(d => d.type === "STUDY-GUIDE" && d.fullJson)
-              .map(d => `FULL JSON for "${d.title}" (subjectId="${d.subjectId}"):\n${d.fullJson}`)
-              .join("\n\n---\n\n");
+            // Only include full JSON for study guides if we have token budget remaining
+            let studyGuideJsonSection = "";
+            const contextSoFarTokens = estimateTokens(docContext + docIndex);
+            const remainingBudget = WORKSPACE_TOKEN_BUDGET - contextSoFarTokens;
+            
+            if (remainingBudget > 500) {
+              const guideJsons = truncatedDocs
+                .filter(d => d.type === "STUDY-GUIDE" && d.fullJson)
+                .map(d => ({ ...d, jsonTokens: estimateTokens(d.fullJson || "") }))
+                .sort((a, b) => a.jsonTokens - b.jsonTokens); // Smallest first
+
+              const includedJson: string[] = [];
+              let jsonTokens = 0;
+              for (const g of guideJsons) {
+                if (jsonTokens + g.jsonTokens <= remainingBudget - 200) {
+                  includedJson.push(`FULL JSON for "${g.title}" (subjectId="${g.subjectId}"):\n${g.fullJson}`);
+                  jsonTokens += g.jsonTokens;
+                }
+              }
+              if (includedJson.length > 0) {
+                studyGuideJsonSection = includedJson.join("\n\n---\n\n");
+              }
+            }
 
             workspaceContext = `Document Index:\n${docIndex}\n\nDocument Contents:\n${docContext}${studyGuideJsonSection ? `\n\nFull Study Guide JSON (use when editing):\n${studyGuideJsonSection}` : ""}`;
           }
@@ -251,10 +329,36 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     const message = formatError(error);
-    console.error("[/api/groq/chat-stream]", message);
+    console.error("[/api/groq/chat-stream] Error details:", {
+      message,
+      name: error instanceof Error ? error.name : "Unknown",
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+
+    // Determine appropriate status code based on error type
+    let statusCode = 500;
+    let userMessage = "AI service unavailable. Please try again in a moment.";
+
+    if (message.includes("Missing GROQ_API_KEY")) {
+      statusCode = 503;
+      userMessage = "AI service not configured. Please contact support.";
+    } else if (message.includes("timeout")) {
+      statusCode = 504;
+      userMessage = "Request timed out. Please try again.";
+    } else if (message.includes("rate limit") || message.includes("429")) {
+      statusCode = 429;
+      userMessage = "Too many requests. Please wait a moment and try again.";
+    } else if (message.includes("413") || message.includes("too large")) {
+      statusCode = 413;
+      userMessage = "Message too long. Please shorten your message.";
+    } else if (message.includes("401") || message.includes("403")) {
+      statusCode = 503;
+      userMessage = "AI service authentication failed. Please contact support.";
+    }
+
     return new Response(
-      `data: ${JSON.stringify({ error: message })}\n\n`,
-      { status: 500, headers: { "Content-Type": "text/event-stream" } },
+      `data: ${JSON.stringify({ error: userMessage, code: statusCode })}\n\n`,
+      { status: statusCode, headers: { "Content-Type": "text/event-stream" } },
     );
   }
 }

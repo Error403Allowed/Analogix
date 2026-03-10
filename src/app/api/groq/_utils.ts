@@ -6,14 +6,15 @@ const GROQ_CHAT_URL =
   process.env.GROQ_CHAT_URL || "https://api.groq.com/openai/v1/chat/completions";
 
 // Groq model lineup — all free tier, best-in-class per task
-const DEFAULT_MODEL   = "meta-llama/llama-4-scout-17b-16e-instruct"; // Llama 4, 128K ctx, fast & smart
-const DEFAULT_FALLBACK_MODEL = "meta-llama/llama-3.3-70b-versatile"; // Llama 3 as fallback
-const CODING_MODEL    = "meta-llama/llama-4-scout-17b-16e-instruct"; // Maverick handles code well too
-const REASONING_MODEL = "qwen/qwen3-32b";                                // Strong reasoning model
-const REASONING_FALLBACK_MODEL = "openai/gpt-oss-120b";                  // Fallback reasoning model
+const DEFAULT_MODEL            = "meta-llama/llama-4-scout-17b-16e-instruct"; // Llama 4 Scout, 128K ctx
+const DEFAULT_FALLBACK_MODEL   = "llama-3.3-70b-versatile";                    // Llama 3.3, reliable fallback
+const CODING_MODEL             = "meta-llama/llama-4-scout-17b-16e-instruct"; // Scout handles code well
+const REASONING_MODEL          = "qwen/qwen3-32b";                             // Qwen 3 reasoning
+const REASONING_FALLBACK_MODEL = "llama-3.3-70b-versatile";                    // Safe fallback (no preview needed)
+const LIGHTWEIGHT_MODEL        = "llama-3.1-8b-instant";                       // Fast, cheap — use for greeting/banner
 
 // Type definition: what kind of question is the user asking?
-export type TaskType = "coding" | "reasoning" | "default";
+export type TaskType = "coding" | "reasoning" | "default" | "lightweight";
 
 // ============================================================================
 // SMART QUESTION DETECTION: How we figure out what type of question it is
@@ -30,12 +31,31 @@ const CODING_KEYWORDS = [
 
 // Words that indicate a REASONING / MATH / SCIENCE question
 const REASONING_KEYWORDS = [
-  "prove", "proof", "derive", "calculate", "solve", "integral", "derivative", 
-  "equation", "theorem", "physics", "chemistry", "biology", "logic", "math", 
+  "prove", "proof", "derive", "calculate", "solve", "integral", "derivative",
+  "equation", "theorem", "physics", "chemistry", "biology", "logic", "math",
   "algebra", "geometry", "calculus", "trigonometry", "statistics", "probability",
   "science", "molecular", "atomic", "quantum", "formula", "vector", "matrix",
   "limit", "fraction", "decimal", "ratio", "percentage", "square root", "exponent"
 ];
+
+// Simple greetings/small talk that should use fast path
+const SIMPLE_MESSAGES = [
+  "hi", "hello", "hey", "greetings", "good morning", "good afternoon",
+  "good evening", "how are you", "what's up", "how's it going", "yo",
+  "thanks", "thank you", "bye", "goodbye", "see you", "ok", "okay",
+  "sure", "yes", "no", "maybe", "please", "help", "quick question"
+];
+
+const isSimpleMessage = (messages: Array<{ role: string; content: string }>): boolean => {
+  // Check if there's only one short user message
+  const userMessages = messages.filter(m => m.role === "user");
+  if (userMessages.length !== 1) return false;
+  
+  const content = userMessages[0].content.toLowerCase().trim();
+  if (content.length > 50) return false;
+  
+  return SIMPLE_MESSAGES.some(simple => content.includes(simple));
+};
 
 // ============================================================================
 // API KEY MANAGEMENT
@@ -46,19 +66,132 @@ const apiKeys = [
   process.env.GROQ_API_KEY_2,
 ].filter((key): key is string => Boolean(key));
 
-let nextApiKeyIndex = 0;
+// Simple round-robin: get next key index, wrapping around
+const getNextApiKeyIndex = (() => {
+  let index = 0;
+  return () => {
+    if (apiKeys.length === 0) return 0;
+    const currentIndex = index % apiKeys.length;
+    index = (index + 1) % apiKeys.length;
+    return currentIndex;
+  };
+})();
 
-const getNextApiKeyIndex = () => {
-  if (apiKeys.length === 0) return 0;
-  const currentIndex = nextApiKeyIndex % apiKeys.length;
-  nextApiKeyIndex = (nextApiKeyIndex + 1) % apiKeys.length;
-  return currentIndex;
+const getApiKeyAtIndex = (index: number) => {
+  if (apiKeys.length === 0 || index < 0 || index >= apiKeys.length) return null;
+  return apiKeys[index];
 };
 
-const getApiKeyAtIndex = (baseIndex: number, offset = 0) => {
-  if (apiKeys.length === 0) return null;
-  const index = (baseIndex + offset) % apiKeys.length;
-  return apiKeys[index];
+// ============================================================================
+// RATE LIMITER: Token bucket to prevent API overload
+// ============================================================================
+
+// Groq free tier limits (adjust if you have different limits)
+const RATE_LIMIT_CONFIG = {
+  // Requests per minute per API key (conservative to avoid 429s)
+  rpmPerKey: 10,
+  // Tokens per minute per API key — Groq free tier is 6000 TPM per key
+  // We use 14000 as a generous local-side cap (actual enforcement is by Groq).
+  // The local bucket is just a soft throttle, not a hard gate.
+  tpmPerKey: 14000,
+  // Minimum delay between requests (ms) - spreads requests out
+  minDelayMs: 300,
+  // Maximum concurrent requests per key (not global)
+  maxConcurrentPerKey: 2,
+};
+
+// Token bucket state per API key
+interface TokenBucket {
+  tokens: number;
+  lastRefill: number;
+  concurrentRequests: number;
+}
+
+const keyBuckets = new Map<number, TokenBucket>();
+
+const getOrCreateBucket = (keyIndex: number): TokenBucket => {
+  if (!keyBuckets.has(keyIndex)) {
+    keyBuckets.set(keyIndex, {
+      tokens: RATE_LIMIT_CONFIG.tpmPerKey,
+      lastRefill: Date.now(),
+      concurrentRequests: 0,
+    });
+  }
+  return keyBuckets.get(keyIndex)!;
+};
+
+const refillTokens = (bucket: TokenBucket) => {
+  const now = Date.now();
+  const elapsedMs = now - bucket.lastRefill;
+  // Refill at per-key rate only (not multiplied by key count)
+  const tokensPerMs = RATE_LIMIT_CONFIG.tpmPerKey / 60000;
+  const newTokens = Math.min(
+    RATE_LIMIT_CONFIG.tpmPerKey,
+    bucket.tokens + elapsedMs * tokensPerMs
+  );
+  bucket.tokens = newTokens;
+  bucket.lastRefill = now;
+};
+
+const waitForToken = async (
+  keyIndex: number,
+  requiredTokens: number
+): Promise<boolean> => {
+  const bucket = getOrCreateBucket(keyIndex);
+  refillTokens(bucket);
+
+  // Check concurrent request limit per key
+  if (bucket.concurrentRequests >= RATE_LIMIT_CONFIG.maxConcurrentPerKey) {
+    return false;
+  }
+
+  // If the request is larger than our entire local bucket, allow it anyway
+  // and let Groq's own rate limiting handle it. The local bucket is a soft throttle.
+  const effectiveRequired = Math.min(requiredTokens, RATE_LIMIT_CONFIG.tpmPerKey * 0.9);
+
+  if (bucket.tokens >= effectiveRequired) {
+    bucket.tokens -= effectiveRequired;
+    bucket.concurrentRequests++;
+    return true;
+  }
+
+  return false;
+};
+
+const releaseRequest = (keyIndex: number) => {
+  const bucket = getOrCreateBucket(keyIndex);
+  bucket.concurrentRequests = Math.max(0, bucket.concurrentRequests - 1);
+};
+
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Global request queue to serialize requests when rate limited
+const requestQueue: Array<() => void> = [];
+let isProcessingQueue = false;
+
+const enqueueRequest = (): Promise<void> => {
+  return new Promise(resolve => {
+    requestQueue.push(resolve);
+    if (!isProcessingQueue) {
+      processQueue();
+    }
+  });
+};
+
+const processQueue = async () => {
+  if (isProcessingQueue || requestQueue.length === 0) return;
+  
+  isProcessingQueue = true;
+  
+  while (requestQueue.length > 0) {
+    const resolve = requestQueue.shift();
+    if (resolve) {
+      await delay(RATE_LIMIT_CONFIG.minDelayMs);
+      resolve();
+    }
+  }
+  
+  isProcessingQueue = false;
 };
 
 // ============================================================================
@@ -66,26 +199,50 @@ const getApiKeyAtIndex = (baseIndex: number, offset = 0) => {
 // ============================================================================
 
 const parseErrorMessage = async (response: Response) => {
-  const raw = await response.text();
   try {
-    const parsed = JSON.parse(raw);
-    if (typeof parsed === "string") return parsed;
-    if (parsed?.error) return typeof parsed.error === "string" ? parsed.error : JSON.stringify(parsed.error);
-    return JSON.stringify(parsed);
-  } catch {
-    return raw || response.statusText;
+    const raw = await response.text();
+    if (!raw) return response.statusText || `HTTP ${response.status}`;
+    
+    try {
+      const parsed = JSON.parse(raw);
+      if (typeof parsed === "string") return parsed;
+      if (parsed?.error) {
+        if (typeof parsed.error === "string") return parsed.error;
+        if (typeof parsed.error === "object" && parsed.error.message) {
+          return parsed.error.message;
+        }
+        return JSON.stringify(parsed.error);
+      }
+      if (parsed?.message) return parsed.message;
+      return JSON.stringify(parsed);
+    } catch {
+      return raw.slice(0, 500); // Return first 500 chars of raw response
+    }
+  } catch (e) {
+    console.error("[parseErrorMessage] Failed to parse error response:", e);
+    return response.statusText || `HTTP ${response.status}`;
   }
 };
 
 export const assertApiKeys = () => {
   if (apiKeys.length === 0) {
-    throw new Error("Missing GROQ_API_KEY");
+    const errorMsg = "Missing GROQ_API_KEY environment variable. Please check your .env.local file.";
+    console.error("[assertApiKeys]", errorMsg);
+    throw new Error(errorMsg);
   }
 };
 
-export const formatError = (error: unknown) => {
-  if (error instanceof Error) return error.message;
-  return "Unknown error";
+export const formatError = (error: unknown): string => {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  if (typeof error === "string") {
+    return error;
+  }
+  if (error && typeof error === "object" && "message" in error) {
+    return String((error as { message: unknown }).message);
+  }
+  return "Unknown error occurred";
 };
 
 // ============================================================================
@@ -136,6 +293,8 @@ const getModelsForTaskType = (taskType: TaskType): string[] => {
       return [CODING_MODEL, DEFAULT_MODEL];
     case "reasoning":
       return [REASONING_MODEL, REASONING_FALLBACK_MODEL, DEFAULT_MODEL, DEFAULT_FALLBACK_MODEL];
+    case "lightweight":
+      return [LIGHTWEIGHT_MODEL, DEFAULT_FALLBACK_MODEL];
     case "default":
     default:
       return [DEFAULT_MODEL, DEFAULT_FALLBACK_MODEL];
@@ -160,6 +319,67 @@ const foldSystemIntoUser = (
 };
 
 // ============================================================================
+// FAST PATH: For simple messages like greetings - no queue, lightweight model
+// ============================================================================
+
+const callFastChat = async (
+  payload: {
+    messages: Array<{ role: "system" | "user" | "assistant"; content: string }>;
+    max_tokens: number;
+    temperature: number;
+  }
+): Promise<string> => {
+  assertApiKeys();
+
+  const model = LIGHTWEIGHT_MODEL;
+  const keyIndex = getNextApiKeyIndex();
+  const apiKey = getApiKeyAtIndex(keyIndex);
+
+  if (!apiKey) {
+    throw new Error("No API key available");
+  }
+
+  console.log(`[Groq] FAST PATH: ${model} with key #${keyIndex + 1}`);
+
+  let timeoutId: NodeJS.Timeout | null = null;
+
+  try {
+    const controller = new AbortController();
+    timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout for fast path
+
+    const response = await fetch(GROQ_CHAT_URL, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model,
+        messages: payload.messages,
+        max_tokens: Math.min(payload.max_tokens, 500), // Limit response length for fast path
+        temperature: payload.temperature,
+      }),
+      signal: controller.signal,
+    });
+
+    if (timeoutId) clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      const errorMessage = await parseErrorMessage(response);
+      // If fast path fails, still return an error - don't fall back to slow path
+      throw new Error(`Fast path failed: ${response.status} - ${errorMessage}`);
+    }
+
+    const data = await response.json();
+    return data.choices?.[0]?.message?.content || "";
+
+  } catch (error) {
+    if (timeoutId) clearTimeout(timeoutId);
+    throw error;
+  }
+};
+
+// ============================================================================
 // MAIN API CALL
 // ============================================================================
 
@@ -172,76 +392,145 @@ export const callHfChat = async (
   taskType: TaskType = "default"
 ) => {
   assertApiKeys();
-  let lastError: unknown = null;
 
-  const tryModelWithApiKey = async (model: string, retryCount = 0): Promise<string> => {
-    const keyIndexBase = getNextApiKeyIndex();
-    const activeKey = getApiKeyAtIndex(keyIndexBase, retryCount);
-    
-    if (!activeKey) throw new Error("No Groq API keys available");
-
-    try {
-      const response = await fetch(GROQ_CHAT_URL, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${activeKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model,
-          // Qwen3-32b works best with instructions in user messages, not system prompts
-          messages: model === REASONING_MODEL
-            ? foldSystemIntoUser(payload.messages)
-            : payload.messages,
-          max_tokens: payload.max_tokens,
-          temperature: payload.temperature,
-          // Disable Qwen3's slow "thinking" mode for non-reasoning tasks
-          ...(model === REASONING_MODEL && { reasoning_effort: "none" }),
-        }),
-      });
-
-      if (!response.ok) {
-        const errorMessage = await parseErrorMessage(response);
-        throw new Error(`Groq API Error: ${response.status} - ${errorMessage}`);
-      }
-
-      const data = await response.json();
-      return data.choices?.[0]?.message?.content || "";
-      
-    } catch (error) {
-      const message = formatError(error);
-      lastError = error;
-      const statusMatch = message.match(/Groq API Error: (\d+)/);
-      const statusCode = statusMatch ? statusMatch[1] : "ERR";
-      console.error(`[Groq] ${model} ❌ ${statusCode}`);
-      
-      if (retryCount < apiKeys.length - 1) {
-        return tryModelWithApiKey(model, retryCount + 1);
-      }
-      throw error;
-    }
-  };
+  // FAST PATH: Simple messages like "hi" skip the queue and use lightweight model only
+  if (isSimpleMessage(payload.messages)) {
+    return callFastChat(payload);
+  }
 
   const taskModels = getModelsForTaskType(taskType);
   const modelsToTry = [...new Set([...taskModels, DEFAULT_MODEL])];
-  
-  console.log(`[Groq] Task: "${taskType}" → ${modelsToTry.join(" → ")}`);
 
+  // Estimate tokens in the request (~4 chars per token for English)
+  const messageText = payload.messages.map(m => m.content).join(" ");
+  const estimatedTokens = Math.ceil(messageText.length / 4) + payload.max_tokens;
+
+  console.log(`[Groq] Task: "${taskType}" → Models: ${modelsToTry.join(" → ")} | API Keys: ${apiKeys.length} | Est. tokens: ${estimatedTokens}`);
+
+  let lastError: unknown = null;
+  const startingKeyIndex = getNextApiKeyIndex();
+
+  // Wait in queue to prevent overwhelming the API
+  await enqueueRequest();
+
+  // Try each model with each API key
   for (const model of modelsToTry) {
-    try {
-      console.log(`[Groq] Trying: ${model}`);
-      return await tryModelWithApiKey(model);
-    } catch (error) {
-      const message = formatError(error);
-      lastError = error;
-      const statusMatch = message.match(/Groq API Error: (\d+)/);
-      const statusCode = statusMatch ? statusMatch[1] : "ERR";
-      console.warn(`[Groq] ${model} failed (${statusCode}), next...`);
-      continue;
+    for (let keyOffset = 0; keyOffset < apiKeys.length; keyOffset++) {
+      const keyIndex = (startingKeyIndex + keyOffset) % apiKeys.length;
+      const apiKey = getApiKeyAtIndex(keyIndex);
+
+      if (!apiKey) continue;
+
+      // Check rate limit before attempting request — retry up to 3 times with backoff
+      let gotToken = false;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        gotToken = await waitForToken(keyIndex, estimatedTokens);
+        if (gotToken) break;
+        console.log(`[Groq] Local rate limit for key #${keyIndex + 1}, waiting ${(attempt + 1) * 2}s...`);
+        await delay((attempt + 1) * 2000);
+      }
+      if (!gotToken) {
+        console.log(`[Groq] Key #${keyIndex + 1} still rate-limited after retries, skipping.`);
+        continue;
+      }
+
+      let timeoutId: NodeJS.Timeout | null = null;
+
+      try {
+        console.log(`[Groq] Trying: ${model} with key #${keyIndex + 1}`);
+
+        // Set up timeout for the request (60 seconds)
+        const controller = new AbortController();
+        timeoutId = setTimeout(() => {
+          console.warn(`[Groq] Request timeout for ${model} after 60s`);
+          controller.abort();
+        }, 60000);
+
+        const response = await fetch(GROQ_CHAT_URL, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model,
+            messages: model === REASONING_MODEL
+              ? foldSystemIntoUser(payload.messages)
+              : payload.messages,
+            max_tokens: payload.max_tokens,
+            temperature: payload.temperature,
+            ...(model === REASONING_MODEL && { reasoning_effort: "none" }),
+          }),
+          signal: controller.signal,
+        });
+
+        // Clear timeout and release slot
+        if (timeoutId) clearTimeout(timeoutId);
+        releaseRequest(keyIndex);
+
+        if (!response.ok) {
+          const errorMessage = await parseErrorMessage(response);
+          const statusCode = response.status;
+
+          // On 429 (rate limit), try next key before giving up on this model
+          if (statusCode === 429) {
+            console.warn(`[Groq] ${model} rate limited on key #${keyIndex + 1}, trying next key...`);
+            // Add extra delay on rate limit
+            await delay(3000);
+            continue;
+          }
+
+          // On 413 (request too large), this model won't work - try next model
+          if (statusCode === 413) {
+            console.warn(`[Groq] ${model} request too large on key #${keyIndex + 1}, trying next model...`);
+            break; // Try next model (not just next key)
+          }
+
+          // On 401/403, API key is invalid - don't retry with this key
+          if (statusCode === 401 || statusCode === 403) {
+            console.error(`[Groq] ${model} authentication failed on key #${keyIndex + 1} - check API key`);
+            continue; // Try next key
+          }
+
+          // On 5xx errors, Groq has an issue - try next key
+          if (statusCode >= 500 && statusCode < 600) {
+            console.warn(`[Groq] ${model} server error (${statusCode}) on key #${keyIndex + 1}, trying next key...`);
+            await delay(1000);
+            continue;
+          }
+
+          throw new Error(`Groq API Error: ${statusCode} - ${errorMessage}`);
+        }
+
+        const data = await response.json();
+        const content = data.choices?.[0]?.message?.content || "";
+        console.log(`[Groq] ${model} ✅ success with key #${keyIndex + 1}`);
+        return content;
+
+      } catch (error) {
+        // Clean up timeout
+        if (timeoutId) clearTimeout(timeoutId);
+        releaseRequest(keyIndex);
+
+        lastError = error;
+        
+        // Handle abort/timeout errors
+        if (error instanceof Error && error.name === "AbortError") {
+          console.warn(`[Groq] Request timeout for model ${model}`);
+          continue;
+        }
+
+        const message = formatError(error);
+        const statusMatch = message.match(/Groq API Error: (\d+)/);
+        const statusCode = statusMatch ? statusMatch[1] : "ERR";
+        console.warn(`[Groq] ${model} ❌ key #${keyIndex + 1} failed (${statusCode})`);
+        // Continue to next API key
+      }
     }
+    // All keys exhausted for this model, try next model
   }
 
-  throw lastError instanceof Error ? lastError : new Error("AI request failed after trying all models");
+  throw lastError instanceof Error ? lastError : new Error("AI request failed after trying all models and API keys");
 };
 
 // ============================================================================
@@ -257,72 +546,136 @@ export const callHfChatStream = async (
   taskType: TaskType = "default"
 ) => {
   assertApiKeys();
-  let lastError: unknown = null;
-
-  const tryModelWithApiKey = async (model: string, retryCount = 0): Promise<ReadableStream> => {
-    const keyIndexBase = getNextApiKeyIndex();
-    const activeKey = getApiKeyAtIndex(keyIndexBase, retryCount);
-
-    if (!activeKey) throw new Error("No Groq API keys available");
-
-    try {
-      const response = await fetch(GROQ_CHAT_URL, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${activeKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model,
-          stream: true,
-          messages: model === REASONING_MODEL
-            ? foldSystemIntoUser(payload.messages)
-            : payload.messages,
-          max_tokens: payload.max_tokens,
-          temperature: payload.temperature,
-          ...(model === REASONING_MODEL && { reasoning_effort: "none" }),
-        }),
-      });
-
-      if (!response.ok) {
-        const errorMessage = await parseErrorMessage(response);
-        throw new Error(`Groq API Error: ${response.status} - ${errorMessage}`);
-      }
-
-      return response.body!;
-
-    } catch (error) {
-      const message = formatError(error);
-      lastError = error;
-      const statusMatch = message.match(/Groq API Error: (\d+)/);
-      const statusCode = statusMatch ? statusMatch[1] : "ERR";
-      console.error(`[Groq] ${model} ❌ ${statusCode}`);
-
-      if (retryCount < apiKeys.length - 1) {
-        return tryModelWithApiKey(model, retryCount + 1);
-      }
-      throw error;
-    }
-  };
 
   const taskModels = getModelsForTaskType(taskType);
   const modelsToTry = [...new Set([...taskModels, DEFAULT_MODEL])];
 
-  console.log(`[Groq] Task: "${taskType}" → ${modelsToTry.join(" → ")}`);
+  // Estimate tokens in the request (~4 chars per token for English)
+  const messageText = payload.messages.map(m => m.content).join(" ");
+  const estimatedTokens = Math.ceil(messageText.length / 4) + payload.max_tokens;
 
+  console.log(`[Groq] Task: "${taskType}" → Models: ${modelsToTry.join(" → ")} | API Keys: ${apiKeys.length} | Est. tokens: ${estimatedTokens}`);
+
+  let lastError: unknown = null;
+  const startingKeyIndex = getNextApiKeyIndex();
+
+  // Wait in queue to prevent overwhelming the API
+  await enqueueRequest();
+
+  // Try each model with each API key
   for (const model of modelsToTry) {
-    try {
-      console.log(`[Groq] Trying: ${model}`);
-      return await tryModelWithApiKey(model);
-    } catch (error) {
-      const message = formatError(error);
-      lastError = error;
-      const statusMatch = message.match(/Groq API Error: (\d+)/);
-      const statusCode = statusMatch ? statusMatch[1] : "ERR";
-      console.warn(`[Groq] ${model} failed (${statusCode}), next...`);
-      continue;
+    for (let keyOffset = 0; keyOffset < apiKeys.length; keyOffset++) {
+      const keyIndex = (startingKeyIndex + keyOffset) % apiKeys.length;
+      const apiKey = getApiKeyAtIndex(keyIndex);
+
+      if (!apiKey) continue;
+
+      // Check rate limit before attempting request — retry up to 3 times with backoff
+      let gotToken = false;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        gotToken = await waitForToken(keyIndex, estimatedTokens);
+        if (gotToken) break;
+        console.log(`[Groq] Local rate limit for key #${keyIndex + 1}, waiting ${(attempt + 1) * 2}s...`);
+        await delay((attempt + 1) * 2000);
+      }
+      if (!gotToken) {
+        console.log(`[Groq] Key #${keyIndex + 1} still rate-limited after retries, skipping.`);
+        continue;
+      }
+
+      let timeoutId: NodeJS.Timeout | null = null;
+
+      try {
+        console.log(`[Groq] Trying: ${model} with key #${keyIndex + 1} (streaming)`);
+
+        // Set up timeout for the request (90 seconds for streaming)
+        const controller = new AbortController();
+        timeoutId = setTimeout(() => {
+          console.warn(`[Groq] Streaming request timeout for ${model} after 90s`);
+          controller.abort();
+        }, 90000);
+
+        const response = await fetch(GROQ_CHAT_URL, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model,
+            stream: true,
+            messages: model === REASONING_MODEL
+              ? foldSystemIntoUser(payload.messages)
+              : payload.messages,
+            max_tokens: payload.max_tokens,
+            temperature: payload.temperature,
+            ...(model === REASONING_MODEL && { reasoning_effort: "none" }),
+          }),
+          signal: controller.signal,
+        });
+
+        // Clear timeout and release slot
+        if (timeoutId) clearTimeout(timeoutId);
+        releaseRequest(keyIndex);
+
+        if (!response.ok) {
+          const errorMessage = await parseErrorMessage(response);
+          const statusCode = response.status;
+
+          // On 429 (rate limit), try next key before giving up on this model
+          if (statusCode === 429) {
+            console.warn(`[Groq] ${model} rate limited on key #${keyIndex + 1}, trying next key...`);
+            await delay(3000);
+            continue;
+          }
+
+          // On 413 (request too large), this model won't work - try next model
+          if (statusCode === 413) {
+            console.warn(`[Groq] ${model} request too large on key #${keyIndex + 1}, trying next model...`);
+            break;
+          }
+
+          // On 401/403, API key is invalid
+          if (statusCode === 401 || statusCode === 403) {
+            console.error(`[Groq] ${model} authentication failed on key #${keyIndex + 1} - check API key`);
+            continue;
+          }
+
+          // On 5xx errors, Groq has an issue - try next key
+          if (statusCode >= 500 && statusCode < 600) {
+            console.warn(`[Groq] ${model} server error (${statusCode}) on key #${keyIndex + 1}, trying next key...`);
+            await delay(1000);
+            continue;
+          }
+
+          throw new Error(`Groq API Error: ${statusCode} - ${errorMessage}`);
+        }
+
+        console.log(`[Groq] ${model} ✅ streaming success with key #${keyIndex + 1}`);
+        return response.body!;
+
+      } catch (error) {
+        // Clean up timeout
+        if (timeoutId) clearTimeout(timeoutId);
+        releaseRequest(keyIndex);
+
+        lastError = error;
+
+        // Handle abort/timeout errors
+        if (error instanceof Error && error.name === "AbortError") {
+          console.warn(`[Groq] Streaming request timeout for model ${model}`);
+          continue;
+        }
+
+        const message = formatError(error);
+        const statusMatch = message.match(/Groq API Error: (\d+)/);
+        const statusCode = statusMatch ? statusMatch[1] : "ERR";
+        console.warn(`[Groq] ${model} ❌ key #${keyIndex + 1} failed (${statusCode})`);
+        // Continue to next API key
+      }
     }
+    // All keys exhausted for this model, try next model
   }
 
-  throw lastError instanceof Error ? lastError : new Error("AI request failed after trying all models");
+  throw lastError instanceof Error ? lastError : new Error("AI request failed after trying all models and API keys");
 };

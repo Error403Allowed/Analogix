@@ -1385,7 +1385,7 @@ const Chat = () => {
                 className={`text-xs px-0 py-0 transition-all ${analogyModeEnabled ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
                 title={analogyModeEnabled ? "Switch to school-focused answers" : "Switch to real-world learning with analogies"}
               >
-                {analogyModeEnabled ? "Real learning enabled" : "This is for school!"}
+                {analogyModeEnabled ? "Learning Mode" : "Schoolwork!"}
               </button>
 
               <div className="h-3.5 w-px bg-border/40" />

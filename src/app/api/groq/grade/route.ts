@@ -24,7 +24,7 @@ export async function POST(request: Request) {
       ],
       max_tokens: 100,
       temperature: 0.3,
-    });
+    }, "lightweight");
 
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     const jsonStr = jsonMatch

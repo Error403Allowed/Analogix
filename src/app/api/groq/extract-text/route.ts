@@ -79,38 +79,66 @@ export async function POST(request: Request) {
         ? "image/jpeg"
         : mimeType;
 
-      const apiKey = process.env.GROQ_API_KEY;
-      if (!apiKey) throw new Error("Missing GROQ_API_KEY");
+      // Try all available API keys with fallback
+      const apiKeys = [
+        process.env.GROQ_API_KEY,
+        process.env.GROQ_API_KEY_2,
+      ].filter((key): key is string => Boolean(key));
 
-      const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: VISION_MODEL,
-          max_tokens: 2048,
-          messages: [{
-            role: "user",
-            content: [
-              {
-                type: "image_url",
-                image_url: { url: `data:${safeMime};base64,${base64}` },
-              },
-              {
-                type: "text",
-                text: "You are helping an Australian secondary school student. Describe this image in full detail. If it contains text, transcribe it exactly. If it's a diagram, chart, screenshot, or notes, describe all content clearly and completely so the student can discuss it with their AI tutor.",
-              },
-            ],
-          }],
-        }),
-      });
+      if (apiKeys.length === 0) throw new Error("Missing GROQ_API_KEY");
 
-      if (!res.ok) {
-        const err = await res.text();
-        console.error("[extract-text] Vision API error:", err);
-        throw new Error(`Vision API failed: ${res.status}`);
+      let lastError: unknown = null;
+      let response: Response | null = null;
+
+      for (let i = 0; i < apiKeys.length; i++) {
+        try {
+          response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${apiKeys[i]}`, "Content-Type": "application/json" },
+            body: JSON.stringify({
+              model: VISION_MODEL,
+              max_tokens: 2048,
+              messages: [{
+                role: "user",
+                content: [
+                  {
+                    type: "image_url",
+                    image_url: { url: `data:${safeMime};base64,${base64}` },
+                  },
+                  {
+                    type: "text",
+                    text: "You are helping an Australian secondary school student. Describe this image in full detail. If it contains text, transcribe it exactly. If it's a diagram, chart, screenshot, or notes, describe all content clearly and completely so the student can discuss it with their AI tutor.",
+                  },
+                ],
+              }],
+            }),
+          });
+
+          if (!response.ok) {
+            const err = await response.text();
+            if (response.status === 429) {
+              console.warn(`[extract-text] Vision API rate limited on key #${i + 1}, trying next key...`);
+              continue; // Try next key
+            }
+            throw new Error(`Vision API Error: ${response.status} - ${err}`);
+          }
+
+          console.log(`[extract-text] Vision API ✅ success with key #${i + 1}`);
+          break; // Success
+
+        } catch (error) {
+          lastError = error;
+          console.warn(`[extract-text] Vision API ❌ key #${i + 1} failed`);
+        }
       }
 
-      const json = await res.json();
+      if (!response || !response.ok) {
+        const msg = lastError instanceof Error ? lastError.message : "Vision API failed";
+        console.error("[extract-text] All API keys exhausted:", msg);
+        throw new Error(msg);
+      }
+
+      const json = await response.json();
       text = json.choices?.[0]?.message?.content || "";
 
     // ── Fallback: try reading as plain text ─────────────────────────────────

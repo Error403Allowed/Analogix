@@ -22,7 +22,7 @@ export async function POST(request: Request) {
       ],
       max_tokens: 50,
       temperature: 1.0,
-    });
+    }, "lightweight");
 
     return NextResponse.json({ text: content || "" });
   } catch (error) {

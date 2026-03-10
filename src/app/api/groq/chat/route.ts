@@ -237,7 +237,7 @@ REMEMBER: You aren't just an AI with an 'analogy' feature. You are the bridge be
     // ========================================================================
     // STEP 4: Send to AI and return the response
     // ========================================================================
-    
+
     const content = await callHfChat(
       {
         messages: [
@@ -257,14 +257,40 @@ REMEMBER: You aren't just an AI with an 'analogy' feature. You are the bridge be
     );
 
     return NextResponse.json({ role: "assistant", content });
-    
+
   } catch (error) {
     // If anything goes wrong, log it and return a friendly error message
     const message = formatError(error);
-    console.error("[/api/hf/chat] Error:", message);
+    console.error("[/api/hf/chat] Error details:", {
+      message,
+      name: error instanceof Error ? error.name : "Unknown",
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+
+    // Determine appropriate status code and user message based on error type
+    let statusCode = 500;
+    let userMessage = "AI service unavailable. Please try again in a moment.";
+
+    if (message.includes("Missing GROQ_API_KEY")) {
+      statusCode = 503;
+      userMessage = "AI service not configured. Please contact support.";
+    } else if (message.includes("timeout")) {
+      statusCode = 504;
+      userMessage = "Request timed out. Please try again.";
+    } else if (message.includes("rate limit") || message.includes("429")) {
+      statusCode = 429;
+      userMessage = "Too many requests. Please wait a moment and try again.";
+    } else if (message.includes("413") || message.includes("too large")) {
+      statusCode = 413;
+      userMessage = "Message too long. Please shorten your message.";
+    } else if (message.includes("401") || message.includes("403")) {
+      statusCode = 503;
+      userMessage = "AI service authentication failed. Please contact support.";
+    }
+
     return NextResponse.json(
-      { role: "assistant", content: "AI service unavailable.", error: message },
-      { status: 500 },
+      { role: "assistant", content: userMessage, error: message },
+      { status: statusCode },
     );
   }
 }

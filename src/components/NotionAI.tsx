@@ -72,45 +72,26 @@ async function streamAI(
   onDone:  () => void,
   onError: (e: string) => void,
   signal:  AbortSignal,
+  subject?: string,
 ) {
   try {
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
+    const res = await fetch("/api/groq/notion-ai", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       signal,
-      body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 1500,
-        stream: true,
-        messages: [{ role: "user", content: prompt }],
-      }),
+      body: JSON.stringify({ prompt, subject }),
     });
 
     if (!res.ok || !res.body) { onError("AI service unavailable."); return; }
 
     const reader  = res.body.getReader();
     const decoder = new TextDecoder();
-    let   buf     = "";
 
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
-      buf += decoder.decode(value, { stream: true });
-      const lines = buf.split("\n");
-      buf = lines.pop() ?? "";
-      for (const line of lines) {
-        if (!line.startsWith("data: ")) continue;
-        const raw = line.slice(6).trim();
-        if (!raw || raw === "[DONE]") continue;
-        try {
-          const parsed = JSON.parse(raw);
-          // Anthropic SSE: content_block_delta carries text_delta chunks
-          if (parsed?.type === "content_block_delta" && parsed?.delta?.type === "text_delta") {
-            const t = parsed.delta.text ?? "";
-            if (t) onChunk(t);
-          }
-        } catch { /* skip malformed lines */ }
-      }
+      const text = decoder.decode(value, { stream: true });
+      if (text) onChunk(text);
     }
     onDone();
   } catch (e: any) {
@@ -131,6 +112,7 @@ function liveWrite(
   onStatus: (s: "writing" | "done" | "error") => void,
   onRange:  (from: number, to: number) => void,
   onError:  (e: string) => void,
+  subject?: string,
 ): LiveWriter {
   const ctrl = new AbortController();
   let fromPos = -1;
@@ -157,6 +139,7 @@ function liveWrite(
       onError(err);
     },
     ctrl.signal,
+    subject,
   );
 
   onStatus("writing");
@@ -254,6 +237,7 @@ export function AICommandPalette({ editor, subject, position, onClose }: Command
       },
       () => {},
       (e) => setError(e),
+      subject,
     );
   }, [editor, subject, writing, onClose]);
 
@@ -448,6 +432,7 @@ export function FloatingAIToolbar({
       },
       (_from, to) => setAiTo(to),
       (e) => setError(e),
+      subject,
     );
   }, [editor, subject, selectedText, selFrom, selTo]);
 
