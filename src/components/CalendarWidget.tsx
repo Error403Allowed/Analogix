@@ -207,8 +207,8 @@ const CalendarWidget = ({ streak = 0, streakLabel = "days" }: CalendarWidgetProp
                             <button key={t} onClick={() => setEvType(t)}
                               className={cn("text-[9px] font-bold uppercase px-2 py-1 rounded-md transition-all",
                                 evType === t
-                                  ? t === "exam" ? "bg-red-500/15 text-red-600"
-                                    : t === "assignment" ? "bg-amber-500/15 text-amber-600"
+                                  ? (t as string) === "exam" ? "bg-red-500/15 text-red-600"
+                                    : (t as string) === "assignment" ? "bg-amber-500/15 text-amber-600"
                                     : "bg-blue-500/15 text-blue-600"
                                   : "text-foreground/60 hover:text-foreground bg-card/60 border border-border/50")}
                             >

@@ -1439,7 +1439,7 @@ const Chat = () => {
                 onScroll={updateScrollButton}
                 className="absolute inset-0 overflow-y-auto min-h-0 chat-scroll"
               >
-                <div className="mx-auto w-full max-w-6xl px-4 flex flex-col space-y-6 pb-40 sm:pb-28 pt-4 sm:pt-4">
+                <div className="mx-auto w-full px-4 flex flex-col space-y-6 pb-40 sm:pb-28 pt-4 sm:pt-4">
                   {/* Empty state — shown before any messages */}
                   {messages.length === 0 && !isTyping && (
                     <motion.div
@@ -1606,7 +1606,7 @@ const Chat = () => {
                                 ))}
                               </div>
                             )}
-                            <div className="max-w-[85%] sm:max-w-[75%] message-bubble-user">
+                            <div className="max-w-[92%] sm:max-w-[85%] message-bubble-user">
                               <div className="whitespace-pre-wrap text-sm leading-relaxed">
                                 <MarkdownRenderer content={message.content} />
                               </div>
