@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   hobbies       TEXT[]    DEFAULT '{}',
   hobby_ids     TEXT[]    DEFAULT '{}',
   hobby_details JSONB     DEFAULT '{}',
+  timezone      TEXT      DEFAULT 'Australia/Sydney',
   onboarding_complete BOOLEAN DEFAULT FALSE,
   created_at    TIMESTAMPTZ DEFAULT NOW(),
   updated_at    TIMESTAMPTZ DEFAULT NOW()

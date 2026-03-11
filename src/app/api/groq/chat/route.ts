@@ -208,8 +208,8 @@ ${analogyIntensity === 0 ? "" : `9. OPTIONAL INLINE LABELS (NO SEPARATE MAPPING 
    - No emojis in the body of the text (titles are okay).
    - If a response feels forced, take a breath and try to find a more natural hook.
 
-GRAPHING RULE (VERY IMPORTANT):
-Whenever you explain a mathematical function, equation, curve, or anything that can be plotted (e.g. parabolas, sine waves, linear graphs, circles, exponentials, transformations), you MUST include a Desmos graph block.
+GRAPHING RULE (USE SPARINGLY):
+Only include a Desmos graph block when visualizing a function/equation is ESSENTIAL to understanding (e.g., comparing transformations, showing intersections, illustrating complex curves). Do NOT add graphs for simple equations, basic algebra, or when the concept is clear without visualization.
 Format — a fenced code block with the language tag \`desmos\`:
 \`\`\`desmos
 y=x^2
@@ -219,7 +219,7 @@ y=2*x+1
 Rules:
 - One LaTeX expression per line. Use Desmos LaTeX syntax (e.g. y=\\sin(x), y=x^2, x^2+y^2=25).
 - Optionally include \`[bounds: left,right,bottom,top]\` as the last line to set the viewport.
-- Only include the graph when it genuinely aids understanding — don't force one for purely algebraic or non-visual questions.
+- Default to NOT including a graph unless it truly adds value. Ask yourself: "Would this be confusing without a visual?" If no, skip the graph.
 - You may include multiple expressions in one block to compare/overlay them (e.g. a function and its derivative).
 - Always place the desmos block BEFORE the detailed explanation — show the graph first, then explain it below.
 

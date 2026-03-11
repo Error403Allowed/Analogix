@@ -62,7 +62,7 @@ const RESOURCES: SubjectResources[] = [
       { title: "Khan Academy – Maths Practice", url: "https://www.khanacademy.org/math", description: "Adaptive practice tests across all topics", free: true },
       { title: "Integral Maths – Topic Tests", url: "https://integralmaths.org/", description: "Topic-based practice papers used by UK/Aus schools", free: false },
       { title: "AMT Australian Mathematics Competition – Past Papers", url: "https://www.amt.edu.au/competitions/amc", description: "Years 7–12 competition papers", free: true },
-      { title: "UNSW Maths Competition", url: "https://www.unsw.edu.au/engage/schools/competition-programs/maths-competition", description: "National competition for Years 3–12", free: true },
+      { title: "UNSW Maths Competition", url: "https://www.unsw.edu.au/science/our-schools/maths/engage-with-us/high-school-students-and-teachers/unsw-school-mathematics-competition", description: "National competition for Years 3–12", free: true },
     ],
     textbooks: [
       { title: "OpenStax Algebra and Trigonometry 2e", url: "https://openstax.org/details/books/algebra-and-trigonometry-2e", free: true },

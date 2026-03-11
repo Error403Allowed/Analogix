@@ -87,23 +87,65 @@ export async function buildCalendarContext(supabase: AnySupabase, userId: string
 
   if (events.length === 0 && deadlines.length === 0) return "";
 
+  // Find the very next event/deadline for quick reference
+  const allItems = [
+    ...events.map(e => ({ title: e.title, date: new Date(e.date), type: e.type, kind: "event" as const, subject: e.subject, description: e.description })),
+    ...deadlines.map(d => ({ title: d.title, date: new Date(d.dueDate), type: "deadline", kind: "deadline" as const, subject: d.subject })),
+  ].filter(i => !isNaN(i.date.getTime())).sort((a, b) => a.date.getTime() - b.date.getTime());
+  
+  const nextItem = allItems.find(i => i.date >= now);
+  const nextItemStr = nextItem 
+    ? `Next: ${nextItem.kind === "event" ? nextItem.type : "Deadline"} "${nextItem.title}"${nextItem.subject ? ` [${nextItem.subject}]` : ""} on ${formatDate(nextItem.date.toISOString())}. `
+    : "";
+
+  // Find next class/lesson specifically
+  const nextClass = allItems.find(i => i.date >= now && (i.type === "class" || i.type === "lesson" || i.title.toLowerCase().includes("class") || i.title.toLowerCase().includes("lesson")));
+  const nextClassStr = nextClass && nextClass !== nextItem
+    ? `Next class: "${nextClass.title}"${nextClass.subject ? ` [${nextClass.subject}]` : ""} on ${formatDate(nextClass.date.toISOString())}. `
+    : "";
+
   const lines: string[] = [
-    `Today is ${formatDate(now.toISOString())}.`,
+    `Today is ${formatDate(now.toISOString())}. ${nextItemStr}${nextClassStr}`,
     "",
   ];
 
   if (events.length > 0) {
-    lines.push("UPCOMING EVENTS:");
-    for (const e of events) {
-      const time = formatTime(e.date);
-      const dateStr = formatDate(e.date);
-      const timeStr = time ? ` at ${time}` : "";
-      const subjectStr = e.subject ? ` [${e.subject}]` : "";
-      const descStr = e.description ? ` — ${e.description}` : "";
-      const typeLabel = e.type.charAt(0).toUpperCase() + e.type.slice(1);
-      lines.push(`  • ${typeLabel}: "${e.title}"${subjectStr} — ${dateStr}${timeStr}${descStr}`);
+    // Extract and highlight classes/lessons separately
+    const classes = events.filter(e => e.type === "class" || e.type === "lesson" || e.title.toLowerCase().includes("class") || e.title.toLowerCase().includes("lesson"));
+    const otherEvents = events.filter(e => !classes.includes(e));
+    
+    if (classes.length > 0) {
+      lines.push("CLASSES:");
+      for (const c of classes.slice(0, 10)) {
+        const time = formatTime(c.date);
+        const dateStr = formatDate(c.date);
+        const timeStr = time ? ` at ${time}` : "";
+        const subjectStr = c.subject ? ` [${c.subject}]` : "";
+        const descStr = c.description ? ` — ${c.description}` : "";
+        lines.push(`  • "${c.title}"${subjectStr} — ${dateStr}${timeStr}${descStr}`);
+      }
+      if (classes.length > 10) {
+        lines.push(`  ... and ${classes.length - 10} more classes`);
+      }
+      lines.push("");
     }
-    lines.push("");
+    
+    if (otherEvents.length > 0) {
+      lines.push("OTHER EVENTS:");
+      for (const e of otherEvents.slice(0, 10)) {
+        const time = formatTime(e.date);
+        const dateStr = formatDate(e.date);
+        const timeStr = time ? ` at ${time}` : "";
+        const subjectStr = e.subject ? ` [${e.subject}]` : "";
+        const descStr = e.description ? ` — ${e.description}` : "";
+        const typeLabel = e.type.charAt(0).toUpperCase() + e.type.slice(1);
+        lines.push(`  • ${typeLabel}: "${e.title}"${subjectStr} — ${dateStr}${timeStr}${descStr}`);
+      }
+      if (otherEvents.length > 10) {
+        lines.push(`  ... and ${otherEvents.length - 10} more events`);
+      }
+      lines.push("");
+    }
   }
 
   if (deadlines.length > 0) {

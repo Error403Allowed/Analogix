@@ -341,11 +341,12 @@ const Onboarding = () => {
       const supabase = createClient();
       const { data: { user: currentUser } } = await supabase.auth.getUser();
       if (currentUser) {
+        const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
         await supabase.from("profiles").upsert({
           id: currentUser.id, name: prefs.name, grade: prefs.grade, state: prefs.state,
           subjects: prefs.subjects, hobbies: prefs.hobbies, hobby_ids: prefs.hobbyIds,
           hobby_details: prefs.hobbyDetails, onboarding_complete: true,
-          updated_at: new Date().toISOString(),
+          timezone, updated_at: new Date().toISOString(),
         }, { onConflict: "id" });
       }
     } catch (e) { console.error("[Onboarding] Supabase save failed:", e); }

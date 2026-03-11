@@ -339,6 +339,16 @@ const callFastChat = async (
     throw new Error("No API key available");
   }
 
+  // Estimate token size - skip fast path if request is too large
+  const messageText = payload.messages.map(m => m.content).join(" ");
+  const estimatedTokens = Math.ceil(messageText.length / 3.5);
+  const FAST_PATH_TOKEN_LIMIT = 5000; // Leave room for response tokens
+
+  if (estimatedTokens > FAST_PATH_TOKEN_LIMIT) {
+    console.log(`[Groq] FAST PATH skipped: request too large (${estimatedTokens} tokens)`);
+    throw new Error("Request too large for fast path");
+  }
+
   console.log(`[Groq] FAST PATH: ${model} with key #${keyIndex + 1}`);
 
   let controller: AbortController | null = null;
@@ -396,15 +406,20 @@ export const callHfChat = async (
 
   // FAST PATH: Simple messages like "hi" skip the queue and use lightweight model only
   if (isSimpleMessage(payload.messages)) {
-    return callFastChat(payload);
+    try {
+      return await callFastChat(payload);
+    } catch (error) {
+      // Fast path failed (e.g., request too large), fall through to normal path
+      console.log("[Groq] Fast path failed, using normal path");
+    }
   }
 
   const taskModels = getModelsForTaskType(taskType);
   const modelsToTry = [...new Set([...taskModels, DEFAULT_MODEL])];
 
-  // Estimate tokens in the request (~4 chars per token for English)
+  // Estimate tokens in the request (~3.5 chars per token for English, more conservative for system prompts)
   const messageText = payload.messages.map(m => m.content).join(" ");
-  const estimatedTokens = Math.ceil(messageText.length / 4) + payload.max_tokens;
+  const estimatedTokens = Math.ceil(messageText.length / 3.5) + Math.ceil(payload.max_tokens * 1.3);
 
   console.log(`[Groq] Task: "${taskType}" → Models: ${modelsToTry.join(" → ")} | API Keys: ${apiKeys.length} | Est. tokens: ${estimatedTokens}`);
 
@@ -422,13 +437,13 @@ export const callHfChat = async (
 
       if (!apiKey) continue;
 
-      // Check rate limit before attempting request — retry up to 3 times with backoff
+      // Check rate limit before attempting request — retry up to 2 times with short backoff
       let gotToken = false;
-      for (let attempt = 0; attempt < 3; attempt++) {
+      for (let attempt = 0; attempt < 2; attempt++) {
         gotToken = await waitForToken(keyIndex, estimatedTokens);
         if (gotToken) break;
-        console.log(`[Groq] Local rate limit for key #${keyIndex + 1}, waiting ${(attempt + 1) * 2}s...`);
-        await delay((attempt + 1) * 2000);
+        console.log(`[Groq] Local rate limit for key #${keyIndex + 1}, waiting ${(attempt + 1) * 500}ms...`);
+        await delay((attempt + 1) * 500);
       }
       if (!gotToken) {
         console.log(`[Groq] Key #${keyIndex + 1} still rate-limited after retries, skipping.`);
@@ -477,8 +492,7 @@ export const callHfChat = async (
           // On 429 (rate limit), try next key before giving up on this model
           if (statusCode === 429) {
             console.warn(`[Groq] ${model} rate limited on key #${keyIndex + 1}, trying next key...`);
-            // Add extra delay on rate limit
-            await delay(3000);
+            await delay(1000);
             continue;
           }
 
@@ -497,7 +511,7 @@ export const callHfChat = async (
           // On 5xx errors, Groq has an issue - try next key
           if (statusCode >= 500 && statusCode < 600) {
             console.warn(`[Groq] ${model} server error (${statusCode}) on key #${keyIndex + 1}, trying next key...`);
-            await delay(1000);
+            await delay(500);
             continue;
           }
 
@@ -552,9 +566,9 @@ export const callHfChatStream = async (
   const taskModels = getModelsForTaskType(taskType);
   const modelsToTry = [...new Set([...taskModels, DEFAULT_MODEL])];
 
-  // Estimate tokens in the request (~4 chars per token for English)
+  // Estimate tokens in the request (~3.5 chars per token for English, more conservative for system prompts)
   const messageText = payload.messages.map(m => m.content).join(" ");
-  const estimatedTokens = Math.ceil(messageText.length / 4) + payload.max_tokens;
+  const estimatedTokens = Math.ceil(messageText.length / 3.5) + Math.ceil(payload.max_tokens * 1.3);
 
   console.log(`[Groq] Task: "${taskType}" → Models: ${modelsToTry.join(" → ")} | API Keys: ${apiKeys.length} | Est. tokens: ${estimatedTokens}`);
 
@@ -572,13 +586,13 @@ export const callHfChatStream = async (
 
       if (!apiKey) continue;
 
-      // Check rate limit before attempting request — retry up to 3 times with backoff
+      // Check rate limit before attempting request — retry up to 2 times with short backoff
       let gotToken = false;
-      for (let attempt = 0; attempt < 3; attempt++) {
+      for (let attempt = 0; attempt < 2; attempt++) {
         gotToken = await waitForToken(keyIndex, estimatedTokens);
         if (gotToken) break;
-        console.log(`[Groq] Local rate limit for key #${keyIndex + 1}, waiting ${(attempt + 1) * 2}s...`);
-        await delay((attempt + 1) * 2000);
+        console.log(`[Groq] Local rate limit for key #${keyIndex + 1}, waiting ${(attempt + 1) * 500}ms...`);
+        await delay((attempt + 1) * 500);
       }
       if (!gotToken) {
         console.log(`[Groq] Key #${keyIndex + 1} still rate-limited after retries, skipping.`);
@@ -628,7 +642,7 @@ export const callHfChatStream = async (
           // On 429 (rate limit), try next key before giving up on this model
           if (statusCode === 429) {
             console.warn(`[Groq] ${model} rate limited on key #${keyIndex + 1}, trying next key...`);
-            await delay(3000);
+            await delay(1000);
             continue;
           }
 
@@ -647,7 +661,7 @@ export const callHfChatStream = async (
           // On 5xx errors, Groq has an issue - try next key
           if (statusCode >= 500 && statusCode < 600) {
             console.warn(`[Groq] ${model} server error (${statusCode}) on key #${keyIndex + 1}, trying next key...`);
-            await delay(1000);
+            await delay(500);
             continue;
           }
 

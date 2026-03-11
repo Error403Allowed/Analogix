@@ -346,50 +346,52 @@ const Quiz = () => {
         <div className="liquid-blob w-80 h-80 bg-primary/20 -top-40 -right-40 fixed" />
         <div className="liquid-blob w-64 h-64 bg-accent/20 bottom-20 -left-32 fixed" />
 
-        <div className="max-w-2xl mx-auto px-4 sm:px-6 pt-12 relative z-10">
+        <div className="max-w-2xl mx-auto px-4 sm:px-6 pt-8 relative z-10">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="glass-card p-8 md:p-12"
+            className="glass-card p-6 md:p-8"
           >
-            <div className="flex items-center gap-4 mb-8">
-              <div className="w-12 h-12 rounded-2xl gradient-primary flex items-center justify-center shadow-lg">
+            <div className="flex items-center gap-4 mb-6">
+              <div className="w-12 h-12 rounded-2xl gradient-primary flex items-center justify-center shadow-lg shadow-primary/25">
                 <Settings2 className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-3xl font-black text-foreground tracking-tight">Configure Quiz</h1>
-                <p className="text-muted-foreground">Tuned for Year {userPrefs.grade || "7"}</p>
+                <h1 className="text-2xl font-black text-foreground tracking-tight">Configure Quiz</h1>
+                <p className="text-sm text-muted-foreground">Personalised for Year {userPrefs.grade || "7"}</p>
               </div>
             </div>
 
-            <div className="space-y-8">
+            <div className="space-y-6">
               {/* Subject Selection */}
               <div className="space-y-3">
-                <Label className="text-sm font-black uppercase tracking-widest text-muted-foreground">Subject</Label>
+                <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground/80">Subject</Label>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {SUBJECT_CATALOG.map((s) => (
-                    <button
+                    <motion.button
                       key={s.id}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
                       onClick={() => setSelectedSubject(s.id)}
                       className={cn(
                         "flex items-center gap-2 p-3 rounded-xl border text-xs font-bold transition-all",
                         selectedSubject === s.id
-                          ? "border-primary bg-primary/10 shadow-md text-primary"
-                          : "border-border/70 bg-card/80 text-foreground/85 hover:border-primary/50 hover:text-foreground"
+                          ? "border-primary bg-primary/10 shadow-md shadow-primary/10 text-primary"
+                          : "border-border/70 bg-card/80 text-foreground/85 hover:border-primary/50 hover:text-foreground hover:bg-primary/5"
                       )}
                     >
                       <s.icon className="w-4 h-4" />
                       {s.label}
-                    </button>
+                    </motion.button>
                   ))}
                 </div>
               </div>
 
               {/* Amount of Questions */}
-              <div className="space-y-4">
-                <div className="flex justify-between">
-                  <Label className="text-sm font-black uppercase tracking-widest text-muted-foreground">Amount</Label>
-                  <span className="text-sm font-bold text-primary">{numQuestions} Questions</span>
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground/80">Questions</Label>
+                  <span className="text-sm font-bold text-primary bg-primary/10 px-3 py-1 rounded-full">{numQuestions}</span>
                 </div>
                 <Slider
                   value={[numQuestions]}
@@ -397,16 +399,20 @@ const Quiz = () => {
                   min={3}
                   max={20}
                   step={1}
-                  className="py-4"
+                  className="py-2"
                 />
+                <div className="flex justify-between text-[10px] text-muted-foreground">
+                  <span>3</span>
+                  <span>20</span>
+                </div>
               </div>
 
-              <div className="grid sm:grid-cols-2 gap-8">
+              <div className="grid sm:grid-cols-2 gap-6">
                 {/* Time Limit */}
-                <div className="space-y-4">
-                  <div className="flex justify-between">
-                    <Label className="text-sm font-black uppercase tracking-widest text-muted-foreground">Time Limit</Label>
-                    <span className="text-sm font-bold text-primary">{timeLimit}m</span>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground/80">Time Limit</Label>
+                    <span className="text-sm font-bold text-primary bg-primary/10 px-3 py-1 rounded-full">{timeLimit}m</span>
                   </div>
                   <Slider
                     value={[timeLimit]}
@@ -414,23 +420,27 @@ const Quiz = () => {
                     min={1}
                     max={30}
                     step={1}
-                    className="py-4"
+                    className="py-2"
                   />
+                  <div className="flex justify-between text-[10px] text-muted-foreground">
+                    <span>1m</span>
+                    <span>30m</span>
+                  </div>
                 </div>
 
                 {/* Difficulty */}
                 <div className="space-y-3">
-                  <Label className="text-sm font-black uppercase tracking-widest text-muted-foreground">Difficulty</Label>
+                  <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground/80">Difficulty</Label>
                   <Select value={difficulty} onValueChange={setDifficulty}>
-                    <SelectTrigger className="rounded-xl border-border/70 bg-card/80 h-12">
+                    <SelectTrigger className="rounded-xl border-border/70 bg-card/80 h-11 focus:ring-2 focus:ring-primary/20">
                       <SelectValue placeholder="Select difficulty" />
                     </SelectTrigger>
                     <SelectContent>
                       {difficultyOptions?.map((opt) => (
                         <SelectItem key={opt.id} value={opt.id}>
                           <div className="flex flex-col text-left">
-                            <span className="font-bold">{opt.label}</span>
-                            <span className="text-[10px] text-muted-foreground">{opt.desc}</span>
+                            <span className="font-bold text-foreground">{opt.label}</span>
+                            <span className="text-[10px] text-muted-foreground/70">{opt.desc}</span>
                           </div>
                         </SelectItem>
                       ))}
@@ -439,18 +449,23 @@ const Quiz = () => {
                 </div>
               </div>
 
-              <Button
-                size="lg"
-                onClick={startQuiz}
-                className="w-full h-16 rounded-[2rem] gradient-primary text-white font-black text-lg uppercase tracking-widest shadow-xl hover:scale-[1.02] transition-transform gap-3"
+              <motion.div
+                whileHover={{ scale: 1.01 }}
+                whileTap={{ scale: 0.99 }}
               >
-                Start Quiz
-                <ChevronRight className="w-5 h-5" />
-              </Button>
+                <Button
+                  size="lg"
+                  onClick={startQuiz}
+                  className="w-full h-14 rounded-2xl gradient-primary text-white font-bold text-base shadow-xl shadow-primary/25 hover:shadow-2xl hover:shadow-primary/30 transition-all gap-2"
+                >
+                  Start Quiz
+                  <ChevronRight className="w-5 h-5" />
+                </Button>
+              </motion.div>
             </div>
           </motion.div>
-          
-          <div className="mt-8 flex justify-center">
+
+          <div className="mt-6 flex justify-center">
             <Button variant="ghost" onClick={() => router.push("/dashboard")} className="text-muted-foreground hover:text-foreground">
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back to Dashboard
@@ -464,25 +479,39 @@ const Quiz = () => {
   if (isLoading) {
     return (
       <div className="min-h-full flex flex-col items-center justify-center bg-background p-4">
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-          className="mb-6"
-        >
-          <Loader2 className="w-16 h-16 text-primary" />
-        </motion.div>
-        <div className="mt-6 flex flex-col items-center text-center gap-3">
-          <div className="w-16 h-16 rounded-full bg-primary/10 text-primary flex items-center justify-center">
-            <Brain className="w-7 h-7" />
+        <div className="relative">
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+            className="mb-6"
+          >
+            <Loader2 className="w-16 h-16 text-primary" />
+          </motion.div>
+          <motion.div
+            animate={{ scale: [1, 1.2, 1] }}
+            transition={{ duration: 1.5, repeat: Infinity }}
+            className="absolute inset-0 flex items-center justify-center"
+          >
+            <Brain className="w-6 h-6 text-primary/50" />
+          </motion.div>
+        </div>
+        <div className="mt-8 flex flex-col items-center text-center gap-2">
+          <div className="flex items-center gap-2 text-primary font-bold text-lg">
+            <Sparkles className="w-5 h-5 animate-pulse" />
+            Generating Quiz...
           </div>
-          <p className="text-sm text-muted-foreground">
-            Making quiz for {subjectLabel}...
+          <p className="text-sm text-muted-foreground max-w-xs">
+            Creating personalised questions for {subjectLabel}
           </p>
         </div>
-        <div className="mt-8 flex items-center gap-2 text-primary font-bold animate-pulse">
-            <Sparkles className="w-5 h-5" />
-            Generating Analogies...
-        </div>
+        <motion.div 
+          className="mt-6 flex items-center gap-2 text-xs text-muted-foreground/60"
+          animate={{ opacity: [0.5, 1, 0.5] }}
+          transition={{ duration: 2, repeat: Infinity }}
+        >
+          <Brain className="w-4 h-4" />
+          Powered by AI
+        </motion.div>
       </div>
     );
   }
@@ -490,15 +519,23 @@ const Quiz = () => {
   if (questions.length === 0) {
     return (
       <div className="min-h-full flex flex-col items-center justify-center p-4">
-         <div className="flex flex-col items-center text-center gap-3">
-           <div className="w-14 h-14 rounded-full bg-destructive/10 text-destructive flex items-center justify-center">
-             <AlertTriangle className="w-6 h-6" />
+         <motion.div 
+           initial={{ scale: 0.8, opacity: 0 }}
+           animate={{ scale: 1, opacity: 1 }}
+           className="flex flex-col items-center text-center gap-3"
+         >
+           <div className="w-16 h-16 rounded-2xl bg-destructive/10 text-destructive flex items-center justify-center shadow-lg">
+             <AlertTriangle className="w-7 h-7" />
            </div>
-           <p className="text-sm text-foreground/75">
-             Oops! I couldn't generate a quiz right now. Try again later or check your internet .
+           <h2 className="text-lg font-bold text-foreground">Quiz Generation Failed</h2>
+           <p className="text-sm text-muted-foreground max-w-xs">
+             Couldn't generate quiz right now. Please check your connection and try again.
            </p>
+         </motion.div>
+         <div className="mt-6 flex gap-3">
+          <Button onClick={() => router.push("/dashboard")} variant="outline">Back to Dashboard</Button>
+          <Button onClick={() => window.location.reload()}>Try Again</Button>
          </div>
-         <Button onClick={() => router.push("/dashboard")} className="mt-6">Back to Dashboard</Button>
       </div>
     );
   }

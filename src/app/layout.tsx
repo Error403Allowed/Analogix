@@ -38,7 +38,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <link rel="icon" href="/Logo.png" type="image/png" />
+        <link rel="icon" href="/tab-icon.png" type="image/png" />
       </head>
       <body>
         <AppProviders>

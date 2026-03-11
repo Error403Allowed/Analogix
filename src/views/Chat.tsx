@@ -271,10 +271,10 @@ const Chat = () => {
   }, []);
 
   const welcomeTemplates = useCallback((subjectLabel: string) => ([
-    `Hi ${userName}. Great choice picking ${subjectLabel}.\n\nWhat specific topic or concept would you like to explore today? Just tell me what's on your mind, and I'll find a clear analogy for you.`,
-    `Hey ${userName}! ${subjectLabel} is a strong pick.\n\nTell me a topic or concept you're curious about, and I'll explain it with a clear analogy.`,
-    `Nice, ${userName}. ${subjectLabel} unlocked.\n\nWhat should we explore first? I’ll make it click with a simple analogy.`,
-    `Alright ${userName}, ${subjectLabel} it is.\n\nName a concept and I’ll break it down with a clear analogy.`,
+    `Hi ${userName}. Great choice picking ${subjectLabel}.\n\nWhat specific topic or concept would you like to explore today? Just tell me what's on your mind, and I'll find something that doesn't bore you to death.`,
+    `Hey ${userName}! ${subjectLabel} is a strong pick.\n\nTell me a topic or concept you're curious about, and I'll explain it with your interests.`,
+    `Nice, ${userName}. ${subjectLabel} unlocked.\n\nWhat should we explore first? I’ll make it click with things you actually like.`,
+    `Alright ${userName}, ${subjectLabel} it is.\n\nName a concept and I’ll break it down so you're like "Ah, I get it now!"`,
     `Welcome, ${userName}. Let’s dive into ${subjectLabel}.\n\nWhat topic do you want to tackle today?`
   ]), [userName]);
 
@@ -1456,7 +1456,7 @@ const Chat = () => {
                           {userName ? `Hey ${userName}, what are you studying?` : "What are you studying?"}
                         </p>
                         <p className="text-sm text-muted-foreground/60 mt-1">
-                          Ask about any concept — I’ll explain it with a clear analogy.
+                          Ask about any concept — I’ll explain it with your interests
                         </p>
                       </div>
                     </motion.div>
