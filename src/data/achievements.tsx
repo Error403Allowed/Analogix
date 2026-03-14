@@ -1,14 +1,32 @@
 import type { ReactNode } from "react";
 import {
   BadgeCheck,
+  BookOpen,
+  Brain,
+  Calendar,
   ClipboardCheck,
+  Clock,
+  Crown,
+  FileText,
   Flame,
-  Leaf,
+  Gift,
+  GraduationCap,
+  Heart,
+  Lightbulb,
   Medal,
   MessageSquare,
+  Moon,
+  PartyPopper,
+  PenTool,
   Rocket,
+  Sparkles,
+  Sun,
   Target,
-  User
+  Trophy,
+  User,
+  Wand2,
+  Leaf,
+  Zap
 } from "lucide-react";
 
 export interface Achievement {
@@ -26,6 +44,19 @@ const getTopSubjectCount = (stats: any) => {
   if (counts.length === 0) return 0;
   return Math.max(...counts.map((value) => Number(value) || 0));
 };
+
+// Helper functions for new achievements
+const getTotalStudyTime = (stats: any) => stats.totalStudyTimeMinutes || 0;
+const getDocumentsCreated = (stats: any) => stats.documentsCreated || 0;
+const getStudyGuidesCreated = (stats: any) => stats.studyGuidesCreated || 0;
+const getFlashcardsCreated = (stats: any) => stats.flashcardsCreated || 0;
+const getPerfectQuizzes = (stats: any) => stats.perfectQuizzes || 0;
+const getEarlyMorningSessions = (stats: any) => stats.earlyMorningSessions || 0;
+const getLateNightSessions = (stats: any) => stats.lateNightSessions || 0;
+const getWeekendSessions = (stats: any) => stats.weekendSessions || 0;
+const getCalendarEvents = (stats: any) => stats.calendarEventsCreated || 0;
+const getAIPowerUses = (stats: any) => stats.aiPowerUses || 0;
+const getNotesWritten = (stats: any) => stats.notesWritten || 0;
 
 export const ACHIEVEMENTS_LIBRARY: Achievement[] = [
   // STARTER
@@ -95,4 +126,110 @@ export const ACHIEVEMENTS_LIBRARY: Achievement[] = [
   { id: "balanced_50_25", title: "Well Rounded", description: "Complete 50 quizzes and 25 chats", icon: <BadgeCheck className="w-5 h-5" />, category: "mastery", condition: (stats) => stats.quizzesDone >= 50 && stats.conversationsCount >= 25 },
   { id: "balanced_100_50", title: "Committed", description: "Complete 100 quizzes and 50 chats", icon: <BadgeCheck className="w-5 h-5" />, category: "mastery", condition: (stats) => stats.quizzesDone >= 100 && stats.conversationsCount >= 50 },
   { id: "balanced_200_100", title: "Master Planner", description: "Complete 200 quizzes and 100 chats", icon: <BadgeCheck className="w-5 h-5" />, category: "mastery", condition: (stats) => stats.quizzesDone >= 200 && stats.conversationsCount >= 100 },
+
+  // STUDY TIME
+  { id: "time_30", title: "Half Hour", description: "Study for 30 minutes total", icon: <Clock className="w-5 h-5" />, category: "mastery", condition: (stats) => getTotalStudyTime(stats) >= 30 },
+  { id: "time_60", title: "First Hour", description: "Study for 1 hour total", icon: <Clock className="w-5 h-5" />, category: "mastery", condition: (stats) => getTotalStudyTime(stats) >= 60 },
+  { id: "time_120", title: "Two Hour Tour", description: "Study for 2 hours total", icon: <Clock className="w-5 h-5" />, category: "mastery", condition: (stats) => getTotalStudyTime(stats) >= 120 },
+  { id: "time_300", title: "Five Hour Focus", description: "Study for 5 hours total", icon: <Clock className="w-5 h-5" />, category: "mastery", condition: (stats) => getTotalStudyTime(stats) >= 300 },
+  { id: "time_500", title: "Dedicated", description: "Study for 10 hours total", icon: <Clock className="w-5 h-5" />, category: "mastery", condition: (stats) => getTotalStudyTime(stats) >= 500 },
+  { id: "time_1000", title: "Century of Learning", description: "Study for 1000 minutes total", icon: <Clock className="w-5 h-5" />, category: "mastery", condition: (stats) => getTotalStudyTime(stats) >= 1000 },
+  { id: "time_3000", title: "Time Master", description: "Study for 50 hours total", icon: <Clock className="w-5 h-5" />, category: "mastery", condition: (stats) => getTotalStudyTime(stats) >= 3000 },
+
+  // DOCUMENTS
+  { id: "doc_1", title: "First Note", description: "Create your first document", icon: <FileText className="w-5 h-5" />, category: "mastery", condition: (stats) => getDocumentsCreated(stats) >= 1 },
+  { id: "doc_5", title: "Note Taker", description: "Create 5 documents", icon: <FileText className="w-5 h-5" />, category: "mastery", condition: (stats) => getDocumentsCreated(stats) >= 5 },
+  { id: "doc_10", title: "Documented", description: "Create 10 documents", icon: <FileText className="w-5 h-5" />, category: "mastery", condition: (stats) => getDocumentsCreated(stats) >= 10 },
+  { id: "doc_25", title: "Archive Builder", description: "Create 25 documents", icon: <FileText className="w-5 h-5" />, category: "mastery", condition: (stats) => getDocumentsCreated(stats) >= 25 },
+  { id: "doc_50", title: "Librarian", description: "Create 50 documents", icon: <FileText className="w-5 h-5" />, category: "mastery", condition: (stats) => getDocumentsCreated(stats) >= 50 },
+  { id: "doc_100", title: "Document Master", description: "Create 100 documents", icon: <FileText className="w-5 h-5" />, category: "mastery", condition: (stats) => getDocumentsCreated(stats) >= 100 },
+
+  // STUDY GUIDES
+  { id: "guide_1", title: "Guide Creator", description: "Create your first study guide", icon: <BookOpen className="w-5 h-5" />, category: "mastery", condition: (stats) => getStudyGuidesCreated(stats) >= 1 },
+  { id: "guide_3", title: "Guide Collector", description: "Create 3 study guides", icon: <BookOpen className="w-5 h-5" />, category: "mastery", condition: (stats) => getStudyGuidesCreated(stats) >= 3 },
+  { id: "guide_5", title: "Study Expert", description: "Create 5 study guides", icon: <BookOpen className="w-5 h-5" />, category: "mastery", condition: (stats) => getStudyGuidesCreated(stats) >= 5 },
+  { id: "guide_10", title: "Guide Master", description: "Create 10 study guides", icon: <BookOpen className="w-5 h-5" />, category: "mastery", condition: (stats) => getStudyGuidesCreated(stats) >= 10 },
+
+  // FLASHCARDS
+  { id: "flash_1", title: "First Card", description: "Create your first flashcard", icon: <Brain className="w-5 h-5" />, category: "mastery", condition: (stats) => getFlashcardsCreated(stats) >= 1 },
+  { id: "flash_10", title: "Card Starter", description: "Create 10 flashcards", icon: <Brain className="w-5 h-5" />, category: "mastery", condition: (stats) => getFlashcardsCreated(stats) >= 10 },
+  { id: "flash_50", title: "Flash Master", description: "Create 50 flashcards", icon: <Brain className="w-5 h-5" />, category: "mastery", condition: (stats) => getFlashcardsCreated(stats) >= 50 },
+  { id: "flash_100", title: "Card Collector", description: "Create 100 flashcards", icon: <Brain className="w-5 h-5" />, category: "mastery", condition: (stats) => getFlashcardsCreated(stats) >= 100 },
+  { id: "flash_250", title: "Flash Legend", description: "Create 250 flashcards", icon: <Brain className="w-5 h-5" />, category: "mastery", condition: (stats) => getFlashcardsCreated(stats) >= 250 },
+
+  // PERFECT SCORES
+  { id: "perfect_1", title: "Flawless", description: "Get 1 perfect quiz score", icon: <Trophy className="w-5 h-5" />, category: "mastery", condition: (stats) => getPerfectQuizzes(stats) >= 1 },
+  { id: "perfect_3", title: "Triple Perfect", description: "Get 3 perfect quiz scores", icon: <Trophy className="w-5 h-5" />, category: "mastery", condition: (stats) => getPerfectQuizzes(stats) >= 3 },
+  { id: "perfect_5", title: "Five Star", description: "Get 5 perfect quiz scores", icon: <Trophy className="w-5 h-5" />, category: "mastery", condition: (stats) => getPerfectQuizzes(stats) >= 5 },
+  { id: "perfect_10", title: "Perfect Ten", description: "Get 10 perfect quiz scores", icon: <Trophy className="w-5 h-5" />, category: "mastery", condition: (stats) => getPerfectQuizzes(stats) >= 10 },
+
+  // EARLY BIRD / NIGHT OWL
+  { id: "early_1", title: "Early Bird", description: "Study before 8 AM", icon: <Sun className="w-5 h-5" />, category: "mastery", condition: (stats) => getEarlyMorningSessions(stats) >= 1 },
+  { id: "early_5", title: "Rising Star", description: "Study before 8 AM five times", icon: <Sun className="w-5 h-5" />, category: "mastery", condition: (stats) => getEarlyMorningSessions(stats) >= 5 },
+  { id: "early_10", title: "Dawn Scholar", description: "Study before 8 AM ten times", icon: <Sun className="w-5 h-5" />, category: "mastery", condition: (stats) => getEarlyMorningSessions(stats) >= 10 },
+  { id: "night_1", title: "Night Owl", description: "Study after 10 PM", icon: <Moon className="w-5 h-5" />, category: "mastery", condition: (stats) => getLateNightSessions(stats) >= 1 },
+  { id: "night_5", title: "Midnight Scholar", description: "Study after 10 PM five times", icon: <Moon className="w-5 h-5" />, category: "mastery", condition: (stats) => getLateNightSessions(stats) >= 5 },
+  { id: "night_10", title: "Nocturnal Genius", description: "Study after 10 PM ten times", icon: <Moon className="w-5 h-5" />, category: "mastery", condition: (stats) => getLateNightSessions(stats) >= 10 },
+
+  // WEEKEND WARRIOR
+  { id: "weekend_1", title: "Weekend Warrior", description: "Study on a weekend", icon: <Calendar className="w-5 h-5" />, category: "mastery", condition: (stats) => getWeekendSessions(stats) >= 1 },
+  { id: "weekend_5", title: "Saturday Scholar", description: "Study on weekends 5 times", icon: <Calendar className="w-5 h-5" />, category: "mastery", condition: (stats) => getWeekendSessions(stats) >= 5 },
+  { id: "weekend_10", title: "Weekend Dedicated", description: "Study on weekends 10 times", icon: <Calendar className="w-5 h-5" />, category: "mastery", condition: (stats) => getWeekendSessions(stats) >= 10 },
+
+  // CALENDAR
+  { id: "calendar_1", title: "Planner", description: "Add your first calendar event", icon: <Calendar className="w-5 h-5" />, category: "mastery", condition: (stats) => getCalendarEvents(stats) >= 1 },
+  { id: "calendar_5", title: "Organized", description: "Add 5 calendar events", icon: <Calendar className="w-5 h-5" />, category: "mastery", condition: (stats) => getCalendarEvents(stats) >= 5 },
+  { id: "calendar_10", title: "Schedule Master", description: "Add 10 calendar events", icon: <Calendar className="w-5 h-5" />, category: "mastery", condition: (stats) => getCalendarEvents(stats) >= 10 },
+  { id: "calendar_25", title: "Time Manager", description: "Add 25 calendar events", icon: <Calendar className="w-5 h-5" />, category: "mastery", condition: (stats) => getCalendarEvents(stats) >= 25 },
+
+  // AI POWER USER
+  { id: "ai_1", title: "AI Curious", description: "Use an AI power feature", icon: <Wand2 className="w-5 h-5" />, category: "mastery", condition: (stats) => getAIPowerUses(stats) >= 1 },
+  { id: "ai_5", title: "AI Assistant", description: "Use AI power features 5 times", icon: <Wand2 className="w-5 h-5" />, category: "mastery", condition: (stats) => getAIPowerUses(stats) >= 5 },
+  { id: "ai_10", title: "AI Enhanced", description: "Use AI power features 10 times", icon: <Wand2 className="w-5 h-5" />, category: "mastery", condition: (stats) => getAIPowerUses(stats) >= 10 },
+  { id: "ai_25", title: "AI Partner", description: "Use AI power features 25 times", icon: <Wand2 className="w-5 h-5" />, category: "mastery", condition: (stats) => getAIPowerUses(stats) >= 25 },
+  { id: "ai_50", title: "AI Master", description: "Use AI power features 50 times", icon: <Wand2 className="w-5 h-5" />, category: "mastery", condition: (stats) => getAIPowerUses(stats) >= 50 },
+
+  // SPECIAL MOMENTS
+  { id: "special_first", title: "Milestone", description: "Unlock your first achievement", icon: <Gift className="w-5 h-5" />, category: "starter" },
+  { id: "special_10", title: "Achievement Hunter", description: "Unlock 10 achievements", icon: <PartyPopper className="w-5 h-5" />, category: "mastery" },
+  { id: "special_25", title: "Badge Collector", description: "Unlock 25 achievements", icon: <PartyPopper className="w-5 h-5" />, category: "mastery" },
+  { id: "special_50", title: "Trophy Case", description: "Unlock 50 achievements", icon: <Crown className="w-5 h-5" />, category: "mastery" },
+  { id: "special_all", title: "Completionist", description: "Unlock all achievements", icon: <Crown className="w-5 h-5" />, category: "mastery" },
+
+  // IMPROVEMENT
+  { id: "improve_10", title: "Quick Learner", description: "Improve quiz score by 10%", icon: <Sparkles className="w-5 h-5" />, category: "mastery" },
+  { id: "improve_25", title: "Major Glow Up", description: "Improve quiz score by 25%", icon: <Sparkles className="w-5 h-5" />, category: "mastery" },
+  { id: "improve_50", title: "Transformation", description: "Improve quiz score by 50%", icon: <Sparkles className="w-5 h-5" />, category: "mastery" },
+
+  // COMEBACK
+  { id: "comeback_1", title: "Back in Action", description: "Return after a 7+ day break", icon: <Heart className="w-5 h-5" />, category: "mastery" },
+  { id: "comeback_2", title: "Phoenix", description: "Return after a 14+ day break", icon: <Flame className="w-5 h-5" />, category: "mastery" },
+  { id: "comeback_3", title: "Unstoppable Return", description: "Return after a 30+ day break", icon: <Rocket className="w-5 h-5" />, category: "mastery" },
+
+  // SPEED
+  { id: "speed_1", title: "Speed Demon", description: "Complete a quiz in under 2 minutes", icon: <Zap className="w-5 h-5" />, category: "mastery" },
+  { id: "speed_5", title: "Lightning Fast", description: "Complete 5 quizzes in under 2 minutes each", icon: <Zap className="w-5 h-5" />, category: "mastery" },
+
+  // ENDURANCE
+  { id: "endurance_30", title: "Marathon Session", description: "Study for 30 minutes in one session", icon: <Clock className="w-5 h-5" />, category: "mastery" },
+  { id: "endurance_60", title: "Deep Focus", description: "Study for 60 minutes in one session", icon: <Clock className="w-5 h-5" />, category: "mastery" },
+  { id: "endurance_120", title: "Ultra Focus", description: "Study for 120 minutes in one session", icon: <Clock className="w-5 h-5" />, category: "mastery" },
+
+  // GRADUATION
+  { id: "grad_1", title: "First Grade", description: "Complete a graded assessment", icon: <GraduationCap className="w-5 h-5" />, category: "mastery" },
+  { id: "grad_5", title: "Graded Five", description: "Complete 5 graded assessments", icon: <GraduationCap className="w-5 h-5" />, category: "mastery" },
+  { id: "grad_10", title: "Assessment Pro", description: "Complete 10 graded assessments", icon: <GraduationCap className="w-5 h-5" />, category: "mastery" },
+  { id: "grad_a", title: "A Student", description: "Get an A grade on an assessment", icon: <GraduationCap className="w-5 h-5" />, category: "mastery" },
+  { id: "grad_all_a", title: "Honor Roll", description: "Get A grades on 5 assessments", icon: <GraduationCap className="w-5 h-5" />, category: "mastery" },
+
+  // WRITING
+  { id: "write_1000", title: "First Thousand", description: "Write 1000 words of notes", icon: <PenTool className="w-5 h-5" />, category: "mastery", condition: (stats) => getNotesWritten(stats) >= 1000 },
+  { id: "write_5000", title: "Prolific Writer", description: "Write 5000 words of notes", icon: <PenTool className="w-5 h-5" />, category: "mastery", condition: (stats) => getNotesWritten(stats) >= 5000 },
+  { id: "write_10000", title: "Author", description: "Write 10000 words of notes", icon: <PenTool className="w-5 h-5" />, category: "mastery", condition: (stats) => getNotesWritten(stats) >= 10000 },
+  { id: "write_25000", title: "Novelist", description: "Write 25000 words of notes", icon: <PenTool className="w-5 h-5" />, category: "mastery", condition: (stats) => getNotesWritten(stats) >= 25000 },
+
+  // INSIGHT
+  { id: "insight_1", title: "Lightbulb Moment", description: "Have an 'aha!' moment with AI", icon: <Lightbulb className="w-5 h-5" />, category: "social" },
+  { id: "insight_5", title: "Deep Understanding", description: "Have 5 'aha!' moments", icon: <Lightbulb className="w-5 h-5" />, category: "social" },
+  { id: "insight_10", title: "Enlightened", description: "Have 10 'aha!' moments", icon: <Lightbulb className="w-5 h-5" />, category: "social" },
 ];

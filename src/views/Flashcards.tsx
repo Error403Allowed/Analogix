@@ -486,7 +486,7 @@ export default function Flashcards() {
 
       {/* ── Top nav ── */}
       <div className="sticky top-0 z-40 border-b border-border/40 bg-background/90 backdrop-blur-md">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3 flex items-center gap-3">
+        <div className="max-w-5xl mx-auto w-full px-4 sm:px-6 py-3 flex items-center gap-3">
           {topView === "library" ? (
             <Button variant="ghost" size="sm" onClick={() => router.push("/dashboard")} className="gap-1.5 text-muted-foreground">
               <ArrowLeft className="w-4 h-4" /> Dashboard
@@ -553,10 +553,9 @@ export default function Flashcards() {
             <motion.div key="library" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -14 }} className="space-y-8">
 
               {/* Stats */}
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 {[
                   { label: "Cards", value: totalCards, color: "text-primary" },
-                  { label: "Due today", value: totalDue, color: "text-amber-500" },
                   { label: "Sets", value: sets.length, color: "text-blue-500" },
                 ].map(({ label, value, color }) => (
                   <div key={label} className="rounded-2xl border border-border bg-card p-4 text-center">
@@ -720,18 +719,18 @@ export default function Flashcards() {
 
           {/* ══════════ QUIZ HUB ══════════ */}
           {topView === "quiz-hub" && (
-            <motion.div key="quiz-hub" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -14 }} className="space-y-6 max-w-2xl">
+            <motion.div key="quiz-hub" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -14 }} className="space-y-6 max-w-5xl mx-auto w-full">
 
               {/* Config */}
               {!quizStarted && !quizLoading && (
                 <div className="rounded-2xl border border-border bg-card p-8 space-y-6">
-                  <div className="flex items-center gap-3">
-                    <div className="w-11 h-11 rounded-2xl bg-primary/10 flex items-center justify-center">
-                      <Target className="w-6 h-6 text-primary" />
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-2xl gradient-primary flex items-center justify-center shadow-lg shadow-primary/25">
+                      <Target className="w-6 h-6 text-white" />
                     </div>
                     <div>
-                      <h2 className="text-xl font-black">Quiz Hub</h2>
-                      <p className="text-xs text-muted-foreground">Build a custom quiz on any topic</p>
+                      <h2 className="text-2xl font-black">Quiz Hub</h2>
+                      <p className="text-sm text-muted-foreground">Build a custom quiz on any topic</p>
                     </div>
                   </div>
 
@@ -790,8 +789,8 @@ export default function Flashcards() {
                     </div>
                   </div>
 
-                  <Button size="lg" className="w-full" onClick={runQuizHub}>
-                    <Sparkles className="w-4 h-4 mr-2" /> Generate Quiz
+                  <Button size="lg" className="w-full gradient-primary text-white border-0 hover:opacity-90 shadow-lg shadow-primary/20 h-14 text-base font-bold" onClick={runQuizHub}>
+                    <Sparkles className="w-5 h-5 mr-2" /> Generate Quiz
                   </Button>
                 </div>
               )}

@@ -9,9 +9,26 @@ const GROQ_CHAT_URL =
 const DEFAULT_MODEL            = "meta-llama/llama-4-scout-17b-16e-instruct"; // Llama 4 Scout, 128K ctx
 const DEFAULT_FALLBACK_MODEL   = "llama-3.3-70b-versatile";                    // Llama 3.3, reliable fallback
 const CODING_MODEL             = "meta-llama/llama-4-scout-17b-16e-instruct"; // Scout handles code well
-const REASONING_MODEL          = "qwen/qwen3-32b";                             // Qwen 3 reasoning
-const REASONING_FALLBACK_MODEL = "llama-3.3-70b-versatile";                    // Safe fallback (no preview needed)
+const REASONING_MODEL          = "deepseek-r1-distill-llama-70b";             // DeepSeek R1 - EXCELLENT at math/reasoning
+const REASONING_FALLBACK_MODEL = "llama-3.3-70b-versatile";                    // Safe fallback
 const LIGHTWEIGHT_MODEL        = "llama-3.1-8b-instant";                       // Fast, cheap — use for greeting/banner
+
+// Model-specific token limits (safe values below actual limits)
+// Llama 4 Scout: 128K context, 8K output max
+// Llama 3.3 70B: 128K context, 8K output max
+// Qwen 3 32B: 256K context, 8K output max
+// We use conservative limits to avoid cutoff errors
+const MODEL_OUTPUT_LIMITS: Record<string, number> = {
+  "meta-llama/llama-4-scout-17b-16e-instruct": 8192,
+  "llama-3.3-70b-versatile": 8192,
+  "llama-3.1-8b-instant": 4096,
+};
+
+const getSafeMaxTokens = (model: string, requested: number): number => {
+  const limit = MODEL_OUTPUT_LIMITS[model] || 4096;
+  // Use 90% of limit to leave room for safety margin
+  return Math.min(requested, Math.floor(limit * 0.9));
+};
 
 // Type definition: what kind of question is the user asking?
 export type TaskType = "coding" | "reasoning" | "default" | "lightweight";
@@ -30,12 +47,11 @@ const CODING_KEYWORDS = [
 ];
 
 // Words that indicate a REASONING / MATH / SCIENCE question
+// Keep this minimal - let the AI handle the actual reasoning
 const REASONING_KEYWORDS = [
-  "prove", "proof", "derive", "calculate", "solve", "integral", "derivative",
-  "equation", "theorem", "physics", "chemistry", "biology", "logic", "math",
-  "algebra", "geometry", "calculus", "trigonometry", "statistics", "probability",
-  "science", "molecular", "atomic", "quantum", "formula", "vector", "matrix",
-  "limit", "fraction", "decimal", "ratio", "percentage", "square root", "exponent"
+  "solve", "calculate", "find", "prove", "derivative", "integral",
+  "equation", "formula", "quadratic", "algebra", "geometry", "calculus",
+  "physics", "chemistry", "biology", "science"
 ];
 
 // Simple greetings/small talk that should use fast path
@@ -93,11 +109,13 @@ const RATE_LIMIT_CONFIG = {
   // Tokens per minute per API key — Groq free tier is 6000 TPM per key
   // We use 14000 as a generous local-side cap (actual enforcement is by Groq).
   // The local bucket is just a soft throttle, not a hard gate.
-  tpmPerKey: 14000,
+  tpmPerKey: 30000,
   // Minimum delay between requests (ms) - spreads requests out
-  minDelayMs: 300,
-  // Maximum concurrent requests per key (not global)
-  maxConcurrentPerKey: 2,
+  minDelayMs: 100,
+  // Maximum concurrent requests per key — set high enough that normal
+  // chat usage (2-3 messages in flight) never gets blocked locally.
+  // Groq's own 429s handle real overload; this just prevents runaway loops.
+  maxConcurrentPerKey: 10,
 };
 
 // Token bucket state per API key
@@ -140,22 +158,20 @@ const waitForToken = async (
   const bucket = getOrCreateBucket(keyIndex);
   refillTokens(bucket);
 
-  // Check concurrent request limit per key
-  if (bucket.concurrentRequests >= RATE_LIMIT_CONFIG.maxConcurrentPerKey) {
-    return false;
-  }
+  // Never block on concurrent requests locally — Groq handles real overload via 429.
+  // Just track it for observability.
+  bucket.concurrentRequests++;
 
-  // If the request is larger than our entire local bucket, allow it anyway
-  // and let Groq's own rate limiting handle it. The local bucket is a soft throttle.
+  // Deduct tokens if available; if not, let it through anyway (soft throttle only).
   const effectiveRequired = Math.min(requiredTokens, RATE_LIMIT_CONFIG.tpmPerKey * 0.9);
-
   if (bucket.tokens >= effectiveRequired) {
     bucket.tokens -= effectiveRequired;
-    bucket.concurrentRequests++;
-    return true;
+  } else {
+    // Bucket empty — let it through, Groq will 429 if truly overloaded
+    bucket.tokens = 0;
   }
 
-  return false;
+  return true;
 };
 
 const releaseRequest = (keyIndex: number) => {
@@ -170,28 +186,11 @@ const requestQueue: Array<() => void> = [];
 let isProcessingQueue = false;
 
 const enqueueRequest = (): Promise<void> => {
-  return new Promise(resolve => {
-    requestQueue.push(resolve);
-    if (!isProcessingQueue) {
-      processQueue();
-    }
-  });
-};
-
-const processQueue = async () => {
-  if (isProcessingQueue || requestQueue.length === 0) return;
-  
-  isProcessingQueue = true;
-  
-  while (requestQueue.length > 0) {
-    const resolve = requestQueue.shift();
-    if (resolve) {
-      await delay(RATE_LIMIT_CONFIG.minDelayMs);
-      resolve();
-    }
-  }
-  
-  isProcessingQueue = false;
+  // Don't queue at all — let requests run concurrently.
+  // The token bucket and Groq's own 429s handle actual overload.
+  // The old serialisation was the primary cause of "can't reach AI service"
+  // on second messages (message 2 would queue behind message 1's stream).
+  return Promise.resolve();
 };
 
 // ============================================================================
@@ -202,13 +201,24 @@ const parseErrorMessage = async (response: Response) => {
   try {
     const raw = await response.text();
     if (!raw) return response.statusText || `HTTP ${response.status}`;
-    
+
     try {
       const parsed = JSON.parse(raw);
       if (typeof parsed === "string") return parsed;
       if (parsed?.error) {
-        if (typeof parsed.error === "string") return parsed.error;
+        if (typeof parsed.error === "string") {
+          // Enhance token limit error messages
+          if (parsed.error.toLowerCase().includes("token") || parsed.error.toLowerCase().includes("length")) {
+            return "Response too long - the AI generated more content than allowed. Please try a shorter request or break it into parts.";
+          }
+          return parsed.error;
+        }
         if (typeof parsed.error === "object" && parsed.error.message) {
+          // Enhance token limit error messages
+          const msg = parsed.error.message.toLowerCase();
+          if (msg.includes("token") || msg.includes("length") || msg.includes("maximum")) {
+            return "Response too long - the AI generated more content than allowed. Please try a shorter request or break it into parts.";
+          }
           return parsed.error.message;
         }
         return JSON.stringify(parsed.error);
@@ -257,13 +267,13 @@ export const classifyTaskType = (
   if (subject === "computing") {
     return "coding";
   }
-  
+
   const reasoningSubjects = ["math", "physics", "chemistry", "biology", "engineering"];
   if (subject && reasoningSubjects.includes(subject)) {
     return "reasoning";
   }
 
-  // 2. Keyword-based detection (Fallback)
+  // 2. Simple keyword detection - let the AI model do the heavy lifting
   const userMessages = messages
     .filter(m => m.role === "user")
     .map(m => m.content.toLowerCase())
@@ -272,14 +282,15 @@ export const classifyTaskType = (
   const codingMatches = CODING_KEYWORDS.filter(keyword => userMessages.includes(keyword)).length;
   const reasoningMatches = REASONING_KEYWORDS.filter(keyword => userMessages.includes(keyword)).length;
 
-  // Reduced threshold to 1 for better sensitivity on short queries
-  if (codingMatches > reasoningMatches && codingMatches >= 1) {
-    return "coding";
-  }
-  if (reasoningMatches > codingMatches && reasoningMatches >= 1) {
+  // Use reasoning model for math/science, coding model for programming
+  if (reasoningMatches >= 1 && reasoningMatches >= codingMatches) {
     return "reasoning";
   }
   
+  if (codingMatches >= 1) {
+    return "coding";
+  }
+
   return "default";
 };
 
@@ -356,7 +367,10 @@ const callFastChat = async (
 
   try {
     controller = new AbortController();
-    timeoutId = setTimeout(() => controller?.abort(), 15000); // 15s timeout for fast path
+    timeoutId = setTimeout(() => controller?.abort(), 8000); // 8s timeout for fast path
+
+    // Apply safe max tokens limit for lightweight model
+    const safeMaxTokens = getSafeMaxTokens(model, payload.max_tokens);
 
     const response = await fetch(GROQ_CHAT_URL, {
       method: "POST",
@@ -367,7 +381,7 @@ const callFastChat = async (
       body: JSON.stringify({
         model,
         messages: payload.messages,
-        max_tokens: Math.min(payload.max_tokens, 500), // Limit response length for fast path
+        max_tokens: Math.min(safeMaxTokens, 200), // Keep greeting replies short & fast
         temperature: payload.temperature,
       }),
       signal: controller.signal,
@@ -419,7 +433,7 @@ export const callHfChat = async (
 
   // Estimate tokens in the request (~3.5 chars per token for English, more conservative for system prompts)
   const messageText = payload.messages.map(m => m.content).join(" ");
-  const estimatedTokens = Math.ceil(messageText.length / 3.5) + Math.ceil(payload.max_tokens * 1.3);
+  const estimatedTokens = Math.ceil(messageText.length / 3.5) + payload.max_tokens;
 
   console.log(`[Groq] Task: "${taskType}" → Models: ${modelsToTry.join(" → ")} | API Keys: ${apiKeys.length} | Est. tokens: ${estimatedTokens}`);
 
@@ -437,18 +451,7 @@ export const callHfChat = async (
 
       if (!apiKey) continue;
 
-      // Check rate limit before attempting request — retry up to 2 times with short backoff
-      let gotToken = false;
-      for (let attempt = 0; attempt < 2; attempt++) {
-        gotToken = await waitForToken(keyIndex, estimatedTokens);
-        if (gotToken) break;
-        console.log(`[Groq] Local rate limit for key #${keyIndex + 1}, waiting ${(attempt + 1) * 500}ms...`);
-        await delay((attempt + 1) * 500);
-      }
-      if (!gotToken) {
-        console.log(`[Groq] Key #${keyIndex + 1} still rate-limited after retries, skipping.`);
-        continue;
-      }
+      await waitForToken(keyIndex, estimatedTokens);
 
       let controller: AbortController | null = null;
       let timeoutId: NodeJS.Timeout | null = null;
@@ -456,12 +459,15 @@ export const callHfChat = async (
       try {
         console.log(`[Groq] Trying: ${model} with key #${keyIndex + 1}`);
 
-        // Set up timeout for the request (60 seconds)
+        // Set up timeout for the request (120 seconds)
         controller = new AbortController();
         timeoutId = setTimeout(() => {
-          console.warn(`[Groq] Request timeout for ${model} after 60s`);
+          console.warn(`[Groq] Request timeout for ${model} after 120s`);
           controller!.abort();
-        }, 60000);
+        }, 120000);
+
+        // Apply safe max tokens limit for this specific model
+        const safeMaxTokens = getSafeMaxTokens(model, payload.max_tokens);
 
         const response = await fetch(GROQ_CHAT_URL, {
           method: "POST",
@@ -471,12 +477,9 @@ export const callHfChat = async (
           },
           body: JSON.stringify({
             model,
-            messages: model === REASONING_MODEL
-              ? foldSystemIntoUser(payload.messages)
-              : payload.messages,
-            max_tokens: payload.max_tokens,
+            messages: payload.messages,
+            max_tokens: safeMaxTokens,
             temperature: payload.temperature,
-            ...(model === REASONING_MODEL && { reasoning_effort: "none" }),
           }),
           signal: controller.signal,
         });
@@ -568,7 +571,7 @@ export const callHfChatStream = async (
 
   // Estimate tokens in the request (~3.5 chars per token for English, more conservative for system prompts)
   const messageText = payload.messages.map(m => m.content).join(" ");
-  const estimatedTokens = Math.ceil(messageText.length / 3.5) + Math.ceil(payload.max_tokens * 1.3);
+  const estimatedTokens = Math.ceil(messageText.length / 3.5) + payload.max_tokens;
 
   console.log(`[Groq] Task: "${taskType}" → Models: ${modelsToTry.join(" → ")} | API Keys: ${apiKeys.length} | Est. tokens: ${estimatedTokens}`);
 
@@ -586,18 +589,7 @@ export const callHfChatStream = async (
 
       if (!apiKey) continue;
 
-      // Check rate limit before attempting request — retry up to 2 times with short backoff
-      let gotToken = false;
-      for (let attempt = 0; attempt < 2; attempt++) {
-        gotToken = await waitForToken(keyIndex, estimatedTokens);
-        if (gotToken) break;
-        console.log(`[Groq] Local rate limit for key #${keyIndex + 1}, waiting ${(attempt + 1) * 500}ms...`);
-        await delay((attempt + 1) * 500);
-      }
-      if (!gotToken) {
-        console.log(`[Groq] Key #${keyIndex + 1} still rate-limited after retries, skipping.`);
-        continue;
-      }
+      await waitForToken(keyIndex, estimatedTokens);
 
       let controller: AbortController | null = null;
       let timeoutId: NodeJS.Timeout | null = null;
@@ -612,6 +604,9 @@ export const callHfChatStream = async (
           controller!.abort();
         }, 90000);
 
+        // Apply safe max tokens limit for this specific model
+        const safeMaxTokens = getSafeMaxTokens(model, payload.max_tokens);
+
         const response = await fetch(GROQ_CHAT_URL, {
           method: "POST",
           headers: {
@@ -621,12 +616,9 @@ export const callHfChatStream = async (
           body: JSON.stringify({
             model,
             stream: true,
-            messages: model === REASONING_MODEL
-              ? foldSystemIntoUser(payload.messages)
-              : payload.messages,
-            max_tokens: payload.max_tokens,
+            messages: payload.messages,
+            max_tokens: safeMaxTokens,
             temperature: payload.temperature,
-            ...(model === REASONING_MODEL && { reasoning_effort: "none" }),
           }),
           signal: controller.signal,
         });

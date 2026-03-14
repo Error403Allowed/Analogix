@@ -9,6 +9,7 @@ import {
   Send,
   Brain,
   Lightbulb,
+  Sigma,
   RefreshCw,
   Square,
   Copy,
@@ -22,15 +23,21 @@ import {
   Paperclip,
   Target,
   FileText,
+  Search,
+  Library,
+  Bookmark,
+  BookmarkCheck,
+  ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { getGroqCompletion, getGroqStream, getReExplanation, generateFlashcards, generateStudyGuide, type GeneratedStudyGuide, generateQuizFromDocument, generateFlashcardsFromDocument } from "@/services/groq";
+import { searchAcademicSources } from "@/services/research";
 import { flashcardStore } from "@/utils/flashcardStore";
 import { statsStore } from "@/utils/statsStore";
-import { chatStore, ChatSession } from "@/utils/chatStore";
+import { chatStore, ChatSession, checkChatStoreHealth } from "@/utils/chatStore";
 import { subjectStore } from "@/utils/subjectStore";
 import { getFormulaSheet } from "@/data/formulaSheets";
 import MarkdownRenderer from "@/components/MarkdownRenderer";
@@ -38,6 +45,8 @@ import { SUBJECT_CATALOG, SubjectId } from "@/constants/subjects";
 import { buildInterestList } from "@/utils/interests";
 import { extractFileText, ACCEPTED_FILE_TYPES } from "@/utils/extractFileText";
 import { encodeStudyGuide } from "@/components/StudyGuideView";
+import type { ResearchSource, SavedResearchSource } from "@/types/research";
+import { researchStore } from "@/utils/researchStore";
 
 // Splits AI response into { thinking, response } based on <think>...</think> tags.
 // Handles: leading whitespace before <think>, missing </think> (model cut off mid-think),
@@ -114,7 +123,9 @@ const ThinkingBlock = ({ content }: { content: string }) => {
 };
 
 // ─── StreamingMessage ──────────────────────────────────────────────────────
-// Simple streaming display - just render the content as it arrives
+// Fades in new content as it arrives instead of a typewriter effect.
+// Think of it like a Polaroid developing — the image gradually becomes visible
+// rather than being typed letter-by-letter.
 const StreamingMessage = ({
   content,
   isStreaming,
@@ -122,10 +133,27 @@ const StreamingMessage = ({
   content: string;
   isStreaming: boolean;
 }) => {
+  const prevLenRef = useRef(0);
+  const [fadeKey, setFadeKey] = useState(0);
+
+  useEffect(() => {
+    if (isStreaming && content.length > prevLenRef.current) {
+      prevLenRef.current = content.length;
+      setFadeKey(k => k + 1);
+    }
+    if (!isStreaming) prevLenRef.current = 0;
+  }, [content, isStreaming]);
+
   return (
-    <div className="text-sm leading-relaxed">
+    <motion.div
+      key={fadeKey}
+      initial={isStreaming ? { opacity: 0.55 } : { opacity: 1 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.4, ease: "easeOut" }}
+      className="text-sm leading-relaxed"
+    >
       <MarkdownRenderer content={content} className="text-sm leading-relaxed" streaming={isStreaming} />
-    </div>
+    </motion.div>
   );
 };
 
@@ -140,7 +168,92 @@ interface Message {
   isStreaming?: boolean; // true while this message is still receiving tokens
   isNew?: boolean;       // kept for welcome message compat
   isWelcome?: boolean;
+  sources?: ResearchSource[];
+  researchQuery?: string;
 }
+
+const formatDisplayUrl = (url?: string) => {
+  if (!url) return "";
+  try {
+    const parsed = new URL(url);
+    const path = parsed.pathname.replace(/\/$/, "");
+    const trimmedPath = path.length > 28 ? `${path.slice(0, 26)}…` : path;
+    return `${parsed.hostname}${trimmedPath}`;
+  } catch {
+    return url.length > 40 ? `${url.slice(0, 38)}…` : url;
+  }
+};
+
+const formatAuthors = (authors?: string[]) => {
+  if (!authors || authors.length === 0) return "Unknown authors";
+  if (authors.length <= 2) return authors.join(", ");
+  return `${authors[0]}, ${authors[1]} et al.`;
+};
+
+const sourceKey = (source: ResearchSource): string => {
+  if (source.doi) return `doi:${source.doi.toLowerCase()}`;
+  if (source.url) return `url:${source.url.toLowerCase()}`;
+  const title = source.title?.toLowerCase().trim() || "untitled";
+  const year = source.year ? String(source.year) : "";
+  return `title:${title}:${year}`;
+};
+
+const ResearchSourceCard = ({
+  source,
+  index,
+  saved,
+  onToggleSave,
+  compact = false,
+}: {
+  source: ResearchSource;
+  index: number;
+  saved: boolean;
+  onToggleSave: (source: ResearchSource) => void;
+  compact?: boolean;
+}) => {
+  const displayUrl = source.url || source.pdfUrl;
+  return (
+    <div className={`rounded-xl border border-border/40 bg-muted/20 p-3 ${compact ? "text-[10px]" : "text-xs"}`}>
+      <div className="flex items-start gap-2">
+        <span className="text-[10px] font-black text-primary shrink-0">[{index}]</span>
+        <div className="min-w-0 flex-1">
+          <p className="font-semibold text-foreground leading-snug">{source.title}</p>
+          <p className="text-[10px] text-muted-foreground/70 mt-1">
+            {formatAuthors(source.authors)}{source.year ? ` · ${source.year}` : ""}{source.venue ? ` · ${source.venue}` : ""}
+          </p>
+        </div>
+      </div>
+      {source.abstract && !compact && (
+        <p className="text-[10px] text-muted-foreground/70 mt-2 leading-snug">
+          {source.abstract}
+        </p>
+      )}
+      <div className="mt-2 flex items-center justify-between">
+        {displayUrl ? (
+          <a
+            href={displayUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[10px] text-primary hover:underline inline-flex items-center gap-1"
+          >
+            <ExternalLink className="w-3 h-3" />
+            {formatDisplayUrl(displayUrl)}
+          </a>
+        ) : (
+          <span className="text-[10px] text-muted-foreground/60">Local file</span>
+        )}
+        <button
+          type="button"
+          onClick={() => onToggleSave(source)}
+          className={`text-[10px] font-semibold inline-flex items-center gap-1 ${saved ? "text-emerald-500" : "text-muted-foreground/70 hover:text-foreground"}`}
+        >
+          {saved ? <BookmarkCheck className="w-3 h-3" /> : <Bookmark className="w-3 h-3" />}
+          {saved ? "Saved" : "Save"}
+        </button>
+      </div>
+    </div>
+  );
+};
 
 // Stub: image fetching was removed (unsplash.ts deleted)
 const fetchImageForQuery = async (..._args: unknown[]): Promise<string | null> => null;
@@ -178,6 +291,12 @@ const Chat = () => {
   
   // ANALOGY MODE: Toggle analogies on/off (session-only)
   const [analogyModeEnabled, setAnalogyModeEnabled] = useState(true);
+
+  // RESEARCH MODE: Bohrium-style academic sourcing
+  const [researchMode, setResearchMode] = useState(false);
+  const [researchLoading, setResearchLoading] = useState(false);
+  const [libraryOpen, setLibraryOpen] = useState(false);
+  const [savedSources, setSavedSources] = useState<SavedResearchSource[]>([]);
 
   // RE-EXPLAIN: Track which message has the anchor picker open
   const [reExplainOpenId, setReExplainOpenId] = useState<string | null>(null);
@@ -247,7 +366,30 @@ const Chat = () => {
   );
   const isInputLocked = isTyping || !!streamingId;
 
+  useEffect(() => {
+    const load = () => setSavedSources(researchStore.getAll());
+    load();
+    window.addEventListener("researchLibraryUpdated", load);
+    // Run health check once to surface any Supabase table issues in console
+    checkChatStoreHealth();
+    return () => window.removeEventListener("researchLibraryUpdated", load);
+  }, []);
+
+  useEffect(() => {
+    if (!researchMode) setLibraryOpen(false);
+  }, [researchMode]);
+
   const latestAssistantId = [...messages].reverse().find((m) => m.role === "assistant")?.id;
+
+  const savedKeys = useMemo(() => new Set(savedSources.map(sourceKey)), [savedSources]);
+  const isSourceSaved = useCallback((source: ResearchSource) => savedKeys.has(sourceKey(source)), [savedKeys]);
+  const toggleSaveSource = useCallback((source: ResearchSource) => {
+    if (savedKeys.has(sourceKey(source))) {
+      researchStore.remove(source);
+    } else {
+      researchStore.add(source);
+    }
+  }, [savedKeys]);
 
   const findAnchor = useCallback((text: string) => {
     const lower = text.toLowerCase();
@@ -298,7 +440,7 @@ const Chat = () => {
     grade: userPrefs.grade,
     state: userPrefs.state,
     learningStyle: userPrefs.learningStyle,
-    analogyIntensity: analogyModeEnabled ? 1 : 0,
+    analogyIntensity: analogyModeEnabled ? 3 : 0,
     analogyAnchor: overrideAnchor ?? undefined,
     memoryManagement: false
   }), [
@@ -372,7 +514,14 @@ const Chat = () => {
         ? messages[targetIndex - 1]?.content
         : "";
       const explicitAnchor = previousUser ? findAnchor(previousUser) : null;
-      const aiResponse = await getGroqCompletion(history, buildContext(explicitAnchor));
+      const regenContext = {
+        ...buildContext(explicitAnchor),
+        analogyIntensity: target.sources && target.sources.length > 0 ? 0 : (analogyModeEnabled ? 3 : 0),
+        researchMode: Boolean(target.sources && target.sources.length > 0),
+        researchQuery: target.researchQuery,
+        researchSources: target.sources,
+      };
+      const aiResponse = await getGroqCompletion(history, regenContext);
       setMessages((prev) => prev.map((m) => (
         m.id === messageId
           ? { ...m, id: `${messageId}-regen-${Date.now()}`, content: aiResponse.content || "I'm not sure how to answer that." }
@@ -394,7 +543,8 @@ const Chat = () => {
     selectedSubject,
     latestAssistantId,
     buildContext,
-    buildWelcomeMessage
+    buildWelcomeMessage,
+    analogyModeEnabled
   ]);
 
   const handleSaveAsFlashcards = useCallback(async () => {
@@ -531,7 +681,7 @@ const Chat = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [buildWelcomeMessage]);
 
-  // LOAD ALL SESSIONS: Fetch the user's chat history on mount
+  // LOAD ALL SESSIONS: Fetch the user's chat history on mount, and refresh on focus
   useEffect(() => {
     const loadSessions = async () => {
       setSessionsLoading(true);
@@ -540,12 +690,17 @@ const Chat = () => {
       setSessionsLoading(false);
     };
     loadSessions();
+
+    // Re-fetch when tab regains focus so history is always fresh
+    const onFocus = () => loadSessions();
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
   }, []);
 
   // Lock to bottom when streaming starts
   useEffect(() => {
     if (streamingId || isTyping) {
-      lockedToBottomRef.current = true;
+      // Do NOT lock to bottom during generation — let the user read freely
     }
   }, [streamingId, isTyping]);
 
@@ -879,7 +1034,9 @@ const Chat = () => {
     setMessages(prev => [...prev, userMessage]);
     setInput("");
     setAttachedFiles([]); // Clear attachments after sending
-    lockedToBottomRef.current = true;
+    // Scroll to bottom when the user sends — then leave the user in control
+    lockedToBottomRef.current = false;
+    requestAnimationFrame(() => scrollToBottom("smooth"));
     setIsTyping(true); // Show the "thinking" dots.
 
     // AUTO-DETECT SUBJECT: only fire if the message looks academic (>3 words, not just a greeting)
@@ -894,36 +1051,78 @@ const Chat = () => {
       });
     }
 
-    // Record the conversation
+    // Record the conversation stat
     if (selectedSubject) {
       statsStore.recordChat(allSubjects.find(s => s.id === selectedSubject)?.label || selectedSubject);
     }
 
-    // Save user message to Supabase
-    if (chatSessionId) {
-      const messageWithFiles = input + (attachedFiles.length > 0 ? `\n\n[Attached files: ${attachedFiles.map(f => f.name).join(', ')}]` : '');
-      chatStore.addMessage(chatSessionId, "user", messageWithFiles);
-      
-      // Update the session's updatedAt timestamp in sidebar
-      setAllSessions(prev => {
-        const updated = prev.map(s => 
-          s.id === chatSessionId 
-            ? { ...s, updatedAt: new Date().toISOString() }
-            : s
-        );
-        // Move to top by sorting by updatedAt descending
-        return updated.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-      });
-    }
+    // Note: Supabase saving now happens inside the async IIFE below,
+    // after we've guaranteed a session ID exists.
     
     // 2. We talk to the AI brain behind the scenes.
     (async () => {
+      // Lazily create a session if one doesn't exist yet (e.g. subject was auto-detected, not manually selected)
+      let activeSessionId = chatSessionId;
+      if (!activeSessionId) {
+        const subjectForSession = selectedSubject || "general";
+        const newId = await chatStore.createSession(subjectForSession, "New chat");
+        if (newId) {
+          activeSessionId = newId;
+          setChatSessionId(newId);
+          const newSession: ChatSession = {
+            id: newId,
+            subjectId: subjectForSession,
+            title: "New chat",
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+          setAllSessions(prev => [newSession, ...prev]);
+          window.dispatchEvent(new Event("chatSessionCreated"));
+        }
+      }
+
+      // Save user message to Supabase now that we have a session
+      if (activeSessionId) {
+        const messageWithFiles = input.trim() + (attachedFiles.length > 0 ? `\n\n[Attached files: ${attachedFiles.map(f => f.name).join(', ')}]` : '');
+        chatStore.addMessage(activeSessionId, "user", messageWithFiles).catch(e => console.error("[Chat] addMessage user:", e));
+        setAllSessions(prev => {
+          const updated = prev.map(s =>
+            s.id === activeSessionId
+              ? { ...s, updatedAt: new Date().toISOString() }
+              : s
+          );
+          return updated.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+        });
+      }
       // Build content with file attachments included
       let userContent = input;
       if (attachedFiles.length > 0) {
         const fileList = attachedFiles.map(f => `- ${f.name}`).join("\n");
         userContent = `${input}\n\n[Attached files]\n${fileList}\n\n[File contents]\n` +
           attachedFiles.map(f => `--- ${f.name} ---\n${f.extractedText}`).join("\n\n");
+      }
+
+      // ── Research mode: fetch academic sources ──────────────────────────
+      let researchSources: ResearchSource[] = [];
+      const researchQuery = input.trim();
+      if (researchMode) {
+        try {
+          setResearchLoading(true);
+          const localSources: ResearchSource[] = attachedFiles.map((file, idx) => ({
+            id: `local-${Date.now()}-${idx}`,
+            title: file.name,
+            abstract: file.extractedText ? file.extractedText.slice(0, 360) : undefined,
+            source: "local",
+          }));
+          const externalSources = researchQuery
+            ? await searchAcademicSources(researchQuery, 12)
+            : [];
+          researchSources = [...localSources, ...externalSources].slice(0, 12);
+          // Auto-open the library panel whenever sources come back
+          if (researchSources.length > 0) setLibraryOpen(true);
+        } finally {
+          setResearchLoading(false);
+        }
       }
 
       // We package up the chat history so the AI remembers what we've already said.
@@ -935,7 +1134,13 @@ const Chat = () => {
       const newHistory = [...messagesHistory, { role: "user" as const, content: userContent }];
       
       // We also give the AI "Context" (your hobbies and style).
-    const context = buildContext(anchorForRequest);
+    const context = {
+      ...buildContext(anchorForRequest),
+      analogyIntensity: researchMode ? 0 : (analogyModeEnabled ? 3 : 0),
+      researchMode,
+      researchQuery: researchQuery || undefined,
+      researchSources,
+    };
 
       try {
         // Create a placeholder message that we'll fill with streaming tokens
@@ -945,23 +1150,18 @@ const Chat = () => {
           role: "assistant",
           content: "",
           isStreaming: true,
+          sources: researchSources,
+          researchQuery: researchQuery || undefined,
         }]);
         setIsTyping(false);
         setStreamingId(responseId);
-        lockedToBottomRef.current = true;
-        
-        // Scroll to bottom immediately when streaming starts
-        requestAnimationFrame(() => {
-          const el = scrollContainerRef.current;
-          if (el) el.scrollTop = el.scrollHeight;
-        });
+        lockedToBottomRef.current = false;
 
         const abort = new AbortController();
         abortRef.current = abort;
         let accumulated = "";
 
         // Throttle renders for readability - update every ~100ms (about 10 updates/second)
-        // This lets users follow along comfortably without feeling rushed
         let lastRenderTime = 0;
         const RENDER_INTERVAL = 100;
 
@@ -971,20 +1171,13 @@ const Chat = () => {
           accumulated += token;
 
           const now = Date.now();
-          // Only render if enough time has passed
           if (now - lastRenderTime > RENDER_INTERVAL) {
-            // Hide the <ACTIONS> block while streaming so user never sees raw JSON
             const displayAccumulated = accumulated.replace(/<ACTIONS>[\s\S]*?(<\/ACTIONS>|$)/i, "").trim();
             setMessages(prev => prev.map(m =>
               m.id === responseId ? { ...m, content: displayAccumulated } : m
             ));
             lastRenderTime = now;
-
-            // Keep scrolled to bottom while streaming
-            if (lockedToBottomRef.current) {
-              const el = scrollContainerRef.current;
-              if (el) el.scrollTop = el.scrollHeight;
-            }
+            // No auto-scroll here — user is in control during generation
           }
         }
 
@@ -1022,28 +1215,50 @@ const Chat = () => {
         setMessages(prev => prev.map(m =>
           m.id === responseId ? { ...m, isStreaming: false, content: displayContent } : m
         ));
-        const el = scrollContainerRef.current;
-        if (el) el.scrollTop = el.scrollHeight;
         setStreamingId(null);
 
-        // Save to Supabase
-        if (chatSessionId) {
-          chatStore.addMessage(chatSessionId, "assistant", accumulated);
-          setAllSessions(prev =>
-            [...prev.map(s => s.id === chatSessionId ? { ...s, updatedAt: new Date().toISOString() } : s)]
-              .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-          );
-          const isFirstExchange = messages.length === 1 && messages[0].isWelcome;
-          if (isFirstExchange) {
-            try {
-              const titlePrompt = [{ role: "user" as const, content: `Based on this question: "${input}", generate a very short (2-4 words) title for this chat. Only respond with the title, nothing else.` }];
-              const titleResponse = await getGroqCompletion(titlePrompt, buildContext(null));
-              const chatTitle = (titleResponse.content || "New chat").trim().slice(0, 50);
-              await chatStore.updateSessionTitle(chatSessionId, chatTitle);
-              setAllSessions(prev => prev.map(s => s.id === chatSessionId ? { ...s, title: chatTitle } : s));
-            } catch {}
+      // Save to Supabase
+      if (activeSessionId) {
+        chatStore.addMessage(activeSessionId, "assistant", accumulated).catch(e => console.error("[Chat] addMessage assistant:", e));
+        setAllSessions(prev =>
+          [...prev.map(s => s.id === activeSessionId ? { ...s, updatedAt: new Date().toISOString() } : s)]
+            .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+        );
+        // Generate chat title after first user message (not welcome message)
+        // Count user messages that were sent before this AI response (excluding welcome)
+        const previousUserMessages = messages.filter(m => m.role === "user" && !m.isWelcome).length;
+        const isFirstRealExchange = previousUserMessages === 0;
+        if (isFirstRealExchange) {
+          try {
+            // Use the actual user input for title generation
+            const titlePrompt = [{ role: "user" as const, content: `Based on this question: "${input}", generate a very short (2-4 words) title for this chat. Only respond with the title, nothing else.` }];
+            const titleResponse = await getGroqCompletion(titlePrompt, buildContext(null));
+            // Clean up the title - remove quotes, extra spaces, and ensure it's meaningful
+            let chatTitle = (titleResponse.content || "").trim();
+            // Remove common AI prefixes/suffixes
+            chatTitle = chatTitle.replace(/^["']|["']$/g, "").trim();
+            chatTitle = chatTitle.replace(/^(Here's|Here is|Title:|The title is:)/i, "").trim();
+            // If AI returned garbage or nothing, use a fallback based on the input
+            if (!chatTitle || chatTitle.length < 2) {
+              const words = input.trim().split(/\s+/).slice(0, 4).join(" ");
+              chatTitle = words || "New chat";
+            }
+            // Ensure title is not too long
+            chatTitle = chatTitle.slice(0, 50);
+            await chatStore.updateSessionTitle(activeSessionId, chatTitle);
+            setAllSessions(prev => prev.map(s => s.id === activeSessionId ? { ...s, title: chatTitle } : s));
+          } catch (err) {
+            console.warn("[Chat] Failed to generate title:", err);
+            // Fallback: use first few words of user's question
+            const words = input.trim().split(/\s+/).slice(0, 4).join(" ");
+            if (words) {
+              const fallbackTitle = words.slice(0, 50);
+              await chatStore.updateSessionTitle(activeSessionId, fallbackTitle);
+              setAllSessions(prev => prev.map(s => s.id === activeSessionId ? { ...s, title: fallbackTitle } : s));
+            }
           }
         }
+      }
       } catch {
         setMessages(prev => [...prev, {
           id: (Date.now() + 1).toString(),
@@ -1215,7 +1430,6 @@ const Chat = () => {
                 {filteredSessions.map((session) => {
                   const isActive = chatSessionId === session.id;
                   const isRenaming = renamingThreadId === session.id;
-                  const subjectInfo = allSubjects.find(s => s.id === session.subjectId);
                   return (
                     <div
                       key={session.id}
@@ -1240,12 +1454,9 @@ const Chat = () => {
                             className="w-full px-1 text-sm bg-transparent border-b border-border focus:outline-none"
                           />
                         ) : (
-                          <>
-                            <p className={`text-sm truncate leading-snug ${isActive ? "text-foreground font-medium" : "text-foreground/70"}`}>
-                              {session.title}
-                            </p>
-                            <p className="text-[10px] text-muted-foreground/50 truncate">{subjectInfo?.label || session.subjectId}</p>
-                          </>
+                          <p className={`text-sm truncate leading-snug ${isActive ? "text-foreground font-medium" : "text-foreground/70"}`}>
+                            {session.title}
+                          </p>
                         )}
                       </button>
                       {!isRenaming && (
@@ -1320,103 +1531,7 @@ const Chat = () => {
 
           {/* Chat always visible — subject auto-detected from first message */}
           <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-            {/* Slim toolbar */}
-            <div className="flex items-center px-2 sm:px-4 py-2 sm:py-1.5 border-b border-border/10 gap-2 sm:gap-3">
-              {/* Subject badge — auto-detected, tappable to override */}
-              <div className="relative" ref={subjectPickerRef}>
-                <button
-                  onClick={() => setShowSubjectPicker(o => !o)}
-                  className="flex items-center gap-1.5 text-xs font-medium text-foreground/70 hover:text-foreground transition-all group"
-                >
-                  {subjectDetecting ? (
-                    <RefreshCw className="w-3 h-3 animate-spin text-muted-foreground" />
-                  ) : selectedSubject ? (
-                    (() => { const s = allSubjects.find(x => x.id === selectedSubject); const Icon = s?.icon; return Icon ? <Icon className="w-3.5 h-3.5 text-muted-foreground group-hover:text-foreground/70 transition-colors" /> : null; })()
-                  ) : (
-                    <BookOpen className="w-3.5 h-3.5 text-muted-foreground/50" />
-                  )}
-                  <span className={selectedSubject ? "" : "text-muted-foreground/50"}>
-                    {subjectDetecting ? "Detecting…" : selectedSubject ? allSubjects.find(s => s.id === selectedSubject)?.label : "Subject"}
-                  </span>
-                  <ChevronDown className="w-2.5 h-2.5 opacity-40" />
-                </button>
-                <AnimatePresence>
-                  {showSubjectPicker && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -6, scale: 0.97 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: -6, scale: 0.97 }}
-                      transition={{ duration: 0.15 }}
-                      className="absolute left-0 top-8 z-50 w-52 rounded-xl border border-border bg-card shadow-xl p-1.5 max-h-72 overflow-y-auto"
-                    >
-                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-2 py-1">Set subject</p>
-                      {availableSubjects.map(subject => {
-                        const Icon = subject.icon;
-                        return (
-                          <button
-                            key={subject.id}
-                            type="button"
-                            onClick={() => { setSelectedSubject(subject.id); setShowSubjectPicker(false); }}
-                            className={`w-full flex items-center gap-2 text-left text-xs px-2 py-1.5 rounded-lg transition-colors ${
-                              selectedSubject === subject.id
-                                ? "bg-primary/10 text-primary font-medium"
-                                : "hover:bg-muted/60 text-foreground"
-                            }`}
-                          >
-                            <Icon className="w-3.5 h-3.5 shrink-0" />
-                            {subject.label}
-                          </button>
-                        );
-                      })}
-                      {availableSubjects.length === 0 && (
-                        <p className="text-xs text-muted-foreground/60 px-2 py-2">No subjects set. Add them in your profile.</p>
-                      )}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-
-              <div className="h-3.5 w-px bg-border/40" />
-
-              {/* Analogy toggle */}
-              <button
-                onClick={() => setAnalogyModeEnabled(p => !p)}
-                disabled={isInputLocked}
-                className={`text-xs px-0 py-0 transition-all ${analogyModeEnabled ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
-                title={analogyModeEnabled ? "Switch to school-focused answers" : "Switch to real-world learning with analogies"}
-              >
-                {analogyModeEnabled ? "Learning Mode" : "Schoolwork!"}
-              </button>
-
-              <div className="h-3.5 w-px bg-border/40" />
-
-              {/* Flashcards */}
-              <button
-                onClick={handleSaveAsFlashcards}
-                disabled={isInputLocked || messages.filter(m => !m.isWelcome).length < 2}
-                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-all disabled:opacity-30"
-              >
-                {savingFlashcards ? <RefreshCw className="w-3 h-3 animate-spin" /> : flashcardsSaved ? <Check className="w-3 h-3 text-primary" /> : <BookOpen className="w-3 h-3" />}
-                {flashcardsSaved ? "Saved to flashcards" : "Save as flashcards"}
-              </button>
-
-              {getFormulaSheet(selectedSubject || "") && (
-                <>
-                  <div className="h-3.5 w-px bg-border/40" />
-                  <button
-                    onClick={() => setFormulaPanelOpen(o => !o)}
-                    className={`text-xs transition-all ${formulaPanelOpen ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
-                  >
-                    Formula sheet
-                  </button>
-                </>
-              )}
-
-              <div className="ml-auto text-[10px] text-muted-foreground/40">
-                Analogix AI may make mistakes — always verify
-              </div>
-            </div>
-
+            {/* ── TAB CONTENT ─────────────────────────────── */}
             <div className="flex-1 flex gap-4 min-h-0">
               {/* Main chat column */}
               <div
@@ -1439,7 +1554,7 @@ const Chat = () => {
                 onScroll={updateScrollButton}
                 className="absolute inset-0 overflow-y-auto min-h-0 chat-scroll"
               >
-                <div className="mx-auto w-full px-4 flex flex-col space-y-6 pb-40 sm:pb-28 pt-4 sm:pt-4">
+                <div className="mx-auto max-w-4xl w-full px-4 flex flex-col space-y-6 pb-40 sm:pb-28 pt-4 sm:pt-4">
                   {/* Empty state — shown before any messages */}
                   {messages.length === 0 && !isTyping && (
                     <motion.div
@@ -1456,7 +1571,7 @@ const Chat = () => {
                           {userName ? `Hey ${userName}, what are you studying?` : "What are you studying?"}
                         </p>
                         <p className="text-sm text-muted-foreground/60 mt-1">
-                          Ask about any concept — I’ll explain it with your interests
+                          Ask about any concept — I'll explain it with your interests
                         </p>
                       </div>
                     </motion.div>
@@ -1477,7 +1592,7 @@ const Chat = () => {
                         className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
                       >
                         {message.role === "assistant" ? (
-                          <div className="max-w-[90%] sm:max-w-[85%] message-bubble-assistant">
+                          <div className="max-w-[85%] sm:max-w-[80%] message-bubble-assistant">
                             <div className="mb-2" />
                             <>
                               {(() => {
@@ -1499,11 +1614,39 @@ const Chat = () => {
                                   />
                                 </a>
                               )}
+                              {message.isStreaming && !parseThinkingContent(message.content).response.trim() && (
+                                <div className="flex items-center gap-1.5 py-1">
+                                  <div className="w-1.5 h-1.5 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: '0ms' }} />
+                                  <div className="w-1.5 h-1.5 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: '120ms' }} />
+                                  <div className="w-1.5 h-1.5 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: '240ms' }} />
+                                </div>
+                              )}
                               <StreamingMessage
                                 content={parseThinkingContent(message.content).response}
                                 isStreaming={!!message.isStreaming}
                               />
-                              <div className="mt-3 flex items-center justify-between gap-0.5">
+                              {message.sources && message.sources.length > 0 && (
+                                <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                  {message.sources.map((source, i) => (
+                                    <ResearchSourceCard
+                                      key={`${source.id}-${i}`}
+                                      source={source}
+                                      index={i + 1}
+                                      saved={isSourceSaved(source)}
+                                      onToggleSave={toggleSaveSource}
+                                    />
+                                  ))}
+                                </div>
+                              )}
+                              <AnimatePresence>
+                              {!message.isStreaming && (
+                              <motion.div
+                                key="actions"
+                                initial={{ opacity: 0, y: 4 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.25, ease: "easeOut" }}
+                                className="mt-3 flex items-center justify-between gap-0.5"
+                              >
                                 {/* Explain it differently */}
                                 <div className="relative">
                                   <Button
@@ -1583,7 +1726,9 @@ const Chat = () => {
                                     </Button>
                                   )}
                                 </div>
-                              </div>
+                              </motion.div>
+                              )}
+                              </AnimatePresence>
                             </>
                           </div>
                         ) : (
@@ -1606,7 +1751,7 @@ const Chat = () => {
                                 ))}
                               </div>
                             )}
-                            <div className="max-w-[92%] sm:max-w-[85%] message-bubble-user">
+                            <div className="max-w-[85%] sm:max-w-[75%] message-bubble-user">
                               <div className="whitespace-pre-wrap text-sm leading-relaxed">
                                 <MarkdownRenderer content={message.content} />
                               </div>
@@ -1672,6 +1817,7 @@ const Chat = () => {
                 </Button>
               )}
 
+              <div className="pointer-events-none absolute top-0 left-0 right-0 h-10 bg-gradient-to-b from-background to-transparent z-20" />
               <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-20 sm:h-16 bg-gradient-to-t from-background via-background/90 to-transparent z-20" />
 
               {/* Input */}
@@ -1761,7 +1907,7 @@ const Chat = () => {
                   </div>
                 )}
                 
-                <div className="relative rounded-2xl border border-border/60 bg-card shadow-sm overflow-hidden">
+                <div className="relative rounded-2xl border border-border/60 bg-card shadow-sm" style={{ overflow: 'visible' }}>
                   <Textarea
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
@@ -1773,33 +1919,71 @@ const Chat = () => {
                     }}
                     placeholder={selectedSubject ? `Ask anything about ${allSubjects.find(s => s.id === selectedSubject)?.label}…` : `Ask me anything — maths, science, history…`}
                     rows={Math.max(1, Math.min(8, Math.ceil(input.length / 80) || 1))}
-                    className="w-full px-3 sm:px-4 pt-3.5 pb-12 text-sm sm:text-base bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/50 resize-none overflow-y-auto max-h-48 leading-relaxed"
+                    className="w-full px-3 sm:px-4 pt-3.5 pb-12 text-sm sm:text-base bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/50 resize-none overflow-y-auto max-h-48 leading-relaxed rounded-2xl"
                   />
                   {/* Bottom row of input */}
                   <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between px-2 sm:px-3 pb-2 sm:pb-3">
-                    <div className="relative w-9 h-9 sm:w-8 sm:h-8 group">
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        multiple
-                        onChange={handleFileSelect}
-                        className="absolute inset-0 z-10 cursor-pointer opacity-0 disabled:cursor-not-allowed"
-                        accept={ACCEPTED_FILE_TYPES}
-                        disabled={fileExtracting}
-                        aria-label="Attach files"
-                      />
+                    {/* Left side: attach + toolbar icons */}
+                    <div className="flex items-center gap-1">
+                      {/* Attach file */}
+                      <div className="relative w-8 h-8 group">
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          multiple
+                          onChange={handleFileSelect}
+                          className="absolute inset-0 z-10 cursor-pointer opacity-0 disabled:cursor-not-allowed"
+                          accept={ACCEPTED_FILE_TYPES}
+                          disabled={fileExtracting}
+                          aria-label="Attach files"
+                        />
+                        <button
+                          type="button"
+                          disabled={fileExtracting}
+                          className="w-8 h-8 rounded-full bg-muted/40 flex items-center justify-center text-muted-foreground transition-all disabled:opacity-50 group-hover:bg-primary/10 group-hover:text-primary"
+                          title={fileExtracting ? "Extracting file…" : "Attach files"}
+                          aria-hidden="true"
+                          tabIndex={-1}
+                        >
+                          {fileExtracting
+                            ? <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                            : <Paperclip className="w-3.5 h-3.5" />}
+                        </button>
+                      </div>
+
+                      {/* Analogy toggle */}
                       <button
                         type="button"
-                        disabled={fileExtracting}
-                        className="w-9 h-9 sm:w-8 sm:h-8 rounded-full bg-muted/40 flex items-center justify-center text-muted-foreground transition-all disabled:opacity-50 group-hover:bg-primary/10 group-hover:text-primary"
-                        title={fileExtracting ? "Extracting file…" : "Attach files"}
-                        aria-hidden="true"
-                        tabIndex={-1}
+                        onClick={() => setAnalogyModeEnabled(p => !p)}
+                        disabled={isInputLocked}
+                        className={`w-8 h-8 rounded-full flex items-center justify-center transition-all disabled:opacity-40 ${analogyModeEnabled ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"}`}
+                        title={analogyModeEnabled ? "Analogies on — click to turn off" : "Analogies off — click to turn on"}
                       >
-                        {fileExtracting
-                          ? <RefreshCw className="w-4 h-4 sm:w-3.5 sm:h-3.5 animate-spin" />
-                          : <Paperclip className="w-4 h-4 sm:w-3.5 sm:h-3.5" />}
+                        <Lightbulb className="w-3.5 h-3.5" />
                       </button>
+
+                      {/* Research mode */}
+                      <button
+                        type="button"
+                        onClick={() => setResearchMode(p => !p)}
+                        disabled={isInputLocked}
+                        className={`w-8 h-8 rounded-full flex items-center justify-center transition-all disabled:opacity-40 ${researchMode ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"}`}
+                        title={researchMode ? "Research mode on — click to turn off" : "Research mode off — click to turn on"}
+                      >
+                        {researchLoading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
+                      </button>
+
+                      {/* Formula sheet — only if subject has formulas */}
+                      {getFormulaSheet(selectedSubject || "") && (
+                        <button
+                          type="button"
+                          onClick={() => setFormulaPanelOpen(o => !o)}
+                          className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${formulaPanelOpen ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"}`}
+                          title="Formula sheet"
+                        >
+                          <Sigma className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                     </div>
                     {(isTyping || streamingId) ? (
                       <button
@@ -1824,6 +2008,66 @@ const Chat = () => {
                 </div> {/* end max-w-3xl wrapper */}
               </motion.div>
             </div>
+
+              {/* Research library side panel — auto-populated from conversation sources */}
+              <AnimatePresence>
+                {libraryOpen && researchMode && (
+                  <motion.div
+                    key="research-library"
+                    initial={{ opacity: 0, x: 20, width: 0 }}
+                    animate={{ opacity: 1, x: 0, width: "280px" }}
+                    exit={{ opacity: 0, x: 20, width: 0 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 28 }}
+                    className="hidden sm:flex flex-col border border-border rounded-xl bg-card overflow-hidden shrink-0 max-h-[calc(100vh-180px)]"
+                    style={{ width: 280 }}
+                  >
+                    <div className="flex items-center justify-between px-3 py-2.5 border-b border-border">
+                      <span className="text-xs font-bold text-foreground">Research Library</span>
+                      <button type="button" onClick={() => setLibraryOpen(false)} className="text-muted-foreground hover:text-foreground p-1 rounded-lg hover:bg-muted">
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                    <div className="flex-1 overflow-y-auto p-2 space-y-2">
+                      {/* Session sources — all sources from this conversation */}
+                      {(() => {
+                        const sessionSources = messages
+                          .filter(m => m.sources && m.sources.length > 0)
+                          .flatMap(m => m.sources!);
+                        // Deduplicate by key
+                        const seen = new Set<string>();
+                        const unique = sessionSources.filter(s => {
+                          const k = sourceKey(s); if (seen.has(k)) return false; seen.add(k); return true;
+                        });
+                        if (unique.length === 0 && savedSources.length === 0) return (
+                          <div className="text-center text-[11px] text-muted-foreground/60 py-6">
+                            Sources will appear here when you send a message in research mode.
+                          </div>
+                        );
+                        return (
+                          <>
+                            {unique.length > 0 && (
+                              <>
+                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 px-1">This session</p>
+                                {unique.map((source, i) => (
+                                  <ResearchSourceCard key={`session-${i}`} source={source} index={i + 1} saved={isSourceSaved(source)} onToggleSave={toggleSaveSource} compact />
+                                ))}
+                              </>
+                            )}
+                            {savedSources.length > 0 && (
+                              <>
+                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 px-1 mt-2">Saved</p>
+                                {savedSources.map((source, i) => (
+                                  <ResearchSourceCard key={`saved-${i}`} source={source} index={i + 1} saved={isSourceSaved(source)} onToggleSave={toggleSaveSource} compact />
+                                ))}
+                              </>
+                            )}
+                          </>
+                        );
+                      })()}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               {/* Formula sheet side panel */}
               <AnimatePresence>

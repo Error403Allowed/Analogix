@@ -23,6 +23,7 @@ import CodeBlockInput from "@/components/CodeBlockInput";
 import RichEditor, { type RichEditorHandle } from "@/components/RichEditor";
 import StudyGuideView, { decodeStudyGuide, encodeStudyGuide } from "@/components/StudyGuideView";
 import type { GeneratedStudyGuide } from "@/services/groq";
+import { useTabs } from "@/context/TabsContext";
 
 const formatSavedLabel = (iso?: string | null) => {
   if (!iso) return "Not saved yet";
@@ -77,6 +78,7 @@ export default function SubjectDocument() {
   const [helperInput, setHelperInput]       = useState("");
   const [helperTyping, setHelperTyping]     = useState(false);
   const [chatOpen, setChatOpen]             = useState(false);
+  const { updateActiveTabLabel } = useTabs();
   const [isInserting, setIsInserting]       = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -128,6 +130,9 @@ export default function SubjectDocument() {
       setDocMissing(false);
       const rawTitle   = typeof doc.title === "string" ? doc.title : "";
       const rawContent = doc.content || "";
+
+      // Update the app-level tab label to show the document title
+      if (rawTitle) updateActiveTabLabel(rawTitle, "📄");
 
       // On external updates (agent edits), skip if content hasn't changed remotely
       if (isExternal && rawContent === lastRemoteContent.current) {
@@ -205,6 +210,16 @@ export default function SubjectDocument() {
   }, [subjectId, docId, subject?.label]);
 
   const canSave = title.trim().length > 0;
+
+  const handleStartQuiz = useCallback(() => {
+    try {
+      const cached = localStorage.getItem(`docQuiz:${docId}`);
+      if (cached) sessionStorage.setItem("pendingQuiz", cached);
+    } catch {
+      // Ignore storage errors
+    }
+    router.push(`/quiz?subjectId=${subjectId}&docId=${docId}`);
+  }, [docId, router, subjectId]);
 
   useEffect(() => {
     if (!docId || docMissing || !canSave) { setIsSaving(false); return; }
@@ -627,7 +642,7 @@ export default function SubjectDocument() {
               <Button
                 size="sm"
                 className="gradient-primary"
-                onClick={() => router.push(`/quiz?subjectId=${subjectId}&docId=${docId}`)}
+                onClick={handleStartQuiz}
               >
                 <HelpCircle className="w-3.5 h-3.5 mr-1.5" />
                 Start a Quiz

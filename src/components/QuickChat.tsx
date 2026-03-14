@@ -14,7 +14,7 @@ interface Message {
 
 const QuickChat = () => {
   const [messages, setMessages] = useState<Message[]>([
-    { id: "1", role: "assistant", content: "Hey! Ask me to explain any concept using an analogy." }
+    { id: "1", role: "assistant", content: "Hey! Ask me to explain any concept, and I'll teach you using your interests!" }
   ]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);

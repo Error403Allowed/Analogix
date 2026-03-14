@@ -1,8 +1,34 @@
 import { NextResponse } from "next/server";
 import { callHfChat, formatError } from "../_utils";
-import { QuizData } from "@/types/quiz";
+import type { QuizData, QuizQuestion } from "@/types/quiz";
 
 export const runtime = "nodejs";
+
+// Chunk text into smaller pieces for processing
+const chunkText = (text: string, maxChunkSize: number): string[] => {
+  const chunks: string[] = [];
+  let start = 0;
+  
+  while (start < text.length) {
+    let end = Math.min(start + maxChunkSize, text.length);
+    
+    // Try to break at a sentence boundary
+    if (end < text.length) {
+      const lastPeriod = text.lastIndexOf(".", end);
+      const lastNewline = text.lastIndexOf("\n", end);
+      const breakPoint = Math.max(lastPeriod, lastNewline);
+      
+      if (breakPoint > start + maxChunkSize * 0.5) {
+        end = breakPoint + 1;
+      }
+    }
+    
+    chunks.push(text.slice(start, end).trim());
+    start = end;
+  }
+  
+  return chunks;
+};
 
 export async function POST(request: Request) {
   try {
@@ -42,21 +68,84 @@ Return ONLY valid JSON — no markdown, no preamble:
       {
         "id": 1,
         "question": "Question text?",
-        "options": { "A": "Option A", "B": "Option B", "C": "Option C", "D": "Option D" },
-        "correctAnswer": "A",
-        "explanation": "Detailed explanation of why A is correct and why other options are wrong"
+        "options": [
+          { "id": "A", "text": "Option A", "isCorrect": false },
+          { "id": "B", "text": "Option B", "isCorrect": true },
+          { "id": "C", "text": "Option C", "isCorrect": false },
+          { "id": "D", "text": "Option D", "isCorrect": false }
+        ],
+        "reasoning": "Detailed explanation of why B is correct and why other options are wrong"
       }
     ]
   }
 }`;
 
+    // For large documents, use chunking strategy
+    const MAX_CHUNK_SIZE = 12000; // Conservative chunk size
+    const allQuestions: QuizQuestion[] = [];
+
+    if (documentContent.length > MAX_CHUNK_SIZE) {
+      // Split document into chunks and generate quiz for each
+      const chunks = chunkText(documentContent, MAX_CHUNK_SIZE);
+      const questionsPerChunk = Math.ceil(numberOfQuestions / chunks.length);
+      
+      console.log(`[quiz-from-doc] Chunking: ${chunks.length} chunks for ${documentContent.length} chars`);
+      
+      for (let i = 0; i < chunks.length; i++) {
+        try {
+          const chunkContent = await callHfChat(
+            {
+              messages: [
+                { role: "system", content: systemPrompt },
+                { role: "user", content: `Document: "${fileName}" (Part ${i + 1}/${chunks.length})\n\nContent:\n${chunks[i]}\n\nPlease generate ${questionsPerChunk} quiz questions based on this section.` },
+              ],
+              max_tokens: 2048,
+              temperature: 0.6,
+            },
+            "reasoning"
+          );
+
+          let chunkQuiz: QuizData | null = null;
+          try {
+            const clean = chunkContent.replace(/```json|```/g, "").trim();
+            const parsed = JSON.parse(clean);
+            chunkQuiz = parsed.quiz || parsed || null;
+          } catch {
+            const match = chunkContent.match(/\{[\s\S]*\}/);
+            if (match) {
+              try {
+                const parsed = JSON.parse(match[0]);
+                chunkQuiz = parsed.quiz || parsed || null;
+              } catch {}
+            }
+          }
+
+          if (chunkQuiz?.questions) {
+            allQuestions.push(...chunkQuiz.questions);
+          }
+        } catch (chunkError) {
+          console.warn(`[quiz-from-doc] Chunk ${i + 1} failed:`, formatError(chunkError));
+          // Continue with next chunk
+        }
+      }
+      
+      // Limit to requested number of questions
+      const questions = allQuestions.slice(0, numberOfQuestions).map((q, i) => ({ ...q, id: i + 1 }));
+      const quiz: QuizData = {
+        questions,
+      };
+      
+      return NextResponse.json({ quiz });
+    }
+
+    // Small document - single pass
     const content = await callHfChat(
       {
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: `Document: "${fileName}"\n\nContent:\n${documentContent.slice(0, 15000)}\n\nPlease generate a ${numberOfQuestions}-question quiz based on this document.` },
+          { role: "user", content: `Document: "${fileName}"\n\nContent:\n${documentContent}\n\nPlease generate a ${numberOfQuestions}-question quiz based on this document.` },
         ],
-        max_tokens: 4096,
+        max_tokens: 3072,
         temperature: 0.6,
       },
       "reasoning"

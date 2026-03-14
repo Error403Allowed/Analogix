@@ -78,6 +78,7 @@ function E({ value, onChange, multiline, placeholder, className }: EditProps) {
       title="Click to edit"
       className={cn(
         "cursor-text rounded-sm px-0.5 hover:bg-primary/10 transition-colors break-words",
+        multiline && "whitespace-pre-wrap",
         !value && "italic text-muted-foreground/40",
         className,
       )}
@@ -272,8 +273,14 @@ export default function StudyGuideView({
 
         {/* Meta badges */}
         <div className="flex flex-wrap gap-2">
-          {(["assessmentType", "assessmentDate", "weighting", "totalMarks"] as const).map((k) => {
-            const labels: Record<string, string> = { assessmentType: "Type", assessmentDate: "Due", weighting: "Weighting", totalMarks: "Marks" };
+          {(["assessmentType", "assessmentDate", "weighting", "totalMarks", "examDuration"] as const).map((k) => {
+            const labels: Record<string, string> = {
+              assessmentType: "Type",
+              assessmentDate: "Due",
+              weighting: "Weighting",
+              totalMarks: "Marks",
+              examDuration: "Duration",
+            };
             const val = guide[k] as string | undefined;
             if (!val) return null;
             return (
@@ -571,49 +578,6 @@ export default function StudyGuideView({
         </div>
       </Card>
 
-      {/* ── GRADE EXPECTATIONS ───────────────────────────────────────────── */}
-      {grades.length > 0 && (
-        <Card emoji="📈" title="Assessment Criteria">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-            {grades.map((g, gi) => {
-              const s = gradeStyle(g.grade);
-              return (
-                <div key={gi} className={cn("rounded-xl border border-border/40 bg-card/60 p-4 border-t-2", s.topBorder)}>
-                  <div className="flex items-center gap-2 mb-3">
-                    <span className={cn("w-7 h-7 rounded-lg text-sm font-black flex items-center justify-center shrink-0", s.badge)}>
-                      {g.grade}
-                    </span>
-                    <div
-                      role="button" tabIndex={0}
-                      onClick={() => set("gradeExpectations", grades.filter((_, i) => i !== gi))}
-                      onKeyDown={(e) => e.key === "Enter" && set("gradeExpectations", grades.filter((_, i) => i !== gi))}
-                      className="ml-auto text-muted-foreground/20 hover:text-destructive transition-colors cursor-pointer"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </div>
-                  </div>
-                  <BulletList
-                    items={g.criteria}
-                    onChange={(criteria) =>
-                      set("gradeExpectations", grades.map((x, i) => (i === gi ? { ...x, criteria } : x)))
-                    }
-                    dotClass={s.dot}
-                  />
-                </div>
-              );
-            })}
-          </div>
-          <div
-            role="button" tabIndex={0}
-            onClick={() => set("gradeExpectations", [...grades, { grade: String.fromCharCode(65 + grades.length), criteria: [""] }])}
-            onKeyDown={(e) => e.key === "Enter" && set("gradeExpectations", [...grades, { grade: String.fromCharCode(65 + grades.length), criteria: [""] }])}
-            className="flex items-center gap-1.5 text-xs text-muted-foreground/40 hover:text-primary transition-colors mt-3 cursor-pointer"
-          >
-            <Plus className="w-3.5 h-3.5" /> Add grade
-          </div>
-        </Card>
-      )}
-
       {/* ── TIPS + MISTAKES ──────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <Card emoji="💡" title="Study Tips">
@@ -667,6 +631,329 @@ export default function StudyGuideView({
             >
               <Plus className="w-3 h-3" /> Add term
             </div>
+          </div>
+        </Card>
+      )}
+
+      {/* ── FORMULA SHEET ────────────────────────────────────────────────── */}
+      {guide.formulaSheet && guide.formulaSheet.length > 0 && (
+        <Card emoji="🔢" title="Formula Sheet">
+          <div className="space-y-3 pt-2">
+            {guide.formulaSheet.map((item, fi) => (
+              <div key={fi} className="rounded-xl border border-border/40 bg-muted/10 p-4 space-y-1.5">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="font-mono text-base font-black text-primary bg-primary/10 px-3 py-1.5 rounded-lg border border-primary/20 flex-1">
+                    <E
+                      value={item.formula}
+                      onChange={(v) => set("formulaSheet", guide.formulaSheet!.map((f, i) => i === fi ? { ...f, formula: v } : f))}
+                      placeholder="Formula"
+                      className="font-mono text-primary"
+                    />
+                  </div>
+                  <div
+                    role="button" tabIndex={0}
+                    onClick={() => set("formulaSheet", guide.formulaSheet!.filter((_, i) => i !== fi))}
+                    onKeyDown={(e) => e.key === "Enter" && set("formulaSheet", guide.formulaSheet!.filter((_, i) => i !== fi))}
+                    className="text-muted-foreground/20 hover:text-destructive transition-colors cursor-pointer shrink-0 mt-2"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </div>
+                </div>
+                <p className="text-sm font-semibold text-foreground">
+                  <E value={item.description} onChange={(v) => set("formulaSheet", guide.formulaSheet!.map((f, i) => i === fi ? { ...f, description: v } : f))} placeholder="Description" />
+                </p>
+                {item.variables && (
+                  <p className="text-xs text-muted-foreground font-mono">
+                    <span className="text-primary/60 font-sans font-bold">Where: </span>
+                    <E value={item.variables} onChange={(v) => set("formulaSheet", guide.formulaSheet!.map((f, i) => i === fi ? { ...f, variables: v } : f))} placeholder="Variable definitions" />
+                  </p>
+                )}
+                {item.example && (
+                  <p className="text-xs text-muted-foreground bg-muted/20 rounded px-2 py-1.5 border border-border/30">
+                    <span className="text-primary/60 font-bold">E.g. </span>
+                    <E value={item.example} onChange={(v) => set("formulaSheet", guide.formulaSheet!.map((f, i) => i === fi ? { ...f, example: v } : f))} placeholder="Worked example" />
+                  </p>
+                )}
+              </div>
+            ))}
+            <div
+              role="button" tabIndex={0}
+              onClick={() => set("formulaSheet", [...(guide.formulaSheet || []), { formula: "", description: "", variables: "", example: "" }])}
+              onKeyDown={(e) => e.key === "Enter" && set("formulaSheet", [...(guide.formulaSheet || []), { formula: "", description: "", variables: "", example: "" }])}
+              className="flex items-center gap-1.5 text-xs text-muted-foreground/40 hover:text-primary transition-colors cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" /> Add formula
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {/* ── EXPERIMENT GUIDE ─────────────────────────────────────────────── */}
+      {guide.experimentGuide && (
+        <Card emoji="🧪" title="Experiment Guide">
+          <div className="space-y-4 pt-2">
+            {(["aim", "hypothesis"] as const).map((field) => (
+              <div key={field}>
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary mb-1.5 capitalize">{field}</p>
+                <E
+                  value={guide.experimentGuide![field] || ""}
+                  onChange={(v) => set("experimentGuide", { ...guide.experimentGuide!, [field]: v })}
+                  multiline
+                  placeholder={`Enter ${field}…`}
+                  className="text-sm text-muted-foreground w-full"
+                />
+              </div>
+            ))}
+            {guide.experimentGuide.variables && (
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary mb-2">Variables</p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {(["independent", "dependent"] as const).map((v) => (
+                    <div key={v} className="rounded-lg bg-muted/20 border border-border/30 p-3">
+                      <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground mb-1 capitalize">{v}</p>
+                      <E
+                        value={guide.experimentGuide!.variables?.[v] || ""}
+                        onChange={(val) => set("experimentGuide", { ...guide.experimentGuide!, variables: { ...guide.experimentGuide!.variables, [v]: val } })}
+                        placeholder={`${v} variable…`}
+                        className="text-xs text-foreground"
+                      />
+                    </div>
+                  ))}
+                  <div className="rounded-lg bg-muted/20 border border-border/30 p-3">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground mb-1">Controlled</p>
+                    <BulletList
+                      items={guide.experimentGuide.variables.controlled || []}
+                      onChange={(v) => set("experimentGuide", { ...guide.experimentGuide!, variables: { ...guide.experimentGuide!.variables, controlled: v } })}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+            {guide.experimentGuide.method && (
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary mb-1.5">Method</p>
+                <BulletList
+                  items={guide.experimentGuide.method}
+                  numbered
+                  onChange={(v) => set("experimentGuide", { ...guide.experimentGuide!, method: v })}
+                />
+              </div>
+            )}
+            {guide.experimentGuide.safetyNotes && guide.experimentGuide.safetyNotes.length > 0 && (
+              <div className="rounded-lg bg-amber-500/5 border border-amber-500/20 p-3">
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-600 mb-1.5">⚠️ Safety Notes</p>
+                <BulletList
+                  items={guide.experimentGuide.safetyNotes}
+                  onChange={(v) => set("experimentGuide", { ...guide.experimentGuide!, safetyNotes: v })}
+                  dotClass="text-amber-500"
+                />
+              </div>
+            )}
+          </div>
+        </Card>
+      )}
+
+      {/* ── TIMELINE ─────────────────────────────────────────────────────── */}
+      {guide.timeline && guide.timeline.length > 0 && (
+        <Card emoji="🗓️" title="Timeline">
+          <div className="space-y-2 pt-2 relative">
+            <div className="absolute left-[2.1rem] top-4 bottom-4 w-px bg-border/50" />
+            {guide.timeline.map((entry, ti) => (
+              <div key={ti} className="flex gap-3 items-start group/timeline relative">
+                <div className="shrink-0 w-16 text-right">
+                  <E
+                    value={entry.year}
+                    onChange={(v) => set("timeline", guide.timeline!.map((e, i) => i === ti ? { ...e, year: v } : e))}
+                    placeholder="Year"
+                    className="text-xs font-black text-primary"
+                  />
+                </div>
+                <div className="shrink-0 w-3 h-3 rounded-full bg-primary border-2 border-background mt-0.5 z-10" />
+                <div className="flex-1 rounded-lg bg-muted/20 border border-border/30 p-3 space-y-1">
+                  <E
+                    value={entry.event}
+                    onChange={(v) => set("timeline", guide.timeline!.map((e, i) => i === ti ? { ...e, event: v } : e))}
+                    placeholder="Event…"
+                    className="text-sm font-semibold text-foreground"
+                  />
+                  {entry.significance && (
+                    <E
+                      value={entry.significance}
+                      onChange={(v) => set("timeline", guide.timeline!.map((e, i) => i === ti ? { ...e, significance: v } : e))}
+                      placeholder="Significance…"
+                      className="text-xs text-muted-foreground"
+                    />
+                  )}
+                </div>
+                <div
+                  role="button" tabIndex={0}
+                  onClick={() => set("timeline", guide.timeline!.filter((_, i) => i !== ti))}
+                  onKeyDown={(e) => e.key === "Enter" && set("timeline", guide.timeline!.filter((_, i) => i !== ti))}
+                  className="opacity-0 group-hover/timeline:opacity-100 text-muted-foreground/20 hover:text-destructive transition-all cursor-pointer shrink-0 mt-2"
+                >
+                  <Trash2 className="w-3 h-3" />
+                </div>
+              </div>
+            ))}
+            <div
+              role="button" tabIndex={0}
+              onClick={() => set("timeline", [...(guide.timeline || []), { year: "", event: "", significance: "" }])}
+              onKeyDown={(e) => e.key === "Enter" && set("timeline", [...(guide.timeline || []), { year: "", event: "", significance: "" }])}
+              className="flex items-center gap-1.5 text-xs text-muted-foreground/40 hover:text-primary transition-colors cursor-pointer ml-20"
+            >
+              <Plus className="w-3.5 h-3.5" /> Add event
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {/* ── SOURCE ANALYSIS FRAMEWORK ────────────────────────────────────── */}
+      {guide.sourceAnalysisFramework && (
+        <Card emoji="🔍" title="Source Analysis Framework">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary mb-2">Steps</p>
+              <BulletList
+                items={guide.sourceAnalysisFramework.steps}
+                numbered
+                onChange={(v) => set("sourceAnalysisFramework", { ...guide.sourceAnalysisFramework!, steps: v })}
+              />
+            </div>
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary mb-2">Key Questions to Ask</p>
+              <BulletList
+                items={guide.sourceAnalysisFramework.keyQuestions}
+                onChange={(v) => set("sourceAnalysisFramework", { ...guide.sourceAnalysisFramework!, keyQuestions: v })}
+                dotClass="text-primary"
+              />
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {/* ── RUBRIC BREAKDOWN ─────────────────────────────────────────────── */}
+      {guide.rubricBreakdown && guide.rubricBreakdown.length > 0 && (
+        <Card emoji="📝" title="Rubric Breakdown">
+          <div className="space-y-3 pt-2">
+            {guide.rubricBreakdown.map((row, ri) => (
+              <div key={ri} className="rounded-xl border border-border/40 bg-muted/10 p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <E
+                    value={row.criterion}
+                    onChange={(v) => set("rubricBreakdown", guide.rubricBreakdown!.map((r, i) => i === ri ? { ...r, criterion: v } : r))}
+                    placeholder="Criterion"
+                    className="text-sm font-black text-foreground flex-1"
+                  />
+                  {row.marks !== undefined && (
+                    <span className="text-xs font-black text-primary bg-primary/10 px-2 py-0.5 rounded-full border border-primary/20 shrink-0">
+                      <E
+                        value={String(row.marks)}
+                        onChange={(v) => set("rubricBreakdown", guide.rubricBreakdown!.map((r, i) => i === ri ? { ...r, marks: Number(v) || 0 } : r))}
+                        placeholder="Marks"
+                        className="text-primary w-8"
+                      /> marks
+                    </span>
+                  )}
+                  <div
+                    role="button" tabIndex={0}
+                    onClick={() => set("rubricBreakdown", guide.rubricBreakdown!.filter((_, i) => i !== ri))}
+                    onKeyDown={(e) => e.key === "Enter" && set("rubricBreakdown", guide.rubricBreakdown!.filter((_, i) => i !== ri))}
+                    className="text-muted-foreground/20 hover:text-destructive transition-colors cursor-pointer shrink-0"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  {([["excellent", "emerald"], ["satisfactory", "blue"], ["developing", "amber"]] as const).map(([level, color]) => (
+                    row[level] !== undefined && (
+                      <div key={level} className={`rounded-lg bg-${color}-500/5 border border-${color}-500/20 p-2.5`}>
+                        <p className={`text-[9px] font-black uppercase tracking-widest text-${color}-600 mb-1 capitalize`}>{level}</p>
+                        <E
+                          value={row[level] || ""}
+                          onChange={(v) => set("rubricBreakdown", guide.rubricBreakdown!.map((r, i) => i === ri ? { ...r, [level]: v } : r))}
+                          placeholder={`${level} descriptor…`}
+                          multiline
+                          className="text-xs text-foreground w-full"
+                        />
+                      </div>
+                    )
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {/* ── CUSTOM SECTIONS ──────────────────────────────────────────────── */}
+      {guide.customSections && guide.customSections
+        .filter(section => {
+          if (!section.title) return false;
+          if (section.type === "text") return typeof section.content === "string" && section.content.trim().length > 0;
+          return Array.isArray(section.content) && section.content.length > 0;
+        })
+        .map((section, si) => (
+        <Card key={si} emoji="📌" title={section.title}>
+          <div className="pt-2">
+            {section.type === "text" && typeof section.content === "string" && (
+              <E
+                value={section.content}
+                onChange={(v) => set("customSections", guide.customSections!.map((s, i) => i === si ? { ...s, content: v } : s))}
+                multiline
+                placeholder="Content…"
+                className="text-sm text-muted-foreground w-full"
+              />
+            )}
+            {(section.type === "list" || section.type === "steps") && Array.isArray(section.content) && (
+              <BulletList
+                items={section.content as string[]}
+                numbered={section.type === "steps"}
+                onChange={(v) => set("customSections", guide.customSections!.map((s, i) => i === si ? { ...s, content: v } : s))}
+              />
+            )}
+          </div>
+        </Card>
+      ))}
+
+      {/* ── GRADE EXPECTATIONS ───────────────────────────────────────────── */}
+      {grades.length > 0 && (
+        <Card emoji="📈" title="Assessment Criteria">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+            {grades.map((g, gi) => {
+              const s = gradeStyle(g.grade);
+              return (
+                <div key={gi} className={cn("rounded-xl border border-border/40 bg-card/60 p-4 border-t-2", s.topBorder)}>
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className={cn("w-7 h-7 rounded-lg text-sm font-black flex items-center justify-center shrink-0", s.badge)}>
+                      {g.grade}
+                    </span>
+                    <div
+                      role="button" tabIndex={0}
+                      onClick={() => set("gradeExpectations", grades.filter((_, i) => i !== gi))}
+                      onKeyDown={(e) => e.key === "Enter" && set("gradeExpectations", grades.filter((_, i) => i !== gi))}
+                      className="ml-auto text-muted-foreground/20 hover:text-destructive transition-colors cursor-pointer"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </div>
+                  </div>
+                  <BulletList
+                    items={g.criteria}
+                    onChange={(criteria) =>
+                      set("gradeExpectations", grades.map((x, i) => (i === gi ? { ...x, criteria } : x)))
+                    }
+                    dotClass={s.dot}
+                  />
+                </div>
+              );
+            })}
+          </div>
+          <div
+            role="button" tabIndex={0}
+            onClick={() => set("gradeExpectations", [...grades, { grade: String.fromCharCode(65 + grades.length), criteria: [""] }])}
+            onKeyDown={(e) => e.key === "Enter" && set("gradeExpectations", [...grades, { grade: String.fromCharCode(65 + grades.length), criteria: [""] }])}
+            className="flex items-center gap-1.5 text-xs text-muted-foreground/40 hover:text-primary transition-colors mt-3 cursor-pointer"
+          >
+            <Plus className="w-3.5 h-3.5" /> Add grade
           </div>
         </Card>
       )}

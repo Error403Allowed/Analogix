@@ -18,8 +18,23 @@ export async function* getGroqStream(
     body: JSON.stringify({ messages, userContext }),
   });
 
-  if (!response.ok || !response.body) {
-    throw new Error(`Stream failed: ${response.status}`);
+  if (!response.ok) {
+    // Try to parse error from response body
+    let errorMessage = `Stream failed: ${response.status}`;
+    try {
+      const text = await response.text();
+      const match = text.match(/data:.*"error":\s*"([^"]+)"/);
+      if (match && match[1]) {
+        errorMessage = match[1];
+      }
+    } catch {
+      // Ignore parse errors
+    }
+    throw new Error(errorMessage);
+  }
+
+  if (!response.body) {
+    throw new Error("Stream response body is null");
   }
 
   const reader = response.body.getReader();
@@ -38,6 +53,19 @@ export async function* getGroqStream(
       if (!line.startsWith("data: ")) continue;
       const payload = line.slice(6).trim();
       if (payload === "[DONE]") return;
+      
+      // Check for error in stream
+      if (payload.includes('"error"')) {
+        try {
+          const parsed = JSON.parse(payload);
+          if (parsed.error) {
+            throw new Error(parsed.error);
+          }
+        } catch {
+          // Ignore parse errors, continue streaming
+        }
+      }
+      
       try {
         const parsed = JSON.parse(payload);
         const token: string = parsed?.choices?.[0]?.delta?.content ?? "";
@@ -362,6 +390,7 @@ export interface GeneratedStudyGuide {
   assessmentType: string;
   weighting?: string;
   totalMarks?: string;
+  examDuration?: string;
   keyPoints: string[];
   topics: string[];
   requiredMaterials?: string[];
@@ -391,6 +420,46 @@ export interface GeneratedStudyGuide {
   tips: string[];
   commonMistakes?: string[];
   glossary?: Array<{ term: string; definition: string }>;
+  // ── Dynamically generated sections based on document type ──
+  formulaSheet?: Array<{
+    formula: string;
+    description: string;
+    variables?: string;
+    example?: string;
+  }>;
+  experimentGuide?: {
+    aim: string;
+    hypothesis: string;
+    variables?: {
+      independent?: string;
+      dependent?: string;
+      controlled?: string[];
+    };
+    method?: string[];
+    safetyNotes?: string[];
+  };
+  timeline?: Array<{
+    year: string;
+    event: string;
+    significance?: string;
+  }>;
+  sourceAnalysisFramework?: {
+    steps: string[];
+    keyQuestions: string[];
+  };
+  rubricBreakdown?: Array<{
+    criterion: string;
+    marks?: number;
+    excellent?: string;
+    satisfactory?: string;
+    developing?: string;
+  }>;
+  customSections?: Array<{
+    title: string;
+    type: "list" | "table" | "text" | "steps";
+    content: string | string[] | string[][];
+  }>;
+  _docAnalysis?: Record<string, unknown>;
 }
 
 export const generateStudyGuide = async (payload: {
@@ -403,7 +472,7 @@ export const generateStudyGuide = async (payload: {
     const data = await fetchJson<{ studyGuide: GeneratedStudyGuide | null }>(
       "/api/groq/study-guide",
       payload,
-      45000,
+      90000,
     );
     return data.studyGuide || null;
   } catch {

@@ -148,6 +148,19 @@
     font-family: var(--font-display);
     letter-spacing: -0.01em;
   }
+
+  /* Text selection - subtle highlight that preserves readability */
+  ::selection {
+    background-color: hsl(var(--primary) / 0.2);
+    color: hsl(var(--foreground));
+    text-shadow: none;
+  }
+
+  ::-moz-selection {
+    background-color: hsl(var(--primary) / 0.2);
+    color: hsl(var(--foreground));
+    text-shadow: none;
+  }
 }
 
 /* ── Utility: Fraunces display font on any element ─────────────── */
@@ -313,25 +326,41 @@
   animation: gradient-x 3s ease infinite;
 }
 
-/* Markdown Content Styling */
+/* Utility: Ensure text is selectable */
+.select-text {
+  user-select: text;
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+}
+
+/* Markdown Content Styling - Clean, readable text like Notion */
+.markdown-content {
+  @apply text-foreground leading-relaxed;
+}
+
+.markdown-content p {
+  @apply mb-4 last:mb-0 leading-relaxed;
+}
+
 .markdown-content strong {
-  @apply font-bold text-primary;
+  @apply font-bold text-foreground;
 }
 
 .markdown-content em {
-  @apply italic text-accent-foreground;
+  @apply italic text-foreground;
 }
 
 .markdown-content code {
-  @apply bg-muted px-1 py-0.5 rounded text-sm font-mono text-primary;
+  @apply bg-muted px-1.5 py-0.5 rounded text-sm font-mono text-primary;
 }
 
 .markdown-content ul {
-  @apply list-disc list-inside space-y-1 my-2;
+  @apply list-disc list-outside space-y-1 my-2 pl-5;
 }
 
 .markdown-content ol {
-  @apply list-decimal list-inside space-y-1 my-2;
+  @apply list-decimal list-outside space-y-1 my-2 pl-5;
 }
 
 .markdown-content .katex {
@@ -351,14 +380,14 @@ button .markdown-content .katex {
   background: hsl(var(--primary));
   color: white;
   border-radius: 18px;
-  word-break: break-word;
+  max-width: 100%;
 }
 
 /* Assistant message bubble - transparent, left-aligned */
 .message-bubble-assistant {
   @apply px-3 sm:px-4 py-3 text-sm leading-relaxed;
   color: hsl(var(--foreground));
-  word-break: break-word;
+  max-width: 100%;
 }
 
 .dark .message-bubble-assistant {

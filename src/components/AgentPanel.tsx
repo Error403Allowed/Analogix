@@ -39,16 +39,19 @@ const QUICK_PROMPTS = [
 // ── Typing animation ───────────────────────────────────────────────────────
 function TypingDots({ keyPrefix = "typing" }: { keyPrefix?: string }) {
   return (
-    <div className="flex items-center gap-1.5 py-1" style={{ height: 20 }}>
-      {[0, 1, 2].map(i => (
+    <div className="flex items-center gap-1 py-1" style={{ height: 18 }}>
+      {[0, 1, 2].map((i, idx) => (
         <motion.span
-          key={`${keyPrefix}-${i}`}
+          key={`${keyPrefix}-${idx}`}
           style={{
-            display: "inline-block", width: 7, height: 7,
-            borderRadius: "50%", background: "hsl(var(--primary))",
+            display: "inline-block",
+            width: 5,
+            height: 5,
+            borderRadius: "50%",
+            background: "hsl(var(--primary))",
           }}
-          animate={{ y: [0, -5, 0] }}
-          transition={{ repeat: Infinity, duration: 0.6, delay: i * 0.12, ease: "easeInOut" }}
+          animate={{ y: [0, -4, 0], opacity: [0.5, 1, 0.5] }}
+          transition={{ repeat: Infinity, duration: 0.5, delay: i * 0.15, ease: "easeInOut" }}
         />
       ))}
     </div>
@@ -245,7 +248,7 @@ export default function AgentPanel() {
                       Ask me anything about your workspace
                     </p>
                     <p className="text-xs text-muted-foreground/50">
-                      I can read your workspace — and write to it too. Ask me to create notes, add flashcards, or update a document.
+                      I can read your workspace — and write in it too. Ask me to create notes, add flashcards, or update a document.
                     </p>
                   </div>
                   <div className="grid grid-cols-2 gap-2 pt-1">
@@ -361,9 +364,9 @@ export default function AgentPanel() {
             </div>
 
             {/* Input area */}
-            <div className="px-4 pb-4 pt-2 shrink-0 border-t border-border/20">
+            <div className="px-3 pb-3 pt-1.5 shrink-0 border-t border-border/20">
               <div className={cn(
-                "flex items-end gap-2 rounded-2xl border border-border/50 bg-muted/20 px-3 py-2",
+                "flex items-center gap-2 rounded-2xl border border-border/50 bg-muted/20 px-3 py-1",
                 "focus-within:border-primary/40 focus-within:bg-muted/30 transition-colors"
               )}>
                 <textarea
@@ -372,7 +375,7 @@ export default function AgentPanel() {
                   onChange={e => {
                     setInput(e.target.value);
                     e.target.style.height = "auto";
-                    e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px";
+                    e.target.style.height = Math.min(e.target.scrollHeight, 60) + "px";
                   }}
                   onKeyDown={handleKeyDown}
                   placeholder="Ask about your notes, docs, flashcards…"
@@ -383,13 +386,13 @@ export default function AgentPanel() {
                     "outline-none resize-none leading-relaxed",
                     "disabled:opacity-50"
                   )}
-                  style={{ minHeight: 24, maxHeight: 120 }}
+                  style={{ minHeight: 18, maxHeight: 60 }}
                 />
                 <button
                   onClick={() => sendMessage()}
                   disabled={!input.trim() || loading}
                   className={cn(
-                    "w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mb-0.5",
+                    "w-7 h-7 rounded-xl flex items-center justify-center shrink-0 ml-5",
                     "bg-primary text-primary-foreground",
                     "disabled:opacity-30 hover:bg-primary/90 active:scale-95 transition-all"
                   )}

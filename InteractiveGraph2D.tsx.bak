@@ -1,0 +1,584 @@
+"use client";
+
+import React, { useEffect, useRef, useState, useCallback, useMemo } from "react";
+import { RefreshCw, Plus, ZoomIn, ZoomOut, Check, X, Settings2, ChevronDown, ChevronUp, Sliders } from "lucide-react";
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface SliderParam {
+  name: string;
+  min: number;
+  max: number;
+  step: number;
+  value: number;
+}
+
+interface GraphExpr {
+  id: string;
+  fn: string;
+  color: string;
+  enabled: boolean;
+  label?: string;
+}
+
+interface ParsedBlock {
+  exprs: GraphExpr[];
+  sliders: SliderParam[];
+  bounds?: { xMin: number; xMax: number; yMin: number; yMax: number };
+  title?: string;
+}
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const PALETTE = [
+  "#6366f1", "#06b6d4", "#f59e0b", "#10b981",
+  "#ef4444", "#8b5cf6", "#ec4899", "#f97316",
+];
+
+// ─── Parser ───────────────────────────────────────────────────────────────────
+
+export function parseGraph2DBlock(raw: string): ParsedBlock {
+  const lines = raw.trim().split("\n").map(l => l.trim()).filter(Boolean);
+  const exprs: GraphExpr[] = [];
+  const sliders: SliderParam[] = [];
+  let bounds: ParsedBlock["bounds"] | undefined;
+  let title: string | undefined;
+  let colorIdx = 0;
+
+  for (const line of lines) {
+    const titleM = line.match(/^title:\s*(.+)$/i);
+    if (titleM) { title = titleM[1].trim(); continue; }
+
+    const boundsM = line.match(/^bounds?:\s*([-\d.]+)\s*,\s*([-\d.]+)\s*,\s*([-\d.]+)\s*,\s*([-\d.]+)/i);
+    if (boundsM) {
+      bounds = { xMin: parseFloat(boundsM[1]), xMax: parseFloat(boundsM[2]), yMin: parseFloat(boundsM[3]), yMax: parseFloat(boundsM[4]) };
+      continue;
+    }
+
+    const sliderM = line.match(/^slider:\s*([a-zA-Z_]\w*)\s*,\s*([-\d.]+)\s*,\s*([-\d.]+)\s*,\s*([-\d.]+)\s*,\s*([-\d.]+)/i);
+    if (sliderM) {
+      sliders.push({ name: sliderM[1], min: parseFloat(sliderM[2]), max: parseFloat(sliderM[3]), step: parseFloat(sliderM[4]), value: parseFloat(sliderM[5]) });
+      continue;
+    }
+
+    const fnM = line.match(/^fn:\s*(.+?)(?:\s*,\s*label:\s*(.+))?$/i);
+    if (fnM) {
+      exprs.push({ id: `expr-${Date.now()}-${colorIdx}`, fn: fnM[1].trim(), color: PALETTE[colorIdx % PALETTE.length], enabled: true, label: fnM[2]?.trim() });
+      colorIdx++;
+      continue;
+    }
+
+    if (!line.startsWith("#") && !line.startsWith("//")) {
+      exprs.push({ id: `expr-${Date.now()}-${colorIdx}`, fn: line, color: PALETTE[colorIdx % PALETTE.length], enabled: true });
+      colorIdx++;
+    }
+  }
+
+  if (exprs.length === 0) exprs.push({ id: "default", fn: "x^2", color: PALETTE[0], enabled: true });
+  return { exprs, sliders, bounds, title };
+}
+
+// ─── Safe Expression Evaluator ────────────────────────────────────────────────
+
+function buildEvalFn(fnStr: string, sliderValues: Record<string, number>): ((x: number) => number) | null {
+  try {
+    let js = fnStr
+      .replace(/\^/g, "**")
+      .replace(/(\d)(x)/g, "$1*$2")
+      .replace(/(\))([a-zA-Z(])/g, "$1*$2")
+      .replace(/([a-zA-Z])(\d)/g, "$1*$2")
+      .replace(/\bsin\b/g, "Math.sin").replace(/\bcos\b/g, "Math.cos")
+      .replace(/\btan\b/g, "Math.tan").replace(/\bsqrt\b/g, "Math.sqrt")
+      .replace(/\babs\b/g, "Math.abs").replace(/\bln\b/g, "Math.log")
+      .replace(/\blog\b/g, "Math.log10").replace(/\bexp\b/g, "Math.exp")
+      .replace(/\bpi\b/gi, "Math.PI").replace(/\be\b/g, "Math.E")
+      .replace(/\bfloor\b/g, "Math.floor").replace(/\bceil\b/g, "Math.ceil")
+      .replace(/\bround\b/g, "Math.round");
+
+    const paramNames = Object.keys(sliderValues);
+    const paramVals = paramNames.map(k => sliderValues[k]);
+    // eslint-disable-next-line no-new-func
+    const fn = new Function(...paramNames, "x", `"use strict"; try { return ${js}; } catch(e) { return NaN; }`);
+    return (x: number) => fn(...paramVals, x) as number;
+  } catch { return null; }
+}
+
+// ─── Canvas renderer ─────────────────────────────────────────────────────────
+
+interface ViewState { xMin: number; xMax: number; yMin: number; yMax: number; }
+
+function niceTick(rough: number): number {
+  const exp = Math.pow(10, Math.floor(Math.log10(rough)));
+  const frac = rough / exp;
+  if (frac < 1.5) return exp;
+  if (frac < 3.5) return 2 * exp;
+  if (frac < 7.5) return 5 * exp;
+  return 10 * exp;
+}
+function fmt(n: number): string {
+  if (Number.isInteger(n)) return String(n);
+  return parseFloat(n.toPrecision(3)).toString();
+}
+
+function drawGrid(ctx: CanvasRenderingContext2D, view: ViewState, w: number, h: number, isDark: boolean) {
+  const { xMin, xMax, yMin, yMax } = view;
+  const toCanvasX = (x: number) => ((x - xMin) / (xMax - xMin)) * w;
+  const toCanvasY = (y: number) => h - ((y - yMin) / (yMax - yMin)) * h;
+  ctx.clearRect(0, 0, w, h);
+  const gridColor = isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)";
+  const axisColor = isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.2)";
+  const labelColor = isDark ? "rgba(255,255,255,0.35)" : "rgba(0,0,0,0.35)";
+  ctx.strokeStyle = gridColor; ctx.lineWidth = 1;
+  const xStep = niceTick((xMax - xMin) / 8);
+  const yStep = niceTick((yMax - yMin) / 6);
+  for (let x = Math.ceil(xMin / xStep) * xStep; x <= xMax; x += xStep) {
+    const cx = toCanvasX(x);
+    ctx.beginPath(); ctx.moveTo(cx, 0); ctx.lineTo(cx, h); ctx.stroke();
+  }
+  for (let y = Math.ceil(yMin / yStep) * yStep; y <= yMax; y += yStep) {
+    const cy = toCanvasY(y);
+    ctx.beginPath(); ctx.moveTo(0, cy); ctx.lineTo(w, cy); ctx.stroke();
+  }
+  ctx.strokeStyle = axisColor; ctx.lineWidth = 1.5;
+  const cx0 = toCanvasX(0), cy0 = toCanvasY(0);
+  if (cx0 >= 0 && cx0 <= w) { ctx.beginPath(); ctx.moveTo(cx0, 0); ctx.lineTo(cx0, h); ctx.stroke(); }
+  if (cy0 >= 0 && cy0 <= h) { ctx.beginPath(); ctx.moveTo(0, cy0); ctx.lineTo(w, cy0); ctx.stroke(); }
+  ctx.fillStyle = labelColor; ctx.font = "11px -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif"; ctx.textAlign = "center";
+  for (let x = Math.ceil(xMin / xStep) * xStep; x <= xMax; x += xStep) {
+    if (Math.abs(x) < xStep * 0.01) continue;
+    ctx.fillText(fmt(x), toCanvasX(x), Math.min(Math.max(cy0 + 12, 14), h - 4));
+  }
+  ctx.textAlign = "right";
+  for (let y = Math.ceil(yMin / yStep) * yStep; y <= yMax; y += yStep) {
+    if (Math.abs(y) < yStep * 0.01) continue;
+    ctx.fillText(fmt(y), Math.min(Math.max(cx0 - 4, 2), w - 2), toCanvasY(y) + 4);
+  }
+  return { toCanvasX, toCanvasY };
+}
+
+// ─── Inline editable number input ────────────────────────────────────────────
+
+function InlineNumber({ value, onChange, className = "" }: { value: number; onChange: (v: number) => void; className?: string }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(String(value));
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const commit = () => {
+    const n = parseFloat(draft);
+    if (!isNaN(n)) onChange(n);
+    setEditing(false);
+  };
+
+  if (editing) {
+    return (
+      <input
+        ref={inputRef}
+        value={draft}
+        onChange={e => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={e => { if (e.key === "Enter") commit(); if (e.key === "Escape") setEditing(false); }}
+        className={`bg-white/5 border border-white/20 rounded px-1 outline-none text-center ${className}`}
+        style={{ width: `${Math.max(draft.length + 1, 4)}ch` }}
+        autoFocus
+      />
+    );
+  }
+  return (
+    <button
+      onClick={() => { setDraft(String(value)); setEditing(true); }}
+      className={`hover:bg-white/10 rounded px-1 transition-colors cursor-text ${className}`}
+      title="Click to edit"
+    >
+      {fmt(value)}
+    </button>
+  );
+}
+
+// ─── Slider editor row ───────────────────────────────────────────────────────
+
+function SliderRow({
+  slider,
+  onValueChange,
+  onRangeChange,
+  onDelete,
+}: {
+  slider: SliderParam;
+  onValueChange: (v: number) => void;
+  onRangeChange: (field: "min" | "max" | "step", v: number) => void;
+  onDelete: () => void;
+}) {
+  const [showRange, setShowRange] = useState(false);
+
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-muted-foreground/70 w-5 shrink-0">{slider.name}</span>
+        <InlineNumber
+          value={slider.min}
+          onChange={v => onRangeChange("min", v)}
+          className="font-mono text-[10px] text-muted-foreground/50 w-8 text-center"
+        />
+        <input
+          type="range" min={slider.min} max={slider.max} step={slider.step} value={slider.value}
+          onChange={e => onValueChange(parseFloat(e.target.value))}
+          className="flex-1 h-1.5 accent-indigo-400 cursor-pointer"
+        />
+        <InlineNumber
+          value={slider.max}
+          onChange={v => onRangeChange("max", v)}
+          className="font-mono text-[10px] text-muted-foreground/50 w-8 text-center"
+        />
+        <InlineNumber
+          value={slider.value}
+          onChange={onValueChange}
+          className="font-mono text-[11px] text-indigo-400 w-12 text-right"
+        />
+        <button
+          onClick={() => setShowRange(r => !r)}
+          className="text-muted-foreground/30 hover:text-muted-foreground/70 transition-colors"
+          title="Edit step / range"
+        >
+          <Settings2 className="w-3 h-3" />
+        </button>
+        <button onClick={onDelete} className="text-muted-foreground/20 hover:text-red-400 transition-colors" title="Remove slider">
+          <X className="w-3 h-3" />
+        </button>
+      </div>
+      {showRange && (
+        <div className="flex items-center gap-3 pl-7 text-[10px] text-muted-foreground/50">
+          <span>step:</span>
+          <InlineNumber value={slider.step} onChange={v => onRangeChange("step", Math.max(0.0001, v))} className="font-mono text-[10px] w-14" />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
+
+interface InteractiveGraph2DProps {
+  rawBlock: string;
+  height?: number;
+}
+
+function InteractiveGraph2D({ rawBlock, height = 340 }: InteractiveGraph2DProps) {
+  const parsed = useMemo(() => parseGraph2DBlock(rawBlock), [rawBlock]);
+
+  const [exprs, setExprs] = useState<GraphExpr[]>(parsed.exprs);
+  const [sliders, setSliders] = useState<SliderParam[]>(parsed.sliders);
+  const [view, setView] = useState<ViewState>(
+    parsed.bounds
+      ? { xMin: parsed.bounds.xMin, xMax: parsed.bounds.xMax, yMin: parsed.bounds.yMin, yMax: parsed.bounds.yMax }
+      : { xMin: -10, xMax: 10, yMin: -6, yMax: 6 }
+  );
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editFn, setEditFn] = useState("");
+  const [isDark, setIsDark] = useState(false);
+  const [showSliderPanel, setShowSliderPanel] = useState(sliders.length > 0);
+  const [newSliderName, setNewSliderName] = useState("");
+  const [addingSlider, setAddingSlider] = useState(false);
+  const [hoverPos, setHoverPos] = useState<{ cx: number; cy: number; x: number; y: number } | null>(null);
+
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const dragRef = useRef<{ startX: number; startY: number; startView: ViewState } | null>(null);
+
+  useEffect(() => {
+    const check = () => setIsDark(document.documentElement.classList.contains("dark"));
+    check();
+    const obs = new MutationObserver(check);
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+    return () => obs.disconnect();
+  }, []);
+
+  const sliderValues = useMemo(() => Object.fromEntries(sliders.map(s => [s.name, s.value])), [sliders]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const w = canvas.width, h = canvas.height;
+    const { toCanvasX, toCanvasY } = drawGrid(ctx, view, w, h, isDark);
+    for (const expr of exprs) {
+      if (!expr.enabled) continue;
+      const evalFn = buildEvalFn(expr.fn, sliderValues);
+      if (!evalFn) continue;
+      ctx.strokeStyle = expr.color; ctx.lineWidth = 2.5;
+      ctx.lineJoin = "round"; ctx.lineCap = "round";
+      ctx.beginPath();
+      let penDown = false;
+      const steps = w * 2;
+      const xRange = view.xMax - view.xMin;
+      for (let i = 0; i <= steps; i++) {
+        const x = view.xMin + (i / steps) * xRange;
+        const y = evalFn(x);
+        if (!isFinite(y) || Math.abs(y) > 1e6) { penDown = false; continue; }
+        const cx = toCanvasX(x), cy = toCanvasY(y);
+        if (!penDown) { ctx.moveTo(cx, cy); penDown = true; }
+        else ctx.lineTo(cx, cy);
+      }
+      ctx.stroke();
+    }
+  }, [exprs, sliders, view, isDark, sliderValues]);
+
+  const handleMouseDown = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    dragRef.current = { startX: e.clientX, startY: e.clientY, startView: { ...view } };
+  }, [view]);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!dragRef.current) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const { startX, startY, startView } = dragRef.current;
+    const dx = (e.clientX - startX) / canvas.width * (startView.xMax - startView.xMin);
+    const dy = (e.clientY - startY) / canvas.height * (startView.yMax - startView.yMin);
+    setView({ xMin: startView.xMin - dx, xMax: startView.xMax - dx, yMin: startView.yMin + dy, yMax: startView.yMax + dy });
+  }, []);
+
+  const handleMouseUp = useCallback(() => { dragRef.current = null; }, []);
+
+  const handleMouseMoveHover = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    // If dragging, update pan AND hover
+    if (dragRef.current) {
+      handleMouseMove(e);
+    }
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    // Map CSS pixel → canvas-space → math space
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const canvasPx = (e.clientX - rect.left) * scaleX;
+    const canvasPy = (e.clientY - rect.top) * scaleY;
+    const x = view.xMin + (canvasPx / canvas.width) * (view.xMax - view.xMin);
+    const y = view.yMax - (canvasPy / canvas.height) * (view.yMax - view.yMin);
+    setHoverPos({ cx: e.clientX - rect.left, cy: e.clientY - rect.top, x, y });
+  }, [view, handleMouseMove]);
+
+  const handleMouseLeaveCanvas = useCallback(() => {
+    handleMouseUp();
+    setHoverPos(null);
+  }, [handleMouseUp]);
+
+  const handleWheel = useCallback((e: React.WheelEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    const factor = e.deltaY > 0 ? 1.1 : 0.9;
+    setView(v => {
+      const cx = (v.xMin + v.xMax) / 2, cy = (v.yMin + v.yMax) / 2;
+      const hw = (v.xMax - v.xMin) / 2 * factor, hh = (v.yMax - v.yMin) / 2 * factor;
+      return { xMin: cx - hw, xMax: cx + hw, yMin: cy - hh, yMax: cy + hh };
+    });
+  }, []);
+
+  const zoom = useCallback((factor: number) => {
+    setView(v => {
+      const cx = (v.xMin + v.xMax) / 2, cy = (v.yMin + v.yMax) / 2;
+      const hw = (v.xMax - v.xMin) / 2 * factor, hh = (v.yMax - v.yMin) / 2 * factor;
+      return { xMin: cx - hw, xMax: cx + hw, yMin: cy - hh, yMax: cy + hh };
+    });
+  }, []);
+
+  const reset = useCallback(() => {
+    setView(parsed.bounds
+      ? { xMin: parsed.bounds.xMin, xMax: parsed.bounds.xMax, yMin: parsed.bounds.yMin, yMax: parsed.bounds.yMax }
+      : { xMin: -10, xMax: 10, yMin: -6, yMax: 6 });
+    setExprs(parsed.exprs);
+    setSliders(parsed.sliders);
+  }, [parsed]);
+
+  const addExpr = () => {
+    const id = `expr-${Date.now()}`;
+    setExprs(prev => [...prev, { id, fn: "x", color: PALETTE[prev.length % PALETTE.length], enabled: true }]);
+    setEditingId(id); setEditFn("x");
+  };
+
+  const saveEdit = (id: string) => {
+    setExprs(prev => prev.map(e => e.id === id ? { ...e, fn: editFn } : e));
+    setEditingId(null);
+  };
+
+  const addSlider = () => {
+    const name = newSliderName.trim() || `p${sliders.length + 1}`;
+    if (sliders.find(s => s.name === name)) return;
+    setSliders(prev => [...prev, { name, min: -5, max: 5, step: 0.1, value: 1 }]);
+    setNewSliderName("");
+    setAddingSlider(false);
+    setShowSliderPanel(true);
+  };
+
+  const updateSliderValue = (name: string, value: number) =>
+    setSliders(prev => prev.map(s => s.name === name ? { ...s, value } : s));
+
+  const updateSliderRange = (name: string, field: "min" | "max" | "step", value: number) =>
+    setSliders(prev => prev.map(s => s.name === name ? { ...s, [field]: value } : s));
+
+  const deleteSlider = (name: string) =>
+    setSliders(prev => prev.filter(s => s.name !== name));
+
+  return (
+    <div className="my-4 rounded-2xl overflow-hidden border border-white/10 bg-[#0f1117]/80 backdrop-blur shadow-lg">
+      {/* Header */}
+      <div className="flex items-center justify-between px-3 py-2 border-b border-white/8">
+        <div className="flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full bg-indigo-400/70" />
+          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60">
+            {parsed.title || "2D Graph"}
+          </span>
+        </div>
+        <div className="flex items-center gap-1">
+          <button onClick={() => zoom(0.75)} className="w-6 h-6 rounded-lg flex items-center justify-center text-muted-foreground/40 hover:text-muted-foreground transition-colors" title="Zoom in"><ZoomIn className="w-3 h-3" /></button>
+          <button onClick={() => zoom(1.33)} className="w-6 h-6 rounded-lg flex items-center justify-center text-muted-foreground/40 hover:text-muted-foreground transition-colors" title="Zoom out"><ZoomOut className="w-3 h-3" /></button>
+          <button
+            onClick={() => setShowSliderPanel(v => !v)}
+            className={`w-6 h-6 rounded-lg flex items-center justify-center transition-colors ${showSliderPanel ? "text-indigo-400" : "text-muted-foreground/40 hover:text-muted-foreground"}`}
+            title="Toggle sliders panel"
+          >
+            <Sliders className="w-3 h-3" />
+          </button>
+          <button onClick={reset} className="w-6 h-6 rounded-lg flex items-center justify-center text-muted-foreground/40 hover:text-muted-foreground transition-colors" title="Reset"><RefreshCw className="w-3 h-3" /></button>
+        </div>
+      </div>
+
+      {/* Expression list */}
+      <div className="flex flex-wrap gap-1.5 px-3 pt-2.5 pb-1">
+        {exprs.map(expr => (
+          <div key={expr.id} className="flex items-center gap-1.5 rounded-lg px-2 py-1 border text-[11px]"
+            style={{ borderColor: expr.color + "44", backgroundColor: expr.color + "11" }}>
+            <button
+              onClick={() => setExprs(prev => prev.map(e => e.id === expr.id ? { ...e, enabled: !e.enabled } : e))}
+              className="w-2.5 h-2.5 rounded-full flex-shrink-0 cursor-pointer"
+              style={{ backgroundColor: expr.enabled ? expr.color : "transparent", border: `1.5px solid ${expr.color}` }}
+            />
+            {editingId === expr.id ? (
+              <div className="flex items-center gap-1">
+                <input
+                  value={editFn}
+                  onChange={e => setEditFn(e.target.value)}
+                  onKeyDown={e => { if (e.key === "Enter") saveEdit(expr.id); if (e.key === "Escape") setEditingId(null); }}
+                  className="bg-transparent border-b border-current text-xs w-32 outline-none font-mono"
+                  style={{ color: expr.color }} autoFocus
+                />
+                <button onClick={() => saveEdit(expr.id)} className="text-emerald-400 hover:text-emerald-300"><Check className="w-3 h-3" /></button>
+                <button onClick={() => setEditingId(null)} className="text-red-400 hover:text-red-300"><X className="w-3 h-3" /></button>
+              </div>
+            ) : (
+              <button
+                onClick={() => { setEditingId(expr.id); setEditFn(expr.fn); }}
+                className="font-mono text-[11px] hover:opacity-80 transition-opacity"
+                style={{ color: expr.color }}
+                title="Click to edit expression"
+              >
+                {expr.label || expr.fn}
+              </button>
+            )}
+            {/* Color picker */}
+            <input
+              type="color" value={expr.color}
+              onChange={e => setExprs(prev => prev.map(ex => ex.id === expr.id ? { ...ex, color: e.target.value } : ex))}
+              className="w-3 h-3 rounded-full border-0 cursor-pointer opacity-40 hover:opacity-100 transition-opacity"
+              style={{ padding: 0, background: "none" }}
+              title="Change color"
+            />
+            {exprs.length > 1 && (
+              <button onClick={() => setExprs(prev => prev.filter(e => e.id !== expr.id))}
+                className="text-muted-foreground/30 hover:text-red-400 transition-colors ml-0.5">
+                <X className="w-2.5 h-2.5" />
+              </button>
+            )}
+          </div>
+        ))}
+        <button onClick={addExpr} className="flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] text-muted-foreground/40 hover:text-muted-foreground border border-dashed border-white/10 hover:border-white/20 transition-all">
+          <Plus className="w-3 h-3" /> Add
+        </button>
+      </div>
+
+      {/* Canvas */}
+      <div className="relative" style={{ height }}>
+        <canvas
+          ref={canvasRef}
+          width={800} height={height * 2}
+          style={{ width: "100%", height, cursor: dragRef.current ? "grabbing" : "crosshair", display: "block" }}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMoveHover}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseLeaveCanvas}
+          onWheel={handleWheel}
+          className="touch-none select-none"
+        />
+        {/* Hover tooltip */}
+        {hoverPos && (
+          <div
+            className="pointer-events-none absolute z-10"
+            style={{
+              left: hoverPos.cx,
+              top: hoverPos.cy,
+              transform: `translate(${hoverPos.cx > (canvasRef.current?.offsetWidth ?? 0) * 0.75 ? '-110%' : '10px'}, ${hoverPos.cy > height * 0.75 ? '-120%' : '-40%'})`
+            }}
+          >
+            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border shadow-lg text-[12px] font-medium"
+              style={{
+                background: isDark ? 'rgba(15,17,23,0.92)' : 'rgba(255,255,255,0.95)',
+                borderColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)',
+                color: isDark ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.8)',
+                backdropFilter: 'blur(8px)',
+                fontFamily: "-apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif",
+              }}
+            >
+              <span style={{ color: '#6366f1' }}>x</span>
+              <span>{hoverPos.x.toFixed(2)}</span>
+              <span style={{ opacity: 0.4, margin: '0 1px' }}>,</span>
+              <span style={{ color: '#06b6d4' }}>y</span>
+              <span>{hoverPos.y.toFixed(2)}</span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Sliders panel */}
+      {showSliderPanel && (
+        <div className="px-3 pb-3 pt-2 border-t border-white/8 flex flex-col gap-2">
+          <div className="flex items-center justify-between mb-0.5">
+            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground/40">Parameters</span>
+            <button
+              onClick={() => setAddingSlider(v => !v)}
+              className="flex items-center gap-1 text-[10px] text-muted-foreground/40 hover:text-indigo-400 transition-colors"
+            >
+              <Plus className="w-3 h-3" /> New
+            </button>
+          </div>
+
+          {addingSlider && (
+            <div className="flex items-center gap-2 pb-1">
+              <input
+                value={newSliderName}
+                onChange={e => setNewSliderName(e.target.value)}
+                onKeyDown={e => { if (e.key === "Enter") addSlider(); if (e.key === "Escape") setAddingSlider(false); }}
+                placeholder="name (e.g. a)"
+                className="flex-1 bg-white/5 border border-white/15 rounded-lg px-2 py-1 text-xs font-mono outline-none focus:border-indigo-400/50"
+                autoFocus
+              />
+              <button onClick={addSlider} className="text-emerald-400 hover:text-emerald-300 p-1"><Check className="w-3.5 h-3.5" /></button>
+              <button onClick={() => setAddingSlider(false)} className="text-muted-foreground/40 hover:text-muted-foreground p-1"><X className="w-3.5 h-3.5" /></button>
+            </div>
+          )}
+
+          {sliders.length === 0 && !addingSlider && (
+            <p className="text-[10px] text-muted-foreground/30 italic">No parameters yet. Click "New" to add one.</p>
+          )}
+
+          {sliders.map(slider => (
+            <SliderRow
+              key={slider.name}
+              slider={slider}
+              onValueChange={v => updateSliderValue(slider.name, v)}
+              onRangeChange={(field, v) => updateSliderRange(slider.name, field, v)}
+              onDelete={() => deleteSlider(slider.name)}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default React.memo(InteractiveGraph2D);

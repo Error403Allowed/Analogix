@@ -4,10 +4,13 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles, AlertCircle, ArrowLeft } from "lucide-react";
-import { generateStudyGuide } from "@/services/groq";
+import { generateStudyGuide, generateFlashcardsFromDocument, generateQuizFromDocument } from "@/services/groq";
 import { subjectStore } from "@/utils/subjectStore";
 import { encodeStudyGuide } from "@/components/StudyGuideView";
 import { SUBJECT_CATALOG } from "@/constants/subjects";
+import { eventStore } from "@/utils/eventStore";
+import { AppEvent } from "@/types/events";
+import { flashcardStore } from "@/utils/flashcardStore";
 
 // ── Steps ────────────────────────────────────────────────────────────────────
 const STEPS = [
@@ -16,6 +19,8 @@ const STEPS = [
   { label: "Mapping assessment scope",    icon: "🗺️" },
   { label: "Building your study schedule",icon: "📅" },
   { label: "Writing practice questions",  icon: "✏️" },
+  { label: "Generating flashcards",       icon: "🃏" },
+  { label: "Drafting a quiz",             icon: "❓" },
   { label: "Polishing your guide",        icon: "✨" },
 ];
 
@@ -71,6 +76,33 @@ export default function StudyGuideLoadingPage() {
     if (hasStarted.current) return;
     hasStarted.current = true;
 
+    const formatDateKey = (date: Date) =>
+      `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+
+    const parseAssessmentDate = (value?: string | null) => {
+      if (!value) return null;
+      const match = value.match(/\d{4}-\d{2}-\d{2}/);
+      if (!match) return null;
+      const [year, month, day] = match[0].split("-").map(Number);
+      if (!year || !month || !day) return null;
+      return new Date(year, month - 1, day, 9, 0, 0);
+    };
+
+    const assessmentTypeToEventType = (value?: string | null): AppEvent["type"] => {
+      const type = (value || "").toLowerCase();
+      if (/(exam|test|quiz|midterm|final)/.test(type)) return "exam";
+      if (/(assignment|project|essay|report|presentation|practical|task|lab)/.test(type)) return "assignment";
+      return "event";
+    };
+
+    const safeLocalStorageGet = (key: string) => {
+      try { return localStorage.getItem(key); } catch { return null; }
+    };
+
+    const safeLocalStorageSet = (key: string, value: string) => {
+      try { localStorage.setItem(key, value); } catch {}
+    };
+
     const run = async () => {
       try {
         // Pull job from sessionStorage (set by whoever triggered the redirect)
@@ -98,6 +130,72 @@ export default function StudyGuideLoadingPage() {
         const encoded = encodeStudyGuide(result);
         const doc = await subjectStore.createDocument(job.subjectId, result.title);
         await subjectStore.updateDocument(job.subjectId, doc.id, { content: encoded });
+
+        const assessmentDate = parseAssessmentDate(result.assessmentDate);
+        if (assessmentDate) {
+          const title = result.title || "Assessment";
+          const eventType = assessmentTypeToEventType(result.assessmentType);
+          const subject = subjectLabel || "General";
+
+          const existing = await eventStore.getAll();
+          const dateKey = formatDateKey(assessmentDate);
+          const alreadyAdded = existing.some(e =>
+            e.title === title &&
+            e.subject === subject &&
+            formatDateKey(new Date(e.date)) === dateKey
+          );
+
+          if (!alreadyAdded) {
+            await eventStore.add({
+              id: Date.now().toString(),
+              title,
+              subject,
+              date: assessmentDate,
+              type: eventType,
+              source: "manual",
+              description: `Auto-added from study guide "${title}".`,
+            });
+          }
+        }
+
+        const flashcardsKey = `docFlashcards:${doc.id}`;
+        const quizKey = `docQuiz:${doc.id}`;
+
+        const generateFlashcards = async () => {
+          if (safeLocalStorageGet(flashcardsKey)) return;
+          const cards = await generateFlashcardsFromDocument({
+            documentContent: job.assessmentText,
+            fileName: job.fileName,
+            subject: subjectLabel,
+            grade: job.grade,
+            count: 20,
+          });
+          if (cards.length === 0) return;
+          await flashcardStore.add(
+            cards.map(c => ({
+              subjectId: job.subjectId,
+              front: c.front,
+              back: c.back,
+              sourceSessionId: `doc:${doc.id}`,
+            }))
+          );
+          safeLocalStorageSet(flashcardsKey, "1");
+        };
+
+        const generateQuiz = async () => {
+          if (safeLocalStorageGet(quizKey)) return;
+          const quiz = await generateQuizFromDocument({
+            documentContent: job.assessmentText,
+            fileName: job.fileName,
+            subject: subjectLabel,
+            grade: job.grade,
+            numberOfQuestions: 10,
+          });
+          if (!quiz?.questions?.length) return;
+          safeLocalStorageSet(quizKey, JSON.stringify(quiz));
+        };
+
+        await Promise.allSettled([generateFlashcards(), generateQuiz()]);
 
         setDone(true);
         // Brief pause so the "Done!" step feels satisfying

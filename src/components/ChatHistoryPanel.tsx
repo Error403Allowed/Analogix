@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { MessageCircle, ChevronDown, Trash2, Clock, Loader2 } from "lucide-react";
 import { chatStore, ChatSession } from "@/utils/chatStore";
-import { SUBJECT_CATALOG } from "@/constants/subjects";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 
@@ -47,15 +46,7 @@ export default function ChatHistoryPanel({ isCollapsed }: ChatHistoryPanelProps)
   };
 
   const handleResume = (session: ChatSession) => {
-    router.push(`/chat?session=${session.id}&subject=${session.subjectId}`);
-  };
-
-  const getSubjectLabel = (subjectId: string) => {
-    return SUBJECT_CATALOG.find(s => s.id === subjectId)?.label || subjectId;
-  };
-
-  const getSubjectIcon = (subjectId: string) => {
-    return SUBJECT_CATALOG.find(s => s.id === subjectId)?.icon;
+    router.push(`/chat?session=${session.id}`);
   };
 
   if (isCollapsed) {
@@ -102,7 +93,6 @@ export default function ChatHistoryPanel({ isCollapsed }: ChatHistoryPanelProps)
                 </p>
               )}
               {sessions.map(session => {
-                const Icon = getSubjectIcon(session.subjectId);
                 return (
                   <motion.div
                     key={session.id}
@@ -113,18 +103,13 @@ export default function ChatHistoryPanel({ isCollapsed }: ChatHistoryPanelProps)
                     className="group flex items-center gap-2 px-2 py-1.5 rounded-xl hover:bg-white/5 cursor-pointer transition-colors"
                     onClick={() => handleResume(session)}
                   >
-                    {/* Subject icon */}
                     <div className="w-6 h-6 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                      {Icon
-                        ? <Icon className="w-3 h-3 text-primary" />
-                        : <MessageCircle className="w-3 h-3 text-primary" />
-                      }
+                      <MessageCircle className="w-3 h-3 text-primary" />
                     </div>
 
-                    {/* Title + time */}
                     <div className="flex-1 min-w-0">
                       <p className="text-[11px] font-semibold text-foreground truncate leading-tight">
-                        {getSubjectLabel(session.subjectId)}
+                        {session.title}
                       </p>
                       <p className="text-[9px] text-muted-foreground/50 truncate">
                         {formatDistanceToNow(new Date(session.updatedAt), { addSuffix: true })}

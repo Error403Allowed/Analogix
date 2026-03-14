@@ -11,7 +11,7 @@ interface MathInputProps {
   initialValue?: string;
 }
 
-// Quick-insert symbol groups styled like Desmos
+// Quick-insert symbol groups
 const SYMBOL_GROUPS = [
   {
     label: "Common",

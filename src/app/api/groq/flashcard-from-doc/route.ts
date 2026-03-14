@@ -3,6 +3,32 @@ import { callHfChat, formatError } from "../_utils";
 
 export const runtime = "nodejs";
 
+// Chunk text into smaller pieces for processing
+const chunkText = (text: string, maxChunkSize: number): string[] => {
+  const chunks: string[] = [];
+  let start = 0;
+  
+  while (start < text.length) {
+    let end = Math.min(start + maxChunkSize, text.length);
+    
+    // Try to break at a sentence boundary
+    if (end < text.length) {
+      const lastPeriod = text.lastIndexOf(".", end);
+      const lastNewline = text.lastIndexOf("\n", end);
+      const breakPoint = Math.max(lastPeriod, lastNewline);
+      
+      if (breakPoint > start + maxChunkSize * 0.5) {
+        end = breakPoint + 1;
+      }
+    }
+    
+    chunks.push(text.slice(start, end).trim());
+    start = end;
+  }
+  
+  return chunks;
+};
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -39,13 +65,66 @@ Return ONLY valid JSON — no markdown, no preamble:
   ]
 }`;
 
+    // For large documents, use chunking strategy
+    const MAX_CHUNK_SIZE = 12000; // Conservative chunk size
+    const allFlashcards: Array<{ front: string; back: string }> = [];
+
+    if (documentContent.length > MAX_CHUNK_SIZE) {
+      // Split document into chunks and generate flashcards for each
+      const chunks = chunkText(documentContent, MAX_CHUNK_SIZE);
+      const cardsPerChunk = Math.ceil(count / chunks.length);
+      
+      console.log(`[flashcard-from-doc] Chunking: ${chunks.length} chunks for ${documentContent.length} chars`);
+      
+      for (let i = 0; i < chunks.length; i++) {
+        try {
+          const chunkContent = await callHfChat(
+            {
+              messages: [
+                { role: "system", content: systemPrompt },
+                { role: "user", content: `Document: "${fileName}" (Part ${i + 1}/${chunks.length})\n\nContent:\n${chunks[i]}\n\nPlease generate ${cardsPerChunk} flashcards based on this section.` },
+              ],
+              max_tokens: 2048,
+              temperature: 0.5,
+            },
+            "reasoning"
+          );
+
+          let chunkFlashcards: Array<{ front: string; back: string }> = [];
+          try {
+            const clean = chunkContent.replace(/```json|```/g, "").trim();
+            const parsed = JSON.parse(clean);
+            chunkFlashcards = parsed.flashcards || parsed || [];
+          } catch {
+            const match = chunkContent.match(/\{[\s\S]*\}/);
+            if (match) {
+              try {
+                const parsed = JSON.parse(match[0]);
+                chunkFlashcards = parsed.flashcards || parsed || [];
+              } catch {}
+            }
+          }
+
+          allFlashcards.push(...chunkFlashcards);
+        } catch (chunkError) {
+          console.warn(`[flashcard-from-doc] Chunk ${i + 1} failed:`, formatError(chunkError));
+          // Continue with next chunk
+        }
+      }
+      
+      // Limit to requested number of cards
+      const flashcards = allFlashcards.slice(0, count);
+      return NextResponse.json({ flashcards });
+    }
+
+    // Small document - single pass
     const content = await callHfChat(
       {
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: `Document: "${fileName}"\n\nContent:\n${documentContent.slice(0, 15000)}\n\nPlease generate ${count} flashcards based on this document.` },
+          { role: "user", content: `Document: "${fileName}"\n\nContent:\n${documentContent}\n\nPlease generate ${count} flashcards based on this document.` },
         ],
-        max_tokens: 4096,
+        max_tokens: 3072,
         temperature: 0.5,
       },
       "reasoning"

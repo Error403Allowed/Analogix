@@ -157,9 +157,9 @@ export function TimerWidget({ compact = false }: { compact?: boolean }) {
             </span>
           </div>
           <div className="flex items-center gap-1.5 shrink-0">
-            {Array.from({ length: Math.min(sessionsTarget, 8) }, (_, i) => (
+            {Array.from({ length: sessionsTarget }, (_, i) => (
               <div key={i} className={cn("w-1.5 h-1.5 rounded-full transition-all",
-                i < filledDots ? "bg-primary" : "bg-muted-foreground/20")} />
+                i < filledDots ? "bg-blue-500 scale-110" : "bg-muted-foreground/20")} />
             ))}
           </div>
         </div>
@@ -290,7 +290,7 @@ export function TimerWidget({ compact = false }: { compact?: boolean }) {
         <div className="flex items-center gap-1.5">
           {Array.from({ length: sessionsTarget }, (_, i) => (
             <div key={i} className={cn("w-2 h-2 rounded-full transition-all",
-              i < filledDots ? "bg-primary scale-110" : "bg-muted-foreground/20")} />
+              i < filledDots ? "bg-blue-500 scale-110" : "bg-muted-foreground/20")} />
           ))}
           {editingSessions ? (
             <div className="flex items-center gap-1 ml-1">

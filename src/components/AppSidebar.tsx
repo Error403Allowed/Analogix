@@ -21,6 +21,7 @@ import { applyThemeByName } from "@/components/ThemeSelector";
 import { themes } from "@/components/ThemeSelector";
 import ProfileSheet from "@/components/ProfileSheet";
 import ChatHistoryPanel from "@/components/ChatHistoryPanel";
+import { useTabs, pathMeta } from "@/context/TabsContext";
 
 const navGroups = [
   {
@@ -28,7 +29,6 @@ const navGroups = [
     items: [
       { title: "Dashboard",     url: "/dashboard",    icon: LayoutDashboard, tutorial: "dashboard-nav"    },
       { title: "AI Tutor", url: "/chat",         icon: MessageCircle,   tutorial: "chat-nav"         },
-      { title: "Quizzes",       url: "/quiz",         icon: BookOpen,        tutorial: "quiz-nav"         },
       { title: "Flashcards",    url: "/flashcards",   icon: BookMarkedIcon,  tutorial: "flashcards-nav"   },
     ],
   },
@@ -55,6 +55,7 @@ export function AppSidebar() {
   const pathname = usePathname();
   const { state } = useSidebar();
   const { setTheme: setMode, resolvedTheme } = useTheme();
+  const { openTab, tabs, activeTabId } = useTabs();
   const [userData,         setUserData]         = useState<any>(null);
   const [activeThemeName,  setActiveThemeName]  = useState("Cosmic Aurora");
   const [mounted,          setMounted]          = useState(false);
@@ -142,13 +143,18 @@ export function AppSidebar() {
               <SidebarGroupContent>
                 <SidebarMenu className="gap-0.5">
                   {group.items.map(item => {
-                    const isActive = pathname === item.url;
+                    const activeTab = tabs.find(t => t.id === activeTabId);
+                    const isActive = activeTab?.path === item.url || pathname === item.url;
                     return (
                       <SidebarMenuItem key={item.title}>
                         <motion.div whileTap={{ scale: 0.97 }} data-tutorial={item.tutorial}>
                           <SidebarMenuButton
                             isActive={isActive}
-                            onClick={() => router.push(item.url)}
+                            onClick={(e) => {
+                              const meta = pathMeta(item.url);
+                              openTab(item.url, meta.label, meta.emoji);
+                              router.push(item.url);
+                            }}
                             className={cn(
                               "h-9 rounded-xl transition-all duration-200 relative group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:-translate-x-1.5",
                               isActive

@@ -34,7 +34,7 @@ Rules:
           { role: "system", content: systemPrompt },
           { role: "user", content: prompt },
         ],
-        max_tokens: 1500,
+        max_tokens: 1200,
         temperature: 0.7,
       },
       taskType

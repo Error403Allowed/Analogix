@@ -13,4 +13,20 @@ export interface UserContext {
   analogyIntensity?: number;
   responseLength?: number;
   pageContext?: string; // Injected page/document context — appended to the system prompt
+  memoryManagement?: boolean;
+  researchMode?: boolean;
+  researchQuery?: string;
+  researchSources?: Array<{
+    id: string;
+    title: string;
+    url?: string;
+    pdfUrl?: string;
+    authors?: string[];
+    year?: number;
+    venue?: string;
+    abstract?: string;
+    doi?: string;
+    openAccess?: boolean;
+    source: string;
+  }>;
 }
