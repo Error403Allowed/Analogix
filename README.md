@@ -2,8 +2,6 @@
 
 Analogix is an analogy-first study platform for Australian secondary students. It combines a Groq-powered AI tutor with a structured study workspace (documents, flashcards, quizzes, resources, and planning tools) so complex ideas feel intuitive and actionable.
 
-![Analogix Dashboard](./dash_now2.jpg)
-
 ---
 
 ## Features
