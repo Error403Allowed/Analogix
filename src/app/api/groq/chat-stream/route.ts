@@ -12,7 +12,7 @@ const estimateTokens = (text: string): number => Math.ceil(text.length / 4);
 
 // Truncate workspace documents to fit within token budget
 const truncateWorkspaceDocs = (
-  allDocs: Array<{ subjectId: string; title: string; type: string; preview: string; fullJson?: string }>,
+  allDocs: Array<{ subjectId: string; title: string; type: string; preview: string }>,
   maxTokens: number
 ): { docs: typeof allDocs; truncated: boolean } => {
   let totalTokens = allDocs.reduce((sum, d) => sum + estimateTokens(d.preview + d.title + d.subjectId), 0);
@@ -21,18 +21,11 @@ const truncateWorkspaceDocs = (
     return { docs: allDocs, truncated: false };
   }
 
-  // Sort by type (keep study guides first) then truncate previews
-  const sorted = [...allDocs].sort((a, b) => {
-    if (a.type === "STUDY-GUIDE" && b.type !== "STUDY-GUIDE") return -1;
-    if (b.type === "STUDY-GUIDE" && a.type !== "STUDY-GUIDE") return 1;
-    return 0;
-  });
-
   const result: typeof allDocs = [];
   let runningTokens = 0;
   let truncated = false;
 
-  for (const doc of sorted) {
+  for (const doc of allDocs) {
     const docTokens = estimateTokens(doc.preview + doc.title + doc.subjectId);
     
     if (runningTokens + docTokens <= maxTokens) {
@@ -65,7 +58,7 @@ const stripHtml = (html: string) =>
 const truncate = (text: string, max: number) =>
   text.length > max ? text.slice(0, max) + "…" : text;
 
-const studyGuideToContext = (raw: string): { readable: string; json: string } => {
+const studyGuideToContext = (raw: string): string => {
   try {
     const json = raw.slice(STUDY_GUIDE_PREFIX.length);
     const guide = JSON.parse(json) as Record<string, unknown>;
@@ -84,9 +77,9 @@ const studyGuideToContext = (raw: string): { readable: string; json: string } =>
       parts.push(`Practice Questions:\n${(guide.practiceQuestions as { question: string }[]).map((q, i) => `  Q${i + 1}: ${q.question}`).join("\n")}`);
     if (Array.isArray(guide.tips) && guide.tips.length)
       parts.push(`Tips:\n${(guide.tips as string[]).map(t => `  • ${t}`).join("\n")}`);
-    return { readable: parts.join("\n\n"), json };
+    return parts.join("\n\n");
   } catch {
-    return { readable: "(study guide — unreadable)", json: "{}" };
+    return "(study guide — unreadable)";
   }
 };
 
@@ -179,7 +172,7 @@ ${researchSources.length > 0 ? `ACADEMIC SOURCES:\n${formatResearchSources(resea
   const workspaceSection = workspaceContext || calendarContext ? `
 ${calendarContext ? `━━━ CALENDAR & DEADLINES ━━━\n${calendarContext}\n━━━ END CALENDAR ━━━\n` : ""}
 ${workspaceContext ? `━━━ YOUR WORKSPACE ━━━
-You have read AND write access to this student's Analogix workspace. You can create documents, update study guides, and add flashcards during tutoring.
+You have read AND write access to this student's Analogix workspace. You can create documents, update documents, and add flashcards during tutoring.
 
 ${workspaceContext}
 ━━━ END WORKSPACE ━━━
@@ -195,19 +188,14 @@ The block contains a single JSON object OR a JSON array of objects.
 
 ── ACTION 2: update_document ──
 {"type":"update_document","subjectId":"SUBJECT","docTitle":"EXACT TITLE","content":"<p>Full HTML</p>","mode":"replace"}
-
-── ACTION 3: replace_study_guide ──
-For [STUDY-GUIDE] docs ONLY. Send the COMPLETE new study guide JSON.
-{"type":"replace_study_guide","subjectId":"SUBJECT","docTitle":"EXACT TITLE","guide":{...complete guide object...}}
-
-── ACTION 4: add_flashcards ──
+── ACTION 3: add_flashcards ──
 {"type":"add_flashcards","subjectId":"SUBJECT","cards":[{"front":"Q","back":"A"}]}
 
 ── RULES ──
 - Only include <ACTIONS> when actually making a change.
 - Use EXACT docTitle from the workspace above.
-- For [STUDY-GUIDE] docs: ALWAYS use replace_study_guide (never update_document).
-- When using replace_study_guide: start from the FULL JSON shown in the workspace, apply changes, include EVERYTHING.
+- Use update_document for ALL documents.
+- Only use mode "replace" if you include the FULL updated document content.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ` : ""}` : "";
 
@@ -353,13 +341,13 @@ export async function POST(request: Request) {
           type DocRow = { id?: string; title: string; content: string };
           type SubjectRow = { subject_id: string; notes: { documents?: DocRow[] } };
 
-          const allDocs: Array<{ subjectId: string; title: string; type: string; preview: string; fullJson?: string }> = [];
+          const allDocs: Array<{ subjectId: string; title: string; type: string; preview: string }> = [];
           for (const row of (subjectRows as SubjectRow[])) {
             for (const doc of (row.notes?.documents || [])) {
               const isGuide = doc.content?.startsWith(STUDY_GUIDE_PREFIX);
               if (isGuide) {
-                const { readable, json } = studyGuideToContext(doc.content);
-                allDocs.push({ subjectId: row.subject_id, title: doc.title, type: "STUDY-GUIDE", preview: readable, fullJson: json });
+                const readable = studyGuideToContext(doc.content);
+                allDocs.push({ subjectId: row.subject_id, title: doc.title, type: "DOC", preview: readable });
               } else {
                 allDocs.push({ subjectId: row.subject_id, title: doc.title, type: "DOC", preview: truncate(stripHtml(doc.content || ""), 3000) });
               }
@@ -384,31 +372,7 @@ export async function POST(request: Request) {
               `  • "${d.title}" [${d.type}] subjectId="${d.subjectId}"`
             ).join("\n");
 
-            // Only include full JSON for study guides if we have token budget remaining
-            let studyGuideJsonSection = "";
-            const contextSoFarTokens = estimateTokens(docContext + docIndex);
-            const remainingBudget = WORKSPACE_TOKEN_BUDGET - contextSoFarTokens;
-            
-            if (remainingBudget > 500) {
-              const guideJsons = truncatedDocs
-                .filter(d => d.type === "STUDY-GUIDE" && d.fullJson)
-                .map(d => ({ ...d, jsonTokens: estimateTokens(d.fullJson || "") }))
-                .sort((a, b) => a.jsonTokens - b.jsonTokens); // Smallest first
-
-              const includedJson: string[] = [];
-              let jsonTokens = 0;
-              for (const g of guideJsons) {
-                if (jsonTokens + g.jsonTokens <= remainingBudget - 200) {
-                  includedJson.push(`FULL JSON for "${g.title}" (subjectId="${g.subjectId}"):\n${g.fullJson}`);
-                  jsonTokens += g.jsonTokens;
-                }
-              }
-              if (includedJson.length > 0) {
-                studyGuideJsonSection = includedJson.join("\n\n---\n\n");
-              }
-            }
-
-            workspaceContext = `Document Index:\n${docIndex}\n\nDocument Contents:\n${docContext}${studyGuideJsonSection ? `\n\nFull Study Guide JSON (use when editing):\n${studyGuideJsonSection}` : ""}`;
+            workspaceContext = `Document Index:\n${docIndex}\n\nDocument Contents:\n${docContext}`;
           }
         } // end if (subjectRows)
       }

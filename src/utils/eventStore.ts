@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/client";
 import { AppEvent } from "@/types/events";
+import { toast } from "sonner";
 
 export const eventStore = {
   getAll: async (): Promise<AppEvent[]> => {
@@ -43,7 +44,11 @@ export const eventStore = {
       description: event.description,
       source: event.source,
     });
-    if (error) console.warn("[eventStore] add failed:", error);
+    if (error) {
+      console.warn("[eventStore] add failed:", error);
+      toast.error("Failed to add event");
+      return;
+    }
     window.dispatchEvent(new Event("eventsUpdated"));
   },
 
@@ -63,7 +68,11 @@ export const eventStore = {
         source: e.source,
       }))
     );
-    if (error) console.warn("[eventStore] addMultiple failed:", error);
+    if (error) {
+      console.warn("[eventStore] addMultiple failed:", error);
+      toast.error("Failed to add events");
+      return;
+    }
     window.dispatchEvent(new Event("eventsUpdated"));
   },
 
@@ -72,7 +81,13 @@ export const eventStore = {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    await supabase.from("events").delete().eq("id", id).eq("user_id", user.id);
+    const { error } = await supabase.from("events").delete().eq("id", id).eq("user_id", user.id);
+    if (error) {
+      console.warn("[eventStore] remove failed:", error);
+      toast.error("Failed to delete event");
+      return;
+    }
+    toast.success("Event deleted");
     window.dispatchEvent(new Event("eventsUpdated"));
   },
 
@@ -81,7 +96,12 @@ export const eventStore = {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    await supabase.from("events").delete().eq("user_id", user.id);
+    const { error } = await supabase.from("events").delete().eq("user_id", user.id);
+    if (error) {
+      console.warn("[eventStore] clearAll failed:", error);
+      toast.error("Failed to clear events");
+      return;
+    }
     window.dispatchEvent(new Event("eventsUpdated"));
   },
 };

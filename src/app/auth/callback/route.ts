@@ -39,11 +39,20 @@ export async function GET(request: Request) {
       if (user) {
         const { data: profile } = await supabase
           .from("profiles")
-          .select("onboarding_complete")
+          .select("name, grade, state, subjects, hobbies, hobby_ids, hobby_details, onboarding_complete")
           .eq("id", user.id)
           .single();
 
-        if (profile?.onboarding_complete) {
+        const hasProfile =
+          profile?.onboarding_complete ||
+          !!profile?.grade ||
+          !!profile?.state ||
+          (Array.isArray(profile?.subjects) && profile.subjects.length > 0) ||
+          (Array.isArray(profile?.hobbies) && profile.hobbies.length > 0) ||
+          (Array.isArray(profile?.hobby_ids) && profile.hobby_ids.length > 0) ||
+          (profile?.hobby_details && Object.keys(profile.hobby_details).length > 0);
+
+        if (hasProfile) {
           return NextResponse.redirect(`${origin}/dashboard`);
         }
       }

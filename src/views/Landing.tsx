@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useRouter, useSearchParams } from "next/navigation";
 import CursorParticles from "@/components/CursorParticles";
+import { useAuth } from "@/context/AuthContext";
 
 function cn(...inputs: (string | boolean | undefined | null)[]) {
   return inputs.filter(Boolean).join(" ");
@@ -146,6 +147,7 @@ const navLinks = [
 const Landing = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { user, loading } = useAuth();
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const heroRef = useRef<HTMLElement>(null);
@@ -164,11 +166,8 @@ const Landing = () => {
   const forceLanding =
     searchParams?.get("force") === "true" || searchParams?.get("force") === "1";
 
-  useEffect(() => {
-    if (!isMounted) return;
-    if (forceLanding) return;
-    router.replace(hasCompletedOnboarding ? "/dashboard" : "/onboarding");
-  }, [forceLanding, hasCompletedOnboarding, isMounted, router]);
+  // Don't auto-redirect - let users explore the landing page
+  // Only redirect on button click based on auth status
 
   useEffect(() => {
     const root = document.documentElement;
@@ -182,8 +181,14 @@ const Landing = () => {
   const heroOpacity = useTransform(scrollYProgress, [0, 0.6], [1, 0]);
 
   const handleNav = (path: string) => {
-    if (!isMounted) return;
-    router.push(hasCompletedOnboarding ? path : "/onboarding");
+    if (!isMounted || loading) return;
+    // If not signed in, redirect to onboarding
+    // If signed in, go to dashboard
+    if (!user) {
+      router.push("/onboarding?step=2");
+    } else {
+      router.push(path);
+    }
   };
 
   // Split features: large AI Tutor card first, then rest
@@ -236,7 +241,7 @@ const Landing = () => {
 
           <Button size="sm" className="rounded-full px-5 font-bold shadow-md shadow-primary/15"
             onClick={() => handleNav("/dashboard")}>
-            {hasCompletedOnboarding ? "Dashboard" : "Get Started"}
+            {user ? "Dashboard" : "Get Started"}
             <ChevronRight className="w-3.5 h-3.5 ml-1" />
           </Button>
         </div>
@@ -249,7 +254,7 @@ const Landing = () => {
             <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
               className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-black uppercase tracking-wider">
               <Sparkles className="w-3.5 h-3.5" />
-              Built for Australian students
+              Built for all Australian students
             </motion.div>
 
             <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}
@@ -548,7 +553,7 @@ const Landing = () => {
               <span className="font-black">Analogix</span>
             </div>
             <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
-              © 2026 Analogix · Built for Australian students
+              © 2026 Analogix · Built for all Australian students
             </p>
             <div className="flex gap-7">
               {["Support", "Privacy"].map(item => (

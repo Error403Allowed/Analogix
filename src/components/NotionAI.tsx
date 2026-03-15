@@ -7,7 +7,10 @@ import { motion, AnimatePresence, type Variants } from "framer-motion";
 import {
   Sparkles, Wand2, SpellCheck, AlignLeft, Maximize2, Minimize2,
   BookOpen, MessageSquare, Loader2, Check, RotateCcw, X, ArrowRight,
-  Zap, Brain,
+  Zap, Brain, Bold, Italic, Underline, Strikethrough, Code, Heading1,
+  Heading2, Heading3, List, ListOrdered, Quote, Link as LinkIcon,
+  ArrowDown, ArrowUp, Minus, Sigma, Image, Circle, Highlighter, Table,
+  AlignCenter, AlignRight, AlignJustify, IndentIncrease, IndentDecrease,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Editor } from "@tiptap/react";
@@ -18,8 +21,22 @@ export type AIAction =
   | "improve" | "fix" | "summarise" | "shorter" | "longer"
   | "formal" | "casual" | "explain" | "continue" | "custom";
 
+export type FormatAction =
+  | "heading1" | "heading2" | "heading3"
+  | "bold" | "italic" | "underline" | "strike" | "code"
+  | "bulletList" | "orderedList" | "blockquote"
+  | "link";
+
 interface AIMenuItem {
   id: AIAction;
+  label: string;
+  description: string;
+  icon: React.ElementType;
+  group: string;
+}
+
+interface FormatMenuItem {
+  id: FormatAction;
   label: string;
   description: string;
   icon: React.ElementType;
@@ -36,6 +53,31 @@ const MENU_ITEMS: AIMenuItem[] = [
   { id: "shorter",  label: "Make shorter",           description: "Remove filler and trim",       icon: Minimize2,     group: "Transform" },
   { id: "longer",   label: "Make longer",            description: "Expand with more detail",      icon: Maximize2,     group: "Transform" },
   { id: "explain",  label: "Explain this",           description: "Break down in simple terms",   icon: Brain,         group: "Transform" },
+];
+
+const FORMAT_ITEMS: FormatMenuItem[] = [
+  { id: "heading1", label: "Heading 1", description: "Large section heading", icon: Heading1, group: "Formatting" },
+  { id: "heading2", label: "Heading 2", description: "Section heading", icon: Heading2, group: "Formatting" },
+  { id: "heading3", label: "Heading 3", description: "Subheading", icon: Heading3, group: "Formatting" },
+  { id: "bold", label: "Bold", description: "Emphasise selection", icon: Bold, group: "Formatting" },
+  { id: "italic", label: "Italic", description: "Emphasise lightly", icon: Italic, group: "Formatting" },
+  { id: "underline", label: "Underline", description: "Underline selection", icon: Underline, group: "Formatting" },
+  { id: "strike", label: "Strikethrough", description: "Strike out", icon: Strikethrough, group: "Formatting" },
+  { id: "code", label: "Inline code", description: "Code formatting", icon: Code, group: "Formatting" },
+  { id: "bulletList", label: "Bulleted list", description: "Toggle bullet list", icon: List, group: "Formatting" },
+  { id: "orderedList", label: "Numbered list", description: "Toggle numbered list", icon: ListOrdered, group: "Formatting" },
+  { id: "blockquote", label: "Quote", description: "Toggle block quote", icon: Quote, group: "Formatting" },
+  { id: "link", label: "Link", description: "Add or edit link", icon: LinkIcon, group: "Formatting" },
+];
+
+const QUICK_FORMAT_IDS: FormatAction[] = [
+  "heading2",
+  "bold",
+  "italic",
+  "underline",
+  "link",
+  "strike",
+  "code",
 ];
 
 // ── Prompts ────────────────────────────────────────────────────────────────
@@ -186,48 +228,58 @@ function TypingDots() {
   );
 }
 
-// ── AICommandPalette (/ai on empty line) ───────────────────────────────────
+// ── AICommandPalette (slash menu) ─────────────────────────────────────────
 
 interface CommandPaletteProps {
   editor:   Editor;
   subject?: string;
   position: { top: number; left: number };
+  initialQuery?: string;
   onClose:  () => void;
 }
 
-export function AICommandPalette({ editor, subject, position, onClose }: CommandPaletteProps) {
-  const [query,   setQuery]   = useState("");
+export function AICommandPalette({ editor, subject, position, initialQuery, onClose }: CommandPaletteProps) {
   const [focused, setFocused] = useState(0);
+  const [query, setQuery] = useState(initialQuery ?? "");
   const [writing, setWriting] = useState(false);
-  const [error,   setError]   = useState("");
-  const inputRef  = useRef<HTMLInputElement>(null);
+  const [error, setError] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
   const writerRef = useRef<LiveWriter | null>(null);
 
+  useEffect(() => { setQuery(initialQuery ?? ""); }, [initialQuery]);
   useEffect(() => { inputRef.current?.focus(); }, []);
   useEffect(() => { setFocused(0); }, [query]);
 
-  const filtered  = MENU_ITEMS.filter(
-    item => !query || item.label.toLowerCase().includes(query.toLowerCase())
-  );
-  const groups    = [...new Set(filtered.map(i => i.group))];
-  const totalRows = filtered.length + (query ? 1 : 0);
+  type CommandItem = {
+    id: string;
+    label: string;
+    description: string;
+    icon: React.ElementType;
+    group: string;
+    type: "ai" | "format";
+    run?: () => void;
+  };
 
-  const runAction = useCallback((action: AIAction, custom?: string) => {
-    if (writing) return;
-
-    // Delete "/ai" from the current block
+  const deleteSlashCommand = useCallback(() => {
     const { $anchor } = editor.state.selection;
-    editor.chain().focus().deleteRange({
-      from: $anchor.start(),
-      to:   $anchor.end(),
-    }).run();
+    const blockText = editor.state.doc.textBetween($anchor.start(), $anchor.end(), "\n", "\0");
+    const before = blockText.slice(0, $anchor.parentOffset);
+    const match = before.match(/(?:^|\s)\/(\S*)$/);
+    if (!match) return;
+    const slashIndex = before.lastIndexOf("/");
+    const from = $anchor.start() + slashIndex;
+    const to = $anchor.start() + $anchor.parentOffset;
+    editor.chain().focus().deleteRange({ from, to }).run();
+  }, [editor]);
 
+  const runAIAction = useCallback((action: AIAction, custom?: string) => {
+    if (writing) return;
+    deleteSlashCommand();
     setWriting(true);
     setError("");
 
-    // Use the doc text as context
-    const docText = editor.state.doc.textContent.slice(0, 1500);
-    const prompt  = buildPrompt(action, custom || docText, custom, subject);
+    const docText = editor.state.doc.textContent.slice(0, 2000);
+    const prompt = buildPrompt(action, custom || docText, custom, subject);
 
     writerRef.current = liveWrite(
       editor, prompt,
@@ -239,7 +291,206 @@ export function AICommandPalette({ editor, subject, position, onClose }: Command
       (e) => setError(e),
       subject,
     );
-  }, [editor, subject, writing, onClose]);
+  }, [editor, subject, writing, deleteSlashCommand, onClose]);
+
+  const runFormatAction = useCallback((fn: () => void) => {
+    deleteSlashCommand();
+    fn();
+    onClose();
+  }, [deleteSlashCommand, onClose]);
+
+  const applyListIndent = useCallback((dir: "in" | "out") => {
+    const chain = editor.chain().focus();
+    if (dir === "in") {
+      if (editor.can().sinkListItem("listItem")) chain.sinkListItem("listItem").run();
+      else if (editor.can().sinkListItem("taskItem")) chain.sinkListItem("taskItem").run();
+    } else {
+      if (editor.can().liftListItem("listItem")) chain.liftListItem("listItem").run();
+      else if (editor.can().liftListItem("taskItem")) chain.liftListItem("taskItem").run();
+    }
+  }, [editor]);
+
+  const colorPalette = [
+    { name: "Red", value: "#ef4444" },
+    { name: "Orange", value: "#f97316" },
+    { name: "Amber", value: "#f59e0b" },
+    { name: "Yellow", value: "#eab308" },
+    { name: "Lime", value: "#84cc16" },
+    { name: "Green", value: "#22c55e" },
+    { name: "Teal", value: "#14b8a6" },
+    { name: "Blue", value: "#3b82f6" },
+    { name: "Indigo", value: "#6366f1" },
+    { name: "Violet", value: "#8b5cf6" },
+    { name: "Pink", value: "#ec4899" },
+    { name: "Gray", value: "#64748b" },
+  ];
+
+  const highlightPalette = [
+    { name: "Yellow", value: "#fde047" },
+    { name: "Orange", value: "#fdba74" },
+    { name: "Red", value: "#fca5a5" },
+    { name: "Pink", value: "#f9a8d4" },
+    { name: "Purple", value: "#d8b4fe" },
+    { name: "Indigo", value: "#c7d2fe" },
+    { name: "Blue", value: "#93c5fd" },
+    { name: "Teal", value: "#99f6e4" },
+    { name: "Green", value: "#86efac" },
+    { name: "Lime", value: "#bef264" },
+    { name: "Gray", value: "#e2e8f0" },
+  ];
+
+  const formatItems: CommandItem[] = [
+    { id: "paragraph", label: "Paragraph", description: "Normal text", icon: AlignLeft, group: "Blocks", type: "format", run: () => editor.chain().focus().setParagraph().run() },
+    { id: "heading1", label: "Heading 1", description: "Large heading", icon: Heading1, group: "Blocks", type: "format", run: () => editor.chain().focus().toggleHeading({ level: 1 }).run() },
+    { id: "heading2", label: "Heading 2", description: "Section heading", icon: Heading2, group: "Blocks", type: "format", run: () => editor.chain().focus().toggleHeading({ level: 2 }).run() },
+    { id: "heading3", label: "Heading 3", description: "Subheading", icon: Heading3, group: "Blocks", type: "format", run: () => editor.chain().focus().toggleHeading({ level: 3 }).run() },
+    { id: "heading4", label: "Heading 4", description: "Small heading", icon: Heading3, group: "Blocks", type: "format", run: () => editor.chain().focus().toggleHeading({ level: 4 }).run() },
+    { id: "heading5", label: "Heading 5", description: "Smaller heading", icon: Heading3, group: "Blocks", type: "format", run: () => editor.chain().focus().toggleHeading({ level: 5 }).run() },
+    { id: "heading6", label: "Heading 6", description: "Tiny heading", icon: Heading3, group: "Blocks", type: "format", run: () => editor.chain().focus().toggleHeading({ level: 6 }).run() },
+    { id: "blockquote", label: "Blockquote", description: "Quote block", icon: Quote, group: "Blocks", type: "format", run: () => editor.chain().focus().toggleBlockquote().run() },
+    { id: "codeblock", label: "Code block", description: "Monospace code block", icon: Code, group: "Blocks", type: "format", run: () => editor.chain().focus().toggleCodeBlock().run() },
+    { id: "bulletlist", label: "Bulleted list", description: "Bullet list", icon: List, group: "Lists", type: "format", run: () => editor.chain().focus().toggleBulletList().run() },
+    { id: "orderedlist", label: "Numbered list", description: "Ordered list", icon: ListOrdered, group: "Lists", type: "format", run: () => editor.chain().focus().toggleOrderedList().run() },
+    { id: "tasklist", label: "Task list", description: "Checklist", icon: Check, group: "Lists", type: "format", run: () => editor.chain().focus().toggleTaskList().run() },
+    { id: "indent", label: "Indent list item", description: "Increase list depth", icon: IndentIncrease, group: "Lists", type: "format", run: () => applyListIndent("in") },
+    { id: "outdent", label: "Outdent list item", description: "Decrease list depth", icon: IndentDecrease, group: "Lists", type: "format", run: () => applyListIndent("out") },
+    { id: "divider", label: "Horizontal rule", description: "Divider line", icon: Minus, group: "Insert", type: "format", run: () => editor.chain().focus().setHorizontalRule().run() },
+    { id: "hardbreak", label: "Line break", description: "Insert line break", icon: AlignLeft, group: "Insert", type: "format", run: () => editor.chain().focus().setHardBreak().run() },
+    { id: "inline-math", label: "Inline math", description: "Insert inline LaTeX", icon: Sigma, group: "Insert", type: "format", run: () => {
+      const latex = window.prompt("Inline LaTeX", "");
+      if (!latex) return;
+      (editor.chain().focus() as any).insertInlineMath({ latex }).run();
+    } },
+    { id: "block-math", label: "Block math", description: "Insert block LaTeX", icon: Sigma, group: "Insert", type: "format", run: () => {
+      const latex = window.prompt("Block LaTeX", "");
+      if (!latex) return;
+      (editor.chain().focus() as any).insertBlockMath({ latex }).run();
+    } },
+    { id: "image", label: "Image from URL", description: "Insert image", icon: Image, group: "Insert", type: "format", run: () => {
+      const url = window.prompt("Image URL", "https://");
+      if (!url) return;
+      editor.chain().focus().setImage({ src: url }).run();
+    } },
+    { id: "link", label: "Add or edit link", description: "Set link on selection", icon: LinkIcon, group: "Insert", type: "format", run: () => {
+      const prev = editor.getAttributes("link").href as string | undefined;
+      const url = window.prompt("Enter URL", prev || "https://");
+      if (url === null) return;
+      if (!url.trim()) editor.chain().focus().extendMarkRange("link").unsetLink().run();
+      else editor.chain().focus().extendMarkRange("link").setLink({ href: url.trim() }).run();
+    } },
+    { id: "bold", label: "Bold", description: "Emphasise selection", icon: Bold, group: "Text", type: "format", run: () => editor.chain().focus().toggleBold().run() },
+    { id: "italic", label: "Italic", description: "Emphasise lightly", icon: Italic, group: "Text", type: "format", run: () => editor.chain().focus().toggleItalic().run() },
+    { id: "underline", label: "Underline", description: "Underline selection", icon: Underline, group: "Text", type: "format", run: () => editor.chain().focus().toggleUnderline().run() },
+    { id: "strike", label: "Strikethrough", description: "Strike out", icon: Strikethrough, group: "Text", type: "format", run: () => editor.chain().focus().toggleStrike().run() },
+    { id: "code", label: "Inline code", description: "Code formatting", icon: Code, group: "Text", type: "format", run: () => editor.chain().focus().toggleCode().run() },
+    { id: "subscript", label: "Subscript", description: "Lowered text", icon: ArrowDown, group: "Text", type: "format", run: () => editor.chain().focus().toggleSubscript().run() },
+    { id: "superscript", label: "Superscript", description: "Raised text", icon: ArrowUp, group: "Text", type: "format", run: () => editor.chain().focus().toggleSuperscript().run() },
+    { id: "clear", label: "Clear formatting", description: "Remove marks & nodes", icon: X, group: "Text", type: "format", run: () => editor.chain().focus().unsetAllMarks().clearNodes().run() },
+    { id: "align-left", label: "Align left", description: "Left aligned text", icon: AlignLeft, group: "Alignment", type: "format", run: () => editor.chain().focus().setTextAlign("left").run() },
+    { id: "align-center", label: "Align center", description: "Centered text", icon: AlignCenter, group: "Alignment", type: "format", run: () => editor.chain().focus().setTextAlign("center").run() },
+    { id: "align-right", label: "Align right", description: "Right aligned text", icon: AlignRight, group: "Alignment", type: "format", run: () => editor.chain().focus().setTextAlign("right").run() },
+    { id: "align-justify", label: "Justify", description: "Justified text", icon: AlignJustify, group: "Alignment", type: "format", run: () => editor.chain().focus().setTextAlign("justify").run() },
+  ];
+
+  const colorItems: CommandItem[] = colorPalette.map((c) => ({
+    id: `color-${c.name.toLowerCase()}`,
+    label: `Text color: ${c.name}`,
+    description: `Set text color to ${c.name}`,
+    icon: Circle,
+    group: "Color",
+    type: "format",
+    run: () => editor.chain().focus().setColor(c.value).run(),
+  }));
+
+  const clearColorItem: CommandItem = {
+    id: "color-reset",
+    label: "Text color: Default",
+    description: "Remove custom text color",
+    icon: Circle,
+    group: "Color",
+    type: "format",
+    run: () => editor.chain().focus().unsetColor().run(),
+  };
+
+  const highlightItems: CommandItem[] = highlightPalette.map((c) => ({
+    id: `highlight-${c.name.toLowerCase()}`,
+    label: `Highlight: ${c.name}`,
+    description: `Highlight text ${c.name.toLowerCase()}`,
+    icon: Highlighter,
+    group: "Highlight",
+    type: "format",
+    run: () => editor.chain().focus().toggleHighlight({ color: c.value }).run(),
+  }));
+
+  const clearHighlightItem: CommandItem = {
+    id: "highlight-clear",
+    label: "Highlight: Clear",
+    description: "Remove highlight",
+    icon: Highlighter,
+    group: "Highlight",
+    type: "format",
+    run: () => editor.chain().focus().unsetHighlight().run(),
+  };
+
+  const tableInsertItems: CommandItem[] = [];
+  for (let rows = 1; rows <= 6; rows++) {
+    for (let cols = 1; cols <= 6; cols++) {
+      tableInsertItems.push({
+        id: `table-${rows}x${cols}`,
+        label: `Table ${rows}×${cols}`,
+        description: `Insert a ${rows} by ${cols} table`,
+        icon: Table,
+        group: "Table Insert",
+        type: "format",
+        run: () => editor.chain().focus().insertTable({ rows, cols, withHeaderRow: true }).run(),
+      });
+    }
+  }
+
+  const tableEditItems: CommandItem[] = [
+    { id: "table-row-before", label: "Add row above", description: "Insert row above", icon: Table, group: "Table Edit", type: "format", run: () => editor.chain().focus().addRowBefore().run() },
+    { id: "table-row-after", label: "Add row below", description: "Insert row below", icon: Table, group: "Table Edit", type: "format", run: () => editor.chain().focus().addRowAfter().run() },
+    { id: "table-delete-row", label: "Delete row", description: "Remove current row", icon: Table, group: "Table Edit", type: "format", run: () => editor.chain().focus().deleteRow().run() },
+    { id: "table-col-before", label: "Add column left", description: "Insert column left", icon: Table, group: "Table Edit", type: "format", run: () => editor.chain().focus().addColumnBefore().run() },
+    { id: "table-col-after", label: "Add column right", description: "Insert column right", icon: Table, group: "Table Edit", type: "format", run: () => editor.chain().focus().addColumnAfter().run() },
+    { id: "table-delete-col", label: "Delete column", description: "Remove current column", icon: Table, group: "Table Edit", type: "format", run: () => editor.chain().focus().deleteColumn().run() },
+    { id: "table-merge", label: "Merge cells", description: "Merge selected cells", icon: Table, group: "Table Edit", type: "format", run: () => editor.chain().focus().mergeCells().run() },
+    { id: "table-split", label: "Split cell", description: "Split merged cell", icon: Table, group: "Table Edit", type: "format", run: () => editor.chain().focus().splitCell().run() },
+    { id: "table-header-row", label: "Toggle header row", description: "Header row on/off", icon: Table, group: "Table Edit", type: "format", run: () => editor.chain().focus().toggleHeaderRow().run() },
+    { id: "table-header-col", label: "Toggle header column", description: "Header column on/off", icon: Table, group: "Table Edit", type: "format", run: () => editor.chain().focus().toggleHeaderColumn().run() },
+    { id: "table-header-cell", label: "Toggle header cell", description: "Header cell on/off", icon: Table, group: "Table Edit", type: "format", run: () => editor.chain().focus().toggleHeaderCell().run() },
+    { id: "table-delete", label: "Delete table", description: "Remove entire table", icon: Table, group: "Table Edit", type: "format", run: () => editor.chain().focus().deleteTable().run() },
+  ];
+
+  const aiItems: CommandItem[] = MENU_ITEMS.map(item => ({
+    id: item.id,
+    label: item.label,
+    description: item.description,
+    icon: item.icon,
+    group: "AI",
+    type: "ai",
+  }));
+
+  const allItems: CommandItem[] = [
+    ...formatItems,
+    ...colorItems,
+    clearColorItem,
+    ...highlightItems,
+    clearHighlightItem,
+    ...tableInsertItems,
+    ...tableEditItems,
+    ...aiItems,
+  ];
+
+  const filtered = query
+    ? allItems.filter(item => {
+        const q = query.toLowerCase();
+        return item.label.toLowerCase().includes(q) || item.description.toLowerCase().includes(q);
+      })
+    : allItems;
+
+  const groups = [...new Set(filtered.map(i => i.group))];
+  const totalRows = filtered.length + (query ? 1 : 0);
 
   const handleKey = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Escape") { writerRef.current?.abort(); onClose(); return; }
@@ -247,8 +498,13 @@ export function AICommandPalette({ editor, subject, position, onClose }: Command
     if (e.key === "ArrowUp")   { e.preventDefault(); setFocused(f => (f - 1 + Math.max(totalRows, 1)) % Math.max(totalRows, 1)); }
     if (e.key === "Enter") {
       e.preventDefault();
-      if (focused < filtered.length) runAction(filtered[focused].id);
-      else if (query)                runAction("custom", query);
+      const item = filtered[focused];
+      if (item) {
+        if (item.type === "ai") runAIAction(item.id as AIAction);
+        else if (item.run) runFormatAction(item.run);
+      } else if (query) {
+        runAIAction("custom", query);
+      }
     }
   };
 
@@ -256,11 +512,14 @@ export function AICommandPalette({ editor, subject, position, onClose }: Command
     <motion.div
       data-ai-overlay
       variants={panelVariants} initial="hidden" animate="visible" exit="exit"
-      className="fixed z-[9999] w-[400px] rounded-2xl border border-border/60 bg-card shadow-[0_20px_60px_-10px_rgba(0,0,0,0.5)] overflow-hidden"
+      className="fixed z-[9999] w-[420px] rounded-2xl border border-border/60 bg-card shadow-[0_20px_60px_-10px_rgba(0,0,0,0.5)] overflow-hidden"
       style={{ top: position.top, left: position.left }}
-      onMouseDown={e => e.preventDefault()}
+      onMouseDown={e => {
+        const target = e.target as HTMLElement;
+        if (target.closest("input,textarea")) return;
+        e.preventDefault();
+      }}
     >
-      {/* Header */}
       <div className="flex items-center gap-3 px-4 py-3 border-b border-border/30">
         <div className="w-7 h-7 rounded-lg bg-primary/15 flex items-center justify-center shrink-0">
           {writing ? <Loader2 className="w-3.5 h-3.5 text-primary animate-spin" />
@@ -271,26 +530,16 @@ export function AICommandPalette({ editor, subject, position, onClose }: Command
           value={query}
           onChange={e => setQuery(e.target.value)}
           onKeyDown={handleKey}
-          placeholder={writing ? "Writing…" : "Ask AI to write or edit…"}
+          placeholder={writing ? "Writing…" : "Search formatting + AI…"}
           disabled={writing}
           autoComplete="off" autoCorrect="off" autoCapitalize="off"
           spellCheck={false} data-form-type="other" data-lpignore="true"
           className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/40 outline-none"
         />
-        {query && !writing && (
-          <button onClick={() => setQuery("")} className="text-muted-foreground/30 hover:text-muted-foreground">
-            <X className="w-3.5 h-3.5" />
-          </button>
-        )}
-        <button onClick={() => { writerRef.current?.abort(); onClose(); }}
-          className="text-muted-foreground/30 hover:text-muted-foreground ml-1">
-          <X className="w-3.5 h-3.5" />
-        </button>
       </div>
 
       {error && <p className="px-4 py-2 text-xs text-destructive bg-destructive/5">{error}</p>}
 
-      {/* Writing state */}
       {writing && (
         <motion.div
           initial={{ opacity: 0 }} animate={{ opacity: 1 }}
@@ -309,24 +558,26 @@ export function AICommandPalette({ editor, subject, position, onClose }: Command
         </motion.div>
       )}
 
-      {/* Menu */}
       {!writing && (
-        <div className="max-h-80 overflow-y-auto py-2">
+        <div className="max-h-[420px] overflow-y-auto py-2">
           {groups.map(group => (
             <div key={group}>
               <p className="px-4 pt-2 pb-1 text-[9px] font-black uppercase tracking-[0.22em] text-muted-foreground/35">
                 {group}
               </p>
               {filtered.filter(i => i.group === group).map(item => {
-                const idx      = filtered.indexOf(item);
+                const idx = filtered.indexOf(item);
                 const isFocused = idx === focused;
-                const Icon     = item.icon;
+                const Icon = item.icon;
                 return (
                   <motion.button
                     key={item.id}
                     custom={idx} variants={itemVariants} initial="hidden" animate="visible"
                     onMouseEnter={() => setFocused(idx)}
-                    onClick={() => runAction(item.id)}
+                    onClick={() => {
+                      if (item.type === "ai") runAIAction(item.id as AIAction);
+                      else if (item.run) runFormatAction(item.run);
+                    }}
                     className={cn(
                       "w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors",
                       isFocused ? "bg-primary/10" : "hover:bg-muted/40"
@@ -363,7 +614,7 @@ export function AICommandPalette({ editor, subject, position, onClose }: Command
             <motion.button
               initial={{ opacity: 0 }} animate={{ opacity: 1 }}
               onMouseEnter={() => setFocused(filtered.length)}
-              onClick={() => runAction("custom", query)}
+              onClick={() => runAIAction("custom", query)}
               className={cn(
                 "w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors border-t border-border/20 mt-1",
                 focused === filtered.length ? "bg-primary/10" : "hover:bg-muted/40"
@@ -372,7 +623,7 @@ export function AICommandPalette({ editor, subject, position, onClose }: Command
               <div className="w-7 h-7 rounded-lg bg-primary/15 flex items-center justify-center shrink-0">
                 <Sparkles className="w-3.5 h-3.5 text-primary" />
               </div>
-              <p className="text-sm font-medium text-primary truncate">"{query}"</p>
+              <p className="text-sm font-medium text-primary truncate">Ask AI: "{query}"</p>
               <ArrowRight className="w-3.5 h-3.5 text-primary/50 ml-auto shrink-0" />
             </motion.button>
           )}
@@ -402,20 +653,21 @@ export function FloatingAIToolbar({
   const [phase,         setPhase]         = useState<Phase>("menu");
   const [currentAction, setCurrentAction] = useState<AIAction | null>(null);
   const [error,         setError]         = useState("");
-  const [customInput,   setCustomInput]   = useState("");
-  const [showCustom,    setShowCustom]    = useState(false);
+  const [query,         setQuery]         = useState("");
+  const [focused,       setFocused]       = useState(0);
+  const [lastCustom,    setLastCustom]    = useState("");
   const [aiFrom,        setAiFrom]        = useState(0);
   const [aiTo,          setAiTo]          = useState(0);
   const writerRef = useRef<LiveWriter | null>(null);
-  const customRef = useRef<HTMLInputElement>(null);
+  const queryRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => { if (showCustom) customRef.current?.focus(); }, [showCustom]);
+  useEffect(() => { setFocused(0); }, [query]);
 
   const runAction = useCallback((action: AIAction, custom?: string) => {
     setCurrentAction(action);
     setPhase("writing");
     setError("");
-    setShowCustom(false);
+    if (action === "custom" && custom) setLastCustom(custom);
 
     // Delete selection and record where AI will write
     editor.chain().focus().deleteRange({ from: selFrom, to: selTo }).run();
@@ -435,6 +687,89 @@ export function FloatingAIToolbar({
       subject,
     );
   }, [editor, subject, selectedText, selFrom, selTo]);
+
+  const runFormat = useCallback((action: FormatAction) => {
+    const chain = editor.chain().focus();
+    switch (action) {
+      case "heading1":
+        chain.toggleHeading({ level: 1 }).run();
+        break;
+      case "heading2":
+        chain.toggleHeading({ level: 2 }).run();
+        break;
+      case "heading3":
+        chain.toggleHeading({ level: 3 }).run();
+        break;
+      case "bold":
+        chain.toggleBold().run();
+        break;
+      case "italic":
+        chain.toggleItalic().run();
+        break;
+      case "underline":
+        chain.toggleUnderline().run();
+        break;
+      case "strike":
+        chain.toggleStrike().run();
+        break;
+      case "code":
+        chain.toggleCode().run();
+        break;
+      case "bulletList":
+        chain.toggleBulletList().run();
+        break;
+      case "orderedList":
+        chain.toggleOrderedList().run();
+        break;
+      case "blockquote":
+        chain.toggleBlockquote().run();
+        break;
+      case "link": {
+        const prev = editor.getAttributes("link").href as string | undefined;
+        const url = window.prompt("Enter URL", prev || "https://");
+        if (url === null) return;
+        if (!url.trim()) {
+          editor.chain().focus().extendMarkRange("link").unsetLink().run();
+        } else {
+          editor.chain().focus().extendMarkRange("link").setLink({ href: url.trim() }).run();
+        }
+        break;
+      }
+      default:
+        break;
+    }
+    onClose();
+  }, [editor, onClose]);
+
+  const selectionItems = [
+    ...FORMAT_ITEMS.map(item => ({ ...item, type: "format" as const })),
+    ...MENU_ITEMS.map(item => ({ ...item, type: "ai" as const })),
+  ];
+  const quickFormatItems = FORMAT_ITEMS.filter(item => QUICK_FORMAT_IDS.includes(item.id));
+  const filteredItems = query
+    ? selectionItems.filter(item => {
+        const q = query.toLowerCase();
+        return item.label.toLowerCase().includes(q) || item.description.toLowerCase().includes(q);
+      })
+    : selectionItems;
+  const totalRows = filteredItems.length + (query ? 1 : 0);
+
+  const handleKey = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Escape") { writerRef.current?.abort(); onClose(); return; }
+    if (e.key === "ArrowDown") { e.preventDefault(); setFocused(f => (f + 1) % Math.max(totalRows, 1)); }
+    if (e.key === "ArrowUp")   { e.preventDefault(); setFocused(f => (f - 1 + Math.max(totalRows, 1)) % Math.max(totalRows, 1)); }
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (!query) return;
+      if (filteredItems[focused]) {
+        const item = filteredItems[focused];
+        if (item.type === "format") runFormat(item.id as FormatAction);
+        else runAction(item.id as AIAction);
+      } else if (query) {
+        runAction("custom", query);
+      }
+    }
+  };
 
   const handleAccept  = () => onClose();
 
@@ -462,7 +797,7 @@ export function FloatingAIToolbar({
       .insertContentAt(aiFrom, selectedText)
       .run();
     editor.commands.setTextSelection({ from: aiFrom, to: aiFrom + selectedText.length });
-    runAction(currentAction, customInput || undefined);
+    runAction(currentAction, currentAction === "custom" ? lastCustom : undefined);
   };
 
   const handleAbort = () => {
@@ -482,111 +817,169 @@ export function FloatingAIToolbar({
       variants={panelVariants} initial="hidden" animate="visible" exit="exit"
       className="fixed z-[9999] w-[420px] rounded-2xl border border-border/60 bg-card shadow-[0_20px_60px_-10px_rgba(0,0,0,0.5)] overflow-hidden"
       style={{ top: position.top, left: position.left }}
-      onMouseDown={e => e.preventDefault()}
+      onMouseDown={e => {
+        const target = e.target as HTMLElement;
+        if (target.closest("input,textarea")) return;
+        e.preventDefault();
+      }}
     >
-      {/* Header */}
-      <div className="flex items-center gap-2.5 px-4 py-2.5 border-b border-border/30 bg-primary/5">
-        <div className="w-6 h-6 rounded-md bg-primary/15 flex items-center justify-center shrink-0">
-          {phase === "writing"
-            ? <Loader2 className="w-3 h-3 text-primary animate-spin" />
-            : <Sparkles className="w-3 h-3 text-primary" />}
+      {/* Header (only for AI writing states) */}
+      {phase !== "menu" && (
+        <div className="flex items-center gap-2.5 px-4 py-2.5 border-b border-border/30 bg-primary/5">
+          <div className="w-6 h-6 rounded-md bg-primary/15 flex items-center justify-center shrink-0">
+            {phase === "writing"
+              ? <Loader2 className="w-3 h-3 text-primary animate-spin" />
+              : <Sparkles className="w-3 h-3 text-primary" />}
+          </div>
+          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary/70 flex-1">
+            {phase === "writing" ? "Editing live…"
+            : phase === "done"    ? "Done — keep or discard?"
+            :                       "Something went wrong"}
+          </span>
+          <span className="text-[10px] text-muted-foreground/30 truncate max-w-[160px]">
+            "{selectedText.slice(0, 35)}{selectedText.length > 35 ? "…" : ""}"
+          </span>
+          <button onClick={() => { writerRef.current?.abort(); onClose(); }}
+            className="text-muted-foreground/30 hover:text-muted-foreground ml-1">
+            <X className="w-3.5 h-3.5" />
+          </button>
         </div>
-        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary/70 flex-1">
-          {phase === "menu"    ? "AI Edit"
-          : phase === "writing" ? "Editing live…"
-          : phase === "done"    ? "Done — keep or discard?"
-          :                       "Something went wrong"}
-        </span>
-        <span className="text-[10px] text-muted-foreground/30 truncate max-w-[160px]">
-          "{selectedText.slice(0, 35)}{selectedText.length > 35 ? "…" : ""}"
-        </span>
-        <button onClick={() => { writerRef.current?.abort(); onClose(); }}
-          className="text-muted-foreground/30 hover:text-muted-foreground ml-1">
-          <X className="w-3.5 h-3.5" />
-        </button>
-      </div>
+      )}
 
       <AnimatePresence mode="wait">
 
         {/* MENU */}
         {phase === "menu" && (
-          <motion.div key="menu" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="py-2">
-            <AnimatePresence mode="wait">
-              {showCustom ? (
-                <motion.div key="inp"
-                  initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }} className="px-4 pb-2">
-                  <div className="flex items-center gap-2 pt-1">
-                    <input
-                      ref={customRef}
-                      value={customInput}
-                      onChange={e => setCustomInput(e.target.value)}
-                      placeholder="Describe what to do…"
-                      onKeyDown={e => {
-                        if (e.key === "Enter" && customInput.trim()) runAction("custom", customInput.trim());
-                        if (e.key === "Escape") { setShowCustom(false); setCustomInput(""); }
-                      }}
-                      autoComplete="off" autoCorrect="off" data-form-type="other" data-lpignore="true"
-                      className="flex-1 bg-muted/30 rounded-lg px-3 py-2 text-sm outline-none border border-primary/20 focus:border-primary/40 transition-colors"
-                    />
+          <motion.div key="menu" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <div className="px-3 py-2 flex items-center gap-1.5 border-b border-border/30">
+              {quickFormatItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => runFormat(item.id)}
+                    className="h-8 w-8 rounded-lg border border-border/40 bg-muted/30 hover:bg-muted/60 flex items-center justify-center"
+                    title={item.label}
+                  >
+                    <Icon className="w-4 h-4 text-foreground/70" />
+                  </button>
+                );
+              })}
+              <div className="flex-1" />
+              <button
+                onClick={() => { writerRef.current?.abort(); onClose(); }}
+                className="h-8 w-8 rounded-lg border border-border/40 bg-muted/20 hover:bg-muted/50 flex items-center justify-center"
+                title="Close"
+              >
+                <X className="w-4 h-4 text-muted-foreground/70" />
+              </button>
+            </div>
+
+            <div className="px-3 py-2 border-b border-border/30">
+              <input
+                ref={queryRef}
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={handleKey}
+                placeholder="Search AI + formatting…"
+                autoComplete="off"
+                autoCorrect="off"
+                spellCheck={false}
+                className="w-full bg-muted/20 rounded-lg px-3 py-2 text-sm outline-none border border-border/40 focus:border-primary/40"
+              />
+            </div>
+
+            <div className="max-h-72 overflow-y-auto py-2">
+              {query ? (
+                <>
+                  {filteredItems.map((item, idx) => {
+                    const Icon = item.icon;
+                    const isFocused = idx === focused;
+                    return (
+                      <button
+                        key={`${item.type}-${item.id}`}
+                        onMouseEnter={() => setFocused(idx)}
+                        onClick={() => item.type === "format" ? runFormat(item.id as FormatAction) : runAction(item.id as AIAction)}
+                        className={cn(
+                          "w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors",
+                          isFocused ? "bg-primary/10" : "hover:bg-muted/40"
+                        )}
+                      >
+                        <div className={cn(
+                          "w-7 h-7 rounded-lg flex items-center justify-center shrink-0",
+                          isFocused ? "bg-primary/20" : "bg-muted/50"
+                        )}>
+                          <Icon className={cn("w-3.5 h-3.5", isFocused ? "text-primary" : "text-muted-foreground/60")} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-foreground/80">{item.label}</p>
+                          <p className="text-[11px] text-muted-foreground/40">{item.description}</p>
+                        </div>
+                      </button>
+                    );
+                  })}
+                  {query && (
                     <button
-                      onClick={() => { if (customInput.trim()) runAction("custom", customInput.trim()); }}
-                      disabled={!customInput.trim()}
-                      className="w-9 h-9 rounded-xl bg-primary text-primary-foreground flex items-center justify-center disabled:opacity-30 hover:bg-primary/90"
+                      onMouseEnter={() => setFocused(filteredItems.length)}
+                      onClick={() => runAction("custom", query)}
+                      className={cn(
+                        "w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors border-t border-border/20 mt-1",
+                        focused === filteredItems.length ? "bg-primary/10" : "hover:bg-muted/40"
+                      )}
                     >
-                      <ArrowRight className="w-4 h-4" />
+                      <div className="w-7 h-7 rounded-lg bg-primary/15 flex items-center justify-center shrink-0">
+                        <Sparkles className="w-3.5 h-3.5 text-primary" />
+                      </div>
+                      <p className="text-sm font-medium text-primary truncate">Ask AI: “{query}”</p>
+                      <ArrowRight className="w-3.5 h-3.5 text-primary/50 ml-auto shrink-0" />
                     </button>
-                  </div>
-                </motion.div>
+                  )}
+                </>
               ) : (
-                <motion.button key="cust" initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                  onClick={() => setShowCustom(true)}
-                  className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-muted/40 transition-colors group">
-                  <div className="w-7 h-7 rounded-lg bg-primary/10 group-hover:bg-primary/20 flex items-center justify-center">
-                    <Sparkles className="w-3.5 h-3.5 text-primary" />
-                  </div>
-                  <span className="text-sm font-medium text-primary">Custom instruction…</span>
-                </motion.button>
+                <>
+                  <p className="px-4 pt-2 pb-1 text-[9px] font-black uppercase tracking-[0.22em] text-muted-foreground/35">Formatting</p>
+                  {FORMAT_ITEMS.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <button
+                        key={item.id}
+                        onClick={() => runFormat(item.id)}
+                        className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-muted/40 transition-colors"
+                      >
+                        <div className="w-7 h-7 rounded-lg bg-muted/40 flex items-center justify-center">
+                          <Icon className="w-3.5 h-3.5 text-muted-foreground/60" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-foreground/80">{item.label}</p>
+                          <p className="text-[11px] text-muted-foreground/40">{item.description}</p>
+                        </div>
+                      </button>
+                    );
+                  })}
+
+                  <div className="h-px bg-border/25 mx-4 my-1" />
+                  <p className="px-4 pt-2 pb-1 text-[9px] font-black uppercase tracking-[0.22em] text-muted-foreground/35">AI</p>
+                  {MENU_ITEMS.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <button
+                        key={item.id}
+                        onClick={() => runAction(item.id)}
+                        className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-muted/40 transition-colors"
+                      >
+                        <div className="w-7 h-7 rounded-lg bg-muted/40 flex items-center justify-center">
+                          <Icon className="w-3.5 h-3.5 text-muted-foreground/60" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-foreground/80">{item.label}</p>
+                          <p className="text-[11px] text-muted-foreground/40">{item.description}</p>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </>
               )}
-            </AnimatePresence>
-
-            <div className="h-px bg-border/25 mx-4 my-1" />
-            <p className="px-4 pt-2 pb-1 text-[9px] font-black uppercase tracking-[0.22em] text-muted-foreground/35">Edit</p>
-            {MENU_ITEMS.filter(i => i.group === "Edit").map((item, idx) => {
-              const Icon = item.icon;
-              return (
-                <motion.button key={item.id} custom={idx} variants={itemVariants} initial="hidden" animate="visible"
-                  onClick={() => runAction(item.id)}
-                  className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-muted/40 transition-colors group">
-                  <div className="w-7 h-7 rounded-lg bg-muted/40 group-hover:bg-primary/10 flex items-center justify-center">
-                    <Icon className="w-3.5 h-3.5 text-muted-foreground/60 group-hover:text-primary transition-colors" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-foreground/80 group-hover:text-foreground">{item.label}</p>
-                    <p className="text-[11px] text-muted-foreground/40">{item.description}</p>
-                  </div>
-                </motion.button>
-              );
-            })}
-
-            <div className="h-px bg-border/25 mx-4 my-1" />
-            <p className="px-4 pt-2 pb-1 text-[9px] font-black uppercase tracking-[0.22em] text-muted-foreground/35">Transform</p>
-            {MENU_ITEMS.filter(i => i.group === "Transform").map((item, idx) => {
-              const Icon = item.icon;
-              return (
-                <motion.button key={item.id} custom={idx + 4} variants={itemVariants} initial="hidden" animate="visible"
-                  onClick={() => runAction(item.id)}
-                  className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-muted/40 transition-colors group">
-                  <div className="w-7 h-7 rounded-lg bg-muted/40 group-hover:bg-primary/10 flex items-center justify-center">
-                    <Icon className="w-3.5 h-3.5 text-muted-foreground/60 group-hover:text-primary transition-colors" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-foreground/80 group-hover:text-foreground">{item.label}</p>
-                    <p className="text-[11px] text-muted-foreground/40">{item.description}</p>
-                  </div>
-                </motion.button>
-              );
-            })}
+            </div>
           </motion.div>
         )}
 

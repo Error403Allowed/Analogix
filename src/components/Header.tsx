@@ -199,8 +199,9 @@ const Header = ({ userName = "Student", streak = 0 }: HeaderProps) => {
 
     const nextPrefs = {
       ...prefs,
-      name: profileName.trim() || "Student",
-      grade: profileGrade || "",
+      name: profileName.trim() || prefs.name || "Student",
+      grade: profileGrade || prefs.grade,
+      state: prefs.state,
       subjects: selectedSubjects,
       hobbies: hobbiesWithDetails,
       hobbyIds: selectedHobbies,

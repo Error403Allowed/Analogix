@@ -238,25 +238,111 @@ const Onboarding = () => {
     if (authLoading) return;
 
     if (authUser) {
-      try {
-        const prefs = JSON.parse(localStorage.getItem("userPreferences") || "{}");
-        if (prefs?.onboardingComplete) {
-          router.replace("/dashboard");
-          return;
-        }
-      } catch {}
-      const urlStep = parseInt(searchParams?.get("step") ?? "2", 10);
-      const safeStep = isNaN(urlStep) || urlStep <= 1 ? 2 : Math.min(urlStep, TOTAL_STEPS);
-      setStep(safeStep);
+      const loadProfile = async () => {
+        try {
+          const prefs = JSON.parse(localStorage.getItem("userPreferences") || "{}");
+          if (prefs?.onboardingComplete && (!prefs.userId || prefs.userId === authUser.id)) {
+            router.replace("/dashboard");
+            return;
+          }
+        } catch {}
+
+        try {
+          const supabase = createClient();
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("name, grade, state, subjects, hobbies, hobby_ids, hobby_details, onboarding_complete")
+            .eq("id", authUser.id)
+            .single();
+
+          const hasProfile =
+            profile?.onboarding_complete ||
+            !!profile?.grade ||
+            !!profile?.state ||
+            (Array.isArray(profile?.subjects) && profile.subjects.length > 0) ||
+            (Array.isArray(profile?.hobbies) && profile.hobbies.length > 0) ||
+            (Array.isArray(profile?.hobby_ids) && profile.hobby_ids.length > 0) ||
+            (profile?.hobby_details && Object.keys(profile.hobby_details).length > 0);
+
+          if (hasProfile) {
+            try {
+              const existing = JSON.parse(localStorage.getItem("userPreferences") || "{}");
+              const next = {
+                ...existing,
+                name: profile?.name ?? existing.name,
+                grade: profile?.grade ?? existing.grade ?? null,
+                state: profile?.state ?? existing.state ?? null,
+                subjects: Array.isArray(profile?.subjects) ? profile.subjects : (existing.subjects ?? []),
+                hobbies: Array.isArray(profile?.hobbies) ? profile.hobbies : (existing.hobbies ?? []),
+                hobbyIds: Array.isArray(profile?.hobby_ids) ? profile.hobby_ids : (existing.hobbyIds ?? []),
+                hobbyDetails: profile?.hobby_details && typeof profile.hobby_details === "object"
+                  ? profile.hobby_details
+                  : (existing.hobbyDetails ?? {}),
+                onboardingComplete: true,
+                userId: authUser.id,
+              };
+              localStorage.setItem("userPreferences", JSON.stringify(next));
+              window.dispatchEvent(new Event("userPreferencesUpdated"));
+            } catch {}
+            router.replace("/dashboard");
+            return;
+          }
+        } catch {}
+
+        const urlStep = parseInt(searchParams?.get("step") ?? "2", 10);
+        const safeStep = isNaN(urlStep) || urlStep <= 1 ? 2 : Math.min(urlStep, TOTAL_STEPS);
+        setStep(safeStep);
+      };
+
+      loadProfile();
     }
   }, [authUser, authLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const [name, setName] = useState("");
-  const [grade, setGrade] = useState<string | null>(null);
-  const [state, setState] = useState<AustralianState | null>(null);
-  const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
-  const [selectedHobbies, setSelectedHobbies] = useState<string[]>([]);
-  const [interestSelections, setInterestSelections] = useState<Record<string, string[]>>({});
+  // Load existing preferences from localStorage on mount
+  const getExistingPrefs = () => {
+    try {
+      return JSON.parse(localStorage.getItem("userPreferences") || "{}");
+    } catch {
+      return {};
+    }
+  };
+
+  const existingPrefs = getExistingPrefs();
+  
+  // Parse hobby IDs from existing hobbies array if hobbyIds not available
+  const getExistingHobbyIds = () => {
+    if (Array.isArray(existingPrefs.hobbyIds)) return existingPrefs.hobbyIds;
+    if (Array.isArray(existingPrefs.hobbies)) {
+      return existingPrefs.hobbies
+        .map((h: string) => {
+          const label = h.split(" (")[0]?.trim().toLowerCase();
+          const hobby = HOBBY_OPTIONS.find(opt => opt.label.toLowerCase() === label);
+          return hobby?.id;
+        })
+        .filter(Boolean);
+    }
+    return [];
+  };
+
+  // Parse hobby details from existing preferences
+  const getExistingInterestSelections = () => {
+    const details: Record<string, string[]> = {};
+    if (existingPrefs.hobbyDetails) {
+      Object.entries(existingPrefs.hobbyDetails).forEach(([key, value]) => {
+        if (value && typeof value === "string") {
+          details[key] = value.split(",").map((item: string) => item.trim()).filter(Boolean);
+        }
+      });
+    }
+    return details;
+  };
+
+  const [name, setName] = useState(existingPrefs.name || "");
+  const [grade, setGrade] = useState<string | null>(existingPrefs.grade || null);
+  const [state, setState] = useState<AustralianState | null>(existingPrefs.state || null);
+  const [selectedSubjects, setSelectedSubjects] = useState<string[]>(existingPrefs.subjects || []);
+  const [selectedHobbies, setSelectedHobbies] = useState<string[]>(getExistingHobbyIds());
+  const [interestSelections, setInterestSelections] = useState<Record<string, string[]>>(getExistingInterestSelections());
   const [customInterest, setCustomInterest] = useState<Record<string, string>>({});
   const [isComplete, setIsComplete] = useState(false);
   const [icsImporting, setIcsImporting] = useState(false);
@@ -331,9 +417,19 @@ const Onboarding = () => {
       return detail ? `${label} (${detail})` : label;
     });
     const finalName = displayName;
+    // Merge with existing preferences to preserve any additional data
+    const existing = JSON.parse(localStorage.getItem("userPreferences") || "{}");
     const prefs = {
-      name: finalName, grade, state, subjects: selectedSubjects,
-      hobbies, hobbyIds, hobbyDetails, onboardingComplete: true,
+      ...existing,
+      name: finalName,
+      grade,
+      state,
+      subjects: selectedSubjects,
+      hobbies,
+      hobbyIds,
+      hobbyDetails,
+      onboardingComplete: true,
+      userId: authUser?.id,
     };
     localStorage.setItem("userPreferences", JSON.stringify(prefs));
 

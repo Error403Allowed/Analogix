@@ -1,21 +1,50 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
+import { usePathname } from "next/navigation";
 
 const STORAGE_KEY = "hasSeenImmersiveIntro";
 
 const FirstVisitOverlay = () => {
+  const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
 
+  // Don't show overlay on auth/app pages - only on landing page (/)
+  // Once user clicks Enter, they should never see it again
+  const shouldSkip = [
+    "/login",
+    "/onboarding",
+    "/auth/callback",
+    "/dashboard",
+    "/subjects",
+    "/chat",
+    "/flashcards",
+    "/quiz",
+    "/calendar",
+    "/resources",
+    "/formulas",
+    "/achievements",
+    "/timer",
+    "/study-guide-loading",
+  ].some(path => pathname === path || pathname.startsWith(path + "/"));
+
   useEffect(() => {
+    if (shouldSkip) return;
     const hasSeen = localStorage.getItem(STORAGE_KEY);
     if (!hasSeen) setIsOpen(true);
-  }, []);
+  }, [shouldSkip]);
 
   const handleEnter = () => {
     localStorage.setItem(STORAGE_KEY, "true");
+    // Allow user to stay on landing page without forcing onboarding
+    const prefs = JSON.parse(localStorage.getItem("userPreferences") || "{}");
+    prefs.landingVisited = true;
+    localStorage.setItem("userPreferences", JSON.stringify(prefs));
     setIsOpen(false);
   };
+
+  // Don't render if on app pages
+  if (shouldSkip) return null;
 
   return (
     <AnimatePresence>

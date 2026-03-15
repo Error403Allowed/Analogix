@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles, AlertCircle, ArrowLeft } from "lucide-react";
 import { generateStudyGuide, generateFlashcardsFromDocument, generateQuizFromDocument } from "@/services/groq";
 import { subjectStore } from "@/utils/subjectStore";
-import { encodeStudyGuide } from "@/components/StudyGuideView";
+import { studyGuideToHtml } from "@/utils/studyGuideHtml";
 import { SUBJECT_CATALOG } from "@/constants/subjects";
 import { eventStore } from "@/utils/eventStore";
 import { AppEvent } from "@/types/events";
@@ -125,11 +125,14 @@ export default function StudyGuideLoadingPage() {
           grade: job.grade,
         });
 
-        if (!result) throw new Error("No guide returned");
+        if (!result || !result.title) {
+          throw new Error("No guide returned - generation failed");
+        }
 
-        const encoded = encodeStudyGuide(result);
+        // Only create document AFTER successful generation
         const doc = await subjectStore.createDocument(job.subjectId, result.title);
-        await subjectStore.updateDocument(job.subjectId, doc.id, { content: encoded });
+        const html = studyGuideToHtml(result);
+        await subjectStore.updateDocument(job.subjectId, doc.id, { content: html });
 
         const assessmentDate = parseAssessmentDate(result.assessmentDate);
         if (assessmentDate) {

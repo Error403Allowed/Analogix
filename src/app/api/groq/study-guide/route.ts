@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { callHfChat, formatError } from "../_utils";
+import { extractYouTubeVideoId, fetchYouTubeTranscript } from "@/lib/youtube";
 
 export const runtime = "nodejs";
 
@@ -146,10 +147,29 @@ const extractExamDuration = (text: string): string | null => {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const assessmentDetails: string = body.assessmentDetails || "";
-    const fileName: string = body.fileName || "Assessment";
+    let assessmentDetails: string = body.assessmentDetails || "";
+    let fileName: string = body.fileName || "Assessment";
     const subject: string = body.subject || "";
     const grade: string = body.grade || "7-12";
+    const youtubeUrl: string | undefined = body.youtubeUrl;
+
+    // Handle YouTube URL - fetch transcript
+    if (youtubeUrl) {
+      const videoId = extractYouTubeVideoId(youtubeUrl);
+      if (!videoId) {
+        return NextResponse.json({ error: "Invalid YouTube URL" }, { status: 400 });
+      }
+
+      const transcriptData = await fetchYouTubeTranscript(videoId);
+      if (!transcriptData) {
+        return NextResponse.json({ 
+          error: "Could not fetch YouTube transcript. This video may not have captions enabled." 
+        }, { status: 404 });
+      }
+
+      assessmentDetails = transcriptData.transcript;
+      fileName = transcriptData.title || "YouTube Video";
+    }
 
     if (!assessmentDetails.trim()) {
       return NextResponse.json({ error: "Assessment details are required" }, { status: 400 });
@@ -213,6 +233,25 @@ Return ONLY valid JSON (no markdown, no preamble):
       docAnalysis = { documentType: "exam", complexity: "medium", recommendedDepth: "standard" };
     }
 
+    // ── Calculate weeks until exam for study schedule ─────────────────────
+    const today = new Date();
+    const weeksUntilExam = extractedDate ? (() => {
+      if (extractedDate === "TBA" || !extractedDate) return 4; // Default
+      const examDate = new Date(extractedDate);
+      const diffMs = examDate.getTime() - today.getTime();
+      const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+      // Minimum 1 week, maximum 12 weeks for study schedule
+      return Math.max(1, Math.min(12, Math.ceil(diffDays / 7)));
+    })() : 4; // Default 4 weeks if no date
+
+    const studyScheduleGuidance = `Create exactly ${weeksUntilExam} weeks of study plan. ${
+      weeksUntilExam <= 2 
+        ? "URGENT: Only ${weeksUntilExam} weeks left! Focus on high-yield topics and practice questions." 
+        : weeksUntilExam <= 4
+        ? "Moderate timeline: Balance content review with practice."
+        : `Extended timeline: ${weeksUntilExam} weeks available. Start with foundations, build to complex topics, end with review.`
+    }`;
+
     // ── STAGE 2: Build a tailored system prompt based on the analysis ──
     const hasFormulas = docAnalysis.hasFormulas === true;
     const hasExperiment = docAnalysis.hasExperiment === true;
@@ -272,7 +311,7 @@ CONTENT RULES:
 - If the doc has formulas, work ALL of them into keyConcepts with examples — don't skip any.
 - gradeExpectations: Extract EXACTLY from the document if a rubric exists. Otherwise infer from content.
 - keyTable: Must be DIRECTLY useful for this subject (formula sheet for sciences, event table for history, case table for legal studies, etc.). OMIT if it wouldn't add value.
-- studySchedule: Realistic weeks based on actual content volume. More weeks for complex docs.
+- studySchedule: ${studyScheduleGuidance} Each week must have 3-5 specific, actionable tasks derived from the document content.
 - Use Australian English spelling and terminology throughout.
 - glossary: Include ALL subject-specific terms found in the document.
 - tips: Make these SPECIFIC to this exact assessment, not generic advice.
@@ -299,6 +338,7 @@ REMINDER: Replace ALL example values with real content from the document. Omit a
     },
     "studySchedule": [
       { "week": 1, "label": "descriptive label for this week", "tasks": ["specific task 1", "specific task 2", "specific task 3"] }
+      // Generate exactly ${weeksUntilExam} weeks total, with week numbers 1 through ${weeksUntilExam}
     ],
     "keyConcepts": [
       { "title": "actual concept name from document", "content": "thorough explanation with specifics, formulas, worked examples from this document" }
@@ -336,6 +376,9 @@ REMINDER: Replace ALL example values with real content from the document. Omit a
       "reasoning"
     );
 
+    // Ensure content is a string
+    const contentStr = typeof content === "string" ? content : String(content);
+
     const parseStudyGuide = (raw: string): Record<string, unknown> | null => {
       try {
         const clean = raw.replace(/```json|```/g, "").trim();
@@ -353,23 +396,24 @@ REMINDER: Replace ALL example values with real content from the document. Omit a
       return null;
     };
 
-    let studyGuide = parseStudyGuide(content);
+    let studyGuide = parseStudyGuide(contentStr);
     if (!studyGuide) {
-      const repair = await callHfChat(
+      const repairContent = await callHfChat(
         {
           messages: [
             {
               role: "system",
               content: "Fix invalid JSON. Return ONLY valid JSON with the same structure. Do not add commentary.",
             },
-            { role: "user", content },
+            { role: "user", content: contentStr },
           ],
           max_tokens: 2500,
           temperature: 0,
         },
         "lightweight"
       );
-      studyGuide = parseStudyGuide(repair);
+      const repairStr = typeof repairContent === "string" ? repairContent : String(repairContent);
+      studyGuide = parseStudyGuide(repairStr);
     }
 
     if (!studyGuide) {

@@ -10,13 +10,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { SUBJECT_CATALOG } from "@/constants/subjects";
 import { subjectStore } from "@/utils/subjectStore";
-import { type GeneratedStudyGuide } from "@/services/groq";
-import { encodeStudyGuide } from "@/components/StudyGuideView";
 import { toast } from "sonner";
 import { extractFileText, ACCEPTED_FILE_TYPES, ACCEPTED_FILE_LABEL } from "@/utils/extractFileText";
 
-// Kept for backward compat
-export const studyGuideToHtml = (_guide: GeneratedStudyGuide): string => "";
+export { studyGuideToHtml } from "@/utils/studyGuideHtml";
 
 interface GuideEntry {
   docId: string;
@@ -148,10 +145,14 @@ const StudyGuideManager = () => {
         const entries: GuideEntry[] = [];
         Object.entries(all).forEach(([subjectId, data]) => {
           (data.notes.documents || []).forEach(doc => {
+            const c = doc.content || "";
             if (
-              doc.content.startsWith("__STUDY_GUIDE_V2__") ||
-              doc.content.includes("📅 Study Schedule") ||
-              doc.content.includes("🧠 Key Concepts")
+              c.startsWith("__STUDY_GUIDE_V2__") ||
+              c.startsWith("__STUDY_GUIDE_JSON__") ||
+              c.includes("📅 Study Schedule") ||
+              c.includes("🧠 Key Concepts") ||
+              c.includes("<h2>Study Schedule</h2>") ||
+              c.includes("<h2>Key Concepts</h2>")
             ) {
               entries.push({ docId: doc.id, subjectId, title: doc.title || "Untitled Guide", lastUpdated: doc.lastUpdated });
             }
@@ -307,7 +308,7 @@ const StudyGuideManager = () => {
               <p className="text-xs text-muted-foreground/60 mt-1">Upload a file and we'll build one for you.</p>
             </div>
           ) : (
-            guides.slice(0, 5).map(entry => (
+            guides.map(entry => (
               <motion.div
                 key={entry.docId}
                 initial={{ opacity: 0, y: 4 }}

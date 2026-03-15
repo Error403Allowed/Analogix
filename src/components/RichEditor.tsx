@@ -3,12 +3,20 @@
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Mathematics from "@tiptap/extension-mathematics";
+import Underline from "@tiptap/extension-underline";
+import Highlight from "@tiptap/extension-highlight";
+import { TextStyle } from "@tiptap/extension-text-style";
+import { Color } from "@tiptap/extension-color";
+import TextAlign from "@tiptap/extension-text-align";
+import Subscript from "@tiptap/extension-subscript";
+import Superscript from "@tiptap/extension-superscript";
 import { CodeBlockLowlight } from "@tiptap/extension-code-block-lowlight";
 import { common, createLowlight } from "lowlight";
 import Placeholder from "@tiptap/extension-placeholder";
 import TaskList from "@tiptap/extension-task-list";
 import TaskItem from "@tiptap/extension-task-item";
 import Link from "@tiptap/extension-link";
+import Image from "@tiptap/extension-image";
 import { Table, TableRow, TableHeader, TableCell } from "@tiptap/extension-table";
 import {
   useEffect, useImperativeHandle, forwardRef,
@@ -17,7 +25,14 @@ import {
 import { AnimatePresence } from "framer-motion";
 import type { Editor } from "@tiptap/react";
 import "katex/dist/katex.min.css";
-import { AICommandPalette, FloatingAIToolbar } from "./NotionAI";
+import { AICommandPalette } from "./NotionAI";
+import {
+  ContextMenu,
+  ContextMenuTrigger,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+} from "@/components/ui/context-menu";
 
 const lowlight = createLowlight(common);
 
@@ -45,17 +60,20 @@ function getCaretPos(): { top: number; left: number } | null {
   range.collapse(true);
   const rect = range.getBoundingClientRect();
   if (!rect || (rect.top === 0 && rect.left === 0)) return null;
-  return { top: rect.bottom + 8, left: Math.max(rect.left, 16) };
-}
-
-function getSelectionPos(): { top: number; left: number } | null {
-  const sel = window.getSelection();
-  if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return null;
-  const rect = sel.getRangeAt(0).getBoundingClientRect();
-  if (!rect) return null;
-  // Centre the panel above the selection; keep on screen
-  const left = Math.max(rect.left + rect.width / 2 - 210, 16);
-  return { top: rect.top - 12, left };
+  const panelWidth = 420;
+  const panelHeight = 420;
+  const margin = 12;
+  const offset = 12;
+  const left = Math.min(
+    Math.max(rect.left, margin),
+    window.innerWidth - panelWidth - margin
+  );
+  const belowTop = rect.bottom + offset;
+  const aboveTop = rect.top - panelHeight - offset;
+  const top = belowTop + panelHeight > window.innerHeight && aboveTop > margin
+    ? aboveTop
+    : belowTop;
+  return { top, left };
 }
 
 // ── Component ────────────────────────────────────────────────────────────────
@@ -63,64 +81,50 @@ function getSelectionPos(): { top: number; left: number } | null {
 const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(
   ({ initialContent, onChange, placeholder, subject }, ref) => {
     const [palettePos,   setPalettePos]   = useState<{ top: number; left: number } | null>(null);
-    const [toolbarPos,   setToolbarPos]   = useState<{ top: number; left: number } | null>(null);
-    const [selectedText, setSelectedText] = useState("");
-    const [selFrom,      setSelFrom]      = useState(0);
-    const [selTo,        setSelTo]        = useState(0);
+    const [slashQuery,   setSlashQuery]   = useState("");
 
-    const selTimerRef      = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const editorInstanceRef = useRef<Editor | null>(null);
-
-    // ── Detect /ai trigger ─────────────────────────────────────────────────
+    // ── Detect / trigger ───────────────────────────────────────────────────
     const checkSlashAI = useCallback((ed: Editor) => {
-      if (!ed.state.selection.empty) return;
+      if (!ed.state.selection.empty) {
+        setPalettePos(null);
+        setSlashQuery("");
+        return;
+      }
       const { $anchor } = ed.state.selection;
-      const blockText = ed.state.doc.textBetween($anchor.start(), $anchor.end());
-      if (blockText.trim().toLowerCase() === "/ai") {
+      const blockText = ed.state.doc.textBetween($anchor.start(), $anchor.end(), "\n", "\0");
+      const before = blockText.slice(0, $anchor.parentOffset);
+      const match = before.match(/(?:^|\s)\/(\S*)$/);
+      if (match) {
         const pos = getCaretPos();
         if (pos) setPalettePos(pos);
+        setSlashQuery(match[1] ?? "");
       } else {
         setPalettePos(null);
+        setSlashQuery("");
       }
-    }, []);
-
-    // ── Detect text selection ──────────────────────────────────────────────
-    const checkSelection = useCallback(() => {
-      if (selTimerRef.current) clearTimeout(selTimerRef.current);
-      selTimerRef.current = setTimeout(() => {
-        const sel = window.getSelection();
-        if (!sel || sel.isCollapsed || !sel.toString().trim()) {
-          setToolbarPos(null);
-          setSelectedText("");
-          return;
-        }
-        const text = sel.toString().trim();
-        if (text.length < 3) { setToolbarPos(null); return; }
-        const pos = getSelectionPos();
-        if (pos && editorInstanceRef.current) {
-          const ed = editorInstanceRef.current;
-          setSelectedText(text);
-          setSelFrom(ed.state.selection.from);
-          setSelTo(ed.state.selection.to);
-          setToolbarPos(pos);
-          setPalettePos(null);
-        }
-      }, 300);
     }, []);
 
     const editor = useEditor({
       immediatelyRender: false,
       extensions: [
         StarterKit.configure({ codeBlock: false }),
+        Underline,
+        TextStyle,
+        Color,
+        Highlight.configure({ multicolor: true }),
+        Subscript,
+        Superscript,
+        TextAlign.configure({ types: ["heading", "paragraph"] }),
         Mathematics,
         CodeBlockLowlight.configure({ lowlight, defaultLanguage: "python" }),
         Placeholder.configure({
-          placeholder: placeholder ?? "Start writing… or type /ai for AI help.",
+          placeholder: placeholder ?? "Start writing… or type / for commands.",
           emptyEditorClass: "is-editor-empty",
         }),
         TaskList,
         TaskItem.configure({ nested: true }),
         Link.configure({ openOnClick: false }),
+        Image,
         Table.configure({ resizable: false }),
         TableRow,
         TableHeader,
@@ -130,10 +134,6 @@ const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(
       onUpdate: ({ editor }) => {
         onChange(editor.getHTML());
         checkSlashAI(editor);
-        if (editor.state.selection.empty) {
-          setToolbarPos(null);
-          setSelectedText("");
-        }
       },
       onSelectionUpdate: ({ editor }) => {
         checkSlashAI(editor);
@@ -143,21 +143,126 @@ const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(
           class: "rich-editor-content focus:outline-none min-h-[60vh] text-base leading-relaxed",
         },
         handleKeyDown: (_view, event) => {
+          // Keyboard shortcuts for formatting
+          const isMod = event.metaKey || event.ctrlKey;
+          
+          if (isMod && event.key === "b") {
+            event.preventDefault();
+            editor?.chain().focus().toggleBold().run();
+            return true;
+          }
+          if (isMod && event.key === "i") {
+            event.preventDefault();
+            editor?.chain().focus().toggleItalic().run();
+            return true;
+          }
+          if (isMod && event.key === "u") {
+            event.preventDefault();
+            editor?.chain().focus().toggleUnderline().run();
+            return true;
+          }
+          if (isMod && event.key === "s") {
+            event.preventDefault();
+            editor?.chain().focus().toggleStrike().run();
+            return true;
+          }
+          if (isMod && event.key === "h") {
+            event.preventDefault();
+            editor?.chain().focus().toggleHighlight().run();
+            return true;
+          }
+          if (isMod && event.shiftKey && event.key === "h") {
+            event.preventDefault();
+            editor?.chain().focus().toggleHeading({ level: 1 }).run();
+            return true;
+          }
+          if (isMod && event.shiftKey && event.key === "j") {
+            event.preventDefault();
+            editor?.chain().focus().toggleHeading({ level: 2 }).run();
+            return true;
+          }
+          if (isMod && event.shiftKey && event.key === "k") {
+            event.preventDefault();
+            editor?.chain().focus().toggleHeading({ level: 3 }).run();
+            return true;
+          }
+          if (isMod && event.altKey && event.key === "c") {
+            event.preventDefault();
+            editor?.chain().focus().toggleCode().run();
+            return true;
+          }
+          if (isMod && event.shiftKey && event.key === "c") {
+            event.preventDefault();
+            editor?.chain().focus().toggleCodeBlock().run();
+            return true;
+          }
+          if (isMod && event.shiftKey && event.key === "l") {
+            event.preventDefault();
+            editor?.chain().focus().toggleBulletList().run();
+            return true;
+          }
+          if (isMod && event.shiftKey && event.key === "o") {
+            event.preventDefault();
+            editor?.chain().focus().toggleOrderedList().run();
+            return true;
+          }
+          if (isMod && event.altKey && event.key === "q") {
+            event.preventDefault();
+            editor?.chain().focus().toggleBlockquote().run();
+            return true;
+          }
+          if (isMod && event.key === "z") {
+            event.preventDefault();
+            if (event.shiftKey) {
+              editor?.chain().focus().redo().run();
+            } else {
+              editor?.chain().focus().undo().run();
+            }
+            return true;
+          }
+          if (event.key === "Tab") {
+            if (editor?.isActive('taskItem')) {
+              event.preventDefault();
+              if (event.shiftKey) {
+                editor.chain().focus().liftListItem('taskItem').run();
+              } else {
+                editor.chain().focus().sinkListItem('taskItem').run();
+              }
+              return true;
+            }
+            // Tab in table cell - move to next cell
+            if (editor?.isActive('tableCell') || editor?.isActive('tableHeader')) {
+              event.preventDefault();
+              if (event.shiftKey) {
+                editor.chain().focus().goToPreviousCell().run();
+              } else {
+                editor.chain().focus().goToNextCell().run();
+              }
+              return true;
+            }
+          }
+          // Table editing shortcuts
+          if (event.key === "Backspace" && event.altKey) {
+            if (editor?.isActive('tableCell') || editor?.isActive('tableHeader')) {
+              event.preventDefault();
+              editor.chain().focus().deleteColumn().run();
+              return true;
+            }
+          }
+          if (event.key === "Delete" && event.altKey) {
+            if (editor?.isActive('tableCell') || editor?.isActive('tableHeader')) {
+              event.preventDefault();
+              editor.chain().focus().deleteRow().run();
+              return true;
+            }
+          }
           if (event.key === "Escape") {
             setPalettePos(null);
-            setToolbarPos(null);
           }
           return false;
         },
       },
     });
-
-    useEffect(() => { editorInstanceRef.current = editor ?? null; }, [editor]);
-
-    useEffect(() => {
-      document.addEventListener("mouseup", checkSelection);
-      return () => document.removeEventListener("mouseup", checkSelection);
-    }, [checkSelection]);
 
     // Close palette when clicking outside AI overlays
     useEffect(() => {
@@ -216,7 +321,60 @@ const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(
 
     return (
       <>
-        <EditorContent editor={editor} />
+        <ContextMenu>
+          <ContextMenuTrigger asChild>
+            <EditorContent editor={editor} />
+          </ContextMenuTrigger>
+          <ContextMenuContent className="w-56">
+            <ContextMenuItem
+              disabled={!editor?.isActive('tableCell') && !editor?.isActive('tableHeader')}
+              onClick={() => editor?.chain().focus().addRowBefore().run()}
+            >
+              Add row above
+            </ContextMenuItem>
+            <ContextMenuItem
+              disabled={!editor?.isActive('tableCell') && !editor?.isActive('tableHeader')}
+              onClick={() => editor?.chain().focus().addRowAfter().run()}
+            >
+              Add row below
+            </ContextMenuItem>
+            <ContextMenuItem
+              disabled={!editor?.isActive('tableCell') && !editor?.isActive('tableHeader')}
+              onClick={() => editor?.chain().focus().addColumnBefore().run()}
+            >
+              Add column left
+            </ContextMenuItem>
+            <ContextMenuItem
+              disabled={!editor?.isActive('tableCell') && !editor?.isActive('tableHeader')}
+              onClick={() => editor?.chain().focus().addColumnAfter().run()}
+            >
+              Add column right
+            </ContextMenuItem>
+            <ContextMenuSeparator />
+            <ContextMenuItem
+              disabled={!editor?.isActive('tableCell') && !editor?.isActive('tableHeader')}
+              onClick={() => editor?.chain().focus().deleteRow().run()}
+              className="text-destructive focus:text-destructive"
+            >
+              Delete row
+            </ContextMenuItem>
+            <ContextMenuItem
+              disabled={!editor?.isActive('tableCell') && !editor?.isActive('tableHeader')}
+              onClick={() => editor?.chain().focus().deleteColumn().run()}
+              className="text-destructive focus:text-destructive"
+            >
+              Delete column
+            </ContextMenuItem>
+            <ContextMenuSeparator />
+            <ContextMenuItem
+              disabled={!editor?.isActive('tableCell') && !editor?.isActive('tableHeader')}
+              onClick={() => editor?.chain().focus().deleteTable().run()}
+              className="text-destructive focus:text-destructive"
+            >
+              Delete table
+            </ContextMenuItem>
+          </ContextMenuContent>
+        </ContextMenu>
 
         {/* ── AI overlays (animated with AnimatePresence) ──────────────── */}
         <AnimatePresence>
@@ -226,22 +384,8 @@ const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(
               editor={editor}
               subject={subject}
               position={palettePos}
+              initialQuery={slashQuery}
               onClose={() => setPalettePos(null)}
-            />
-          )}
-        </AnimatePresence>
-
-        <AnimatePresence>
-          {toolbarPos && selectedText && editor && (
-            <FloatingAIToolbar
-              key="toolbar"
-              editor={editor}
-              subject={subject}
-              selectedText={selectedText}
-              selFrom={selFrom}
-              selTo={selTo}
-              position={toolbarPos}
-              onClose={() => { setToolbarPos(null); setSelectedText(""); }}
             />
           )}
         </AnimatePresence>

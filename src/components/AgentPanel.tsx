@@ -5,11 +5,16 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Brain, X, Send, Loader2, Sparkles, Trash2, ChevronDown,
   BookOpen, FileText, MessageSquare, CheckCircle2, AlertCircle, Zap,
+  Eye, FileText as FileTextIcon,
 } from "lucide-react";
+import ContentInput, { type ContextItem } from "@/components/ContentInput";
 import { cn } from "@/lib/utils";
 import { usePathname } from "next/navigation";
-import MarkdownRenderer from "@/components/MarkdownRenderer";
 import type { ChatMessage } from "@/types/chat";
+import { gatherAppContext, type ContextOptions } from "@/lib/contextGatherer";
+import { subjectStore } from "@/utils/subjectStore";
+import { SUBJECT_CATALOG } from "@/constants/subjects";
+import { chatStore } from "@/utils/chatStore";
 
 // ── Action result types ────────────────────────────────────────────────────
 interface ActionResult {
@@ -35,6 +40,19 @@ const QUICK_PROMPTS = [
   { label: "What have I been studying?", icon: MessageSquare },
   { label: "Add flashcards for my last topic", icon: Sparkles },
 ];
+
+const AGENT_SESSION_KEY = "agentChatSessionId";
+const MAX_AGENT_HISTORY = 30;
+
+const safeLocalStorageGet = (key: string) => {
+  try { return localStorage.getItem(key); } catch { return null; }
+};
+const safeLocalStorageSet = (key: string, value: string) => {
+  try { localStorage.setItem(key, value); } catch {}
+};
+const safeLocalStorageRemove = (key: string) => {
+  try { localStorage.removeItem(key); } catch {}
+};
 
 // ── Typing animation ───────────────────────────────────────────────────────
 function TypingDots({ keyPrefix = "typing" }: { keyPrefix?: string }) {
@@ -64,12 +82,28 @@ export default function AgentPanel() {
   const [open, setOpen]         = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [actionResults, setActionResults] = useState<Record<number, ActionResult[]>>({});
-  const [input, setInput]       = useState("");
-  const [loading, setLoading]   = useState(false);
-  const [error, setError]       = useState("");
+  const [input, setInput] = useState("");
+  const [contextIds, setContextIds] = useState<string[]>([]);
+  const [contextOptions, setContextOptions] = useState<ContextOptions>({
+    includeRecentDocs: true,
+    includeEvents: true,
+    includeStats: true,
+    includeFlashcards: true,
+    includeAchievements: true,
+  });
+  const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const [loadingKey, setLoadingKey] = useState(0);
+  const [recentContext, setRecentContext] = useState<ContextItem[]>([]);
+  const [currentDoc, setCurrentDoc] = useState<{ title: string; subjectId: string; content: string } | null>(null);
+  const [showContextOptions, setShowContextOptions] = useState(false);
+  const [chatSessionId, setChatSessionId] = useState<string | null>(null);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
+  
   const bottomRef = useRef<HTMLDivElement>(null);
-  const inputRef  = useRef<HTMLTextAreaElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
 
   // Hide on certain pages — computed here but the early return is AFTER all hooks
   const isHidden = HIDDEN_ON.some(p =>
@@ -81,14 +115,168 @@ export default function AgentPanel() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
+  // Build @-mention context list (current page + recent docs)
+  useEffect(() => {
+    let active = true;
+    const stripHtml = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+    const subjectLabel = (id: string) =>
+      SUBJECT_CATALOG.find(s => s.id === id)?.label || id;
+
+    const build = async () => {
+      try {
+        const all = await subjectStore.getAll();
+        const docEntries: Array<ContextItem & { lastUpdated?: string }> = [];
+        Object.entries(all).forEach(([subjectId, data]) => {
+          const label = subjectLabel(subjectId);
+          (data.notes.documents || []).forEach(doc => {
+            const preview = stripHtml(doc.content || "").slice(0, 120);
+            docEntries.push({
+              id: doc.id,
+              title: doc.title || "Untitled",
+              subject: label,
+              preview,
+              type: "doc",
+              lastUpdated: doc.lastUpdated,
+            });
+          });
+        });
+
+        docEntries.sort((a, b) => new Date(b.lastUpdated || 0).getTime() - new Date(a.lastUpdated || 0).getTime());
+        const recentDocs = docEntries.slice(0, 8).map(({ lastUpdated, ...rest }) => rest);
+
+        let currentPageItem: ContextItem | null = null;
+        let currentDocInfo: { title: string; subjectId: string; content: string } | null = null;
+        const match = pathname.match(/^\/subjects\/([^/]+)\/document\/([^/]+)/);
+        if (match) {
+          const subjectId = match[1];
+          const docId = match[2];
+          const data = all[subjectId];
+          const doc = data?.notes.documents?.find(d => d.id === docId);
+          if (doc) {
+            const docTitle = doc.title || "Untitled";
+            currentPageItem = {
+              id: doc.id,
+              title: docTitle,
+              subject: subjectLabel(subjectId),
+              preview: stripHtml(doc.content || "").slice(0, 120),
+              type: "page",
+            };
+            currentDocInfo = { title: docTitle, subjectId, content: doc.content || "" };
+          }
+        } else {
+          const pretty = pathname === "/" ? "Home" : pathname.split("/").filter(Boolean).map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(" / ");
+          currentPageItem = {
+            id: "current-page",
+            title: pretty || "Current page",
+            subject: "Current page",
+            preview: "",
+            type: "page",
+          };
+        }
+
+        const merged = currentPageItem
+          ? [currentPageItem, ...recentDocs.filter(d => d.id !== currentPageItem!.id)]
+          : recentDocs;
+
+        if (active) {
+          setRecentContext(merged);
+          setCurrentDoc(currentDocInfo);
+        }
+      } catch {
+        if (active) {
+          setRecentContext([]);
+          setCurrentDoc(null);
+        }
+      }
+    };
+
+    build();
+    return () => { active = false; };
+  }, [pathname]);
+
   // Focus input when panel opens
   useEffect(() => {
     if (open) setTimeout(() => inputRef.current?.focus(), 120);
   }, [open]);
 
-  const sendMessage = useCallback(async (text?: string) => {
+  const safeLocalStorageGet = (key: string) => {
+    try { return localStorage.getItem(key); } catch { return null; }
+  };
+  const safeLocalStorageSet = (key: string, value: string) => {
+    try { localStorage.setItem(key, value); } catch {}
+  };
+  const safeLocalStorageRemove = (key: string) => {
+    try { localStorage.removeItem(key); } catch {}
+  };
+
+  // Load persisted agent chat history when opened
+  useEffect(() => {
+    if (!open || historyLoaded) return;
+    let active = true;
+
+    const loadHistory = async () => {
+      try {
+        const storedId = safeLocalStorageGet(AGENT_SESSION_KEY);
+        if (storedId) {
+          const msgs = await chatStore.getMessages(storedId);
+          if (!active) return;
+          setChatSessionId(storedId);
+          if (msgs.length > 0) {
+            setMessages(msgs.slice(-MAX_AGENT_HISTORY).map(m => ({ role: m.role, content: m.content })));
+          }
+          setHistoryLoaded(true);
+          return;
+        }
+
+        const sessions = await chatStore.getSessions();
+        const agentSession = sessions.find(s => s.subjectId === "agent");
+        if (agentSession?.id) {
+          const msgs = await chatStore.getMessages(agentSession.id);
+          if (!active) return;
+          setChatSessionId(agentSession.id);
+          safeLocalStorageSet(AGENT_SESSION_KEY, agentSession.id);
+          if (msgs.length > 0) {
+            setMessages(msgs.slice(-MAX_AGENT_HISTORY).map(m => ({ role: m.role, content: m.content })));
+          }
+          setHistoryLoaded(true);
+          return;
+        }
+
+        const newId = await chatStore.createSession("agent", "Agent");
+        if (!active) return;
+        if (newId) {
+          setChatSessionId(newId);
+          safeLocalStorageSet(AGENT_SESSION_KEY, newId);
+        }
+        setHistoryLoaded(true);
+      } catch {
+        if (active) setHistoryLoaded(true);
+      }
+    };
+
+    loadHistory();
+    return () => { active = false; };
+  }, [open, historyLoaded]);
+
+  const ensureChatSession = useCallback(async () => {
+    if (chatSessionId) return chatSessionId;
+    const newId = await chatStore.createSession("agent", "Agent");
+    if (newId) {
+      setChatSessionId(newId);
+      safeLocalStorageSet(AGENT_SESSION_KEY, newId);
+      return newId;
+    }
+    return null;
+  }, [chatSessionId]);
+
+  const sendMessage = useCallback(async (text?: string, selectedContextIds?: string[]) => {
     const content = (text ?? input).trim();
     if (!content || loading) return;
+    const baseContext = selectedContextIds ?? contextIds;
+    const dedupedContext = Array.from(new Set(baseContext.filter(Boolean)));
+    const mentionedDocs = currentDoc?.title
+      ? [currentDoc.title, ...dedupedContext.filter(t => t !== currentDoc.title)]
+      : dedupedContext;
 
     setInput("");
     setError("");
@@ -100,12 +288,25 @@ export default function AgentPanel() {
     setLoadingKey(prev => prev + 1); // Reset typing animation
 
     try {
+      const sessionId = await ensureChatSession();
+      if (sessionId) {
+        chatStore.addMessage(sessionId, "user", content).catch(() => {});
+      }
+
+      const appContext = await gatherAppContext(pathname, contextOptions);
+      const messagesForRequest = newMessages.slice(-MAX_AGENT_HISTORY);
+
       const res = await fetch("/api/groq/agent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          messages: newMessages.filter(m => m.role !== "system"),
-          userContext: {},
+          messages: messagesForRequest,
+          userContext: appContext,
+          contextOptions,
+          mentionedDocs,
+          currentDoc: currentDoc ? { title: currentDoc.title, subjectId: currentDoc.subjectId, content: currentDoc.content } : null,
+          currentPage: pathname,
+          chatSessionId: sessionId,
         }),
       });
 
@@ -113,10 +314,31 @@ export default function AgentPanel() {
       const data = await res.json();
 
       const assistantMsgIndex = newMessages.length; // index of the message we're about to add
+      const formatAgentReply = (text: string) => {
+        let t = text
+          .replace(/<actions>[\s\S]*?<\/actions>/gi, "")
+          .replace(/```json[\s\S]*?```/gi, "")
+          .replace(/^\s*#{1,6}\s+/gm, "")
+          .replace(/^\s*[-*+]\s+/gm, "")
+          .replace(/^\s*•\s+/gm, "")
+          .replace(/^\s*\d+\.\s+/gm, "")
+          .replace(/\r\n/g, "\n")
+          .replace(/\n{3,}/g, "\n\n")
+          .trim();
+        const paragraphs = t
+          .split(/\n{2,}/)
+          .map(p => p.replace(/\n/g, " ").replace(/\s+/g, " ").trim())
+          .filter(Boolean);
+        return paragraphs.join("\n\n");
+      };
+      const cleanContent = formatAgentReply(data.content || "Sorry, no response.");
       setMessages(prev => [
         ...prev,
-        { role: "assistant", content: data.content || "Sorry, no response." },
+        { role: "assistant", content: cleanContent },
       ]);
+      if (sessionId) {
+        chatStore.addMessage(sessionId, "assistant", cleanContent).catch(() => {});
+      }
 
       // If the AI returned actions, execute them server-side
       if (data.actions && data.actions.length > 0) {
@@ -124,7 +346,10 @@ export default function AgentPanel() {
         const actionRes = await fetch("/api/groq/agent-action", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ actions: data.actions }),
+          body: JSON.stringify({
+            actions: data.actions,
+            defaultSubjectId: currentDoc?.subjectId || null,
+          }),
         });
         console.log("[AgentPanel] agent-action status:", actionRes.status);
         const actionData = await actionRes.json();
@@ -141,18 +366,30 @@ export default function AgentPanel() {
     } finally {
       setLoading(false);
     }
-  }, [input, messages, loading]);
+  }, [input, messages, loading, contextIds, contextOptions, pathname, currentDoc, ensureChatSession]);
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
+  const clearChat = async () => {
+    setMessages([]);
+    setActionResults({});
+    const newId = await chatStore.createSession("agent", "Agent");
+    if (newId) {
+      setChatSessionId(newId);
+      safeLocalStorageSet(AGENT_SESSION_KEY, newId);
+    } else {
+      setChatSessionId(null);
+      safeLocalStorageRemove(AGENT_SESSION_KEY);
     }
   };
 
-  const clearChat = () => { setMessages([]); setActionResults({}); };
-
   const isEmpty = messages.length === 0;
+  const renderParagraphs = (text: string) => {
+    const parts = text.split(/\n{2,}/).map(p => p.trim()).filter(Boolean);
+    return parts.map((p, idx) => (
+      <p key={idx} className="text-[13px] leading-relaxed">
+        {p}
+      </p>
+    ));
+  };
 
   if (isHidden) return null;
 
@@ -294,8 +531,8 @@ export default function AgentPanel() {
                       )}
                     >
                       {msg.role === "assistant" ? (
-                        <div className="prose prose-sm dark:prose-invert max-w-none text-[13px] leading-relaxed">
-                          <MarkdownRenderer content={msg.content} />
+                        <div className="space-y-2">
+                          {renderParagraphs(msg.content)}
                         </div>
                       ) : (
                         <p className="leading-relaxed">{msg.content}</p>
@@ -363,49 +600,97 @@ export default function AgentPanel() {
               <div ref={bottomRef} />
             </div>
 
-            {/* Input area */}
-            <div className="px-3 pb-3 pt-1.5 shrink-0 border-t border-border/20">
-              <div className={cn(
-                "flex items-center gap-2 rounded-2xl border border-border/50 bg-muted/20 px-3 py-1",
-                "focus-within:border-primary/40 focus-within:bg-muted/30 transition-colors"
-              )}>
-                <textarea
-                  ref={inputRef}
-                  value={input}
-                  onChange={e => {
-                    setInput(e.target.value);
-                    e.target.style.height = "auto";
-                    e.target.style.height = Math.min(e.target.scrollHeight, 60) + "px";
-                  }}
-                  onKeyDown={handleKeyDown}
-                  placeholder="Ask about your notes, docs, flashcards…"
-                  rows={1}
-                  disabled={loading}
-                  className={cn(
-                    "flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/40",
-                    "outline-none resize-none leading-relaxed",
-                    "disabled:opacity-50"
-                  )}
-                  style={{ minHeight: 18, maxHeight: 60 }}
-                />
+            {/* Improved Context selector - Notion/Coda style */}
+            {showContextOptions && (
+            <div className="px-4 py-3 border-b border-border/30 bg-gradient-to-r from-muted/30 to-muted/10">
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-xs font-semibold text-muted-foreground/80 flex items-center gap-1.5">
+                  <Eye className="w-3.5 h-3.5" />
+                  <span>Context</span>
+                </div>
                 <button
-                  onClick={() => sendMessage()}
-                  disabled={!input.trim() || loading}
-                  className={cn(
-                    "w-7 h-7 rounded-xl flex items-center justify-center shrink-0 ml-5",
-                    "bg-primary text-primary-foreground",
-                    "disabled:opacity-30 hover:bg-primary/90 active:scale-95 transition-all"
-                  )}
+                  onClick={() => setContextOptions({
+                    includeRecentDocs: true, includeEvents: true, 
+                    includeStats: true, includeFlashcards: true, includeAchievements: true
+                  })}
+                  className="text-[10px] px-2 py-0.5 bg-primary/10 text-primary rounded-full font-bold hover:bg-primary/20 transition-all"
                 >
-                  {loading
-                    ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    : <Send className="w-3.5 h-3.5" />}
+                  Reset
                 </button>
               </div>
-              <p className="text-[10px] text-muted-foreground/30 text-center mt-1.5">
-                Press Enter to send · Shift+Enter for new line
-              </p>
+              <div className="space-y-1.5">
+                {/* Quick presets - Notion-style segmented control */}
+                <div className="flex bg-background border border-border/50 rounded-lg p-0.5">
+                  {[
+                    { label: "Minimal", options: { includeRecentDocs: false, includeEvents: false, includeStats: false, includeFlashcards: false, includeAchievements: false } },
+                    { label: "Auto", options: { includeRecentDocs: true, includeEvents: true, includeStats: true, includeFlashcards: false, includeAchievements: false } },
+                    { label: "Full", options: { includeRecentDocs: true, includeEvents: true, includeStats: true, includeFlashcards: true, includeAchievements: true } },
+                  ].map(({ label, options }, i) => (
+                    <button
+                      key={label}
+                      onClick={() => setContextOptions(options)}
+                      className={cn(
+                        "flex-1 px-3 py-1.5 text-xs font-semibold rounded-md transition-all",
+                        Object.entries(options).every(([k,v]) => contextOptions[k as keyof ContextOptions] === v)
+                          ? "bg-primary text-primary-foreground shadow-sm" 
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                      )}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Expandable detailed controls - Coda-style */}
+                <div className="space-y-1 pt-1">
+                  <button className="w-full flex items-center justify-between text-xs text-muted-foreground hover:text-foreground p-1.5 rounded-md hover:bg-muted/30 transition-all">
+                    <span>Advanced →</span>
+                    <ChevronDown className="w-3 h-3 shrink-0" />
+                  </button>
+                  <div className="grid grid-cols-2 gap-1.5 pl-2 text-[10px]">
+                    {[
+                      { key: "includeRecentDocs", label: "Docs", icon: "📄" },
+                      { key: "includeEvents", label: "Events", icon: "📅" },
+                      { key: "includeStats", label: "Stats", icon: "📊" },
+                      { key: "includeFlashcards", label: "Cards", icon: "💳" },
+                      { key: "includeAchievements", label: "Wins", icon: "🏆" },
+                    ].map(({ key, label, icon }) => (
+                      <label key={key} className="flex items-center gap-1.5 p-1 rounded hover:bg-muted/40 cursor-pointer group text-[10px]">
+                        <span className="text-muted-foreground/70 shrink-0">{icon}</span>
+                        <input
+                          type="checkbox"
+                          checked={contextOptions[key as keyof ContextOptions] !== false}
+                          onChange={(e) => setContextOptions(prev => ({ ...prev, [key]: e.target.checked }))}
+                          className="w-3 h-3 rounded border-border/50 bg-background focus:ring-primary/50 data-[state=checked]:bg-primary shrink-0"
+                        />
+                        <span className="font-medium text-muted-foreground/80 group-hover:text-foreground/90">{label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <div className="text-[10px] text-muted-foreground/50 mt-1.5 text-center">
+                {Object.values(contextOptions).filter(Boolean).length} / 5 sources active
+              </div>
             </div>
+            )}
+
+            <ContentInput
+              inputRef={inputRef}
+              value={input}
+              onChange={setInput}
+              onSend={(text, contextIds, files) => {
+                setContextIds(contextIds);
+                setAttachedFiles(files);
+                sendMessage(text, contextIds);
+              }}
+              onFilesChange={setAttachedFiles}
+              onToggleContextOptions={() => setShowContextOptions(prev => !prev)}
+              placeholder="Type @ to mention docs or drag files..."
+              currentPage={pathname.replace('/', '') || 'Dashboard'}
+              recentContext={recentContext}
+              disabled={loading}
+            />
           </motion.div>
         )}
       </AnimatePresence>

@@ -44,7 +44,6 @@ import MarkdownRenderer from "@/components/MarkdownRenderer";
 import { SUBJECT_CATALOG, SubjectId } from "@/constants/subjects";
 import { buildInterestList } from "@/utils/interests";
 import { extractFileText, ACCEPTED_FILE_TYPES } from "@/utils/extractFileText";
-import { encodeStudyGuide } from "@/components/StudyGuideView";
 import type { ResearchSource, SavedResearchSource } from "@/types/research";
 import { researchStore } from "@/utils/researchStore";
 
@@ -1917,7 +1916,7 @@ const Chat = () => {
                         handleSend();
                       }
                     }}
-                    placeholder={selectedSubject ? `Ask me anything` : `Ask me anything — maths, science, history…`}
+                    placeholder={selectedSubject ? `Ask anything about ${allSubjects.find(s => s.id === selectedSubject)?.label}…` : `Ask me anything — maths, science, history…`}
                     rows={Math.max(1, Math.min(8, Math.ceil(input.length / 80) || 1))}
                     className="w-full px-3 sm:px-4 pt-3.5 pb-12 text-sm sm:text-base bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/50 resize-none overflow-y-auto max-h-48 leading-relaxed rounded-2xl"
                   />

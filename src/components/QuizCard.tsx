@@ -16,7 +16,7 @@ type QuizAnswerPayload = {
 };
 
 interface QuizCardProps {
-  type?: "multiple_choice" | "short_answer";
+  type?: "multiple_choice" | "multiple_select" | "short_answer";
   question: string;
   options?: QuizOption[];
   correctAnswer?: string;
@@ -24,19 +24,22 @@ interface QuizCardProps {
   totalQuestions: number;
   onAnswer: (payload: QuizAnswerPayload) => void;
   hint?: string;
+  explanation?: string;
 }
 
-const QuizCard = ({ 
+const QuizCard = ({
   type = "multiple_choice",
-  question, 
-  options = [], 
+  question,
+  options = [],
   correctAnswer,
-  questionNumber, 
-  totalQuestions, 
+  questionNumber,
+  totalQuestions,
   onAnswer,
-  hint 
+  hint,
+  explanation
 }: QuizCardProps) => {
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
+  const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
   const [shortAnswer, setShortAnswer] = useState("");
   const [showResult, setShowResult] = useState(false);
   const [showHint, setShowHint] = useState(false);
@@ -46,40 +49,71 @@ const QuizCard = ({
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
 
   const safeOptions = Array.isArray(options) ? options : [];
+  const isMultipleSelect = type === "multiple_select";
 
   const handleSelect = (optionId: string) => {
     if (showResult) return;
-    
-    setSelectedOption(optionId);
-    setShowResult(true);
-    
-    const selected = safeOptions.find(o => o.id === optionId);
-    const isCorrect = selected?.isCorrect || false;
-    
-    if (isCorrect) {
-      setShowConfetti(true);
-      setTimeout(() => setShowConfetti(false), 2000);
+
+    if (isMultipleSelect) {
+      // Multiple select - toggle selection
+      setSelectedOptions(prev => 
+        prev.includes(optionId) 
+          ? prev.filter(id => id !== optionId)
+          : [...prev, optionId]
+      );
+    } else {
+      // Single choice
+      setSelectedOption(optionId);
     }
+  };
 
-    const correctMessages = [
-      "Brilliant work.",
-      "Great job.",
-      "Nailed it.",
-      "Perfect. Keep going.",
-    ];
-    const incorrectMessages = [
-      "Close. Keep going.",
-      "Not quite, but you're learning.",
-      "Almost there. Try again next time.",
-      "Good try. Mistakes help us grow.",
-    ];
-    const pool = isCorrect ? correctMessages : incorrectMessages;
-    setFeedbackMessage(pool[Math.floor(Math.random() * pool.length)]);
+  const handleConfirmAnswer = () => {
+    if (isMultipleSelect) {
+      if (selectedOptions.length === 0) return;
+      setShowResult(true);
+      
+      // Check if all correct answers are selected and no incorrect ones
+      const correctIds = safeOptions.filter(o => o.isCorrect).map(o => o.id);
+      const isCorrect = 
+        selectedOptions.length === correctIds.length &&
+        selectedOptions.every(id => correctIds.includes(id));
+      
+      if (isCorrect) {
+        setShowConfetti(true);
+        setTimeout(() => setShowConfetti(false), 2000);
+      }
+      
+      const correctMessages = ["Brilliant work.", "Great job.", "Nailed it.", "Perfect. Keep going."];
+      const incorrectMessages = ["Close. Keep going.", "Not quite, but you're learning.", "Almost there. Try again next time.", "Good try. Mistakes help us grow."];
+      const pool = isCorrect ? correctMessages : incorrectMessages;
+      setFeedbackMessage(pool[Math.floor(Math.random() * pool.length)]);
+      
+      onAnswer({
+        isCorrect,
+        userAnswer: selectedOptions.map(id => safeOptions.find(o => o.id === id)?.text).join(", "),
+        feedback: explanation
+      });
+    } else if (selectedOption) {
+      setShowResult(true);
+      const selected = safeOptions.find(o => o.id === selectedOption);
+      const isCorrect = selected?.isCorrect || false;
 
-    onAnswer({
-      isCorrect,
-      userAnswer: selected?.text || "",
-    });
+      if (isCorrect) {
+        setShowConfetti(true);
+        setTimeout(() => setShowConfetti(false), 2000);
+      }
+
+      const correctMessages = ["Brilliant work.", "Great job.", "Nailed it.", "Perfect. Keep going."];
+      const incorrectMessages = ["Close. Keep going.", "Not quite, but you're learning.", "Almost there. Try again next time.", "Good try. Mistakes help us grow."];
+      const pool = isCorrect ? correctMessages : incorrectMessages;
+      setFeedbackMessage(pool[Math.floor(Math.random() * pool.length)]);
+
+      onAnswer({
+        isCorrect,
+        userAnswer: selected?.text || "",
+        feedback: explanation
+      });
+    }
   };
 
   const handleShortAnswerSubmit = async () => {
@@ -199,7 +233,7 @@ const QuizCard = ({
       </AnimatePresence>
 
       {/* Selection Area */}
-      {type === "multiple_choice" ? (
+      {(type === "multiple_choice" || type === "multiple_select") && (
         <div className="space-y-3 mb-6">
           {safeOptions.map((option, index) => (
             <motion.button
@@ -214,9 +248,37 @@ const QuizCard = ({
               whileTap={!showResult ? { scale: 0.98 } : {}}
             >
               <div className="flex items-center justify-between w-full">
-                <span className="text-foreground font-medium flex-1">
-                  <MarkdownRenderer content={option.text} />
-                </span>
+                <div className="flex items-center gap-3 flex-1">
+                  {/* Checkbox for multiple_select, radio-style circle for multiple_choice */}
+                  {isMultipleSelect ? (
+                    <div className={`w-5 h-5 rounded flex items-center justify-center border-2 ${
+                      selectedOptions.includes(option.id)
+                        ? option.isCorrect && showResult
+                          ? "border-success bg-success text-white"
+                          : "border-primary bg-primary text-white"
+                        : "border-border"
+                    }`}>
+                      {selectedOptions.includes(option.id) && (
+                        <Check className="w-3.5 h-3.5" />
+                      )}
+                    </div>
+                  ) : (
+                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                      selectedOption === option.id
+                        ? option.isCorrect && showResult
+                          ? "border-success bg-success text-white"
+                          : "border-primary bg-primary"
+                        : "border-border"
+                    }`}>
+                      {selectedOption === option.id && (
+                        <div className="w-2.5 h-2.5 rounded-full bg-white" />
+                      )}
+                    </div>
+                  )}
+                  <span className="text-foreground font-medium flex-1">
+                    <MarkdownRenderer content={option.text} />
+                  </span>
+                </div>
                 {showResult && (
                   <motion.div
                     initial={{ scale: 0 }}
@@ -226,7 +288,7 @@ const QuizCard = ({
                   >
                     {option.isCorrect ? (
                       <Check className="w-5 h-5 text-success" />
-                    ) : selectedOption === option.id ? (
+                    ) : (isMultipleSelect ? selectedOptions.includes(option.id) : selectedOption === option.id) ? (
                       <X className="w-5 h-5 text-destructive" />
                     ) : null}
                   </motion.div>
@@ -234,18 +296,32 @@ const QuizCard = ({
               </div>
             </motion.button>
           ))}
+          
+          {/* Confirm button for multiple choice/select */}
+          {!showResult && (
+            <Button
+              onClick={handleConfirmAnswer}
+              disabled={isMultipleSelect ? selectedOptions.length === 0 : !selectedOption}
+              className="w-full gradient-primary h-12 rounded-xl font-bold mt-4"
+            >
+              Confirm Answer
+            </Button>
+          )}
         </div>
-      ) : (
+      )}
+
+      {/* Short Answer */}
+      {type === "short_answer" && (
         <div className="space-y-4 mb-6">
-          <Textarea 
+          <Textarea
             placeholder="Type your answer here..."
             value={shortAnswer}
             onChange={(e) => setShortAnswer(e.target.value)}
             disabled={showResult || isGrading}
             className="min-h-[120px] glass font-medium text-foreground p-4 rounded-xl border-2 border-border focus:border-primary"
           />
-          <Button 
-            onClick={handleShortAnswerSubmit} 
+          <Button
+            onClick={handleShortAnswerSubmit}
             disabled={!shortAnswer.trim() || showResult || isGrading}
             className="w-full gradient-primary h-12 rounded-xl font-bold"
           >

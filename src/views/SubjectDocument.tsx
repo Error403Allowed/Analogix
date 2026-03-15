@@ -2,28 +2,26 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { toast } from "sonner";
 import {
-  ArrowLeft, FileText, Sparkles, Bold, Italic, Strikethrough, Code,
-  Heading1, Heading2, Heading3, List, ListOrdered, CheckSquare, Quote,
-  Link as LinkIcon, Image as ImageIcon, Table, Minus, Sigma,
-  MessageCircle, Send, X, Braces, BookOpen, Brain, HelpCircle, Layers,
+  ArrowLeft, FileText, Sparkles,
+  MessageCircle, Send, X, BookOpen, HelpCircle, Layers,
+  Volume2, VolumeX, Pause, Play,
 } from "lucide-react";
 import MarkdownRenderer from "@/components/MarkdownRenderer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { SUBJECT_CATALOG } from "@/constants/subjects";
 import { subjectStore, type SubjectDocumentItem } from "@/utils/subjectStore";
+import { studyGuideToHtml } from "@/utils/studyGuideHtml";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { getGroqCompletion } from "@/services/groq";
 import type { ChatMessage } from "@/types/chat";
-import MathInput from "@/components/MathInput";
-import CodeBlockInput from "@/components/CodeBlockInput";
 import RichEditor, { type RichEditorHandle } from "@/components/RichEditor";
-import StudyGuideView, { decodeStudyGuide, encodeStudyGuide } from "@/components/StudyGuideView";
-import type { GeneratedStudyGuide } from "@/services/groq";
+import { decodeStudyGuide } from "@/components/StudyGuideView";
 import { useTabs } from "@/context/TabsContext";
+import { useTextToSpeech } from "@/hooks/useTextToSpeech";
 
 const formatSavedLabel = (iso?: string | null) => {
   if (!iso) return "Not saved yet";
@@ -43,13 +41,10 @@ const formatSavedLabel = (iso?: string | null) => {
 const isHtmlContent = (s: string) => s.trimStart().startsWith("<");
 
 // ── Tabs ──────────────────────────────────────────────────────────────────────
-type DocTab = "guide" | "notes" | "flashcards" | "quiz";
+type DocTab = "notes";
 
-const TABS: { id: DocTab; label: string; icon: React.ElementType; studyGuideOnly?: boolean }[] = [
-  { id: "guide",      label: "Study Guide",  icon: BookOpen,     studyGuideOnly: true  },
-  { id: "notes",      label: "Notes",        icon: FileText                            },
-  { id: "flashcards", label: "Flashcards",   icon: Layers                              },
-  { id: "quiz",       label: "Quiz",         icon: HelpCircle                          },
+const TABS: { id: DocTab; label: string; icon: React.ElementType }[] = [
+  { id: "notes", label: "Document", icon: FileText },
 ];
 
 export default function SubjectDocument() {
@@ -66,12 +61,7 @@ export default function SubjectDocument() {
   const [isSaving, setIsSaving]       = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   const [docMissing, setDocMissing]   = useState(false);
-  const [studyGuide, setStudyGuide]   = useState<GeneratedStudyGuide | null>(null);
   const [activeTab, setActiveTab]     = useState<DocTab>("notes");
-  const hasSetInitialTab = useRef(false);
-
-  const [mathOpen, setMathOpen] = useState(false);
-  const [codeOpen, setCodeOpen] = useState(false);
 
   const [userPrefs, setUserPrefs] = useState<{ grade?: string; hobbies?: string[]; learningStyle?: string }>({});
   const [helperMessages, setHelperMessages] = useState<ChatMessage[]>([]);
@@ -80,11 +70,50 @@ export default function SubjectDocument() {
   const [chatOpen, setChatOpen]             = useState(false);
   const { updateActiveTabLabel } = useTabs();
   const [isInserting, setIsInserting]       = useState(false);
+  const [usePageContext, setUsePageContext]  = useState(true);
+  const [extraContext, setExtraContext]      = useState("");
+  const [showExtraContext, setShowExtraContext] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const editorRef      = useRef<RichEditorHandle>(null);
   const lastSavedRef   = useRef<{ title: string; content: string }>({ title: "", content: "" });
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Text-to-speech for reading the document
+  const { isSpeaking, isPaused, supported: ttsSupported, speak, pause, resume, stop } = useTextToSpeech();
+  const [showTTSControls, setShowTTSControls] = useState(false);
+
+  const handleListenToDocument = useCallback(() => {
+    if (!content) return;
+    
+    // Strip HTML tags for speech
+    const textContent = content.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+    
+    if (isSpeaking && !isPaused) {
+      pause();
+    } else if (isPaused) {
+      resume();
+    } else if (isSpeaking && isPaused) {
+      resume();
+    } else {
+      speak(textContent, { rate: 1.0, pitch: 1.0 });
+      setShowTTSControls(true);
+    }
+  }, [content, isSpeaking, isPaused, speak, pause, resume]);
+
+  const handleStopListening = useCallback(() => {
+    stop();
+    setShowTTSControls(false);
+  }, [stop]);
+
+  useEffect(() => {
+    return () => {
+      // Cleanup TTS on unmount
+      if (typeof window !== "undefined" && "speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
 
   useEffect(() => {
     try {
@@ -145,12 +174,11 @@ export default function SubjectDocument() {
       setTitle(rawTitle);
       const parsed = decodeStudyGuide(rawContent);
       if (parsed) {
-        // Always update the study guide data so the UI reflects the edit
-        setStudyGuide(parsed);
-        setContent(rawContent);
-        setInitialContent(rawContent);
-        // Only set tab on the very first load
-        if (isFirstLoad.current) setActiveTab("guide");
+        const html = studyGuideToHtml(parsed);
+      setContent(html);
+      setInitialContent(html);
+        if (isFirstLoad.current) setActiveTab("notes");
+        // Force autosave to persist conversion to editable HTML
         lastSavedRef.current = { title: rawTitle, content: rawContent };
         setLastSavedAt(doc.lastUpdated || data.notes.lastUpdated || null);
         isFirstLoad.current = false;
@@ -187,9 +215,10 @@ export default function SubjectDocument() {
           const raw = docUpdate.newContent as string;
           const parsed = decodeStudyGuide(raw);
           if (parsed) {
-            setStudyGuide(parsed);
-            setContent(raw);
-            setInitialContent(raw);
+            const html = studyGuideToHtml(parsed);
+            setActiveTab("notes");
+            setContent(html);
+            setInitialContent(html);
             lastSavedRef.current = { title, content: raw };
             lastRemoteContent.current = raw;
           } else {
@@ -235,151 +264,125 @@ export default function SubjectDocument() {
     return () => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current); };
   }, [title, content, subjectId, docId, docMissing, canSave]);
 
-  const handleStudyGuideChange = useCallback((updated: GeneratedStudyGuide) => {
-    setStudyGuide(updated);
-    setContent(encodeStudyGuide(updated));
-  }, []);
-
   const stats = useMemo(() => {
     const text = content.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
     const words = text ? text.split(" ").length : 0;
     return { words };
   }, [content]);
 
-  const cmd = () => editorRef.current?.editor;
+  // Stream text from doc-chat and return the full accumulated string
+  const streamDocChat = async (
+    history: ChatMessage[],
+    pageContext: string,
+    signal: AbortSignal,
+  ): Promise<string> => {
+    const response = await fetch("/api/groq/doc-chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      signal,
+      body: JSON.stringify({
+        messages: history,
+        userContext: {
+          subjects: [subjectId],
+          hobbies: userPrefs.hobbies || [],
+          grade: userPrefs.grade,
+          learningStyle: userPrefs.learningStyle || "visual",
+          responseLength: 2,
+          analogyIntensity: 0.2,
+          pageContext,
+        },
+      }),
+    });
 
-  const toolbarGroups = [
-    [
-      { label: "H1", icon: Heading1, action: () => cmd()?.chain().focus().toggleHeading({ level: 1 }).run() },
-      { label: "H2", icon: Heading2, action: () => cmd()?.chain().focus().toggleHeading({ level: 2 }).run() },
-      { label: "H3", icon: Heading3, action: () => cmd()?.chain().focus().toggleHeading({ level: 3 }).run() },
-    ],
-    [
-      { label: "Bold",   icon: Bold,          action: () => cmd()?.chain().focus().toggleBold().run()        },
-      { label: "Italic", icon: Italic,        action: () => cmd()?.chain().focus().toggleItalic().run()      },
-      { label: "Strike", icon: Strikethrough, action: () => cmd()?.chain().focus().toggleStrike().run()      },
-      { label: "Code",   icon: Code,          action: () => cmd()?.chain().focus().toggleCode().run()        },
-    ],
-    [
-      { label: "Bullet list",   icon: List,          action: () => cmd()?.chain().focus().toggleBulletList().run()   },
-      { label: "Ordered list",  icon: ListOrdered,   action: () => cmd()?.chain().focus().toggleOrderedList().run()  },
-      { label: "Task list",     icon: CheckSquare,   action: () => cmd()?.chain().focus().toggleTaskList().run()     },
-      { label: "Blockquote",    icon: Quote,         action: () => cmd()?.chain().focus().toggleBlockquote().run()   },
-    ],
-    [
-      { label: "Link",    icon: LinkIcon,  action: () => { const u = prompt("URL:"); if (u) cmd()?.chain().focus().setLink({ href: u }).run(); } },
-      { label: "Image",   icon: ImageIcon, action: () => { const u = prompt("Image URL:"); if (u) cmd()?.chain().focus().insertContent(`<img src="${u}" />`).run(); } },
-      { label: "Table",   icon: Table,     action: () => cmd()?.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run() },
-      { label: "Divider", icon: Minus,     action: () => cmd()?.chain().focus().setHorizontalRule().run() },
-    ],
-  ];
+    if (!response.ok) throw new Error("AI service unavailable");
+    if (!response.body) throw new Error("No response body");
 
-  const handleInsertMath = (latex: string, mode: "inline" | "block") => {
-    setMathOpen(false);
-    setTimeout(() => editorRef.current?.insertMath(latex, mode), 50);
-  };
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let accumulated = "";
 
-  const handleInsertCode = (code: string, language: string) => {
-    setCodeOpen(false);
-    setTimeout(() => editorRef.current?.insertCodeBlock(code, language), 50);
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      for (const line of decoder.decode(value).split("\n")) {
+        if (!line.startsWith("data: ")) continue;
+        const data = line.slice(6).trim();
+        if (data === "[DONE]") break;
+        try {
+          const parsed = JSON.parse(data);
+          if (parsed.error) throw new Error(parsed.error);
+          if (parsed.choices?.[0]?.delta?.content) accumulated += parsed.choices[0].delta.content;
+        } catch { /* skip malformed chunks */ }
+      }
+    }
+    return accumulated;
   };
 
   const handleHelperSend = async (insertIntoDoc = false) => {
     if (!helperInput.trim() || helperTyping) return;
-    
-    const userMessage: ChatMessage = { role: "user", content: helperInput.trim() };
+
+    // Capture input BEFORE clearing — used throughout this function
+    const requestText = helperInput.trim();
+
+    const userMessage: ChatMessage = { role: "user", content: requestText };
     setHelperMessages((prev) => [...prev, userMessage]);
     setHelperInput("");
     setHelperTyping(true);
-    
-    const docText = content.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
-    const pageContext = [
-      `Subject: ${subject?.label || "Unknown"}`,
-      `Document title: ${title.trim() || "Untitled"}`,
-      `Document content:\n${docText.slice(0, 3000) || "(empty document)"}`,
-    ].filter(Boolean).join("\n");
-    
+
     const history = [...helperMessages, userMessage].slice(-8);
-    
+
+    // Page context for chat replies — respects the user's context toggle
+    const docText = content.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+    const autoContext = usePageContext
+      ? `Subject: ${subject?.label}\nDocument: ${title}\n\n${docText.slice(0, 3000)}`
+      : `Subject: ${subject?.label}`;
+    const pageContext = extraContext.trim()
+      ? `${autoContext}\n\nAdditional context provided by user:\n${extraContext.trim()}`
+      : autoContext;
+
     if (insertIntoDoc) {
-      // Streaming insertion into document
       setIsInserting(true);
       abortControllerRef.current = new AbortController();
-      
+
       try {
-        const response = await fetch("/api/groq/doc-chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          signal: abortControllerRef.current.signal,
-          body: JSON.stringify({
-            messages: history,
-            userContext: {
-              subjects: [subjectId],
-              hobbies: userPrefs.hobbies || [],
-              grade: userPrefs.grade,
-              learningStyle: userPrefs.learningStyle || "visual",
-              responseLength: 2,
-              analogyIntensity: 0.2,
-              pageContext,
-            },
-          }),
-        });
-
-        if (!response.ok) throw new Error("AI service unavailable");
-        if (!response.body) throw new Error("No response body");
-
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let accumulatedContent = "";
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          const chunk = decoder.decode(value);
-          const lines = chunk.split("\n");
-          
-          for (const line of lines) {
-            if (!line.startsWith("data: ")) continue;
-            const data = line.slice(6).trim();
-            if (data === "[DONE]") break;
-            
-            try {
-              const parsed = JSON.parse(data);
-              if (parsed.error) throw new Error(parsed.error);
-              if (parsed.choices?.[0]?.delta?.content) {
-                accumulatedContent += parsed.choices[0].delta.content;
-              }
-            } catch {
-              // Non-JSON or malformed, treat as raw content
-              if (data && data !== "[DONE]") {
-                accumulatedContent += data;
-              }
-            }
-          }
+        // ── Document: stream from doc-chat and insert HTML into TipTap ─
+        const text = await streamDocChat(history, pageContext, abortControllerRef.current.signal);
+        const editor = editorRef.current?.editor;
+        if (text && editor) {
+          const html = text
+            .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+            .replace(/\*(.*?)\*/g, "<em>$1</em>")
+            .replace(/`(.*?)`/g, "<code>$1</code>")
+            .replace(/^# (.+)$/gm, "<h1>$1</h1>")
+            .replace(/^## (.+)$/gm, "<h2>$1</h2>")
+            .replace(/^### (.+)$/gm, "<h3>$1</h3>")
+            .replace(/^[-*] (.+)$/gm, "<li>$1</li>")
+            .replace(/(<li>[\s\S]*?<\/li>)/g, "<ul>$1</ul>")
+            .replace(/\n\n/g, "</p><p>")
+            .replace(/^([^<\n].+)$/gm, "<p>$1</p>")
+            .replace(/<p><\/p>/g, "")
+            .trim();
+          editor.chain().focus().insertContent(html || text).run();
+          toast.success("Inserted into your document!");
+          setHelperMessages((prev) => [...prev, { role: "assistant", content: "Inserted into your document." }]);
+        } else if (text) {
+          setHelperMessages((prev) => [...prev, { role: "assistant", content: text }]);
         }
-
-        // Insert the accumulated content into the editor
-        if (accumulatedContent && editorRef.current?.editor) {
-          const editor = editorRef.current.editor;
-          // Insert at cursor position or at end
-          const pos = editor.state.selection.from;
-          editor.chain().focus().insertContentAt(pos, accumulatedContent).run();
-        }
-
-      } catch (error: any) {
-        if (error?.name !== "AbortError") {
-          setHelperMessages((prev) => [...prev, { 
-            role: "assistant", 
-            content: "I couldn't reach the AI service. Try again in a moment." 
+      } catch (error: unknown) {
+        if (error instanceof Error && error.name !== "AbortError") {
+          setHelperMessages((prev) => [...prev, {
+            role: "assistant",
+            content: "Couldn't reach the AI service. Try again in a moment.",
           }]);
         }
       } finally {
         setIsInserting(false);
         abortControllerRef.current = null;
+        setHelperTyping(false);
       }
+
     } else {
-      // Standard chat response (non-streaming for backward compatibility)
+      // ── Standard chat reply ───────────────────────────────────────────
       try {
         const response = await getGroqCompletion(history, {
           subjects: [subjectId], hobbies: userPrefs.hobbies || [],
@@ -388,7 +391,7 @@ export default function SubjectDocument() {
         });
         setHelperMessages((prev) => [...prev, response]);
       } catch {
-        setHelperMessages((prev) => [...prev, { role: "assistant", content: "I couldn't reach the AI service. Try again in a moment." }]);
+        setHelperMessages((prev) => [...prev, { role: "assistant", content: "Couldn't reach the AI service. Try again in a moment." }]);
       } finally {
         setHelperTyping(false);
       }
@@ -411,8 +414,7 @@ export default function SubjectDocument() {
     </div>
   );
 
-  // Visible tabs — if it's a study guide, show all 4; otherwise hide the guide tab
-  const visibleTabs = studyGuide ? TABS : TABS.filter(t => !t.studyGuideOnly);
+  const visibleTabs = TABS;
 
   return (
     <motion.div
@@ -420,26 +422,6 @@ export default function SubjectDocument() {
       animate={{ opacity: 1 }}
       className="flex flex-col min-h-full"
     >
-      {/* Math dialog */}
-      <Dialog open={mathOpen} onOpenChange={(o) => { if (!o) setMathOpen(false); }}>
-        <DialogContent className="sm:max-w-md glass-card border-border/40">
-          <DialogHeader>
-            <DialogTitle className="text-sm font-black uppercase tracking-[0.2em] text-muted-foreground">Insert Math</DialogTitle>
-          </DialogHeader>
-          <MathInput onInsert={handleInsertMath} onClose={() => setMathOpen(false)} />
-        </DialogContent>
-      </Dialog>
-
-      {/* Code dialog */}
-      <Dialog open={codeOpen} onOpenChange={(o) => { if (!o) setCodeOpen(false); }}>
-        <DialogContent className="sm:max-w-lg glass-card border-border/40">
-          <DialogHeader>
-            <DialogTitle className="text-sm font-black uppercase tracking-[0.2em] text-muted-foreground">Insert Code Block</DialogTitle>
-          </DialogHeader>
-          <CodeBlockInput onInsert={handleInsertCode} onClose={() => setCodeOpen(false)} />
-        </DialogContent>
-      </Dialog>
-
       {/* ── TOP BAR: breadcrumb + save status ─────────────────────────────── */}
       <div className="sticky top-0 z-20 bg-background/90 backdrop-blur-sm border-b border-border/50">
         <div className="max-w-4xl mx-auto px-8 h-11 flex items-center justify-between gap-4">
@@ -472,23 +454,51 @@ export default function SubjectDocument() {
           </div>
 
           <div className="flex-1 min-w-0">
-            {studyGuide ? (
-              <h1 className="text-3xl font-black text-foreground leading-tight font-display">{title}</h1>
-            ) : (
-              <Input
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="Untitled document"
-                className="h-auto text-3xl font-black tracking-tight bg-transparent border-none shadow-none px-0 py-0 focus-visible:ring-0 text-foreground font-display placeholder:text-muted-foreground/25"
-              />
-            )}
+            <Input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Untitled document"
+              className="h-auto text-3xl font-black tracking-tight bg-transparent border-none shadow-none px-0 py-0 focus-visible:ring-0 text-foreground font-display placeholder:text-muted-foreground/25"
+            />
             <div className="flex items-center gap-3 mt-1.5 text-[11px] text-muted-foreground/50">
               <span className="px-2 py-0.5 rounded-md bg-muted/50 font-semibold">{subject.label}</span>
-              {!studyGuide && <span>{stats.words} words</span>}
+              <span>{stats.words} words</span>
               <span className="flex items-center gap-1">
                 <Sparkles className="w-2.5 h-2.5 text-primary/50" />
                 Autosave
               </span>
+              {ttsSupported && (
+                <button
+                  onClick={isSpeaking ? handleStopListening : handleListenToDocument}
+                  className="ml-2 flex items-center gap-1 px-2 py-0.5 rounded-md bg-primary/10 hover:bg-primary/20 text-primary transition-colors"
+                  title={isSpeaking ? "Stop reading" : "Read document aloud"}
+                >
+                  {isSpeaking ? (
+                    <>
+                      <VolumeX className="w-2.5 h-2.5" />
+                      <span className="font-semibold">Stop</span>
+                    </>
+                  ) : (
+                    <>
+                      <Volume2 className="w-2.5 h-2.5" />
+                      <span className="font-semibold">Listen</span>
+                    </>
+                  )}
+                </button>
+              )}
+              {isSpeaking && (
+                <button
+                  onClick={isPaused ? resume : pause}
+                  className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-primary/10 hover:bg-primary/20 text-primary transition-colors"
+                  title={isPaused ? "Resume" : "Pause"}
+                >
+                  {isPaused ? (
+                    <Play className="w-2.5 h-2.5" />
+                  ) : (
+                    <Pause className="w-2.5 h-2.5" />
+                  )}
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -520,19 +530,6 @@ export default function SubjectDocument() {
       {/* ── TAB CONTENT ───────────────────────────────────────────────────── */}
       <div className="flex-1 max-w-4xl mx-auto w-full px-8 py-8">
         <AnimatePresence mode="wait">
-          {/* STUDY GUIDE TAB */}
-          {activeTab === "guide" && studyGuide && (
-            <motion.div
-              key="guide"
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.15 }}
-            >
-              <StudyGuideView guide={studyGuide} onChange={handleStudyGuideChange} />
-            </motion.div>
-          )}
-
           {/* NOTES TAB */}
           {activeTab === "notes" && (
             <motion.div
@@ -542,51 +539,14 @@ export default function SubjectDocument() {
               exit={{ opacity: 0 }}
               transition={{ duration: 0.15 }}
             >
-              {/* Toolbar */}
-              <div className="flex flex-wrap items-center gap-0.5 mb-5 pb-4 border-b border-border/40">
-                {toolbarGroups.map((group, gi) => (
-                  <div key={gi} className="flex items-center gap-0.5">
-                    {group.map((item) => (
-                      <button
-                        key={item.label}
-                        type="button"
-                        title={item.label}
-                        onMouseDown={(e) => { e.preventDefault(); item.action(); }}
-                        className="h-7 w-7 rounded-md hover:bg-muted/60 text-muted-foreground/60 hover:text-foreground transition-all flex items-center justify-center"
-                      >
-                        <item.icon className="w-3.5 h-3.5" />
-                      </button>
-                    ))}
-                    {gi < toolbarGroups.length - 1 && (
-                      <span className="h-4 w-px bg-border/50 mx-1" />
-                    )}
-                  </div>
-                ))}
-                <span className="h-4 w-px bg-border/50 mx-1" />
-                <button
-                  type="button"
-                  onMouseDown={(e) => { e.preventDefault(); setMathOpen(true); }}
-                  className="h-7 px-2 rounded-md hover:bg-muted/60 text-muted-foreground/60 hover:text-foreground transition-all flex items-center gap-1.5 text-xs font-semibold"
-                >
-                  <Sigma className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  type="button"
-                  onMouseDown={(e) => { e.preventDefault(); setCodeOpen(true); }}
-                  className="h-7 px-2 rounded-md hover:bg-muted/60 text-muted-foreground/60 hover:text-foreground transition-all flex items-center gap-1.5 text-xs font-semibold"
-                >
-                  <Braces className="w-3.5 h-3.5" />
-                </button>
-              </div>
-
               {/* Editor canvas */}
               <div className="min-h-[65vh]">
                 {initialContent !== null ? (
                   <RichEditor
                     ref={editorRef}
-                    initialContent={studyGuide ? "" : initialContent}
+                    initialContent={initialContent}
                     onChange={setContent}
-                    placeholder="Start writing… or type /ai for AI help."
+                    placeholder="Start writing… or type / for commands."
                     subject={subject?.label}
                   />
                 ) : (
@@ -595,58 +555,6 @@ export default function SubjectDocument() {
                   </div>
                 )}
               </div>
-            </motion.div>
-          )}
-
-          {/* FLASHCARDS TAB — placeholder */}
-          {activeTab === "flashcards" && (
-            <motion.div
-              key="flashcards"
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.15 }}
-              className="flex flex-col items-center justify-center min-h-[50vh] text-center"
-            >
-              <Layers className="w-12 h-12 text-muted-foreground/15 mb-4" />
-              <h3 className="text-lg font-bold text-foreground mb-1">Flashcards</h3>
-              <p className="text-sm text-muted-foreground/60 mb-6 max-w-xs">
-                Generate a flashcard deck from this document to drill the key concepts.
-              </p>
-              <Button
-                size="sm"
-                className="gradient-primary"
-                onClick={() => router.push(`/flashcards?subjectId=${subjectId}&docId=${docId}`)}
-              >
-                <Layers className="w-3.5 h-3.5 mr-1.5" />
-                Go to Flashcards
-              </Button>
-            </motion.div>
-          )}
-
-          {/* QUIZ TAB — placeholder */}
-          {activeTab === "quiz" && (
-            <motion.div
-              key="quiz"
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.15 }}
-              className="flex flex-col items-center justify-center min-h-[50vh] text-center"
-            >
-              <HelpCircle className="w-12 h-12 text-muted-foreground/15 mb-4" />
-              <h3 className="text-lg font-bold text-foreground mb-1">Quiz yourself</h3>
-              <p className="text-sm text-muted-foreground/60 mb-6 max-w-xs">
-                Test your knowledge on the material in this document.
-              </p>
-              <Button
-                size="sm"
-                className="gradient-primary"
-                onClick={handleStartQuiz}
-              >
-                <HelpCircle className="w-3.5 h-3.5 mr-1.5" />
-                Start a Quiz
-              </Button>
             </motion.div>
           )}
         </AnimatePresence>
@@ -682,6 +590,40 @@ export default function SubjectDocument() {
                 <X className="w-3.5 h-3.5" />
               </button>
             </div>
+            {/* ── Context bar ─────────────────────────────────────────── */}
+            <div className="flex flex-col gap-1 mb-2">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setUsePageContext(v => !v)}
+                  className={cn(
+                    "flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-bold transition-colors",
+                    usePageContext
+                      ? "bg-primary/10 text-primary border border-primary/20"
+                      : "bg-muted/40 text-muted-foreground/50 border border-border/30"
+                  )}
+                  title={usePageContext ? "Include this document in AI context" : "Exclude this document from AI context"}
+                >
+                  <span className="text-xs">{usePageContext ? "📄" : "○"}</span>
+                  {usePageContext ? "Include document" : "No document context"}
+                </button>
+                <button
+                  onClick={() => setShowExtraContext(v => !v)}
+                  className="flex items-center gap-1 text-[10px] text-muted-foreground/50 hover:text-primary transition-colors"
+                >
+                  <span className="text-xs">＋</span> Add context
+                </button>
+              </div>
+              {showExtraContext && (
+                <textarea
+                  value={extraContext}
+                  onChange={e => setExtraContext(e.target.value)}
+                  placeholder="Paste extra context here (e.g. syllabus notes, rubric details)…"
+                  rows={3}
+                  className="w-full text-xs bg-muted/30 border border-border/40 rounded-lg px-2.5 py-2 resize-none outline-none focus:ring-1 focus:ring-primary/30 text-foreground placeholder:text-muted-foreground/30"
+                />
+              )}
+            </div>
+
             <div className="flex-1 overflow-y-auto space-y-2.5 pr-1">
               {helperMessages.map((msg, i) => (
                 <div
@@ -715,7 +657,7 @@ export default function SubjectDocument() {
                 placeholder="Ask anything…"
                 value={helperInput}
                 onChange={(e) => setHelperInput(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") handleHelperSend(false); }}
+                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) handleHelperSend(false); }}
                 className="bg-muted/30 border-none h-9 rounded-xl text-sm"
               />
               <div className="flex items-center gap-1">
@@ -733,6 +675,7 @@ export default function SubjectDocument() {
                   size="icon"
                   disabled={helperTyping || isInserting}
                   className="h-9 w-9 rounded-xl gradient-primary shrink-0"
+                  title="Send message"
                 >
                   <Send className="w-3.5 h-3.5" />
                 </Button>

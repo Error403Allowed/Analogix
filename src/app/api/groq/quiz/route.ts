@@ -21,7 +21,7 @@ export async function POST(request: Request) {
     const subjectId = (userContext.subject || null) as SubjectId | null;
     const difficulty = userContext.difficulty || "intermediate";
     const diversitySeed =
-      options?.diversitySeed || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      options?.diversitySeed || `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const avoidList = (options?.avoidQuestions || []).slice(0, 20);
     const pastPaperSnippets = await Promise.race<PastPaperSnippet[]>([
       getPastPaperSnippets({
@@ -40,7 +40,43 @@ export async function POST(request: Request) {
           .join("\n")
       : "None available.";
 
-    const systemPrompt = `You are Analogix AI, a brilliant and supportive mentor. Generate a ${numberOfQuestions}-question mixed quiz for a Year ${userContext.grade || "7-12"} student that feels more like an exploration than an exam.
+    // Grade-appropriate difficulty descriptions
+    const gradeNum = parseInt(userContext.grade || "9");
+    const isLowerSecondary = gradeNum <= 9;
+    const isUpperSecondary = gradeNum >= 11;
+    
+    const difficultyDescription = {
+      foundational: isLowerSecondary 
+        ? "Basic recall and simple calculations. Use simple numbers and single-step problems." 
+        : "Foundational concepts with straightforward applications.",
+      intermediate: isLowerSecondary
+        ? "Standard problems requiring 1-2 reasoning steps. Use realistic numbers."
+        : isUpperSecondary
+          ? "Complex problems with multiple concepts combined. Include real-world applications."
+          : "Standard curriculum level with moderate reasoning required.",
+      advanced: isLowerSecondary
+        ? "Challenging problems that extend beyond basic concepts. Multi-step reasoning."
+        : "Extension-level problems requiring deep understanding and complex reasoning. Include edge cases and nuanced concepts."
+    };
+
+    const systemPrompt = `You are Analogix AI, generating a high-quality ${numberOfQuestions}-question quiz for a Year ${userContext.grade || "7-12"} student studying ${subject}.
+
+CRITICAL QUALITY REQUIREMENTS:
+1. EVERY answer MUST be 100% factually accurate. Double-check ALL calculations, facts, and explanations.
+2. For multiple_choice: EXACTLY ONE option must have "isCorrect": true
+3. For multiple_select: At least TWO options must have "isCorrect": true (clearly indicate "Select all that apply")
+4. ALL distractors (wrong answers) must be plausible - use common misconceptions, NOT obviously wrong answers
+5. Questions must vary in type and topic - do NOT repeat the same concept
+
+SEED FOR VARIETY: ${diversitySeed}
+Use this seed to generate DIFFERENT questions each time. Vary:
+- Which concepts are tested
+- The specific numbers/values used in questions
+- The wording and framing of questions
+- Which distractors are offered
+
+Grade Level: Year ${userContext.grade}
+- ${difficultyDescription[difficulty as keyof typeof difficultyDescription]}
 
 Return ONLY valid JSON with this exact structure:
 {
@@ -49,39 +85,58 @@ Return ONLY valid JSON with this exact structure:
       "id": 1,
       "type": "multiple_choice",
       "question": "text",
-      "analogy": "A clear, vivid analogy that bridges the concept to a SPECIFIC moment, scene, or character from the student's interests.",
+      "analogy": "A clear, vivid analogy that bridges the concept to a SPECIFIC moment, scene, or character from the student's interests: ${userContext.hobbies?.join(", ") || "everyday life"}.",
       "options": [
         {"id": "a", "text": "option", "isCorrect": true},
         {"id": "b", "text": "option", "isCorrect": false},
         {"id": "c", "text": "option", "isCorrect": false},
         {"id": "d", "text": "option", "isCorrect": false}
       ],
-      "hint": "A gentle nudge that helps them think (no spoilers!)"
+      "hint": "A gentle nudge that helps them think (no spoilers!)",
+      "explanation": "Detailed explanation of why the correct answer is correct and why others are wrong"
     },
     {
       "id": 2,
+      "type": "multiple_select",
+      "question": "text (should imply multiple answers possible, e.g., 'Which of the following... Select all that apply.')",
+      "analogy": "Analogy tied to the student's interests",
+      "options": [
+        {"id": "a", "text": "option", "isCorrect": true},
+        {"id": "b", "text": "option", "isCorrect": true},
+        {"id": "c", "text": "option", "isCorrect": false},
+        {"id": "d", "text": "option", "isCorrect": true}
+      ],
+      "hint": "Helpful hint",
+      "explanation": "Detailed explanation"
+    },
+    {
+      "id": 3,
       "type": "short_answer",
       "question": "text",
       "analogy": "Analogy tied to the student's interests",
       "correctAnswer": "Concise correct answer",
-      "hint": "Helpful hint"
+      "hint": "Helpful hint",
+      "explanation": "Detailed explanation"
     }
   ]
 }
 
+Question Type Distribution:
+- ~50% multiple_choice (single correct answer, radio buttons)
+- ~30% multiple_select (multiple correct answers, checkboxes - MUST have 2+ correct)
+- ~20% short_answer (text input)
+
 Quality & Tone Rules:
 - Use a warm, encouraging tone in the questions and analogies.
-- Use a warm, encouraging tone in the questions and analogies.
-- ANALOGY PERSISTENCE: If a connection to their interests isn't obvious, think laterally. Look for structural, functional, or emotional parallels between the concept and their hobbies. NEVER omit an analogy or use a generic one like "in X's room."
- - Every question must be factually accurate and level-appropriate for Year ${userContext.grade || "7-12"}.
- - Difficulty target: ${difficulty}.
-   - foundational: simple vocabulary, single-step, very concrete numbers/examples.
-   - intermediate: standard curriculum level, 1-2 step reasoning, balanced distractors.
-   - advanced: multi-step reasoning, extension-level nuance, more demanding distractors.
+- ANALOGY PERSISTENCE: Connect concepts to the student's specific interests. NEVER use generic analogies.
+- Every question must be factually accurate and level-appropriate for Year ${userContext.grade || "7-12"}.
+- Difficulty: ${difficulty}. ${difficultyDescription[difficulty as keyof typeof difficultyDescription]}
 - Use the provided past-paper excerpts ONLY as inspiration. Paraphrase heavily and create original questions; do NOT copy wording.
-- Multiple Choice: exactly 4 options, exactly 1 correct.
-- LaTeX: Use $x^2$ for inline, $$equation$$ for display. Double-escape backslashes (\\\\).
-- Avoid repeating these questions: ${avoidList.slice(0, 10).join("; ")}`;
+- Multiple Choice: exactly 4 options, exactly 1 correct. Distractors should be common mistakes.
+- Multiple Select: 4-5 options, 2-4 correct answers. Make it clear in the question that multiple answers are possible.
+- LaTeX: Use $x^2$ for inline, $$equation$$ for display. Double-escape backslashes (\\\\\\\\).
+- Avoid repeating these questions: ${avoidList.slice(0, 10).join("; ")}
+- Vary question topics across the quiz - don't test the same concept repeatedly`;
 
     const userPrompt = `Topic: ${input}
 Subject: ${subject}

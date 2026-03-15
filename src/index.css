@@ -515,8 +515,8 @@ html[data-theme="oceanic-blue"]:not(.dark) .glass-card {
 }
 
 /* Headings */
-.rich-editor-content h1 { @apply text-3xl font-black mt-6 mb-3 text-foreground; }
-.rich-editor-content h2 { @apply text-2xl font-black mt-5 mb-3 text-foreground; }
+.rich-editor-content h1 { @apply text-3xl font-black mt-6 mb-3 text-primary; }
+.rich-editor-content h2 { @apply text-2xl font-black mt-5 mb-3 text-primary; }
 .rich-editor-content h3 { @apply text-xl font-bold mt-4 mb-2 text-foreground; }
 
 /* Paragraphs */
@@ -524,8 +524,22 @@ html[data-theme="oceanic-blue"]:not(.dark) .glass-card {
 
 /* Strong / em / strike */
 .rich-editor-content strong { @apply font-bold; }
-.rich-editor-content em { @apply italic; }
+.rich-editor-content em { 
+  @apply italic;
+  font-style: italic;
+}
 .rich-editor-content s { @apply line-through; }
+.rich-editor-content mark { @apply rounded px-1; }
+
+/* Italic cursor styling - slanted like Word */
+.rich-editor-content .ProseMirror-cursor {
+  border-left: 2px solid hsl(var(--primary));
+}
+.rich-editor-content em .ProseMirror-cursor,
+.rich-editor-content .ProseMirror-cursor-em {
+  border-left: 2px solid hsl(var(--primary));
+  transform: skewX(-10deg);
+}
 
 /* Inline code */
 .rich-editor-content code:not(pre code) {
@@ -588,17 +602,21 @@ html[data-theme="oceanic-blue"]:not(.dark) .glass-card {
 }
 
 /* Horizontal rule */
-.rich-editor-content hr { @apply border-border/40 my-6; }
+.rich-editor-content hr { @apply border-primary/30 my-6; }
 
 /* Tables */
 .rich-editor-content table {
   @apply w-full border-collapse text-sm my-4 rounded-xl overflow-hidden;
 }
 .rich-editor-content th {
-  @apply border border-border/50 px-3 py-2 text-left bg-muted/30 font-bold;
+  @apply border border-primary/20 px-3 py-2 text-left bg-primary/10 font-bold text-primary;
 }
 .rich-editor-content td {
   @apply border border-border/50 px-3 py-2 align-top;
+}
+.rich-editor-content td ul,
+.rich-editor-content td ol {
+  @apply my-1 pl-5;
 }
 
 /* ── Math — @tiptap/extension-mathematics ─────────────────────────────────

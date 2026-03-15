@@ -2,7 +2,7 @@
 
 import { useRef, useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Plus, Search } from "lucide-react";
+import { X, Plus, Search, FileText, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTabs, type AppTab, pathMeta } from "@/context/TabsContext";
 import {
@@ -12,6 +12,13 @@ import {
   ContextMenuItem,
   ContextMenuSeparator,
 } from "@/components/ui/context-menu";
+import { useRouter } from "next/navigation";
+import { SUBJECT_CATALOG } from "@/constants/subjects";
+import { subjectStore } from "@/utils/subjectStore";
+import { toast } from "sonner";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 interface TabBarProps {
   onNavigate: (path: string) => void;
@@ -34,6 +41,13 @@ const NAV_SECTIONS = [
       { path: "/subjects",     emoji: "🎓", label: "My Subjects",  desc: "Notes & documents" },
       { path: "/calendar",     emoji: "📅", label: "Calendar",     desc: "Deadlines & events" },
       { path: "/achievements", emoji: "🏆", label: "Achievements", desc: "Streaks & milestones" },
+    ],
+  },
+  {
+    label: "Create",
+    items: [
+      { path: "new-document", emoji: "📄", label: "New Document", desc: "Create a blank document" },
+      { path: "new-study-guide", emoji: "✨", label: "AI Study Guide", desc: "Generate a study guide with AI" },
     ],
   },
 ];
@@ -173,10 +187,13 @@ function NewTabOverlay({
 // ── TabBar ────────────────────────────────────────────────────────────────────
 export default function TabBar({ onNavigate }: TabBarProps) {
   const { tabs, activeTabId, closeTab, setActiveTab, openTab, togglePin } = useTabs();
+  const router = useRouter();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // ALL hooks must be declared before any early return
   const [newTabOpen, setNewTabOpen] = useState(false);
+  const [showSubjectPicker, setShowSubjectPicker] = useState(false);
+  const [createMode, setCreateMode] = useState<"document" | "study-guide" | null>(null);
 
   const pinnedTabs = tabs.filter(t => t.isPinned);
   const regularTabs = tabs.filter(t => !t.isPinned);
@@ -213,7 +230,41 @@ export default function TabBar({ onNavigate }: TabBarProps) {
     if (e.button === 1) { e.preventDefault(); handleClose(e, tabId); }
   };
 
+  const handleCreateDocument = async (subjectId: string, title: string) => {
+    try {
+      const created = await subjectStore.createDocument(subjectId, title);
+      toast.success(`Document "${title}" created!`);
+      router.push(`/subjects/${subjectId}/document/${created.id}`);
+      setNewTabOpen(false);
+      setShowSubjectPicker(false);
+    } catch (error) {
+      toast.error("Failed to create document");
+      console.error(error);
+    }
+  };
+
+  const handleCreateStudyGuide = async (subjectId: string, title: string) => {
+    try {
+      const created = await subjectStore.createDocument(subjectId, title);
+      toast.success(`Study guide "${title}" created!`);
+      router.push(`/subjects/${subjectId}/document/${created.id}`);
+      setNewTabOpen(false);
+      setShowSubjectPicker(false);
+    } catch (error) {
+      toast.error("Failed to create study guide");
+      console.error(error);
+    }
+  };
+
   const handleOpenShortcut = (path: string) => {
+    // Handle special "create" actions
+    if (path === "new-document" || path === "new-study-guide") {
+      setCreateMode(path === "new-document" ? "document" : "study-guide");
+      setShowSubjectPicker(true);
+      setNewTabOpen(false);
+      return;
+    }
+    
     const meta = pathMeta(path);
     openTab(path, meta.label, meta.emoji);
     onNavigate(path);
@@ -343,6 +394,130 @@ export default function TabBar({ onNavigate }: TabBarProps) {
           <Plus className="h-3.5 w-3.5 mx-auto" />
         </button>
       </div>
+
+      {/* Subject Picker Dialog for creating documents/study guides */}
+      <AnimatePresence>
+        {showSubjectPicker && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+            onClick={() => setShowSubjectPicker(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="w-full max-w-md mx-4 rounded-2xl border border-border/50 bg-card p-6 shadow-2xl"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                  {createMode === "document" ? (
+                    <FileText className="w-5 h-5 text-primary" />
+                  ) : (
+                    <Sparkles className="w-5 h-5 text-primary" />
+                  )}
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-foreground">
+                    {createMode === "document" ? "Create New Document" : "Create AI Study Guide"}
+                  </h3>
+                  <p className="text-xs text-muted-foreground/60">
+                    {createMode === "document" 
+                      ? "Start with a blank document in any subject" 
+                      : "Generate a comprehensive study guide with AI"}
+                  </p>
+                </div>
+              </div>
+
+              <SubjectForm
+                mode={createMode || "document"}
+                onSubmit={(subjectId, title) => {
+                  if (createMode === "document") {
+                    handleCreateDocument(subjectId, title);
+                  } else {
+                    handleCreateStudyGuide(subjectId, title);
+                  }
+                }}
+                onCancel={() => {
+                  setShowSubjectPicker(false);
+                  setCreateMode(null);
+                }}
+              />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>
+  );
+}
+
+// ── SubjectForm Component ────────────────────────────────────────────────────
+function SubjectForm({
+  mode,
+  onSubmit,
+  onCancel,
+}: {
+  mode: "document" | "study-guide";
+  onSubmit: (subjectId: string, title: string) => void;
+  onCancel: () => void;
+}) {
+  const [selectedSubject, setSelectedSubject] = useState<string>(SUBJECT_CATALOG[0]?.id || "");
+  const [title, setTitle] = useState("");
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!title.trim() || !selectedSubject) return;
+    onSubmit(selectedSubject, title.trim());
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <div className="space-y-4">
+        <div>
+          <Label className="text-xs font-semibold text-foreground/70">Subject</Label>
+          <select
+            value={selectedSubject}
+            onChange={e => setSelectedSubject(e.target.value)}
+            className="w-full mt-1.5 px-3 py-2 rounded-lg border border-border/50 bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+          >
+            {SUBJECT_CATALOG.map(subject => (
+              <option key={subject.id} value={subject.id}>
+                {subject.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <Label className="text-xs font-semibold text-foreground/70">
+            {mode === "document" ? "Document Title" : "Study Guide Topic"}
+          </Label>
+          <Input
+            value={title}
+            onChange={e => setTitle(e.target.value)}
+            placeholder={mode === "document" ? "e.g., Introduction to Algebra" : "e.g., Photosynthesis Basics"}
+            className="mt-1.5"
+            autoFocus
+          />
+        </div>
+      </div>
+
+      <div className="flex items-center justify-end gap-2 mt-6">
+        <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
+          Cancel
+        </Button>
+        <Button 
+          type="submit" 
+          size="sm" 
+          className="gradient-primary"
+          disabled={!title.trim()}
+        >
+          {mode === "document" ? "Create Document" : "Generate Study Guide"}
+        </Button>
+      </div>
+    </form>
   );
 }
