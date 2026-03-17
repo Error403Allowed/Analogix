@@ -1,6 +1,11 @@
 "use client";
 
 import { useEditor, EditorContent } from "@tiptap/react";
+import React, { useState, useCallback, forwardRef, useImperativeHandle, useEffect, useRef } from "react";
+import {
+  AlignLeft, Heading1, Heading2, Heading3, Quote, Code, List, ListOrdered,
+  Check, Minus, Bold, Italic, Underline as UnderlineIcon, Strikethrough,
+} from "lucide-react";
 import StarterKit from "@tiptap/starter-kit";
 import Mathematics from "@tiptap/extension-mathematics";
 import Underline from "@tiptap/extension-underline";
@@ -18,14 +23,15 @@ import TaskItem from "@tiptap/extension-task-item";
 import Link from "@tiptap/extension-link";
 import Image from "@tiptap/extension-image";
 import { Table, TableRow, TableHeader, TableCell } from "@tiptap/extension-table";
-import {
-  useEffect, useImperativeHandle, forwardRef,
-  useState, useRef, useCallback,
-} from "react";
 import { AnimatePresence } from "framer-motion";
 import type { Editor } from "@tiptap/react";
+import { Extension } from "@tiptap/core";
+import { Plugin } from "@tiptap/pm/state";
 import "katex/dist/katex.min.css";
-import { AICommandPalette } from "./NotionAI";
+import katex from "katex";
+import { AICommandPalette, type CommandItem } from "./AIAgent";
+import { FloatingDocAIToolbar } from "./FloatingDocAIToolbar";
+import type { DocAIAction } from "./FloatingDocAIToolbar";
 import {
   ContextMenu,
   ContextMenuTrigger,
@@ -36,12 +42,76 @@ import {
 
 const lowlight = createLowlight(common);
 
+// Custom extension to render LaTeX from study guides (data-type="inline-math" and data-type="block-math")
+const LaTeXRenderer = Extension.create({
+  name: 'latexRenderer',
+  addProseMirrorPlugins() {
+    let renderTimeout: ReturnType<typeof setTimeout> | null = null;
+
+    const renderLaTeX = (container: HTMLElement) => {
+      if (!container) return;
+
+      // Render inline math
+      container.querySelectorAll('span[data-type="inline-math"][data-latex]').forEach((el: Element) => {
+        const latexEl = el as HTMLElement;
+        const latex = latexEl.getAttribute('data-latex');
+        if (latex && !(latexEl as any)._katexRendered) {
+          try {
+            katex.render(latex, latexEl, {
+              throwOnError: false,
+              displayMode: false,
+            });
+            (latexEl as any)._katexRendered = true;
+          } catch (e) {
+            console.error('Failed to render inline LaTeX:', e);
+          }
+        }
+      });
+
+      // Render block math
+      container.querySelectorAll('div[data-type="block-math"][data-latex]').forEach((el: Element) => {
+        const latexEl = el as HTMLElement;
+        const latex = latexEl.getAttribute('data-latex');
+        if (latex && !(latexEl as any)._katexRendered) {
+          try {
+            katex.render(latex, latexEl, {
+              throwOnError: false,
+              displayMode: true,
+            });
+            (latexEl as any)._katexRendered = true;
+          } catch (e) {
+            console.error('Failed to render block LaTeX:', e);
+          }
+        }
+      });
+    };
+
+    return [
+      new Plugin({
+        props: {
+          handleDOMEvents: {
+            // Only render on blur, not on every keystroke
+            blur: (view) => {
+              if (renderTimeout) clearTimeout(renderTimeout);
+              renderTimeout = setTimeout(() => {
+                renderLaTeX(view.dom);
+              }, 100);
+              return false;
+            },
+          },
+        },
+      }),
+    ];
+  },
+});
+
 export interface RichEditorHandle {
   editor: Editor | null;
   insertMath: (latex: string, mode: "inline" | "block") => void;
   insertCodeBlock: (code: string, language: string) => void;
   focus: () => void;
   setContent: (html: string) => void;
+  renderLaTeX: () => void;
 }
 
 interface RichEditorProps {
@@ -82,27 +152,163 @@ const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(
   ({ initialContent, onChange, placeholder, subject }, ref) => {
     const [palettePos,   setPalettePos]   = useState<{ top: number; left: number } | null>(null);
     const [slashQuery,   setSlashQuery]   = useState("");
+    const [focusedIndex, setFocusedIndex] = useState(0);
+    const lastSlashRef = useRef<string>("");
+    const isClosingRef = useRef(false);
+    const lastMenuPositionRef = useRef<number | null>(null);
+    const lastTypedCharRef = useRef<string>("");
+
+    // Floating AI toolbar state
+    const [aiToolbarPos, setAiToolbarPos] = useState<{ top: number; left: number } | null>(null);
+    const [selectedText, setSelectedText] = useState("");
+
+    // Get caret position for toolbar placement
+    const getCaretPos = useCallback((placeAbove: boolean = false) => {
+      const selection = window.getSelection();
+      if (!selection || selection.rangeCount === 0) return null;
+      const range = selection.getRangeAt(0);
+      const rects = range.getClientRects();
+      if (rects.length === 0) return null;
+      const rect = rects[0];
+      const panelHeight = 280; // Match menu max-height
+      const margin = 12;
+      const offset = 8; // Small gap above text
+
+      if (placeAbove) {
+        // Position above the text
+        const top = rect.top - panelHeight - offset;
+        return {
+          top: Math.max(margin, top),
+          left: Math.min(rect.left, window.innerWidth - 340),
+        };
+      } else {
+        // Position below the text
+        return {
+          top: rect.bottom + offset - 10,
+          left: Math.min(rect.left, window.innerWidth - 340),
+        };
+      }
+    }, []);
+
+    // Check for text selection to show AI toolbar
+    const checkSelection = useCallback((ed: Editor) => {
+      const { from, to } = ed.state.selection;
+      if (from === to) {
+        // No selection
+        setAiToolbarPos(null);
+        setSelectedText("");
+        return;
+      }
+      
+      const text = ed.state.doc.textBetween(from, to, " ");
+      if (text.trim().length > 0) {
+        const pos = getCaretPos();
+        if (pos) {
+          setAiToolbarPos(pos);
+          setSelectedText(text);
+        }
+      } else {
+        setAiToolbarPos(null);
+        setSelectedText("");
+      }
+    }, [getCaretPos]);
 
     // ── Detect / trigger ───────────────────────────────────────────────────
     const checkSlashAI = useCallback((ed: Editor) => {
+      // Don't trigger if we're in the process of closing the menu
+      if (isClosingRef.current) {
+        return;
+      }
+
       if (!ed.state.selection.empty) {
         setPalettePos(null);
         setSlashQuery("");
+        lastSlashRef.current = "";
+        setFocusedIndex(0);
+        lastMenuPositionRef.current = null;
         return;
       }
+
       const { $anchor } = ed.state.selection;
       const blockText = ed.state.doc.textBetween($anchor.start(), $anchor.end(), "\n", "\0");
       const before = blockText.slice(0, $anchor.parentOffset);
       const match = before.match(/(?:^|\s)\/(\S*)$/);
+
       if (match) {
-        const pos = getCaretPos();
-        if (pos) setPalettePos(pos);
-        setSlashQuery(match[1] ?? "");
+        const slashPos = $anchor.start() + before.lastIndexOf("/");
+        
+        // Only open menu if "/" was the last character typed (not clicked)
+        const justTypedSlash = lastTypedCharRef.current === "/";
+        
+        // Menu not open - only open if slash was just typed
+        if (!palettePos) {
+          if (justTypedSlash && lastMenuPositionRef.current !== slashPos) {
+            lastMenuPositionRef.current = slashPos;
+            const pos = getCaretPos(true); // Place above text
+            if (pos) setPalettePos(pos);
+            setSlashQuery(match[1] ?? "");
+            setFocusedIndex(0);
+          }
+        } else {
+          // Menu is open - always update query as user types
+          setSlashQuery(match[1] ?? "");
+          setFocusedIndex(0);
+        }
       } else {
+        // No slash found - reset everything
+        lastSlashRef.current = "";
+        lastMenuPositionRef.current = null;
+        lastTypedCharRef.current = "";
         setPalettePos(null);
         setSlashQuery("");
+        setFocusedIndex(0);
       }
-    }, []);
+    }, [getCaretPos, palettePos]);
+
+    // ── Slash menu keyboard navigation ─────────────────────────────────────
+    const slashMenuItemsRef = useRef<CommandItem[]>([]);
+    const slashMenuOnSelectRef = useRef<((item: CommandItem) => void) | null>(null);
+
+    const handleSlashMenuKey = useCallback((event: KeyboardEvent): boolean => {
+      if (!palettePos) return false;
+
+      if (event.key === "Escape") {
+        // Close menu but keep the slash and typed text
+        isClosingRef.current = true;
+        setPalettePos(null);
+        lastMenuPositionRef.current = null;
+        lastTypedCharRef.current = "";
+        setTimeout(() => {
+          isClosingRef.current = false;
+          lastSlashRef.current = "";
+        }, 100);
+        return true;
+      }
+
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        setFocusedIndex(f => (f + 1) % Math.max(1, slashMenuItemsRef.current.length || 1));
+        return true;
+      }
+
+      if (event.key === "ArrowUp") {
+        event.preventDefault();
+        setFocusedIndex(f => (f - 1 + Math.max(1, slashMenuItemsRef.current.length || 1)) % Math.max(1, slashMenuItemsRef.current.length || 1));
+        return true;
+      }
+
+      if (event.key === "Enter" || event.key === "Tab") {
+        event.preventDefault();
+        // Trigger the focused item
+        const item = slashMenuItemsRef.current[focusedIndex];
+        if (item && slashMenuOnSelectRef.current) {
+          slashMenuOnSelectRef.current(item);
+        }
+        return true;
+      }
+
+      return false;
+    }, [palettePos, focusedIndex]);
 
     const editor = useEditor({
       immediatelyRender: false,
@@ -116,6 +322,7 @@ const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(
         Superscript,
         TextAlign.configure({ types: ["heading", "paragraph"] }),
         Mathematics,
+        LaTeXRenderer,
         CodeBlockLowlight.configure({ lowlight, defaultLanguage: "python" }),
         Placeholder.configure({
           placeholder: placeholder ?? "Start writing… or type / for commands.",
@@ -137,12 +344,23 @@ const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(
       },
       onSelectionUpdate: ({ editor }) => {
         checkSlashAI(editor);
+        checkSelection(editor);
       },
       editorProps: {
         attributes: {
           class: "rich-editor-content focus:outline-none min-h-[60vh] text-base leading-relaxed",
         },
         handleKeyDown: (_view, event) => {
+          // Track last typed character for slash menu detection
+          if (event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
+            lastTypedCharRef.current = event.key;
+          }
+          
+          // Handle slash menu keyboard navigation first
+          if (handleSlashMenuKey(event)) {
+            return true;
+          }
+
           // Keyboard shortcuts for formatting
           const isMod = event.metaKey || event.ctrlKey;
           
@@ -256,9 +474,6 @@ const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(
               return true;
             }
           }
-          if (event.key === "Escape") {
-            setPalettePos(null);
-          }
           return false;
         },
       },
@@ -317,7 +532,108 @@ const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(
         if (!editor) return;
         editor.commands.setContent(html, { emitUpdate: false });
       },
+      renderLaTeX: () => {
+        if (!editor) return;
+        requestAnimationFrame(() => {
+          if (editor.view.dom) {
+            editor.view.dom.querySelectorAll('span[data-type="inline-math"][data-latex], div[data-type="block-math"][data-latex]').forEach((el: Element) => {
+              const latexEl = el as HTMLElement;
+              const latex = latexEl.getAttribute('data-latex');
+              if (latex) {
+                (latexEl as any)._katexRendered = false;
+                try {
+                  katex.render(latex, latexEl, {
+                    throwOnError: false,
+                    displayMode: latexEl.tagName === 'DIV',
+                  });
+                  (latexEl as any)._katexRendered = true;
+                } catch (e) {
+                  console.error('Failed to render LaTeX:', e);
+                }
+              }
+            });
+          }
+        });
+      },
     }));
+
+    // ── Slash menu item handlers ───────────────────────────────────────────
+    const deleteSlashCommand = useCallback(() => {
+      if (!editor) return;
+      const { $anchor } = editor.state.selection;
+      const blockText = editor.state.doc.textBetween($anchor.start(), $anchor.end(), "\n", "\0");
+      const before = blockText.slice(0, $anchor.parentOffset);
+      const match = before.match(/(?:^|\s)\/(\S*)$/);
+      if (!match) return;
+      const slashIndex = before.lastIndexOf("/");
+      const from = $anchor.start() + slashIndex;
+      const to = $anchor.start() + $anchor.parentOffset;
+      // Don't call focus() here - user is already focused since they're typing
+      editor.chain().deleteRange({ from, to }).run();
+    }, [editor]);
+
+    const handleSelectItem = useCallback((item: CommandItem) => {
+      if (!editor) return;
+
+      // Delete the slash command text
+      deleteSlashCommand();
+
+      // Run the item's action (without focus to prevent scroll jump)
+      if (item.type === "format" && item.run) {
+        item.run();
+      }
+
+      // Close the menu
+      isClosingRef.current = true;
+      setPalettePos(null);
+      lastMenuPositionRef.current = null;
+      lastTypedCharRef.current = "";
+      setTimeout(() => {
+        isClosingRef.current = false;
+        lastSlashRef.current = "";
+        setFocusedIndex(0);
+      }, 100);
+    }, [editor, deleteSlashCommand]);
+
+    // ── Build slash menu items (mirrors logic in AIAgent) ────────────────
+    // We need this here to support keyboard navigation with proper item count
+    const allFormatItems = React.useMemo(() => {
+      // Import the format items from AIAgent - simplified version
+      // Note: Don't use .focus() to prevent scroll jumping
+      return [
+        { id: "paragraph", label: "Paragraph", description: "Normal text", icon: AlignLeft, group: "Blocks", type: "format" as const, run: () => editor?.chain().setParagraph().run() },
+        { id: "heading1", label: "Heading 1", description: "Large heading", icon: Heading1, group: "Blocks", type: "format" as const, run: () => editor?.chain().toggleHeading({ level: 1 }).run() },
+        { id: "heading2", label: "Heading 2", description: "Section heading", icon: Heading2, group: "Blocks", type: "format" as const, run: () => editor?.chain().toggleHeading({ level: 2 }).run() },
+        { id: "heading3", label: "Heading 3", description: "Subheading", icon: Heading3, group: "Blocks", type: "format" as const, run: () => editor?.chain().toggleHeading({ level: 3 }).run() },
+        { id: "blockquote", label: "Blockquote", description: "Quote block", icon: Quote, group: "Blocks", type: "format" as const, run: () => editor?.chain().toggleBlockquote().run() },
+        { id: "codeblock", label: "Code block", description: "Monospace code block", icon: Code, group: "Blocks", type: "format" as const, run: () => editor?.chain().toggleCodeBlock().run() },
+        { id: "bulletlist", label: "Dot points", description: "Bullet list", icon: List, group: "Lists", type: "format" as const, run: () => editor?.chain().toggleBulletList().run() },
+        { id: "orderedlist", label: "Numbered list", description: "Ordered list", icon: ListOrdered, group: "Lists", type: "format" as const, run: () => editor?.chain().toggleOrderedList().run() },
+        { id: "tasklist", label: "Task list", description: "Checklist", icon: Check, group: "Lists", type: "format" as const, run: () => editor?.chain().toggleTaskList().run() },
+        { id: "divider", label: "Horizontal rule", description: "Divider line", icon: Minus, group: "Insert", type: "format" as const, run: () => editor?.chain().setHorizontalRule().run() },
+        { id: "bold", label: "Bold", description: "Emphasise selection", icon: Bold, group: "Text", type: "format" as const, run: () => editor?.chain().toggleBold().run() },
+        { id: "italic", label: "Italic", description: "Emphasise lightly", icon: Italic, group: "Text", type: "format" as const, run: () => editor?.chain().toggleItalic().run() },
+        { id: "underline", label: "Underline", description: "Underline selection", icon: UnderlineIcon, group: "Text", type: "format" as const, run: () => editor?.chain().toggleUnderline().run() },
+        { id: "strike", label: "Strikethrough", description: "Strike out", icon: Strikethrough, group: "Text", type: "format" as const, run: () => editor?.chain().toggleStrike().run() },
+        { id: "code", label: "Inline code", description: "Code formatting", icon: Code, group: "Text", type: "format" as const, run: () => editor?.chain().toggleCode().run() },
+      ] as CommandItem[];
+    }, [editor]);
+
+    const filteredSlashItems = React.useMemo(() => {
+      if (!slashQuery) return allFormatItems;
+      const q = slashQuery.toLowerCase();
+      return allFormatItems.filter(item => {
+        const labelMatch = item.label.toLowerCase().includes(q);
+        const descMatch = item.description.toLowerCase().includes(q);
+        return labelMatch || descMatch;
+      });
+    }, [slashQuery, allFormatItems]);
+
+    // Update ref with current filtered items for keyboard navigation
+    useEffect(() => {
+      slashMenuItemsRef.current = filteredSlashItems;
+      slashMenuOnSelectRef.current = handleSelectItem;
+    }, [filteredSlashItems, handleSelectItem]);
 
     return (
       <>
@@ -384,8 +700,38 @@ const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(
               editor={editor}
               subject={subject}
               position={palettePos}
-              initialQuery={slashQuery}
-              onClose={() => setPalettePos(null)}
+              query={slashQuery}
+              focused={focusedIndex}
+              onFocusedChange={setFocusedIndex}
+              onSelect={handleSelectItem}
+              onClose={() => {
+                isClosingRef.current = true;
+                setPalettePos(null);
+                lastMenuPositionRef.current = null;
+                lastTypedCharRef.current = "";
+                setTimeout(() => {
+                  isClosingRef.current = false;
+                  lastSlashRef.current = "";
+                  setFocusedIndex(0);
+                }, 100);
+              }}
+            />
+          )}
+          {aiToolbarPos && editor && selectedText && (
+            <FloatingDocAIToolbar
+              key="ai-toolbar"
+              editor={editor}
+              subject={subject}
+              selectedText={selectedText}
+              position={aiToolbarPos}
+              onClose={() => {
+                setAiToolbarPos(null);
+                setSelectedText("");
+              }}
+              onActionComplete={() => {
+                setAiToolbarPos(null);
+                setSelectedText("");
+              }}
             />
           )}
         </AnimatePresence>

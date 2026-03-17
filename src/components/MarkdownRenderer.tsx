@@ -6,7 +6,7 @@ import remarkGfm from "remark-gfm";
 import rehypeKatex from "rehype-katex";
 import { cn } from "@/lib/utils";
 import dynamic from "next/dynamic";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, memo } from "react";
 
 // Load graphing components dynamically with no SSR
 const DesmosGraph = dynamic(() => import("@/components/graphing/DesmosGraph"), {
@@ -170,7 +170,7 @@ const MarkdownRenderer = ({ content, className, streaming = false }: MarkdownRen
             const codeEl = (children as React.ReactElement);
             const lang = codeEl?.props?.className as string | undefined;
             const rawBlock = String(codeEl?.props?.children ?? "").replace(/\n$/, "");
-            
+
             const streamingPlaceholder = (
               <div className="my-4 rounded-2xl overflow-hidden border border-border/30 bg-muted/20 p-6 flex items-center justify-center gap-2">
                 <div className="w-1.5 h-1.5 rounded-full bg-primary/40 animate-pulse" />
@@ -229,4 +229,7 @@ const MarkdownRenderer = ({ content, className, streaming = false }: MarkdownRen
   );
 };
 
-export default MarkdownRenderer;
+export default memo(MarkdownRenderer, (prev, next) => {
+  // Only re-render if content or streaming state changes
+  return prev.content === next.content && prev.streaming === next.streaming && prev.className === next.className;
+});

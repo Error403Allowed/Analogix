@@ -128,7 +128,7 @@ const colorMap: Record<string, { bg: string; text: string; border: string; tag: 
 // ── Stat ticker items ───────────────────────────────────────────────────────
 const stats = [
   { value: "15", label: "Subjects covered" },
-  { value: "100%", label: "Free to use, no limits or paywalls" },
+  { value: "100%", label: "Free to use" },
   { value: "8", label: "Study tools" },
   { value: "Y7–12", label: "All year levels" },
   { value: "ACARA", label: "Curriculum aligned" },

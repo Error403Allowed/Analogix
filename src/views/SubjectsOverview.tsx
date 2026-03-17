@@ -5,15 +5,26 @@ import { useRouter } from "next/navigation";
 import {
   Search, Send, X, Sparkles,
   LayoutGrid, List, Flame, MessageSquare, CheckSquare,
+  MoreHorizontal, Settings2, Palette, Plus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { SUBJECT_CATALOG } from "@/constants/subjects";
+import { SUBJECT_CATALOG, type SubjectId } from "@/constants/subjects";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { statsStore } from "@/utils/statsStore";
 import { getGroqCompletion } from "@/services/groq";
 import type { ChatMessage } from "@/types/chat";
+import { SubjectCustomizationSheet } from "@/components/SubjectCustomizationSheet";
+import { subjectStore, type CustomSubject } from "@/utils/subjectStore";
+import { ColorPicker, SUBJECT_COLORS, type SubjectColorId } from "@/components/ColorPicker";
+import { IconPicker, DynamicIcon } from "@/components/IconPicker";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export default function SubjectsOverview() {
   const router = useRouter();
@@ -30,6 +41,12 @@ export default function SubjectsOverview() {
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  
+  // Customization state
+  const [customSubjects, setCustomSubjects] = useState<Record<string, CustomSubject>>({});
+  const [customizeSubjectId, setCustomizeSubjectId] = useState<SubjectId | null>(null);
+  const [iconPickerSubject, setIconPickerSubject] = useState<{ id: SubjectId; open: boolean } | null>(null);
+  const [colorPickerSubject, setColorPickerSubject] = useState<{ id: SubjectId; open: boolean } | null>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem("subjectsLayout") as "list" | "grid" | null;
@@ -42,6 +59,16 @@ export default function SubjectsOverview() {
     setUserSubjects(prefs.subjects || []);
     statsStore.get().then(setStatsData);
     window.addEventListener("statsUpdated", () => statsStore.get().then(setStatsData));
+    
+    // Load custom subjects
+    const loadCustomSubjects = async () => {
+      const customs = await subjectStore.getAllCustomSubjects();
+      setCustomSubjects(customs);
+    };
+    loadCustomSubjects();
+    
+    window.addEventListener("customSubjectsUpdated", loadCustomSubjects);
+    return () => window.removeEventListener("customSubjectsUpdated", loadCustomSubjects);
   }, []);
 
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
@@ -95,6 +122,23 @@ export default function SubjectsOverview() {
   };
 
   const toggleLayout = (l: "list" | "grid") => { setLayout(l); localStorage.setItem("subjectsLayout", l); };
+
+  // Helper to get subject appearance with customizations
+  const getSubjectAppearance = (subject: typeof SUBJECT_CATALOG[0]) => {
+    const custom = customSubjects[subject.id];
+    const colorId = custom?.custom_color || "default";
+    const colorData = SUBJECT_COLORS.find(c => c.id === colorId) || SUBJECT_COLORS[0];
+    
+    // Get icon - use custom icon name or default
+    const iconName = custom?.custom_icon || subject.icon.name;
+    
+    return {
+      icon: iconName,
+      color: colorData,
+      title: custom?.custom_title || subject.label,
+      cover: custom?.custom_cover,
+    };
+  };
 
   return (
     <div className="max-w-6xl mx-auto pb-24">
@@ -165,21 +209,30 @@ export default function SubjectsOverview() {
               </div>
               <div className="space-y-1">
                 {filteredSubjects.map((subject, i) => {
-                  const Icon = subject.icon;
+                  const appearance = getSubjectAppearance(subject);
                   const activity = normalizedStats.subjectCounts[subject.id] || 0;
                   const maxActivity = Math.max(1, ...filteredSubjects.map(s => normalizedStats.subjectCounts[s.id] || 0));
                   const pct = Math.round((activity / maxActivity) * 100);
                   return (
                     <motion.div key={subject.id} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.035 }}
-                      onClick={() => router.push(`/subjects/${subject.id}`)}
-                      className="group flex items-center gap-3 px-3 py-3 rounded-xl cursor-pointer hover:bg-muted/50 border border-transparent hover:border-border/40 transition-all">
-                      <div className="w-8 h-8 rounded-lg bg-muted/60 group-hover:bg-primary/10 flex items-center justify-center transition-colors shrink-0">
-                        <Icon className="w-4 h-4 text-muted-foreground/70 group-hover:text-primary transition-colors" />
+                      className="group flex items-center gap-3 px-3 py-3 rounded-xl cursor-pointer hover:bg-muted/50 border border-transparent hover:border-border/40 transition-all"
+                    >
+                      {/* Icon with custom color */}
+                      <div
+                        className={cn("w-8 h-8 rounded-lg flex items-center justify-center transition-colors shrink-0", appearance.color.bg)}
+                      >
+                        <DynamicIcon name={appearance.icon} className={cn("w-4 h-4", appearance.color.text)} />
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-foreground truncate">{subject.label}</p>
+                      
+                      {/* Subject info - clickable to navigate */}
+                      <div
+                        className="flex-1 min-w-0 cursor-pointer"
+                        onClick={() => router.push(`/subjects/${subject.id}`)}
+                      >
+                        <p className="text-sm font-semibold text-foreground truncate">{appearance.title}</p>
                         <p className="text-xs text-muted-foreground/50 truncate hidden sm:block">{(subject as any).descriptions?.senior || ""}</p>
                       </div>
+                      
                       {/* Activity bar */}
                       <div className="hidden sm:flex items-center gap-2 w-24 justify-end shrink-0">
                         {activity > 0 ? (
@@ -193,9 +246,34 @@ export default function SubjectsOverview() {
                           <span className="text-xs text-muted-foreground/30">—</span>
                         )}
                       </div>
-                      <svg className="w-3.5 h-3.5 text-muted-foreground/25 group-hover:text-primary/50 transition-colors shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
+                      
+                      {/* Customize button - only visible on hover */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            className={cn("w-7 h-7 rounded-md flex items-center justify-center transition-all opacity-0 group-hover:opacity-100",
+                              "hover:bg-muted/60 text-muted-foreground/40 hover:text-foreground"
+                            )}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <MoreHorizontal className="w-3.5 h-3.5" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-48">
+                          <DropdownMenuItem onClick={() => setCustomizeSubjectId(subject.id)}>
+                            <Settings2 className="w-3.5 h-3.5 mr-2" />
+                            Customise
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setIconPickerSubject({ id: subject.id, open: true })}>
+                            <Palette className="w-3.5 h-3.5 mr-2" />
+                            Change Icon
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setColorPickerSubject({ id: subject.id, open: true })}>
+                            <Palette className="w-3.5 h-3.5 mr-2" />
+                            Change Color
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </motion.div>
                   );
                 })}
@@ -208,32 +286,59 @@ export default function SubjectsOverview() {
             <motion.div key="grid" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.12 }}
               className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {filteredSubjects.map((subject, i) => {
-                const Icon = subject.icon;
+                const appearance = getSubjectAppearance(subject);
                 const activity = normalizedStats.subjectCounts[subject.id] || 0;
                 const maxActivity = Math.max(1, ...filteredSubjects.map(s => normalizedStats.subjectCounts[s.id] || 0));
                 const pct = Math.round((activity / maxActivity) * 100);
                 return (
                   <motion.div key={subject.id} initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.04 }}
-                    onClick={() => router.push(`/subjects/${subject.id}`)}
-                    className="group relative flex flex-col gap-3 p-4 rounded-xl border border-border/50 bg-card/60 hover:bg-card hover:border-primary/30 hover:shadow-md cursor-pointer transition-all">
-                    <div className="flex items-start justify-between">
-                      <div className="w-10 h-10 rounded-xl bg-muted/60 group-hover:bg-primary/10 flex items-center justify-center transition-colors">
-                        <Icon className="w-5 h-5 text-muted-foreground/70 group-hover:text-primary transition-colors" />
-                      </div>
-                      {activity > 0 && (
-                        <span className="text-[10px] font-bold text-primary/60 bg-primary/10 px-2 py-0.5 rounded-full">{activity}×</span>
-                      )}
+                    className="group relative flex flex-col gap-3 p-4 rounded-xl border border-border/50 bg-card/60 hover:bg-card hover:border-primary/30 hover:shadow-md transition-all"
+                  >
+                    {/* Customize button */}
+                    <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            className={cn("w-7 h-7 rounded-lg flex items-center justify-center transition-all",
+                              "bg-background/80 backdrop-blur-sm hover:bg-background text-muted-foreground hover:text-foreground"
+                            )}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <MoreHorizontal className="w-3.5 h-3.5" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-48">
+                          <DropdownMenuItem onClick={() => setCustomizeSubjectId(subject.id)}>
+                            <Settings2 className="w-3.5 h-3.5 mr-2" />
+                            Customise
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setIconPickerSubject({ id: subject.id, open: true })}>
+                            <Palette className="w-3.5 h-3.5 mr-2" />
+                            Change Icon
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setColorPickerSubject({ id: subject.id, open: true })}>
+                            <Palette className="w-3.5 h-3.5 mr-2" />
+                            Change Color
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-bold text-foreground leading-tight mb-1">{subject.label}</p>
+                    
+                    {/* Icon with custom color */}
+                    <div
+                      className={cn("w-10 h-10 rounded-xl flex items-center justify-center transition-colors", appearance.color.bg)}
+                      onClick={() => router.push(`/subjects/${subject.id}`)}
+                    >
+                      <DynamicIcon name={appearance.icon} className={cn("w-5 h-5", appearance.color.text)} />
+                    </div>
+                    
+                    <div className="flex-1" onClick={() => router.push(`/subjects/${subject.id}`)}>
+                      <p className="text-sm font-bold text-foreground leading-tight mb-1">{appearance.title}</p>
                       <p className="text-[11px] text-muted-foreground/50 leading-snug line-clamp-2">{(subject as any).descriptions?.senior || ""}</p>
                     </div>
                     <div className="h-1 bg-muted/40 rounded-full overflow-hidden">
                       <div className="h-full bg-primary/40 group-hover:bg-primary rounded-full transition-all duration-500" style={{ width: `${activity > 0 ? Math.max(pct, 6) : 0}%` }} />
                     </div>
-                    <svg className="absolute top-4 right-4 w-3 h-3 text-muted-foreground/20 group-hover:text-primary/40 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
                   </motion.div>
                 );
               })}
@@ -289,6 +394,49 @@ export default function SubjectsOverview() {
           </AnimatePresence>
         </motion.button>
       </div>
+
+      {/* Subject Customization Sheet */}
+      {customizeSubjectId && (
+        <SubjectCustomizationSheet
+          subjectId={customizeSubjectId}
+          open={!!customizeSubjectId}
+          onOpenChange={(open) => setCustomizeSubjectId(open ? customizeSubjectId : null)}
+          onCustomizationChange={() => {
+            // Reload custom subjects
+            subjectStore.getAllCustomSubjects().then(setCustomSubjects);
+          }}
+        />
+      )}
+
+      {/* Icon Picker */}
+      {iconPickerSubject && (
+        <IconPicker
+          open={iconPickerSubject.open}
+          onOpenChange={(open) => setIconPickerSubject(open ? iconPickerSubject : null)}
+          selectedIcon={customSubjects[iconPickerSubject.id]?.custom_icon || SUBJECT_CATALOG.find(s => s.id === iconPickerSubject.id)?.icon.name || ""}
+          onSelect={async (iconName) => {
+            await subjectStore.saveCustomSubject(iconPickerSubject.id, {
+              custom_icon: iconName,
+            });
+            subjectStore.getAllCustomSubjects().then(setCustomSubjects);
+          }}
+        />
+      )}
+
+      {/* Color Picker */}
+      {colorPickerSubject && (
+        <ColorPicker
+          open={colorPickerSubject.open}
+          onOpenChange={(open) => setColorPickerSubject(open ? colorPickerSubject : null)}
+          selectedColor={customSubjects[colorPickerSubject.id]?.custom_color || "default"}
+          onSelect={async (colorId) => {
+            await subjectStore.saveCustomSubject(colorPickerSubject.id, {
+              custom_color: colorId,
+            });
+            subjectStore.getAllCustomSubjects().then(setCustomSubjects);
+          }}
+        />
+      )}
     </div>
   );
 }

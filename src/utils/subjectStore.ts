@@ -1,6 +1,7 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
+import type { SubjectColorId } from "@/components/ColorPicker";
 
 export interface SubjectMark {
   id: string;
@@ -24,6 +25,18 @@ export interface SubjectData {
   id: string;
   marks: SubjectMark[];
   notes: SubjectNotes;
+}
+
+export interface CustomSubject {
+  id: string;
+  user_id: string;
+  subject_id: string;
+  custom_icon: string | null;
+  custom_color: SubjectColorId | null;
+  custom_cover: string | null;
+  custom_title: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface SubjectDocumentItem {
@@ -266,5 +279,78 @@ export const subjectStore = {
     await subjectStore.saveSubject(subjectId, {
       notes: { ...current.notes, assessments: filtered, lastUpdated: new Date().toISOString() },
     });
+  },
+
+  // Custom subject appearance methods
+  getCustomSubject: async (subjectId: string): Promise<CustomSubject | null> => {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+
+    const { data, error } = await supabase
+      .from("custom_subjects")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("subject_id", subjectId)
+      .single();
+
+    if (error || !data) return null;
+    return data;
+  },
+
+  saveCustomSubject: async (subjectId: string, updates: Partial<CustomSubject>): Promise<void> => {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const current = await subjectStore.getCustomSubject(subjectId);
+    
+    if (current) {
+      const { error } = await supabase
+        .from("custom_subjects")
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("user_id", user.id)
+        .eq("subject_id", subjectId);
+
+      if (error) console.warn("[subjectStore] saveCustomSubject update failed:", error);
+    } else {
+      const { error } = await supabase
+        .from("custom_subjects")
+        .insert({
+          user_id: user.id,
+          subject_id: subjectId,
+          ...updates,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        });
+
+      if (error) console.warn("[subjectStore] saveCustomSubject insert failed:", error);
+    }
+    
+    window.dispatchEvent(new Event("customSubjectsUpdated"));
+  },
+
+  getAllCustomSubjects: async (): Promise<Record<string, CustomSubject>> => {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return {};
+
+    const { data, error } = await supabase
+      .from("custom_subjects")
+      .select("*")
+      .eq("user_id", user.id);
+
+    if (error) {
+      console.warn("[subjectStore] getAllCustomSubjects failed:", error);
+      return {};
+    }
+
+    return (data ?? []).reduce((acc: Record<string, CustomSubject>, row: any) => {
+      acc[row.subject_id] = row;
+      return acc;
+    }, {});
   },
 };

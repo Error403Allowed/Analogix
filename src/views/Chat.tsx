@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo, memo } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -133,19 +133,16 @@ const StreamingMessage = ({
   isStreaming: boolean;
 }) => {
   const prevLenRef = useRef(0);
-  const [fadeKey, setFadeKey] = useState(0);
 
   useEffect(() => {
     if (isStreaming && content.length > prevLenRef.current) {
       prevLenRef.current = content.length;
-      setFadeKey(k => k + 1);
     }
     if (!isStreaming) prevLenRef.current = 0;
   }, [content, isStreaming]);
 
   return (
     <motion.div
-      key={fadeKey}
       initial={isStreaming ? { opacity: 0.55 } : { opacity: 1 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.4, ease: "easeOut" }}
@@ -1735,12 +1732,12 @@ const Chat = () => {
                             {message.attachments && message.attachments.length > 0 && (
                               <div className="flex flex-wrap gap-2 mb-2 mr-4">
                                 {message.attachments.map((file, idx) => (
-                                  <div key={idx} className="flex items-center gap-2 px-3 py-2 rounded-xl bg-primary/10 border border-primary/20">
+                                  <div key={idx} className="flex items-center gap-3 px-3 py-2 rounded-xl bg-primary/10 border border-primary/20">
                                     {file.isImage && file.previewUrl ? (
                                       <img
                                         src={file.previewUrl}
                                         alt={file.name}
-                                        className="w-6 h-6 rounded-md object-cover border border-primary/30"
+                                        className="w-8 h-8 rounded-md object-cover border border-primary/30"
                                       />
                                     ) : (
                                       <FileText className="w-3.5 h-3.5 text-primary" />
@@ -1750,22 +1747,26 @@ const Chat = () => {
                                 ))}
                               </div>
                             )}
-                            <div className="max-w-[85%] sm:max-w-[75%] message-bubble-user">
-                              <div className="whitespace-pre-wrap text-sm leading-relaxed">
-                                <MarkdownRenderer content={message.content} />
-                              </div>
-                            </div>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleCopy(message.content, message.id)}
-                              aria-label="Copy prompt"
-                              title="Copy prompt"
-                              className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors sm:h-7 sm:w-7"
-                            >
-                              {copiedId === message.id ? <Check className="w-4 h-4 sm:w-3 sm:h-3" /> : <Copy className="w-4 h-4 sm:w-3 sm:h-3" />}
-                            </Button>
+                            {message.content && message.content.trim() && (
+                              <>
+                                <div className="max-w-[85%] sm:max-w-[75%] message-bubble-user">
+                                  <div className="whitespace-pre-wrap text-sm leading-relaxed">
+                                    <MarkdownRenderer content={message.content} />
+                                  </div>
+                                </div>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleCopy(message.content, message.id)}
+                                  aria-label="Copy prompt"
+                                  title="Copy prompt"
+                                  className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors sm:h-7 sm:w-7"
+                                >
+                                  {copiedId === message.id ? <Check className="w-4 h-4 sm:w-3 sm:h-3" /> : <Copy className="w-4 h-4 sm:w-3 sm:h-3" />}
+                                </Button>
+                              </>
+                            )}
                           </div>
                         )}
                       </motion.div>
@@ -1916,7 +1917,7 @@ const Chat = () => {
                         handleSend();
                       }
                     }}
-                    placeholder={selectedSubject ? `Ask anything about ${allSubjects.find(s => s.id === selectedSubject)?.label}…` : `Ask me anything — maths, science, history…`}
+                    placeholder="Ask me anything"
                     rows={Math.max(1, Math.min(8, Math.ceil(input.length / 80) || 1))}
                     className="w-full px-3 sm:px-4 pt-3.5 pb-12 text-sm sm:text-base bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/50 resize-none overflow-y-auto max-h-48 leading-relaxed rounded-2xl"
                   />

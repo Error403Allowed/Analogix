@@ -57,11 +57,11 @@ export default function SubjectDetail() {
   const router = useRouter();
   const subjectId = (params?.id as string) || "";
   const subject = SUBJECT_CATALOG.find(s => s.id === subjectId);
-  const { updateActiveTabLabel } = useTabs();
+  const { updateTabLabelByPath } = useTabs();
 
   useEffect(() => {
-    if (subject?.label) updateActiveTabLabel(subject.label, "📖");
-  }, [subject?.label]);
+    if (subject?.label) updateTabLabelByPath(`/subjects/${subjectId}`, subject.label, "📖");
+  }, [subject?.label, subjectId, updateTabLabelByPath]);
 
   const emptyData: SubjectData = {
     id: subjectId,
@@ -531,30 +531,6 @@ export default function SubjectDetail() {
                 )}
               </div>
             </div>
-
-            {/* Saved guides */}
-            {documents.length > 0 && (
-              <div className="rounded-2xl border border-border/50 bg-card/60 overflow-hidden">
-                <div className="flex items-center gap-2.5 px-5 py-4 border-b border-border/30">
-                  <div className="w-7 h-7 rounded-lg bg-muted/60 flex items-center justify-center">
-                    <BookOpen className="w-3.5 h-3.5 text-muted-foreground/60" />
-                  </div>
-                  <span className="text-sm font-bold text-foreground">Saved Guides</span>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-muted/60 text-muted-foreground ml-auto">{documents.length}</span>
-                </div>
-                <div className="p-3 space-y-1">
-                  {documents.map(doc => (
-                    <div key={doc.id}
-                      className="group flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-muted/40 cursor-pointer transition-colors"
-                      onClick={() => router.push(`/subjects/${subjectId}/document/${doc.id}`)}>
-                      <BookOpen className="w-3.5 h-3.5 text-primary/50 shrink-0" />
-                      <p className="text-sm text-foreground flex-1 truncate">{doc.title || "Untitled Guide"}</p>
-                      <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/25 group-hover:text-primary/50 transition-colors shrink-0" />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         </div>
       </div>

@@ -40,7 +40,7 @@ export default function DashLayout({ children }: { children: React.ReactNode }) 
 }
 
 function DashContent({ children, isChat, pathname }: { children: React.ReactNode; isChat: boolean; pathname: string }) {
-  const { openTab, updateActiveTabLabel, tabs, activeTabId } = useTabs();
+  const { openTab } = useTabs();
   const router = useRouter();
 
   // Sync current URL into the tabs system on navigation

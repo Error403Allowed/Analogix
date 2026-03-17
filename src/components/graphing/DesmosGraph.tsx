@@ -187,9 +187,26 @@ function DesmosGraph({ expressions, height = DEFAULT_HEIGHT, showEditor = false 
       border: false,
       backgroundColor: bgColor,
       textColor,
+      manageFocus: false,
+      // Disable keyboard navigation to prevent focus stealing
+      enableKeyboard: false,
     });
 
     calcRef.current = calc;
+
+    // Prevent the calculator container from stealing focus
+    // Blur any element inside the container that might have received focus
+    setTimeout(() => {
+      if (containerRef.current) {
+        const focusedInside = containerRef.current.querySelector(':focus') as HTMLElement;
+        if (focusedInside) {
+          focusedInside.blur();
+        }
+        // Also make sure the container div itself doesn't have a tabIndex
+        containerRef.current.removeAttribute('tabindex');
+      }
+    }, 0);
+
     return () => { calc.destroy(); calcRef.current = null; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, key, isDark]);
@@ -480,7 +497,6 @@ function DesmosGraph({ expressions, height = DEFAULT_HEIGHT, showEditor = false 
               onKeyDown={(e) => { if (e.key === "Enter") handleAddExpression(); if (e.key === "Escape") { setEditingIndex(null); setEditLatex(""); } }}
               placeholder={editingIndex !== null ? `Editing expr ${editingIndex + 1} — press Enter to save` : "Add equation (e.g. y=\\sin(x), a=2)…"}
               className="flex-1 px-2.5 py-1.5 text-xs bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/40 font-mono"
-              autoFocus
             />
             {editingIndex !== null && (
               <Button size="sm" variant="ghost" onClick={() => { setEditingIndex(null); setEditLatex(""); }} className="h-8 px-2 text-xs">

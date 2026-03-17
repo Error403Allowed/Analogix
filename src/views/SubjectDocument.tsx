@@ -68,7 +68,7 @@ export default function SubjectDocument() {
   const [helperInput, setHelperInput]       = useState("");
   const [helperTyping, setHelperTyping]     = useState(false);
   const [chatOpen, setChatOpen]             = useState(false);
-  const { updateActiveTabLabel } = useTabs();
+  const { updateTabLabelByPath } = useTabs();
   const [isInserting, setIsInserting]       = useState(false);
   const [usePageContext, setUsePageContext]  = useState(true);
   const [extraContext, setExtraContext]      = useState("");
@@ -138,15 +138,12 @@ export default function SubjectDocument() {
   useEffect(() => {
     let active = true;
     const load = async (isExternal = false) => {
-      console.log("[SubjectDocument] load called, isExternal:", isExternal, "subjectId:", subjectId, "docId:", docId);
       if (!subjectId) return;
       const data = await subjectStore.getSubject(subjectId);
-      console.log("[SubjectDocument] fetched data, documents count:", data.notes.documents?.length || 0);
       if (!active) return;
       const docs = data.notes.documents || [];
       setDocuments(docs);
       const doc = docs.find((item) => item.id === docId);
-      console.log("[SubjectDocument] found doc:", doc ? doc.title : "not found");
       if (!doc) {
         setDocMissing(true);
         setTitle(subject ? `${subject.label} Notes` : "Untitled");
@@ -160,8 +157,13 @@ export default function SubjectDocument() {
       const rawTitle   = typeof doc.title === "string" ? doc.title : "";
       const rawContent = doc.content || "";
 
+      // Wait a tick for the tab to be created by DashLayout
+      await new Promise(resolve => setTimeout(resolve, 0));
+      
       // Update the app-level tab label to show the document title
-      if (rawTitle) updateActiveTabLabel(rawTitle, "📄");
+      if (rawTitle) {
+        updateTabLabelByPath(`/subjects/${subjectId}/document/${docId}`, rawTitle, "📄");
+      }
 
       // On external updates (agent edits), skip if content hasn't changed remotely
       if (isExternal && rawContent === lastRemoteContent.current) {
@@ -182,6 +184,8 @@ export default function SubjectDocument() {
         lastSavedRef.current = { title: rawTitle, content: rawContent };
         setLastSavedAt(doc.lastUpdated || data.notes.lastUpdated || null);
         isFirstLoad.current = false;
+        // Render LaTeX after study guide is loaded
+        setTimeout(() => editorRef.current?.renderLaTeX(), 100);
         return;
       }
       const html = isHtmlContent(rawContent) ? rawContent : (rawContent ? `<p>${rawContent.replace(/\n/g, "</p><p>")}</p>` : "");
@@ -221,6 +225,8 @@ export default function SubjectDocument() {
             setInitialContent(html);
             lastSavedRef.current = { title, content: raw };
             lastRemoteContent.current = raw;
+            // Render LaTeX after study guide update
+            setTimeout(() => editorRef.current?.renderLaTeX(), 100);
           } else {
             const html = isHtmlContent(raw) ? raw : (raw ? `<p>${raw.replace(/\n/g, "</p><p>")}</p>` : "");
             setContent(html);

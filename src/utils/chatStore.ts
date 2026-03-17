@@ -65,6 +65,19 @@ export const chatStore = {
     if (authError) { console.error("[chatStore] addMessage auth error:", authError.message); return; }
     if (!user) { console.warn("[chatStore] addMessage: no user logged in, message not saved"); return; }
 
+    // Verify session exists before inserting message
+    const { data: session } = await supabase
+      .from("chat_sessions")
+      .select("id")
+      .eq("id", sessionId)
+      .eq("user_id", user.id)
+      .single();
+
+    if (!session) {
+      console.warn("[chatStore] addMessage: session not found or doesn't belong to user:", sessionId);
+      return;
+    }
+
     const { error } = await supabase.from("chat_messages").insert({
       session_id: sessionId,
       user_id: user.id,

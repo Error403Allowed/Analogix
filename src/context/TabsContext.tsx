@@ -17,6 +17,7 @@ interface TabsContextValue {
   closeTab: (id: string) => void;
   setActiveTab: (id: string) => void;
   updateActiveTabLabel: (label: string, emoji?: string) => void;
+  updateTabLabelByPath: (path: string, label: string, emoji?: string) => void;
   togglePin: (id: string) => void;
   reorderTabs: (ordered: AppTab[]) => void;
 }
@@ -33,6 +34,7 @@ export const useTabs = () => {
     closeTab: () => {},
     setActiveTab: () => {},
     updateActiveTabLabel: () => {},
+    updateTabLabelByPath: () => {},
     togglePin: () => {},
     reorderTabs: () => {},
   };
@@ -49,7 +51,7 @@ export const pathMeta = (path: string): { label: string; emoji: string } => {
   if (path === "/subjects")     return { label: "My Subjects", emoji: "🎓" };
   if (path === "/calendar")     return { label: "Calendar",    emoji: "📅" };
   if (path === "/achievements") return { label: "Achievements",emoji: "🏆" };
-  if (path.startsWith("/subjects/") && path.includes("/doc/")) return { label: "Document", emoji: "📄" };
+  if (path.startsWith("/subjects/") && path.includes("/document/")) return { label: "Document", emoji: "📄" };
   if (path.startsWith("/subjects/")) return { label: "Subject", emoji: "📖" };
   return { label: "Page", emoji: "📄" };
 };
@@ -65,29 +67,29 @@ const newId = () => {
 };
 
 const normalizeTabs = (tabs: AppTab[], activeId: string | null) => {
-  const seenIds = new Set<string>();
-  const seenPaths = new Set<string>();
+  const seenPaths = new Map<string, AppTab>();
   const idRemap = new Map<string, string>();
   const normalized: AppTab[] = [];
 
   for (const tab of tabs) {
+    // If we've seen this path before, skip this duplicate
     if (seenPaths.has(tab.path)) {
-      const existing = normalized.find(t => t.path === tab.path);
-      if (existing && activeId === tab.id) {
+      // If this tab is/was active, remap to the first one
+      if (activeId === tab.id) {
+        const existing = seenPaths.get(tab.path)!;
         idRemap.set(tab.id, existing.id);
       }
       continue;
     }
 
     let id = tab.id;
-    if (!id || seenIds.has(id)) {
+    if (!id) {
       id = newId();
       idRemap.set(tab.id, id);
     }
 
-    seenIds.add(id);
-    seenPaths.add(tab.path);
-    normalized.push(id === tab.id ? tab : { ...tab, id });
+    seenPaths.set(tab.path, { ...tab, id });
+    normalized.push({ ...tab, id });
   }
 
   let normalizedActiveId = activeId;
@@ -143,7 +145,7 @@ export function TabsProvider({ children }: { children: React.ReactNode }) {
       setActiveTabIdState(newTab.id);
       return [...prev, newTab];
     });
-  }, []);
+  }, [tabs]);
 
   const closeTab = useCallback((id: string) => {
     setTabs(prev => {
@@ -174,6 +176,14 @@ export function TabsProvider({ children }: { children: React.ReactNode }) {
     ));
   }, [activeTabId]);
 
+  const updateTabLabelByPath = useCallback((path: string, label: string, emoji?: string) => {
+    setTabs(prev => prev.map(t =>
+      t.path === path
+        ? { ...t, label, ...(emoji ? { emoji } : {}) }
+        : t
+    ));
+  }, []);
+
   const togglePin = useCallback((id: string) => {
     setTabs(prev => prev.map(t =>
       t.id === id
@@ -198,6 +208,7 @@ export function TabsProvider({ children }: { children: React.ReactNode }) {
       closeTab,
       setActiveTab,
       updateActiveTabLabel,
+      updateTabLabelByPath,
       togglePin,
       reorderTabs,
     }}>

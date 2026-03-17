@@ -3,7 +3,7 @@
 import {
   LayoutDashboard, MessageCircle, BookOpen, Calendar,
   GraduationCap, Brain, Trophy, ChevronDown, Palette,
-  Sun, Moon, BookMarkedIcon, SigmaIcon, User, Flame, Library, Scan,
+  Sun, Moon, BookMarkedIcon, SigmaIcon, User, Flame, Library, Scan, SquareStack,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -29,7 +29,7 @@ const navGroups = [
     items: [
       { title: "Dashboard",     url: "/dashboard",    icon: LayoutDashboard, tutorial: "dashboard-nav"    },
       { title: "AI Tutor", url: "/chat",         icon: MessageCircle,   tutorial: "chat-nav"         },
-      { title: "Flashcards",    url: "/flashcards",   icon: BookMarkedIcon,  tutorial: "flashcards-nav"   },
+      { title: "Flashcards",    url: "/flashcards",   icon: SquareStack,  tutorial: "flashcards-nav"   },
     ],
   },
   {
