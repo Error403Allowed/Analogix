@@ -432,7 +432,7 @@ const callFastChat = async (
 // MAIN API CALL
 // ============================================================================
 
-export const callHfChat = async (
+export const callGroqChat = async (
   payload: {
     messages: Array<{ role: "system" | "user" | "assistant"; content: string }>;
     max_tokens: number;
@@ -581,7 +581,7 @@ export const callHfChat = async (
 // MAIN API CALL - STREAMING VERSION
 // ============================================================================
 
-export const callHfChatStream = async (
+export const callGroqChatStream = async (
   payload: {
     messages: Array<{ role: "system" | "user" | "assistant"; content: string }>;
     max_tokens: number;
@@ -714,3 +714,7 @@ export const callHfChatStream = async (
 
   throw lastError instanceof Error ? lastError : new Error("AI request failed after trying all models and API keys");
 };
+
+// Backward compatibility aliases
+export const callHfChat = callGroqChat;
+export const callHfChatStream = callGroqChatStream;

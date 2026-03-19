@@ -3,9 +3,8 @@
 import dynamic from "next/dynamic";
 import { Loader2 } from "lucide-react";
 
-// ssr:false prevents the Onboarding view (which uses useSearchParams, localStorage,
-// and framer-motion) from running on the server — avoids hydration mismatches.
-const Onboarding = dynamic(() => import("@/views/Onboarding"), {
+// ssr:false prevents the Onboarding view from running on the server
+const Onboarding = dynamic(() => import("@/views/OnboardingShort"), {
   ssr: false,
   loading: () => (
     <div className="min-h-screen flex items-center justify-center bg-background">

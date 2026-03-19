@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { callHfChat, formatError } from "../_utils";
+import { callGroqChat, formatError } from "../_utils";
 
 export const runtime = "nodejs";
 
@@ -57,7 +57,7 @@ Return ONLY valid JSON — no markdown, no preamble:
   "summary": "One sentence overview of the plan"
 }`;
 
-    const content = await callHfChat(
+    const content = await callGroqChat(
       {
         messages: [
           { role: "system", content: systemPrompt },

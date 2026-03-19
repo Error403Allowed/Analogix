@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { callHfChat, formatError, classifyTaskType } from "../_utils";
+import { callGroqChat, formatError, classifyTaskType } from "../_utils";
 import type { ChatMessage, UserContext } from "@/types/chat";
 
 export const runtime = "nodejs";
@@ -52,7 +52,7 @@ ${previousExplanation}`;
     const primarySubject = userContext?.subjects?.[0];
     const taskType = classifyTaskType(messages, primarySubject);
 
-    const content = await callHfChat(
+    const content = await callGroqChat(
       {
         messages: [
           { role: "system", content: systemPrompt },

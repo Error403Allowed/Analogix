@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { callHfChat, formatError } from "../_utils";
+import { callGroqChat, formatError } from "../_utils";
 
 export const runtime = "nodejs";
 
@@ -75,10 +75,10 @@ Return ONLY valid JSON — no markdown, no preamble:
       const cardsPerChunk = Math.ceil(count / chunks.length);
       
       console.log(`[flashcard-from-doc] Chunking: ${chunks.length} chunks for ${documentContent.length} chars`);
-      
+
       for (let i = 0; i < chunks.length; i++) {
         try {
-          const chunkContent = await callHfChat(
+          const chunkContent = await callGroqChat(
             {
               messages: [
                 { role: "system", content: systemPrompt },
@@ -118,7 +118,7 @@ Return ONLY valid JSON — no markdown, no preamble:
     }
 
     // Small document - single pass
-    const content = await callHfChat(
+    const content = await callGroqChat(
       {
         messages: [
           { role: "system", content: systemPrompt },

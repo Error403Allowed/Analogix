@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { callHfChatStream, formatError, classifyTaskType } from "../_utils";
+import { callGroqChatStream, formatError, classifyTaskType } from "../_utils";
 import type { ChatMessage, UserContext } from "@/types/chat";
 import { getFormulaSheetContext } from "@/data/formulaSheets";
 
@@ -121,7 +121,7 @@ ${formulaSheetContext ? `\n--- FORMULA REFERENCE ---\n${formulaSheetContext}\n--
 
     (async () => {
       try {
-        const stream = await callHfChatStream(
+        const stream = await callGroqChatStream(
           {
             messages: [
               {

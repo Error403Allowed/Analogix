@@ -3,6 +3,7 @@
 import { ChatMessage, UserContext } from "@/types/chat";
 import { QuizAnswerInput, QuizData, QuizReview } from "@/types/quiz";
 import { fetchJsonWithRetry } from "@/lib/fetch-wrapper";
+import { aiThrottle, heavyAiThrottle } from "@/lib/requestThrottle";
 
 // ─── Streaming helper ────────────────────────────────────────────────────────
 // Calls /api/groq/chat-stream and yields token chunks as they arrive.
@@ -17,6 +18,11 @@ export async function* getGroqStream(
   if (localStorageData) {
     headers["x-client-data"] = JSON.stringify(localStorageData);
   }
+
+  // Use throttle to prevent stream overload
+  await aiThrottle.execute(async () => {
+    // Just a placeholder to use the throttle - actual fetch happens below
+  });
 
   const response = await fetch("/api/groq/chat-stream", {
     method: "POST",
@@ -84,20 +90,25 @@ export async function* getGroqStream(
 }
 
 /**
- * Wrapper for fetchJsonWithRetry that adds better error messages.
+ * Wrapper for fetchJsonWithRetry that adds better error messages and throttling.
  * Kept for backward compatibility with existing codebase.
  */
 const fetchJson = async <T>(
   url: string,
   body: unknown,
   timeoutMs: number,
+  useHeavyThrottle: boolean = false,
 ): Promise<T> => {
+  const throttle = useHeavyThrottle ? heavyAiThrottle : aiThrottle;
+  
   try {
-    return await fetchJsonWithRetry<T>(url, {
-      method: "POST",
-      body,
-      timeoutMs,
-      maxRetries: 2,
+    return await throttle.execute(async () => {
+      return await fetchJsonWithRetry<T>(url, {
+        method: "POST",
+        body,
+        timeoutMs,
+        maxRetries: 0, // Throttle handles retries
+      });
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
@@ -479,6 +490,7 @@ export const generateStudyGuide = async (payload: {
       "/api/groq/study-guide",
       payload,
       90000,
+      true, // Use heavy throttle for long-running operations
     );
     return data.studyGuide || null;
   } catch {
@@ -501,6 +513,7 @@ export const generateQuizFromDocument = async (payload: {
       "/api/groq/quiz-from-doc",
       payload,
       45000,
+      true, // Use heavy throttle for document processing
     );
     return data.quiz || null;
   } catch {
@@ -523,6 +536,7 @@ export const generateFlashcardsFromDocument = async (payload: {
       "/api/groq/flashcard-from-doc",
       payload,
       45000,
+      true, // Use heavy throttle for document processing
     );
     return data.flashcards || [];
   } catch {

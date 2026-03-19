@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { callHfChat, formatError, classifyTaskType } from "../_utils";
+import { callGroqChat, formatError, classifyTaskType } from "../_utils";
 import type { ChatMessage, UserContext } from "@/types/chat";
 import { getFormulaSheetContext } from "@/data/formulaSheets";
 import { createClient } from "@/lib/supabase/server";
@@ -435,7 +435,7 @@ REMEMBER: You aren't just an AI with an 'analogy' feature. You are the bridge be
     // STEP 4: Send to AI and return the response
     // ========================================================================
 
-    const content = await callHfChat(
+    const content = await callGroqChat(
       {
         messages: [
           {
@@ -455,7 +455,8 @@ REMEMBER: You aren't just an AI with an 'analogy' feature. You are the bridge be
         max_tokens: maxTokens,
         temperature: researchMode ? 0.3 : 0.55,
       },
-      taskType
+      taskType,
+      userContext?.selectedModel || null
     );
 
     return NextResponse.json({ role: "assistant", content });

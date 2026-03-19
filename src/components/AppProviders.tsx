@@ -9,6 +9,9 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import FirstVisitOverlay from "@/components/FirstVisitOverlay";
 import ThemeSync from "@/components/ThemeSync";
 import { AuthProvider } from "@/context/AuthContext";
+import { TourProvider } from "@/context/TourContext";
+import PageTour from "@/components/PageTour";
+import { TourAutoTrigger } from "@/components/TourAutoTrigger";
 
 export default function AppProviders({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => new QueryClient());
@@ -28,11 +31,15 @@ export default function AppProviders({ children }: { children: React.ReactNode }
       <AuthProvider>
         <QueryClientProvider client={queryClient}>
           <TooltipProvider>
-            <ThemeSync />
-            <FirstVisitOverlay />
-            {children}
-            <Toaster />
-            <Sonner />
+            <TourProvider>
+              <ThemeSync />
+              <FirstVisitOverlay />
+              <TourAutoTrigger />
+              <PageTour />
+              {children}
+              <Toaster />
+              <Sonner />
+            </TourProvider>
           </TooltipProvider>
         </QueryClientProvider>
       </AuthProvider>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { createClient } from "@/lib/supabase/client";
@@ -42,34 +42,46 @@ const syncPrefsFromProfile = (profile: any, userId: string) => {
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const [checking, setChecking] = useState(true);
+  const [isChecking, setIsChecking] = useState(true);
+  const userRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (loading) return;
+    // Wait for auth to finish loading
+    if (loading) {
+      return;
+    }
 
+    // No user - redirect to home
     if (!user) {
-      // Not signed in — send to landing page (auth is user-initiated there)
+      setIsChecking(false);
       router.replace("/");
       return;
     }
 
-    // Signed in — check if onboarding is complete.
-    // Check localStorage first (fast), then Supabase as source of truth.
+    // User is authenticated - check onboarding status
     const checkOnboarding = async () => {
+      // Only check if user changed (prevent redundant checks)
+      if (userRef.current === user.id) {
+        setIsChecking(false);
+        return;
+      }
+      
+      userRef.current = user.id;
+      setIsChecking(true);
+
       try {
+        // Fast path: check localStorage first
         const prefs = JSON.parse(localStorage.getItem("userPreferences") || "{}");
-        if (prefs?.onboardingComplete && (!prefs.userId || prefs.userId === user.id)) {
-          setChecking(false);
+        if (prefs?.onboardingComplete && prefs.userId === user.id) {
+          setIsChecking(false);
           return;
         }
-      } catch {}
 
-      // localStorage incomplete or missing — check Supabase profile
-      try {
+        // Slow path: check database
         const supabase = createClient();
         const { data: profile } = await supabase
           .from("profiles")
-          .select("onboarding_complete")
+          .select("onboarding_complete, grade, state, subjects, hobbies")
           .eq("id", user.id)
           .single();
 
@@ -81,19 +93,24 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
               .update({ onboarding_complete: true, updated_at: new Date().toISOString() })
               .eq("id", user.id);
           }
-          setChecking(false);
+          setIsChecking(false);
           return;
         }
-      } catch {}
 
-      // Onboarding genuinely not complete
-      router.replace("/onboarding?step=2");
+        // No profile data - redirect to onboarding
+        router.replace("/onboarding?step=2");
+      } catch (error) {
+        console.warn("[ProtectedRoute] Error checking onboarding:", error);
+        // On error, allow access anyway (graceful degradation)
+        setIsChecking(false);
+      }
     };
 
     checkOnboarding();
   }, [user, loading, router]);
 
-  if (loading || checking) {
+  // Show loading spinner while checking auth/onboarding
+  if (loading || isChecking) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -101,7 +118,10 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     );
   }
 
-  if (!user) return null;
+  // Not authenticated - don't render anything (redirect happening)
+  if (!user) {
+    return null;
+  }
 
   return <>{children}</>;
 };

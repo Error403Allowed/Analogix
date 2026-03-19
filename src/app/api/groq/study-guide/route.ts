@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { callHfChat, formatError } from "../_utils";
+import { callGroqChat, formatError } from "../_utils";
 import { extractYouTubeVideoId, fetchYouTubeTranscript } from "@/lib/youtube";
 
 export const runtime = "nodejs";
@@ -215,7 +215,7 @@ Return ONLY valid JSON (no markdown, no preamble):
 
     let docAnalysis: Record<string, unknown> = {};
     try {
-      const analysisContent = await callHfChat(
+      const analysisContent = await callGroqChat(
         {
           messages: [
             { role: "system", content: "You are an expert educational analyst. Return only valid JSON." },
@@ -364,7 +364,7 @@ REMINDER: Replace ALL example values with real content from the document. Omit a
 }`;
 
 
-    const content = await callHfChat(
+    const content = await callGroqChat(
       {
         messages: [
           { role: "system", content: systemPrompt },
@@ -398,7 +398,7 @@ REMINDER: Replace ALL example values with real content from the document. Omit a
 
     let studyGuide = parseStudyGuide(contentStr);
     if (!studyGuide) {
-      const repairContent = await callHfChat(
+      const repairContent = await callGroqChat(
         {
           messages: [
             {

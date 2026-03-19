@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { callHfChat, formatError } from "../_utils";
+import { callGroqChat, formatError } from "../_utils";
 
 export const runtime = "nodejs";
 
@@ -9,7 +9,7 @@ export async function POST(request: Request) {
     const userName: string = body.userName || "Student";
     const streak: number = body.streak || 0;
 
-    const content = await callHfChat({
+    const content = await callGroqChat({
       messages: [
         {
           role: "system",

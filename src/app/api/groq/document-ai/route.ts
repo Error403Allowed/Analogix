@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { callHfChat } from "../_utils";
+import { callGroqChat } from "../_utils";
 import type {
   StructuredDocument,
   DocumentPatch,
@@ -181,7 +181,7 @@ export async function POST(request: Request) {
     const prompt = promptFn(text, subject);
 
     // Get AI response
-    const result = await callHfChat(
+    const result = await callGroqChat(
       {
         messages: [
           { role: "system", content: "You are an expert educational AI assistant. Output ONLY the requested content - no preamble, no explanations, no markdown unless specifically requested." },

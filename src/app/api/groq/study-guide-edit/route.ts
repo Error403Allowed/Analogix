@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { callHfChat, formatError } from "../_utils";
+import { callGroqChat, formatError } from "../_utils";
 
 export const runtime = "nodejs";
 
@@ -89,7 +89,7 @@ Rules:
 - Student: Year ${grade}${subject ? `, ${subject}` : ""}, Australia
 - Output ONLY the JSON. Nothing else whatsoever.`;
 
-    const rawResponse = await callHfChat(
+    const rawResponse = await callGroqChat(
       {
         messages: [
           { role: "system", content: systemPrompt },

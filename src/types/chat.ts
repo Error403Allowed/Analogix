@@ -29,4 +29,5 @@ export interface UserContext {
     openAccess?: boolean;
     source: string;
   }>;
+  selectedModel?: string; // User-selected Groq model (e.g., "llama-3.3-70b-versatile") or undefined for auto
 }

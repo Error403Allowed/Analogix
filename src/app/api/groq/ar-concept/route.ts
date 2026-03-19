@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { callHfChat, formatError } from "../_utils";
+import { callGroqChat, formatError } from "../_utils";
 
 export const runtime = "nodejs";
 
@@ -62,7 +62,7 @@ Rules:
     const userMsg = `Concept: "${concept}"${subject ? `\nSubject: ${subject}` : ""}
 Create a 3D AR visualisation JSON for this concept.`;
 
-    const raw = await callHfChat(
+    const raw = await callGroqChat(
       {
         messages: [
           { role: "system", content: systemPrompt },

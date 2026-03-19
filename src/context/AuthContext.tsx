@@ -49,7 +49,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+    };
   }, [supabase]);
 
   const signInWithGoogle = useCallback(async (next = "/onboarding?step=2") => {

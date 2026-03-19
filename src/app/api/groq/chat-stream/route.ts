@@ -1,4 +1,4 @@
-import { callHfChatStream, formatError, classifyTaskType } from "../_utils";
+import { callGroqChatStream, formatError, classifyTaskType } from "../_utils";
 import type { ChatMessage, UserContext } from "@/types/chat";
 import { getFormulaSheetContext } from "@/data/formulaSheets";
 import { createClient } from "@/lib/supabase/server";
@@ -471,7 +471,7 @@ export async function POST(request: Request) {
     const taskType = classifyTaskType(messages, primarySubject);
     const isResearchMode = Boolean(userContext?.researchMode);
 
-    const upstreamStream = await callHfChatStream(
+    const upstreamStream = await callGroqChatStream(
       {
         messages: [
           { role: "system", content: systemPrompt },
@@ -481,6 +481,7 @@ export async function POST(request: Request) {
         temperature: isResearchMode ? 0.3 : 0.55,
       },
       taskType,
+      userContext?.selectedModel || null
     );
 
     return new Response(upstreamStream, {

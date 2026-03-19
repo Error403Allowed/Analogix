@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { callHfChat } from "../_utils";
+import { callGroqChat } from "../_utils";
 
 export const runtime = "nodejs";
 
@@ -59,7 +59,7 @@ Rules:
 - Use Australian curriculum language (e.g. "maths" not "math")
 - Return ONLY the JSON object. Nothing else.`;
 
-    const content = await callHfChat(
+    const content = await callGroqChat(
       {
         messages: [
           { role: "system", content: systemPrompt },

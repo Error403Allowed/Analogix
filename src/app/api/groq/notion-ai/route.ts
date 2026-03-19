@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { callHfChatStream, classifyTaskType } from "../_utils";
+import { callGroqChatStream, classifyTaskType } from "../_utils";
 
 export const runtime = "nodejs";
 
@@ -28,7 +28,7 @@ Rules:
     const taskType = classifyTaskType([{ role: "user", content: prompt }], subject);
 
     // Get the streaming response from Groq
-    const stream = await callHfChatStream(
+    const stream = await callGroqChatStream(
       {
         messages: [
           { role: "system", content: systemPrompt },

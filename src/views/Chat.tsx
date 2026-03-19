@@ -476,7 +476,8 @@ const Chat = () => {
     learningStyle: userPrefs.learningStyle,
     analogyIntensity: analogyModeEnabled ? 3 : 0,
     analogyAnchor: overrideAnchor ?? undefined,
-    memoryManagement: false
+    memoryManagement: false,
+    selectedModel,
   }), [
     selectedSubject,
     userSubjects,
@@ -484,7 +485,8 @@ const Chat = () => {
     userPrefs.grade,
     userPrefs.state,
     userPrefs.learningStyle,
-    analogyModeEnabled
+    analogyModeEnabled,
+    selectedModel,
   ]);
 
   const handleCopy = useCallback(async (text: string, id: string) => {
@@ -1174,6 +1176,7 @@ const Chat = () => {
         researchMode,
         researchQuery: researchQuery || undefined,
         researchSources,
+        selectedModel, // Pass the user's selected model
       };
 
       // Get localStorage data for personality/memory (localhost development)
@@ -1958,7 +1961,7 @@ const Chat = () => {
                   </div>
                 )}
                 
-                <div className="relative rounded-2xl border border-border/60 bg-card shadow-sm" style={{ overflow: 'visible' }}>
+                <div className="relative rounded-2xl border border-border/60 bg-card shadow-sm" style={{ overflow: 'visible' }} data-tour="chat-input">
                   <Textarea
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
@@ -2003,7 +2006,7 @@ const Chat = () => {
                       </div>
 
                       {/* Model selector */}
-                      <div className="relative" ref={modelSelectorRef}>
+                      <div className="relative" ref={modelSelectorRef} data-tour="model-selector">
                         <button
                           type="button"
                           onClick={() => setShowModelSelector(p => !p)}
@@ -2066,7 +2069,7 @@ const Chat = () => {
                       </div>
 
                       {/* Analogy toggle */}
-                      <div className="flex flex-col items-center gap-0.5">
+                      <div className="flex flex-col items-center gap-0.5" data-tour="analogy-toggle">
                         <button
                           type="button"
                           onClick={() => setAnalogyModeEnabled(p => !p)}
@@ -2079,7 +2082,7 @@ const Chat = () => {
                       </div>
 
                       {/* Research mode */}
-                      <div className="flex flex-col items-center gap-0.5">
+                      <div className="flex flex-col items-center gap-0.5" data-tour="research-toggle">
                         <button
                           type="button"
                           onClick={() => setResearchMode(p => !p)}

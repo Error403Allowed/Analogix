@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { callHfChat, formatError } from "../_utils";
+import { callGroqChat, formatError } from "../_utils";
 import type { QuizAnswerInput, QuizReview } from "@/types/quiz";
 
 export const runtime = "nodejs";
@@ -39,7 +39,7 @@ Subject: ${subject}
 Difficulty: ${difficulty}
 Answers (JSON): ${JSON.stringify(answers)}`;
 
-    const content = await callHfChat(
+    const content = await callGroqChat(
       {
         messages: [
           { role: "system", content: systemPrompt },

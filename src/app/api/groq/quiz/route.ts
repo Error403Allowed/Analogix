@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { callHfChat, formatError } from "../_utils";
+import { callGroqChat, formatError } from "../_utils";
 import type { QuizData } from "@/types/quiz";
 import { getPastPaperSnippets } from "@/lib/pastPapers";
 import type { PastPaperSnippet } from "@/lib/pastPapers";
@@ -149,7 +149,7 @@ Seed: ${diversitySeed}
 Past paper excerpts (for inspiration only, do not copy):
 ${sourceBlock}`;
 
-    const content = await callHfChat({
+    const content = await callGroqChat({
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
