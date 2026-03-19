@@ -269,10 +269,12 @@ interface DocEntry {
   title: string; lastUpdated: string; isGuide: boolean;
 }
 
+const DOCS_CACHE_KEY = "dashboard-docs-cache";
+
 function DocScrollRow() {
   const router = useRouter();
-  const [docs, setDocs] = useState<DocEntry[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [docs, setDocs] = useState<DocEntry[]>(() => getCached(DOCS_CACHE_KEY, []));
+  const [loading, setLoading] = useState(false); // Start false since we show cached immediately
 
   useEffect(() => {
     const load = async () => {
@@ -288,7 +290,9 @@ function DocScrollRow() {
           });
         });
         entries.sort((a, b) => new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime());
-        setDocs(entries.slice(0, 12));
+        const sliced = entries.slice(0, 12);
+        setDocs(sliced);
+        setCached(DOCS_CACHE_KEY, sliced);
       } catch { setDocs([]); }
       finally { setLoading(false); }
     };
@@ -480,12 +484,44 @@ function MiniTimer() {
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 type Prefs = { name?: string; subjects?: string[] };
 
+// Cache keys for localStorage
+const STATS_CACHE_KEY = "dashboard-stats-cache";
+const ACTIVITY_CACHE_KEY = "dashboard-activity-cache";
+const CACHE_EXPIRY_MS = 5 * 60 * 1000; // 5 minutes cache validity
+
+interface CachedData<T> {
+  data: T;
+  timestamp: number;
+}
+
+const getCached = <T,>(key: string, fallback: T): T => {
+  if (typeof window === "undefined") return fallback;
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return fallback;
+    const cached: CachedData<T> = JSON.parse(raw);
+    // Return cached data even if expired (for instant display), refresh happens in background
+    return cached.data;
+  } catch {
+    return fallback;
+  }
+};
+
+const setCached = <T,>(key: string, data: T): void => {
+  if (typeof window === "undefined") return;
+  try {
+    const cached: CachedData<T> = { data, timestamp: Date.now() };
+    localStorage.setItem(key, JSON.stringify(cached));
+  } catch {}
+};
+
 export default function Dashboard() {
   useAchievementChecker();
 
+  // Initialize with cached data for instant display
   const [prefs, setPrefs]                   = useState<Prefs>(() => readJson("userPreferences", {}));
-  const [stats, setStats]                   = useState<UserStats>({ quizzesDone: 0, currentStreak: 0, accuracy: 0, conversationsCount: 0, topSubject: "None", subjectCounts: {} });
-  const [weekActivity, setWeekActivity]     = useState<DayActivity[]>([]);
+  const [stats, setStats]                   = useState<UserStats>(() => getCached(STATS_CACHE_KEY, { quizzesDone: 0, currentStreak: 0, accuracy: 0, conversationsCount: 0, topSubject: "None", subjectCounts: {} }));
+  const [weekActivity, setWeekActivity]     = useState<DayActivity[]>(() => getCached(ACTIVITY_CACHE_KEY, []));
   const [showTutorial, setShowTutorial]     = useState(false);
   const [showCustomise, setShowCustomise]   = useState(false);
   const [menuOpen, setMenuOpen]             = useState(false);
@@ -508,14 +544,28 @@ export default function Dashboard() {
     }
   }, []);
 
+  // Load fresh data in background, update when ready
   useEffect(() => {
+    let mounted = true;
     const refresh = async () => {
-      setStats(await statsStore.get());
-      setWeekActivity(await activityLog.getLast7());
+      try {
+        const [freshStats, freshActivity] = await Promise.all([
+          statsStore.get(),
+          activityLog.getLast7(),
+        ]);
+        if (!mounted) return;
+        setStats(freshStats);
+        setWeekActivity(freshActivity);
+        // Cache the fresh data for next page load
+        setCached(STATS_CACHE_KEY, freshStats);
+        setCached(ACTIVITY_CACHE_KEY, freshActivity);
+      } catch (error) {
+        console.warn("[Dashboard] Failed to refresh stats:", error);
+      }
     };
     refresh();
     window.addEventListener("statsUpdated", refresh);
-    return () => window.removeEventListener("statsUpdated", refresh);
+    return () => { mounted = false; window.removeEventListener("statsUpdated", refresh); };
   }, []);
 
   useEffect(() => {

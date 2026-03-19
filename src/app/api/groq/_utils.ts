@@ -13,6 +13,24 @@ const REASONING_MODEL          = "deepseek-r1-distill-llama-70b";             //
 const REASONING_FALLBACK_MODEL = "llama-3.3-70b-versatile";                    // Safe fallback
 const LIGHTWEIGHT_MODEL        = "llama-3.1-8b-instant";                       // Fast, cheap — use for greeting/banner
 
+// User-selected model (from client) — if provided, use this instead of auto-selection
+let userSelectedModel: string | null = null;
+
+/**
+ * Set the user-selected model
+ * @param model The model string to use (e.g., "llama-3.3-70b-versatile"), or null to use auto-selection
+ */
+export const setUserSelectedModel = (model: string | null) => {
+  userSelectedModel = model;
+};
+
+/**
+ * Get the user-selected model, or null if auto-selection is enabled
+ */
+export const getUserSelectedModel = (): string | null => {
+  return userSelectedModel;
+};
+
 // Model-specific token limits (safe values below actual limits)
 // Llama 4 Scout: 128K context, 8K output max
 // Llama 3.3 70B: 128K context, 8K output max
@@ -298,7 +316,13 @@ export const classifyTaskType = (
 // MODEL SELECTION
 // ============================================================================
 
-const getModelsForTaskType = (taskType: TaskType): string[] => {
+const getModelsForTaskType = (taskType: TaskType, userModel?: string | null): string[] => {
+  // If user has explicitly selected a model, use only that model
+  if (userModel && userModel !== "auto") {
+    return [userModel];
+  }
+
+  // Auto-selection: pick models based on task type
   switch (taskType) {
     case "coding":
       return [CODING_MODEL, DEFAULT_MODEL];
@@ -414,7 +438,8 @@ export const callHfChat = async (
     max_tokens: number;
     temperature: number;
   },
-  taskType: TaskType = "default"
+  taskType: TaskType = "default",
+  userSelectedModel?: string | null
 ) => {
   assertApiKeys();
 
@@ -428,7 +453,7 @@ export const callHfChat = async (
     }
   }
 
-  const taskModels = getModelsForTaskType(taskType);
+  const taskModels = getModelsForTaskType(taskType, userSelectedModel);
   const modelsToTry = [...new Set([...taskModels, DEFAULT_MODEL])];
 
   // Estimate tokens in the request (~3.5 chars per token for English, more conservative for system prompts)
@@ -562,11 +587,12 @@ export const callHfChatStream = async (
     max_tokens: number;
     temperature: number;
   },
-  taskType: TaskType = "default"
+  taskType: TaskType = "default",
+  userSelectedModel?: string | null
 ) => {
   assertApiKeys();
 
-  const taskModels = getModelsForTaskType(taskType);
+  const taskModels = getModelsForTaskType(taskType, userSelectedModel);
   const modelsToTry = [...new Set([...taskModels, DEFAULT_MODEL])];
 
   // Estimate tokens in the request (~3.5 chars per token for English, more conservative for system prompts)
