@@ -344,12 +344,6 @@ function DocScrollRow() {
           </div>
         </button>
       ))}
-      {/* "All docs" card */}
-      <button onClick={() => router.push("/subjects")}
-        className="w-36 h-36 shrink-0 rounded-xl border border-dashed border-border/40 hover:border-primary/40 transition-colors flex flex-col items-center justify-center gap-1.5 text-muted-foreground/40 hover:text-primary/60">
-        <ChevronRight className="w-5 h-5" />
-        <span className="text-[10px] font-semibold">All docs</span>
-      </button>
     </div>
   );
 }
@@ -602,7 +596,7 @@ export default function Dashboard() {
 
       {/* ── Scrollable content ── */}
       <div className="overflow-y-auto h-[calc(100%-56px)]">
-        <div className="px-6 pt-5 pb-8 space-y-4 max-w-4xl mx-auto w-full">
+        <div className="dashboard-container px-6 pt-5 pb-8 space-y-4 max-w-4xl mx-auto w-full">
 
           {/* Stats strip */}
           {on("stats") && (
@@ -626,7 +620,7 @@ export default function Dashboard() {
                 { label: "Quizzes done",  value: qs,  suffix: null, colour: "primary" as const, icon: Target,     extra: null },
                 { label: "Accuracy",      value: acc, suffix: "%",  colour: "emerald" as const, icon: TrendingUp,
                   extra: acc > 0 ? (
-                    <div className="mt-2 h-1 bg-emerald-500/15 rounded-full overflow-hidden">
+                    <div className="mt-2 h-1  bg-blue-950/15 rounded-full overflow-hidden">
                       <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${acc}%` }} />
                     </div>
                   ) : null },
@@ -634,38 +628,40 @@ export default function Dashboard() {
               ]).map(card => {
                 const c = colourMap[card.colour]; const Icon = card.icon;
                 return (
-                  <DashboardPanel key={card.label} className={`p-4 border ${c.bg}`}>
-                    <div className={`w-7 h-7 rounded-xl ${c.icon} flex items-center justify-center mb-2`}>
-                      <Icon className={`w-3.5 h-3.5 ${c.text}`} />
+<div key={card.label} className="dashboard-panel p-4">
+                    <div className={`w-7 h-7 rounded-xl bg-muted/20 flex items-center justify-center mb-2`}>
+                      <Icon className={`w-3.5 h-3.5 text-muted-foreground`} />
                     </div>
                     <p className="text-2xl font-display font-black text-foreground tracking-tighter leading-none">
                       {card.value}{card.suffix && <span className="text-base text-muted-foreground">{card.suffix}</span>}
                     </p>
                     <p className={`text-[9px] font-black uppercase tracking-[0.18em] mt-0.5 ${c.text}`}>{card.label}</p>
                     {card.extra}
-                  </DashboardPanel>
+                  </div>
                 );
               })}
             </div>
           )}
 
+
           {/* AI Tutor — full width */}
-          {on("chat") && (
-            <DashboardPanel className="p-5">
+{on("chat") && (
+            <div className="dashboard-panel p-5">
               <AiChatWidget />
-            </DashboardPanel>
+            </div>
           )}
 
           {/* Docs — full width horizontal scroll */}
           {on("docs") && (
-            <DashboardPanel className="p-5">
+            <div className="dashboard-panel p-5">
               <DocScrollRow />
-            </DashboardPanel>
+            </div>
           )}
 
+
           {/* Events — full width, timer embedded as a footer strip inside */}
-          {(on("events") || on("timer")) && (
-            <DashboardPanel className="p-5 flex flex-col">
+{(on("events") || on("timer")) && (
+            <div className="dashboard-panel p-5 flex flex-col">
               {on("events") && <UpcomingEvents />}
               {on("timer") && (
                 <div className={cn(
@@ -675,20 +671,21 @@ export default function Dashboard() {
                   <MiniTimer />
                 </div>
               )}
-            </DashboardPanel>
+            </div>
           )}
+
 
           {/* Quick links + Flashcards */}
           {(on("quicklinks") || on("flashcards")) && (
             <div className="grid grid-cols-12 gap-4">
-              {on("quicklinks") && (
-                <DashboardPanel className={cn("p-5 overflow-visible", on("flashcards") ? "col-span-12 lg:col-span-8" : "col-span-12")}>
+{on("quicklinks") && (
+                <div className={cn("dashboard-panel p-5 overflow-visible", on("flashcards") ? "col-span-12 lg:col-span-8" : "col-span-12")}>
                   <p className="text-[9px] font-black uppercase tracking-[0.22em] text-muted-foreground/50 mb-3">🔗 Quick Links</p>
                   <QuickLinks />
-                </DashboardPanel>
+                </div>
               )}
               {on("flashcards") && (
-                <DashboardPanel className={cn("p-5 flex flex-col gap-3 border border-primary/10 bg-primary/[0.03]",
+                <div className={cn("dashboard-panel p-5 flex flex-col gap-3 border border-primary/10 bg-accent/10",
                   on("quicklinks") ? "col-span-12 lg:col-span-4" : "col-span-12")}>
                   <p className="text-[9px] font-black uppercase tracking-[0.22em] text-muted-foreground/50">🃏 Flashcards</p>
                   <p className="text-xs text-muted-foreground/65 leading-relaxed flex-1">
@@ -698,10 +695,11 @@ export default function Dashboard() {
                     className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 transition-opacity">
                     <Layers className="w-3.5 h-3.5" /> Open Flashcards
                   </a>
-                </DashboardPanel>
+                </div>
               )}
             </div>
           )}
+
 
           {/* Empty state */}
           {!on("stats") && !on("chat") && !on("docs") && !on("events") && !on("timer") && !on("quicklinks") && !on("flashcards") && (

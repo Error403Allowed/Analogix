@@ -28,6 +28,9 @@ import {
   Bookmark,
   BookmarkCheck,
   ExternalLink,
+  Sparkles,
+  Atom,
+  Settings2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -46,6 +49,7 @@ import { buildInterestList } from "@/utils/interests";
 import { extractFileText, ACCEPTED_FILE_TYPES } from "@/utils/extractFileText";
 import type { ResearchSource, SavedResearchSource } from "@/types/research";
 import { researchStore } from "@/utils/researchStore";
+import ProfileSheet from "@/components/ProfileSheet";
 
 // Splits AI response into { thinking, response } based on <think>...</think> tags.
 // Handles: leading whitespace before <think>, missing </think> (model cut off mid-think),
@@ -294,6 +298,9 @@ const Chat = () => {
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [savedSources, setSavedSources] = useState<SavedResearchSource[]>([]);
 
+  // AI SETTINGS: Show personality & memory settings
+  const [showAISettings, setShowAISettings] = useState(false);
+
   // RE-EXPLAIN: Track which message has the anchor picker open
   const [reExplainOpenId, setReExplainOpenId] = useState<string | null>(null);
   const [reExplainingId, setReExplainingId] = useState<string | null>(null);
@@ -526,7 +533,7 @@ const Chat = () => {
     } catch {
       setMessages((prev) => prev.map((m) => (
         m.id === messageId
-          ? { ...m, id: `${messageId}-regen-${Date.now()}`, content: "I couldn't reach the AI service. Try again in a moment." }
+          ? { ...m, id: `${messageId}-regen-${Date.now()}`, content: "I couldn't reach the AI service, you've either hit the rate limit of 1000 requests per day or you need to check your internet." }
           : m
       )));
     } finally {
@@ -1130,13 +1137,26 @@ const Chat = () => {
       const newHistory = [...messagesHistory, { role: "user" as const, content: userContent }];
       
       // We also give the AI "Context" (your hobbies and style).
-    const context = {
-      ...buildContext(anchorForRequest),
-      analogyIntensity: researchMode ? 0 : (analogyModeEnabled ? 3 : 0),
-      researchMode,
-      researchQuery: researchQuery || undefined,
-      researchSources,
-    };
+      const context = {
+        ...buildContext(anchorForRequest),
+        analogyIntensity: researchMode ? 0 : (analogyModeEnabled ? 3 : 0),
+        researchMode,
+        researchQuery: researchQuery || undefined,
+        researchSources,
+      };
+
+      // Get localStorage data for personality/memory (localhost development)
+      const getLocalStorageData = () => {
+        if (typeof window === "undefined") return null;
+        const personality = localStorage.getItem("ai_personality");
+        const memories = localStorage.getItem("ai_memories");
+        return {
+          personality: personality ? JSON.parse(personality) : null,
+          memories: memories ? JSON.parse(memories) : [],
+        };
+      };
+
+      const localStorageData = getLocalStorageData();
 
       try {
         // Create a placeholder message that we'll fill with streaming tokens
@@ -1161,7 +1181,7 @@ const Chat = () => {
         let lastRenderTime = 0;
         const RENDER_INTERVAL = 100;
 
-        const stream = getGroqStream(newHistory, context);
+        const stream = getGroqStream(newHistory, context, localStorageData);
         for await (const token of stream) {
           if (abort.signal.aborted) break;
           accumulated += token;
@@ -1259,7 +1279,7 @@ const Chat = () => {
         setMessages(prev => [...prev, {
           id: (Date.now() + 1).toString(),
           role: "assistant",
-          content: "I couldn't reach the AI service. Try again in a moment.",
+          content: "I couldn't reach the AI service, you've either hit the rate limit of 1000 requests per day or you need to check your internet.",
         }]);
         setStreamingId(null);
       } finally {
@@ -1300,7 +1320,7 @@ const Chat = () => {
       setMessages(prev => [...prev, {
         id: newMsgId,
         role: "assistant",
-        content: "I couldn't reach the AI service. Try again in a moment.",
+        content: "I couldn't reach the AI service, you've either hit the rate limit of 1000 requests per day or you need to check your internet.",
         analogy: `ai-generated-${newMsgId}`,
       }]);
     } finally {
@@ -1952,37 +1972,56 @@ const Chat = () => {
                       </div>
 
                       {/* Analogy toggle */}
-                      <button
-                        type="button"
-                        onClick={() => setAnalogyModeEnabled(p => !p)}
-                        disabled={isInputLocked}
-                        className={`w-8 h-8 rounded-full flex items-center justify-center transition-all disabled:opacity-40 ${analogyModeEnabled ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"}`}
-                        title={analogyModeEnabled ? "Analogies on — click to turn off" : "Analogies off — click to turn on"}
-                      >
-                        <Lightbulb className="w-3.5 h-3.5" />
-                      </button>
+                      <div className="flex flex-col items-center gap-0.5">
+                        <button
+                          type="button"
+                          onClick={() => setAnalogyModeEnabled(p => !p)}
+                          disabled={isInputLocked}
+                          className={`w-8 h-8 rounded-full flex items-center justify-center transition-all disabled:opacity-40 ${analogyModeEnabled ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"}`}
+                          title={analogyModeEnabled ? "Analogies on — click to turn off" : "Analogies off — click to turn on"}
+                        >
+                          <Lightbulb className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
 
                       {/* Research mode */}
-                      <button
-                        type="button"
-                        onClick={() => setResearchMode(p => !p)}
-                        disabled={isInputLocked}
-                        className={`w-8 h-8 rounded-full flex items-center justify-center transition-all disabled:opacity-40 ${researchMode ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"}`}
-                        title={researchMode ? "Research mode on — click to turn off" : "Research mode off — click to turn on"}
-                      >
-                        {researchLoading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
-                      </button>
+                      <div className="flex flex-col items-center gap-0.5">
+                        <button
+                          type="button"
+                          onClick={() => setResearchMode(p => !p)}
+                          disabled={isInputLocked}
+                          className={`w-8 h-8 rounded-full flex items-center justify-center transition-all disabled:opacity-40 ${researchMode ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"}`}
+                          title={researchMode ? "Research mode on — click to turn off" : "Research mode off — click to turn on"}
+                        >
+                          {researchLoading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Atom className="w-3.5 h-3.5" />}
+                        </button>
+                      </div>
+
+                      {/* AI Settings button */}
+                      <div className="flex flex-col items-center gap-0.5">
+                        <button
+                          type="button"
+                          onClick={() => setShowAISettings(true)}
+                          disabled={isInputLocked}
+                          className="w-8 h-8 rounded-full flex items-center justify-center transition-all text-muted-foreground hover:text-primary hover:bg-primary/10"
+                          title="AI Settings — Customize personality & memory"
+                        >
+                          <Settings2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
 
                       {/* Formula sheet — only if subject has formulas */}
                       {getFormulaSheet(selectedSubject || "") && (
-                        <button
-                          type="button"
-                          onClick={() => setFormulaPanelOpen(o => !o)}
-                          className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${formulaPanelOpen ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"}`}
-                          title="Formula sheet"
-                        >
-                          <Sigma className="w-3.5 h-3.5" />
-                        </button>
+                        <div className="flex flex-col items-center gap-0.5">
+                          <button
+                            type="button"
+                            onClick={() => setFormulaPanelOpen(o => !o)}
+                            className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${formulaPanelOpen ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"}`}
+                            title="Formula sheet"
+                          >
+                            <Sigma className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       )}
                     </div>
                     {(isTyping || streamingId) ? (
@@ -2022,7 +2061,6 @@ const Chat = () => {
                     style={{ width: 280 }}
                   >
                     <div className="flex items-center justify-between px-3 py-2.5 border-b border-border">
-                      <span className="text-xs font-bold text-foreground">Research Library</span>
                       <button type="button" onClick={() => setLibraryOpen(false)} className="text-muted-foreground hover:text-foreground p-1 rounded-lg hover:bg-muted">
                         <X className="w-3.5 h-3.5" />
                       </button>
@@ -2178,6 +2216,9 @@ const Chat = () => {
             </div>
           </div>
       </div>
+
+      {/* AI Settings Sheet */}
+      <ProfileSheet open={showAISettings} onOpenChange={setShowAISettings} />
     </div>
   );
 };

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Settings, User, Flame, Layers, Sigma } from "lucide-react";
+import { Settings, User, Flame, Layers, Sigma, Sparkles, Brain } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,7 @@ import { ThemeToggle } from "./ThemeToggle";
 import ThemeSelector from "./ThemeSelector";
 import { useRouter } from "next/navigation";
 import SettingsDialog from "./SettingsDialog";
+import ProfileSheet from "./ProfileSheet";
 import { getAIGreeting } from "@/services/groq";
 import { HOBBY_OPTIONS, POPULAR_INTERESTS } from "@/utils/interests";
 
@@ -42,6 +43,7 @@ const Header = ({ userName = "Student", streak = 0 }: HeaderProps) => {
   const router = useRouter();
   const [showSettings, setShowSettings] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  const [showAISettings, setShowAISettings] = useState(false);
   const [greeting, setGreeting] = useState(`Welcome back, ${userName}.`);
   const [hydrated, setHydrated] = useState(false);
 
@@ -263,13 +265,24 @@ const Header = ({ userName = "Student", streak = 0 }: HeaderProps) => {
             </Button>
 
             {/* Settings */}
-            <Button 
-              variant="ghost" 
-              size="icon" 
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => setShowSettings(true)}
               className="text-grey-500 dark:text-grey-400 hover:text-[var(--g-1)] transition-colours"
             >
               <Settings className="w-5 h-5" />
+            </Button>
+
+            {/* AI Settings - Quick access to personality & memory */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setShowAISettings(true)}
+              title="AI Settings"
+              className="text-muted-foreground hover:text-primary transition-colors"
+            >
+              <Sparkles className="w-5 h-5" />
             </Button>
 
             {/* Profile */}
@@ -286,6 +299,7 @@ const Header = ({ userName = "Student", streak = 0 }: HeaderProps) => {
       </motion.header>
 
       <SettingsDialog open={showSettings} onOpenChange={setShowSettings} />
+      <ProfileSheet open={showAISettings} onOpenChange={setShowAISettings} />
 
       <Dialog open={showProfile} onOpenChange={setShowProfile}>
         <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">

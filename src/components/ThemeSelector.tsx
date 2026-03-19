@@ -62,10 +62,10 @@ const withDerived = (theme: Theme): Theme => {
   const glass = theme.glass ?? {
     bg: "rgba(255,255,255,0.72)",
     tint: hexToRgba(theme.g[0], 0.12),
-    border: "rgba(255,255,255,0.18)",
+    border: hexToRgba(theme.g[0], 0.20),
     darkBg: "rgba(18,28,46,0.88)",
     darkTint: hexToRgba(theme.g[0], 0.06),
-    darkBorder: "rgba(255,255,255,0.10)",
+    darkBorder: hexToRgba(theme.g[0], 0.15),
   };
   const charts = theme.charts ?? [
     theme.g[0],
@@ -312,7 +312,7 @@ const ThemeSelector = () => {
               className={`relative p-2 rounded-xl border text-left transition-all hover:scale-105 ${
                 activeTheme === theme.name 
                   ? "border-primary bg-primary/5 ring-1 ring-primary" 
-                  : "border-white/20 bg-white/5 hover:border-white/40"
+                  : "border-primary/10 bg-primary/5 hover:border-primary/30"
               }`}
             >
               <div 

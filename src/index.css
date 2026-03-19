@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=JetBrains+Mono:wght@400;500;600&family=Manrope:wght@400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
 
 @tailwind base;
 @tailwind components;
@@ -6,44 +6,41 @@
 
 @layer base {
   :root {
+    /* Notion-style with colorful gradients */
     --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --foreground: 0 0% 15%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 0 0% 15%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 0 0% 15%;
 
     --primary: var(--p-h) var(--p-s) var(--p-l);
-    --primary-foreground: 210 40% 98%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 0 0% 95%;
+    --secondary-foreground: 0 0% 15%;
 
-    --muted-light: 210 40% 96.1%;
-    --muted-foreground-light: 215.4 16.3% 40%;
-    --muted-dark: 0 0% 18%;
-    --muted-foreground-dark: 0 0% 62%;
-    --muted: var(--muted-light);
-    --muted-foreground: var(--muted-foreground-light);
+    --muted: 0 0% 95%;
+    --muted-foreground: 0 0% 45%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --accent-2: 199 89% 48%;
-    --micro-accent: var(--accent-2);
+    --accent: 210 20% 97%;
+    --accent-foreground: 210 20% 38%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --success: var(--primary);
-    --success-foreground: var(--primary-foreground);
-    --warning: var(--primary);
-    --warning-foreground: var(--primary-foreground);
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
+    --success: 142 71% 45.5%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 55%;
+    --warning-foreground: 0 0% 100%;
+
+    --border: 0 0% 92%;
+    --input: 0 0% 97%;
     --ring: var(--p-h) var(--p-s) var(--p-l);
 
+    /* Colorful gradients - theme driven */
     --bg-1: rgba(14, 165, 166, 0.14);
     --bg-2: rgba(37, 99, 235, 0.12);
     --bg-3: rgba(15, 118, 110, 0.12);
@@ -51,62 +48,69 @@
     --bg-2-dark: rgba(37, 99, 235, 0.035);
     --bg-3-dark: rgba(15, 118, 110, 0.025);
 
-    --glass-bg-light: rgba(255, 255, 255, 0.85);
-    --glass-tint-light: rgba(14, 165, 166, 0.08);
-    --glass-border-light: rgba(0, 0, 0, 0.10);
-    --glass-bg-dark: rgba(26, 26, 26, 0.92);    /* neutral dark, no navy tint */
-    --glass-tint-dark: rgba(255, 255, 255, 0.02);
-    --glass-border-dark: rgba(255, 255, 255, 0.08);
+    --glass-bg-light: rgba(255, 255, 255, 0.95);
+    --glass-tint-light: rgba(241, 241, 239, 0.5);
+    --glass-border-light: transparent;
+    --glass-bg-dark: rgba(25, 25, 25, 0.98);
+    --glass-tint-dark: rgba(56, 189, 248, 0.05);
+    --glass-border-dark: transparent;
     --glass-bg: var(--glass-bg-light);
     --glass-tint: var(--glass-tint-light);
     --glass-border: var(--glass-border-light);
-    --glass-shadow: 0 28px 60px -32px rgba(0, 0, 0, 0.35);
+    --glass-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 
-    --chart-1: #2563eb;
-    --chart-2: #4f46e5;
-    --chart-3: #4338ca;
-    --chart-4: #14b8a6;
-    --chart-5: #f59e0b;
-    --chart-6: #ef4444;
+    --chart-1: 204 39% 47%;
+    --chart-2: 264 26% 54%;
+    --chart-3: 142 25% 46%;
+    --chart-4: 38 54% 51%;
+    --chart-5: 354 55% 51%;
 
-    --radius: 1.5rem;
-    --blur: 20px;
-    --glass-opacity: 0.4;
-    --border-opacity: 0.1;
-    --font-weight-display: 700;
+    --radius: 0.375rem;
+    --blur: 8px;
+    --glass-opacity: 0.95;
+    --border-opacity: 0.08;
+    --font-weight-display: 600;
 
-    /* Theme Defaults (Blue) */
-    --p-h: 199.2;
-    --p-s: 78.2%;
-    --p-l: 48.3%;
-    --g-1: #0ea5a6;
-    --g-2: #2563eb;
-    --g-3: #0f766e;
+    --g-1: #37352F;
+    --g-2: #487CA5;
+    --g-3: #8A67AB;
 
-    --font-sans:
-      "Manrope", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
-      sans-serif;
-    --font-display: "Fraunces", ui-serif, Georgia, "Times New Roman", serif;
+    --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, "Apple Color Emoji", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol";
+    --font-display: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, "Apple Color Emoji", Arial, sans-serif;
+    --font-mono: "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas, monospace;
   }
 
   .dark {
-    /* ── Notion-style near-black surfaces ───────────────────────── */
-    --background: 0 0% 10%;         /* #191919 — Notion's exact bg   */
-    --foreground: 0 0% 93%;         /* Near-white text               */
+    --background: 0 0% 9%;
+    --foreground: 0 0% 98%;
 
-    --card: 0 0% 13%;               /* #202020 — barely lifted card  */
-    --card-foreground: 0 0% 93%;
+    --card: 0 0% 14%;
+    --card-foreground: 0 0% 98%;
 
-    --popover: 0 0% 13%;
-    --popover-foreground: 0 0% 93%;
+    --popover: 0 0% 14%;
+    --popover-foreground: 0 0% 98%;
+
+    --primary: var(--p-h) var(--p-s) var(--p-l);
+    --primary-foreground: 0 0% 100%;
 
     --secondary: 0 0% 16%;
-    --secondary-foreground: 0 0% 93%;
+    --secondary-foreground: 0 0% 98%;
 
-    --muted: var(--muted-dark);
-    --muted-foreground: var(--muted-foreground-dark);
+    --muted: 0 0% 16%;
+    --muted-foreground: 0 0% 60%;
 
-    --border: 0 0% 20%;             /* Subtle borders                */
+    --accent: 0 0% 16%;
+    --accent-foreground: 0 0% 98%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 142 71% 45.5%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 55%;
+    --warning-foreground: 0 0% 100%;
+
+    --border: 0 0% 20%;
     --input: 0 0% 16%;
     --ring: var(--p-h) var(--p-s) var(--p-l);
 
@@ -114,10 +118,10 @@
     --bg-2: var(--bg-2-dark);
     --bg-3: var(--bg-3-dark);
 
-    --glass-bg: rgba(20, 20, 20, 0.90);
-    --glass-tint: rgba(14, 165, 166, 0.04);
-    --glass-border: rgba(255, 255, 255, 0.08);
-    --glass-shadow: 0 30px 70px -40px rgba(0, 0, 0, 0.9);
+    --glass-bg: rgba(25, 25, 25, 0.98);
+    --glass-tint: rgba(56, 189, 248, 0.05);
+    --glass-border: transparent;
+    --glass-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
   }
 }
 
@@ -133,7 +137,7 @@
     @apply bg-background text-foreground;
     overflow-x: hidden;
     overscroll-behavior-y: none;
-    /* Light mode keeps the subtle gradient; dark mode is flat like Notion */
+    /* Colorful gradients - theme driven */
     background-image:
       radial-gradient(900px 400px at 10% -10%, var(--bg-1), transparent 60%),
       radial-gradient(800px 500px at 100% 10%, var(--bg-2), transparent 65%),
@@ -144,26 +148,41 @@
     background-image: none;
   }
 
-  h1, h2, h3 {
+  h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-display);
-    letter-spacing: -0.01em;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.3;
+  }
+  
+  h1 { font-size: 1.875rem; }
+  h2 { font-size: 1.5rem; }
+  h3 { font-size: 1.25rem; }
+  h4 { font-size: 1.125rem; }
+  h5 { font-size: 1rem; }
+  h6 { font-size: 0.875rem; }
+
+  p {
+    line-height: 1.7;
   }
 
-  /* Text selection - subtle highlight that preserves readability */
   ::selection {
-    background-color: hsl(var(--primary) / 0.2);
-    color: hsl(var(--foreground));
-    text-shadow: none;
+    background-color: rgba(0, 0, 0, 0.08);
+    color: inherit;
+  }
+  .dark ::selection {
+    background-color: rgba(255, 255, 255, 0.15);
   }
 
   ::-moz-selection {
-    background-color: hsl(var(--primary) / 0.2);
-    color: hsl(var(--foreground));
-    text-shadow: none;
+    background-color: rgba(0, 0, 0, 0.08);
+    color: inherit;
+  }
+  .dark ::-moz-selection {
+    background-color: rgba(255, 255, 255, 0.15);
   }
 }
 
-/* ── Utility: Fraunces display font on any element ─────────────── */
 .font-display {
   font-family: var(--font-display) !important;
   letter-spacing: -0.02em;
@@ -175,67 +194,31 @@
   backdrop-filter: blur(var(--blur));
 }
 
-/* Enhanced Glass Card */
 .glass-card {
-  background: linear-gradient(135deg, var(--glass-tint), var(--glass-bg));
-  border: 1px solid var(--glass-border);
-  box-shadow: var(--glass-shadow), 0 1px 3px rgba(0,0,0,0.08);
-  border-radius: 3rem;
+  background: var(--background);
+  border: 1px solid transparent;
+  box-shadow: var(--glass-shadow);
+  border-radius: var(--radius);
   backdrop-filter: blur(var(--blur));
-  transition: all 0.4s ease;
-}
-
-/* In dark mode, give glass cards a clearly visible border so they
-   read as distinct panels rather than blending into the background */
-.dark .glass-card {
-  border-color: rgba(255, 255, 255, 0.09);
-  background: linear-gradient(135deg, rgba(255,255,255,0.02), rgba(26, 26, 26, 0.95));
+  transition: all 0.2s ease;
 }
 
 .glass-card:hover {
-  box-shadow: 0 36px 70px -28px rgba(0, 0, 0, 0.35);
-  border-color: hsl(var(--accent) / 0.22);
+  box-shadow: var(--glass-shadow);
+  border-color: transparent;
 }
 
 .dark .glass-card:hover {
-  border-color: rgba(255, 255, 255, 0.18);
-}
-
-/* Dashboard layout */
-.dashboard-stage {
-  background:
-    radial-gradient(
-      1200px 600px at 8% -10%,
-      var(--bg-1),
-      transparent 60%
-    ),
-    radial-gradient(
-      1000px 600px at 110% 10%,
-      var(--bg-2),
-      transparent 65%
-    ),
-    radial-gradient(
-      800px 600px at 50% 110%,
-      var(--bg-3),
-      transparent 60%
-    );
+  box-shadow: var(--glass-shadow);
+  border-color: transparent;
 }
 
 .dashboard-panel {
-  @apply rounded-[var(--radius)] relative transition-all duration-500;
+  @apply rounded-[var(--radius)] relative transition-all duration-200;
   backdrop-filter: blur(var(--blur));
-  background: rgba(255, 255, 255, 0.6);
-  border: 1px solid rgba(0, 0, 0, 0.07);
-  box-shadow: 0 1px 4px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04);
-}
-
-/* In dark mode, dashboard panels need a visible surface so they don't
-   disappear into the background. Give them a card-level background and
-   a subtle border — like lifting a card off the table. */
-.dark .dashboard-panel {
-  background: hsl(var(--card));
-  border: 1px solid hsl(var(--border));
-  box-shadow: 0 2px 16px -4px rgba(0, 0, 0, 0.4);
+  background: var(--background);
+  border: 1px solid var(--border);
+  box-shadow: var(--glass-shadow);
 }
 
 .progress-ring {
@@ -247,7 +230,6 @@
     shadow-inner flex flex-col items-center justify-center;
 }
 
-/* Hide chat scrollbar but keep scroll */
 .chat-scroll {
   scrollbar-width: none;
   -ms-overflow-style: none;
@@ -265,7 +247,6 @@
   border: none !important;
 }
 
-/* Floating background blobs */
 .liquid-blob {
   border-radius: 9999px;
   filter: blur(60px);
@@ -283,50 +264,28 @@
   }
 }
 
-/* Gradient Text */
 .gradient-text {
-  background-image: linear-gradient(135deg, var(--g-1), var(--g-2), var(--g-3));
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  @apply animate-gradient-x;
+  color: var(--primary);
 }
 
-/* Primary Gradient Background */
 .gradient-primary {
-  background-image: linear-gradient(135deg, var(--g-1), var(--g-2), var(--g-3));
-  @apply text-white shadow-lg transition-all duration-300;
+  background: var(--primary);
+  @apply text-primary-foreground shadow-sm transition-all duration-200;
 }
 .gradient-primary:hover {
-  filter: brightness(1.1);
+  opacity: 0.9;
 }
 
-/* Accent/Warm Gradients (theme-driven) */
 .gradient-accent {
-  background-image: linear-gradient(135deg, hsl(var(--accent-2)), var(--g-1), var(--g-2));
-  @apply text-white shadow-lg transition-all duration-300;
+  background: var(--accent-blue-light);
+  color: var(--accent-blue-dark);
+  @apply shadow-sm transition-all duration-200;
 }
 .gradient-warm {
-  background-image: linear-gradient(135deg, hsl(var(--accent-2)), var(--g-3));
-  @apply text-white shadow-lg transition-all duration-300;
+  background: var(--secondary);
+  @apply text-secondary-foreground shadow-sm transition-all duration-200;
 }
 
-@keyframes gradient-x {
-  0%, 100% {
-    background-size: 200% 200%;
-    background-position: left center;
-  }
-  50% {
-    background-size: 200% 200%;
-    background-position: right center;
-  }
-}
-
-.animate-gradient-x {
-  animation: gradient-x 3s ease infinite;
-}
-
-/* Utility: Ensure text is selectable */
 .select-text {
   user-select: text;
   -webkit-user-select: text;
@@ -334,7 +293,6 @@
   -ms-user-select: text;
 }
 
-/* Markdown Content Styling - Clean, readable text like Notion */
 .markdown-content {
   @apply text-foreground leading-relaxed;
 }
@@ -364,56 +322,46 @@
 }
 
 .markdown-content .katex {
-  font-size: 1.1em; /* Scales flexibly with surrounding text */
+  font-size: 1.1em;
 }
 
-/* Make sure KaTeX displays correctly in buttons (options) */
 button .markdown-content .katex {
-  pointer-events: none; /* Prevent interference with clicks */
+  pointer-events: none;
 }
 
-/* ========== MESSAGE INTERFACE - Clean Text Style ========== */
-
-/* User message bubble - blue, right-aligned */
 .message-bubble-user {
   @apply px-3 sm:px-4 py-2.5 text-sm leading-relaxed mr-2 sm:mr-4;
-  background: hsl(var(--primary));
-  color: white;
-  border-radius: 18px;
+  background: var(--accent-blue-light);
+  color: var(--accent-blue-dark);
+  border-radius: 8px;
   max-width: 100%;
 }
 
-/* Assistant message bubble - transparent, left-aligned */
 .message-bubble-assistant {
   @apply px-3 sm:px-4 py-3 text-sm leading-relaxed;
-  color: hsl(var(--foreground));
+  color: var(--foreground);
   max-width: 100%;
 }
 
-.dark .message-bubble-assistant {
-  color: hsl(var(--foreground));
-}
-
-/* Message input container */
 .message-input-container {
-  @apply relative overflow-hidden bg-card;
-  box-shadow: 0 -1px 3px rgb(0 0 0 / 0.1);
+  @apply relative overflow-hidden bg-background;
+  box-shadow: 0 -1px 0 var(--border);
+  border-top: 1px solid var(--border);
 }
 
 .dark .message-input-container {
-  box-shadow: 0 -1px 3px rgb(0 0 0 / 0.3);
+  box-shadow: 0 -1px 0 var(--border);
 }
 
 .message-input-container:focus-within {
-  box-shadow: 0 -1px 3px rgb(0 0 0 / 0.1);
+  box-shadow: 0 -1px 0 var(--border);
 }
 
-/* Typing indicator dots */
 .typing-dot {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
-  background-color: hsl(var(--primary)); /* Use primary color for dots */
+  background-color: var(--accent-blue);
   display: inline-block;
   margin: 0 1px;
   animation: pulse-height 1s infinite ease-in-out;
@@ -423,17 +371,13 @@ button .markdown-content .katex {
 @keyframes pulse-height {
   0%, 100% {
     transform: scaleY(0.4);
-    opacity: 0.7;
+    opacity: 0.5;
   }
   50% {
     transform: scaleY(1);
     opacity: 1;
   }
 }
-
-/* ── Streaming text ─────────────────────────────────────────────────────
-   Simple streaming - content appears as tokens arrive (no special animation)
-   ─────────────────────────────────────────────────────────────────────── */
 
 .typing-dot:nth-child(1) { animation-delay: 0.1s; }
 .typing-dot:nth-child(2) { animation-delay: 0.2s; }
@@ -443,34 +387,7 @@ button .markdown-content .katex {
 .typing-dot:nth-child(6) { animation-delay: 0.6s; }
 .typing-dot:nth-child(7) { animation-delay: 0.7s; }
 
-/* Enhanced Glass Card with micro-glow */
-.glass-card::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  padding: 1px;
-  background: linear-gradient(
-    135deg,
-    var(--glass-border),
-    transparent,
-    hsl(var(--accent-2) / 0.08)
-  );
-  -webkit-mask:
-    linear-gradient(#fff 0 0) content-box,
-    linear-gradient(#fff 0 0);
-  mask:
-    linear-gradient(#fff 0 0) content-box,
-    linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  pointer-events: none;
-}
-
-/* (duplicate rule removed — defined above with dark mode override) */
-
-
-/* ── Oceanic Blue theme — gradient feel ────────────────────────────── */
+/* Theme-specific tinting */
 [data-theme="oceanic-blue"] body {
   background-image:
     radial-gradient(ellipse 900px 500px at 0% 0%, rgba(56, 189, 248, 0.30) 0%, transparent 60%),
@@ -486,148 +403,425 @@ html.dark[data-theme="oceanic-blue"] body {
     radial-gradient(ellipse 600px 500px at 30% 100%, rgba(3, 105, 161, 0.08) 0%, transparent 60%);
 }
 
-/* Oceanic sidebar gradient */
 [data-theme="oceanic-blue"] .gradient-primary {
   background-image: linear-gradient(135deg, #38bdf8, #0ea5e9, #0369a1);
 }
 
-/* Oceanic card tint in light mode */
 html[data-theme="oceanic-blue"]:not(.dark) .glass-card {
   background: linear-gradient(135deg, rgba(56, 189, 248, 0.10), rgba(235, 248, 255, 0.85));
   border-color: rgba(14, 165, 233, 0.22);
 }
 
-/* Oceanic user message bubble */
 [data-theme="oceanic-blue"] .message-bubble-user {
   background: linear-gradient(135deg, #38bdf8, #0369a1);
 }
 
-/* ── TipTap Rich Editor ───────────────────────────────────────────── */
-.rich-editor-content {
-  @apply text-foreground;
+[data-theme="classic-blue"] body {
+  background-image:
+    radial-gradient(ellipse 900px 500px at 0% 0%, rgba(37, 99, 235, 0.25) 0%, transparent 60%),
+    radial-gradient(ellipse 700px 600px at 100% 20%, rgba(79, 70, 229, 0.18) 0%, transparent 65%),
+    radial-gradient(ellipse 600px 500px at 30% 100%, rgba(67, 56, 202, 0.15) 0%, transparent 60%);
 }
 
-/* Placeholder */
+html.dark[data-theme="classic-blue"] body {
+  background-image:
+    radial-gradient(ellipse 900px 500px at 0% 0%, rgba(37, 99, 235, 0.10) 0%, transparent 60%),
+    radial-gradient(ellipse 700px 600px at 100% 20%, rgba(79, 70, 229, 0.08) 0%, transparent 65%),
+    radial-gradient(ellipse 600px 500px at 30% 100%, rgba(67, 56, 202, 0.06) 0%, transparent 60%);
+}
+
+[data-theme="classic-blue"] .gradient-primary {
+  background-image: linear-gradient(135deg, #2563eb, #4f46e5, #4338ca);
+}
+
+html[data-theme="classic-blue"]:not(.dark) .glass-card {
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.08), rgba(239, 246, 255, 0.85));
+  border-color: rgba(37, 99, 235, 0.20);
+}
+
+[data-theme="classic-blue"] .message-bubble-user {
+  background: linear-gradient(135deg, #2563eb, #4338ca);
+}
+
+[data-theme="sunset-ember"] body {
+  background-image:
+    radial-gradient(ellipse 900px 500px at 0% 0%, rgba(249, 115, 22, 0.28) 0%, transparent 60%),
+    radial-gradient(ellipse 700px 600px at 100% 20%, rgba(244, 63, 94, 0.20) 0%, transparent 65%),
+    radial-gradient(ellipse 600px 500px at 30% 100%, rgba(225, 29, 72, 0.18) 0%, transparent 60%);
+}
+
+html.dark[data-theme="sunset-ember"] body {
+  background-image:
+    radial-gradient(ellipse 900px 500px at 0% 0%, rgba(249, 115, 22, 0.10) 0%, transparent 60%),
+    radial-gradient(ellipse 700px 600px at 100% 20%, rgba(244, 63, 94, 0.08) 0%, transparent 65%),
+    radial-gradient(ellipse 600px 500px at 30% 100%, rgba(225, 29, 72, 0.06) 0%, transparent 60%);
+}
+
+[data-theme="sunset-ember"] .gradient-primary {
+  background-image: linear-gradient(135deg, #f97316, #f43f5e, #e11d48);
+}
+
+html[data-theme="sunset-ember"]:not(.dark) .glass-card {
+  background: linear-gradient(135deg, rgba(249, 115, 22, 0.08), rgba(255, 245, 240, 0.85));
+  border-color: rgba(249, 115, 22, 0.20);
+}
+
+[data-theme="sunset-ember"] .message-bubble-user {
+  background: linear-gradient(135deg, #f97316, #e11d48);
+}
+
+[data-theme="forest-glow"] body {
+  background-image:
+    radial-gradient(ellipse 900px 500px at 0% 0%, rgba(22, 163, 74, 0.25) 0%, transparent 60%),
+    radial-gradient(ellipse 700px 600px at 100% 20%, rgba(34, 197, 94, 0.18) 0%, transparent 65%),
+    radial-gradient(ellipse 600px 500px at 30% 100%, rgba(21, 128, 61, 0.15) 0%, transparent 60%);
+}
+
+html.dark[data-theme="forest-glow"] body {
+  background-image:
+    radial-gradient(ellipse 900px 500px at 0% 0%, rgba(22, 163, 74, 0.10) 0%, transparent 60%),
+    radial-gradient(ellipse 700px 600px at 100% 20%, rgba(34, 197, 94, 0.08) 0%, transparent 65%),
+    radial-gradient(ellipse 600px 500px at 30% 100%, rgba(21, 128, 61, 0.06) 0%, transparent 60%);
+}
+
+[data-theme="forest-glow"] .gradient-primary {
+  background-image: linear-gradient(135deg, #16a34a, #22c55e, #15803d);
+}
+
+html[data-theme="forest-glow"]:not(.dark) .glass-card {
+  background: linear-gradient(135deg, rgba(22, 163, 74, 0.08), rgba(240, 253, 244, 0.85));
+  border-color: rgba(22, 163, 74, 0.20);
+}
+
+[data-theme="forest-glow"] .message-bubble-user {
+  background: linear-gradient(135deg, #16a34a, #15803d);
+}
+
+[data-theme="cyber-neon"] body {
+  background-image:
+    radial-gradient(ellipse 900px 500px at 0% 0%, rgba(217, 70, 239, 0.28) 0%, transparent 60%),
+    radial-gradient(ellipse 700px 600px at 100% 20%, rgba(192, 38, 211, 0.20) 0%, transparent 65%),
+    radial-gradient(ellipse 600px 500px at 30% 100%, rgba(162, 28, 175, 0.18) 0%, transparent 60%);
+}
+
+html.dark[data-theme="cyber-neon"] body {
+  background-image:
+    radial-gradient(ellipse 900px 500px at 0% 0%, rgba(217, 70, 239, 0.12) 0%, transparent 60%),
+    radial-gradient(ellipse 700px 600px at 100% 20%, rgba(192, 38, 211, 0.10) 0%, transparent 65%),
+    radial-gradient(ellipse 600px 500px at 30% 100%, rgba(162, 28, 175, 0.08) 0%, transparent 60%);
+}
+
+[data-theme="cyber-neon"] .gradient-primary {
+  background-image: linear-gradient(135deg, #d946ef, #c026d3, #a21caf);
+}
+
+html[data-theme="cyber-neon"]:not(.dark) .glass-card {
+  background: linear-gradient(135deg, rgba(217, 70, 239, 0.08), rgba(250, 245, 255, 0.85));
+  border-color: rgba(217, 70, 239, 0.20);
+}
+
+[data-theme="cyber-neon"] .message-bubble-user {
+  background: linear-gradient(135deg, #d946ef, #a21caf);
+}
+
+[data-theme="midnight-gold"] body {
+  background-image:
+    radial-gradient(ellipse 900px 500px at 0% 0%, rgba(251, 191, 36, 0.28) 0%, transparent 60%),
+    radial-gradient(ellipse 700px 600px at 100% 20%, rgba(245, 158, 11, 0.20) 0%, transparent 65%),
+    radial-gradient(ellipse 600px 500px at 30% 100%, rgba(217, 119, 6, 0.18) 0%, transparent 60%);
+}
+
+html.dark[data-theme="midnight-gold"] body {
+  background-image:
+    radial-gradient(ellipse 900px 500px at 0% 0%, rgba(251, 191, 36, 0.10) 0%, transparent 60%),
+    radial-gradient(ellipse 700px 600px at 100% 20%, rgba(245, 158, 11, 0.08) 0%, transparent 65%),
+    radial-gradient(ellipse 600px 500px at 30% 100%, rgba(217, 119, 6, 0.06) 0%, transparent 60%);
+}
+
+[data-theme="midnight-gold"] .gradient-primary {
+  background-image: linear-gradient(135deg, #fbbf24, #f59e0b, #d97706);
+}
+
+html[data-theme="midnight-gold"]:not(.dark) .glass-card {
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.08), rgba(255, 250, 240, 0.85));
+  border-color: rgba(251, 191, 36, 0.20);
+}
+
+[data-theme="midnight-gold"] .message-bubble-user {
+  background: linear-gradient(135deg, #fbbf24, #d97706);
+}
+
+[data-theme="coral-blush"] body {
+  background-image:
+    radial-gradient(ellipse 900px 500px at 0% 0%, rgba(239, 123, 118, 0.28) 0%, transparent 60%),
+    radial-gradient(ellipse 700px 600px at 100% 20%, rgba(232, 96, 90, 0.20) 0%, transparent 65%),
+    radial-gradient(ellipse 600px 500px at 30% 100%, rgba(244, 160, 156, 0.18) 0%, transparent 60%);
+}
+
+html.dark[data-theme="coral-blush"] body {
+  background-image:
+    radial-gradient(ellipse 900px 500px at 0% 0%, rgba(239, 123, 118, 0.10) 0%, transparent 60%),
+    radial-gradient(ellipse 700px 600px at 100% 20%, rgba(232, 96, 90, 0.08) 0%, transparent 65%),
+    radial-gradient(ellipse 600px 500px at 30% 100%, rgba(244, 160, 156, 0.06) 0%, transparent 60%);
+}
+
+[data-theme="coral-blush"] .gradient-primary {
+  background-image: linear-gradient(135deg, #ef7b76, #e8605a, #f4a09c);
+}
+
+html[data-theme="coral-blush"]:not(.dark) .glass-card {
+  background: linear-gradient(135deg, rgba(239, 123, 118, 0.08), rgba(255, 245, 245, 0.85));
+  border-color: rgba(239, 123, 118, 0.20);
+}
+
+[data-theme="coral-blush"] .message-bubble-user {
+  background: linear-gradient(135deg, #ef7b76, #f4a09c);
+}
+
+[data-theme="cosmic-aurora"] body {
+  background-image:
+    radial-gradient(ellipse 900px 500px at 0% 0%, rgba(45, 212, 191, 0.25) 0%, transparent 60%),
+    radial-gradient(ellipse 700px 600px at 100% 20%, rgba(59, 130, 246, 0.18) 0%, transparent 65%),
+    radial-gradient(ellipse 600px 500px at 30% 100%, rgba(168, 85, 247, 0.15) 0%, transparent 60%);
+}
+
+html.dark[data-theme="cosmic-aurora"] body {
+  background-image:
+    radial-gradient(ellipse 900px 500px at 0% 0%, rgba(45, 212, 191, 0.10) 0%, transparent 60%),
+    radial-gradient(ellipse 700px 600px at 100% 20%, rgba(59, 130, 246, 0.08) 0%, transparent 65%),
+    radial-gradient(ellipse 600px 500px at 30% 100%, rgba(168, 85, 247, 0.06) 0%, transparent 60%);
+}
+
+[data-theme="cosmic-aurora"] .gradient-primary {
+  background-image: linear-gradient(135deg, #2dd4bf, #3b82f6, #a855f7);
+}
+
+html[data-theme="cosmic-aurora"]:not(.dark) .glass-card {
+  background: linear-gradient(135deg, rgba(45, 212, 191, 0.08), rgba(240, 253, 250, 0.85));
+  border-color: rgba(45, 212, 191, 0.20);
+}
+
+[data-theme="cosmic-aurora"] .message-bubble-user {
+  background: linear-gradient(135deg, #2dd4bf, #a855f7);
+}
+
+[data-theme="candy-pop"] body {
+  background-image:
+    radial-gradient(ellipse 900px 500px at 0% 0%, rgba(236, 72, 153, 0.28) 0%, transparent 60%),
+    radial-gradient(ellipse 700px 600px at 100% 20%, rgba(250, 204, 21, 0.20) 0%, transparent 65%),
+    radial-gradient(ellipse 600px 500px at 30% 100%, rgba(6, 182, 212, 0.18) 0%, transparent 60%);
+}
+
+html.dark[data-theme="candy-pop"] body {
+  background-image:
+    radial-gradient(ellipse 900px 500px at 0% 0%, rgba(236, 72, 153, 0.10) 0%, transparent 60%),
+    radial-gradient(ellipse 700px 600px at 100% 20%, rgba(250, 204, 21, 0.08) 0%, transparent 65%),
+    radial-gradient(ellipse 600px 500px at 30% 100%, rgba(6, 182, 212, 0.06) 0%, transparent 60%);
+}
+
+[data-theme="candy-pop"] .gradient-primary {
+  background-image: linear-gradient(135deg, #ec4899, #facc15, #06b6d4);
+}
+
+html[data-theme="candy-pop"]:not(.dark) .glass-card {
+  background: linear-gradient(135deg, rgba(236, 72, 153, 0.08), rgba(255, 245, 250, 0.85));
+  border-color: rgba(236, 72, 153, 0.20);
+}
+
+[data-theme="candy-pop"] .message-bubble-user {
+  background: linear-gradient(135deg, #ec4899, #06b6d4);
+}
+
+[data-theme="prismatic"] body {
+  background-image:
+    radial-gradient(ellipse 900px 500px at 0% 0%, rgba(255, 0, 93, 0.28) 0%, transparent 60%),
+    radial-gradient(ellipse 700px 600px at 100% 20%, rgba(124, 58, 237, 0.20) 0%, transparent 65%),
+    radial-gradient(ellipse 600px 500px at 30% 100%, rgba(6, 182, 212, 0.18) 0%, transparent 60%);
+}
+
+html.dark[data-theme="prismatic"] body {
+  background-image:
+    radial-gradient(ellipse 900px 500px at 0% 0%, rgba(255, 0, 93, 0.10) 0%, transparent 60%),
+    radial-gradient(ellipse 700px 600px at 100% 20%, rgba(124, 58, 237, 0.08) 0%, transparent 65%),
+    radial-gradient(ellipse 600px 500px at 30% 100%, rgba(6, 182, 212, 0.06) 0%, transparent 60%);
+}
+
+[data-theme="prismatic"] .gradient-primary {
+  background-image: linear-gradient(135deg, #ff005d, #7c3aed, #06b6d4);
+}
+
+html[data-theme="prismatic"]:not(.dark) .glass-card {
+  background: linear-gradient(135deg, rgba(255, 0, 93, 0.08), rgba(255, 245, 250, 0.85));
+  border-color: rgba(255, 0, 93, 0.20);
+}
+
+[data-theme="prismatic"] .message-bubble-user {
+  background: linear-gradient(135deg, #ff005d, #06b6d4);
+}
+
+.rich-editor-content {
+  @apply text-foreground;
+  font-size: 1rem;
+  line-height: 1.7;
+}
+
 .rich-editor-content p.is-editor-empty:first-child::before,
 .is-editor-empty::before {
   content: attr(data-placeholder);
-  @apply text-muted-foreground/40 pointer-events-none float-left h-0;
+  @apply text-muted-foreground/50 pointer-events-none float-left h-0;
 }
 
-/* Headings */
-.rich-editor-content h1 { @apply text-3xl font-black mt-6 mb-3 text-primary; }
-.rich-editor-content h2 { @apply text-2xl font-black mt-5 mb-3 text-primary; }
-.rich-editor-content h3 { @apply text-xl font-bold mt-4 mb-2 text-foreground; }
+.rich-editor-content h1 { 
+  @apply text-3xl font-semibold mt-8 mb-3 text-foreground;
+  letter-spacing: -0.02em;
+}
+.rich-editor-content h2 { 
+  @apply text-2xl font-semibold mt-7 mb-2.5 text-foreground;
+  letter-spacing: -0.02em;
+}
+.rich-editor-content h3 { 
+  @apply text-xl font-medium mt-5 mb-2 text-foreground;
+  letter-spacing: -0.01em;
+}
+.rich-editor-content h4 {
+  @apply text-base font-medium mt-4 mb-1.5 text-foreground;
+}
+.rich-editor-content h5 {
+  @apply text-sm font-medium mt-3 mb-1 text-foreground;
+}
+.rich-editor-content h6 {
+  @apply text-xs font-medium mt-2 mb-1 text-muted-foreground;
+}
 
-/* Paragraphs */
-.rich-editor-content p { @apply mb-3 leading-relaxed; }
+.rich-editor-content p { 
+  @apply mb-2.5 leading-relaxed; 
+}
 
-/* Strong / em / strike */
-.rich-editor-content strong { @apply font-bold; }
-.rich-editor-content em { 
+.rich-editor-content strong { 
+  @apply font-semibold; 
+}
+.rich-editor-content em {
   @apply italic;
   font-style: italic;
 }
-.rich-editor-content s { @apply line-through; }
-.rich-editor-content mark { @apply rounded px-1; }
-
-/* Italic cursor styling - slanted like Word */
-.rich-editor-content .ProseMirror-cursor {
-  border-left: 2px solid hsl(var(--primary));
+.rich-editor-content s { 
+  @apply line-through opacity-60; 
 }
-.rich-editor-content em .ProseMirror-cursor,
-.rich-editor-content .ProseMirror-cursor-em {
-  border-left: 2px solid hsl(var(--primary));
-  transform: skewX(-10deg);
+.rich-editor-content mark { 
+  @apply rounded-sm px-0.5 bg-yellow-100 dark:bg-yellow-900/30; 
 }
 
-/* Inline code */
 .rich-editor-content code:not(pre code) {
-  @apply bg-muted px-1.5 py-0.5 rounded text-sm font-mono text-primary;
+  @apply bg-secondary px-1.5 py-0.5 rounded text-sm font-mono;
+  color: var(--foreground);
 }
 
-/* Code blocks — styled like VS Code / GitHub */
 .rich-editor-content pre {
-  @apply my-4 rounded-xl overflow-hidden border border-border/40;
+  @apply my-4 rounded-lg overflow-hidden border border-border bg-secondary;
 }
 .rich-editor-content pre::before {
   content: '';
   display: block;
-  height: 32px;
-  @apply bg-muted/70 border-b border-border/40;
-  background-image: radial-gradient(circle at 12px 50%, #ff5f57 4px, transparent 4px),
-                    radial-gradient(circle at 28px 50%, #febc2e 4px, transparent 4px),
-                    radial-gradient(circle at 44px 50%, #28c840 4px, transparent 4px);
+  height: 28px;
+  @apply bg-secondary/80 border-b border-border;
+  background-image: radial-gradient(circle at 10px 14px, #ff5f57 3px, transparent 3px),
+                    radial-gradient(circle at 24px 14px, #febc2e 3px, transparent 3px),
+                    radial-gradient(circle at 38px 14px, #28c840 3px, transparent 3px);
   background-repeat: no-repeat;
 }
 .rich-editor-content pre code {
-  @apply block p-4 text-sm font-mono leading-relaxed bg-muted/20 overflow-x-auto;
+  @apply block p-4 text-sm font-mono leading-relaxed bg-transparent overflow-x-auto;
   background: none;
 }
 
-/* Syntax highlight colours (lowlight) */
 .rich-editor-content .hljs-keyword,
-.rich-editor-content .hljs-selector-tag { @apply text-purple-400; }
+.rich-editor-content .hljs-selector-tag { 
+  @apply text-purple-600 dark:text-purple-400 font-medium; 
+}
 .rich-editor-content .hljs-string,
-.rich-editor-content .hljs-attr { @apply text-green-400; }
+.rich-editor-content .hljs-attr { 
+  @apply text-green-600 dark:text-green-400; 
+}
 .rich-editor-content .hljs-number,
-.rich-editor-content .hljs-literal { @apply text-orange-400; }
-.rich-editor-content .hljs-comment { @apply text-muted-foreground italic; }
+.rich-editor-content .hljs-literal { 
+  @apply text-orange-600 dark:text-orange-400; 
+}
+.rich-editor-content .hljs-comment { 
+  @apply text-muted-foreground/70 italic; 
+}
 .rich-editor-content .hljs-title,
-.rich-editor-content .hljs-function { @apply text-blue-400; }
+.rich-editor-content .hljs-function { 
+  @apply text-blue-600 dark:text-blue-400; 
+}
 .rich-editor-content .hljs-built_in,
-.rich-editor-content .hljs-type { @apply text-cyan-400; }
+.rich-editor-content .hljs-type { 
+  @apply text-cyan-600 dark:text-cyan-400; 
+}
 .rich-editor-content .hljs-variable,
-.rich-editor-content .hljs-name { @apply text-red-400; }
-
-/* Blockquote */
-.rich-editor-content blockquote {
-  @apply border-l-2 border-primary/40 pl-4 text-muted-foreground my-4 italic;
+.rich-editor-content .hljs-name { 
+  @apply text-red-600 dark:text-red-400; 
+}
+.rich-editor-content .hljs-params {
+  @apply text-foreground;
+}
+.rich-editor-content .hljs-meta {
+  @apply text-muted-foreground;
 }
 
-/* Lists — outside so bullets/numbers sit in the margin, not inside text */
-.rich-editor-content ul { @apply list-disc my-2 pl-6 space-y-1; }
-.rich-editor-content ol { @apply list-decimal my-2 pl-6 space-y-1; }
-.rich-editor-content li { @apply leading-relaxed; }
+.rich-editor-content blockquote {
+  border-left: 3px solid var(--foreground);
+  padding-left: 1rem;
+  margin: 1rem 0;
+  font-style: normal;
+  font-size: 1.1em;
+}
 
-/* Task list */
-.rich-editor-content ul[data-type="taskList"] { @apply list-none pl-0; }
-.rich-editor-content li[data-type="taskItem"] { @apply flex items-start gap-2; }
-.rich-editor-content li[data-type="taskItem"] > label { @apply flex items-center gap-2 cursor-pointer mt-0.5; }
+.rich-editor-content ul { 
+  @apply list-disc my-2 pl-6 space-y-1; 
+}
+.rich-editor-content ol { 
+  @apply list-decimal my-2 pl-6 space-y-1; 
+}
+.rich-editor-content li { 
+  @apply leading-relaxed; 
+}
+
+.rich-editor-content ul[data-type="taskList"] { 
+  @apply list-none pl-0; 
+}
+.rich-editor-content li[data-type="taskItem"] { 
+  @apply flex items-start gap-2; 
+}
+.rich-editor-content li[data-type="taskItem"] > label { 
+  @apply flex items-center gap-2 cursor-pointer mt-0.5; 
+}
 .rich-editor-content li[data-type="taskItem"] > label input[type="checkbox"] {
-  @apply rounded border-border accent-primary w-4 h-4 cursor-pointer;
+  @apply rounded border-border accent-foreground w-4 h-4 cursor-pointer;
 }
 .rich-editor-content li[data-type="taskItem"][data-checked="true"] > div {
-  @apply line-through text-muted-foreground;
+  @apply line-through text-muted-foreground/70;
 }
 
-/* Horizontal rule */
-.rich-editor-content hr { @apply border-primary/30 my-6; }
+.rich-editor-content hr { 
+  @apply border-border my-6; 
+}
 
-/* Tables */
 .rich-editor-content table {
-  @apply w-full border-collapse text-sm my-4 rounded-xl overflow-hidden;
+  @apply w-full border-collapse text-sm my-4 rounded-lg overflow-hidden border border-border;
 }
 .rich-editor-content th {
-  @apply border border-primary/20 px-3 py-2 text-left bg-primary/10 font-bold text-primary;
+  @apply border border-border px-3 py-2 text-left font-medium;
+  background: var(--accent-blue-light);
+  color: var(--accent-blue-dark);
 }
 .rich-editor-content td {
-  @apply border border-border/50 px-3 py-2 align-top;
+  @apply border border-border px-3 py-2 align-top;
 }
 .rich-editor-content td ul,
 .rich-editor-content td ol {
   @apply my-1 pl-5;
 }
 
-/* ── Math — @tiptap/extension-mathematics ─────────────────────────────────
-   The extension renders:
-     Inline: <span class="tiptap-mathematics-render [tiptap-mathematics-render--editable]">
-     Block:  <div  class="tiptap-mathematics-render [tiptap-mathematics-render--editable]">
-               <div class="block-math-inner">…katex…</div>
-             </div>
-   ───────────────────────────────────────────────────────────────────────── */
-
-/* Shared wrapper — pointer cursor so it's clickable */
 .rich-editor-content .tiptap-mathematics-render {
   cursor: default;
 }
@@ -636,7 +830,6 @@ html[data-theme="oceanic-blue"]:not(.dark) .glass-card {
   border-radius: 4px;
 }
 
-/* Inline math — sits neatly beside text */
 .rich-editor-content span.tiptap-mathematics-render {
   display: inline-flex;
   align-items: center;
@@ -647,7 +840,6 @@ html[data-theme="oceanic-blue"]:not(.dark) .glass-card {
   line-height: 1.4;
 }
 
-/* Block / display math */
 .rich-editor-content div.tiptap-mathematics-render {
   display: block;
   margin: 1.25rem 0;
@@ -668,7 +860,6 @@ html[data-theme="oceanic-blue"]:not(.dark) .glass-card {
   margin: 0;
 }
 
-/* Dark mode — KaTeX inherits foreground colour */
 .dark .rich-editor-content .tiptap-mathematics-render .katex,
 .dark .rich-editor-content .tiptap-mathematics-render .katex * {
   color: hsl(var(--foreground));

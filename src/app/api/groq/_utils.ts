@@ -532,7 +532,7 @@ export const callHfChat = async (
         releaseRequest(keyIndex);
 
         lastError = error;
-        
+
         // Handle abort/timeout errors
         if (error instanceof Error && error.name === "AbortError") {
           console.warn(`[Groq] Request timeout for model ${model}`);

@@ -2,15 +2,74 @@ import { NextResponse } from "next/server";
 import { callHfChat, formatError, classifyTaskType } from "../_utils";
 import type { ChatMessage, UserContext } from "@/types/chat";
 import { getFormulaSheetContext } from "@/data/formulaSheets";
+import { createClient } from "@/lib/supabase/server";
+import { 
+  getUserAIPersonality, 
+  getRelevantMemories, 
+  buildMemoryContext, 
+  buildPersonalityInstructions 
+} from "@/lib/aiMemory";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   try {
     // ========================================================================
+    // STEP 0: Get user and fetch personality/memory from database or localStorage
+    // ========================================================================
+
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    let aiPersonality: Awaited<ReturnType<typeof getUserAIPersonality>> = null;
+    let memoryContext = "";
+
+    // Client-side x-client-data is always sent by the chat UI and contains localStorage
+    // personality/memories. Merge it so UI toggles are reflected immediately even when
+    // a user is authenticated.
+    const clientData = request.headers.get("x-client-data");
+    let clientPersonality: unknown = null;
+    let clientMemories: unknown = null;
+    if (clientData) {
+      try {
+        const parsed = JSON.parse(clientData);
+        clientPersonality = parsed.personality ?? null;
+        clientMemories = parsed.memories ?? null;
+      } catch (e) {
+        console.warn("[chat] Failed to parse x-client-data:", e instanceof Error ? e.message : e);
+      }
+    }
+
+    if (user) {
+      // Fetch personality settings from database
+      aiPersonality = await getUserAIPersonality(user.id);
+
+      // Merge client personality over DB personality (client wins)
+      if (clientPersonality) {
+        aiPersonality = { ...(aiPersonality as any), ...(clientPersonality as any) };
+      }
+
+      // Fetch relevant memories (only important ones, >0.5 importance)
+      const { memories, summaries } = await getRelevantMemories(user.id, {
+        limit: 15,
+        minImportance: 0.5,
+      });
+
+      // Build memory context string
+      memoryContext = buildMemoryContext(memories, summaries);
+    } else {
+      // Fallback: Check for localStorage data passed from client
+      // (for localhost development without auth)
+      if (clientPersonality) aiPersonality = clientPersonality as any;
+      if (clientMemories && Array.isArray(clientMemories)) {
+        memoryContext = buildMemoryContext(clientMemories as any, []);
+      }
+    }
+
+    // ========================================================================
     // STEP 1: Extract user preferences from the incoming request
     // ========================================================================
-    
+
     const body = await request.json();
     const messages: ChatMessage[] = body.messages || [];
     const userContext: Partial<UserContext> & {
@@ -200,6 +259,8 @@ ${curriculumContext}
 Today's date: ${new Date().toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric" })}. You are fully up to date as of this date — never say your knowledge is limited to 2024 or any earlier date. If asked about recent events or developments, answer confidently based on what you know.
 
 Your Mission: Make complex ideas clear and intuitive, using analogies only when they actually help.
+${memoryContext ? `\n${memoryContext}` : ""}
+${aiPersonality ? `\n\n--- PERSONALITY SETTINGS ---\n${buildPersonalityInstructions(aiPersonality)}\n--- END PERSONALITY ---` : ""}
 
 Response Persona:
 - Tone: warm, conversational, and curious. Sound like a smart friend, not a lecturer.
@@ -379,9 +440,14 @@ REMEMBER: You aren't just an AI with an 'analogy' feature. You are the bridge be
         messages: [
           {
             role: "system",
-            content: systemPrompt + (userContext?.pageContext
-              ? `\n\n--- PAGE CONTEXT (read before answering) ---\n${userContext.pageContext}\n--- END PAGE CONTEXT ---`
-              : ""),
+            content:
+              systemPrompt +
+              (aiPersonality
+                ? `\n\n--- PERSONALITY SETTINGS (HIGH PRIORITY) ---\n${buildPersonalityInstructions(aiPersonality)}\n--- END PERSONALITY ---`
+                : "") +
+              (userContext?.pageContext
+                ? `\n\n--- PAGE CONTEXT (read before answering) ---\n${userContext.pageContext}\n--- END PAGE CONTEXT ---`
+                : ""),
           },
           // Strip out any system messages the client may have passed — we own the system prompt
           ...messages.filter(m => m.role !== "system"),

@@ -4,6 +4,7 @@ import { getFormulaSheetContext } from "@/data/formulaSheets";
 import { createClient } from "@/lib/supabase/server";
 import { buildCalendarContext } from "../_calendarContext";
 import type { ResearchSource } from "@/types/research";
+import { getUserAIPersonality, getRelevantMemories, buildMemoryContext, buildPersonalityInstructions } from "@/lib/aiMemory";
 
 export const runtime = "nodejs";
 
@@ -311,6 +312,60 @@ export async function POST(request: Request) {
     const messages: ChatMessage[] = body.messages || [];
     const userContext: Partial<UserContext> & { analogyIntensity?: number; analogyAnchor?: string } = body.userContext || {};
 
+    // Get personality and memory from database or localStorage
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    let aiPersonality: Awaited<ReturnType<typeof getUserAIPersonality>> = null;
+    let memoryContext = "";
+
+    // Client-side "x-client-data" is always sent by the chat UI (it contains localStorage
+    // personality/memories). Even if the user is authenticated, merging these values ensures
+    // the next response reflects the latest UI toggles immediately.
+    const clientData = request.headers.get("x-client-data");
+    let clientPersonality: unknown = null;
+    let clientMemories: unknown = null;
+    if (clientData) {
+      try {
+        const parsed = JSON.parse(clientData);
+        clientPersonality = parsed.personality ?? null;
+        clientMemories = parsed.memories ?? null;
+      } catch (e) {
+        console.warn("[chat-stream] Failed to parse x-client-data:", e instanceof Error ? e.message : e);
+      }
+    }
+    
+    console.log("[chat-stream] User authenticated:", user?.id || "none");
+    
+    if (user) {
+      // Fetch from database
+      console.log("[chat-stream] Fetching personality from database...");
+      aiPersonality = await getUserAIPersonality(user.id);
+      console.log("[chat-stream] Personality fetched:", aiPersonality ? "YES" : "NO");
+
+      // Merge client personality over DB personality (client wins)
+      if (clientPersonality) {
+        aiPersonality = { ...(aiPersonality as any), ...(clientPersonality as any) };
+        console.log("[chat-stream] Personality merged from client overrides");
+      }
+      
+      const { memories } = await getRelevantMemories(user.id, { limit: 15, minImportance: 0.5 });
+      memoryContext = buildMemoryContext(memories, []);
+      console.log("[chat-stream] Memories fetched:", memories?.length || 0);
+    } else {
+      // Fallback to localStorage from client headers
+      console.log("[chat-stream] No user, checking localStorage from headers...");
+
+      if (clientPersonality) {
+        aiPersonality = clientPersonality as any;
+        console.log("[chat-stream] Personality from localStorage: YES");
+      }
+      if (clientMemories && Array.isArray(clientMemories)) {
+        memoryContext = buildMemoryContext(clientMemories as any, []);
+        console.log("[chat-stream] Memories from localStorage:", (clientMemories as any[]).length);
+      }
+    }
+
     // Detect simple/greeting messages early — skip workspace loading entirely for speed
     const isSimpleGreeting = (() => {
       const userMsgs = messages.filter(m => m.role === "user");
@@ -359,7 +414,7 @@ export async function POST(request: Request) {
             // Model limit is 12000 TPM, reserve ~4000 for response + ~2000 for messages = ~6000 for context
             const WORKSPACE_TOKEN_BUDGET = 5000;
             const { docs: truncatedDocs, truncated } = truncateWorkspaceDocs(allDocs, WORKSPACE_TOKEN_BUDGET);
-            
+
             if (truncated) {
               console.log(`[chat-stream] Workspace truncated: ${allDocs.length} → ${truncatedDocs.length} docs to fit token budget`);
             }
@@ -382,7 +437,36 @@ export async function POST(request: Request) {
     }
     } // end !isSimpleGreeting
 
-    const systemPrompt = buildSystemPrompt(userContext, messages, workspaceContext, calendarCtx);
+    // Build system prompt with personality and memory
+    // If personality exists, it should govern analogy behaviour (even if the client toggles analogy mode).
+    const effectiveUserContext = aiPersonality
+      ? {
+          ...userContext,
+          analogyIntensity: aiPersonality.use_analogies
+            ? Math.max(0, Math.min(5, aiPersonality.analogy_frequency ?? 3))
+            : 0,
+        }
+      : userContext;
+
+    let systemPrompt = buildSystemPrompt(effectiveUserContext, messages, workspaceContext, calendarCtx);
+    
+    console.log("[chat-stream] Injecting memory context:", memoryContext ? "YES" : "NO");
+    console.log("[chat-stream] Injecting personality:", aiPersonality ? "YES" : "NO");
+    
+    // Inject memory context
+    if (memoryContext) {
+      systemPrompt = systemPrompt.replace(
+        "Today's date:",
+        `${memoryContext}\n\nToday's date:`
+      );
+    }
+    
+    // Inject personality instructions at the VERY END so they override earlier system rules.
+    if (aiPersonality) {
+      const personalityInstructions = buildPersonalityInstructions(aiPersonality);
+      systemPrompt = `${systemPrompt}\n\n--- PERSONALITY SETTINGS (HIGH PRIORITY) ---\n${personalityInstructions}\n--- END PERSONALITY ---`;
+      console.log("[chat-stream] Personality instructions injected (high priority)");
+    }
     const primarySubject = userContext?.subjects?.[0];
     const taskType = classifyTaskType(messages, primarySubject);
     const isResearchMode = Boolean(userContext?.researchMode);

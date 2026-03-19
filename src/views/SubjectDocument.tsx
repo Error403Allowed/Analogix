@@ -22,6 +22,7 @@ import RichEditor, { type RichEditorHandle } from "@/components/RichEditor";
 import { decodeStudyGuide } from "@/components/StudyGuideView";
 import { useTabs } from "@/context/TabsContext";
 import { useTextToSpeech } from "@/hooks/useTextToSpeech";
+import ProfileSheet from "@/components/ProfileSheet";
 
 const formatSavedLabel = (iso?: string | null) => {
   if (!iso) return "Not saved yet";
@@ -68,6 +69,7 @@ export default function SubjectDocument() {
   const [helperInput, setHelperInput]       = useState("");
   const [helperTyping, setHelperTyping]     = useState(false);
   const [chatOpen, setChatOpen]             = useState(false);
+  const [showAISettings, setShowAISettings] = useState(false);
   const { updateTabLabelByPath } = useTabs();
   const [isInserting, setIsInserting]       = useState(false);
   const [usePageContext, setUsePageContext]  = useState(true);
@@ -554,6 +556,7 @@ export default function SubjectDocument() {
                     onChange={setContent}
                     placeholder="Start writing… or type / for commands."
                     subject={subject?.label}
+                    onOpenAISettings={() => setShowAISettings(true)}
                   />
                 ) : (
                   <div className="min-h-[55vh] flex items-center justify-center">

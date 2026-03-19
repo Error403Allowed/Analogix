@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useCallback, useEffect, useMemo } from "react";
+import { createContext, useContext, useState, useCallback, useEffect, useMemo, ReactNode, useRef } from "react";
 
 export interface AppTab {
   id: string;
@@ -22,7 +22,17 @@ interface TabsContextValue {
   reorderTabs: (ordered: AppTab[]) => void;
 }
 
+interface TabContentCacheContextValue {
+  activeTabId: string | null;
+  getTabContent: (tabId: string) => ReactNode | null;
+  setTabContent: (tabId: string, content: ReactNode) => void;
+  removeTabContent: (tabId: string) => void;
+  getTabInstance: (tabId: string) => ReactNode | null;
+  setTabInstance: (tabId: string, instance: ReactNode) => void;
+}
+
 const TabsContext = createContext<TabsContextValue | null>(null);
+const TabContentCacheContext = createContext<TabContentCacheContextValue | null>(null);
 
 export const useTabs = () => {
   const ctx = useContext(TabsContext);
@@ -37,6 +47,19 @@ export const useTabs = () => {
     updateTabLabelByPath: () => {},
     togglePin: () => {},
     reorderTabs: () => {},
+  };
+  return ctx;
+};
+
+export const useTabContentCache = () => {
+  const ctx = useContext(TabContentCacheContext);
+  if (!ctx) return {
+    activeTabId: null,
+    getTabContent: () => null,
+    setTabContent: () => {},
+    removeTabContent: () => {},
+    getTabInstance: () => null,
+    setTabInstance: () => {},
   };
   return ctx;
 };
@@ -121,6 +144,10 @@ export function TabsProvider({ children }: { children: React.ReactNode }) {
     [tabs, activeTabId]
   );
 
+  // Tab content cache - uses refs to preserve component instances and their state
+  const tabInstancesRef = useRef<Map<string, ReactNode>>(new Map());
+  const [, forceUpdate] = useState({});
+
   useEffect(() => {
     const needsSync =
       !tabsEqual(tabs, normalizedTabs) ||
@@ -153,6 +180,9 @@ export function TabsProvider({ children }: { children: React.ReactNode }) {
       const idx = prev.findIndex(t => t.id === id);
       if (idx === -1) return prev;
       const next = prev.filter(t => t.id !== id);
+      // Remove cached instance for closed tab
+      tabInstancesRef.current.delete(id);
+      forceUpdate({});
       // If we closed the active tab, activate the nearest remaining one
       setActiveTabIdState(current => {
         if (current !== id) return current;
@@ -200,19 +230,49 @@ export function TabsProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  // Cache component instance for a tab (preserves state)
+  const setTabInstance = useCallback((tabId: string, instance: ReactNode) => {
+    tabInstancesRef.current.set(tabId, instance);
+    forceUpdate({});
+  }, []);
+
+  // Get cached instance for a tab
+  const getTabInstance = useCallback((tabId: string) => {
+    return tabInstancesRef.current.get(tabId) || null;
+  }, []);
+
+  // Remove cached instance for a tab
+  const removeTabContent = useCallback((tabId: string) => {
+    tabInstancesRef.current.delete(tabId);
+    forceUpdate({});
+  }, []);
+
+  // Legacy API - just use instances
+  const setTabContent = setTabInstance;
+  const getTabContent = getTabInstance;
+
   return (
-    <TabsContext.Provider value={{
-      tabs: normalizedTabs,
+    <TabContentCacheContext.Provider value={{
       activeTabId: normalizedActiveId,
-      openTab,
-      closeTab,
-      setActiveTab,
-      updateActiveTabLabel,
-      updateTabLabelByPath,
-      togglePin,
-      reorderTabs,
+      getTabContent,
+      setTabContent,
+      removeTabContent,
+      getTabInstance,
+      setTabInstance,
     }}>
-      {children}
-    </TabsContext.Provider>
+      <TabsContext.Provider value={{
+        tabs: normalizedTabs,
+        activeTabId: normalizedActiveId,
+        openTab,
+        closeTab,
+        setActiveTab,
+        updateActiveTabLabel,
+        updateTabLabelByPath,
+        togglePin,
+        reorderTabs,
+      }}>
+        {children}
+      </TabsContext.Provider>
+    </TabContentCacheContext.Provider>
   );
 }

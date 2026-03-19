@@ -5,6 +5,7 @@ import React, { useState, useCallback, forwardRef, useImperativeHandle, useEffec
 import {
   AlignLeft, Heading1, Heading2, Heading3, Quote, Code, List, ListOrdered,
   Check, Minus, Bold, Italic, Underline as UnderlineIcon, Strikethrough,
+  Sparkles,
 } from "lucide-react";
 import StarterKit from "@tiptap/starter-kit";
 import Mathematics from "@tiptap/extension-mathematics";
@@ -39,6 +40,7 @@ import {
   ContextMenuItem,
   ContextMenuSeparator,
 } from "@/components/ui/context-menu";
+import { motion } from "framer-motion";
 
 const lowlight = createLowlight(common);
 
@@ -119,6 +121,7 @@ interface RichEditorProps {
   onChange: (html: string) => void;
   placeholder?: string;
   subject?: string;
+  onOpenAISettings?: () => void;
 }
 
 // ── Position helpers ─────────────────────────────────────────────────────────
@@ -149,7 +152,7 @@ function getCaretPos(): { top: number; left: number } | null {
 // ── Component ────────────────────────────────────────────────────────────────
 
 const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(
-  ({ initialContent, onChange, placeholder, subject }, ref) => {
+  ({ initialContent, onChange, placeholder, subject, onOpenAISettings }, ref) => {
     const [palettePos,   setPalettePos]   = useState<{ top: number; left: number } | null>(null);
     const [slashQuery,   setSlashQuery]   = useState("");
     const [focusedIndex, setFocusedIndex] = useState(0);
@@ -735,6 +738,24 @@ const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(
             />
           )}
         </AnimatePresence>
+
+        {/* ── Floating AI Settings Button (top-right corner) ──────────────── */}
+        {onOpenAISettings && (
+          <motion.button
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={onOpenAISettings}
+            className="fixed bottom-6 right-6 z-50 p-3 rounded-full gradient-primary shadow-lg hover:shadow-xl transition-all flex items-center gap-2"
+            title="AI Settings"
+          >
+            <Sparkles className="w-5 h-5 text-primary-foreground" />
+            <span className="text-xs font-bold text-primary-foreground hidden sm:inline">
+              AI Settings
+            </span>
+          </motion.button>
+        )}
       </>
     );
   }

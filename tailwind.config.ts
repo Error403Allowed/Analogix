@@ -129,21 +129,19 @@ export default {
 		},
   		fontFamily: {
   			sans: [
-  				'DM Sans',
+  				'Inter',
   				'ui-sans-serif',
   				'system-ui',
   				'-apple-system',
   				'sans-serif'
   			],
   			display: [
-  				'Instrument Serif',
+  				'Inter',
   				'ui-serif',
   				'Georgia',
   				'serif'
   			],
   			serif: [
-  				'Lora',
-  				'ui-serif',
   				'Georgia',
   				'Cambria',
   				'Times New Roman',
@@ -152,10 +150,7 @@ export default {
   			],
   			mono: [
   				'JetBrains Mono',
-  				'Space Mono',
-  				'ui-monospace',
-  				'SFMono-Regular',
-  				'Menlo',
+  				'SF Mono',
   				'Monaco',
   				'Consolas',
   				'monospace'

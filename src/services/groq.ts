@@ -11,10 +11,16 @@ import { fetchJsonWithRetry } from "@/lib/fetch-wrapper";
 export async function* getGroqStream(
   messages: ChatMessage[],
   userContext?: Partial<UserContext> & { analogyIntensity?: number; analogyAnchor?: string },
+  localStorageData?: { personality?: any; memories?: any[] } | null,
 ): AsyncGenerator<string> {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (localStorageData) {
+    headers["x-client-data"] = JSON.stringify(localStorageData);
+  }
+
   const response = await fetch("/api/groq/chat-stream", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify({ messages, userContext }),
   });
 

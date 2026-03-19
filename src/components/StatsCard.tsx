@@ -33,11 +33,11 @@ const StatsCard = ({ title, value, subtitle, icon: Icon, trend, color }: StatsCa
   };
 
   return (
-    <motion.div
-      className={`glass-card p-5 bg-gradient-to-br ${colorClasses[color].split(" ")[0]} ${colorClasses[color].split(" ")[1]}`}
+  <motion.div
+      className="dashboard-panel p-5"
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
-      whileHover={{ y: -2 }}
+      whileHover={{ y: -1 }}
     >
       <div className="flex items-start justify-between">
         <div>
@@ -60,10 +60,10 @@ const StatsCard = ({ title, value, subtitle, icon: Icon, trend, color }: StatsCa
           )}
         </div>
         <motion.div
-          className={`p-3 rounded-xl ${iconBgClasses[color]}`}
+          className="p-3 rounded-xl bg-accent/20"
           whileHover={{ rotate: 10 }}
         >
-          <Icon className={`w-6 h-6 ${colorClasses[color].split(" ")[2]}`} />
+          <Icon className="w-6 h-6 text-foreground/80" />
         </motion.div>
       </div>
     </motion.div>

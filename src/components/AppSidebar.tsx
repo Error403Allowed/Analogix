@@ -115,7 +115,7 @@ export function AppSidebar() {
       <div className="flex flex-col h-full mx-2 my-2 rounded-3xl glass-card border-0 shadow-2xl overflow-hidden">
 
         {/* ── Header: logo + collapse trigger ──────────────────────── */}
-        <SidebarHeader className="h-16 shrink-0 flex flex-col justify-center px-5 group-data-[collapsible=icon]:px-2 border-b border-white/10 dark:border-white/5">
+        <SidebarHeader className="h-16 shrink-0 flex flex-col justify-center px-5 group-data-[collapsible=icon]:px-2">
           <div className="flex items-center justify-between w-full group-data-[collapsible=icon]:justify-center">
             <button
               onClick={() => router.push("/?force=true")}
@@ -127,7 +127,7 @@ export function AppSidebar() {
               <span className="text-xl font-black gradient-text tracking-tighter">Analogix</span>
             </button>
             <SidebarTrigger
-              className="h-8 w-8 rounded-xl border border-primary/20 bg-primary/8 text-primary hover:bg-primary/15 transition-colors"
+              className="border-border/40 bg-muted/20 text-foreground hover:bg-muted/40 transition-colors"
               data-tutorial="sidebar-trigger"
             />
           </div>
@@ -159,7 +159,7 @@ export function AppSidebar() {
                               "h-9 rounded-xl transition-all duration-200 relative group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:-translate-x-1.5",
                               isActive
                                 ? "bg-primary/12 text-primary font-black"
-                                : "text-muted-foreground hover:text-foreground hover:bg-white/5 dark:hover:bg-white/5 font-semibold"
+                                : "text-muted-foreground font-semibold"
                             )}
                           >
                             {isActive && (
@@ -190,24 +190,24 @@ export function AppSidebar() {
                 <div className="flex flex-col items-center gap-1">
                   {mounted && (
                     <button onClick={() => setMode(isDark ? "light" : "dark")}
-                      className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-white/8 transition-colors text-muted-foreground">
+                      className="w-9 h-9 flex items-center justify-center rounded-xl transition-colors text-muted-foreground">
                       {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
                     </button>
                   )}
                   {mounted && (
                     <Popover>
                       <PopoverTrigger asChild>
-                        <button className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-white/8 transition-colors text-muted-foreground">
+                        <button className="w-9 h-9 flex items-center justify-center rounded-xl transition-colors text-muted-foreground">
                           <Palette className="w-4 h-4" />
                         </button>
                       </PopoverTrigger>
-                      <PopoverContent side="right" align="start" className="w-56 p-3 glass-card border-white/10 ml-2 shadow-2xl">
+                      <PopoverContent side="right" align="start" className="w-56 p-3 glass-card border-transparent ml-2 shadow-2xl">
                         <p className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-2">Theme</p>
                         <div className="grid grid-cols-2 gap-1.5">
                           {themes.map(t => (
                             <button key={t.name} onClick={() => handleThemeSelect(t.name)}
-                              className={cn("flex flex-col gap-1 p-1.5 rounded-xl transition-all border text-left",
-                                activeThemeName === t.name ? "border-primary/50 bg-primary/8" : "border-white/5 bg-white/5 hover:bg-white/10")}>
+                              className={cn("flex flex-col gap-1 p-1.5 rounded-xl transition-all border border-transparent hover:border-primary/20 text-left",
+                                activeThemeName === t.name ? "border-primary/50 bg-primary/8" : "bg-transparent")}>
                               <div className="w-full h-6 rounded-lg" style={{ background: `linear-gradient(135deg, ${t.g[0]}, ${t.g[1]})` }} />
                               <span className={cn("text-[8px] font-black uppercase tracking-tight", activeThemeName === t.name ? "text-primary" : "text-muted-foreground")}>{t.name}</span>
                             </button>
@@ -222,14 +222,14 @@ export function AppSidebar() {
                   {/* Dark/light toggle row */}
                   {mounted && (
                     <button onClick={() => setMode(isDark ? "light" : "dark")}
-                      className="w-full h-9 flex items-center gap-2.5 px-3 rounded-xl hover:bg-white/5 transition-colors text-muted-foreground hover:text-foreground font-semibold text-sm">
+                      className="w-full h-9 flex items-center gap-2.5 px-3 rounded-xl transition-colors text-muted-foreground font-semibold text-sm">
                       {isDark ? <Sun className="w-4 h-4 shrink-0" /> : <Moon className="w-4 h-4 shrink-0" />}
                       <span className="truncate">{isDark ? "Light mode" : "Dark mode"}</span>
                     </button>
                   )}
                   {/* Colour scheme collapsible */}
                   <button onClick={() => setThemeOpen(o => !o)}
-                    className="w-full h-9 flex items-center gap-2.5 px-3 rounded-xl hover:bg-white/5 transition-colors text-muted-foreground hover:text-foreground font-semibold text-sm">
+                    className="w-full h-9 flex items-center gap-2.5 px-3 rounded-xl transition-colors text-muted-foreground font-semibold text-sm">
                     <Palette className="w-4 h-4 shrink-0" />
                     <span className="flex-1 text-left truncate">Colour scheme</span>
                     <ChevronDown className={cn("w-3 h-3 transition-transform", themeOpen && "rotate-180")} />
@@ -241,7 +241,7 @@ export function AppSidebar() {
                           {themes.map(t => (
                             <button key={t.name} onClick={() => handleThemeSelect(t.name)}
                               className={cn("flex flex-col gap-1 p-1.5 rounded-xl transition-all border text-left",
-                                activeThemeName === t.name ? "border-primary/50 bg-primary/8" : "border-white/5 bg-white/5 hover:bg-white/10")}>
+                                activeThemeName === t.name ? "border-primary/50 bg-primary/8" : "border-primary/10 bg-primary/5 hover:bg-primary/10")}>
                               <div className="w-full h-6 rounded-lg" style={{ background: `linear-gradient(135deg, ${t.g[0]}, ${t.g[1]})` }} />
                               <span className={cn("text-[8px] font-black uppercase tracking-tight", activeThemeName === t.name ? "text-primary" : "text-muted-foreground")}>{t.name}</span>
                             </button>
@@ -258,11 +258,11 @@ export function AppSidebar() {
 
 
         {/* ── Footer: user profile + streak ────────────────────────── */}
-        <SidebarFooter className="shrink-0 p-3 border-t border-white/10 dark:border-white/5">
+        <SidebarFooter className="shrink-0 p-3">
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton size="lg" onClick={() => setProfileOpen(true)} data-tutorial="profile"
-                className="h-auto w-full flex items-center gap-3 p-2 rounded-2xl hover:bg-white/8 transition-all cursor-pointer group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-1.5">
+                className="h-auto w-full flex items-center gap-3 p-2 rounded-2xl transition-all cursor-pointer group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-1.5">
                 {/* Avatar */}
                 <div className="relative shrink-0">
                   <div className="w-9 h-9 rounded-xl overflow-hidden">

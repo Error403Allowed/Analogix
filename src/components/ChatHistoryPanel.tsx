@@ -53,7 +53,7 @@ export default function ChatHistoryPanel({ isCollapsed }: ChatHistoryPanelProps)
     return (
       <button
         onClick={() => router.push("/chat")}
-        className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-white/8 transition-colors text-muted-foreground"
+        className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-primary/10 transition-colors text-muted-foreground"
         title="Chat History"
       >
         <Clock className="w-4 h-4" />
@@ -66,7 +66,7 @@ export default function ChatHistoryPanel({ isCollapsed }: ChatHistoryPanelProps)
       {/* Toggle header */}
       <button
         onClick={() => setOpen(o => !o)}
-        className="w-full h-9 flex items-center gap-2.5 px-3 rounded-xl hover:bg-white/5 transition-colors text-muted-foreground hover:text-foreground font-semibold text-sm"
+        className="w-full h-9 flex items-center gap-2.5 px-3 rounded-xl hover:bg-primary/5 transition-colors text-muted-foreground hover:text-foreground font-semibold text-sm"
       >
         <Clock className="w-4 h-4 shrink-0" />
         <span className="flex-1 text-left truncate">Chat History</span>
@@ -100,7 +100,7 @@ export default function ChatHistoryPanel({ isCollapsed }: ChatHistoryPanelProps)
                     initial={{ opacity: 0, x: -8 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -8 }}
-                    className="group flex items-center gap-2 px-2 py-1.5 rounded-xl hover:bg-white/5 cursor-pointer transition-colors"
+                    className="group flex items-center gap-2 px-2 py-1.5 rounded-xl hover:bg-primary/5 cursor-pointer transition-colors"
                     onClick={() => handleResume(session)}
                   >
                     <div className="w-6 h-6 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
