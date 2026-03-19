@@ -8,7 +8,6 @@ import {
   ArrowDown,
   Send,
   Brain,
-  Lightbulb,
   Sigma,
   RefreshCw,
   Square,
@@ -1613,9 +1612,6 @@ const Chat = () => {
                       transition={{ duration: 0.4 }}
                       className="flex flex-col items-center justify-center h-full min-h-[40vh] gap-3 text-center"
                     >
-                      <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center">
-                        <Lightbulb className="w-6 h-6 text-primary/70" />
-                      </div>
                       <div>
                         <p className="text-base font-semibold text-foreground/80">
                           {userName ? `Hey ${userName}, what are you studying?` : "What are you studying?"}
@@ -1837,9 +1833,6 @@ const Chat = () => {
                     >
                       <div className="message-bubble-assistant">
                         <div className="flex items-center gap-3">
-                          <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center shrink-0">
-                            <Lightbulb className="w-3 h-3 text-white" />
-                          </div>
                           <div className="flex gap-1 items-end h-5">
                             {[0, 1, 2, 3, 4, 5, 6].map((i) => (
                               <div key={i} className="typing-dot" style={{ alignSelf: "flex-end" }} />
@@ -2066,19 +2059,6 @@ const Chat = () => {
                             </motion.div>
                           )}
                         </AnimatePresence>
-                      </div>
-
-                      {/* Analogy toggle */}
-                      <div className="flex flex-col items-center gap-0.5" data-tour="analogy-toggle">
-                        <button
-                          type="button"
-                          onClick={() => setAnalogyModeEnabled(p => !p)}
-                          disabled={isInputLocked}
-                          className={`w-8 h-8 rounded-full flex items-center justify-center transition-all disabled:opacity-40 ${analogyModeEnabled ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"}`}
-                          title={analogyModeEnabled ? "Analogies on — click to turn off" : "Analogies off — click to turn on"}
-                        >
-                          <Lightbulb className="w-3.5 h-3.5" />
-                        </button>
                       </div>
 
                       {/* Research mode */}

@@ -1,10 +1,13 @@
 import ProtectedRoute from "@/components/ProtectedRoute";
 import Chat from "@/views/Chat";
+import { Suspense } from "react";
 
 export default function ChatPage() {
   return (
     <ProtectedRoute>
-      <Chat />
+      <Suspense fallback={null}>
+        <Chat />
+      </Suspense>
     </ProtectedRoute>
   );
 }

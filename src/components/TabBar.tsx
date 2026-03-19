@@ -197,7 +197,7 @@ function NewTabOverlay({
 
 // ── TabBar ────────────────────────────────────────────────────────────────────
 export default function TabBar({ onNavigate }: TabBarProps) {
-  const { tabs, activeTabId, closeTab, setActiveTab, openTab, togglePin, reorderTabs } = useTabs();
+  const { tabs, activeTabId, hydrated, closeTab, setActiveTab, openTab, togglePin, reorderTabs } = useTabs();
   const router = useRouter();
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -380,6 +380,7 @@ export default function TabBar({ onNavigate }: TabBarProps) {
   };
 
   if (tabs.length === 0) return null;
+  if (!hydrated) return <div className="h-9 shrink-0 border-b border-border/40" />;
 
   return (
     <>

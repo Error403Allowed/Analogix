@@ -65,7 +65,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
         setIsChecking(false);
         return;
       }
-      
+
       userRef.current = user.id;
       setIsChecking(true);
 
@@ -109,18 +109,31 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     checkOnboarding();
   }, [user, loading, router]);
 
-  // Show loading spinner while checking auth/onboarding
-  if (loading || isChecking) {
+  // Always render children to ensure proper hydration and tab caching
+  // Use overlay for loading/redirect states instead of replacing content
+  const isRedirecting = (!user && !loading) || (user && isChecking);
+  
+  if (isRedirecting) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
+      <>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+        {children}
+      </>
     );
   }
 
-  // Not authenticated - don't render anything (redirect happening)
-  if (!user) {
-    return null;
+  // Loading auth - show overlay but render children
+  if (loading) {
+    return (
+      <>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+        {children}
+      </>
+    );
   }
 
   return <>{children}</>;
