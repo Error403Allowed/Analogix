@@ -12,7 +12,12 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@ai-sdk/groq": "^3.0.29",
     "@ai-sdk/react": "^3.0.118",
+    "@blocknote/core": "^0.47.1",
+    "@blocknote/react": "^0.47.1",
+    "@blocknote/shadcn": "^0.47.1",
+    "@blocknote/xl-ai": "^0.47.1",
     "@codemirror/lang-python": "^6.2.1",
     "@google/generative-ai": "^0.24.1",
     "@hookform/resolvers": "^3.10.0",

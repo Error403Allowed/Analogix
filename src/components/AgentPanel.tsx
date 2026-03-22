@@ -192,6 +192,35 @@ export default function AgentPanel() {
 
     build();
     return () => { active = false; };
+    }, [pathname]);
+
+  // Re-build context when document data updates (keeps currentDoc.content fresh)
+  useEffect(() => {
+    const handler = () => {
+      // Re-run the context build to pick up latest doc content
+      let active = true;
+      const stripHtml = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+      const subjectLabel = (id: string) =>
+        SUBJECT_CATALOG.find(s => s.id === id)?.label || id;
+      const match = pathname.match(/^\/subjects\/([^/]+)\/document\/([^/]+)/);
+      if (!match) return;
+      const subjectId = match[1];
+      const docId = match[2];
+      subjectStore.getSubject(subjectId).then(data => {
+        if (!active) return;
+        const doc = data?.notes.documents?.find((d: any) => d.id === docId);
+        if (doc) {
+          setCurrentDoc({
+            title: doc.title || "Untitled",
+            subjectId,
+            content: doc.content || "",
+          });
+        }
+      }).catch(() => {});
+      return () => { active = false; };
+    };
+    window.addEventListener("subjectDataUpdated", handler);
+    return () => window.removeEventListener("subjectDataUpdated", handler);
   }, [pathname]);
 
   // Focus input when panel opens
@@ -278,6 +307,19 @@ export default function AgentPanel() {
       ? [currentDoc.title, ...dedupedContext.filter(t => t !== currentDoc.title)]
       : dedupedContext;
 
+    // If we're on a doc page but currentDoc.content is empty, fetch it fresh before sending
+    let resolvedCurrentDoc = currentDoc;
+    if (currentDoc && !currentDoc.content) {
+      try {
+        const match = pathname.match(/^\/subjects\/([^/]+)\/document\/([^/]+)/);
+        if (match) {
+          const data = await subjectStore.getSubject(match[1]);
+          const doc = data?.notes.documents?.find((d: any) => d.id === match[2]);
+          if (doc) resolvedCurrentDoc = { title: doc.title || "Untitled", subjectId: match[1], content: doc.content || "" };
+        }
+      } catch { /* use existing currentDoc */ }
+    }
+
     setInput("");
     setError("");
 
@@ -304,7 +346,7 @@ export default function AgentPanel() {
           userContext: appContext,
           contextOptions,
           mentionedDocs,
-          currentDoc: currentDoc ? { title: currentDoc.title, subjectId: currentDoc.subjectId, content: currentDoc.content } : null,
+          currentDoc: resolvedCurrentDoc ? { title: resolvedCurrentDoc.title, subjectId: resolvedCurrentDoc.subjectId, content: resolvedCurrentDoc.content } : null,
           currentPage: pathname,
           chatSessionId: sessionId,
         }),

@@ -52,10 +52,10 @@ export const chatStore = {
         title: title || `${subjectId} chat`,
       })
       .select("id")
-      .single();
+      .maybeSingle();
 
     if (error) { console.error("[chatStore] createSession insert error:", error.message, error.code, error.details); return null; }
-    return data.id;
+    return data?.id ?? null;
   },
 
   /** Append a message to an existing session */
@@ -71,7 +71,7 @@ export const chatStore = {
       .select("id")
       .eq("id", sessionId)
       .eq("user_id", user.id)
-      .single();
+      .maybeSingle();
 
     if (!session) {
       console.warn("[chatStore] addMessage: session not found or doesn't belong to user:", sessionId);

@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Confetti from "@/components/Confetti";
 import { achievementStore } from "@/utils/achievementStore";
 import { HOBBY_OPTIONS } from "@/utils/interests";
@@ -21,7 +21,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/context/AuthContext";
 
 // ── Auth Step ─────────────────────────────────────────────────────────────────
-function AuthStep({ onAuthed }: { onAuthed: () => void }) {
+function AuthStep({ onAuthed, externalError }: { onAuthed: () => void; externalError?: string | null }) {
   const { signInWithGoogle, user, loading } = useAuth();
   const [googleLoading, setGoogleLoading] = useState(false);
 
@@ -35,6 +35,15 @@ function AuthStep({ onAuthed }: { onAuthed: () => void }) {
   };
 
   if (loading) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // If user is already authenticated, automatically proceed
+  if (user) {
     return (
       <div className="flex items-center justify-center py-16">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -82,6 +91,10 @@ function AuthStep({ onAuthed }: { onAuthed: () => void }) {
           )}
           Continue with Google
         </Button>
+
+        {externalError && (
+          <p className="text-sm text-destructive text-center">{externalError}</p>
+        )}
       </div>
     </div>
   );
@@ -123,10 +136,21 @@ const BYPASS_AUTH = IS_DEV && SKIP_AUTH;
 
 const Onboarding = () => {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user: authUser, loading: authLoading } = useAuth();
 
-  const [step, setStep] = useState(BYPASS_AUTH ? 2 : 1);
+  // Initialize step and error from URL parameters
+  const [step, setStep] = useState(() => {
+    if (BYPASS_AUTH) return 2;
+    const urlStep = searchParams?.get("step");
+    if (urlStep) return parseInt(urlStep, 10);
+    return 1;
+  });
+  const [authError, setAuthError] = useState<string | null>(() => {
+    return searchParams?.get("error") === "auth_failed" ? "Authentication failed. Please try again." : null;
+  });
 
+  // Handle auth state after OAuth callback
   useEffect(() => {
     if (BYPASS_AUTH) {
       try {
@@ -332,7 +356,7 @@ const Onboarding = () => {
               )}
 
               {/* Step 1 — Auth */}
-              {step === 1 && <AuthStep onAuthed={() => setStep(2)} />}
+              {step === 1 && <AuthStep onAuthed={() => setStep(2)} externalError={authError} />}
 
               {/* Step 2 — Name, Year, State (combined for speed) */}
               {step === 2 && (

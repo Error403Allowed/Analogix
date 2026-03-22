@@ -6,11 +6,17 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles, AlertCircle, ArrowLeft } from "lucide-react";
 import { generateStudyGuide, generateFlashcardsFromDocument, generateQuizFromDocument } from "@/services/groq";
 import { subjectStore } from "@/utils/subjectStore";
-import { studyGuideToHtml } from "@/utils/studyGuideHtml";
 import { SUBJECT_CATALOG } from "@/constants/subjects";
 import { eventStore } from "@/utils/eventStore";
-import { AppEvent } from "@/types/events";
 import { flashcardStore } from "@/utils/flashcardStore";
+import { encodeStudyGuide } from "@/utils/studyGuideContent";
+import {
+  assessmentTypeToEventType,
+  formatDateKey,
+  getGenerationErrorMessage,
+  parseAssessmentDate,
+  pickStudyGuideTitle,
+} from "@/utils/studyGuideGeneration";
 
 // ── Steps ────────────────────────────────────────────────────────────────────
 const STEPS = [
@@ -24,29 +30,53 @@ const STEPS = [
   { label: "Polishing your guide",        icon: "✨" },
 ];
 
-const STEP_DURATION_MS = 5000;
+const STEP_DURATION_MS = 3000; // Faster cycling for continuous loop
 
 // ── Particle background ───────────────────────────────────────────────────────
+interface ParticleData {
+  x: string;
+  y: string;
+  y1: string;
+  y2: string;
+  duration: number;
+  delay: number;
+}
+
 function FloatingParticles() {
+  const [particles, setParticles] = useState<ParticleData[]>([]);
+
+  useEffect(() => {
+    setParticles(
+      Array.from({ length: 20 }, () => ({
+        x: `${Math.random() * 100}vw`,
+        y: `${Math.random() * 100}vh`,
+        y1: `${Math.random() * 100}vh`,
+        y2: `${Math.random() * 100}vh`,
+        duration: 4 + Math.random() * 6,
+        delay: Math.random() * 4,
+      }))
+    );
+  }, []);
+
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
-      {Array.from({ length: 20 }).map((_, i) => (
+      {particles.map((particle, i) => (
         <motion.div
           key={i}
           className="absolute w-1 h-1 rounded-full bg-primary/20"
           initial={{
-            x: `${Math.random() * 100}vw`,
-            y: `${Math.random() * 100}vh`,
+            x: particle.x,
+            y: particle.y,
             opacity: 0,
           }}
           animate={{
-            y: [`${Math.random() * 100}vh`, `${Math.random() * 100}vh`],
+            y: [particle.y1, particle.y2],
             opacity: [0, 0.6, 0],
           }}
           transition={{
-            duration: 4 + Math.random() * 6,
+            duration: particle.duration,
             repeat: Infinity,
-            delay: Math.random() * 4,
+            delay: particle.delay,
             ease: "easeInOut",
           }}
         />
@@ -61,46 +91,40 @@ export default function StudyGuideLoadingPage() {
   const [stepIdx, setStepIdx] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
   const hasStarted = useRef(false);
+  const startTimeRef = useRef<number>(Date.now());
+  const savedDocRef = useRef<{ subjectId: string; docId: string } | null>(null);
 
-  // Step ticker
+  // Elapsed time tracker
   useEffect(() => {
     const interval = setInterval(() => {
-      setStepIdx(i => Math.min(i + 1, STEPS.length - 1));
-    }, STEP_DURATION_MS);
+      setElapsed(Math.floor((Date.now() - startTimeRef.current) / 1000));
+    }, 1000);
     return () => clearInterval(interval);
   }, []);
+
+  // Step ticker - loops continuously until done
+  useEffect(() => {
+    if (done) return;
+    
+    const interval = setInterval(() => {
+      setStepIdx(i => (i + 1) % STEPS.length);
+    }, STEP_DURATION_MS);
+    return () => clearInterval(interval);
+  }, [done]);
 
   // Generation
   useEffect(() => {
     if (hasStarted.current) return;
     hasStarted.current = true;
 
-    const formatDateKey = (date: Date) =>
-      `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-
-    const parseAssessmentDate = (value?: string | null) => {
-      if (!value) return null;
-      const match = value.match(/\d{4}-\d{2}-\d{2}/);
-      if (!match) return null;
-      const [year, month, day] = match[0].split("-").map(Number);
-      if (!year || !month || !day) return null;
-      return new Date(year, month - 1, day, 9, 0, 0);
-    };
-
-    const assessmentTypeToEventType = (value?: string | null): AppEvent["type"] => {
-      const type = (value || "").toLowerCase();
-      if (/(exam|test|quiz|midterm|final)/.test(type)) return "exam";
-      if (/(assignment|project|essay|report|presentation|practical|task|lab)/.test(type)) return "assignment";
-      return "event";
-    };
-
     const safeLocalStorageGet = (key: string) => {
       try { return localStorage.getItem(key); } catch { return null; }
     };
 
     const safeLocalStorageSet = (key: string, value: string) => {
-      try { localStorage.setItem(key, value); } catch {}
+      try { localStorage.setItem(key, value); } catch { return undefined; }
     };
 
     const run = async () => {
@@ -129,40 +153,49 @@ export default function StudyGuideLoadingPage() {
           throw new Error("No guide returned - generation failed");
         }
 
+        const title = pickStudyGuideTitle(result.title, job.fileName.replace(/\.[^.]+$/, "") || "Study Guide");
+
         // Only create document AFTER successful generation
-        const doc = await subjectStore.createDocument(job.subjectId, result.title);
-        const html = studyGuideToHtml(result);
-        await subjectStore.updateDocument(job.subjectId, doc.id, { content: html });
+        const doc = await subjectStore.createDocument(job.subjectId, title);
+        await subjectStore.updateDocument(job.subjectId, doc.id, {
+          title,
+          content: encodeStudyGuide({ ...result, title }),
+        });
+        savedDocRef.current = { subjectId: job.subjectId, docId: doc.id };
 
         const assessmentDate = parseAssessmentDate(result.assessmentDate);
-        if (assessmentDate) {
-          const title = result.title || "Assessment";
-          const eventType = assessmentTypeToEventType(result.assessmentType);
-          const subject = subjectLabel || "General";
-
-          const existing = await eventStore.getAll();
-          const dateKey = formatDateKey(assessmentDate);
-          const alreadyAdded = existing.some(e =>
-            e.title === title &&
-            e.subject === subject &&
-            formatDateKey(new Date(e.date)) === dateKey
-          );
-
-          if (!alreadyAdded) {
-            await eventStore.add({
-              id: Date.now().toString(),
-              title,
-              subject,
-              date: assessmentDate,
-              type: eventType,
-              source: "manual",
-              description: `Auto-added from study guide "${title}".`,
-            });
-          }
-        }
-
         const flashcardsKey = `docFlashcards:${doc.id}`;
         const quizKey = `docQuiz:${doc.id}`;
+
+        const syncAssessmentEvent = async () => {
+          if (!assessmentDate) return;
+
+          try {
+            const eventType = assessmentTypeToEventType(result.assessmentType);
+            const subject = subjectLabel || "General";
+            const existing = await eventStore.getAll();
+            const dateKey = formatDateKey(assessmentDate);
+            const alreadyAdded = existing.some(e =>
+              e.title === title &&
+              e.subject === subject &&
+              formatDateKey(new Date(e.date)) === dateKey
+            );
+
+            if (!alreadyAdded) {
+              await eventStore.add({
+                id: Date.now().toString(),
+                title,
+                subject,
+                date: assessmentDate,
+                type: eventType,
+                source: "manual",
+                description: `Auto-added from study guide "${title}".`,
+              });
+            }
+          } catch (eventError) {
+            console.warn("[StudyGuideLoadingPage] failed to sync assessment event:", eventError);
+          }
+        };
 
         const generateFlashcards = async () => {
           if (safeLocalStorageGet(flashcardsKey)) return;
@@ -198,23 +231,31 @@ export default function StudyGuideLoadingPage() {
           safeLocalStorageSet(quizKey, JSON.stringify(quiz));
         };
 
-        await Promise.allSettled([generateFlashcards(), generateQuiz()]);
+        await Promise.allSettled([
+          syncAssessmentEvent(),
+          generateFlashcards(),
+          generateQuiz(),
+        ]);
 
         setDone(true);
         // Brief pause so the "Done!" step feels satisfying
         await new Promise(r => setTimeout(r, 800));
         router.replace(`/subjects/${job.subjectId}/document/${doc.id}`);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+        const savedDoc = savedDocRef.current;
+        if (savedDoc) {
+          console.warn("[StudyGuideLoadingPage] recovered from post-save error:", err);
+          setDone(true);
+          router.replace(`/subjects/${savedDoc.subjectId}/document/${savedDoc.docId}`);
+          return;
+        }
+
+        setError(getGenerationErrorMessage(err));
       }
     };
 
     run();
   }, [router]);
-
-  const progress = done
-    ? 100
-    : ((stepIdx + 1) / STEPS.length) * 100;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-background">
@@ -289,38 +330,39 @@ export default function StudyGuideLoadingPage() {
                 {done ? "Guide ready!" : "Building your guide"}
               </h1>
               <p className="text-sm text-muted-foreground/60">
-                {done ? "Redirecting you now…" : "This usually takes about 30 seconds"}
+                {done ? "Redirecting you now…" : (
+                  <span>
+                    This may take up to 60 seconds for complex documents
+                    <span className="inline-block ml-2 px-2 py-0.5 bg-muted rounded-full text-xs font-medium">
+                      {elapsed}s elapsed
+                    </span>
+                  </span>
+                )}
               </p>
             </div>
 
             {/* ── Step list ─────────────────────────────────────────────────── */}
             <div className="w-full space-y-2.5">
               {STEPS.map((step, i) => {
-                const isPast    = i < stepIdx;
+                // When looping, only highlight current step, dim others
                 const isCurrent = i === stepIdx && !done;
-                const isDone    = done || isPast;
+                const isDimmed = !done; // Don't show checkmarks while processing
 
                 return (
                   <motion.div
                     key={i}
                     initial={{ opacity: 0, x: -8 }}
-                    animate={{ opacity: isDone || isCurrent ? 1 : 0.3, x: 0 }}
-                    transition={{ delay: i * 0.05 }}
+                    animate={{ 
+                      opacity: isCurrent ? 1 : 0.4, 
+                      x: 0,
+                      scale: isCurrent ? 1.02 : 1,
+                    }}
+                    transition={{ duration: 0.2 }}
                     className="flex items-center gap-3 text-left"
                   >
                     {/* Status dot */}
                     <div className="relative shrink-0 w-5 h-5 flex items-center justify-center">
-                      {isDone ? (
-                        <motion.div
-                          initial={{ scale: 0 }}
-                          animate={{ scale: 1 }}
-                          className="w-4 h-4 rounded-full bg-primary flex items-center justify-center"
-                        >
-                          <svg className="w-2.5 h-2.5 text-primary-foreground" viewBox="0 0 10 10" fill="none">
-                            <path d="M2 5l2.5 2.5L8 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                          </svg>
-                        </motion.div>
-                      ) : isCurrent ? (
+                      {isCurrent ? (
                         <motion.div
                           animate={{ scale: [0.8, 1.1, 0.8] }}
                           transition={{ duration: 1.2, repeat: Infinity }}
@@ -333,9 +375,7 @@ export default function StudyGuideLoadingPage() {
 
                     <span
                       className={`text-sm font-medium transition-colors ${
-                        isCurrent ? "text-foreground" :
-                        isDone    ? "text-muted-foreground" :
-                                    "text-muted-foreground/40"
+                        isCurrent ? "text-foreground font-semibold" : "text-muted-foreground/40"
                       }`}
                     >
                       {step.icon} {step.label}
@@ -354,14 +394,15 @@ export default function StudyGuideLoadingPage() {
               })}
             </div>
 
-            {/* ── Progress bar ──────────────────────────────────────────────── */}
-            <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
+            {/* ── Time estimate ─────────────────────────────────────────────── */}
+            <div className="w-full flex items-center justify-center gap-2 text-xs text-muted-foreground/60">
               <motion.div
-                className="h-full bg-primary rounded-full"
-                initial={{ width: "5%" }}
-                animate={{ width: `${progress}%` }}
-                transition={{ duration: 0.7, ease: "easeOut" }}
-              />
+                animate={{ rotate: 360 }}
+                transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+              </motion.div>
+              <span>Working on your document…</span>
             </div>
           </>
         )}

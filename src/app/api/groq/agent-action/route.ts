@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { studyGuideToHtml } from "@/utils/studyGuideHtml";
+import { encodeStudyGuide } from "@/utils/studyGuideContent";
 import type { GeneratedStudyGuide } from "@/services/groq";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnySupabase = any;
@@ -9,8 +10,28 @@ export const runtime = "nodejs";
 
 const STUDY_GUIDE_PREFIX = "__STUDY_GUIDE_V2__";
 
+type AgentAction = {
+  type?: string;
+  subjectId?: string;
+  docTitle?: string;
+  title?: string;
+  content?: string;
+  mode?: string;
+  field?: string;
+  value?: string;
+  guide?: unknown;
+  cards?: Array<{ front?: string; back?: string }>;
+} & Record<string, unknown>;
+
 // Escape special regex characters for safe pattern matching
 const escapeRegex = (str: string) => str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+function getRequiredDocTitle(action: AgentAction) {
+  if (typeof action.docTitle !== "string" || action.docTitle.trim() === "") {
+    throw new Error(`${action.type || "document action"} requires a docTitle`);
+  }
+  return action.docTitle;
+}
 
 function findDoc(documents: Record<string, unknown>[], docTitle: string) {
   const search = docTitle.toLowerCase().trim();
@@ -46,7 +67,7 @@ async function getRow(supabase: AnySupabase, userId: string, subjectId: string) 
     .select("notes, marks")
     .eq("user_id", userId)
     .eq("subject_id", subjectId)
-    .single();
+    .maybeSingle();
   if (error) console.warn("[agent-action] getRow error:", error.message);
   return data;
 }
@@ -84,9 +105,9 @@ async function saveRow(supabase: AnySupabase, userId: string, subjectId: string,
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const actions: any[] = body.actions || [];
+    const actions: AgentAction[] = Array.isArray(body.actions) ? body.actions : [];
     const defaultSubjectId = typeof body.defaultSubjectId === "string" ? body.defaultSubjectId : null;
-    console.log("[agent-action] received", actions.length, "action(s):", actions.map((a: any) => `${a.type}/${a.docTitle || a.title}`).join(", "));
+    console.log("[agent-action] received", actions.length, "action(s):", actions.map((a) => `${a.type}/${a.docTitle || a.title}`).join(", "));
 
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -138,10 +159,11 @@ export async function POST(request: Request) {
 
         // ── PATCH DOCUMENT FIELD (simple field update) ───────────────────
         } else if (action.type === "patch_document_field") {
-          const target = findDoc(documents, action.docTitle);
-          if (!target) throw new Error(`"${action.docTitle}" not found. Available: ${documents.map(d => d.title).join(", ")}`);
+          const docTitle = getRequiredDocTitle(action);
+          const target = findDoc(documents, docTitle);
+          if (!target) throw new Error(`"${docTitle}" not found. Available: ${documents.map(d => d.title).join(", ")}`);
           
-          let existingContent = typeof target.content === "string" ? target.content : "";
+          const existingContent = typeof target.content === "string" ? target.content : "";
           const field = action.field || "";
           const value = action.value || "";
           
@@ -192,8 +214,9 @@ export async function POST(request: Request) {
           
         // ── UPDATE DOCUMENT (HTML) ───────────────────────────────────────
         } else if (action.type === "update_document") {
-          const target = findDoc(documents, action.docTitle);
-          if (!target) throw new Error(`"${action.docTitle}" not found. Available: ${documents.map(d => d.title).join(", ")}`);
+          const docTitle = getRequiredDocTitle(action);
+          const target = findDoc(documents, docTitle);
+          if (!target) throw new Error(`"${docTitle}" not found. Available: ${documents.map(d => d.title).join(", ")}`);
 
           let existingContent = typeof target.content === "string" ? target.content : "";
           if (existingContent.startsWith(STUDY_GUIDE_PREFIX)) {
@@ -215,8 +238,9 @@ export async function POST(request: Request) {
 
         // ── REPLACE STUDY GUIDE (full replacement) ───────────────────────
         } else if (action.type === "replace_study_guide") {
-          const target = findDoc(documents, action.docTitle);
-          if (!target) throw new Error(`"${action.docTitle}" not found. Available: ${documents.map(d => d.title).join(", ")}`);
+          const docTitle = getRequiredDocTitle(action);
+          const target = findDoc(documents, docTitle);
+          if (!target) throw new Error(`"${docTitle}" not found. Available: ${documents.map(d => d.title).join(", ")}`);
           const existingContent = typeof target.content === "string" ? target.content : "";
 
           // If this isn't a study guide, fall back to update_document
@@ -255,7 +279,7 @@ export async function POST(request: Request) {
             }
             if (!guideObj || typeof guideObj !== "object") throw new Error("guide field is required and must be an object");
 
-            const newContent = studyGuideToHtml(guideObj as GeneratedStudyGuide);
+            const newContent = encodeStudyGuide(guideObj as GeneratedStudyGuide);
             const updatedDocs = documents.map(d => d === target ? { ...d, content: newContent, lastUpdated: now } : d);
             await saveRow(supabase, user.id, subjectId, marks, { ...notes, documents: updatedDocs });
 
@@ -267,7 +291,8 @@ export async function POST(request: Request) {
         // ── ADD FLASHCARDS ───────────────────────────────────────────────
         } else if (action.type === "add_flashcards") {
           const nextReview = new Date(); nextReview.setDate(nextReview.getDate() + 1);
-          const rows = action.cards.map((card: any) => ({
+          const cards = action.cards || [];
+          const rows = cards.map((card) => ({
             user_id: user.id, subject_id: action.subjectId,
             front: card.front, back: card.back,
             next_review: nextReview.toISOString(), interval_days: 1, ease_factor: 2.5, repetitions: 0,
@@ -275,23 +300,25 @@ export async function POST(request: Request) {
           }));
           const { error } = await supabase.from("flashcards").insert(rows);
           if (error) throw error;
-          results.push({ type: "add_flashcards", success: true, detail: `Added ${action.cards.length} flashcard(s) to ${subjectId}` });
+          results.push({ type: "add_flashcards", success: true, detail: `Added ${cards.length} flashcard(s) to ${subjectId}` });
 
         } else {
           results.push({ type: action.type, success: false, detail: `Unknown action type: ${action.type}` });
         }
 
-      } catch (err: any) {
-        console.error("[agent-action] action failed:", action.type, err.message);
-        results.push({ type: action.type, success: false, detail: err.message });
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Unknown action error";
+        console.error("[agent-action] action failed:", action.type, message);
+        results.push({ type: action.type, success: false, detail: message });
       }
     }
 
     console.log("[agent-action] results:", JSON.stringify(results.map(r => ({ type: r.type, success: r.success, detail: r.detail }))));
     return NextResponse.json({ results });
 
-  } catch (error: any) {
-    console.error("[/api/groq/agent-action] Error:", error.message);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unknown server error";
+    console.error("[/api/groq/agent-action] Error:", message);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

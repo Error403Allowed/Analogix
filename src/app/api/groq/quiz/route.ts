@@ -154,8 +154,8 @@ ${sourceBlock}`;
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
       ],
-      max_tokens: 2400,
-      temperature: 0.7,
+      max_tokens: 3200,
+      temperature: 0.85,
     });
 
     const jsonMatch = content.match(/\{[\s\S]*\}/);

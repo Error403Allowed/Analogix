@@ -4,7 +4,8 @@ export interface AppEvent {
   id: string;
   title: string;
   date: Date;
-  type: 'exam' | 'assignment' | 'event';
+  endDate?: Date; // optional end time for duration
+  type: string;  // open string so users can create custom types
   subject?: string;
   description?: string;
   source: 'manual' | 'import';

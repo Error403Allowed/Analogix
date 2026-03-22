@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Paperclip, X, FileText, Plus, AtSign, Search, SlidersHorizontal } from 'lucide-react';
+import { Send, Paperclip, X, FileText, Plus, AtSign, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -169,7 +169,7 @@ export default function ContentInput({
       <div className="flex-1 relative min-h-[56px]">
         <div className={cn("relative", dragging && "ring-2 ring-primary/30 rounded-2xl")}>
           {selectedContext.length > 0 && (
-            <div className="absolute left-12 right-4 top-2 flex flex-wrap gap-1.5 max-h-10 overflow-hidden">
+            <div className="absolute left-4 right-4 top-2 flex flex-wrap gap-1.5 max-h-10 overflow-hidden">
               {selectedContext.map((item) => (
                 <div
                   key={item.id}
@@ -200,7 +200,7 @@ export default function ContentInput({
             onKeyDown={handleKeyDown}
             placeholder={placeholder}
             className={cn(
-              "h-auto min-h-[56px] max-h-40 w-full px-4 pb-12 pr-12 pl-12 text-sm leading-relaxed border-none bg-transparent rounded-2xl focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 ring-offset-background resize-none",
+              "h-auto min-h-[56px] max-h-40 w-full px-4 pb-12 pr-12 pl-4 text-sm leading-relaxed border-none bg-transparent rounded-2xl focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 ring-offset-background resize-none",
               selectedContext.length > 0 ? "pt-9" : "pt-3"
             )}
             onDragOver={(e) => {
@@ -231,20 +231,7 @@ export default function ContentInput({
             >
               <Plus className="w-4 h-4" />
             </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 rounded-xl border border-border/40 hover:bg-muted/60"
-              title="Context settings"
-              onClick={() => {
-                setShowActionMenu(false);
-                setShowMentions(false);
-                onToggleContextOptions?.();
-              }}
-            >
-              <SlidersHorizontal className="w-4 h-4" />
-            </Button>
+
           </div>
 
           {/* File upload preview */}

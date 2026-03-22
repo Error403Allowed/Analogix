@@ -247,6 +247,135 @@
   border: none !important;
 }
 
+.document-editor-shell {
+  --bn-colors-editor-background: color-mix(in srgb, hsl(var(--muted)) 92%, hsl(var(--background)));
+  --bn-colors-menu-background: color-mix(in srgb, hsl(var(--card)) 94%, hsl(var(--muted)));
+  --bn-colors-tooltip-background: color-mix(in srgb, hsl(var(--card)) 96%, hsl(var(--muted)));
+  --bn-colors-hovered-background: color-mix(in srgb, hsl(var(--muted)) 84%, hsl(var(--background)));
+  --bn-colors-border: color-mix(in srgb, hsl(var(--border)) 86%, transparent);
+  border-radius: 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
+.dark .document-editor-shell {
+  --bn-colors-editor-background: color-mix(in srgb, hsl(var(--secondary)) 94%, hsl(var(--background)));
+  --bn-colors-menu-background: color-mix(in srgb, hsl(var(--card)) 96%, hsl(var(--background)));
+  --bn-colors-tooltip-background: color-mix(in srgb, hsl(var(--card)) 92%, hsl(var(--background)));
+  --bn-colors-hovered-background: color-mix(in srgb, hsl(var(--secondary)) 82%, hsl(var(--background)));
+  --bn-colors-border: color-mix(in srgb, hsl(var(--border)) 88%, transparent);
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.document-editor-shell .bn-container {
+  background: transparent;
+}
+
+.document-editor-shell .bn-editor {
+  background-color: var(--bn-colors-editor-background);
+  border: 1px solid var(--bn-colors-border);
+  border-radius: 22px;
+  box-shadow: none;
+  padding: 16px 28px 32px 26px;
+}
+
+.document-editor-shell .bn-toolbar,
+.document-editor-shell .bn-suggestion-menu {
+  background: var(--bn-colors-menu-background);
+  border: 1px solid var(--bn-colors-border);
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.1);
+}
+
+.dark .document-editor-shell .bn-toolbar,
+.dark .document-editor-shell .bn-suggestion-menu {
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.28);
+}
+
+.document-editor-shell .bn-block-outer {
+  line-height: 1.75;
+}
+
+.document-editor-shell .bn-block-content {
+  padding: 2px 0;
+}
+
+.document-editor-shell .bn-inline-content {
+  color: hsl(var(--foreground));
+  line-height: 1.8;
+}
+
+.document-editor-shell .bn-block-content[data-content-type="heading"] {
+  color: hsl(var(--foreground));
+  letter-spacing: -0.04em;
+}
+
+.document-editor-shell .bn-block-content[data-content-type="heading"][data-level="1"] {
+  font-size: clamp(2rem, 4vw, 2.8rem);
+  margin-top: 0.4rem;
+  margin-bottom: 0.9rem;
+}
+
+.document-editor-shell .bn-block-content[data-content-type="heading"][data-level="2"] {
+  font-size: clamp(1.35rem, 2vw, 1.7rem);
+  margin-top: 1.9rem;
+  margin-bottom: 0.45rem;
+}
+
+.document-editor-shell .bn-block-content[data-content-type="heading"][data-level="3"] {
+  font-size: 1.1rem;
+  margin-top: 1.35rem;
+  margin-bottom: 0.3rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.document-editor-shell .bn-block-content[data-content-type="bulletListItem"]::before,
+.document-editor-shell .bn-block-content[data-content-type="numberedListItem"]::before {
+  color: hsl(var(--primary));
+  font-weight: 700;
+}
+
+.document-editor-shell .bn-editor [data-content-type="quote"] blockquote {
+  border-left: 4px solid hsl(var(--primary));
+  background: color-mix(in srgb, hsl(var(--primary)) 8%, transparent);
+  border-radius: 0 18px 18px 0;
+  color: hsl(var(--foreground));
+  padding: 0.9rem 1.05rem;
+}
+
+.document-editor-shell .bn-editor [data-content-type="table"] .tableWrapper {
+  padding-top: 18px;
+}
+
+.document-editor-shell .bn-editor [data-content-type="table"] table {
+  width: 100% !important;
+  border-collapse: separate;
+  border-spacing: 0;
+  overflow: hidden;
+  border-radius: 18px;
+  background: color-mix(in srgb, hsl(var(--background)) 82%, hsl(var(--primary)) 4%);
+}
+
+.document-editor-shell .bn-editor [data-content-type="table"] th,
+.document-editor-shell .bn-editor [data-content-type="table"] td {
+  border-color: hsl(var(--border));
+  padding: 0.8rem 0.95rem;
+}
+
+.document-editor-shell .bn-editor [data-content-type="table"] th {
+  background: color-mix(in srgb, hsl(var(--primary)) 10%, hsl(var(--background)));
+  color: hsl(var(--foreground));
+}
+
+@media (max-width: 768px) {
+  .document-editor-shell .bn-editor {
+    padding: 12px 18px 24px 14px;
+  }
+}
+
 .liquid-blob {
   border-radius: 9999px;
   filter: blur(60px);
@@ -873,3 +1002,5 @@ html[data-theme="prismatic"]:not(.dark) .glass-card {
   fill: hsl(var(--foreground));
   stroke: hsl(var(--foreground));
 }
+
+/* BlockNote uses its own default styles — no overrides needed */

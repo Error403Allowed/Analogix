@@ -311,6 +311,8 @@ const Chat = () => {
 
   // AI SETTINGS: Show personality & memory settings
   const [showAISettings, setShowAISettings] = useState(false);
+  const [extraContext, setExtraContext] = useState("");
+  const [showExtraContext, setShowExtraContext] = useState(false);
 
   // RE-EXPLAIN: Track which message has the anchor picker open
   const [reExplainOpenId, setReExplainOpenId] = useState<string | null>(null);
@@ -1129,12 +1131,15 @@ const Chat = () => {
           return updated.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
         });
       }
-      // Build content with file attachments included
+      // Build content with file attachments and extra context included
       let userContent = input;
       if (attachedFiles.length > 0) {
         const fileList = attachedFiles.map(f => `- ${f.name}`).join("\n");
         userContent = `${input}\n\n[Attached files]\n${fileList}\n\n[File contents]\n` +
           attachedFiles.map(f => `--- ${f.name} ---\n${f.extractedText}`).join("\n\n");
+      }
+      if (extraContext.trim()) {
+        userContent += `\n\n[Additional context provided by user]\n${extraContext.trim()}`;
       }
 
       // ── Research mode: fetch academic sources ──────────────────────────
@@ -1245,7 +1250,7 @@ const Chat = () => {
             fetch("/api/groq/agent-action", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ actions }),
+              body: JSON.stringify({ actions, defaultSubjectId: selectedSubject }),
             })
               .then(r => r.json())
               .then(data => {
@@ -1875,6 +1880,18 @@ const Chat = () => {
                 transition={{ duration: 0.3 }}
               >
                 <div className="mx-auto w-full max-w-3xl">
+                {/* Extra context panel */}
+                {showExtraContext && (
+                  <div className="mb-2">
+                    <textarea
+                      value={extraContext}
+                      onChange={e => setExtraContext(e.target.value)}
+                      placeholder="Paste extra context here (e.g. syllabus notes, rubric, assignment brief)…"
+                      rows={3}
+                      className="w-full text-xs bg-muted/40 border border-border/50 rounded-xl px-3 py-2.5 resize-none outline-none focus:ring-2 focus:ring-primary/20 text-foreground placeholder:text-muted-foreground/40"
+                    />
+                  </div>
+                )}
                 {/* Attached files preview */}
                 {attachedFiles.length > 0 && (
                   <div className="mb-2 flex flex-wrap items-center gap-2">
@@ -2073,6 +2090,20 @@ const Chat = () => {
                           {researchLoading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Atom className="w-3.5 h-3.5" />}
                         </button>
                       </div>
+
+                      {/* Add context */}
+                      <button
+                        type="button"
+                        onClick={() => setShowExtraContext(v => !v)}
+                        className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
+                          showExtraContext || extraContext.trim()
+                            ? "text-primary bg-primary/10"
+                            : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                        }`}
+                        title={showExtraContext ? "Hide context panel" : "Add extra context (rubric, syllabus, notes)"}
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                      </button>
 
                       {/* AI Settings button */}
                       <div className="flex flex-col items-center gap-0.5">

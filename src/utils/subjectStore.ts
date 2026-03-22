@@ -3,6 +3,28 @@
 import { createClient } from "@/lib/supabase/client";
 import type { SubjectColorId } from "@/components/ColorPicker";
 
+// ── Auth cache — avoid repeated localStorage lock contention ─────────────────
+let cachedUser: { id: string } | null = null;
+let cachedUserPromise: Promise<{ id: string } | null> | null = null;
+
+async function getUser(): Promise<{ id: string } | null> {
+  if (cachedUser) return cachedUser;
+  if (cachedUserPromise) return cachedUserPromise;
+  const supabase = createClient();
+  cachedUserPromise = supabase.auth.getUser().then(({ data }) => {
+    cachedUser = data.user ? { id: data.user.id } : null;
+    cachedUserPromise = null;
+    return cachedUser;
+  });
+  return cachedUserPromise;
+}
+
+// Clear cache on auth state change
+if (typeof window !== "undefined") {
+  const supabase = createClient();
+  supabase.auth.onAuthStateChange(() => { cachedUser = null; cachedUserPromise = null; });
+}
+
 export interface SubjectMark {
   id: string;
   title: string;
@@ -129,35 +151,15 @@ const normalizeNotes = (subjectId: string, notes: SubjectNotes | undefined): Sub
 
 export const subjectStore = {
   getAll: async (): Promise<Record<string, SubjectData>> => {
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getUser();
     if (!user) return {};
-
-    // Add cache-busting to prevent browser caching
+    const supabase = createClient();
     const { data, error } = await supabase
       .from("subject_data")
-      .select("*")
+      .select("subject_id, marks, notes")
       .eq("user_id", user.id)
       .order("updated_at", { ascending: false });
-
-    if (error) {
-      console.warn("[subjectStore] getAll failed:", error);
-      return {};
-    }
-
-    console.log("[subjectStore] getAll - fetched rows:", data?.length || 0);
-    if (data && data.length > 0) {
-      data.forEach(row => {
-        const docs = row.notes?.documents || [];
-        console.log(`[subjectStore] getAll - ${row.subject_id}: ${docs.length} documents`);
-        if (docs.length > 0) {
-          docs.forEach((d: any, i: number) => {
-            console.log(`  [subjectStore]   doc ${i}: "${d.title}" - content length: ${d.content?.length || 0}`);
-          });
-        }
-      });
-    }
-
+    if (error) { console.warn("[subjectStore] getAll failed:", error); return {}; }
     return (data ?? []).reduce((acc: Record<string, SubjectData>, row: any) => {
       acc[row.subject_id] = {
         id: row.subject_id,
@@ -168,21 +170,33 @@ export const subjectStore = {
     }, {});
   },
 
+  // Fetch a single subject row directly — much faster than getAll() for per-subject pages
   getSubject: async (subjectId: string): Promise<SubjectData> => {
-    const all = await subjectStore.getAll();
-    const stored = all[subjectId];
-    if (!stored) return emptySubject(subjectId);
-    return { ...stored, notes: normalizeNotes(subjectId, stored.notes) };
+    const user = await getUser();
+    if (!user) return emptySubject(subjectId);
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from("subject_data")
+      .select("subject_id, marks, notes")
+      .eq("user_id", user.id)
+      .eq("subject_id", subjectId)
+      .maybeSingle();
+    if (error || !data) return emptySubject(subjectId);
+    return {
+      id: data.subject_id,
+      marks: data.marks ?? [],
+      notes: normalizeNotes(data.subject_id, data.notes),
+    };
   },
 
-  saveSubject: async (subjectId: string, data: Partial<SubjectData>): Promise<void> => {
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+  // Save directly without a read round-trip — caller provides full data
+  saveSubject: async (subjectId: string, data: Partial<SubjectData>, currentData?: SubjectData): Promise<void> => {
+    const user = await getUser();
     if (!user) return;
-
-    const current = await subjectStore.getSubject(subjectId);
+    const supabase = createClient();
+    // Only fetch current data if caller didn't provide it
+    const current = currentData ?? await subjectStore.getSubject(subjectId);
     const updated = { ...current, ...data };
-
     const { error } = await supabase.from("subject_data").upsert({
       user_id: user.id,
       subject_id: subjectId,
@@ -190,7 +204,6 @@ export const subjectStore = {
       notes: updated.notes,
       updated_at: new Date().toISOString(),
     }, { onConflict: "user_id,subject_id" });
-
     if (error) console.warn("[subjectStore] saveSubject failed:", error);
     window.dispatchEvent(new Event("subjectDataUpdated"));
   },
@@ -218,13 +231,13 @@ export const subjectStore = {
     const newDoc: SubjectDocumentItem = {
       id: crypto.randomUUID(),
       title: typeof title === "string" ? title.trim() : "",
-      content: "",
+      content: "__BN__[]",
       createdAt: now,
       lastUpdated: now,
     };
     await subjectStore.saveSubject(subjectId, {
       notes: { ...current.notes, documents: [newDoc, ...(current.notes.documents || [])], lastUpdated: now },
-    });
+    }, current);
     return newDoc;
   },
 
@@ -237,32 +250,24 @@ export const subjectStore = {
     const updated: SubjectDocumentItem = { ...target, ...updates, lastUpdated: now };
     await subjectStore.saveSubject(subjectId, {
       notes: { ...current.notes, documents: [updated, ...docs.filter(d => d.id !== docId)], lastUpdated: now },
-    });
+    }, current);
   },
 
   removeDocument: async (subjectId: string, docId: string): Promise<void> => {
     const current = await subjectStore.getSubject(subjectId);
     await subjectStore.saveSubject(subjectId, {
-      notes: {
-        ...current.notes,
-        documents: (current.notes.documents || []).filter(d => d.id !== docId),
-        lastUpdated: new Date().toISOString(),
-      },
-    });
+      notes: { ...current.notes, documents: (current.notes.documents || []).filter(d => d.id !== docId), lastUpdated: new Date().toISOString() },
+    }, current);
   },
 
   updateHomework: async (subjectId: string, homework: SubjectHomework[]): Promise<void> => {
     const current = await subjectStore.getSubject(subjectId);
-    await subjectStore.saveSubject(subjectId, {
-      notes: { ...current.notes, homework, lastUpdated: new Date().toISOString() },
-    });
+    await subjectStore.saveSubject(subjectId, { notes: { ...current.notes, homework, lastUpdated: new Date().toISOString() } }, current);
   },
 
   updateLinks: async (subjectId: string, links: SubjectLink[]): Promise<void> => {
     const current = await subjectStore.getSubject(subjectId);
-    await subjectStore.saveSubject(subjectId, {
-      notes: { ...current.notes, links, lastUpdated: new Date().toISOString() },
-    });
+    await subjectStore.saveSubject(subjectId, { notes: { ...current.notes, links, lastUpdated: new Date().toISOString() } }, current);
   },
 
   addAssessment: async (subjectId: string, assessment: AssessmentNotification): Promise<void> => {
@@ -283,25 +288,25 @@ export const subjectStore = {
 
   // Custom subject appearance methods
   getCustomSubject: async (subjectId: string): Promise<CustomSubject | null> => {
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getUser();
     if (!user) return null;
+    const supabase = createClient();
 
     const { data, error } = await supabase
       .from("custom_subjects")
       .select("*")
       .eq("user_id", user.id)
       .eq("subject_id", subjectId)
-      .single();
+      .maybeSingle();
 
     if (error || !data) return null;
     return data;
   },
 
   saveCustomSubject: async (subjectId: string, updates: Partial<CustomSubject>): Promise<void> => {
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getUser();
     if (!user) return;
+    const supabase = createClient();
 
     const current = await subjectStore.getCustomSubject(subjectId);
     
@@ -334,9 +339,9 @@ export const subjectStore = {
   },
 
   getAllCustomSubjects: async (): Promise<Record<string, CustomSubject>> => {
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getUser();
     if (!user) return {};
+    const supabase = createClient();
 
     const { data, error } = await supabase
       .from("custom_subjects")

@@ -8,6 +8,10 @@ import { toast } from "sonner";
 import { achievementStore } from "@/utils/achievementStore";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
+import { resetAllTours, haveAllToursBeenSeen } from "@/types/tour";
+import { useTour } from "@/context/TourContext";
+import { getTourForPath } from "@/types/tour";
+import { Sparkles } from "lucide-react";
 
 interface SettingsDialogProps {
   open: boolean;
@@ -17,13 +21,30 @@ interface SettingsDialogProps {
 const SettingsDialog = ({ open, onOpenChange }: SettingsDialogProps) => {
   const router = useRouter();
   const { signOut } = useAuth();
+  const { startTour } = useTour();
   const [deletingAccount, setDeletingAccount] = useState(false);
+  const [allToursSeen, setAllToursSeen] = useState(() => 
+    typeof window !== "undefined" ? haveAllToursBeenSeen() : false
+  );
   const [prefs, setPrefs] = useState(() =>
     typeof window !== "undefined"
       ? JSON.parse(localStorage.getItem("userPreferences") || "{}")
       : {},
   );
   const [name, setName] = useState(prefs.name || "");
+
+  const handleReplayTours = () => {
+    resetAllTours();
+    setAllToursSeen(false);
+    toast.success("Tours reset! Refresh the page or navigate to see them again.");
+    
+    // Optionally start the dashboard tour immediately if on dashboard
+    const currentPath = window.location.pathname;
+    const tour = getTourForPath(currentPath);
+    if (tour) {
+      startTour(tour);
+    }
+  };
 
   const handleSave = () => {
     localStorage.setItem("userPreferences", JSON.stringify({ ...prefs, name }));
@@ -105,6 +126,27 @@ const SettingsDialog = ({ open, onOpenChange }: SettingsDialogProps) => {
           </div>
 
           <div className="pt-4 border-t border-border space-y-3">
+            <div className="flex items-center justify-between space-x-2">
+              <Label htmlFor="tours" className="flex flex-col space-y-1">
+                <span className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-primary" />
+                  Replay Tours
+                </span>
+                <span className="font-normal text-xs text-muted-foreground">
+                  {allToursSeen ? "See the guides again" : "Tours already seen"}
+                </span>
+              </Label>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleReplayTours}
+                className="gap-2"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                Reset Tours
+              </Button>
+            </div>
+            
             <Button variant="outline" size="sm" onClick={handleSignOut} className="w-full">
               Sign Out
             </Button>

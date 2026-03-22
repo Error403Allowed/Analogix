@@ -16,6 +16,7 @@ export default function DashLayout({ children }: { children: React.ReactNode }) 
   const isOnboarding       = pathname === "/onboarding";
   const isTimerFullscreen  = pathname === "/timer";
   const isChat             = pathname === "/chat";
+  const isCalendar         = pathname === "/calendar";
   const isStudyGuideLoading = pathname === "/study-guide-loading";
 
   if (isLanding || isOnboarding || isTimerFullscreen || isStudyGuideLoading) {
@@ -29,7 +30,7 @@ export default function DashLayout({ children }: { children: React.ReactNode }) 
         <div className="flex h-screen w-full bg-background overflow-hidden">
           <AppSidebar />
           <SidebarInset className="flex flex-col flex-1 min-w-0 min-h-0">
-            <DashContent isChat={isChat} pathname={pathname}>
+            <DashContent isChat={isChat || isCalendar} pathname={pathname}>
               {children}
             </DashContent>
           </SidebarInset>

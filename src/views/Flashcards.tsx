@@ -302,6 +302,7 @@ export default function Flashcards() {
       .join("\n");
 
     const topicInput = `Generate questions specifically about the following flashcard content:\n${cardContext}`;
+    const seed = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}-${activeSet.subjectId}-${testDifficulty}`;
 
     const quizData = await generateQuiz(
       topicInput,
@@ -313,6 +314,7 @@ export default function Flashcards() {
         difficulty: testDifficulty,
       },
       testNumQ,
+      { diversitySeed: seed },
     );
 
     if (quizData?.questions) {
@@ -352,6 +354,9 @@ export default function Flashcards() {
   const testScore = testAnswers.filter(a => a?.isCorrect).length;
 
   // ── Quiz Hub: run custom quiz ──
+  // Track previously seen quiz questions to avoid repetition
+  const seenQuestionsRef = useRef<string[]>([]);
+
   const runQuizHub = async () => {
     setQuizLoading(true);
     setQuizStarted(true);
@@ -362,16 +367,18 @@ export default function Flashcards() {
     const prefs = typeof window !== "undefined"
       ? JSON.parse(localStorage.getItem("userPreferences") || "{}") : {};
 
-    // Build topic input — combine subject + any custom topics the user outlined
     const topicInput = quizTopics.trim()
       ? `Subject: ${subjectLabel(quizSubject)}. Focus on these specific topics: ${quizTopics}`
       : subjectLabel(quizSubject);
+
+    const seed = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}-${quizSubject}-${quizDifficulty}`;
 
     const quizData = await generateQuiz(
       topicInput,
       { grade: prefs.grade, state: prefs.state, hobbies: prefs.hobbies || [],
         subject: quizSubject, difficulty: quizDifficulty },
       quizNumQ,
+      { diversitySeed: seed, avoidQuestions: seenQuestionsRef.current.slice(-20) },
     );
 
     if (quizData?.questions) {
@@ -410,6 +417,11 @@ export default function Flashcards() {
     if (quizCurrentQ + 1 >= quizQuestions.length) {
       const score = quizAnswers.filter(a => a?.isCorrect).length;
       statsStore.addQuiz((score / quizQuestions.length) * 100);
+      // Remember these questions to avoid repeating them next time
+      seenQuestionsRef.current = [
+        ...seenQuestionsRef.current,
+        ...quizQuestions.map(q => q.question),
+      ].slice(-40);
       setQuizComplete(true);
     } else {
       setQuizCurrentQ(i => i + 1);
