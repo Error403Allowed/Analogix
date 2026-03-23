@@ -595,7 +595,10 @@ const Chat = () => {
 
     const raw = await generateFlashcards(conversationText, selectedSubject, userPrefs.grade, 5);
     if (raw.length > 0) {
-      await flashcardStore.add(raw.map(c => ({ subjectId: selectedSubject, front: c.front, back: c.back })));
+      const chatSet = await flashcardStore.createSet(selectedSubject, `Chat – ${new Date().toLocaleDateString()}`);
+      if (chatSet) {
+        await flashcardStore.add(raw.map(c => ({ setId: chatSet.id, subjectId: selectedSubject, front: c.front, back: c.back })));
+      }
       setFlashcardsSaved(true);
       setTimeout(() => setFlashcardsSaved(false), 3000);
     }
@@ -1040,10 +1043,13 @@ const Chat = () => {
         count: 20,
       });
       if (result.length === 0) throw new Error("Failed to generate flashcards");
-      await flashcardStore.add(result.map(f => ({ subjectId: selectedSubject, front: f.front, back: f.back })));
+      const docSet = await flashcardStore.createSet(selectedSubject, attachedFiles.map(f => f.name.replace(/\.[^/.]+$/, "")).join(", ") || "From document");
+      if (docSet) {
+        await flashcardStore.add(result.map(f => ({ setId: docSet.id, subjectId: selectedSubject, front: f.front, back: f.back })));
+      }
       setFlashcardsGenerated(true);
       setTimeout(() => setFlashcardsGenerated(false), 3000);
-      router.push(`/flashcards?subject=${selectedSubject}`);
+      router.push(`/flashcards?subjectId=${selectedSubject}`);
     } catch (error) {
       console.error("Failed to generate flashcards:", error);
     } finally {

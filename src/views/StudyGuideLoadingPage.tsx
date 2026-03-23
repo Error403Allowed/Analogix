@@ -207,14 +207,18 @@ export default function StudyGuideLoadingPage() {
             count: 20,
           });
           if (cards.length === 0) return;
-          await flashcardStore.add(
-            cards.map(c => ({
-              subjectId: job.subjectId,
-              front: c.front,
-              back: c.back,
-              sourceSessionId: `doc:${doc.id}`,
-            }))
-          );
+          const guideSet = await flashcardStore.createSet(job.subjectId, job.fileName?.replace(/\.[^/.]+$/, "") || "Study Guide");
+          if (guideSet) {
+            await flashcardStore.add(
+              cards.map(c => ({
+                setId: guideSet.id,
+                subjectId: job.subjectId,
+                front: c.front,
+                back: c.back,
+                sourceSessionId: `doc:${doc.id}`,
+              }))
+            );
+          }
           safeLocalStorageSet(flashcardsKey, "1");
         };
 

@@ -18,7 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { cn } from "@/lib/utils";
 import { SUBJECT_CATALOG } from "@/constants/subjects";
 import { DynamicIcon } from "@/components/IconPicker";
-import { flashcardStore, type Flashcard, type FlashcardRating } from "@/utils/flashcardStore";
+import { flashcardStore, type Flashcard, type FlashcardSet, type FlashcardRating } from "@/utils/flashcardStore";
 import { generateFlashcardsFromDocument, generateQuiz, generateQuizFromDocument } from "@/services/groq";
 import { extractFileText, ACCEPTED_FILE_TYPES } from "@/utils/extractFileText";
 import QuizCard from "@/components/QuizCard";
@@ -37,11 +37,12 @@ const subjectIconName = (id: string) =>
   SUBJECT_CATALOG.find(s => s.id === id)?.iconName || "BookOpen";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
-type TopView = "library" | "set-detail" | "create-set" | "quiz-hub";
+type TopView = "library" | "subject-detail" | "set-detail" | "create-set" | "quiz-hub";
 type SetTab  = "flashcards" | "learn" | "test";
 
 interface CardSet {
-  subjectId: string;
+  set: FlashcardSet;
+  subjectId: string;   // convenience alias for set.subjectId
   cards: Flashcard[];
   dueCount: number;
   masteredCount: number;
@@ -150,11 +151,13 @@ export default function Flashcards() {
   // ── Top-level state ──
   const [topView, setTopView]         = useState<TopView>("library");
   const [cards, setCards]             = useState<Flashcard[]>([]);
+  const [dbSets, setDbSets]           = useState<FlashcardSet[]>([]);
   const [loading, setLoading]         = useState(true);
   const [userSubjects, setUserSubjects] = useState<string[]>([]);
 
   // ── Active set ──
-  const [activeSetSubject, setActiveSetSubject] = useState<string | null>(null);
+  const [activeSetId, setActiveSetId]           = useState<string | null>(null);
+  const [activeSubjectId, setActiveSubjectId]   = useState<string | null>(null);
   const [activeSetTab, setActiveSetTab]         = useState<SetTab>("flashcards");
 
   // ── Flashcard review ──
@@ -183,6 +186,7 @@ export default function Flashcards() {
 
   // ── Create set ──
   const [newSetSubject, setNewSetSubject] = useState("");
+  const [newSetName, setNewSetName]       = useState("");
   const [newSetCards, setNewSetCards]     = useState([
     { front: "", back: "" }, { front: "", back: "" }, { front: "", back: "" },
     { front: "", back: "" }, { front: "", back: "" },
@@ -248,7 +252,7 @@ export default function Flashcards() {
     const sub = searchParams.get("subject") || searchParams.get("subjectId");
     const tab = searchParams.get("tab");
     if (tab === "quiz") setTopView("quiz-hub");
-    else if (sub) { setActiveSetSubject(sub); setTopView("set-detail"); setActiveSetTab("flashcards"); }
+    else if (sub) { setActiveSubjectId(sub); setTopView("subject-detail"); setTopView("set-detail"); setActiveSetTab("flashcards"); }
   }, [searchParams]);
 
   useEffect(() => {
@@ -276,8 +280,12 @@ export default function Flashcards() {
 
   // ── Load all cards ──
   const refresh = useCallback(async () => {
-    const all = await flashcardStore.getAll();
+    const [all, allSets] = await Promise.all([
+      flashcardStore.getAll(),
+      flashcardStore.getSets(),
+    ]);
     setCards(all);
+    setDbSets(allSets);
     return all;
   }, []);
 
@@ -292,28 +300,50 @@ export default function Flashcards() {
 
   const sets = useMemo<CardSet[]>(() => {
     const now = new Date().toISOString();
-    const grouped: Record<string, Flashcard[]> = {};
-    for (const card of cards) {
-      if (!grouped[card.subjectId]) grouped[card.subjectId] = [];
-      grouped[card.subjectId].push(card);
-    }
-    return Object.entries(grouped).map(([subjectId, subCards]) => ({
-      subjectId, cards: subCards,
-      dueCount: subCards.filter(c => c.nextReview <= now).length,
-      masteredCount: subCards.filter(c => c.repetitions >= 3).length,
-    }));
-  }, [cards]);
+    return dbSets.map(set => {
+      const setCards = cards.filter(c => c.setId === set.id);
+      return {
+        set,
+        subjectId: set.subjectId,
+        cards: setCards,
+        dueCount: setCards.filter(c => c.nextReview <= now).length,
+        masteredCount: setCards.filter(c => c.repetitions >= 3).length,
+      };
+    });
+  }, [cards, dbSets]);
 
-  const activeSet = sets.find(s => s.subjectId === activeSetSubject);
+  // Sets grouped by subject for the subject-detail view
+  const setsBySubject = useMemo(() => {
+    const map: Record<string, CardSet[]> = {};
+    for (const s of sets) {
+      const sid = s.set.subjectId;
+      if (!map[sid]) map[sid] = [];
+      map[sid].push(s);
+    }
+    return map;
+  }, [sets]);
+
+  // Subjects that have at least one set
+  const subjectsWithSets = useMemo(() =>
+    userSubjects.filter(id => (setsBySubject[id]?.length ?? 0) > 0),
+  [userSubjects, setsBySubject]);
+
+  const activeSet = sets.find(s => s.set.id === activeSetId);
   const totalCards = cards.length;
   const totalDue   = useMemo(() => {
     const now = new Date().toISOString();
     return cards.filter(c => c.nextReview <= now).length;
   }, [cards]);
 
+  // ── Open a subject (drill into its sets) ──
+  const openSubject = (subjectId: string) => {
+    setActiveSubjectId(subjectId);
+    setTopView("subject-detail");
+  };
+
   // ── Open a set ──
-  const openSet = (subjectId: string, tab: SetTab = "flashcards") => {
-    setActiveSetSubject(subjectId);
+  const openSet = (setId: string, tab: SetTab = "flashcards") => {
+    setActiveSetId(setId);
     setActiveSetTab(tab);
     setTopView("set-detail");
     resetReview();
@@ -335,7 +365,7 @@ export default function Flashcards() {
     setReviewIndex(0);
     setFlipped(false);
     setReviewComplete(false);
-  }, [topView, activeSetSubject, activeSetTab]); // eslint-disable-line
+  }, [topView, activeSetId, activeSetTab]); // eslint-disable-line
 
   // ── Init learn when entering learn tab ──
   useEffect(() => {
@@ -347,7 +377,7 @@ export default function Flashcards() {
     setLearnComplete(false);
     setLearnAnswers(Array(shuffled.length).fill(null));
     setLearnReady(true);
-  }, [topView, activeSetSubject, activeSetTab]); // eslint-disable-line
+  }, [topView, activeSetId, activeSetTab]); // eslint-disable-line
 
   // ── Init test config when entering test tab ──
   useEffect(() => {
@@ -357,7 +387,7 @@ export default function Flashcards() {
     setTestQuestions([]);
     setTestAnswers([]);
     setTestCurrentQ(0);
-  }, [topView, activeSetSubject, activeSetTab]);
+  }, [topView, activeSetId, activeSetTab]);
 
   // ── Flashcard review handlers ──
   const handleRate = useCallback(async (rating: FlashcardRating) => {
@@ -487,7 +517,7 @@ export default function Flashcards() {
       .join("\n");
 
     const topicInput = `Generate questions specifically about the following flashcard content:\n${cardContext}`;
-    const seed = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}-${activeSet.subjectId}-${testDifficulty}`;
+    const seed = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}-${activeSet.set.subjectId}-${testDifficulty}`;
 
     const quizData = await generateQuiz(
       topicInput,
@@ -495,7 +525,7 @@ export default function Flashcards() {
         grade: prefs.grade,
         state: prefs.state,
         hobbies: prefs.hobbies || [],
-        subject: activeSet.subjectId,
+        subject: activeSet.set.subjectId,
         difficulty: testDifficulty,
       },
       testNumQ,
@@ -662,13 +692,17 @@ export default function Flashcards() {
 
   const saveSet = async () => {
     const valid = newSetCards.filter(c => c.front.trim() && c.back.trim());
-    if (!newSetSubject || valid.length === 0) return;
+    if (!newSetSubject || !newSetName.trim() || valid.length === 0) return;
     setSavingSet(true);
-    await flashcardStore.add(valid.map(c => ({ subjectId: newSetSubject, front: c.front.trim(), back: c.back.trim() })));
-    await refresh();
+    const created = await flashcardStore.createSet(newSetSubject, newSetName.trim());
+    if (created) {
+      await flashcardStore.add(valid.map(c => ({ setId: created.id, subjectId: newSetSubject, front: c.front.trim(), back: c.back.trim() })));
+      await refresh();
+      setNewSetName("");
+      setNewSetCards([{ front: "", back: "" }, { front: "", back: "" }, { front: "", back: "" }, { front: "", back: "" }, { front: "", back: "" }]);
+      openSet(created.id);
+    }
     setSavingSet(false);
-    setNewSetCards([{ front: "", back: "" }, { front: "", back: "" }, { front: "", back: "" }, { front: "", back: "" }, { front: "", back: "" }]);
-    openSet(newSetSubject);
   };
 
   // ── File upload ──
@@ -712,9 +746,13 @@ export default function Flashcards() {
         subject: subjectLabel(subjectId), count: 20,
       });
       if (result.length > 0) {
-        await flashcardStore.add(result.map(f => ({ subjectId, front: f.front, back: f.back })));
-        await refresh();
-        openSet(subjectId);
+        const setName = pendingFile ? pendingFile.name.replace(/\.[^/.]+$/, "") : "Pasted notes";
+        const createdSet = await flashcardStore.createSet(subjectId, setName);
+        if (createdSet) {
+          await flashcardStore.add(result.map(f => ({ setId: createdSet.id, subjectId, front: f.front, back: f.back })));
+          await refresh();
+          openSet(createdSet.id);
+        }
         setPasteText("");
         setPasteExpanded(false);
       }
@@ -740,10 +778,9 @@ export default function Flashcards() {
     await flashcardStore.delete(id);
     await refresh();
   };
-  const deleteSet = async (subjectId: string) => {
-    if (!window.confirm(`Delete all cards in "${subjectLabel(subjectId)}"? Can't be undone.`)) return;
-    const setCards = cards.filter(c => c.subjectId === subjectId);
-    await Promise.all(setCards.map(c => flashcardStore.delete(c.id)));
+  const deleteSet = async (setId: string, setName: string) => {
+    if (!window.confirm(`Delete "${setName}" and all its cards? Can't be undone.`)) return;
+    await flashcardStore.deleteSet(setId);
     await refresh();
   };
 
@@ -758,18 +795,26 @@ export default function Flashcards() {
             <Button variant="ghost" size="sm" onClick={() => router.push("/dashboard")} className="gap-1.5 text-muted-foreground">
               <ArrowLeft className="w-4 h-4" /> Dashboard
             </Button>
+          ) : topView === "subject-detail" ? (
+            <Button variant="ghost" size="sm" onClick={() => setTopView("library")} className="gap-1.5 text-muted-foreground">
+              <ArrowLeft className="w-4 h-4" /> Library
+            </Button>
+          ) : topView === "set-detail" ? (
+            <Button variant="ghost" size="sm"
+              onClick={() => { setTopView("subject-detail"); setActiveSetId(null); }}
+              className="gap-1.5 text-muted-foreground">
+              <ArrowLeft className="w-4 h-4" /> {activeSubjectId ? subjectLabel(activeSubjectId) : "Sets"}
+            </Button>
+          ) : topView === "create-set" ? (
+            <Button variant="ghost" size="sm" onClick={() => setTopView(activeSubjectId ? "subject-detail" : "library")} className="gap-1.5 text-muted-foreground">
+              <ArrowLeft className="w-4 h-4" /> Back
+            </Button>
           ) : topView === "quiz-hub" ? (
             <Button variant="ghost" size="sm" onClick={() => setTopView("library")} className="gap-1.5 text-muted-foreground">
               <ArrowLeft className="w-4 h-4" /> Library
             </Button>
-          ) : topView === "create-set" ? (
-            <Button variant="ghost" size="sm" onClick={() => setTopView("library")} className="gap-1.5 text-muted-foreground">
-              <ArrowLeft className="w-4 h-4" /> Library
-            </Button>
           ) : (
-            <Button variant="ghost" size="sm"
-              onClick={() => { setTopView("library"); setActiveSetSubject(null); }}
-              className="gap-1.5 text-muted-foreground">
+            <Button variant="ghost" size="sm" onClick={() => setTopView("library")} className="gap-1.5 text-muted-foreground">
               <ArrowLeft className="w-4 h-4" /> Library
             </Button>
           )}
@@ -784,7 +829,8 @@ export default function Flashcards() {
               {topView === "library" && "Flashcards & Quiz"}
               {topView === "create-set" && "Create a new set"}
               {topView === "quiz-hub" && "Quiz Hub"}
-              {topView === "set-detail" && (activeSet ? subjectLabel(activeSet.subjectId) : "Set")}
+              {topView === "subject-detail" && (activeSubjectId ? subjectLabel(activeSubjectId) : "Sets")}
+              {topView === "set-detail" && (activeSet ? activeSet.set.name : "Set")}
             </h1>
           </div>
 
@@ -802,7 +848,7 @@ export default function Flashcards() {
             )}
             {topView === "set-detail" && activeSet && (
               <Button size="sm" variant="outline"
-                onClick={() => { setNewSetSubject(activeSet.subjectId); setTopView("create-set"); }}
+                onClick={() => { setNewSetSubject(activeSet.set.subjectId); setTopView("create-set"); }}
                 className="gap-1.5 text-xs">
                 <Plus className="w-3.5 h-3.5" /> Add cards
               </Button>
@@ -993,14 +1039,14 @@ export default function Flashcards() {
                       <motion.div key={set.subjectId}
                         whileHover={{ y: -4 }} whileTap={{ scale: 0.97 }}
                         className="rounded-2xl border border-border bg-card p-5 cursor-pointer hover:border-primary/40 transition-all group relative">
-                        <button onClick={e => { e.stopPropagation(); deleteSet(set.subjectId); }}
+                        <button onClick={e => { e.stopPropagation(); deleteSet(set.set.id, set.set.name); }}
                           className="absolute top-3 right-3 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-all z-10">
                           <Trash2 className="w-4 h-4" />
                         </button>
-                        <div onClick={() => openSet(set.subjectId)}>
+                        <div onClick={() => openSet(set.set.id)}>
                           <div className="flex items-center justify-between mb-3">
                             <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
-                              <DynamicIcon name={subjectIconName(set.subjectId)} className="w-4 h-4 text-primary" />
+                              <DynamicIcon name={subjectIconName(set.set.subjectId)} className="w-4 h-4 text-primary" />
                             </div>
                             {set.dueCount > 0 && (
                               <span className="text-[10px] font-black bg-amber-500/15 text-amber-600 border border-amber-500/30 rounded-full px-2 py-0.5">
@@ -1008,7 +1054,7 @@ export default function Flashcards() {
                               </span>
                             )}
                           </div>
-                          <p className="font-black text-base mb-1 pr-6">{subjectLabel(set.subjectId)}</p>
+                          <p className="font-black text-base mb-1 pr-6">{subjectLabel(set.set.subjectId)}</p>
                           <p className="text-xs text-muted-foreground mb-3">{set.cards.length} terms</p>
                           <div className="w-full h-1 rounded-full bg-muted overflow-hidden">
                             <div className="h-full bg-primary rounded-full"
@@ -1250,10 +1296,10 @@ export default function Flashcards() {
 
               <div className="mb-6 flex items-center gap-4">
                 <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0">
-                  <DynamicIcon name={subjectIconName(activeSet.subjectId)} className="w-6 h-6 text-primary" />
+                  <DynamicIcon name={subjectIconName(activeSet.set.subjectId)} className="w-6 h-6 text-primary" />
                 </div>
                 <div>
-                  <h2 className="text-3xl font-black mb-0.5">{subjectLabel(activeSet.subjectId)}</h2>
+                  <h2 className="text-3xl font-black mb-0.5">{subjectLabel(activeSet.set.subjectId)}</h2>
                   <p className="text-sm text-muted-foreground">{activeSet.cards.length} terms</p>
                 </div>
               </div>
@@ -1380,7 +1426,7 @@ export default function Flashcards() {
                               Terms ({activeSet.cards.length})
                             </h3>
                             <Button size="sm" variant="outline"
-                              onClick={() => { setNewSetSubject(activeSet.subjectId); setTopView("create-set"); }}
+                              onClick={() => { setNewSetSubject(activeSet.set.subjectId); setTopView("create-set"); }}
                               className="text-xs gap-1">
                               <Plus className="w-3.5 h-3.5" /> Add
                             </Button>
@@ -1537,7 +1583,7 @@ export default function Flashcards() {
                             <Settings2 className="w-5 h-5 text-primary" />
                           </div>
                           <div>
-                            <h3 className="text-lg font-black">Test — {subjectLabel(activeSet.subjectId)}</h3>
+                            <h3 className="text-lg font-black">Test — {subjectLabel(activeSet.set.subjectId)}</h3>
                             <p className="text-xs text-muted-foreground">AI generates questions from your actual card content</p>
                           </div>
                         </div>
@@ -1587,7 +1633,7 @@ export default function Flashcards() {
                       <>
                         <div className="flex items-center justify-between rounded-2xl border border-border bg-card px-5 py-3">
                           <span className="text-sm font-bold">{testCurrentQ + 1} / {testQuestions.length}</span>
-                          <Badge variant="outline">{subjectLabel(activeSet.subjectId)}</Badge>
+                          <Badge variant="outline">{subjectLabel(activeSet.set.subjectId)}</Badge>
                         </div>
                         <AnimatePresence mode="wait">
                           <motion.div key={testCurrentQ}

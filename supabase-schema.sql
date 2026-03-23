@@ -281,3 +281,28 @@ CREATE POLICY "Users manage their own flashcards"
 -- Indexes for fast due-card lookups
 CREATE INDEX IF NOT EXISTS idx_flashcards_user_id ON public.flashcards(user_id);
 CREATE INDEX IF NOT EXISTS idx_flashcards_next_review ON public.flashcards(user_id, next_review);
+
+-- ============================================================
+-- FLASHCARD SETS  (topic-named sets within a subject)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS public.flashcard_sets (
+  id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id    UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  subject_id TEXT NOT NULL,
+  name       TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.flashcard_sets ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users manage their own flashcard sets"
+  ON public.flashcard_sets FOR ALL
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE INDEX IF NOT EXISTS idx_flashcard_sets_user_id ON public.flashcard_sets(user_id);
+
+-- Add set_id to flashcards (nullable — existing cards have no set)
+ALTER TABLE public.flashcards ADD COLUMN IF NOT EXISTS set_id UUID REFERENCES public.flashcard_sets(id) ON DELETE CASCADE;
+CREATE INDEX IF NOT EXISTS idx_flashcards_set_id ON public.flashcards(set_id);

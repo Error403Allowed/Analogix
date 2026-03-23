@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/client";
+import { getAuthUser } from "./authCache";
 import { ACHIEVEMENTS_LIBRARY, Achievement } from "@/data/achievements";
 import { toast } from "sonner";
 
@@ -9,8 +10,8 @@ interface UnlockedAchievement {
 
 export const achievementStore = {
   getUnlocked: async (): Promise<UnlockedAchievement[]> => {
+    const user = await getAuthUser();
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
     if (!user) return [];
 
     const { data, error } = await supabase
@@ -34,8 +35,8 @@ export const achievementStore = {
   },
 
   unlock: async (id: string): Promise<void> => {
+    const user = await getAuthUser();
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
     const unlocked = await achievementStore.getUnlocked();
@@ -60,8 +61,8 @@ export const achievementStore = {
   },
 
   reset: async (): Promise<void> => {
+    const user = await getAuthUser();
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
     await supabase.from("achievements").delete().eq("user_id", user.id);
