@@ -57,8 +57,17 @@ export function invalidateAuthCache() {
   inFlight   = null;
 }
 
-// Auto-invalidate on auth state changes so sign-out clears immediately
+// Keep cache in sync with auth state changes
 if (typeof window !== "undefined") {
   const supabase = createClient();
-  supabase.auth.onAuthStateChange(() => invalidateAuthCache());
+  supabase.auth.onAuthStateChange((_event, session) => {
+    // Always clear stale cache
+    cachedUser = null;
+    inFlight = null;
+    // If we have a fresh session, pre-populate the cache immediately
+    // so the next getAuthUser() call doesn't race with localStorage writes
+    if (session?.user) {
+      cachedUser = { id: session.user.id };
+    }
+  });
 }

@@ -51,10 +51,10 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
       return;
     }
 
-    // No user - redirect to home
+    // No user - redirect to onboarding (not home)
     if (!user) {
       setIsChecking(false);
-      router.replace("/");
+      router.replace("/onboarding");
       return;
     }
 
@@ -83,7 +83,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
           .from("profiles")
           .select("onboarding_complete, grade, state, subjects, hobbies")
           .eq("id", user.id)
-          .single();
+          .maybeSingle();
 
         if (hasProfileData(profile)) {
           syncPrefsFromProfile(profile, user.id);
