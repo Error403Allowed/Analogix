@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ArrowRight, Check, Sparkles,
+  ArrowRight, Check, Sparkles, User,
   Calculator, Microscope, Landmark, Zap, FlaskConical, BookOpen,
   Cpu, LineChart, Briefcase, Wallet, HeartPulse, Globe, Wrench,
   Stethoscope, Languages, Dumbbell, Gamepad2, Music, CookingPot,
@@ -64,6 +64,8 @@ function AuthStep({ onAuthed, externalError }: { onAuthed: () => void; externalE
   const { signInWithGoogle, user, loading } = useAuth();
   const [googleLoading, setGoogleLoading] = useState(false);
 
+  // If they're already authed (came back from OAuth redirect), skip ahead.
+  // We wait for loading=false so we don't jump before the session cookie is read.
   useEffect(() => {
     if (!loading && user) onAuthed();
   }, [user, loading, onAuthed]);
@@ -71,8 +73,10 @@ function AuthStep({ onAuthed, externalError }: { onAuthed: () => void; externalE
   const handleGoogle = async () => {
     setGoogleLoading(true);
     await signInWithGoogle();
+    // Page will navigate away via OAuth — no need to call onAuthed()
   };
 
+  // Show a spinner while we're checking the session from the cookie
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16">
@@ -82,60 +86,39 @@ function AuthStep({ onAuthed, externalError }: { onAuthed: () => void; externalE
   }
 
   return (
-    <div className="grid gap-8 md:grid-cols-[1.1fr_0.9fr] items-stretch">
-      <div className="relative overflow-hidden rounded-3xl border border-white/6 bg-gradient-to-br from-primary/6 via-transparent to-accent/6 p-8 md:p-10">
-        <div className="absolute inset-0 opacity-35 bg-[radial-gradient(circle_at_20%_20%,rgba(59,130,246,0.18),transparent_55%),radial-gradient(circle_at_80%_10%,rgba(236,72,153,0.14),transparent_45%),radial-gradient(circle_at_50%_80%,rgba(34,197,94,0.12),transparent_50%)]" />
-        <div className="relative z-10 flex h-full flex-col justify-between gap-6">
-          <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20 flex-shrink-0">
-                <Brain className="w-6 h-6 text-primary-foreground" />
-              </div>
-              <div>
-                <p className="text-xs font-black uppercase tracking-[0.3em] text-muted-foreground">Analogix</p>
-                <h1 className="text-3xl md:text-4xl font-black text-foreground tracking-tight">Login / Sign Up</h1>
-              </div>
-            </div>
-            <p className="text-sm md:text-base text-muted-foreground max-w-sm">
-              Sign in to keep your progress, sync your subjects, and unlock personalized analogies.
-            </p>
-          </div>
-          <div className="space-y-2">
-            <p className="text-2xl md:text-3xl font-black text-foreground tracking-tight">Start your study adventure.</p>
-            <p className="text-xs text-muted-foreground">Built for quick wins, deep focus, and smarter revision.</p>
-          </div>
+    <div className="space-y-8">
+      <div className="flex items-center gap-3">
+        <div className="w-12 h-12 rounded-2xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20 flex-shrink-0">
+          <Brain className="w-6 h-6 text-primary-foreground" />
         </div>
-      </div>
-
-      <div className="flex flex-col justify-center gap-6">
         <div>
-          <h2 className="text-3xl font-black text-foreground tracking-tight">Sign in</h2>
-          <p className="text-muted-foreground text-sm mt-1">Use your Google account to continue.</p>
+          <h1 className="text-3xl font-black text-foreground tracking-tight">Welcome to Analogix.</h1>
+          <p className="text-muted-foreground text-base mt-0.5">Create an account to save your progress.</p>
         </div>
-
-        {externalError && (
-          <div className="bg-destructive/10 border border-destructive/30 rounded-xl px-4 py-3 text-sm text-destructive font-medium">
-            {externalError}
-          </div>
-        )}
-
-        <Button variant="outline" className="w-full h-12 gap-3 rounded-2xl font-semibold border-2 hover:border-primary/40 transition-all"
-          onClick={handleGoogle} disabled={googleLoading}>
-          {googleLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
-            <svg className="w-5 h-5" viewBox="0 0 24 24">
-              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-            </svg>
-          )}
-          Continue with Google
-        </Button>
-
-        <p className="text-center text-xs text-muted-foreground">
-          Already have an account? Signing in will link to your existing profile.
-        </p>
       </div>
+
+      {externalError && (
+        <div className="bg-destructive/10 border border-destructive/30 rounded-xl px-4 py-3 text-sm text-destructive font-medium">
+          {externalError}
+        </div>
+      )}
+
+      <Button variant="outline" className="w-full h-12 gap-3 rounded-2xl font-semibold border-2 hover:border-primary/40 transition-all"
+        onClick={handleGoogle} disabled={googleLoading}>
+        {googleLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
+          <svg className="w-5 h-5" viewBox="0 0 24 24">
+            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+          </svg>
+        )}
+        Continue with Google
+      </Button>
+
+      <p className="text-center text-xs text-muted-foreground pt-2">
+        Already have an account? Signing in will link to your existing profile.
+      </p>
     </div>
   );
 }
@@ -207,11 +190,8 @@ function IcsStep({ importing, imported, count, error, onFile }:
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
-// Steps: 1=Auth, 2=Year, 3=State, 4=Subjects, 5=Hobbies, 6=ICS
-const TOTAL_STEPS = 6;
-const IS_DEV = process.env.NODE_ENV === "development";
-const SKIP_AUTH = process.env.NEXT_PUBLIC_SKIP_AUTH === "true";
-const BYPASS_AUTH = IS_DEV && SKIP_AUTH;
+// Steps: 1=Auth, 2=Name, 3=Year, 4=State, 5=Subjects, 6=Hobbies, 7=ICS
+const TOTAL_STEPS = 7;
 
 const Onboarding = () => {
   const router = useRouter();
@@ -222,127 +202,34 @@ const Onboarding = () => {
     searchParams?.get("error") === "auth_failed" ? "Authentication failed. Please try again." : null
   );
 
-  const [step, setStep] = useState(BYPASS_AUTH ? 2 : 1);
+  // Always start on step 1 — the gate below moves us forward once auth resolves.
+  // This prevents ?step=2 in the URL from skipping auth for unauthenticated users.
+  const [step, setStep] = useState(1);
 
   useEffect(() => {
-    if (BYPASS_AUTH) {
+    if (authLoading) return;
+
+    if (authUser) {
       try {
         const prefs = JSON.parse(localStorage.getItem("userPreferences") || "{}");
         if (prefs?.onboardingComplete) {
           router.replace("/dashboard");
+          return;
         }
       } catch {}
-      return;
+      // Signed in but not finished — jump to step from URL (or 2)
+      const urlStep = parseInt(searchParams?.get("step") ?? "2", 10);
+      setStep(isNaN(urlStep) || urlStep <= 1 ? 2 : urlStep);
     }
-
-    if (authLoading) return;
-
-    if (authUser) {
-      const loadProfile = async () => {
-        try {
-          const prefs = JSON.parse(localStorage.getItem("userPreferences") || "{}");
-          if (prefs?.onboardingComplete && (!prefs.userId || prefs.userId === authUser.id)) {
-            router.replace("/dashboard");
-            return;
-          }
-        } catch {}
-
-        try {
-          const supabase = createClient();
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("name, grade, state, subjects, hobbies, hobby_ids, hobby_details, onboarding_complete")
-            .eq("id", authUser.id)
-            .single();
-
-          const hasProfile =
-            profile?.onboarding_complete ||
-            !!profile?.grade ||
-            !!profile?.state ||
-            (Array.isArray(profile?.subjects) && profile.subjects.length > 0) ||
-            (Array.isArray(profile?.hobbies) && profile.hobbies.length > 0) ||
-            (Array.isArray(profile?.hobby_ids) && profile.hobby_ids.length > 0) ||
-            (profile?.hobby_details && Object.keys(profile.hobby_details).length > 0);
-
-          if (hasProfile) {
-            try {
-              const existing = JSON.parse(localStorage.getItem("userPreferences") || "{}");
-              const next = {
-                ...existing,
-                name: profile?.name ?? existing.name,
-                grade: profile?.grade ?? existing.grade ?? null,
-                state: profile?.state ?? existing.state ?? null,
-                subjects: Array.isArray(profile?.subjects) ? profile.subjects : (existing.subjects ?? []),
-                hobbies: Array.isArray(profile?.hobbies) ? profile.hobbies : (existing.hobbies ?? []),
-                hobbyIds: Array.isArray(profile?.hobby_ids) ? profile.hobby_ids : (existing.hobbyIds ?? []),
-                hobbyDetails: profile?.hobby_details && typeof profile.hobby_details === "object"
-                  ? profile.hobby_details
-                  : (existing.hobbyDetails ?? {}),
-                onboardingComplete: true,
-                userId: authUser.id,
-              };
-              localStorage.setItem("userPreferences", JSON.stringify(next));
-              window.dispatchEvent(new Event("userPreferencesUpdated"));
-            } catch {}
-            router.replace("/dashboard");
-            return;
-          }
-        } catch {}
-
-        const urlStep = parseInt(searchParams?.get("step") ?? "2", 10);
-        const safeStep = isNaN(urlStep) || urlStep <= 1 ? 2 : Math.min(urlStep, TOTAL_STEPS);
-        setStep(safeStep);
-      };
-
-      loadProfile();
-    }
+    // Not signed in — stay on step 1
   }, [authUser, authLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Load existing preferences from localStorage on mount
-  const getExistingPrefs = () => {
-    try {
-      return JSON.parse(localStorage.getItem("userPreferences") || "{}");
-    } catch {
-      return {};
-    }
-  };
-
-  const existingPrefs = getExistingPrefs();
-  
-  // Parse hobby IDs from existing hobbies array if hobbyIds not available
-  const getExistingHobbyIds = () => {
-    if (Array.isArray(existingPrefs.hobbyIds)) return existingPrefs.hobbyIds;
-    if (Array.isArray(existingPrefs.hobbies)) {
-      return existingPrefs.hobbies
-        .map((h: string) => {
-          const label = h.split(" (")[0]?.trim().toLowerCase();
-          const hobby = HOBBY_OPTIONS.find(opt => opt.label.toLowerCase() === label);
-          return hobby?.id;
-        })
-        .filter(Boolean);
-    }
-    return [];
-  };
-
-  // Parse hobby details from existing preferences
-  const getExistingInterestSelections = () => {
-    const details: Record<string, string[]> = {};
-    if (existingPrefs.hobbyDetails) {
-      Object.entries(existingPrefs.hobbyDetails).forEach(([key, value]) => {
-        if (value && typeof value === "string") {
-          details[key] = value.split(",").map((item: string) => item.trim()).filter(Boolean);
-        }
-      });
-    }
-    return details;
-  };
-
-  const [name, setName] = useState(existingPrefs.name || "");
-  const [grade, setGrade] = useState<string | null>(existingPrefs.grade || null);
-  const [state, setState] = useState<AustralianState | null>(existingPrefs.state || null);
-  const [selectedSubjects, setSelectedSubjects] = useState<string[]>(existingPrefs.subjects || []);
-  const [selectedHobbies, setSelectedHobbies] = useState<string[]>(getExistingHobbyIds());
-  const [interestSelections, setInterestSelections] = useState<Record<string, string[]>>(getExistingInterestSelections());
+  const [name, setName] = useState("");
+  const [grade, setGrade] = useState<string | null>(null);
+  const [state, setState] = useState<AustralianState | null>(null);
+  const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
+  const [selectedHobbies, setSelectedHobbies] = useState<string[]>([]);
+  const [interestSelections, setInterestSelections] = useState<Record<string, string[]>>({});
   const [customInterest, setCustomInterest] = useState<Record<string, string>>({});
   const [isComplete, setIsComplete] = useState(false);
   const [icsImporting, setIcsImporting] = useState(false);
@@ -393,43 +280,15 @@ const Onboarding = () => {
     return d;
   };
 
-  const getAuthName = useCallback(() => {
-    if (!authUser) return "";
-    const meta = authUser.user_metadata || {};
-    const first = meta.first_name || meta.given_name;
-    const last = meta.last_name || meta.family_name;
-    const full = meta.full_name || meta.name;
-    const combined = [first, last].filter(Boolean).join(" ").trim();
-    return (combined || full || authUser.email?.split("@")[0] || "").trim();
-  }, [authUser]);
-
-  useEffect(() => {
-    const derived = getAuthName();
-    if (derived && !name.trim()) setName(derived);
-  }, [getAuthName, name]);
-
-  const displayName = name.trim() || getAuthName() || "Student";
-
   const savePreferences = async (hobbyIds: string[], hobbyDetails: Record<string, string>) => {
     const hobbies = hobbyIds.map(id => {
       const label = HOBBY_OPTIONS.find(h => h.id === id)?.label || id;
       const detail = hobbyDetails[id] || "";
       return detail ? `${label} (${detail})` : label;
     });
-    const finalName = displayName;
-    // Merge with existing preferences to preserve any additional data
-    const existing = JSON.parse(localStorage.getItem("userPreferences") || "{}");
     const prefs = {
-      ...existing,
-      name: finalName,
-      grade,
-      state,
-      subjects: selectedSubjects,
-      hobbies,
-      hobbyIds,
-      hobbyDetails,
-      onboardingComplete: true,
-      userId: authUser?.id,
+      name: name.trim(), grade, state, subjects: selectedSubjects,
+      hobbies, hobbyIds, hobbyDetails, onboardingComplete: true,
     };
     localStorage.setItem("userPreferences", JSON.stringify(prefs));
 
@@ -437,18 +296,17 @@ const Onboarding = () => {
       const supabase = createClient();
       const { data: { user: currentUser } } = await supabase.auth.getUser();
       if (currentUser) {
-        const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
         await supabase.from("profiles").upsert({
           id: currentUser.id, name: prefs.name, grade: prefs.grade, state: prefs.state,
           subjects: prefs.subjects, hobbies: prefs.hobbies, hobby_ids: prefs.hobbyIds,
           hobby_details: prefs.hobbyDetails, onboarding_complete: true,
-          timezone, updated_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         }, { onConflict: "id" });
       }
     } catch (e) { console.error("[Onboarding] Supabase save failed:", e); }
 
     achievementStore.unlock("start_1");
-    if (displayName.trim().toLowerCase() !== "student") achievementStore.unlock("start_2");
+    if (name.trim().toLowerCase() !== "student") achievementStore.unlock("start_2");
   };
 
   const handleIcsFile = async (file: File) => {
@@ -462,20 +320,22 @@ const Onboarding = () => {
     finally { setIcsImporting(false); }
   };
 
+  // Step 1 (auth) is complete once the user is logged in
   const canNext =
     (step === 1 && !!authUser) ||
-    (step === 2 && !!grade) ||
-    (step === 3 && !!state) ||
-    (step === 4 && selectedSubjects.length > 0) ||
-    (step === 5 && selectedHobbies.length > 0) ||
-    (step === 6 && !icsImporting);
+    (step === 2 && !!name.trim()) ||
+    (step === 3 && !!grade) ||
+    (step === 4 && !!state) ||
+    (step === 5 && selectedSubjects.length > 0) ||
+    (step === 6 && selectedHobbies.length > 0) ||
+    (step === 7 && !icsImporting);
 
   const handleNext = async () => {
     if (!canNext) return;
-    if (step < 5) { setStep(s => s + 1); return; }
-    if (step === 5) {
+    if (step < 6) { setStep(s => s + 1); return; }
+    if (step === 6) {
       await savePreferences(selectedHobbies, buildHobbyDetails(selectedHobbies));
-      setStep(6); return;
+      setStep(7); return;
     }
     setIsComplete(true);
     setTimeout(() => router.push("/dashboard"), 2500);
@@ -488,17 +348,13 @@ const Onboarding = () => {
     <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden bg-background">
       <div className="liquid-blob w-96 h-96 bg-primary/20 -top-48 -left-48 fixed" />
       <div className="liquid-blob w-80 h-80 bg-accent/20 bottom-20 right-10 fixed" style={{ animationDelay: "-3s" }} />
-      <motion.div
-        className={cn("w-full relative z-10", step === 1 ? "max-w-5xl" : "max-w-2xl")}
-        initial={{ opacity: 0, y: 30 }}
-        animate={{ opacity: 1, y: 0 }}
-      >
+      <motion.div className="w-full max-w-2xl relative z-10" initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }}>
         <AnimatePresence mode="wait">
           {!isComplete ? (
             <motion.div key={`step-${step}`} initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }}
-              className={cn("glass-card shadow-xl border-white/8", step === 1 ? "p-6 md:p-8" : "p-8 md:p-10")}>
+              className="glass-card p-8 md:p-10 shadow-2xl border-white/20">
 
-              {/* Progress bar */}
+              {/* Progress bar — only show from step 2 onwards */}
               {step > 1 && (
                 <div className="flex items-center gap-2 mb-10">
                   {Array.from({ length: TOTAL_STEPS - 1 }).map((_, i) => (
@@ -510,8 +366,24 @@ const Onboarding = () => {
               {/* Step 1 — Auth */}
               {step === 1 && <AuthStep onAuthed={() => setStep(2)} externalError={authError} />}
 
-              {/* Step 2 — Year */}
+              {/* Step 2 — Name */}
               {step === 2 && (
+                <div className="space-y-8">
+                  <div>
+                    <h1 className="text-3xl font-black text-foreground tracking-tight"><TypewriterText text="Hi there! I'm Quizzy." delay={300} /></h1>
+                    <p className="text-muted-foreground text-lg"><TypewriterText text="What should I call you?" delay={1200} /></p>
+                  </div>
+                  <div className="relative">
+                    <User className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground w-5 h-5" />
+                    <Input autoFocus placeholder="Your name" value={name} onChange={e => setName(e.target.value)}
+                      className="pl-12 h-14 text-xl glass border-2 focus:border-primary transition-all rounded-2xl"
+                      onKeyDown={e => e.key === "Enter" && handleNext()} />
+                  </div>
+                </div>
+              )}
+
+              {/* Step 3 — Year */}
+              {step === 3 && (
                 <div className="space-y-8">
                   <div>
                     <h1 className="text-3xl font-black text-foreground tracking-tight">What year are you in?</h1>
@@ -521,7 +393,7 @@ const Onboarding = () => {
                     {["7","8","9","10","11","12"].map(y => (
                       <motion.button key={y} onClick={() => setGrade(y)} whileHover={{ y: -4 }} whileTap={{ scale: 0.98 }}
                         className={cn("p-6 rounded-2xl border-2 transition-all flex flex-col items-center justify-center gap-2 group",
-                          grade === y ? "border-primary bg-primary/10 shadow-lg scale-[1.02]" : "border-border bg-card/80 hover:border-primary/50")}>
+                          grade === y ? "border-primary bg-primary/10 shadow-lg scale-[1.02]" : "border-border glass hover:border-primary/50")}>
                         <span className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Year</span>
                         <span className="text-4xl font-black text-foreground group-hover:scale-110 transition-transform">{y}</span>
                       </motion.button>
@@ -530,8 +402,8 @@ const Onboarding = () => {
                 </div>
               )}
 
-              {/* Step 3 — State */}
-              {step === 3 && (
+              {/* Step 4 — State */}
+              {step === 4 && (
                 <div className="space-y-8">
                   <div>
                     <h1 className="text-3xl font-black text-foreground tracking-tight">Where do you go to school?</h1>
@@ -541,7 +413,7 @@ const Onboarding = () => {
                     {(Object.entries(STATE_LABELS) as [AustralianState, string][]).map(([code, label]) => (
                       <motion.button key={code} onClick={() => setState(code)} whileHover={{ y: -3 }} whileTap={{ scale: 0.97 }}
                         className={cn("p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2",
-                          state === code ? "border-primary bg-primary/10 shadow-lg scale-[1.02]" : "border-border bg-card/80 hover:border-primary/50")}>
+                          state === code ? "border-primary bg-primary/10 shadow-lg scale-[1.02]" : "border-border glass hover:border-primary/50")}>
                         <span className="text-2xl font-black text-foreground">{code}</span>
                         <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider text-center leading-tight">{label}</span>
                       </motion.button>
@@ -550,18 +422,18 @@ const Onboarding = () => {
                 </div>
               )}
 
-              {/* Step 4 — Subjects */}
-              {step === 4 && (
+              {/* Step 5 — Subjects */}
+              {step === 5 && (
                 <div className="space-y-8">
                   <div>
-                    <h1 className="text-3xl font-black text-foreground tracking-tight">Nice to meet you, {displayName}!</h1>
+                    <h1 className="text-3xl font-black text-foreground tracking-tight">Nice to meet you, {name}!</h1>
                     <p className="text-muted-foreground text-lg">Which subjects are we tackling?</p>
                   </div>
                   <motion.div className="grid grid-cols-2 sm:grid-cols-3 gap-3" variants={cv} initial="hidden" animate="visible">
                     {SUBJECTS.map(s => (
                       <motion.button key={s.id} variants={iv} onClick={() => toggleSubject(s.id)} whileHover={{ y: -4 }} whileTap={{ scale: 0.98 }}
                         className={cn("relative p-5 rounded-2xl border-2 transition-all text-left group",
-                          selectedSubjects.includes(s.id) ? "border-primary bg-primary/10 shadow-lg scale-[1.02]" : "border-border bg-card/80 hover:border-primary/50")}>
+                          selectedSubjects.includes(s.id) ? "border-primary bg-primary/10 shadow-lg scale-[1.02]" : "border-border glass hover:border-primary/50")}>
                         {selectedSubjects.includes(s.id) && (
                           <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="absolute -top-2 -right-2 w-7 h-7 bg-primary rounded-full flex items-center justify-center shadow-lg">
                             <Check className="w-4 h-4 text-primary-foreground" />
@@ -576,18 +448,18 @@ const Onboarding = () => {
                 </div>
               )}
 
-              {/* Step 5 — Hobbies */}
-              {step === 5 && (
+              {/* Step 6 — Hobbies */}
+              {step === 6 && (
                 <div className="space-y-8">
                   <div>
                     <h1 className="text-3xl font-black text-foreground tracking-tight">Almost there!</h1>
-                    <p className="text-muted-foreground text-lg">Tell me about your interests so I can help you learn.</p>
+                    <p className="text-muted-foreground text-lg">Tell me about your interests for analogies.</p>
                   </div>
                   <motion.div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3" variants={cv} initial="hidden" animate="visible">
                     {HOBBY_OPTIONS.map(h => (
                       <motion.button key={h.id} variants={iv} onClick={() => toggleHobby(h.id)} whileHover={{ y: -4 }} whileTap={{ scale: 0.98 }}
                         className={cn("relative p-5 rounded-2xl border-2 transition-all group",
-                          selectedHobbies.includes(h.id) ? "border-primary bg-primary/10 shadow-lg scale-[1.02]" : "border-border bg-card/80 hover:border-primary/50")}>
+                          selectedHobbies.includes(h.id) ? "border-primary bg-primary/10 shadow-lg scale-[1.02]" : "border-border glass hover:border-primary/50")}>
                         {selectedHobbies.includes(h.id) && (
                           <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="absolute -top-2 -right-2 w-7 h-7 bg-primary rounded-full flex items-center justify-center shadow-lg">
                             <Check className="w-4 h-4 text-primary-foreground" />
@@ -607,7 +479,7 @@ const Onboarding = () => {
                         const normPop = popular.map(i => i.toLowerCase());
                         const customItems = selections.filter(i => !normPop.includes(i.toLowerCase()));
                         return (
-                          <div key={id} className="bg-card/85 border border-border/80 p-4 rounded-2xl">
+                          <div key={id} className="glass p-4 rounded-2xl border border-white/10">
                             <div className="flex items-center gap-2 text-sm font-bold text-foreground mb-3">
                               <span className="text-primary">{HOBBY_ICONS[id]}</span>
                               <span>Popular {h?.label}</span>
@@ -619,9 +491,7 @@ const Onboarding = () => {
                                 return (
                                   <button key={item} onClick={() => toggleInterestItem(id, item)}
                                     className={cn("px-3 py-2 rounded-full border text-xs font-bold transition-all",
-                                      active
-                                        ? "border-primary bg-primary/12 text-foreground shadow-lg"
-                                        : "border-border/80 bg-card/60 text-foreground/85 hover:border-primary/50 hover:text-foreground",
+                                      active ? "border-primary bg-primary/10 shadow-lg" : "border-border glass hover:border-primary/50",
                                       isCustom && "border-dashed")}>
                                     {item}{isCustom && <span className="ml-1 text-[9px] uppercase tracking-widest text-muted-foreground">Custom</span>}
                                   </button>
@@ -631,9 +501,8 @@ const Onboarding = () => {
                             <div className="flex gap-2 mt-3">
                               <Input value={customInterest[id] || ""} onChange={e => setCustomInterest(p => ({ ...p, [id]: e.target.value }))}
                                 placeholder={`Add your favourite ${h?.label.toLowerCase()}...`}
-                                className="bg-background/90 border-border/80 placeholder:text-foreground/50"
                                 onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addCustomInterest(id); } }} />
-                              <Button type="button" variant="outline" className="border-border/80 bg-card/40 hover:bg-card/70" onClick={() => addCustomInterest(id)}>Add</Button>
+                              <Button type="button" variant="outline" onClick={() => addCustomInterest(id)}>Add</Button>
                             </div>
                           </div>
                         );
@@ -643,22 +512,22 @@ const Onboarding = () => {
                 </div>
               )}
 
-              {/* Step 6 — ICS */}
-              {step === 6 && (
+              {/* Step 7 — ICS */}
+              {step === 7 && (
                 <IcsStep importing={icsImporting} imported={icsImported} count={icsCount} error={icsError} onFile={handleIcsFile} />
               )}
 
-              {/* Footer buttons */}
+              {/* Footer buttons — hidden on auth step since it handles its own flow */}
               {step > 1 && (
                 <div className="flex justify-between items-center mt-10">
                   <Button variant="ghost" onClick={() => setStep(s => s - 1)} className="px-6 rounded-xl">Back</Button>
                   <div className="flex items-center gap-3">
-                    {step === 6 && !icsImported && (
+                    {step === 7 && !icsImported && (
                       <Button variant="ghost" onClick={handleNext} className="px-6 rounded-xl text-muted-foreground">Skip</Button>
                     )}
                     <Button onClick={handleNext} disabled={!canNext}
                       className="gap-2 gradient-primary text-primary-foreground border-0 h-14 px-8 rounded-2xl font-bold shadow-xl hover:opacity-90 transition-opacity">
-                      {step === 6 ? (
+                      {step === 7 ? (
                         <><Sparkles className="w-5 h-5" />{icsImported ? "All Done!" : "Finish Setup"}</>
                       ) : (
                         <>Next <ArrowRight className="w-5 h-5" /></>
@@ -668,7 +537,7 @@ const Onboarding = () => {
                 </div>
               )}
 
-              {/* Auth step continue */}
+              {/* On the auth step, show Continue if already authed */}
               {step === 1 && authUser && (
                 <div className="flex justify-end mt-10">
                   <Button onClick={() => setStep(2)}
@@ -684,7 +553,7 @@ const Onboarding = () => {
               className="glass-card p-16 text-center relative overflow-hidden shadow-2xl">
               <Confetti />
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="mt-8 space-y-4">
-                <h1 className="text-4xl font-black text-foreground tracking-tight">You're all set, {displayName}.</h1>
+                <h1 className="text-4xl font-black text-foreground tracking-tight">You're all set, {name}.</h1>
                 <p className="text-muted-foreground text-xl max-w-md mx-auto">I'm ready to help you master your subjects with custom analogies!</p>
               </motion.div>
             </motion.div>
