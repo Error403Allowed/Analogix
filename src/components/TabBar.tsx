@@ -12,7 +12,7 @@ import {
   ContextMenuItem,
   ContextMenuSeparator,
 } from "@/components/ui/context-menu";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { SUBJECT_CATALOG } from "@/constants/subjects";
 import { subjectStore } from "@/utils/subjectStore";
 import { toast } from "sonner";
@@ -198,6 +198,7 @@ function NewTabOverlay({
 // ── TabBar ────────────────────────────────────────────────────────────────────
 export default function TabBar({ onNavigate }: TabBarProps) {
   const { tabs, activeTabId, hydrated, closeTab, setActiveTab, openTab, togglePin, reorderTabs } = useTabs();
+  const pathname = usePathname(); // source of truth for active tab highlight
   const router = useRouter();
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -390,7 +391,7 @@ export default function TabBar({ onNavigate }: TabBarProps) {
         <div ref={scrollRef} className="flex items-end gap-1 overflow-x-auto scrollbar-none flex-1 min-w-0">
           <AnimatePresence initial={false}>
             {pinnedTabs.map((tab, index) => {
-              const isActive = tab.id === activeTabId;
+              const isActive = pathname ? tab.path === pathname : tab.id === activeTabId;
               const isDragging = draggedTabId === tab.id;
               const isDragOver = dragOverIndex === index;
               return (
@@ -449,7 +450,7 @@ export default function TabBar({ onNavigate }: TabBarProps) {
 
           <AnimatePresence initial={false}>
             {regularTabs.map((tab, index) => {
-              const isActive = tab.id === activeTabId;
+              const isActive = pathname ? tab.path === pathname : tab.id === activeTabId;
               const isDragging = draggedTabId === tab.id;
               const isDragOver = dragOverIndex === index;
               const pinnedCount = pinnedTabs.length;
