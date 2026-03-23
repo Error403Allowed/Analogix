@@ -111,7 +111,9 @@ export async function POST(request: Request) {
     const body = await request.json();
     const actions: AgentAction[] = Array.isArray(body.actions) ? body.actions : [];
     const defaultSubjectId = typeof body.defaultSubjectId === "string" ? body.defaultSubjectId : null;
-    console.log("[agent-action] received", actions.length, "action(s):", actions.map((a) => `${a.type}/${a.docTitle || a.title}`).join(", "));
+    // source: "chat" means full action set is allowed; default (agent panel) is restricted
+    const source = typeof body.source === "string" ? body.source : "agent";
+    console.log("[agent-action] received", actions.length, "action(s):", actions.map((a) => `${a.type}/${a.docTitle || a.title}`).join(", "), "| source:", source);
 
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -122,7 +124,9 @@ export async function POST(request: Request) {
 
     for (const action of actions) {
       try {
-        if (!isBottomRightAgentActionType(action.type)) {
+        // Agent panel is restricted to flashcard/quiz actions only
+        // Chat (source=chat) gets full action set including document editing
+        if (source !== "chat" && !isBottomRightAgentActionType(action.type)) {
           results.push({
             type: action.type,
             success: false,
@@ -316,15 +320,23 @@ export async function POST(request: Request) {
         } else if (actionType === "add_flashcards") {
           const nextReview = new Date(); nextReview.setDate(nextReview.getDate() + 1);
           const cards = action.cards || [];
+          const setName = action.setName || `AI – ${new Date().toLocaleDateString("en-AU")}`;
+          // Create a named set first (new data model requires set_id)
+          const { data: newSet, error: setError } = await supabase
+            .from("flashcard_sets")
+            .insert({ user_id: user.id, subject_id: subjectId, name: setName })
+            .select("id")
+            .single();
+          if (setError || !newSet) throw new Error(`Failed to create flashcard set: ${setError?.message}`);
           const rows = cards.map((card) => ({
-            user_id: user.id, subject_id: action.subjectId,
+            user_id: user.id, subject_id: subjectId, set_id: newSet.id,
             front: card.front, back: card.back,
             next_review: nextReview.toISOString(), interval_days: 1, ease_factor: 2.5, repetitions: 0,
             created_at: now, updated_at: now,
           }));
           const { error } = await supabase.from("flashcards").insert(rows);
           if (error) throw error;
-          results.push({ type: "add_flashcards", success: true, detail: `Added ${cards.length} flashcard(s) to ${subjectId}` });
+          results.push({ type: "add_flashcards", success: true, detail: `Added ${cards.length} flashcard(s) to "${setName}" in ${subjectId}`, setId: newSet.id });
 
         } else {
           results.push({ type: action.type, success: false, detail: `Unknown action type: ${action.type}` });

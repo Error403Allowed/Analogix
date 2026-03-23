@@ -190,13 +190,21 @@ The block contains a single JSON object OR a JSON array of objects.
 ── ACTION 2: update_document ──
 {"type":"update_document","subjectId":"SUBJECT","docTitle":"EXACT TITLE","content":"<p>Full HTML</p>","mode":"replace"}
 ── ACTION 3: add_flashcards ──
-{"type":"add_flashcards","subjectId":"SUBJECT","cards":[{"front":"Q","back":"A"}]}
+{"type":"add_flashcards","subjectId":"SUBJECT","setName":"Topic name","cards":[{"front":"Q","back":"A"}]}
+
+── ACTION 4: start_quiz ──
+{"type":"start_quiz","subjectId":"SUBJECT","topic":"optional topic focus","difficulty":"foundational|intermediate|advanced","numberOfQuestions":5,"timeLimitMinutes":0}
 
 ── RULES ──
-- Only include <ACTIONS> when actually making a change.
+- Only include <ACTIONS> when actually making a change or being explicitly asked.
 - Use EXACT docTitle from the workspace above.
 - Use update_document for ALL documents.
 - Only use mode "replace" if you include the FULL updated document content.
+- For add_flashcards: always include a descriptive setName (e.g. "Quadratic equations", "Chapter 3 vocab"). Say "Done! Added X flashcards on [topic]." — nothing else.
+- For start_quiz: say "Starting your quiz now!" then the <ACTIONS> block. NEVER write quiz questions in your text response.
+- CRITICAL: When using add_flashcards or start_quiz, your text response must be 1 sentence MAX. Do NOT write out flashcard content or quiz questions in the chat — they go in the <ACTIONS> block only.
+- Use add_flashcards when student says "make flashcards", "create cards", "save these as flashcards" etc.
+- Use start_quiz when student says "quiz me", "test me", "start a quiz" etc.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ` : ""}` : "";
 

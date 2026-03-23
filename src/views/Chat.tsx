@@ -1249,20 +1249,39 @@ const Chat = () => {
             const parsed = JSON.parse(cleaned);
             const actions = Array.isArray(parsed) ? parsed : [parsed];
             console.log("[Chat] dispatching", actions.length, "action(s)");
-            // Fire-and-forget — don't block the UI
-            fetch("/api/groq/agent-action", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ actions, defaultSubjectId: selectedSubject }),
-            })
-              .then(r => r.json())
-              .then(data => {
-                console.log("[Chat] agent-action results:", data.results);
-                if (data.results?.length) {
-                  window.dispatchEvent(new CustomEvent("subjectDataUpdated", { detail: { results: data.results } }));
-                }
+
+            // Handle start_quiz client-side (navigate to quiz hub with params)
+            const quizAction = actions.find((a: Record<string, unknown>) => a.type === "start_quiz");
+            if (quizAction) {
+              try {
+                sessionStorage.setItem("analogix.pending-agent-quiz", JSON.stringify({
+                  subjectId: quizAction.subjectId || selectedSubject,
+                  topic: quizAction.topic || "",
+                  difficulty: quizAction.difficulty || "intermediate",
+                  numberOfQuestions: Number(quizAction.numberOfQuestions) || 5,
+                  timeLimitMinutes: Number(quizAction.timeLimitMinutes) || 0,
+                }));
+                router.push("/flashcards?tab=quiz");
+              } catch { /* ignore */ }
+            }
+
+            // Send all non-quiz actions to agent-action (with source=chat for full permissions)
+            const serverActions = actions.filter((a: Record<string, unknown>) => a.type !== "start_quiz");
+            if (serverActions.length > 0) {
+              fetch("/api/groq/agent-action", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ actions: serverActions, defaultSubjectId: selectedSubject, source: "chat" }),
               })
-              .catch(err => console.error("[Chat] agent-action error:", err));
+                .then(r => r.json())
+                .then(data => {
+                  console.log("[Chat] agent-action results:", data.results);
+                  if (data.results?.length) {
+                    window.dispatchEvent(new CustomEvent("subjectDataUpdated", { detail: { results: data.results } }));
+                  }
+                })
+                .catch(err => console.error("[Chat] agent-action error:", err));
+            }
           } catch (e) {
             console.warn("[Chat] Failed to parse ACTIONS block:", e);
           }

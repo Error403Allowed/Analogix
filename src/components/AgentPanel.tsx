@@ -10,6 +10,7 @@ import {
 import ContentInput, { type ContextItem } from "@/components/ContentInput";
 import { cn } from "@/lib/utils";
 import { usePathname, useRouter } from "next/navigation";
+import { useAgentContext } from "@/context/AgentContext";
 import type { ChatMessage } from "@/types/chat";
 import { gatherAppContext, type ContextOptions } from "@/lib/contextGatherer";
 import { subjectStore } from "@/utils/subjectStore";
@@ -92,8 +93,7 @@ function TypingDots({ keyPrefix = "typing" }: { keyPrefix?: string }) {
 export default function AgentPanel() {
   const pathname = usePathname();
   const router = useRouter();
-  const [agentMode, setAgentModeState] = useState<AgentMode>("floating");
-  const [open, setOpen]         = useState(false);
+  const { agentMode, agentOpen: open, setAgentMode: setAgentModeCtx, setAgentOpen: setOpen } = useAgentContext();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [actionResults, setActionResults] = useState<Record<number, ActionResult[]>>({});
   const [input, setInput] = useState("");
@@ -119,19 +119,8 @@ export default function AgentPanel() {
   const inputRef = useRef<HTMLInputElement>(null);
 
 
-  // Load persisted mode on mount
-  useEffect(() => {
-    const saved = safeLocalStorageGet(AGENT_MODE_KEY) as AgentMode | null;
-    if (saved && saved in MODE_META) setAgentModeState(saved);
-  }, []);
-
   const setAgentMode = (mode: AgentMode) => {
-    setAgentModeState(mode);
-    safeLocalStorageSet(AGENT_MODE_KEY, mode);
-    // When switching to chat mode, close the panel
-    if (mode === "chat") setOpen(false);
-    // When switching to sidebar, open immediately
-    if (mode === "sidebar") setOpen(true);
+    setAgentModeCtx(mode); // context handles persistence + open/close logic
   };
 
   // Handle FAB click based on mode
