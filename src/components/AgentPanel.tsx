@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Brain, X, Send, Loader2, Sparkles, Trash2, ChevronDown,
   BookOpen, FileText, MessageSquare, CheckCircle2, AlertCircle, Zap,
-  Eye, FileText as FileTextIcon,
+  Eye, PanelRight, Maximize2, ExternalLink,
 } from "lucide-react";
 import ContentInput, { type ContextItem } from "@/components/ContentInput";
 import { cn } from "@/lib/utils";
@@ -46,6 +46,15 @@ const QUICK_PROMPTS = [
 
 const AGENT_SESSION_KEY = "agentChatSessionId";
 const MAX_AGENT_HISTORY = 30;
+const AGENT_MODE_KEY = "analogix_agent_mode";
+
+export type AgentMode = "floating" | "sidebar" | "chat";
+
+const MODE_META: Record<AgentMode, { label: string; icon: React.ElementType; tip: string }> = {
+  floating: { label: "Float",   icon: Maximize2,   tip: "Floating panel" },
+  sidebar:  { label: "Sidebar", icon: PanelRight,  tip: "Right sidebar" },
+  chat:     { label: "Chat",    icon: ExternalLink, tip: "Open full chat" },
+};
 
 const safeLocalStorageGet = (key: string) => {
   try { return localStorage.getItem(key); } catch { return null; }
@@ -83,6 +92,7 @@ function TypingDots({ keyPrefix = "typing" }: { keyPrefix?: string }) {
 export default function AgentPanel() {
   const pathname = usePathname();
   const router = useRouter();
+  const [agentMode, setAgentModeState] = useState<AgentMode>("floating");
   const [open, setOpen]         = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [actionResults, setActionResults] = useState<Record<number, ActionResult[]>>({});
@@ -108,6 +118,30 @@ export default function AgentPanel() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+
+  // Load persisted mode on mount
+  useEffect(() => {
+    const saved = safeLocalStorageGet(AGENT_MODE_KEY) as AgentMode | null;
+    if (saved && saved in MODE_META) setAgentModeState(saved);
+  }, []);
+
+  const setAgentMode = (mode: AgentMode) => {
+    setAgentModeState(mode);
+    safeLocalStorageSet(AGENT_MODE_KEY, mode);
+    // When switching to chat mode, close the panel
+    if (mode === "chat") setOpen(false);
+    // When switching to sidebar, open immediately
+    if (mode === "sidebar") setOpen(true);
+  };
+
+  // Handle FAB click based on mode
+  const handleFabClick = () => {
+    if (agentMode === "chat") {
+      router.push("/chat");
+      return;
+    }
+    setOpen(true);
+  };
 
   // Hide on certain pages — computed here but the early return is AFTER all hooks
   const isHidden = HIDDEN_ON.some(p =>
@@ -488,7 +522,7 @@ export default function AgentPanel() {
 
   return (
     <>
-      {/* ── Floating button ── */}
+      {/* ── FAB — hidden when sidebar is open ── */}
       <AnimatePresence>
         {!open && (
           <motion.button
@@ -497,7 +531,7 @@ export default function AgentPanel() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.8, y: 16 }}
             transition={{ type: "spring", stiffness: 400, damping: 24 }}
-            onClick={() => setOpen(true)}
+            onClick={handleFabClick}
             className={cn(
               "fixed bottom-6 right-6 z-[9998]",
               "w-14 h-14 rounded-2xl shadow-[0_8px_32px_-4px_rgba(0,0,0,0.45)]",
@@ -506,9 +540,9 @@ export default function AgentPanel() {
               "hover:scale-105 active:scale-95 transition-transform",
               "border border-primary/20"
             )}
-            aria-label="Open Analogix AI AI agent"
+            aria-label="Open Analogix AI"
           >
-            <Brain className="w-6 h-6" />
+            {agentMode === "chat" ? <ExternalLink className="w-5 h-5" /> : <Brain className="w-6 h-6" />}
           </motion.button>
         )}
       </AnimatePresence>
@@ -518,18 +552,25 @@ export default function AgentPanel() {
         {open && (
           <motion.div
             key="panel"
-            initial={{ opacity: 0, y: 24, scale: 0.96 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 24, scale: 0.96 }}
+            initial={agentMode === "sidebar"
+              ? { opacity: 0, x: 320 }
+              : { opacity: 0, y: 24, scale: 0.96 }}
+            animate={agentMode === "sidebar"
+              ? { opacity: 1, x: 0 }
+              : { opacity: 1, y: 0, scale: 1 }}
+            exit={agentMode === "sidebar"
+              ? { opacity: 0, x: 320 }
+              : { opacity: 0, y: 24, scale: 0.96 }}
             transition={{ type: "spring", stiffness: 380, damping: 28 }}
             className={cn(
-              "fixed bottom-6 right-6 z-[9999]",
-              "w-[420px] max-w-[calc(100vw-1.5rem)]",
-              "rounded-3xl border border-border/50",
-              "bg-card shadow-[0_24px_72px_-8px_rgba(0,0,0,0.6)]",
+              "fixed z-[9999]",
+              "bg-card border-border/50",
               "flex flex-col overflow-hidden",
+              agentMode === "sidebar"
+                ? "top-0 right-0 bottom-0 w-[380px] max-w-[calc(100vw-3rem)] border-l shadow-[-24px_0_72px_-8px_rgba(0,0,0,0.35)]"
+                : "bottom-6 right-6 w-[420px] max-w-[calc(100vw-1.5rem)] rounded-3xl border shadow-[0_24px_72px_-8px_rgba(0,0,0,0.6)]",
             )}
-            style={{ height: "min(600px, calc(100vh - 6rem))" }}
+            style={agentMode === "sidebar" ? {} : { height: "min(600px, calc(100vh - 6rem))" }}
           >
             {/* Header */}
             <div className="flex items-center gap-3 px-4 py-3.5 border-b border-border/30 bg-primary/5 shrink-0">
@@ -544,6 +585,28 @@ export default function AgentPanel() {
                 </p>
               </div>
               <div className="flex items-center gap-1">
+                {/* Mode switcher — Notion-style 3-way toggle */}
+                <div className="flex items-center bg-muted/40 rounded-lg p-0.5 mr-1">
+                  {(Object.entries(MODE_META) as [AgentMode, typeof MODE_META[AgentMode]][]).map(([mode, meta]) => {
+                    const Icon = meta.icon;
+                    const isActive = agentMode === mode;
+                    return (
+                      <button
+                        key={mode}
+                        onClick={() => setAgentMode(mode)}
+                        title={meta.tip}
+                        className={cn(
+                          "w-6 h-6 rounded-md flex items-center justify-center transition-all",
+                          isActive
+                            ? "bg-background text-foreground shadow-sm"
+                            : "text-muted-foreground/50 hover:text-muted-foreground"
+                        )}
+                      >
+                        <Icon className="w-3.5 h-3.5" />
+                      </button>
+                    );
+                  })}
+                </div>
                 {messages.length > 0 && (
                   <button
                     onClick={clearChat}
@@ -556,8 +619,9 @@ export default function AgentPanel() {
                 <button
                   onClick={() => setOpen(false)}
                   className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground/40 hover:text-muted-foreground hover:bg-muted/40 transition-colors"
+                  title="Close"
                 >
-                  <ChevronDown className="w-4 h-4" />
+                  {agentMode === "sidebar" ? <X className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                 </button>
               </div>
             </div>
