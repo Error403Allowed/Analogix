@@ -531,7 +531,7 @@ export default function AgentPanel() {
             )}
             aria-label="Open Analogix AI"
           >
-            {agentMode === "chat" ? <ExternalLink className="w-5 h-5" /> : <Brain className="w-6 h-6" />}
+            <Brain className="w-6 h-6" />
           </motion.button>
         )}
       </AnimatePresence>
