@@ -1095,7 +1095,7 @@ const Chat = () => {
 
     // Record the conversation stat
     if (selectedSubject) {
-      statsStore.recordChat(allSubjects.find(s => s.id === selectedSubject)?.label || selectedSubject);
+      statsStore.recordChat(selectedSubject); // always record by subject ID
     }
 
     // Note: Supabase saving now happens inside the async IIFE below,

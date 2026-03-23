@@ -1019,59 +1019,123 @@ export default function Flashcards() {
                 )}
               </AnimatePresence>
 
-                            {/* Sets grid */}
+              {/* Subject cards */}
               <div>
-                <h2 className="text-[11px] font-black uppercase tracking-widest text-muted-foreground mb-4">Your sets</h2>
+                <h2 className="text-[11px] font-black uppercase tracking-widest text-muted-foreground mb-4">Your subjects</h2>
                 {loading ? (
                   <div className="flex items-center justify-center py-16 gap-2 text-muted-foreground">
                     <Loader2 className="w-5 h-5 animate-spin" /> Loading...
                   </div>
-                ) : sets.length === 0 ? (
+                ) : userSubjects.length === 0 ? (
                   <div className="rounded-2xl border-2 border-dashed border-border py-16 text-center">
                     <FolderOpen className="w-12 h-12 mx-auto mb-3 text-muted-foreground/25" />
-                    <p className="font-black text-lg mb-1">No sets yet</p>
-                    <p className="text-sm text-muted-foreground mb-5">Create your first set or upload notes</p>
-                    <Button onClick={() => setTopView("create-set")}><Plus className="w-4 h-4 mr-2" /> Create set</Button>
+                    <p className="font-black text-lg mb-1">No subjects yet</p>
+                    <p className="text-sm text-muted-foreground">Add subjects in your profile to get started.</p>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {sets.map(set => (
-                      <motion.div key={set.subjectId}
-                        whileHover={{ y: -4 }} whileTap={{ scale: 0.97 }}
-                        className="rounded-2xl border border-border bg-card p-5 cursor-pointer hover:border-primary/40 transition-all group relative">
-                        <button onClick={e => { e.stopPropagation(); deleteSet(set.set.id, set.set.name); }}
-                          className="absolute top-3 right-3 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-all z-10">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                        <div onClick={() => openSet(set.set.id)}>
-                          <div className="flex items-center justify-between mb-3">
-                            <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
-                              <DynamicIcon name={subjectIconName(set.set.subjectId)} className="w-4 h-4 text-primary" />
+                    {userSubjects.map(subId => {
+                      const subSets = setsBySubject[subId] || [];
+                      const totalSubCards = subSets.reduce((n, s) => n + s.cards.length, 0);
+                      const dueSubCards = subSets.reduce((n, s) => n + s.dueCount, 0);
+                      return (
+                        <motion.div key={subId}
+                          whileHover={{ y: -3 }} whileTap={{ scale: 0.98 }}
+                          onClick={() => openSubject(subId)}
+                          className="rounded-2xl border border-border bg-card p-5 cursor-pointer hover:border-primary/40 transition-all">
+                          <div className="flex items-center justify-between mb-4">
+                            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                              <DynamicIcon name={subjectIconName(subId)} className="w-5 h-5 text-primary" />
                             </div>
-                            {set.dueCount > 0 && (
+                            {dueSubCards > 0 && (
                               <span className="text-[10px] font-black bg-amber-500/15 text-amber-600 border border-amber-500/30 rounded-full px-2 py-0.5">
-                                {set.dueCount} due
+                                {dueSubCards} due
                               </span>
                             )}
                           </div>
-                          <p className="font-black text-base mb-1 pr-6">{subjectLabel(set.set.subjectId)}</p>
-                          <p className="text-xs text-muted-foreground mb-3">{set.cards.length} terms</p>
-                          <div className="w-full h-1 rounded-full bg-muted overflow-hidden">
-                            <div className="h-full bg-primary rounded-full"
-                              style={{ width: `${set.cards.length > 0 ? (set.masteredCount / set.cards.length) * 100 : 0}%` }} />
-                          </div>
-                          <p className="text-[10px] text-muted-foreground mt-1.5">{set.masteredCount} mastered</p>
-                        </div>
-                      </motion.div>
-                    ))}
-                    <motion.button whileHover={{ y: -4 }} onClick={() => setTopView("create-set")}
-                      className="rounded-2xl border-2 border-dashed border-border py-12 cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-all flex flex-col items-center justify-center gap-2 min-h-[160px]">
-                      <Plus className="w-8 h-8 text-muted-foreground/30" />
-                      <p className="text-sm font-bold text-muted-foreground">Create set</p>
-                    </motion.button>
+                          <p className="font-black text-base mb-0.5">{subjectLabel(subId)}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {subSets.length} set{subSets.length !== 1 ? "s" : ""} · {totalSubCards} card{totalSubCards !== 1 ? "s" : ""}
+                          </p>
+                        </motion.div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
+            </motion.div>
+          )}
+
+          {/* ══════════ SUBJECT DETAIL ══════════ */}
+          {topView === "subject-detail" && activeSubjectId && (
+            <motion.div key="subject-detail" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -14 }} className="space-y-6">
+              {/* Header */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0">
+                    <DynamicIcon name={subjectIconName(activeSubjectId)} className="w-6 h-6 text-primary" />
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-black">{subjectLabel(activeSubjectId)}</h2>
+                    <p className="text-sm text-muted-foreground">
+                      {(setsBySubject[activeSubjectId] || []).length} set{(setsBySubject[activeSubjectId] || []).length !== 1 ? "s" : ""}
+                    </p>
+                  </div>
+                </div>
+                <Button onClick={() => { setNewSetSubject(activeSubjectId); setTopView("create-set"); }} className="gap-2 shrink-0">
+                  <Plus className="w-4 h-4" /> New set
+                </Button>
+              </div>
+
+              {/* Sets for this subject */}
+              {(setsBySubject[activeSubjectId] || []).length === 0 ? (
+                <div className="rounded-2xl border-2 border-dashed border-border py-16 text-center">
+                  <FolderOpen className="w-12 h-12 mx-auto mb-3 text-muted-foreground/25" />
+                  <p className="font-black text-lg mb-1">No sets yet</p>
+                  <p className="text-sm text-muted-foreground mb-5">Create a set or generate one from your notes.</p>
+                  <Button onClick={() => { setNewSetSubject(activeSubjectId); setTopView("create-set"); }}>
+                    <Plus className="w-4 h-4 mr-2" /> Create set
+                  </Button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {(setsBySubject[activeSubjectId] || []).map(s => (
+                    <motion.div key={s.set.id}
+                      whileHover={{ y: -3 }} whileTap={{ scale: 0.98 }}
+                      className="rounded-2xl border border-border bg-card p-5 cursor-pointer hover:border-primary/40 transition-all group relative">
+                      <button onClick={e => { e.stopPropagation(); deleteSet(s.set.id, s.set.name); }}
+                        className="absolute top-3 right-3 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-all z-10">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                      <div onClick={() => openSet(s.set.id)}>
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center">
+                            <BookOpen className="w-4 h-4 text-primary" />
+                          </div>
+                          {s.dueCount > 0 && (
+                            <span className="text-[10px] font-black bg-amber-500/15 text-amber-600 border border-amber-500/30 rounded-full px-2 py-0.5">
+                              {s.dueCount} due
+                            </span>
+                          )}
+                        </div>
+                        <p className="font-black text-base mb-0.5 pr-6">{s.set.name}</p>
+                        <p className="text-xs text-muted-foreground mb-3">{s.cards.length} card{s.cards.length !== 1 ? "s" : ""}</p>
+                        <div className="w-full h-1 rounded-full bg-muted overflow-hidden">
+                          <div className="h-full bg-primary rounded-full"
+                            style={{ width: `${s.cards.length > 0 ? (s.masteredCount / s.cards.length) * 100 : 0}%` }} />
+                        </div>
+                        <p className="text-[10px] text-muted-foreground mt-1.5">{s.masteredCount} mastered</p>
+                      </div>
+                    </motion.div>
+                  ))}
+                  <motion.button whileHover={{ y: -3 }}
+                    onClick={() => { setNewSetSubject(activeSubjectId); setTopView("create-set"); }}
+                    className="rounded-2xl border-2 border-dashed border-border py-12 cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-all flex flex-col items-center justify-center gap-2 min-h-[140px]">
+                    <Plus className="w-7 h-7 text-muted-foreground/30" />
+                    <p className="text-sm font-bold text-muted-foreground">New set</p>
+                  </motion.button>
+                </div>
+              )}
             </motion.div>
           )}
 
@@ -1080,13 +1144,24 @@ export default function Flashcards() {
             <motion.div key="create-set" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -14 }} className="space-y-6">
               <div className="rounded-2xl border border-border bg-card p-6">
                 <h2 className="text-xl font-black mb-1">New flashcard set</h2>
-                <p className="text-xs text-muted-foreground mb-5">Pick a subject, then add cards.</p>
-                <div>
-                  <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Subject</label>
-                  <select value={newSetSubject} onChange={e => setNewSetSubject(e.target.value)}
-                    className="mt-2 w-full sm:w-72 rounded-xl border border-border bg-background px-3 py-2.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary/30">
-                    {subjectOptions.map(id => <option key={id} value={id}>{subjectLabel(id)}</option>)}
-                  </select>
+                <p className="text-xs text-muted-foreground mb-5">Name your set, pick a subject, then add cards.</p>
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Set name</label>
+                    <input
+                      value={newSetName}
+                      onChange={e => setNewSetName(e.target.value)}
+                      placeholder="e.g. Quadratic equations, Chapter 3 vocab…"
+                      className="mt-2 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm font-semibold placeholder:font-normal placeholder:text-muted-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Subject</label>
+                    <select value={newSetSubject} onChange={e => setNewSetSubject(e.target.value)}
+                      className="mt-2 w-full sm:w-72 rounded-xl border border-border bg-background px-3 py-2.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary/30">
+                      {subjectOptions.map(id => <option key={id} value={id}>{subjectLabel(id)}</option>)}
+                    </select>
+                  </div>
                 </div>
               </div>
               <div className="space-y-3">
@@ -1123,7 +1198,7 @@ export default function Flashcards() {
                 <p className="text-xs text-muted-foreground">{newSetCards.filter(c => c.front.trim() && c.back.trim()).length} / {newSetCards.length} cards ready</p>
                 <div className="flex gap-3">
                   <Button variant="outline" onClick={() => setTopView("library")}>Cancel</Button>
-                  <Button onClick={saveSet} disabled={savingSet || newSetCards.filter(c => c.front.trim() && c.back.trim()).length === 0}>
+                  <Button onClick={saveSet} disabled={savingSet || !newSetName.trim() || newSetCards.filter(c => c.front.trim() && c.back.trim()).length === 0}>
                     {savingSet ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...</> : <><Check className="w-4 h-4 mr-2" /> Create set</>}
                   </Button>
                 </div>
@@ -1294,14 +1369,15 @@ export default function Flashcards() {
           {topView === "set-detail" && activeSet && (
             <motion.div key="set-detail" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -14 }}>
 
-              <div className="mb-6 flex items-center gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0">
-                  <DynamicIcon name={subjectIconName(activeSet.set.subjectId)} className="w-6 h-6 text-primary" />
+              <div className="mb-6">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                    <DynamicIcon name={subjectIconName(activeSet.set.subjectId)} className="w-4 h-4 text-primary" />
+                  </div>
+                  <span className="text-xs font-bold text-muted-foreground">{subjectLabel(activeSet.set.subjectId)}</span>
                 </div>
-                <div>
-                  <h2 className="text-3xl font-black mb-0.5">{subjectLabel(activeSet.set.subjectId)}</h2>
-                  <p className="text-sm text-muted-foreground">{activeSet.cards.length} terms</p>
-                </div>
+                <h2 className="text-3xl font-black mb-0.5">{activeSet.set.name}</h2>
+                <p className="text-sm text-muted-foreground">{activeSet.cards.length} card{activeSet.cards.length !== 1 ? "s" : ""}</p>
               </div>
 
               {/* Tabs */}

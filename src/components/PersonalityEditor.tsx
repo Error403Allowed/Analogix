@@ -142,22 +142,22 @@ export const PersonalityEditor: React.FC< PersonalityEditorProps> = ({ onClose }
   return (
     <div className="space-y-6">
       {/* Header with preset button */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-sm font-bold text-foreground">AI Personality</h3>
-          <p className="text-xs text-muted-foreground/70 mt-0.5">
-            Customize how the AI teaches and interacts with you
-          </p>
+      <div className="space-y-3">
+        <div className="flex items-start justify-between gap-3">
+          <h3 className="text-sm font-bold text-foreground leading-snug">AI Personality</h3>
+          <Button
+            variant="outline"
+            size="sm"
+            className="rounded-xl text-xs border-border/80 bg-card/40 shrink-0"
+            onClick={() => setShowPresets(!showPresets)}
+          >
+            <Wand2 className="w-3.5 h-3.5 mr-1.5" />
+            Use Preset
+          </Button>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          className="rounded-xl text-xs border-border/80 bg-card/40"
-          onClick={() => setShowPresets(!showPresets)}
-        >
-          <Wand2 className="w-3.5 h-3.5 mr-1.5" />
-          Use Preset
-        </Button>
+        <p className="text-xs text-muted-foreground/70">
+          Customize how the AI teaches and interacts with you
+        </p>
       </div>
 
       {/* Presets Panel */}

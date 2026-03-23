@@ -129,8 +129,14 @@ export default function StudyGuideLoadingPage() {
 
     const run = async () => {
       try {
-        // Pull job from sessionStorage (set by whoever triggered the redirect)
-        const raw = sessionStorage.getItem("studyGuideJob");
+        // Pull job from sessionStorage — retry briefly since the redirect that sets
+        // sessionStorage and router.push() happen back-to-back and the component
+        // can mount before sessionStorage is written in some tab-cache scenarios.
+        let raw = sessionStorage.getItem("studyGuideJob");
+        if (!raw) {
+          await new Promise(r => setTimeout(r, 150));
+          raw = sessionStorage.getItem("studyGuideJob");
+        }
         if (!raw) { setError("No generation job found. Please try again."); return; }
         const job: {
           assessmentText: string;

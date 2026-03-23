@@ -176,7 +176,10 @@ export default function SubjectsOverview() {
 
   const getActivityCount = useCallback(
     (subject: { id: string; label: string }) =>
+      // counts are keyed by subject ID since the fix; also check label variants
+      // for any older data recorded before the fix
       normalizedStats.subjectCounts[subject.id] ||
+      normalizedStats.subjectCounts[subject.label] ||
       normalizedStats.subjectCounts[subject.label.toLowerCase()] ||
       0,
     [normalizedStats.subjectCounts],
@@ -703,13 +706,13 @@ export default function SubjectsOverview() {
 
                         <button
                           onClick={() => router.push(`/subjects/${subject.id}`)}
-                          className="mt-8 block w-full text-left"
+                          className="mt-5 block w-full text-left"
                         >
                           <p className="text-lg font-black tracking-tight text-foreground">{appearance.title}</p>
-                          <p className="mt-2 text-xs uppercase tracking-[0.18em] text-muted-foreground/55">
+                          <p className="mt-1.5 text-xs uppercase tracking-[0.18em] text-muted-foreground/55">
                             {getSubjectDescription(subject.id, userPrefs.grade)}
                           </p>
-                          <p className="mt-4 text-sm text-muted-foreground/80">
+                          <p className="mt-2.5 text-sm leading-5 text-muted-foreground/80">
                             {activity > 0
                               ? `${activity} study session${activity === 1 ? "" : "s"} logged here.`
                               : "Fresh subject space ready for docs, flashcards, and quizzes."}
