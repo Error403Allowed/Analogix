@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Pencil, Plus, Trash2, ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { GeneratedStudyGuide } from "@/services/groq";
+import MarkdownRenderer from "@/components/MarkdownRenderer";
 export {
   STUDY_GUIDE_V2_PREFIX,
   encodeStudyGuide,
@@ -61,6 +62,9 @@ function E({ value, onChange, multiline, placeholder, className }: EditProps) {
       : <input    ref={ref} {...sharedHandlers} className={sharedClass} />;
   }
 
+  // Detect if value likely contains math so we only invoke the heavier renderer when needed
+  const hasMath = value && (/\$/.test(value) || /\\[[(\\]|\\begin\{/.test(value));
+
   return (
     <span
       onClick={() => setEditing(true)}
@@ -72,7 +76,20 @@ function E({ value, onChange, multiline, placeholder, className }: EditProps) {
         className,
       )}
     >
-      {value || placeholder}
+      {!value ? (
+        <span className="italic text-muted-foreground/40">{placeholder}</span>
+      ) : hasMath ? (
+        <MarkdownRenderer
+          content={value}
+          className={cn(
+            "[&_.katex-display]:my-2 [&_.katex-display]:max-w-full [&_.katex-display]:overflow-x-auto [&_.katex]:text-inherit",
+            !multiline && "[&>p]:inline [&>p]:m-0",
+            multiline && "[&>p]:mb-2 [&>p:last-child]:mb-0",
+          )}
+        />
+      ) : (
+        value
+      )}
     </span>
   );
 }
@@ -631,12 +648,12 @@ export default function StudyGuideView({
             {guide.formulaSheet.map((item, fi) => (
               <div key={fi} className="rounded-xl border border-border/40 bg-muted/10 p-4 space-y-1.5">
                 <div className="flex items-start justify-between gap-2">
-                  <div className="font-mono text-base font-black text-primary bg-primary/10 px-3 py-1.5 rounded-lg border border-primary/20 flex-1">
+                  <div className="bg-primary/10 px-4 py-2.5 rounded-lg border border-primary/20 flex-1 min-h-[44px] flex items-center">
                     <E
                       value={item.formula}
                       onChange={(v) => set("formulaSheet", guide.formulaSheet!.map((f, i) => i === fi ? { ...f, formula: v } : f))}
-                      placeholder="Formula"
-                      className="font-mono text-primary"
+                      placeholder="Formula (use $...$ for LaTeX)"
+                      className="font-mono text-primary text-base font-black w-full"
                     />
                   </div>
                   <div

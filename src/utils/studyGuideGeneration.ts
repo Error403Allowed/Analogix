@@ -27,7 +27,14 @@ export const pickStudyGuideTitle = (value: unknown, fallback = "Study Guide") =>
   if (typeof value !== "string") return fallback;
 
   const title = value.trim();
-  return title || fallback;
+  if (!title) return fallback;
+
+  // Cap at 55 chars so it fits the document title bar without overflowing
+  if (title.length <= 55) return title;
+
+  // Try to cut at last word boundary before the limit
+  const cut = title.slice(0, 55).replace(/[\s\-–—,.:;]+\S*$/, "").trim();
+  return (cut.length > 10 ? cut : title.slice(0, 52)) + "…";
 };
 
 export const getGenerationErrorMessage = (error: unknown) =>

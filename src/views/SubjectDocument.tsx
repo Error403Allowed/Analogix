@@ -243,11 +243,28 @@ export default function SubjectDocument() {
               )}
             </div>
 
-            <input
+            <textarea
               value={title}
-              onChange={e => setTitle(e.target.value)}
+              onChange={e => {
+                setTitle(e.target.value);
+                // Auto-grow: reset height then set to scrollHeight
+                e.target.style.height = "auto";
+                e.target.style.height = e.target.scrollHeight + "px";
+              }}
+              onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); } }}
               placeholder="Untitled"
-              className="w-full bg-transparent text-[clamp(2.4rem,5vw,4.3rem)] font-black tracking-[-0.05em] text-foreground outline-none placeholder:text-muted-foreground/20"
+              rows={1}
+              style={{ resize: "none", overflow: "hidden" }}
+              className={[
+                "w-full bg-transparent font-black tracking-[-0.02em] leading-tight text-foreground outline-none placeholder:text-muted-foreground/20 block",
+                title.length > 50
+                  ? "text-xl sm:text-2xl"
+                  : title.length > 35
+                  ? "text-2xl sm:text-3xl"
+                  : title.length > 22
+                  ? "text-3xl sm:text-4xl"
+                  : "text-4xl sm:text-5xl",
+              ].join(" ")}
             />
           </div>
 

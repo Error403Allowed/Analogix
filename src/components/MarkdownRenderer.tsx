@@ -58,11 +58,10 @@ const useCleanCopy = (ref: React.RefObject<HTMLDivElement>) => {
 const normaliseLatex = (text: string): string => {
   let result = text;
   
-  // Handle \begin{...}...\end{...} environments - wrap in $$ for display math
-  // These are always display math, never inline
+  // Handle \begin{...}...\end{...} environments — wrap in $$ for display math
   result = result.replace(
-    /(\\begin\{(?:aligned|align|gather|gathered|matrix|pmatrix|bmatrix|vmatrix|cases|equation|eqnarray)\*?\})\s*([\s\S]*?)\s*(\\end\{\1\})/g,
-    '$$\n$2\n$$'
+    /\\begin\{(aligned|align|gather|gathered|matrix|pmatrix|bmatrix|vmatrix|cases|equation|eqnarray)\*?\}([\s\S]*?)\\end\{\1\*?\}/g,
+    (_m, _env, body) => `$$\n${body.trim()}\n$$`
   );
   
   // Normalize LaTeX delimiters
