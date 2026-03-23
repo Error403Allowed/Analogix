@@ -49,7 +49,7 @@ import { buildInterestList } from "@/utils/interests";
 import { extractFileText, ACCEPTED_FILE_TYPES } from "@/utils/extractFileText";
 import type { ResearchSource, SavedResearchSource } from "@/types/research";
 import { researchStore } from "@/utils/researchStore";
-import ProfileSheet from "@/components/ProfileSheet";
+import AISettingsSheet from "@/components/AISettingsSheet";
 import { GROQ_MODELS, type GroqModelId } from "@/types/groq-models";
 
 // Splits AI response into { thinking, response } based on <think>...</think> tags.
@@ -2299,7 +2299,7 @@ const Chat = () => {
       </div>
 
       {/* AI Settings Sheet */}
-      <ProfileSheet open={showAISettings} onOpenChange={setShowAISettings} />
+      <AISettingsSheet open={showAISettings} onOpenChange={setShowAISettings} />
     </div>
   );
 };

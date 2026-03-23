@@ -16,7 +16,7 @@ import {
   Globe, Wrench, Stethoscope, Languages,
   Dumbbell, Gamepad2, Music, CookingPot, Palette, Film,
   Leaf, Laptop, Book, Plane, Upload, Trash2,
-  Brain, Sparkles, UserCircle,
+  UserCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -24,8 +24,7 @@ import { achievementStore } from "@/utils/achievementStore";
 import { HOBBY_OPTIONS, POPULAR_INTERESTS } from "@/utils/interests";
 import type { HobbyId } from "@/utils/interests";
 import { AustralianState, STATE_LABELS } from "@/utils/termData";
-import { PersonalityEditor } from "@/components/PersonalityEditor";
-import { MemoryManager } from "@/components/MemoryManager";
+
 
 
 // ── Data ─────────────────────────────────────────────────────────────────────
@@ -103,7 +102,7 @@ const ProfileSheet = ({ open, onOpenChange }: ProfileSheetProps) => {
   const [editingName, setEditingName] = useState(false);
   const [dirty, setDirty] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const [activeTab, setActiveTab] = useState<"profile" | "personality" | "memory">("profile");
+
 
   // Re-sync when sheet opens
   useEffect(() => {
@@ -260,62 +259,18 @@ const ProfileSheet = ({ open, onOpenChange }: ProfileSheetProps) => {
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="left" className="w-full sm:max-w-md flex flex-col p-0 bg-background border-r border-border" aria-describedby="sheet-description">
         <SheetDescription id="sheet-description" className="sr-only">
-          Manage your profile settings, AI personality, and memory
+          Manage your profile settings
         </SheetDescription>
-        {/* Tab Navigation - Fixed at top, always visible */}
+        {/* Header */}
         <div className="px-6 pt-6 pb-3 border-b border-border shrink-0">
-          <div className="flex gap-1.5 mb-4">
-            <button
-              onClick={() => setActiveTab("profile")}
-              className={cn(
-                "flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-1.5",
-                activeTab === "profile"
-                  ? "bg-primary/15 text-primary border border-primary/30"
-                  : "bg-muted/30 text-muted-foreground/70 border border-border/60 hover:border-primary/30 hover:text-foreground"
-              )}
-            >
-              <UserCircle className="w-3.5 h-3.5" />
-              Profile
-            </button>
-            <button
-              onClick={() => setActiveTab("personality")}
-              className={cn(
-                "flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-1.5",
-                activeTab === "personality"
-                  ? "bg-primary/15 text-primary border border-primary/30"
-                  : "bg-muted/30 text-muted-foreground/70 border border-border/60 hover:border-primary/30 hover:text-foreground"
-              )}
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              AI Settings
-            </button>
-            <button
-              onClick={() => setActiveTab("memory")}
-              className={cn(
-                "flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-1.5",
-                activeTab === "memory"
-                  ? "bg-primary/15 text-primary border border-primary/30"
-                  : "bg-muted/30 text-muted-foreground/70 border border-border/60 hover:border-primary/30 hover:text-foreground"
-              )}
-            >
-              <Brain className="w-3.5 h-3.5" />
-              Memory
-            </button>
-          </div>
-          <SheetTitle className="text-lg font-black tracking-tight">
-            {activeTab === "profile" && "Your Profile"}
-            {activeTab === "personality" && "AI Personality Settings"}
-            {activeTab === "memory" && "AI Memory"}
-          </SheetTitle>
+          <SheetTitle className="text-lg font-black tracking-tight">Your Profile</SheetTitle>
         </div>
 
         {/* Scrollable content area */}
         <ScrollArea className="flex-1 min-h-0">
           <div className="px-6 py-5">
             
-            {/* Render content based on active tab */}
-            {activeTab === "profile" && (
-              <div className="space-y-8">
+            <div className="space-y-8">
 
             {/* ── Name ── */}
             <section>
@@ -559,28 +514,13 @@ const ProfileSheet = ({ open, onOpenChange }: ProfileSheetProps) => {
             </section>
 
               </div>
-            )}
 
-            {/* Personality Tab */}
-            {activeTab === "personality" && (
-              <div className="h-full">
-                <PersonalityEditor onClose={() => setActiveTab("profile")} />
-              </div>
-            )}
-
-            {/* Memory Tab */}
-            {activeTab === "memory" && (
-              <div className="h-full">
-                <MemoryManager onClose={() => setActiveTab("profile")} />
-              </div>
-            )}
 
           </div>
         </ScrollArea>
 
         {/* ── Footer ── */}
-        {activeTab === "profile" && (
-          <div className="px-6 py-4 border-t border-border shrink-0 flex gap-2">
+        <div className="px-6 py-4 border-t border-border shrink-0 flex gap-2">
             <Button variant="ghost" className="flex-1 rounded-xl" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
@@ -592,7 +532,6 @@ const ProfileSheet = ({ open, onOpenChange }: ProfileSheetProps) => {
               Save Changes
             </Button>
           </div>
-        )}
 
       </SheetContent>
     </Sheet>
