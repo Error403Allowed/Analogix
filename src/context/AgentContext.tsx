@@ -28,9 +28,8 @@ export function AgentProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     try {
       const saved = localStorage.getItem(AGENT_MODE_KEY);
+      // Clear any stale "chat" value from older builds
       if (saved === "chat") {
-        // "chat" mode should never be persisted — it caused a bug where
-        // the FAB would redirect to /chat on every page load. Delete it.
         localStorage.removeItem(AGENT_MODE_KEY);
         return;
       }
@@ -46,13 +45,8 @@ export function AgentProvider({ children }: { children: ReactNode }) {
   const handleSetMode = useCallback((mode: AgentMode) => {
     setAgentMode(mode);
     // Only persist floating/sidebar — never persist chat mode
-    if (mode === "chat") {
-      try { localStorage.removeItem(AGENT_MODE_KEY); } catch {}
-      setAgentOpen(false);
-    } else {
-      try { localStorage.setItem(AGENT_MODE_KEY, mode); } catch {}
-      if (mode === "sidebar") setAgentOpen(true);
-    }
+    try { localStorage.setItem(AGENT_MODE_KEY, mode); } catch {}
+    if (mode === "sidebar") setAgentOpen(true);
   }, []);
 
   return (

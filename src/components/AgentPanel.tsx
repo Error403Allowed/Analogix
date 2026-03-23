@@ -49,12 +49,11 @@ const AGENT_SESSION_KEY = "agentChatSessionId";
 const MAX_AGENT_HISTORY = 30;
 const AGENT_MODE_KEY = "analogix_agent_mode";
 
-export type AgentMode = "floating" | "sidebar" | "chat";
+export type AgentMode = "floating" | "sidebar";
 
 const MODE_META: Record<AgentMode, { label: string; icon: React.ElementType; tip: string }> = {
-  floating: { label: "Float",   icon: Maximize2,   tip: "Floating panel" },
-  sidebar:  { label: "Sidebar", icon: PanelRight,  tip: "Right sidebar" },
-  chat:     { label: "Chat",    icon: ExternalLink, tip: "Open full chat" },
+  floating: { label: "Float",   icon: Maximize2,  tip: "Floating panel" },
+  sidebar:  { label: "Sidebar", icon: PanelRight, tip: "Right sidebar"  },
 };
 
 const safeLocalStorageGet = (key: string) => {
@@ -120,17 +119,11 @@ export default function AgentPanel() {
 
 
   const setAgentMode = (mode: AgentMode) => {
-    setAgentModeCtx(mode); // context handles persistence + open/close logic
+    setAgentModeCtx(mode);
   };
 
-  // Handle FAB click based on mode
-  const handleFabClick = () => {
-    if (agentMode === "chat") {
-      router.push("/chat");
-      return;
-    }
-    setOpen(true);
-  };
+  // FAB always opens the panel
+  const handleFabClick = () => setOpen(true);
 
   // Hide on certain pages — computed here but the early return is AFTER all hooks
   const isHidden = HIDDEN_ON.some(p =>
@@ -574,11 +567,10 @@ export default function AgentPanel() {
                 </p>
               </div>
               <div className="flex items-center gap-1">
-                {/* Mode switcher — Notion-style 3-way toggle */}
+                {/* Float / Sidebar toggle */}
                 <div className="flex items-center bg-muted/40 rounded-lg p-0.5 mr-1">
                   {(Object.entries(MODE_META) as [AgentMode, typeof MODE_META[AgentMode]][]).map(([mode, meta]) => {
                     const Icon = meta.icon;
-                    const isActive = agentMode === mode;
                     return (
                       <button
                         key={mode}
@@ -586,7 +578,7 @@ export default function AgentPanel() {
                         title={meta.tip}
                         className={cn(
                           "w-6 h-6 rounded-md flex items-center justify-center transition-all",
-                          isActive
+                          agentMode === mode
                             ? "bg-background text-foreground shadow-sm"
                             : "text-muted-foreground/50 hover:text-muted-foreground"
                         )}
@@ -596,6 +588,14 @@ export default function AgentPanel() {
                     );
                   })}
                 </div>
+                {/* Open full AI tutor */}
+                <button
+                  onClick={() => router.push("/chat")}
+                  title="Open full AI Tutor"
+                  className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground/40 hover:text-muted-foreground hover:bg-muted/40 transition-colors"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </button>
                 {messages.length > 0 && (
                   <button
                     onClick={clearChat}
