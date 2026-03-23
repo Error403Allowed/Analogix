@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/client";
+import { getAuthUser } from "./authCache";
 import { applyThemeByName } from "@/components/ThemeSelector";
 
 export type MoodProfile = {
@@ -90,8 +91,8 @@ export const getMoodProfile = (id: MoodId | string): MoodProfile =>
 /** Load mood from Supabase. Falls back to 'focus' if not authenticated or no row yet. */
 export const getStoredMoodId = async (): Promise<MoodId> => {
   if (typeof window === "undefined") return DEFAULT_MOOD_ID;
+  const user = await getAuthUser();
   const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
   if (!user) return DEFAULT_MOOD_ID;
 
   const { data } = await supabase
@@ -113,8 +114,8 @@ export const applyMoodVisuals = async (id: MoodId | string): Promise<void> => {
   window.dispatchEvent(new Event("themeUpdated"));
   window.dispatchEvent(new Event("moodUpdated"));
 
+  const user = await getAuthUser();
   const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;
 
   await supabase.from("user_preferences").upsert(

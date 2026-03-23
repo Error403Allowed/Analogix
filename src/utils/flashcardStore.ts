@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/client";
+import { getAuthUser } from "./authCache";
 
 export interface Flashcard {
   id: string;
@@ -57,9 +58,9 @@ const toCard = (row: Record<string, unknown>): Flashcard => ({
 
 export const flashcardStore = {
   getAll: async (): Promise<Flashcard[]> => {
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getAuthUser();
     if (!user) return [];
+    const supabase = createClient();
 
     const { data, error } = await supabase
       .from("flashcards")
@@ -83,9 +84,9 @@ export const flashcardStore = {
   add: async (
     cards: Omit<Flashcard, "id" | "createdAt" | "updatedAt" | "nextReview" | "intervalDays" | "easeFactor" | "repetitions">[]
   ): Promise<Flashcard[]> => {
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getAuthUser();
     if (!user) return [];
+    const supabase = createClient();
 
     const now = new Date().toISOString();
     const tomorrow = new Date();
@@ -121,9 +122,9 @@ export const flashcardStore = {
   },
 
   review: async (cardId: string, rating: FlashcardRating): Promise<void> => {
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getAuthUser();
     if (!user) return;
+    const supabase = createClient();
 
     const all = await flashcardStore.getAll();
     const card = all.find(c => c.id === cardId);
@@ -141,9 +142,9 @@ export const flashcardStore = {
   },
 
   update: async (cardId: string, changes: { front?: string; back?: string }): Promise<void> => {
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getAuthUser();
     if (!user) return;
+    const supabase = createClient();
 
     const { error } = await supabase.from("flashcards").update({
       ...changes,
@@ -153,9 +154,9 @@ export const flashcardStore = {
   },
 
   delete: async (cardId: string): Promise<void> => {
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getAuthUser();
     if (!user) return;
+    const supabase = createClient();
 
     const { error } = await supabase.from("flashcards").delete().eq("id", cardId).eq("user_id", user.id);
     if (error) console.warn("[flashcardStore] delete failed:", error);

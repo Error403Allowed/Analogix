@@ -1,11 +1,12 @@
 import { createClient } from "@/lib/supabase/client";
+import { getAuthUser } from "./authCache";
 import { AppEvent } from "@/types/events";
 import { toast } from "sonner";
 
 export const eventStore = {
   getAll: async (): Promise<AppEvent[]> => {
+    const user = await getAuthUser();
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
     if (!user) return [];
 
     const { data, error } = await supabase
@@ -32,8 +33,8 @@ export const eventStore = {
   },
 
   add: async (event: AppEvent): Promise<void> => {
+    const user = await getAuthUser();
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
     const { error } = await supabase.from("events").insert({
@@ -55,8 +56,8 @@ export const eventStore = {
   },
 
   addMultiple: async (newEvents: AppEvent[]): Promise<void> => {
+    const user = await getAuthUser();
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
     const { error } = await supabase.from("events").insert(
@@ -79,8 +80,8 @@ export const eventStore = {
   },
 
   remove: async (id: string): Promise<void> => {
+    const user = await getAuthUser();
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
     const { error } = await supabase.from("events").delete().eq("id", id).eq("user_id", user.id);
@@ -94,8 +95,8 @@ export const eventStore = {
   },
 
   clearAll: async (): Promise<void> => {
+    const user = await getAuthUser();
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
     const { error } = await supabase.from("events").delete().eq("user_id", user.id);

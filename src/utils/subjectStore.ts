@@ -2,28 +2,10 @@
 
 import { createClient } from "@/lib/supabase/client";
 import type { SubjectColorId } from "@/components/ColorPicker";
+import { getAuthUser } from "./authCache";
 
-// ── Auth cache — avoid repeated localStorage lock contention ─────────────────
-let cachedUser: { id: string } | null = null;
-let cachedUserPromise: Promise<{ id: string } | null> | null = null;
-
-async function getUser(): Promise<{ id: string } | null> {
-  if (cachedUser) return cachedUser;
-  if (cachedUserPromise) return cachedUserPromise;
-  const supabase = createClient();
-  cachedUserPromise = supabase.auth.getUser().then(({ data }) => {
-    cachedUser = data.user ? { id: data.user.id } : null;
-    cachedUserPromise = null;
-    return cachedUser;
-  });
-  return cachedUserPromise;
-}
-
-// Clear cache on auth state change
-if (typeof window !== "undefined") {
-  const supabase = createClient();
-  supabase.auth.onAuthStateChange(() => { cachedUser = null; cachedUserPromise = null; });
-}
+// Alias so existing code in this file needs no changes
+const getUser = getAuthUser;
 
 // ── Subject data in-memory cache ─────────────────────────────────────────────
 // Keyed by subjectId. Invalidated on every write so data is always fresh after

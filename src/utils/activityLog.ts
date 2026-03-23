@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/client";
+import { getAuthUser } from "./authCache";
 
 export interface DayActivity {
   date: string; // "YYYY-MM-DD"
@@ -11,9 +12,9 @@ function today(): string {
 
 export const activityLog = {
   async record(): Promise<void> {
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getAuthUser();
     if (!user) return;
+    const supabase = createClient();
 
     // Upsert: increment count for today, insert with count=1 if not exists
     const { error } = await supabase.rpc("increment_activity", {
@@ -44,10 +45,9 @@ export const activityLog = {
   },
 
   async getLast7(): Promise<DayActivity[]> {
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-
+    const user = await getAuthUser();
     const result: DayActivity[] = [];
+    const supabase = createClient();
     const dates: string[] = [];
     for (let i = 6; i >= 0; i--) {
       const d = new Date();

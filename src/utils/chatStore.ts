@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/client";
+import { getAuthUser } from "./authCache";
 
 export interface ChatMessage {
   id: string;
@@ -18,10 +19,9 @@ export interface ChatSession {
 
 /** Quick health check — call once on mount to surface any Supabase issues in console */
 export const checkChatStoreHealth = async (): Promise<void> => {
-  const supabase = createClient();
-  const { data: { user }, error: authErr } = await supabase.auth.getUser();
-  if (authErr) { console.error("[chatStore:health] Auth error:", authErr.message); return; }
+  const user = await getAuthUser();
   if (!user) { console.warn("[chatStore:health] No user logged in — chat history will not save"); return; }
+  const supabase = createClient();
 
   // Test read access to chat_sessions
   const { error: readErr } = await supabase
@@ -32,17 +32,16 @@ export const checkChatStoreHealth = async (): Promise<void> => {
     console.error("[chatStore:health] Cannot read chat_sessions:", readErr.message, readErr.code);
     console.error("[chatStore:health] → Make sure the chat_sessions and chat_messages tables exist in Supabase (run supabase-schema.sql)");
   } else {
-    console.log("[chatStore:health] ✅ Supabase chat tables accessible for user:", user.email);
+    console.log("[chatStore:health] ✅ Supabase chat tables accessible for user:", user.id);
   }
 };
 
 export const chatStore = {
   /** Create a new chat session and return its ID */
   createSession: async (subjectId: string, title?: string): Promise<string | null> => {
-    const supabase = createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError) { console.error("[chatStore] createSession auth error:", authError.message); return null; }
+    const user = await getAuthUser();
     if (!user) { console.warn("[chatStore] createSession: no user logged in"); return null; }
+    const supabase = createClient();
 
     const { data, error } = await supabase
       .from("chat_sessions")
@@ -60,10 +59,9 @@ export const chatStore = {
 
   /** Append a message to an existing session */
   addMessage: async (sessionId: string, role: "user" | "assistant", content: string): Promise<void> => {
-    const supabase = createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError) { console.error("[chatStore] addMessage auth error:", authError.message); return; }
+    const user = await getAuthUser();
     if (!user) { console.warn("[chatStore] addMessage: no user logged in, message not saved"); return; }
+    const supabase = createClient();
 
     // Verify session exists before inserting message
     const { data: session } = await supabase
@@ -97,10 +95,9 @@ export const chatStore = {
 
   /** Fetch all sessions for the current user (no messages) */
   getSessions: async (): Promise<ChatSession[]> => {
-    const supabase = createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError) { console.error("[chatStore] getSessions auth error:", authError.message); return []; }
+    const user = await getAuthUser();
     if (!user) { console.warn("[chatStore] getSessions: no user logged in"); return []; }
+    const supabase = createClient();
 
     const { data, error } = await supabase
       .from("chat_sessions")
@@ -140,8 +137,8 @@ export const chatStore = {
 
   /** Delete a session and all its messages (cascade handles DB side) */
   deleteSession: async (sessionId: string): Promise<void> => {
+    const user = await getAuthUser();
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
     const { error } = await supabase.from("chat_sessions").delete().eq("id", sessionId).eq("user_id", user.id);
     if (error) console.error("[chatStore] deleteSession error:", error.message);
@@ -149,8 +146,8 @@ export const chatStore = {
 
   /** Update session title */
   updateSessionTitle: async (sessionId: string, title: string): Promise<void> => {
+    const user = await getAuthUser();
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
     const { error } = await supabase
       .from("chat_sessions")

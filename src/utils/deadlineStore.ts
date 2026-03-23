@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/client";
+import { getAuthUser } from "./authCache";
 
 export interface Deadline {
   id: string;
@@ -10,8 +11,8 @@ export interface Deadline {
 
 export const deadlineStore = {
   getAll: async (): Promise<Deadline[]> => {
+    const user = await getAuthUser();
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
     if (!user) return [];
 
     const { data, error } = await supabase
@@ -34,8 +35,8 @@ export const deadlineStore = {
   },
 
   add: async (d: Omit<Deadline, "id">): Promise<Deadline> => {
+    const user = await getAuthUser();
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error("Not authenticated");
 
     const { data, error } = await supabase
@@ -61,8 +62,8 @@ export const deadlineStore = {
   },
 
   remove: async (id: string): Promise<void> => {
+    const user = await getAuthUser();
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
     await supabase.from("deadlines").delete().eq("id", id).eq("user_id", user.id);

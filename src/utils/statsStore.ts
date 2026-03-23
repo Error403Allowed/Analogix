@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/client";
 import { activityLog } from "./activityLog";
+import { getAuthUser } from "./authCache";
 
 export interface UserStats {
   quizzesDone: number;
@@ -40,9 +41,9 @@ const fromRow = (row: any): UserStats => ({
 
 export const statsStore = {
   get: async (): Promise<UserStats> => {
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getAuthUser();
     if (!user) return DEFAULT_STATS;
+    const supabase = createClient();
 
     const { data, error } = await supabase
       .from("user_stats")
@@ -55,9 +56,9 @@ export const statsStore = {
   },
 
   update: async (updates: Partial<UserStats>): Promise<void> => {
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getAuthUser();
     if (!user) return;
+    const supabase = createClient();
 
     const current = await statsStore.get();
     const updated = { ...current, ...updates };
@@ -96,9 +97,9 @@ export const statsStore = {
 
   /** Recompute streak from activity log: count consecutive days up to and including today */
   computeStreak: async (): Promise<number> => {
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getAuthUser();
     if (!user) return 0;
+    const supabase = createClient();
 
     // Fetch last 365 days of activity
     const { data } = await supabase
