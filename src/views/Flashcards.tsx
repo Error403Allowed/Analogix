@@ -85,38 +85,51 @@ function StudyCardContent({
 }
 
 // ── Flip Card ─────────────────────────────────────────────────────────────────
+function cardTextSize(text: string): string {
+  const len = text.length;
+  if (len < 80)  return "text-2xl sm:text-3xl font-bold leading-snug";
+  if (len < 200) return "text-xl sm:text-2xl font-bold leading-snug";
+  if (len < 400) return "text-base sm:text-lg font-semibold leading-relaxed";
+  return "text-sm sm:text-base font-semibold leading-relaxed";
+}
+
 function FlipCard({ front, back, flipped, onClick }: {
   front: string; back: string; flipped: boolean; onClick: () => void;
 }) {
+  const minH = back.length > 300 ? 360 : 280;
   return (
     <div className="w-full cursor-pointer select-none" style={{ perspective: "1400px" }} onClick={onClick}>
       <motion.div
         animate={{ rotateY: flipped ? 180 : 0 }}
         transition={{ duration: 0.45, ease: [0.23, 1, 0.32, 1] }}
-        style={{ transformStyle: "preserve-3d", position: "relative", minHeight: 280 }}
+        style={{ transformStyle: "preserve-3d", position: "relative", minHeight: minH }}
         className="w-full"
       >
         {/* Front */}
         <div style={{ backfaceVisibility: "hidden", WebkitBackfaceVisibility: "hidden" }}
-          className="absolute inset-0 w-full rounded-3xl border-2 border-primary/25 bg-gradient-to-br from-card via-card to-primary/5 shadow-2xl flex flex-col items-center justify-center p-10 text-center">
-          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary/50 mb-6">Term</p>
-          <StudyCardContent
-            content={front}
-            className="text-2xl sm:text-3xl font-bold text-foreground leading-relaxed"
-          />
-          <p className="mt-10 text-xs text-muted-foreground/60 flex items-center gap-1.5">
+          className="absolute inset-0 w-full rounded-3xl border-2 border-primary/25 bg-gradient-to-br from-card via-card to-primary/5 shadow-2xl flex flex-col items-center justify-center p-8 sm:p-10 text-center overflow-hidden">
+          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary/50 mb-4 shrink-0">Term</p>
+          <div className="overflow-y-auto max-h-[calc(100%-80px)] w-full flex items-center justify-center">
+            <StudyCardContent
+              content={front}
+              className={cn(cardTextSize(front), "text-foreground")}
+            />
+          </div>
+          <p className="mt-6 text-xs text-muted-foreground/60 flex items-center gap-1.5 shrink-0">
             <Eye className="w-3.5 h-3.5" /> Click to flip
           </p>
         </div>
         {/* Back */}
         <div style={{ backfaceVisibility: "hidden", WebkitBackfaceVisibility: "hidden", transform: "rotateY(180deg)" }}
-          className="absolute inset-0 w-full rounded-3xl border-2 border-emerald-500/30 bg-gradient-to-br from-card via-card to-emerald-500/5 shadow-2xl flex flex-col items-center justify-center p-10 text-center">
-          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-emerald-500/60 mb-6">Definition</p>
-          <StudyCardContent
-            content={back}
-            className="text-2xl sm:text-3xl font-bold text-foreground leading-relaxed"
-          />
-          <p className="mt-10 text-xs text-muted-foreground/60 flex items-center gap-1.5">
+          className="absolute inset-0 w-full rounded-3xl border-2 border-emerald-500/30 bg-gradient-to-br from-card via-card to-emerald-500/5 shadow-2xl flex flex-col items-center justify-center p-8 sm:p-10 text-center overflow-hidden">
+          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-emerald-500/60 mb-4 shrink-0">Definition</p>
+          <div className="overflow-y-auto max-h-[calc(100%-80px)] w-full flex items-center justify-center">
+            <StudyCardContent
+              content={back}
+              className={cn(cardTextSize(back), "text-foreground")}
+            />
+          </div>
+          <p className="mt-6 text-xs text-muted-foreground/60 flex items-center gap-1.5 shrink-0">
             <EyeOff className="w-3.5 h-3.5" /> Click to flip back
           </p>
         </div>
@@ -124,7 +137,6 @@ function FlipCard({ front, back, flipped, onClick }: {
     </div>
   );
 }
-
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function Flashcards() {
   const router = useRouter();
@@ -176,6 +188,14 @@ export default function Flashcards() {
   const [uploadingFile, setUploadingFile] = useState(false);
   const [isDragOver, setIsDragOver]       = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  // Subject picker modal before upload/paste generation
+  const [pendingFile, setPendingFile]         = useState<File | null>(null);
+  const [pendingPasteText, setPendingPasteText] = useState<string | null>(null);
+  const [showSubjectPicker, setShowSubjectPicker] = useState(false);
+  const [pickerSubject, setPickerSubject]     = useState("");
+  // Paste-to-flashcards
+  const [pasteText, setPasteText]             = useState("");
+  const [pasteExpanded, setPasteExpanded]     = useState(false);
 
   // ── Edit card ──
   const [editingId, setEditingId]   = useState<string | null>(null);
@@ -625,24 +645,56 @@ export default function Flashcards() {
   };
 
   // ── File upload ──
-  const handleFileUpload = async (file: File) => {
+  // Step 1: stash the file and show subject picker
+  const handleFileUpload = (file: File) => {
+    setPendingFile(file);
+    setPendingPasteText(null);
+    const defaultSubject = userSubjects[0] || SUBJECT_CATALOG[0]?.id || "math";
+    setPickerSubject(defaultSubject);
+    setShowSubjectPicker(true);
+  };
+
+  // Step 1b: stash paste text and show subject picker
+  const handlePasteGenerate = () => {
+    if (!pasteText.trim()) return;
+    setPendingPasteText(pasteText.trim());
+    setPendingFile(null);
+    const defaultSubject = userSubjects[0] || SUBJECT_CATALOG[0]?.id || "math";
+    setPickerSubject(defaultSubject);
+    setShowSubjectPicker(true);
+  };
+
+  // Step 2: actually generate once subject confirmed
+  const confirmGenerate = async () => {
+    const subjectId = pickerSubject;
+    setShowSubjectPicker(false);
     setUploadingFile(true);
     try {
-      const text = await file.text();
-      const fileName = file.name.replace(/\.[^/.]+$/, "");
-      const detected = userSubjects.find(s => fileName.toLowerCase().includes(s.toLowerCase())) || userSubjects[0] || "math";
+      let content = "";
+      let fileName = "Pasted text";
+      if (pendingFile) {
+        content = await pendingFile.text();
+        fileName = pendingFile.name;
+      } else if (pendingPasteText) {
+        content = pendingPasteText;
+      }
+      if (!content) return;
       const result = await generateFlashcardsFromDocument({
-        documentContent: text, fileName: file.name,
-        subject: subjectLabel(detected), count: 20,
+        documentContent: content, fileName,
+        subject: subjectLabel(subjectId), count: 20,
       });
       if (result.length > 0) {
-        await flashcardStore.add(result.map(f => ({ subjectId: detected, front: f.front, back: f.back })));
+        await flashcardStore.add(result.map(f => ({ subjectId, front: f.front, back: f.back })));
         await refresh();
-        openSet(detected);
+        openSet(subjectId);
+        setPasteText("");
+        setPasteExpanded(false);
       }
     } catch (err) { console.error(err); }
     finally {
       setUploadingFile(false);
+      setPendingFile(null);
+      setPendingPasteText(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
@@ -752,47 +804,148 @@ export default function Flashcards() {
                 ))}
               </div>
 
-              {/* Upload section */}
-              <div className="rounded-2xl border border-border bg-card p-6">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+              {/* AI Generate section — upload + paste */}
+              <div className="rounded-2xl border border-border bg-card overflow-hidden">
+                <div className="flex items-center gap-3 p-5 border-b border-border/50">
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
                     <Sparkles className="w-5 h-5 text-primary" />
                   </div>
                   <div>
-                    <p className="text-sm font-black">Generate from document</p>
-                    <p className="text-xs text-muted-foreground">Upload notes and the AI builds a flashcard set.</p>
+                    <p className="text-sm font-black">Generate from content</p>
+                    <p className="text-xs text-muted-foreground">Upload a file or paste text — AI builds a flashcard set.</p>
                   </div>
                 </div>
-                <div
-                  onDragOver={e => { e.preventDefault(); setIsDragOver(true); }}
-                  onDragLeave={() => setIsDragOver(false)}
-                  onDrop={e => { e.preventDefault(); setIsDragOver(false); const f = e.dataTransfer.files[0]; if (f) handleFileUpload(f); }}
-                  onClick={() => fileInputRef.current?.click()}
-                  className={cn(
-                    "border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all",
-                    isDragOver ? "border-primary bg-primary/5 scale-[1.02]" : "border-border hover:border-primary/50 hover:bg-muted/30"
-                  )}>
-                  <input ref={fileInputRef} type="file" className="hidden" accept=".txt,.pdf,.doc,.docx" onChange={e => { const f = e.target.files?.[0]; if (f) handleFileUpload(f); }} />
-                  {uploadingFile ? (
-                    <div className="flex flex-col items-center gap-3">
-                      <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                      <p className="text-sm font-bold">Generating flashcards...</p>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center gap-3">
-                      <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
-                        <Upload className="w-6 h-6 text-primary" />
+
+                {/* Upload drop zone */}
+                <div className="p-5 border-b border-border/50">
+                  <p className="text-[11px] font-black uppercase tracking-widest text-muted-foreground mb-3">Upload file</p>
+                  <div
+                    onDragOver={e => { e.preventDefault(); setIsDragOver(true); }}
+                    onDragLeave={() => setIsDragOver(false)}
+                    onDrop={e => { e.preventDefault(); setIsDragOver(false); const f = e.dataTransfer.files[0]; if (f) handleFileUpload(f); }}
+                    onClick={() => !uploadingFile && fileInputRef.current?.click()}
+                    className={cn(
+                      "border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all",
+                      isDragOver ? "border-primary bg-primary/5 scale-[1.01]" : "border-border hover:border-primary/50 hover:bg-muted/30",
+                      uploadingFile && "pointer-events-none opacity-60"
+                    )}>
+                    <input ref={fileInputRef} type="file" className="hidden" accept=".txt,.pdf,.doc,.docx" onChange={e => { const f = e.target.files?.[0]; if (f) handleFileUpload(f); }} />
+                    {uploadingFile ? (
+                      <div className="flex flex-col items-center gap-2">
+                        <Loader2 className="w-7 h-7 animate-spin text-primary" />
+                        <p className="text-sm font-bold">Generating flashcards…</p>
                       </div>
-                      <div>
-                        <p className="text-sm font-bold">Drop your file here or click to browse</p>
-                        <p className="text-xs text-muted-foreground mt-1">Supports .txt, .pdf, .doc, .docx</p>
+                    ) : (
+                      <div className="flex flex-col items-center gap-2">
+                        <div className="w-11 h-11 rounded-full bg-primary/10 flex items-center justify-center">
+                          <Upload className="w-5 h-5 text-primary" />
+                        </div>
+                        <p className="text-sm font-semibold">Drop file here or click to browse</p>
+                        <p className="text-xs text-muted-foreground">Supports .txt, .pdf, .doc, .docx</p>
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
+                </div>
+
+                {/* Paste text section */}
+                <div className="p-5">
+                  <button
+                    onClick={() => setPasteExpanded(v => !v)}
+                    className="flex items-center justify-between w-full text-left group"
+                  >
+                    <p className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">Paste text</p>
+                    <span className={cn("text-xs text-muted-foreground transition-transform duration-200", pasteExpanded && "rotate-180")}>▾</span>
+                  </button>
+                  <AnimatePresence>
+                    {pasteExpanded && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="pt-3 space-y-3">
+                          <textarea
+                            value={pasteText}
+                            onChange={e => setPasteText(e.target.value)}
+                            placeholder="Paste your notes, textbook excerpts, or any study content here…"
+                            rows={5}
+                            className="w-full rounded-xl border border-border bg-background/80 px-3 py-2.5 text-sm resize-none placeholder:text-muted-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/30"
+                          />
+                          <Button
+                            onClick={handlePasteGenerate}
+                            disabled={!pasteText.trim() || uploadingFile}
+                            className="w-full gap-2"
+                          >
+                            {uploadingFile ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                            Generate flashcards from text
+                          </Button>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
               </div>
 
-              {/* Sets grid */}
+              {/* Subject picker modal */}
+              <AnimatePresence>
+                {showSubjectPicker && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4"
+                    onClick={e => { if (e.target === e.currentTarget) setShowSubjectPicker(false); }}
+                  >
+                    <motion.div
+                      initial={{ scale: 0.95, opacity: 0, y: 10 }}
+                      animate={{ scale: 1, opacity: 1, y: 0 }}
+                      exit={{ scale: 0.95, opacity: 0, y: 10 }}
+                      transition={{ duration: 0.18 }}
+                      className="w-full max-w-sm rounded-2xl border border-border bg-card shadow-2xl p-6 space-y-5"
+                    >
+                      <div>
+                        <h3 className="text-lg font-black">Which subject is this for?</h3>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {pendingFile ? `Generating from "${pendingFile.name}"` : "Generating from pasted text"}
+                        </p>
+                      </div>
+                      <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                        {subjectOptions.map(id => (
+                          <button
+                            key={id}
+                            onClick={() => setPickerSubject(id)}
+                            className={cn(
+                              "w-full flex items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-semibold transition-all border",
+                              pickerSubject === id
+                                ? "border-primary bg-primary/10 text-primary"
+                                : "border-border bg-background/60 hover:border-primary/40 hover:bg-primary/5"
+                            )}
+                          >
+                            <span className={cn(
+                              "w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center transition-colors",
+                              pickerSubject === id ? "border-primary bg-primary" : "border-muted-foreground/40"
+                            )}>
+                              {pickerSubject === id && <span className="w-1.5 h-1.5 rounded-full bg-white block" />}
+                            </span>
+                            {subjectLabel(id)}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="flex gap-2 pt-1">
+                        <Button variant="outline" className="flex-1" onClick={() => setShowSubjectPicker(false)}>
+                          Cancel
+                        </Button>
+                        <Button className="flex-1 gap-2" onClick={confirmGenerate} disabled={!pickerSubject}>
+                          <Sparkles className="w-4 h-4" /> Generate
+                        </Button>
+                      </div>
+                    </motion.div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+                            {/* Sets grid */}
               <div>
                 <h2 className="text-[11px] font-black uppercase tracking-widest text-muted-foreground mb-4">Your sets</h2>
                 {loading ? (
