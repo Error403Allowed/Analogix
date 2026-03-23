@@ -28,20 +28,31 @@ export function AgentProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     try {
       const saved = localStorage.getItem(AGENT_MODE_KEY);
-      if (saved === "floating" || saved === "sidebar") {
-        setAgentMode(saved);
-        if (saved === "sidebar") setAgentOpen(true);
+      if (saved === "chat") {
+        // "chat" mode should never be persisted — it caused a bug where
+        // the FAB would redirect to /chat on every page load. Delete it.
+        localStorage.removeItem(AGENT_MODE_KEY);
+        return;
       }
-      // "chat" mode is intentionally NOT restored on load —
-      // it just changes what the FAB does, not a persistent panel state
+      if (saved === "sidebar") {
+        setAgentMode("sidebar");
+        setAgentOpen(true);
+        return;
+      }
+      // "floating" or anything else — keep as floating (the default)
     } catch {}
   }, []);
 
   const handleSetMode = useCallback((mode: AgentMode) => {
     setAgentMode(mode);
-    try { localStorage.setItem(AGENT_MODE_KEY, mode); } catch {}
-    if (mode === "chat") setAgentOpen(false);
-    if (mode === "sidebar") setAgentOpen(true);
+    // Only persist floating/sidebar — never persist chat mode
+    if (mode === "chat") {
+      try { localStorage.removeItem(AGENT_MODE_KEY); } catch {}
+      setAgentOpen(false);
+    } else {
+      try { localStorage.setItem(AGENT_MODE_KEY, mode); } catch {}
+      if (mode === "sidebar") setAgentOpen(true);
+    }
   }, []);
 
   return (
