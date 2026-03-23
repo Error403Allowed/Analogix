@@ -11,9 +11,12 @@ import {
   type FormattingToolbarProps,
   useBlockNoteEditor,
   useComponentsContext,
+  useExtension,
   useEditorState,
 } from "@blocknote/react";
+import { AIExtension } from "@blocknote/xl-ai";
 import { Sigma } from "lucide-react";
+import { RiSparkling2Fill } from "react-icons/ri";
 import {
   type BlockNoteEditorPartialBlock,
   type BlockNoteEditorSchema,
@@ -49,6 +52,73 @@ export function insertMathBlock(editor: MathBlockNoteEditor, formula = "") {
   return insertOrUpdateBlockForSlashMenu(editor, createMathBlock(formula));
 }
 
+function openAIMenuSafely(editor: MathBlockNoteEditor) {
+  const ai = editor.getExtension(AIExtension);
+  if (!ai) return;
+
+  try {
+    const selection = editor.getSelection();
+    const blockId = selection?.blocks?.[selection.blocks.length - 1]?.id;
+    if (blockId) {
+      ai.openAIMenuAtBlock(blockId);
+      return;
+    }
+  } catch (error) {
+    console.warn("[BlockNote AI] Failed to read selection:", error);
+  }
+
+  try {
+    const cursor = editor.getTextCursorPosition();
+    const blockId = cursor.prevBlock?.id || cursor.block.id;
+    if (blockId) {
+      ai.openAIMenuAtBlock(blockId);
+    }
+  } catch (error) {
+    console.warn("[BlockNote AI] Failed to open AI menu:", error);
+  }
+}
+
+function BlockNoteAIToolbarButton() {
+  const editor = useBlockNoteEditor<
+    BlockNoteEditorSchema["blockSchema"],
+    BlockNoteEditorSchema["inlineContentSchema"],
+    BlockNoteEditorSchema["styleSchema"]
+  >();
+  const ai = useExtension(AIExtension);
+  const Components = useComponentsContext()!;
+
+  const state = useEditorState({
+    editor,
+    selector: ({ editor: currentEditor }) => {
+      if (!currentEditor.isEditable || !ai) return undefined;
+
+      try {
+        const selection = currentEditor.getSelection();
+        if (selection?.blocks?.length) {
+          return { enabled: true };
+        }
+
+        const cursor = currentEditor.getTextCursorPosition();
+        return { enabled: Boolean(cursor.block.id) };
+      } catch {
+        return undefined;
+      }
+    },
+  });
+
+  if (!state?.enabled) return null;
+
+  return (
+    <Components.Generic.Toolbar.Button
+      className="bn-button"
+      label="Ask AI"
+      mainTooltip="Ask AI"
+      icon={<RiSparkling2Fill />}
+      onClick={() => openAIMenuSafely(editor)}
+    />
+  );
+}
+
 function MathFormattingToolbarButton() {
   const editor = useBlockNoteEditor<
     BlockNoteEditorSchema["blockSchema"],
@@ -62,9 +132,14 @@ function MathFormattingToolbarButton() {
     selector: ({ editor: currentEditor }) => {
       if (!currentEditor.isEditable) return undefined;
 
-      const selectedBlocks = currentEditor.getSelection()?.blocks || [
-        currentEditor.getTextCursorPosition().block,
-      ];
+      let cursorBlock;
+      try {
+        cursorBlock = currentEditor.getTextCursorPosition().block;
+      } catch {
+        return undefined;
+      }
+
+      const selectedBlocks = currentEditor.getSelection()?.blocks || [cursorBlock];
 
       if (!selectedBlocks.find((block) => block.content !== undefined)) {
         return undefined;
@@ -95,6 +170,7 @@ export function MathFormattingToolbar(props: FormattingToolbarProps) {
     <FormattingToolbar blockTypeSelectItems={props.blockTypeSelectItems}>
       {[
         ...getFormattingToolbarItems(props.blockTypeSelectItems),
+        <BlockNoteAIToolbarButton key="aiFormattingToolbarButton" />,
         <MathFormattingToolbarButton key="mathFormattingToolbarButton" />,
       ]}
     </FormattingToolbar>
@@ -121,7 +197,18 @@ export function getMathSlashMenuItems(
   query: string,
 ) {
   return filterSuggestionItems(
-    [...getDefaultReactSlashMenuItems(editor), createMathSlashMenuItem(editor)],
+    [
+      ...getDefaultReactSlashMenuItems(editor),
+      {
+        title: "Ask AI",
+        subtext: "Edit, expand, or rewrite this block with AI.",
+        aliases: ["ai", "assist", "assistant", "rewrite", "summarise", "summarize"],
+        group: "AI",
+        icon: <RiSparkling2Fill size={18} />,
+        onItemClick: () => openAIMenuSafely(editor),
+      },
+      createMathSlashMenuItem(editor),
+    ],
     query,
   );
 }

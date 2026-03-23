@@ -3,6 +3,10 @@ import { createClient } from "@/lib/supabase/server";
 import { studyGuideToHtml } from "@/utils/studyGuideHtml";
 import { encodeStudyGuide } from "@/utils/studyGuideContent";
 import type { GeneratedStudyGuide } from "@/services/groq";
+import {
+  BOTTOM_RIGHT_AGENT_DOCUMENT_EDIT_MESSAGE,
+  isBottomRightAgentActionType,
+} from "@/lib/agentActions";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnySupabase = any;
 
@@ -118,11 +122,31 @@ export async function POST(request: Request) {
 
     for (const action of actions) {
       try {
+        if (!isBottomRightAgentActionType(action.type)) {
+          results.push({
+            type: action.type,
+            success: false,
+            detail: BOTTOM_RIGHT_AGENT_DOCUMENT_EDIT_MESSAGE,
+          });
+          continue;
+        }
+
+        if (action.type === "start_quiz") {
+          results.push({
+            type: "start_quiz",
+            success: true,
+            detail: "Quiz launch is handled in the browser.",
+          });
+          continue;
+        }
+
+        const actionType = String(action.type || "");
+
         // Normalize subjectId to lowercase (database stores as lowercase)
         let subjectId = String(action.subjectId || "").toLowerCase();
         let row = await getRow(supabase, user.id, subjectId);
         if (!row) {
-          if ((action.type === "update_document" || action.type === "replace_study_guide") && typeof action.docTitle === "string") {
+          if ((actionType === "update_document" || actionType === "replace_study_guide") && typeof action.docTitle === "string") {
             const fallback = await findRowByDocTitle(supabase, user.id, action.docTitle);
             if (fallback) {
               row = { notes: fallback.row.notes, marks: fallback.row.marks };
@@ -140,7 +164,7 @@ export async function POST(request: Request) {
         }
 
         if (!row) {
-          if ((action.type === "update_document" || action.type === "replace_study_guide") && typeof action.docTitle === "string") {
+          if ((actionType === "update_document" || actionType === "replace_study_guide") && typeof action.docTitle === "string") {
             throw new Error(`No subject_data row found for subjectId="${subjectId}" and no document titled "${action.docTitle}" in any subject.`);
           }
           throw new Error(`No subject_data row found for subjectId="${subjectId}"`);
@@ -152,13 +176,13 @@ export async function POST(request: Request) {
         const now = new Date().toISOString();
 
         // ── CREATE DOCUMENT ──────────────────────────────────────────────
-        if (action.type === "create_document") {
+        if (actionType === "create_document") {
           const newDoc = { id: crypto.randomUUID(), title: action.title, content: action.content || "", createdAt: now, lastUpdated: now };
           await saveRow(supabase, user.id, subjectId, marks, { ...notes, documents: [newDoc, ...documents] });
           results.push({ type: "create_document", success: true, detail: `Created "${action.title}" in ${subjectId}` });
 
         // ── PATCH DOCUMENT FIELD (simple field update) ───────────────────
-        } else if (action.type === "patch_document_field") {
+        } else if (actionType === "patch_document_field") {
           const docTitle = getRequiredDocTitle(action);
           const target = findDoc(documents, docTitle);
           if (!target) throw new Error(`"${docTitle}" not found. Available: ${documents.map(d => d.title).join(", ")}`);
@@ -213,7 +237,7 @@ export async function POST(request: Request) {
           results.push({ type: "patch_document_field", success: true, detail: `Updated ${field} to "${value}" in "${matchedTitle}"`, subjectId, docId: target.id, docTitle: matchedTitle, field, value });
           
         // ── UPDATE DOCUMENT (HTML) ───────────────────────────────────────
-        } else if (action.type === "update_document") {
+        } else if (actionType === "update_document") {
           const docTitle = getRequiredDocTitle(action);
           const target = findDoc(documents, docTitle);
           if (!target) throw new Error(`"${docTitle}" not found. Available: ${documents.map(d => d.title).join(", ")}`);
@@ -237,7 +261,7 @@ export async function POST(request: Request) {
           results.push({ type: "update_document", success: true, detail: `Updated "${matchedTitle}"`, subjectId, docId: target.id, docTitle: matchedTitle, newContent });
 
         // ── REPLACE STUDY GUIDE (full replacement) ───────────────────────
-        } else if (action.type === "replace_study_guide") {
+        } else if (actionType === "replace_study_guide") {
           const docTitle = getRequiredDocTitle(action);
           const target = findDoc(documents, docTitle);
           if (!target) throw new Error(`"${docTitle}" not found. Available: ${documents.map(d => d.title).join(", ")}`);
@@ -289,7 +313,7 @@ export async function POST(request: Request) {
           }
 
         // ── ADD FLASHCARDS ───────────────────────────────────────────────
-        } else if (action.type === "add_flashcards") {
+        } else if (actionType === "add_flashcards") {
           const nextReview = new Date(); nextReview.setDate(nextReview.getDate() + 1);
           const cards = action.cards || [];
           const rows = cards.map((card) => ({

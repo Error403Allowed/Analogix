@@ -107,6 +107,17 @@ const renderInlineMath = (latex: string) =>
 const renderBlockMath = (latex: string) =>
   `<div data-type="block-math" data-latex="${escapeHtmlAttr(latex.trim())}"></div>`;
 
+const renderRichFragment = (text: string): string => {
+  if (typeof text !== "string") return "";
+  const normalized = normaliseLatex(text);
+  return splitDisplayMath(normalized)
+    .map((seg) => {
+      if (seg.type === "math") return renderBlockMath(seg.value);
+      return renderInlineText(seg.value);
+    })
+    .join("");
+};
+
 const renderInlineText = (text: string): string => {
   if (typeof text !== "string") return "";
   const normalized = normaliseLatex(text).replace(/\$\$([\s\S]+?)\$\$/g, (_match, latex) => `$${latex}$`);
@@ -146,13 +157,13 @@ const toParagraph = (text?: string) => {
 const toList = (items?: string[], ordered = false) => {
   if (!items || !Array.isArray(items) || items.length === 0) return "";
   const tag = ordered ? "ol" : "ul";
-  return `<${tag}>${items.map((item) => `<li>${renderInlineText(typeof item === "string" ? item : String(item))}</li>`).join("")}</${tag}>`;
+  return `<${tag}>${items.map((item) => `<li>${renderRichFragment(typeof item === "string" ? item : String(item))}</li>`).join("")}</${tag}>`;
 };
 
 const toTable = (headers?: string[], rows?: string[][], opts?: { cellIsHtml?: boolean }) => {
   if (!headers?.length || !rows?.length) return "";
-  const renderCell = (value: string) => (opts?.cellIsHtml ? value : renderInlineText(typeof value === "string" ? value : String(value)));
-  const thead = `<thead><tr>${headers.map((h) => `<th>${renderInlineText(typeof h === "string" ? h : String(h))}</th>`).join("")}</tr></thead>`;
+  const renderCell = (value: string) => (opts?.cellIsHtml ? value : renderRichFragment(typeof value === "string" ? value : String(value)));
+  const thead = `<thead><tr>${headers.map((h) => `<th>${renderRichFragment(typeof h === "string" ? h : String(h))}</th>`).join("")}</tr></thead>`;
   const tbody = `<tbody>${rows.map((r) => `<tr>${r.map((c) => `<td>${renderCell(c)}</td>`).join("")}</tr>`).join("")}</tbody>`;
   return `<table>${thead}${tbody}</table>`;
 };
@@ -230,7 +241,7 @@ export const studyGuideToHtml = (guide: GeneratedStudyGuide): string => {
 
   if (guide.practiceQuestions?.length) {
     const pqHtml = guide.practiceQuestions.map((q, i) =>
-      `<h3>Question ${i + 1}</h3><p><strong>Q:</strong> ${renderInlineText(q.question)}</p><p><strong>A:</strong> ${renderInlineText(q.answer)}</p>`
+      `<h3>Question ${i + 1}</h3><p><strong>Q:</strong></p>${toParagraph(q.question)}<p><strong>A:</strong></p>${toParagraph(q.answer)}`
     ).join("");
     pushSection("Practice Questions", pqHtml);
   }
@@ -258,10 +269,10 @@ export const studyGuideToHtml = (guide: GeneratedStudyGuide): string => {
   if (guide.formulaSheet?.length) {
     const formulasHtml = guide.formulaSheet.map((f) => {
       const rows: string[] = [];
-      rows.push(`<p><strong>Formula:</strong> ${renderInlineText(f.formula)}</p>`);
-      rows.push(`<p><strong>Description:</strong> ${renderInlineText(f.description)}</p>`);
-      if (f.variables) rows.push(`<p><strong>Variables:</strong> ${renderInlineText(f.variables)}</p>`);
-      if (f.example) rows.push(`<p><strong>Example:</strong> ${renderInlineText(f.example)}</p>`);
+      rows.push(`<p><strong>Formula:</strong></p>${toParagraph(f.formula)}`);
+      rows.push(`<p><strong>Description:</strong></p>${toParagraph(f.description)}`);
+      if (f.variables) rows.push(`<p><strong>Variables:</strong></p>${toParagraph(f.variables)}`);
+      if (f.example) rows.push(`<p><strong>Example:</strong></p>${toParagraph(f.example)}`);
       return rows.join("");
     }).join("");
     pushSection("Formula Sheet", formulasHtml);
@@ -270,10 +281,10 @@ export const studyGuideToHtml = (guide: GeneratedStudyGuide): string => {
   if (guide.experimentGuide) {
     const eg = guide.experimentGuide;
     const parts: string[] = [];
-    if (eg.aim) parts.push(`<p><strong>Aim:</strong> ${renderInlineText(eg.aim)}</p>`);
-    if (eg.hypothesis) parts.push(`<p><strong>Hypothesis:</strong> ${renderInlineText(eg.hypothesis)}</p>`);
-    if (eg.variables?.independent) parts.push(`<p><strong>Independent:</strong> ${renderInlineText(eg.variables.independent)}</p>`);
-    if (eg.variables?.dependent) parts.push(`<p><strong>Dependent:</strong> ${renderInlineText(eg.variables.dependent)}</p>`);
+    if (eg.aim) parts.push(`<p><strong>Aim:</strong></p>${toParagraph(eg.aim)}`);
+    if (eg.hypothesis) parts.push(`<p><strong>Hypothesis:</strong></p>${toParagraph(eg.hypothesis)}`);
+    if (eg.variables?.independent) parts.push(`<p><strong>Independent:</strong></p>${toParagraph(eg.variables.independent)}`);
+    if (eg.variables?.dependent) parts.push(`<p><strong>Dependent:</strong></p>${toParagraph(eg.variables.dependent)}`);
     if (eg.variables?.controlled?.length) parts.push(`<p><strong>Controlled:</strong></p>${toList(eg.variables.controlled)}`);
     if (eg.method?.length) parts.push(`<h3>Method</h3>${toList(eg.method, true)}`);
     if (eg.safetyNotes?.length) parts.push(`<h3>Safety Notes</h3>${toList(eg.safetyNotes)}`);

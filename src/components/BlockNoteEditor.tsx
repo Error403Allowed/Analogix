@@ -1,15 +1,20 @@
 "use client";
 
 import { forwardRef, useEffect, useRef, useImperativeHandle, useMemo, useCallback } from "react";
+import { en } from "@blocknote/core/locales";
 import {
   FormattingToolbarController,
   SuggestionMenuController,
   useCreateBlockNote,
 } from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/shadcn";
+import { AIExtension, AIMenuController } from "@blocknote/xl-ai";
+import { en as aiEn } from "@blocknote/xl-ai/locales";
+import { DefaultChatTransport } from "ai";
 import { useTheme } from "next-themes";
 import "katex/dist/katex.min.css";
 import "@blocknote/shadcn/style.css";
+import "@blocknote/xl-ai/style.css";
 import {
   createBlockNoteEditorSchema,
   type BlockNoteEditorPartialBlock,
@@ -42,24 +47,53 @@ interface Props {
   onChange: (raw: string) => void;
   placeholder?: string;
   editable?: boolean;
+  subjectLabel?: string;
+  documentTitle?: string;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 const BlockNoteEditor = forwardRef<BlockNoteHandle, Props>(
-  ({ initialContent, onChange, placeholder, editable = true }, ref) => {
+  ({ initialContent, onChange, placeholder, editable = true, subjectLabel, documentTitle }, ref) => {
     const { resolvedTheme } = useTheme();
     const contentParser = useMemo(createBlockNoteContentParser, []);
     const editorSchema = useMemo(createBlockNoteEditorSchema, []);
+    const aiContextRef = useRef({ subjectLabel, documentTitle });
     const initialBlocks = useMemo(
       () => contentParser.parse(initialContent),
       [contentParser, initialContent],
+    );
+    const dictionary = useMemo(() => ({ ...en, ai: aiEn }), []);
+    const aiTransport = useMemo(
+      () =>
+        new DefaultChatTransport({
+          api: "/api/ai",
+          body: () => ({
+            subject: aiContextRef.current.subjectLabel,
+            documentTitle: aiContextRef.current.documentTitle,
+          }),
+        }),
+      [],
+    );
+    const aiExtensions = useMemo(
+      () => [
+        AIExtension({
+          transport: aiTransport,
+          agentCursor: {
+            name: "Analogix AI",
+            color: "#38bdf8",
+          },
+        }),
+      ],
+      [aiTransport],
     );
 
     const editor = useCreateBlockNote({
       schema: editorSchema,
       initialContent: initialBlocks,
-      placeholderText: placeholder ?? "Type '/' for commands, '/math' for equations, or ask AI…",
-    }, [editorSchema]);
+      dictionary,
+      extensions: aiExtensions,
+      placeholderText: placeholder ?? "Type '/' for commands, '/ai' for help, or '/math' for equations",
+    }, [aiExtensions, dictionary, editorSchema]);
 
     const lastRawRef = useRef<string>("");
     const parseContent = useCallback(
@@ -71,6 +105,10 @@ const BlockNoteEditor = forwardRef<BlockNoteHandle, Props>(
       [editor],
     );
     const editorTheme = resolvedTheme === "light" ? "light" : "dark";
+
+    useEffect(() => {
+      aiContextRef.current = { subjectLabel, documentTitle };
+    }, [documentTitle, subjectLabel]);
 
     useEffect(() => {
       const unsub = editor.onChange(() => {
@@ -121,6 +159,7 @@ const BlockNoteEditor = forwardRef<BlockNoteHandle, Props>(
             <>
               <FormattingToolbarController formattingToolbar={MathFormattingToolbar} />
               <SuggestionMenuController triggerCharacter="/" getItems={getSlashMenuItems} />
+              <AIMenuController />
             </>
           )}
         </BlockNoteView>

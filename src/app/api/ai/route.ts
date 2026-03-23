@@ -1,37 +1,57 @@
 import { createGroq } from "@ai-sdk/groq";
-import { streamText, tool, convertToModelMessages } from "ai";
-import { aiDocumentFormats, getProviderOverrides, injectDocumentStateMessages } from "@blocknote/xl-ai/server";
+import { type UIMessage, convertToModelMessages, streamText } from "ai";
+import {
+  getProviderOverrides,
+  injectDocumentStateMessages,
+  toolDefinitionsToToolSet,
+} from "@blocknote/xl-ai/server";
+import { buildBlockNoteAISystemPrompt } from "@/lib/blocknoteAi";
 
 const groq = createGroq({ apiKey: process.env.GROQ_API_KEY });
 const model = groq("llama-3.3-70b-versatile");
 
+interface BlockNoteAIRequestBody {
+  messages?: UIMessage[];
+  toolDefinitions?: Parameters<typeof toolDefinitionsToToolSet>[0];
+  subject?: string;
+  documentTitle?: string;
+}
+
 export async function POST(req: Request) {
-  const body = await req.json();
-  const { messages, toolDefinitions } = body;
+  try {
+    const body = await req.json() as BlockNoteAIRequestBody;
+    const { messages, toolDefinitions, subject, documentTitle } = body;
 
-  const format = aiDocumentFormats.html;
-  const providerOverrides = getProviderOverrides(model);
-
-  // Build tools map from BlockNote's tool definitions
-  const tools: Record<string, any> = {};
-  if (toolDefinitions) {
-    for (const [name, def] of Object.entries(toolDefinitions as Record<string, any>)) {
-      tools[name] = tool({
-        description: def.description,
-        inputSchema: def.parameters,
-      });
+    if (!Array.isArray(messages) || messages.length === 0) {
+      return new Response("messages are required", { status: 400 });
     }
+
+    if (!toolDefinitions || Object.keys(toolDefinitions).length === 0) {
+      return new Response("toolDefinitions are required", { status: 400 });
+    }
+
+    const tools = toolDefinitionsToToolSet(toolDefinitions);
+    const providerOverrides = getProviderOverrides(model);
+    const messagesWithDocState = injectDocumentStateMessages(messages);
+    const modelMessages = await convertToModelMessages(messagesWithDocState, {
+      tools,
+    });
+
+    const result = streamText({
+      model,
+      system: buildBlockNoteAISystemPrompt({ subject, documentTitle }),
+      messages: modelMessages,
+      tools,
+      toolChoice: "required",
+      temperature: 0.3,
+      ...providerOverrides,
+    });
+
+    return result.toUIMessageStreamResponse({
+      originalMessages: messages,
+    });
+  } catch (error) {
+    console.error("[/api/ai] Error:", error);
+    return new Response("AI service unavailable", { status: 500 });
   }
-
-  const messagesWithDocState = injectDocumentStateMessages(messages);
-  const modelMessages = await convertToModelMessages(messagesWithDocState);
-
-  const result = streamText({
-    model,
-    messages: modelMessages,
-    tools,
-    ...providerOverrides,
-  });
-
-  return result.toTextStreamResponse();
 }

@@ -20,8 +20,13 @@ import { SUBJECT_CATALOG } from "@/constants/subjects";
 import { flashcardStore, type Flashcard, type FlashcardRating } from "@/utils/flashcardStore";
 import { generateFlashcardsFromDocument, generateQuiz } from "@/services/groq";
 import QuizCard from "@/components/QuizCard";
+import MarkdownRenderer from "@/components/MarkdownRenderer";
 import { statsStore } from "@/utils/statsStore";
 import type { QuizAnswerInput, QuizOption, QuizQuestion } from "@/types/quiz";
+import {
+  AGENT_QUIZ_SESSION_KEY,
+  type PendingAgentQuiz,
+} from "@/lib/agentQuiz";
 
 const subjectLabel = (id: string) =>
   SUBJECT_CATALOG.find(s => s.id === id)?.label || id;
@@ -42,6 +47,43 @@ type QuizAnswerRecord = QuizAnswerInput & {
   feedback?: string;
 };
 
+const clampQuizInteger = (value: number, min: number, max: number) =>
+  Math.min(max, Math.max(min, Math.round(value)));
+
+const isEditableKeyboardTarget = (target: EventTarget | null) => {
+  if (!(target instanceof HTMLElement)) return false;
+  const tag = target.tagName;
+  return (
+    target.isContentEditable ||
+    tag === "INPUT" ||
+    tag === "TEXTAREA" ||
+    tag === "SELECT" ||
+    tag === "OPTION" ||
+    Boolean(target.closest("[contenteditable='true'], input, textarea, select, [role='textbox']"))
+  );
+};
+
+function StudyCardContent({
+  content,
+  className,
+}: {
+  content: string;
+  className?: string;
+}) {
+  return (
+    <MarkdownRenderer
+      content={content}
+      className={cn(
+        "w-full max-w-full",
+        "[&>div]:mb-0 [&>div+div]:mt-3",
+        "[&_.katex-display]:my-4 [&_.katex-display]:max-w-full [&_.katex-display]:overflow-x-auto",
+        "[&_.katex]:text-inherit",
+        className,
+      )}
+    />
+  );
+}
+
 // ── Flip Card ─────────────────────────────────────────────────────────────────
 function FlipCard({ front, back, flipped, onClick }: {
   front: string; back: string; flipped: boolean; onClick: () => void;
@@ -58,7 +100,10 @@ function FlipCard({ front, back, flipped, onClick }: {
         <div style={{ backfaceVisibility: "hidden", WebkitBackfaceVisibility: "hidden" }}
           className="absolute inset-0 w-full rounded-3xl border-2 border-primary/25 bg-gradient-to-br from-card via-card to-primary/5 shadow-2xl flex flex-col items-center justify-center p-10 text-center">
           <p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary/50 mb-6">Term</p>
-          <p className="text-2xl sm:text-3xl font-bold text-foreground leading-relaxed">{front}</p>
+          <StudyCardContent
+            content={front}
+            className="text-2xl sm:text-3xl font-bold text-foreground leading-relaxed"
+          />
           <p className="mt-10 text-xs text-muted-foreground/60 flex items-center gap-1.5">
             <Eye className="w-3.5 h-3.5" /> Click to flip
           </p>
@@ -67,7 +112,10 @@ function FlipCard({ front, back, flipped, onClick }: {
         <div style={{ backfaceVisibility: "hidden", WebkitBackfaceVisibility: "hidden", transform: "rotateY(180deg)" }}
           className="absolute inset-0 w-full rounded-3xl border-2 border-emerald-500/30 bg-gradient-to-br from-card via-card to-emerald-500/5 shadow-2xl flex flex-col items-center justify-center p-10 text-center">
           <p className="text-[10px] font-black uppercase tracking-[0.3em] text-emerald-500/60 mb-6">Definition</p>
-          <p className="text-2xl sm:text-3xl font-bold text-foreground leading-relaxed">{back}</p>
+          <StudyCardContent
+            content={back}
+            className="text-2xl sm:text-3xl font-bold text-foreground leading-relaxed"
+          />
           <p className="mt-10 text-xs text-muted-foreground/60 flex items-center gap-1.5">
             <EyeOff className="w-3.5 h-3.5" /> Click to flip back
           </p>
@@ -147,6 +195,7 @@ export default function Flashcards() {
   const [quizStarted, setQuizStarted]     = useState(false);
   const [quizComplete, setQuizComplete]   = useState(false);
   const [quizTimeLeft, setQuizTimeLeft]   = useState<number | null>(null);
+  const pendingAgentQuizRef = useRef<PendingAgentQuiz | null>(null);
 
   // ── Load user subjects ──
   useEffect(() => {
@@ -155,9 +204,10 @@ export default function Flashcards() {
       try {
         const prefs = JSON.parse(localStorage.getItem("userPreferences") || "{}");
         const subs = Array.isArray(prefs.subjects) ? prefs.subjects : [];
+        const fallbackSubject = subs[0] || SUBJECT_CATALOG[0]?.id || "math";
         setUserSubjects(subs);
-        if (!quizSubject) setQuizSubject(subs[0] || SUBJECT_CATALOG[0]?.id || "math");
-        if (!newSetSubject) setNewSetSubject(subs[0] || SUBJECT_CATALOG[0]?.id || "math");
+        setQuizSubject((current) => current || fallbackSubject);
+        setNewSetSubject((current) => current || fallbackSubject);
       } catch { setUserSubjects([]); }
     };
     load();
@@ -167,10 +217,33 @@ export default function Flashcards() {
 
   // ── Deep links ──
   useEffect(() => {
-    const sub = searchParams.get("subject");
+    const sub = searchParams.get("subject") || searchParams.get("subjectId");
     const tab = searchParams.get("tab");
     if (tab === "quiz") setTopView("quiz-hub");
     else if (sub) { setActiveSetSubject(sub); setTopView("set-detail"); setActiveSetTab("flashcards"); }
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (searchParams.get("tab") !== "quiz") return;
+
+    const raw = sessionStorage.getItem(AGENT_QUIZ_SESSION_KEY);
+    if (!raw) return;
+
+    try {
+      const quiz = JSON.parse(raw) as PendingAgentQuiz;
+      pendingAgentQuizRef.current = quiz;
+      setTopView("quiz-hub");
+      setQuizSubject(quiz.subjectId);
+      setQuizTopics(quiz.topic);
+      setQuizDifficulty(quiz.difficulty);
+      setQuizNumQ(clampQuizInteger(quiz.numberOfQuestions, 3, 20));
+      setQuizTimeLimit(clampQuizInteger(quiz.timeLimitMinutes, 0, 120));
+    } catch {
+      pendingAgentQuizRef.current = null;
+    } finally {
+      sessionStorage.removeItem(AGENT_QUIZ_SESSION_KEY);
+    }
   }, [searchParams]);
 
   // ── Load all cards ──
@@ -259,7 +332,7 @@ export default function Flashcards() {
   }, [topView, activeSetSubject, activeSetTab]);
 
   // ── Flashcard review handlers ──
-  const handleRate = async (rating: FlashcardRating) => {
+  const handleRate = useCallback(async (rating: FlashcardRating) => {
     const card = reviewCards[reviewIndex];
     if (!card) return;
     await flashcardStore.review(card.id, rating);
@@ -270,10 +343,10 @@ export default function Flashcards() {
     } else {
       setReviewIndex(i => i + 1);
     }
-  };
+  }, [refresh, reviewCards, reviewIndex]);
 
   // ── Learn handlers ──
-  const handleLearnAnswer = (correct: boolean) => {
+  const handleLearnAnswer = useCallback((correct: boolean) => {
     const updated = [...learnAnswers];
     updated[learnIndex] = correct ? "correct" : "incorrect";
     setLearnAnswers(updated);
@@ -285,7 +358,91 @@ export default function Flashcards() {
         setLearnIndex(i => i + 1);
       }
     }, 350);
-  };
+  }, [learnAnswers, learnCards.length, learnIndex]);
+
+  const goToPreviousReviewCard = useCallback(() => {
+    setFlipped(false);
+    if (reviewIndex > 0) {
+      setReviewIndex(reviewIndex - 1);
+    }
+  }, [reviewIndex]);
+
+  const goToNextReviewCard = useCallback(() => {
+    setFlipped(false);
+    if (reviewIndex < reviewCards.length - 1) {
+      setReviewIndex(reviewIndex + 1);
+      return;
+    }
+    setReviewComplete(true);
+  }, [reviewCards.length, reviewIndex]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (isEditableKeyboardTarget(event.target)) return;
+      if (topView !== "set-detail") return;
+
+      if (activeSetTab === "flashcards" && !reviewComplete && reviewCards.length > 0) {
+        if (event.code === "Space") {
+          event.preventDefault();
+          setFlipped((current) => !current);
+          return;
+        }
+        if (event.key === "ArrowLeft") {
+          event.preventDefault();
+          goToPreviousReviewCard();
+          return;
+        }
+        if (event.key === "ArrowRight") {
+          event.preventDefault();
+          goToNextReviewCard();
+        }
+        return;
+      }
+
+      if (
+        activeSetTab === "learn" &&
+        learnReady &&
+        !learnComplete &&
+        learnCards.length > 0 &&
+        learnAnswers[learnIndex] === null
+      ) {
+        if (event.code === "Space") {
+          event.preventDefault();
+          setLearnFlipped((current) => !current);
+          return;
+        }
+        if (!learnFlipped) return;
+        if (event.key === "ArrowLeft") {
+          event.preventDefault();
+          handleLearnAnswer(false);
+          return;
+        }
+        if (event.key === "ArrowRight") {
+          event.preventDefault();
+          handleLearnAnswer(true);
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [
+    activeSetTab,
+    goToNextReviewCard,
+    goToPreviousReviewCard,
+    handleLearnAnswer,
+    learnAnswers,
+    learnCards.length,
+    learnComplete,
+    learnFlipped,
+    learnIndex,
+    learnReady,
+    reviewCards.length,
+    reviewComplete,
+    topView,
+  ]);
 
   // ── Test: run using card content as context ──
   const runTest = async () => {
@@ -357,7 +514,13 @@ export default function Flashcards() {
   // Track previously seen quiz questions to avoid repetition
   const seenQuestionsRef = useRef<string[]>([]);
 
-  const runQuizHub = async () => {
+  const runQuizHub = useCallback(async (preset?: Partial<PendingAgentQuiz>) => {
+    const resolvedSubject = preset?.subjectId || quizSubject;
+    const resolvedTopics = preset?.topic ?? quizTopics;
+    const resolvedDifficulty = preset?.difficulty || quizDifficulty;
+    const resolvedQuestionCount = preset?.numberOfQuestions ?? quizNumQ;
+    const resolvedTimeLimit = preset?.timeLimitMinutes ?? quizTimeLimit;
+
     setQuizLoading(true);
     setQuizStarted(true);
     setQuizComplete(false);
@@ -367,27 +530,39 @@ export default function Flashcards() {
     const prefs = typeof window !== "undefined"
       ? JSON.parse(localStorage.getItem("userPreferences") || "{}") : {};
 
-    const topicInput = quizTopics.trim()
-      ? `Subject: ${subjectLabel(quizSubject)}. Focus on these specific topics: ${quizTopics}`
-      : subjectLabel(quizSubject);
+    const topicInput = resolvedTopics.trim()
+      ? `Subject: ${subjectLabel(resolvedSubject)}. Focus on these specific topics: ${resolvedTopics}`
+      : subjectLabel(resolvedSubject);
 
-    const seed = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}-${quizSubject}-${quizDifficulty}`;
+    const seed = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}-${resolvedSubject}-${resolvedDifficulty}`;
 
     const quizData = await generateQuiz(
       topicInput,
       { grade: prefs.grade, state: prefs.state, hobbies: prefs.hobbies || [],
-        subject: quizSubject, difficulty: quizDifficulty },
-      quizNumQ,
+        subject: resolvedSubject, difficulty: resolvedDifficulty },
+      resolvedQuestionCount,
       { diversitySeed: seed, avoidQuestions: seenQuestionsRef.current.slice(-20) },
     );
 
     if (quizData?.questions) {
       setQuizQuestions(quizData.questions as QuizQuestion[]);
       setQuizAnswers(Array(quizData.questions.length).fill(null));
-      if (quizTimeLimit > 0) setQuizTimeLeft(quizTimeLimit * 60);
+      setQuizSubject(resolvedSubject);
+      setQuizTopics(resolvedTopics);
+      setQuizDifficulty(resolvedDifficulty);
+      setQuizNumQ(resolvedQuestionCount);
+      setQuizTimeLimit(resolvedTimeLimit);
+      setQuizTimeLeft(resolvedTimeLimit > 0 ? resolvedTimeLimit * 60 : null);
     }
     setQuizLoading(false);
-  };
+  }, [quizDifficulty, quizNumQ, quizSubject, quizTimeLimit, quizTopics]);
+
+  useEffect(() => {
+    if (!pendingAgentQuizRef.current) return;
+    const pendingQuiz = pendingAgentQuizRef.current;
+    pendingAgentQuizRef.current = null;
+    void runQuizHub(pendingQuiz);
+  }, [runQuizHub]);
 
   // ── Quiz Hub timer ──
   useEffect(() => {
@@ -801,7 +976,7 @@ export default function Flashcards() {
                     </div>
                   </div>
 
-                  <Button size="lg" className="w-full gradient-primary text-white border-0 hover:opacity-90 shadow-lg shadow-primary/20 h-14 text-base font-bold" onClick={runQuizHub}>
+                  <Button size="lg" className="w-full gradient-primary text-white border-0 hover:opacity-90 shadow-lg shadow-primary/20 h-14 text-base font-bold" onClick={() => void runQuizHub()}>
                     <Sparkles className="w-5 h-5 mr-2" /> Generate Quiz
                   </Button>
                 </div>
@@ -970,7 +1145,7 @@ export default function Flashcards() {
                         </div>
 
                         <div className="flex items-center justify-center gap-4">
-                          <button onClick={() => { setFlipped(false); if (reviewIndex > 0) setReviewIndex(i => i - 1); }}
+                          <button onClick={goToPreviousReviewCard}
                             disabled={reviewIndex === 0}
                             className="p-3 rounded-full border border-border hover:bg-muted/60 disabled:opacity-30 transition">
                             <ChevronLeft className="w-5 h-5" />
@@ -979,14 +1154,16 @@ export default function Flashcards() {
                             className="px-6 py-2.5 rounded-full border border-primary/30 bg-primary/5 text-primary text-sm font-bold hover:bg-primary/10 transition">
                             {flipped ? "Flip back" : "Flip"}
                           </button>
-                          <button onClick={() => {
-                            setFlipped(false);
-                            if (reviewIndex < reviewCards.length - 1) setReviewIndex(i => i + 1);
-                            else setReviewComplete(true);
-                          }} className="p-3 rounded-full border border-border hover:bg-muted/60 transition">
+                          <button onClick={goToNextReviewCard} className="p-3 rounded-full border border-border hover:bg-muted/60 transition">
                             <ChevronRight className="w-5 h-5" />
                           </button>
                         </div>
+                        <p className="text-center text-[11px] text-muted-foreground">
+                          Press <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px]">Space</kbd> to flip and use
+                          <kbd className="mx-1 rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px]">←</kbd>
+                          <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px]">→</kbd>
+                          to move between cards.
+                        </p>
 
                         <AnimatePresence>
                           {flipped && (
@@ -1038,8 +1215,14 @@ export default function Flashcards() {
                               ) : (
                                 <div className="flex items-start gap-4 p-4">
                                   <div className="flex-1 grid sm:grid-cols-2 gap-3 min-w-0">
-                                    <p className="text-sm font-semibold border-b border-border/50 pb-2 sm:border-b-0 sm:border-r sm:pb-0 sm:pr-4">{card.front}</p>
-                                    <p className="text-sm text-foreground/75">{card.back}</p>
+                                    <StudyCardContent
+                                      content={card.front}
+                                      className="text-sm font-semibold border-b border-border/50 pb-2 sm:border-b-0 sm:border-r sm:pb-0 sm:pr-4"
+                                    />
+                                    <StudyCardContent
+                                      content={card.back}
+                                      className="text-sm text-foreground/75"
+                                    />
                                   </div>
                                   <div className="flex gap-1 shrink-0">
                                     <button onClick={() => beginEdit(card)} className="p-1.5 rounded-lg hover:bg-muted/60 transition">
@@ -1144,6 +1327,13 @@ export default function Flashcards() {
                             </motion.div>
                           )}
                         </AnimatePresence>
+                        <p className="text-center text-[11px] text-muted-foreground">
+                          Press <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px]">Space</kbd> to flip,
+                          <kbd className="mx-1 rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px]">←</kbd>
+                          for still learning, and
+                          <kbd className="mx-1 rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px]">→</kbd>
+                          for got it.
+                        </p>
                       </div>
                     )}
                   </motion.div>

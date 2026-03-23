@@ -263,6 +263,8 @@ export default function SubjectDocument() {
                 initialContent={rawContent}
                 onChange={handleChange}
                 placeholder="Start writing… or type / for block types"
+                subjectLabel={subject.label}
+                documentTitle={title}
               />
             )}
           </div>

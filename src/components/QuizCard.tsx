@@ -200,7 +200,10 @@ const QuizCard = ({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
       >
-        <MarkdownRenderer content={question} />
+        <MarkdownRenderer
+          content={question}
+          className="[&_.katex-display]:my-4 [&_.katex-display]:max-w-full [&_.katex-display]:overflow-x-auto"
+        />
       </motion.div>
 
       {/* Hint button */}
@@ -225,8 +228,11 @@ const QuizCard = ({
             className="mb-4 p-3 rounded-lg bg-warning/10 border border-warning/20"
           >
             <div className="text-sm text-foreground flex gap-2">
-                <span aria-hidden="true">•</span>
-                <MarkdownRenderer content={hint || ""} />
+              <span aria-hidden="true">•</span>
+              <MarkdownRenderer
+                content={hint || ""}
+                className="flex-1 [&>div]:mb-0 [&_.katex-display]:my-3 [&_.katex-display]:max-w-full [&_.katex-display]:overflow-x-auto"
+              />
             </div>
           </motion.div>
         )}
@@ -275,9 +281,12 @@ const QuizCard = ({
                       )}
                     </div>
                   )}
-                  <span className="text-foreground font-medium flex-1">
-                    <MarkdownRenderer content={option.text} />
-                  </span>
+                  <div className="text-foreground font-medium flex-1">
+                    <MarkdownRenderer
+                      content={option.text}
+                      className="[&>div]:mb-0 [&_.katex-display]:my-3 [&_.katex-display]:max-w-full [&_.katex-display]:overflow-x-auto"
+                    />
+                  </div>
                 </div>
                 {showResult && (
                   <motion.div
@@ -349,7 +358,10 @@ const QuizCard = ({
             exit={{ opacity: 0, y: -10 }}
             className="text-center py-3 rounded-xl bg-muted"
           >
-            <p className="font-medium text-foreground">{getMessage()}</p>
+            <MarkdownRenderer
+              content={getMessage() || ""}
+              className="text-sm font-medium text-foreground [&>div]:mb-0 [&>div+div]:mt-2 [&_.katex-display]:my-3 [&_.katex-display]:max-w-full [&_.katex-display]:overflow-x-auto"
+            />
           </motion.div>
         )}
       </AnimatePresence>

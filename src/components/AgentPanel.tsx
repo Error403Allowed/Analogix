@@ -9,12 +9,17 @@ import {
 } from "lucide-react";
 import ContentInput, { type ContextItem } from "@/components/ContentInput";
 import { cn } from "@/lib/utils";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import type { ChatMessage } from "@/types/chat";
 import { gatherAppContext, type ContextOptions } from "@/lib/contextGatherer";
 import { subjectStore } from "@/utils/subjectStore";
 import { SUBJECT_CATALOG } from "@/constants/subjects";
 import { chatStore } from "@/utils/chatStore";
+import {
+  AGENT_QUIZ_SESSION_KEY,
+  normaliseAgentQuizAction,
+} from "@/lib/agentQuiz";
+import { filterBottomRightAgentActions } from "@/lib/agentActions";
 
 // ── Action result types ────────────────────────────────────────────────────
 interface ActionResult {
@@ -24,10 +29,8 @@ interface ActionResult {
 }
 
 const ACTION_LABELS: Record<string, string> = {
-  create_document:     "Document created",
-  update_document:     "Document updated",
-  replace_study_guide: "Study guide updated",
   add_flashcards:      "Flashcards added",
+  start_quiz:          "Quiz starting",
 };
 
 // ── Pages where the agent should NOT appear ────────────────────────────────
@@ -79,6 +82,7 @@ function TypingDots({ keyPrefix = "typing" }: { keyPrefix?: string }) {
 // ── Main AgentPanel component ──────────────────────────────────────────────
 export default function AgentPanel() {
   const pathname = usePathname();
+  const router = useRouter();
   const [open, setOpen]         = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [actionResults, setActionResults] = useState<Record<number, ActionResult[]>>({});
@@ -298,6 +302,37 @@ export default function AgentPanel() {
     return null;
   }, [chatSessionId]);
 
+  const handleClientActions = useCallback((actions: Record<string, unknown>[]) => {
+    const results: ActionResult[] = [];
+
+    for (const action of actions) {
+      const quiz = normaliseAgentQuizAction(action, currentDoc?.subjectId);
+      if (!quiz) continue;
+
+      const subjectName =
+        SUBJECT_CATALOG.find((subject) => subject.id === quiz.subjectId)?.label ||
+        quiz.subjectId;
+
+      try {
+        sessionStorage.setItem(AGENT_QUIZ_SESSION_KEY, JSON.stringify(quiz));
+        router.push("/flashcards?tab=quiz");
+        results.push({
+          type: "start_quiz",
+          success: true,
+          detail: `Launching a ${quiz.numberOfQuestions}-question ${subjectName} quiz`,
+        });
+      } catch {
+        results.push({
+          type: "start_quiz",
+          success: false,
+          detail: "Couldn't launch the quiz.",
+        });
+      }
+    }
+
+    return results;
+  }, [currentDoc?.subjectId, router]);
+
   const sendMessage = useCallback(async (text?: string, selectedContextIds?: string[]) => {
     const content = (text ?? input).trim();
     if (!content || loading) return;
@@ -384,23 +419,39 @@ export default function AgentPanel() {
 
       // If the AI returned actions, execute them server-side
       if (data.actions && data.actions.length > 0) {
-        console.log("[AgentPanel] Executing actions:", data.actions);
-        const actionRes = await fetch("/api/groq/agent-action", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            actions: data.actions,
-            defaultSubjectId: currentDoc?.subjectId || null,
-          }),
-        });
-        console.log("[AgentPanel] agent-action status:", actionRes.status);
-        const actionData = await actionRes.json();
-        console.log("[AgentPanel] agent-action results:", actionData);
-        if (actionData.results) {
-          setActionResults(prev => ({ ...prev, [assistantMsgIndex]: actionData.results }));
-          window.dispatchEvent(new CustomEvent("subjectDataUpdated", {
-            detail: { results: actionData.results },
-          }));
+        const allResults: ActionResult[] = [];
+        const allActions = Array.isArray(data.actions)
+          ? filterBottomRightAgentActions(data.actions as Record<string, unknown>[])
+          : [];
+        const clientResults = handleClientActions(allActions);
+        if (clientResults.length > 0) {
+          allResults.push(...clientResults);
+        }
+
+        const serverActions = allActions.filter((action) => action.type !== "start_quiz");
+        if (serverActions.length > 0) {
+          console.log("[AgentPanel] Executing actions:", serverActions);
+          const actionRes = await fetch("/api/groq/agent-action", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              actions: serverActions,
+              defaultSubjectId: currentDoc?.subjectId || null,
+            }),
+          });
+          console.log("[AgentPanel] agent-action status:", actionRes.status);
+          const actionData = await actionRes.json();
+          console.log("[AgentPanel] agent-action results:", actionData);
+          if (actionData.results) {
+            allResults.push(...actionData.results);
+            window.dispatchEvent(new CustomEvent("subjectDataUpdated", {
+              detail: { results: actionData.results },
+            }));
+          }
+        }
+
+        if (allResults.length > 0) {
+          setActionResults(prev => ({ ...prev, [assistantMsgIndex]: allResults }));
         }
       }
     } catch {
@@ -408,7 +459,7 @@ export default function AgentPanel() {
     } finally {
       setLoading(false);
     }
-  }, [input, messages, loading, contextIds, contextOptions, pathname, currentDoc, ensureChatSession]);
+  }, [input, messages, loading, contextIds, contextOptions, pathname, currentDoc, ensureChatSession, handleClientActions]);
 
   const clearChat = async () => {
     setMessages([]);
@@ -489,7 +540,7 @@ export default function AgentPanel() {
                 <p className="text-sm font-bold text-foreground leading-tight">Analogix AI</p>
                 <p className="text-[10px] text-muted-foreground/60 leading-tight flex items-center gap-1">
                   <Zap className="w-2.5 h-2.5 text-primary/60" />
-                  Can read &amp; edit your workspace
+                  Can read your workspace
                 </p>
               </div>
               <div className="flex items-center gap-1">
@@ -527,7 +578,7 @@ export default function AgentPanel() {
                       Ask me anything about your workspace
                     </p>
                     <p className="text-xs text-muted-foreground/50">
-                      I can read your workspace — and write in it too. Ask me to create notes, add flashcards, or update a document.
+                      I can read your entire workspace. Ask me to add flashcards, create quizzes, find out what class you have next, and more!
                     </p>
                   </div>
                   <div className="grid grid-cols-2 gap-2 pt-1">
