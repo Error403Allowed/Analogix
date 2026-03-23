@@ -162,7 +162,7 @@ export default function SubjectsOverview() {
     const colorData = SUBJECT_COLORS.find((color) => color.id === colorId) || SUBJECT_COLORS[0];
 
     return {
-      icon: custom?.custom_icon || subject.icon.name,
+      icon: custom?.custom_icon || subject.iconName,
       color: colorData,
       title: custom?.custom_title || subject.label,
       cover: custom?.custom_cover,
@@ -353,20 +353,16 @@ export default function SubjectsOverview() {
               ].map((stat) => (
                 <div
                   key={stat.label}
-                  className="rounded-[24px] border border-border/50 bg-background/75 px-4 py-4 shadow-sm backdrop-blur"
+                  className="rounded-[24px] border border-border/50 bg-background/75 px-4 py-5 shadow-sm backdrop-blur"
                 >
-                  <div className="flex items-center gap-2">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-2xl border border-border/50 bg-muted/40">
-                      <stat.icon className="h-4 w-4 text-foreground/75" />
-                    </div>
-                    <div>
-                      <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground/55">
-                        {stat.label}
-                      </p>
-                      <p className="mt-1 text-2xl font-black tracking-tight text-foreground">{stat.value}</p>
-                    </div>
+                  <div className="flex h-9 w-9 items-center justify-center rounded-2xl border border-border/50 bg-muted/40 mb-3">
+                    <stat.icon className="h-4 w-4 text-foreground/75" />
                   </div>
-                  <p className="mt-3 text-xs text-muted-foreground/70">{stat.note}</p>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground/55">
+                    {stat.label}
+                  </p>
+                  <p className="mt-1 text-3xl font-black tracking-tight text-foreground">{stat.value}</p>
+                  <p className="mt-2 text-xs text-muted-foreground/70">{stat.note}</p>
                 </div>
               ))}
             </div>
@@ -869,7 +865,7 @@ export default function SubjectsOverview() {
           onOpenChange={(open) => setIconPickerSubject(open ? iconPickerSubject : null)}
           selectedIcon={
             customSubjects[iconPickerSubject.id]?.custom_icon ||
-            SUBJECT_CATALOG.find((subject) => subject.id === iconPickerSubject.id)?.icon.name ||
+            SUBJECT_CATALOG.find((subject) => subject.id === iconPickerSubject.id)?.iconName ||
             ""
           }
           onSelect={async (iconName) => {

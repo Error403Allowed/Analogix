@@ -39,12 +39,14 @@ export const SUBJECT_CATALOG: Array<{
   id: SubjectId;
   label: string;
   icon: typeof Calculator;
+  iconName: string;
   descriptions: Record<GradeBand, string>;
 }> = [
   {
     id: "math",
     label: "Mathematics",
     icon: Calculator,
+    iconName: "Calculator",
     descriptions: {
       junior: "NUMBERS, ALGEBRA, GEOMETRY",
       middle: "FUNCTIONS, GRAPHS, PROOFS",
@@ -55,6 +57,7 @@ export const SUBJECT_CATALOG: Array<{
     id: "biology",
     label: "Biology",
     icon: Microscope,
+    iconName: "Microscope",
     descriptions: {
       junior: "LIFE, CELLS, NATURE",
       middle: "SYSTEMS, GENETICS, EVOLUTION",
@@ -65,6 +68,7 @@ export const SUBJECT_CATALOG: Array<{
     id: "history",
     label: "History",
     icon: Landmark,
+    iconName: "Landmark",
     descriptions: {
       junior: "PAST EVENTS, CULTURES",
       middle: "CONFLICTS, IDEAS, CIVILISATIONS",
@@ -75,6 +79,7 @@ export const SUBJECT_CATALOG: Array<{
     id: "physics",
     label: "Physics",
     icon: Zap,
+    iconName: "Zap",
     descriptions: {
       junior: "MATTER, ENERGY, FORCES",
       middle: "MOTION, WAVES, ELECTRICITY",
@@ -85,6 +90,7 @@ export const SUBJECT_CATALOG: Array<{
     id: "chemistry",
     label: "Chemistry",
     icon: FlaskConical,
+    iconName: "FlaskConical",
     descriptions: {
       junior: "ELEMENTS, REACTIONS",
       middle: "BONDS, RATES, ENERGY",
@@ -95,6 +101,7 @@ export const SUBJECT_CATALOG: Array<{
     id: "english",
     label: "English",
     icon: BookOpen,
+    iconName: "BookOpen",
     descriptions: {
       junior: "READING, WRITING, SPEAKING",
       middle: "LITERATURE, LANGUAGE, CULTURE",
@@ -105,6 +112,7 @@ export const SUBJECT_CATALOG: Array<{
     id: "computing",
     label: "Computing",
     icon: Cpu,
+    iconName: "Cpu",
     descriptions: {
       junior: "CODING, HARDWARE, SOFTWARE",
       middle: "ALGORITHMS, DATA, SYSTEMS",
@@ -115,6 +123,7 @@ export const SUBJECT_CATALOG: Array<{
     id: "economics",
     label: "Economics",
     icon: LineChart,
+    iconName: "LineChart",
     descriptions: {
       junior: "SUPPLY, DEMAND, MARKETS",
       middle: "POLICIES, INCENTIVES, TRADE",
@@ -125,6 +134,7 @@ export const SUBJECT_CATALOG: Array<{
     id: "business",
     label: "Business Studies",
     icon: Briefcase,
+    iconName: "Briefcase",
     descriptions: {
       junior: "MANAGEMENT, STRATEGY, STARTUPS",
       middle: "MARKETING, FINANCE, OPERATIONS",
@@ -135,6 +145,7 @@ export const SUBJECT_CATALOG: Array<{
     id: "commerce",
     label: "Commerce",
     icon: Wallet,
+    iconName: "Wallet",
     descriptions: {
       junior: "TRADE, FINANCE, ACCOUNTING",
       middle: "ENTREPRENEURSHIP, LAW, MONEY",
@@ -145,6 +156,7 @@ export const SUBJECT_CATALOG: Array<{
     id: "pdhpe",
     label: "PDHPE",
     icon: HeartPulse,
+    iconName: "HeartPulse",
     descriptions: {
       junior: "HEALTH, FITNESS, WELL-BEING",
       middle: "SPORT, NUTRITION, MINDSET",
@@ -155,6 +167,7 @@ export const SUBJECT_CATALOG: Array<{
     id: "geography",
     label: "Geography",
     icon: Globe,
+    iconName: "Globe",
     descriptions: {
       junior: "WORLD, MAPS, ENVIRONMENT",
       middle: "POPULATION, CLIMATE, CITIES",
@@ -165,6 +178,7 @@ export const SUBJECT_CATALOG: Array<{
     id: "engineering",
     label: "Engineering",
     icon: Wrench,
+    iconName: "Wrench",
     descriptions: {
       junior: "DESIGN, MECHANICS, BUILD",
       middle: "STRUCTURES, MATERIALS, SYSTEMS",
@@ -175,6 +189,7 @@ export const SUBJECT_CATALOG: Array<{
     id: "medicine",
     label: "Medicine",
     icon: Stethoscope,
+    iconName: "Stethoscope",
     descriptions: {
       junior: "HEALTH, ANATOMY, DISEASE",
       middle: "ORGANS, TREATMENTS, PATHOLOGY",
@@ -185,6 +200,7 @@ export const SUBJECT_CATALOG: Array<{
     id: "languages",
     label: "Languages",
     icon: Languages,
+    iconName: "Languages",
     descriptions: {
       junior: "VOCAB, GRAMMAR, SPEAKING",
       middle: "LITERATURE, CULTURE, WRITING",

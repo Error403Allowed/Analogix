@@ -7,7 +7,7 @@ import { motion } from "framer-motion";
 import AgentPanel from "@/components/AgentPanel";
 import { TabsProvider, useTabs, pathMeta } from "@/context/TabsContext";
 import TabBar from "@/components/TabBar";
-import { useEffect, useCallback, useState, useRef } from "react";
+import { useEffect, useCallback, useRef } from "react";
 
 export default function DashLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -40,19 +40,9 @@ export default function DashLayout({ children }: { children: React.ReactNode }) 
   );
 };
 
-// Global store for page components (using module-level state)
-// This persists across renders but resets on page reload
-let pageComponentStore = new Map<string, React.ReactNode>();
-let pageInitialized = new Map<string, boolean>();
-let pageMounted = new Map<string, boolean>(); // Track if component has mounted
-const listeners = new Set<() => void>();
-
-function notifyListeners() {
-  listeners.forEach(fn => fn());
-}
-
-// PageCache - stores page component instances by path
-// Each path gets its own React component tree that persists across tab switches
+// SnapshotCache: each tab gets its own frozen snapshot of the page DOM once rendered.
+// When a tab becomes inactive we freeze its rendered subtree in a hidden div.
+// When it becomes active again we just un-hide it — no re-fetch, no re-render.
 function PageCache({
   path,
   activePath,
@@ -63,51 +53,23 @@ function PageCache({
   children: React.ReactNode;
 }) {
   const isActive = path === activePath;
-  const [, forceUpdate] = useState({});
-  const hasMountedRef = useRef(false);
+  // frozen holds the last children snapshot when this tab was active
+  const frozenRef = useRef<React.ReactNode>(null);
 
-  // Mark this component as mounted after first render
-  useEffect(() => {
-    hasMountedRef.current = true;
-    pageMounted.set(path, true);
-    // Force update to show cached content if available
-    forceUpdate({});
-  }, [path]);
-
-  // Subscribe to updates
-  useEffect(() => {
-    const listener = () => forceUpdate({});
-    listeners.add(listener);
-    return () => {
-      listeners.delete(listener);
-    };
-  }, []);
-
-  // Cache the current children when active and mounted
-  // This ensures we cache a fully-hydrated component tree
-  if (isActive && hasMountedRef.current) {
-    pageComponentStore.set(path, children);
-    pageInitialized.set(path, true);
+  // While this tab is active, keep the snapshot up to date
+  if (isActive) {
+    frozenRef.current = children;
   }
 
-  // Get cached content for this path
-  const cachedChildren = pageComponentStore.get(path);
-  const isInitialized = pageInitialized.get(path);
-  const isMounted = pageMounted.get(path);
-
-  // Show cached content if we have it and this path has been mounted before
-  // Otherwise show live children (initial render)
-  const showCached = isInitialized && isMounted && cachedChildren;
-  const content = showCached ? cachedChildren : children;
-
-  // Show this tab if it's active, OR if activePath is null (initial render - show all to avoid blank page)
-  // This prevents the blank page issue when activePath hasn't been set yet
-  const shouldShow = isActive || activePath === null;
+  // If we've never been active (no snapshot yet), don't render anything
+  // This avoids rendering wrong content for tabs that haven't been visited
+  const content = frozenRef.current;
+  if (!content) return null;
 
   return (
     <div
       style={{
-        display: shouldShow ? "block" : "none",
+        display: isActive ? "block" : "none",
         height: "100%",
       }}
     >

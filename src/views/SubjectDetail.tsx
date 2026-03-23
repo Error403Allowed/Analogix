@@ -178,7 +178,7 @@ export default function SubjectDetail() {
     const colorData = SUBJECT_COLORS.find((color) => color.id === colorId) || SUBJECT_COLORS[0];
     return {
       title: customSubject?.custom_title || subject?.label || "Subject",
-      icon: customSubject?.custom_icon || subject?.icon.name || "BookOpen",
+      icon: customSubject?.custom_icon || subject?.iconName || "BookOpen",
       cover: customSubject?.custom_cover,
       color: colorData,
     };

@@ -25,6 +25,17 @@ if (typeof window !== "undefined") {
   supabase.auth.onAuthStateChange(() => { cachedUser = null; cachedUserPromise = null; });
 }
 
+// ── Subject data in-memory cache ─────────────────────────────────────────────
+// Keyed by subjectId. Invalidated on every write so data is always fresh after
+// a mutation, but repeat reads within a session are instant (no Supabase RTT).
+const subjectCache = new Map<string, SubjectData>();
+const subjectCachePromise = new Map<string, Promise<SubjectData>>();
+
+function invalidateSubjectCache(subjectId: string) {
+  subjectCache.delete(subjectId);
+  subjectCachePromise.delete(subjectId);
+}
+
 export interface SubjectMark {
   id: string;
   title: string;
@@ -170,23 +181,34 @@ export const subjectStore = {
     }, {});
   },
 
-  // Fetch a single subject row directly — much faster than getAll() for per-subject pages
+  // Fetch a single subject row — cached in-memory for instant repeat reads.
+  // Writes always invalidate the cache so data stays consistent.
   getSubject: async (subjectId: string): Promise<SubjectData> => {
-    const user = await getUser();
-    if (!user) return emptySubject(subjectId);
-    const supabase = createClient();
-    const { data, error } = await supabase
-      .from("subject_data")
-      .select("subject_id, marks, notes")
-      .eq("user_id", user.id)
-      .eq("subject_id", subjectId)
-      .maybeSingle();
-    if (error || !data) return emptySubject(subjectId);
-    return {
-      id: data.subject_id,
-      marks: data.marks ?? [],
-      notes: normalizeNotes(data.subject_id, data.notes),
-    };
+    // 1. Serve from memory if already fetched this session
+    if (subjectCache.has(subjectId)) return subjectCache.get(subjectId)!;
+    // 2. Deduplicate concurrent fetches (only one network call in-flight)
+    if (subjectCachePromise.has(subjectId)) return subjectCachePromise.get(subjectId)!;
+
+    const fetch = (async () => {
+      const user = await getUser();
+      if (!user) return emptySubject(subjectId);
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from("subject_data")
+        .select("subject_id, marks, notes")
+        .eq("user_id", user.id)
+        .eq("subject_id", subjectId)
+        .maybeSingle();
+      const result: SubjectData = (error || !data)
+        ? emptySubject(subjectId)
+        : { id: data.subject_id, marks: data.marks ?? [], notes: normalizeNotes(data.subject_id, data.notes) };
+      subjectCache.set(subjectId, result);
+      subjectCachePromise.delete(subjectId);
+      return result;
+    })();
+
+    subjectCachePromise.set(subjectId, fetch);
+    return fetch;
   },
 
   // Save directly without a read round-trip — caller provides full data
@@ -205,6 +227,8 @@ export const subjectStore = {
       updated_at: new Date().toISOString(),
     }, { onConflict: "user_id,subject_id" });
     if (error) console.warn("[subjectStore] saveSubject failed:", error);
+    // Invalidate cache so next read fetches fresh data from Supabase
+    invalidateSubjectCache(subjectId);
     window.dispatchEvent(new Event("subjectDataUpdated"));
   },
 
