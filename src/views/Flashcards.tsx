@@ -7,7 +7,7 @@ import {
   Sparkles, Trash2, X, ChevronLeft, ChevronRight, Brain,
   Zap, Trophy, FileText, Plus, FolderOpen,
   CheckCircle2, XCircle, Loader2, AlertTriangle, Eye, EyeOff,
-  Layers, Settings2, Upload, Target, PenLine, MessageSquare,
+  Settings2, Upload, Target, PenLine, MessageSquare,
   ListChecks, Clock,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -17,8 +17,10 @@ import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { SUBJECT_CATALOG } from "@/constants/subjects";
+import { DynamicIcon } from "@/components/IconPicker";
 import { flashcardStore, type Flashcard, type FlashcardRating } from "@/utils/flashcardStore";
-import { generateFlashcardsFromDocument, generateQuiz } from "@/services/groq";
+import { generateFlashcardsFromDocument, generateQuiz, generateQuizFromDocument } from "@/services/groq";
+import { extractFileText, ACCEPTED_FILE_TYPES } from "@/utils/extractFileText";
 import QuizCard from "@/components/QuizCard";
 import MarkdownRenderer from "@/components/MarkdownRenderer";
 import { statsStore } from "@/utils/statsStore";
@@ -30,6 +32,9 @@ import {
 
 const subjectLabel = (id: string) =>
   SUBJECT_CATALOG.find(s => s.id === id)?.label || id;
+
+const subjectIconName = (id: string) =>
+  SUBJECT_CATALOG.find(s => s.id === id)?.iconName || "BookOpen";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type TopView = "library" | "set-detail" | "create-set" | "quiz-hub";
@@ -204,6 +209,9 @@ export default function Flashcards() {
 
   // ── Quiz Hub state ──
   const [quizSubject, setQuizSubject]     = useState("");
+  const [quizDocFile, setQuizDocFile]     = useState<File | null>(null);
+  const [quizDocMode, setQuizDocMode]     = useState(false); // true = generate from uploaded doc
+  const quizFileInputRef = useRef<HTMLInputElement | null>(null);
   const [quizNumQ, setQuizNumQ]           = useState(5);
   const [quizDifficulty, setQuizDifficulty] = useState("intermediate");
   const [quizTopics, setQuizTopics]       = useState("");   // freetext topic outline
@@ -550,19 +558,38 @@ export default function Flashcards() {
     const prefs = typeof window !== "undefined"
       ? JSON.parse(localStorage.getItem("userPreferences") || "{}") : {};
 
-    const topicInput = resolvedTopics.trim()
-      ? `Subject: ${subjectLabel(resolvedSubject)}. Focus on these specific topics: ${resolvedTopics}`
-      : subjectLabel(resolvedSubject);
+    let quizData: import("@/types/quiz").QuizData | null = null;
 
-    const seed = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}-${resolvedSubject}-${resolvedDifficulty}`;
+    // Doc mode: generate from uploaded file content
+    if (quizDocMode && quizDocFile && !preset) {
+      try {
+        const docContent = await extractFileText(quizDocFile);
+        quizData = await generateQuizFromDocument({
+          documentContent: docContent,
+          fileName: quizDocFile.name,
+          subject: subjectLabel(resolvedSubject),
+          grade: prefs.grade,
+          numberOfQuestions: resolvedQuestionCount,
+        });
+      } catch (err) {
+        console.error("[runQuizHub] doc extraction failed:", err);
+      }
+    } else {
+      // Standard mode: generate from subject + topic outline
+      const topicInput = resolvedTopics.trim()
+        ? `Subject: ${subjectLabel(resolvedSubject)}. Focus on these specific topics: ${resolvedTopics}`
+        : subjectLabel(resolvedSubject);
 
-    const quizData = await generateQuiz(
-      topicInput,
-      { grade: prefs.grade, state: prefs.state, hobbies: prefs.hobbies || [],
-        subject: resolvedSubject, difficulty: resolvedDifficulty },
-      resolvedQuestionCount,
-      { diversitySeed: seed, avoidQuestions: seenQuestionsRef.current.slice(-20) },
-    );
+      const seed = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}-${resolvedSubject}-${resolvedDifficulty}`;
+
+      quizData = await generateQuiz(
+        topicInput,
+        { grade: prefs.grade, state: prefs.state, hobbies: prefs.hobbies || [],
+          subject: resolvedSubject, difficulty: resolvedDifficulty },
+        resolvedQuestionCount,
+        { diversitySeed: seed, avoidQuestions: seenQuestionsRef.current.slice(-20) },
+      );
+    }
 
     if (quizData?.questions) {
       setQuizQuestions(quizData.questions as QuizQuestion[]);
@@ -575,7 +602,7 @@ export default function Flashcards() {
       setQuizTimeLeft(resolvedTimeLimit > 0 ? resolvedTimeLimit * 60 : null);
     }
     setQuizLoading(false);
-  }, [quizDifficulty, quizNumQ, quizSubject, quizTimeLimit, quizTopics]);
+  }, [quizDifficulty, quizDocFile, quizDocMode, quizNumQ, quizSubject, quizTimeLimit, quizTopics]);
 
   useEffect(() => {
     if (!pendingAgentQuizRef.current) return;
@@ -673,7 +700,8 @@ export default function Flashcards() {
       let content = "";
       let fileName = "Pasted text";
       if (pendingFile) {
-        content = await pendingFile.text();
+        // Use extractFileText so PDFs/DOCX are properly extracted server-side
+        content = await extractFileText(pendingFile);
         fileName = pendingFile.name;
       } else if (pendingPasteText) {
         content = pendingPasteText;
@@ -972,7 +1000,7 @@ export default function Flashcards() {
                         <div onClick={() => openSet(set.subjectId)}>
                           <div className="flex items-center justify-between mb-3">
                             <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
-                              <Layers className="w-4 h-4 text-primary" />
+                              <DynamicIcon name={subjectIconName(set.subjectId)} className="w-4 h-4 text-primary" />
                             </div>
                             {set.dueCount > 0 && (
                               <span className="text-[10px] font-black bg-amber-500/15 text-amber-600 border border-amber-500/30 rounded-full px-2 py-0.5">
@@ -1220,9 +1248,14 @@ export default function Flashcards() {
           {topView === "set-detail" && activeSet && (
             <motion.div key="set-detail" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -14 }}>
 
-              <div className="mb-6">
-                <h2 className="text-3xl font-black mb-1">{subjectLabel(activeSet.subjectId)}</h2>
-                <p className="text-sm text-muted-foreground">{activeSet.cards.length} terms</p>
+              <div className="mb-6 flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0">
+                  <DynamicIcon name={subjectIconName(activeSet.subjectId)} className="w-6 h-6 text-primary" />
+                </div>
+                <div>
+                  <h2 className="text-3xl font-black mb-0.5">{subjectLabel(activeSet.subjectId)}</h2>
+                  <p className="text-sm text-muted-foreground">{activeSet.cards.length} terms</p>
+                </div>
               </div>
 
               {/* Tabs */}
