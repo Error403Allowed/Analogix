@@ -6,16 +6,16 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // Never bundle these on the server — they rely on native bindings or
+  // load files from disk at require-time which breaks under Next.js bundling.
+  serverExternalPackages: ['pdf-parse', 'pdfjs-dist'],
   // Increase body size limit for file uploads (default is 1MB)
-  // This affects server actions
   experimental: {
     serverActions: {
       bodySizeLimit: '50mb',
     },
   },
   turbopack: {
-    // Tell Next.js the project root is here, not the home directory.
-    // Fixes: "detected multiple lockfiles" warning.
     root: __dirname,
   },
 };

@@ -1004,3 +1004,12 @@ html[data-theme="prismatic"]:not(.dark) .glass-card {
 }
 
 /* BlockNote uses its own default styles — no overrides needed */
+
+/* Hide scrollbars globally for the scrollbar-none utility */
+.scrollbar-none {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none; /* Chrome/Safari/Opera */
+}

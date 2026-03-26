@@ -38,7 +38,12 @@ const Quiz = () => {
   const [isReviewLoading, setIsReviewLoading] = useState(false);
 
   /* Quiz Configuration State */
-  const [selectedSubject, setSelectedSubject] = useState<SubjectId>("math");
+  const [selectedSubject, setSelectedSubject] = useState<SubjectId>(() => {
+    if (typeof window === "undefined") return "math";
+    const prefs = JSON.parse(localStorage.getItem("userPreferences") || "{}");
+    const saved: string[] = prefs.subjects || [];
+    return (saved[0] as SubjectId) || "math";
+  });
   const [numQuestions, setNumQuestions] = useState(5);
   const [timeLimit, setTimeLimit] = useState(5); // minutes
   const [difficulty, setDifficulty] = useState("intermediate");
@@ -60,6 +65,13 @@ const Quiz = () => {
       : {};
   
   const gradeBand = getGradeBand(userPrefs.grade);
+
+  // Filter subjects to only those the user picked during onboarding / profile settings.
+  // Fall back to the full catalogue if they haven't saved any subjects yet.
+  const userSubjectIds: string[] = userPrefs.subjects && userPrefs.subjects.length > 0
+    ? userPrefs.subjects
+    : SUBJECT_CATALOG.map(s => s.id);
+  const availableSubjects = SUBJECT_CATALOG.filter(s => userSubjectIds.includes(s.id));
   
   const difficultyOptions = {
     junior: [
@@ -97,15 +109,30 @@ const Quiz = () => {
 
   useEffect(() => {
     try {
-      const raw = sessionStorage.getItem("pendingQuizConfig");
+      // Check both keys: legacy "pendingQuizConfig" and agent key "analogix.pending-agent-quiz"
+      const raw =
+        sessionStorage.getItem("pendingQuizConfig") ||
+        sessionStorage.getItem("analogix.pending-agent-quiz");
       if (raw) {
         const parsed = JSON.parse(raw);
         if (parsed && typeof parsed === "object") {
-          setPendingConfig(parsed);
-          setShowConfig(false); // Skip config if already provided (e.g. from Dashboard)
+          // Normalise agent quiz shape → pendingConfig shape
+          const config = {
+            topic: parsed.topic || parsed.subjectId || "",
+            subject: parsed.subjectId || parsed.subject || "",
+            numQuestions: parsed.numberOfQuestions || parsed.numQuestions,
+            timerDuration:
+              parsed.timeLimitMinutes !== undefined
+                ? parsed.timeLimitMinutes * 60
+                : parsed.timerDuration,
+            difficulty: parsed.difficulty,
+          };
+          setPendingConfig(config);
+          setShowConfig(false);
         }
       }
       sessionStorage.removeItem("pendingQuizConfig");
+      sessionStorage.removeItem("analogix.pending-agent-quiz");
 
       // Check for pre-generated quiz from document
       const pendingQuizRaw = sessionStorage.getItem("pendingQuiz");
@@ -153,13 +180,13 @@ const Quiz = () => {
   const fetchQuiz = async () => {
     setIsLoading(true);
     const recent = getRecentQuestions();
-    const avoidList = recent.slice(-50);
     const baseSeed = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const seenThisRun = new Set(recent);
     const collected: QuizQuestion[] = [];
     const normalizedCollected: string[] = [];
 
-    const maxAttempts = 6;
+    // Single attempt — one API call is enough. Only retry once if we get nothing back at all.
+    const maxAttempts = 2;
 
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       const quizData = await generateQuiz(
@@ -194,10 +221,11 @@ const Quiz = () => {
         if (collected.length >= numQuestionsTarget) break;
       }
 
-      if (collected.length >= numQuestionsTarget) break;
+      // Accept whatever we got — even if slightly under the target count
+      if (collected.length > 0) break;
     }
 
-    if (collected.length >= numQuestionsTarget) {
+    if (collected.length > 0) {
       storeRecentQuestions([...recent, ...normalizedCollected]);
       const nextQuestions = collected.slice(0, numQuestionsTarget);
       setQuestions(nextQuestions);
@@ -367,7 +395,7 @@ const Quiz = () => {
               <div className="space-y-3">
                 <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground/80">Subject</Label>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {SUBJECT_CATALOG.map((s) => (
+                  {availableSubjects.map((s) => (
                     <motion.button
                       key={s.id}
                       whileHover={{ scale: 1.02 }}
@@ -477,32 +505,89 @@ const Quiz = () => {
   }
 
   if (isLoading) {
+    const loadingSteps = [
+      { icon: "🧠", label: "Reading your grade & subjects…" },
+      { icon: "📚", label: "Pulling curriculum content…" },
+      { icon: "✏️", label: "Crafting questions…" },
+      { icon: "🎯", label: "Calibrating difficulty…" },
+      { icon: "✨", label: "Adding analogy hints…" },
+    ];
     return (
-      <div className="min-h-full flex flex-col items-center justify-center bg-background p-4">
-        <div className="relative">
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-            className="mb-6"
-          >
-            <Loader2 className="w-16 h-16 text-primary" />
-          </motion.div>
-          <motion.div
-            animate={{ scale: [1, 1.2, 1] }}
-            transition={{ duration: 1.5, repeat: Infinity }}
-            className="absolute inset-0 flex items-center justify-center"
-          >
-            <Brain className="w-6 h-6 text-primary/50" />
-          </motion.div>
-        </div>
-        <div className="mt-8 flex flex-col items-center text-center gap-2">
-          <div className="flex items-center gap-2 text-primary font-bold text-lg">
-            <Sparkles className="w-5 h-5 animate-pulse" />
-            Generating Quiz...
+      <div className="min-h-full flex flex-col items-center justify-center bg-background p-6 relative overflow-hidden">
+        {/* Background blobs */}
+        <div className="liquid-blob w-80 h-80 bg-primary/10 -top-40 -right-40 fixed" />
+        <div className="liquid-blob w-64 h-64 bg-accent/10 bottom-20 -left-32 fixed" style={{ animationDelay: "-2s" }} />
+
+        <div className="relative z-10 flex flex-col items-center gap-8 max-w-sm w-full">
+          {/* Animated ring stack */}
+          <div className="relative w-28 h-28 flex items-center justify-center">
+            {[0, 1, 2].map((i) => (
+              <motion.div
+                key={i}
+                className="absolute rounded-full border-2 border-primary/30"
+                style={{ width: 112 - i * 20, height: 112 - i * 20 }}
+                animate={{ rotate: i % 2 === 0 ? 360 : -360, scale: [1, 1.04, 1] }}
+                transition={{ rotate: { duration: 3 + i, repeat: Infinity, ease: "linear" }, scale: { duration: 2, repeat: Infinity, delay: i * 0.4 } }}
+              />
+            ))}
+            <motion.div
+              animate={{ scale: [0.9, 1.05, 0.9] }}
+              transition={{ duration: 2, repeat: Infinity }}
+              className="w-14 h-14 rounded-2xl gradient-primary flex items-center justify-center shadow-xl shadow-primary/30"
+            >
+              <Brain className="w-7 h-7 text-white" />
+            </motion.div>
           </div>
-          <p className="text-sm text-muted-foreground max-w-xs">
-            Creating personalised questions for {subjectLabel}
-          </p>
+
+          {/* Title */}
+          <div className="text-center space-y-1">
+            <motion.h2
+              className="text-xl font-black text-foreground tracking-tight"
+              animate={{ opacity: [0.7, 1, 0.7] }}
+              transition={{ duration: 2, repeat: Infinity }}
+            >
+              Building your quiz
+            </motion.h2>
+            <p className="text-sm text-muted-foreground">
+              Year {userPrefs.grade || "10"} · {subjectLabel} · <span className="capitalize">{quizDifficulty}</span>
+            </p>
+          </div>
+
+          {/* Cycling step labels */}
+          <div className="glass-card px-5 py-4 w-full space-y-2">
+            {loadingSteps.map((step, i) => (
+              <motion.div
+                key={step.label}
+                className="flex items-center gap-3"
+                initial={{ opacity: 0, x: -8 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: i * 0.55, duration: 0.4 }}
+              >
+                <motion.span
+                  className="text-base"
+                  animate={{ scale: [1, 1.3, 1] }}
+                  transition={{ delay: i * 0.55 + 0.2, duration: 0.4 }}
+                >
+                  {step.icon}
+                </motion.span>
+                <span className="text-xs text-muted-foreground font-medium">{step.label}</span>
+                <motion.div
+                  className="ml-auto w-4 h-4 rounded-full border-2 border-primary/40 border-t-primary"
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 0.9, repeat: Infinity, ease: "linear", delay: i * 0.55 }}
+                />
+              </motion.div>
+            ))}
+          </div>
+
+          {/* Tip */}
+          <motion.p
+            className="text-[11px] text-muted-foreground/50 text-center max-w-xs"
+            animate={{ opacity: [0.4, 0.8, 0.4] }}
+            transition={{ duration: 3, repeat: Infinity }}
+          >
+            Questions are tailored to the Year {userPrefs.grade || "10"} Australian curriculum
+          </motion.p>
         </div>
         <motion.div 
           className="mt-6 flex items-center gap-2 text-xs text-muted-foreground/60"
@@ -654,6 +739,7 @@ const Quiz = () => {
                 totalQuestions={questions.length}
                 onAnswer={handleAnswer}
                 hint={questions[currentQuestion].hint}
+                desmos={(questions[currentQuestion] as any).desmos}
               />
               {currentAnswer && (
                 <div className="mt-4 flex justify-end">

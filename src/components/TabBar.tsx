@@ -29,7 +29,8 @@ const NAV_SECTIONS = [
     label: "Learn",
     items: [
       { path: "/chat",       emoji: "💬", label: "AI Tutor",     desc: "Ask anything, get explained" },
-      { path: "/flashcards", emoji: "🃏", label: "Flashcards",   desc: "Quiz yourself on any topic" },
+      { path: "/flashcards", emoji: "🃏", label: "Flashcards",   desc: "Review cards & spaced repetition" },
+      { path: "/quiz",       emoji: "📝", label: "Quiz Hub",     desc: "Test yourself with AI quizzes" },
       { path: "/formulas",   emoji: "∑",  label: "Formulas",     desc: "Quick-access formula sheets" },
       { path: "/resources",  emoji: "📚", label: "Resources",    desc: "Curated study links" },
     ],
@@ -48,7 +49,6 @@ const NAV_SECTIONS = [
     items: [
       { path: "new-document",   emoji: "📄", label: "New Document",   desc: "Create a blank document" },
       { path: "new-flashcards", emoji: "🃏", label: "New Flashcards", desc: "Create flashcards for a subject" },
-      { path: "new-quiz",       emoji: "📝", label: "New Quiz",       desc: "Create a quiz for a subject" },
     ],
   },
 ];
@@ -60,14 +60,17 @@ function NavItem({
   item,
   active,
   onSelect,
+  activeDataAttr,
 }: {
   item: { path: string; emoji: string; label: string; desc: string };
   active?: boolean;
   onSelect: (path: string) => void;
+  activeDataAttr?: boolean;
 }) {
   return (
     <button
       onClick={() => onSelect(item.path)}
+      data-active={activeDataAttr && active ? "true" : undefined}
       className={cn(
         "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all group",
         active 
@@ -92,7 +95,7 @@ function NavItem({
   );
 }
 
-// ── NewTabOverlay — Notion-style fullscreen jump menu ────────────────────────
+// ── NewTabOverlay — centred modal jump menu ───────────────────────────────────
 function NewTabOverlay({
   open,
   onClose,
@@ -105,6 +108,7 @@ function NewTabOverlay({
   const [search, setSearch] = useState("");
   const [activeIdx, setActiveIdx] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const resultsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (open) {
@@ -123,6 +127,13 @@ function NewTabOverlay({
 
   const visibleItems = filtered ?? ALL_ITEMS;
 
+  // Scroll active item into view
+  useEffect(() => {
+    if (!resultsRef.current) return;
+    const active = resultsRef.current.querySelector("[data-active='true']");
+    active?.scrollIntoView({ block: "nearest" });
+  }, [activeIdx]);
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Escape") { onClose(); return; }
     if (e.key === "ArrowDown") { e.preventDefault(); setActiveIdx(i => Math.min(i + 1, visibleItems.length - 1)); }
@@ -133,13 +144,24 @@ function NewTabOverlay({
   if (!open) return null;
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex flex-col bg-background/95 backdrop-blur-md"
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.12 }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 backdrop-blur-md"
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}
     >
-      {/* Search bar — centred, Notion style */}
-      <div className="w-full max-w-2xl mx-auto pt-[15vh] px-4">
-        <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-border/60 bg-card shadow-xl">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.96, y: -8 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.96, y: -8 }}
+        transition={{ duration: 0.15, ease: "easeOut" }}
+        className="w-full max-w-lg mx-4 flex flex-col rounded-2xl border border-border/50 bg-card shadow-2xl overflow-hidden"
+        style={{ maxHeight: "min(540px, calc(100vh - 8rem))" }}
+      >
+        {/* Search bar */}
+        <div className="flex items-center gap-3 px-4 py-3.5 border-b border-border/30 shrink-0">
           <Search className="w-4 h-4 text-muted-foreground/50 shrink-0" />
           <input
             ref={inputRef}
@@ -152,14 +174,14 @@ function NewTabOverlay({
           <kbd className="text-[10px] text-muted-foreground/40 border border-border/40 rounded px-1.5 py-0.5 font-mono shrink-0">esc</kbd>
         </div>
 
-        {/* Results */}
-        <div className="mt-3 rounded-xl border border-border/40 bg-card shadow-xl overflow-hidden">
+        {/* Scrollable results */}
+        <div ref={resultsRef} className="overflow-y-auto scrollbar-none flex-1">
           {filtered !== null && filtered.length === 0 ? (
-            <p className="px-4 py-8 text-sm text-muted-foreground/50 text-center">No results for "{search}"</p>
+            <p className="px-4 py-10 text-sm text-muted-foreground/50 text-center">No results for "{search}"</p>
           ) : filtered !== null ? (
-            <div className="p-1.5 space-y-0.5">
+            <div className="p-2 space-y-0.5">
               {filtered.map((item, i) => (
-                <NavItem key={item.path} item={item} active={i === activeIdx} onSelect={onNavigate} />
+                <NavItem key={item.path} item={item} active={i === activeIdx} onSelect={onNavigate} activeDataAttr />
               ))}
             </div>
           ) : (
@@ -168,11 +190,11 @@ function NewTabOverlay({
                 <p className="px-4 pt-3 pb-1 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/40">
                   {section.label}
                 </p>
-                <div className="px-1.5 pb-1.5 space-y-0.5">
-                  {section.items.map((item, i) => {
+                <div className="px-2 pb-2 space-y-0.5">
+                  {section.items.map((item) => {
                     const globalIdx = ALL_ITEMS.indexOf(item);
                     return (
-                      <NavItem key={item.path} item={item} active={globalIdx === activeIdx} onSelect={onNavigate} />
+                      <NavItem key={item.path} item={item} active={globalIdx === activeIdx} onSelect={onNavigate} activeDataAttr />
                     );
                   })}
                 </div>
@@ -182,16 +204,19 @@ function NewTabOverlay({
         </div>
 
         {/* Footer hints */}
-        <div className="flex items-center gap-4 mt-3 px-1">
+        <div className="flex items-center gap-4 px-4 py-2.5 border-t border-border/30 shrink-0">
           <span className="text-[11px] text-muted-foreground/40 flex items-center gap-1.5">
             <kbd className="font-mono border border-border/40 rounded px-1 py-0.5 text-[10px]">↑↓</kbd> navigate
           </span>
           <span className="text-[11px] text-muted-foreground/40 flex items-center gap-1.5">
             <kbd className="font-mono border border-border/40 rounded px-1 py-0.5 text-[10px]">↵</kbd> open
           </span>
+          <span className="text-[11px] text-muted-foreground/40 flex items-center gap-1.5">
+            <kbd className="font-mono border border-border/40 rounded px-1 py-0.5 text-[10px]">esc</kbd> close
+          </span>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }
 
@@ -367,12 +392,6 @@ export default function TabBar({ onNavigate }: TabBarProps) {
       setNewTabOpen(false);
       return;
     }
-    if (path === "new-quiz") {
-      setCreateMode("quiz");
-      setShowSubjectPicker(true);
-      setNewTabOpen(false);
-      return;
-    }
 
     const meta = pathMeta(path);
     openTab(path, meta.label, meta.emoji);
@@ -385,8 +404,11 @@ export default function TabBar({ onNavigate }: TabBarProps) {
 
   return (
     <>
-      <NewTabOverlay open={newTabOpen} onClose={() => setNewTabOpen(false)} onNavigate={handleOpenShortcut} />
-
+      <AnimatePresence>
+        {newTabOpen && (
+          <NewTabOverlay open={newTabOpen} onClose={() => setNewTabOpen(false)} onNavigate={handleOpenShortcut} />
+        )}
+      </AnimatePresence>
       <div className="h-9 flex items-end bg-background/80 backdrop-blur-sm border-b border-border/40 px-2 shrink-0">
         <div ref={scrollRef} className="flex items-end gap-1 overflow-x-auto scrollbar-none flex-1 min-w-0">
           <AnimatePresence initial={false}>

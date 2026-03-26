@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Check, X, Lightbulb } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -7,7 +7,63 @@ import { Textarea } from "./ui/textarea";
 import { Loader2, Send } from "lucide-react";
 import { gradeShortAnswer } from "@/services/groq";
 import MarkdownRenderer from "./MarkdownRenderer";
-import type { QuizOption } from "@/types/quiz";
+import type { QuizOption, DesmosConfig } from "@/types/quiz";
+
+// ── Desmos embed ──────────────────────────────────────────────────────────────
+declare global {
+  interface Window {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    Desmos?: any;
+  }
+}
+
+function DesmosEmbed({ config }: { config: DesmosConfig }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const calcRef = useRef<any>(null);
+
+  useEffect(() => {
+    const mount = () => {
+      if (!containerRef.current || !window.Desmos) return;
+      if (calcRef.current) calcRef.current.destroy();
+      const bounds = config.bounds ?? { left: -10, right: 10, bottom: -10, top: 10 };
+      calcRef.current = window.Desmos.GraphingCalculator(containerRef.current, {
+        expressions: false,
+        settingsMenu: false,
+        zoomButtons: true,
+        lockViewport: false,
+        border: false,
+        backgroundColor: "transparent",
+      });
+      calcRef.current.setMathBounds(bounds);
+      config.expressions.forEach((expr) => {
+        calcRef.current.setExpression({ id: expr.id, latex: expr.latex, color: "#6366f1" });
+      });
+    };
+
+    if (window.Desmos) {
+      mount();
+    } else {
+      const script = document.createElement("script");
+      script.src = "https://www.desmos.com/api/v1.9/calculator.js?apiKey=dcb31709b452b1cf9dc26972add0fda6";
+      script.async = true;
+      script.onload = mount;
+      document.head.appendChild(script);
+    }
+
+    return () => { calcRef.current?.destroy(); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(config)]);
+
+  return (
+    <div className="rounded-xl overflow-hidden border border-primary/20 bg-card/60 mb-4">
+      <div className="px-3 py-1.5 border-b border-primary/10 flex items-center gap-1.5">
+        <span className="text-[10px] font-black uppercase tracking-widest text-primary/60">Graph</span>
+      </div>
+      <div ref={containerRef} style={{ height: 240, width: "100%" }} />
+    </div>
+  );
+}
 
 type QuizAnswerPayload = {
   isCorrect: boolean;
@@ -25,6 +81,7 @@ interface QuizCardProps {
   onAnswer: (payload: QuizAnswerPayload) => void;
   hint?: string;
   explanation?: string;
+  desmos?: DesmosConfig;
 }
 
 const QuizCard = ({
@@ -36,7 +93,8 @@ const QuizCard = ({
   totalQuestions,
   onAnswer,
   hint,
-  explanation
+  explanation,
+  desmos,
 }: QuizCardProps) => {
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
@@ -196,7 +254,7 @@ const QuizCard = ({
 
       {/* Question */}
       <motion.div
-        className="text-xl font-bold text-foreground mb-6"
+        className="text-xl font-bold text-foreground mb-4"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
       >
@@ -205,6 +263,9 @@ const QuizCard = ({
           className="[&_.katex-display]:my-4 [&_.katex-display]:max-w-full [&_.katex-display]:overflow-x-auto"
         />
       </motion.div>
+
+      {/* Desmos graph (if provided) */}
+      {desmos && <DesmosEmbed config={desmos} />}
 
       {/* Hint button */}
       {hint && !showHint && !showResult && (

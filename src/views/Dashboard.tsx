@@ -483,7 +483,8 @@ type Prefs = { name?: string; subjects?: string[] };
 export default function Dashboard() {
   useAchievementChecker();
 
-  const [prefs, setPrefs]                   = useState<Prefs>(() => readJson("userPreferences", {}));
+  // Start empty so SSR and client initial render match, then hydrate in useEffect.
+  const [prefs, setPrefs]                   = useState<Prefs>({});
   const [stats, setStats]                   = useState<UserStats>({ quizzesDone: 0, currentStreak: 0, accuracy: 0, conversationsCount: 0, topSubject: "None", subjectCounts: {} });
   const [weekActivity, setWeekActivity]     = useState<DayActivity[]>([]);
   const [showTutorial, setShowTutorial]     = useState(false);
@@ -495,6 +496,8 @@ export default function Dashboard() {
   useEffect(() => { setEnabledWidgets(loadEnabledWidgets()); }, []);
 
   useEffect(() => {
+    // Initial load + keep in sync with external updates
+    setPrefs(readJson("userPreferences", {}));
     const update = () => setPrefs(readJson("userPreferences", {}));
     window.addEventListener("userPreferencesUpdated", update);
     window.addEventListener("storage", update);
@@ -596,11 +599,11 @@ export default function Dashboard() {
 
       {/* ── Scrollable content ── */}
       <div className="overflow-y-auto h-[calc(100%-56px)]">
-        <div className="dashboard-container px-6 pt-5 pb-8 space-y-4 max-w-4xl mx-auto w-full" data-tour="subjects-section">
+        <div className="dashboard-container px-6 pt-5 pb-8 space-y-4 max-w-4xl mx-auto w-full" data-tour="dashboard-main">
 
           {/* Stats strip */}
           {on("stats") && (
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3" data-tour="stats-strip">
               {([
                 { label: "Day streak", value: str, suffix: null, colour: "amber" as const, icon: Zap,
                   extra: (
@@ -646,14 +649,14 @@ export default function Dashboard() {
 
           {/* AI Tutor — full width */}
 {on("chat") && (
-            <div className="dashboard-panel p-5">
+            <div className="dashboard-panel p-5" data-tour="ai-chat-widget">
               <AiChatWidget />
             </div>
           )}
 
           {/* Docs — full width horizontal scroll */}
           {on("docs") && (
-            <div className="dashboard-panel p-5">
+            <div className="dashboard-panel p-5" data-tour="recent-docs">
               <DocScrollRow />
             </div>
           )}

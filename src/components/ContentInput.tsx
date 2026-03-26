@@ -2,10 +2,11 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Paperclip, X, FileText, Plus, AtSign, Search } from 'lucide-react';
+import { Send, Paperclip, X, FileText, Plus, AtSign, Search, Brain, ChevronUp, Check } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { GROQ_MODELS, type GroqModelId } from "@/types/groq-models";
 
 export interface ContextItem {
   id: string;
@@ -29,6 +30,8 @@ interface ContentInputProps {
   recentContext?: ContextItem[];
   className?: string;
   height?: 'compact' | 'normal' | 'tall';
+  agentModelId?: GroqModelId;
+  setAgentModelId?: (modelId: GroqModelId) => void;
 }
 
 export default function ContentInput({
@@ -49,7 +52,13 @@ export default function ContentInput({
   ],
   className,
   height = 'normal',
+  agentModelId: externalAgentModelId,
+  setAgentModelId: externalSetAgentModelId,
 }: ContentInputProps) {
+  // Use external props if provided, otherwise use internal state (for standalone usage)
+  const [internalModelId, setInternalModelId] = useState<GroqModelId>("auto");
+  const agentModelId = externalAgentModelId ?? internalModelId;
+  const setAgentModelId = externalSetAgentModelId ?? setInternalModelId;
   const [showMentions, setShowMentions] = useState(false);
   const [mentionQuery, setMentionQuery] = useState('');
   const [dragging, setDragging] = useState(false);
@@ -62,6 +71,33 @@ export default function ContentInput({
   const dropdownRef = useRef<HTMLDivElement>(null);
   const actionMenuRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const modelSelectorRef = useRef<HTMLDivElement>(null);
+  const [showModelSelector, setShowModelSelector] = useState(false);
+
+  const safeLocalStorageGet = (key: string) => {
+    try { return localStorage.getItem(key); } catch { return null; }
+  };
+  const safeLocalStorageSet = (key: string, value: string) => {
+    try { localStorage.setItem(key, value); } catch {}
+  };
+
+  // Close model selector on outside click
+  useEffect(() => {
+    if (!showModelSelector) return;
+    const handleClick = (e: MouseEvent) => {
+      if (modelSelectorRef.current && !modelSelectorRef.current.contains(e.target as Node)) {
+        setShowModelSelector(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [showModelSelector]);
+
+  const handleModelChange = (modelId: GroqModelId) => {
+    setAgentModelId(modelId);
+    safeLocalStorageSet("analogix_agent_model", modelId);
+    setShowModelSelector(false);
+  };
 
   const currentPageItem = recentContext.find(item => item.type === 'page') || null;
   const linkableContext = recentContext.filter(item => item !== currentPageItem);
@@ -165,7 +201,7 @@ export default function ContentInput({
   const fileCount = files.length;
 
   return (
-    <div className={cn("flex items-end gap-2 p-3 bg-card/90 backdrop-blur-sm rounded-2xl border border-border/40 shadow-lg", className)}>
+    <div className={cn("flex items-end gap-2 p-3 bg-card/90 backdrop-blur-sm rounded-2xl border border-border/60 shadow-sm", className)}>
       <div className="flex-1 relative min-h-[56px]">
         <div className={cn("relative", dragging && "ring-2 ring-primary/30 rounded-2xl")}>
           {selectedContext.length > 0 && (
@@ -173,17 +209,17 @@ export default function ContentInput({
               {selectedContext.map((item) => (
                 <div
                   key={item.id}
-                  className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-muted/70 border border-border/60 text-[11px] text-foreground/80"
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-muted/50 border border-border/50 text-[11px] text-foreground/90"
                 >
                   {item.icon ? (
                     <span className="text-[11px]">{item.icon}</span>
                   ) : (
-                    <FileText className="w-3 h-3 text-muted-foreground" />
+                    <FileText className="w-3 h-3 text-muted-foreground/70" />
                   )}
                   <span className="max-w-[120px] truncate">{item.title}</span>
                   <button
                     onClick={() => removeContext(item)}
-                    className="text-muted-foreground hover:text-foreground"
+                    className="text-muted-foreground/60 hover:text-destructive transition-colors"
                     aria-label={`Remove ${item.title}`}
                   >
                     <X className="w-3 h-3" />
@@ -218,20 +254,82 @@ export default function ContentInput({
           />
 
           <div className="absolute left-2 bottom-2 flex items-center gap-1">
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 rounded-xl border border-border/40 hover:bg-muted/60"
-              onClick={() => {
-                setShowActionMenu(prev => !prev);
-                setShowMentions(false);
-              }}
-              title="Add"
-            >
-              <Plus className="w-4 h-4" />
-            </Button>
+            {/* Add button (file upload + context) */}
+            <div className="relative w-8 h-8 group">
+              <button
+                type="button"
+                disabled={disabled}
+                className="w-8 h-8 rounded-full bg-muted/40 flex items-center justify-center text-muted-foreground transition-all disabled:opacity-50 group-hover:bg-primary/10 group-hover:text-primary"
+                onClick={() => {
+                  setShowActionMenu(prev => !prev);
+                  setShowMentions(false);
+                  setShowModelSelector(false);
+                }}
+                title="Add"
+              >
+                <Plus className="w-3.5 h-3.5" />
+              </button>
+            </div>
 
+            {/* Model selector */}
+            <div className="relative" ref={modelSelectorRef}>
+              <button
+                type="button"
+                onClick={() => setShowModelSelector(p => !p)}
+                disabled={disabled}
+                className="h-8 px-2.5 rounded-full bg-muted/40 flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-all hover:text-primary hover:bg-primary/10 disabled:opacity-40"
+                title="Select AI model"
+              >
+                <Brain className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">
+                  {GROQ_MODELS.find(m => m.id === agentModelId)?.name || "Auto"}
+                </span>
+                <ChevronUp className={`w-3 h-3 transition-transform ${showModelSelector ? "rotate-180" : ""}`} />
+              </button>
+
+              {/* Model selector dropdown */}
+              <AnimatePresence>
+                {showModelSelector && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 8, scale: 0.96 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute bottom-full left-0 mb-2 w-72 rounded-xl border border-border bg-popover shadow-lg shadow-black/5 z-50 overflow-hidden"
+                  >
+                    <div className="p-2 space-y-1 max-h-96 overflow-y-auto">
+                      {GROQ_MODELS.map((model) => (
+                        <button
+                          key={model.id}
+                          type="button"
+                          onClick={() => handleModelChange(model.id)}
+                          className={`w-full text-left px-3 py-2.5 rounded-lg transition-all ${
+                            agentModelId === model.id
+                              ? "bg-primary/10 text-primary"
+                              : "hover:bg-muted text-foreground"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-semibold truncate">{model.name}</p>
+                              <p className="text-[10px] text-muted-foreground/70 truncate mt-0.5">{model.description}</p>
+                            </div>
+                            {agentModelId === model.id && (
+                              <Check className="w-3.5 h-3.5 text-primary shrink-0" />
+                            )}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                    <div className="px-3 py-2 border-t border-border bg-muted/30">
+                      <p className="text-[10px] text-muted-foreground/60">
+                        Auto picks the best model for your query
+                      </p>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
 
           {/* File upload preview */}
@@ -241,10 +339,11 @@ export default function ContentInput({
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className="absolute right-14 bottom-2 flex items-center gap-1.5 pr-2 py-1 rounded-full bg-muted/90 backdrop-blur text-xs text-muted-foreground font-medium"
+                className="absolute right-14 bottom-2 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted/60 backdrop-blur border border-border/40 text-xs text-muted-foreground font-medium"
               >
-                {fileCount} file{fileCount > 1 ? 's' : ''} attached
-                <button onClick={() => { setFiles([]); onFilesChange([]); }} className="ml-1 text-destructive hover:text-destructive/80">
+                <FileText className="w-3 h-3" />
+                <span>{fileCount} file{fileCount > 1 ? 's' : ''}</span>
+                <button onClick={() => { setFiles([]); onFilesChange([]); }} className="ml-1 text-muted-foreground hover:text-destructive transition-colors">
                   <X className="w-3 h-3" />
                 </button>
               </motion.div>
@@ -260,21 +359,21 @@ export default function ContentInput({
               initial={{ opacity: 0, y: -6, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -6, scale: 0.98 }}
-              className="absolute bottom-full left-0 mb-2 w-[260px] bg-card border border-border/50 rounded-2xl shadow-2xl p-1.5 z-50"
+              className="absolute bottom-full left-0 mb-2 w-[260px] bg-card border border-border/60 rounded-2xl shadow-2xl p-1.5 z-50"
             >
               <button
                 onClick={openFilePicker}
-                className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl hover:bg-muted/50 text-left text-sm"
+                className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-muted/60 text-left text-sm transition-colors"
               >
-                <Paperclip className="w-4 h-4 text-muted-foreground" />
-                <span>Add images, PDFs or CSVs</span>
+                <Paperclip className="w-4 h-4 text-muted-foreground/70" />
+                <span className="text-foreground/90">Add images, PDFs or CSVs</span>
               </button>
               <button
                 onClick={openContextPicker}
-                className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl hover:bg-muted/50 text-left text-sm"
+                className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-muted/60 text-left text-sm transition-colors"
               >
-                <AtSign className="w-4 h-4 text-muted-foreground" />
-                <span>@ Add context</span>
+                <AtSign className="w-4 h-4 text-muted-foreground/70" />
+                <span className="text-foreground/90">@ Add context</span>
               </button>
             </motion.div>
           )}
@@ -288,53 +387,53 @@ export default function ContentInput({
               initial={{ opacity: 0, y: -8, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -8, scale: 0.98 }}
-              className="absolute bottom-full left-0 right-0 bg-card border border-border/50 rounded-2xl shadow-2xl py-2 z-50 max-h-72 overflow-y-auto"
+              className="absolute bottom-full left-0 right-0 bg-card border border-border/60 rounded-2xl shadow-2xl py-2 z-50 max-h-72 overflow-y-auto"
             >
               <div className="px-3 pt-2 pb-2">
                 <div className="relative">
-                  <Search className="w-3.5 h-3.5 text-muted-foreground/60 absolute left-2.5 top-2.5" />
+                  <Search className="w-3.5 h-3.5 text-muted-foreground/50 absolute left-2.5 top-2.5" />
                   <Input
                     ref={searchInputRef}
                     value={mentionQuery}
                     onChange={(e) => setMentionQuery(e.currentTarget.value)}
                     placeholder="Search..."
-                    className="h-8 pl-8 text-xs bg-muted/30 border-border/50 focus-visible:ring-primary/40"
+                    className="h-8 pl-8 text-xs bg-muted/40 border-border/60 focus-visible:ring-primary/40"
                   />
                 </div>
               </div>
 
-              <div className="px-3 pt-1 pb-1 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60">
+              <div className="px-3 pt-1 pb-1 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50">
                 Current page
               </div>
               {currentPageItem ? (
                 <button
                   key={currentPageItem.id}
                   onClick={() => handleMentionSelect(currentPageItem)}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-muted/40 transition-colors text-sm"
+                  className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-muted/50 transition-colors text-sm"
                 >
-                  <div className="w-8 h-8 rounded-lg bg-muted/40 flex items-center justify-center border border-border/50 shrink-0">
+                  <div className="w-8 h-8 rounded-lg bg-muted/50 flex items-center justify-center border border-border/60 shrink-0">
                     {currentPageItem.icon
                       ? <span className="text-sm">{currentPageItem.icon}</span>
-                      : <FileText className="w-4 h-4 text-muted-foreground" />}
+                      : <FileText className="w-4 h-4 text-muted-foreground/70" />}
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="font-medium text-foreground truncate">{currentPageItem.title}</p>
-                    <p className="text-[11px] text-muted-foreground/70 truncate">{currentPageItem.subject}</p>
+                    <p className="text-[11px] text-muted-foreground/60 truncate">{currentPageItem.subject}</p>
                   </div>
                 </button>
               ) : (
-                <div className="px-3 py-2 text-xs text-muted-foreground/70">
+                <div className="px-3 py-2 text-xs text-muted-foreground/60">
                   No current page detected
                 </div>
               )}
 
-              <div className="mx-3 my-2 h-px bg-border/60" />
+              <div className="mx-3 my-2 h-px bg-border/50" />
 
-              <div className="px-3 pb-1 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60">
+              <div className="px-3 pb-1 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50">
                 Pages
               </div>
               {filteredContext.length === 0 ? (
-                <div className="px-3 py-3 text-xs text-muted-foreground/70">
+                <div className="px-3 py-3 text-xs text-muted-foreground/60">
                   No matching pages
                 </div>
               ) : (
@@ -342,16 +441,16 @@ export default function ContentInput({
                   <button
                     key={item.id}
                     onClick={() => handleMentionSelect(item)}
-                    className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-muted/40 transition-colors text-sm"
+                    className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-muted/50 transition-colors text-sm"
                   >
-                    <div className="w-8 h-8 rounded-lg bg-muted/40 flex items-center justify-center border border-border/50 shrink-0">
+                    <div className="w-8 h-8 rounded-lg bg-muted/50 flex items-center justify-center border border-border/60 shrink-0">
                       {item.icon
                         ? <span className="text-sm">{item.icon}</span>
-                        : <FileText className="w-4 h-4 text-muted-foreground" />}
+                        : <FileText className="w-4 h-4 text-muted-foreground/70" />}
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="font-medium text-foreground truncate">{item.title}</p>
-                      <p className="text-[11px] text-muted-foreground/70 truncate">{item.subject}</p>
+                      <p className="text-[11px] text-muted-foreground/60 truncate">{item.subject}</p>
                     </div>
                     {item.preview && (
                       <p className="text-[10px] text-muted-foreground/50 italic truncate max-w-[120px]">
@@ -367,14 +466,14 @@ export default function ContentInput({
       </div>
 
       {/* Send button */}
-      <Button
+      <button
         type="button"
         onClick={handleSend}
         disabled={!value.trim() && files.length === 0 || disabled}
-        className="h-11 w-11 rounded-2xl gradient-primary shadow-lg hover:shadow-primary/30 transition-all disabled:opacity-50"
+        className="w-9 h-9 rounded-full bg-primary flex items-center justify-center text-white transition-all hover:bg-primary/90 active:scale-95 disabled:opacity-30 disabled:pointer-events-none"
       >
         <Send className="w-4 h-4" />
-      </Button>
+      </button>
 
       <input
         ref={fileInputRef}

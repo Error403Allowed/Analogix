@@ -21,6 +21,7 @@ import {
   normaliseAgentQuizAction,
 } from "@/lib/agentQuiz";
 import { filterBottomRightAgentActions } from "@/lib/agentActions";
+import { GROQ_MODELS, type GroqModelId } from "@/types/groq-models";
 
 // ── Action result types ────────────────────────────────────────────────────
 interface ActionResult {
@@ -46,6 +47,7 @@ const QUICK_PROMPTS = [
 ];
 
 const AGENT_SESSION_KEY = "agentChatSessionId";
+const AGENT_MODEL_KEY = "analogix_agent_model";
 const MAX_AGENT_HISTORY = 30;
 const AGENT_MODE_KEY = "analogix_agent_mode";
 
@@ -113,10 +115,18 @@ export default function AgentPanel() {
   const [showContextOptions, setShowContextOptions] = useState(false);
   const [chatSessionId, setChatSessionId] = useState<string | null>(null);
   const [historyLoaded, setHistoryLoaded] = useState(false);
-  
+  const [agentModelId, setAgentModelId] = useState<GroqModelId>("auto");
+
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Load persisted model choice
+  useEffect(() => {
+    const saved = safeLocalStorageGet(AGENT_MODEL_KEY);
+    if (saved && GROQ_MODELS.some(m => m.id === saved)) {
+      setAgentModelId(saved as GroqModelId);
+    }
+  }, []);
 
   const setAgentMode = (mode: AgentMode) => {
     setAgentModeCtx(mode);
@@ -331,7 +341,7 @@ export default function AgentPanel() {
 
       try {
         sessionStorage.setItem(AGENT_QUIZ_SESSION_KEY, JSON.stringify(quiz));
-        router.push("/flashcards?tab=quiz");
+        router.push("/quiz");
         results.push({
           type: "start_quiz",
           success: true,
@@ -400,6 +410,7 @@ export default function AgentPanel() {
           currentDoc: resolvedCurrentDoc ? { title: resolvedCurrentDoc.title, subjectId: resolvedCurrentDoc.subjectId, content: resolvedCurrentDoc.content } : null,
           currentPage: pathname,
           chatSessionId: sessionId,
+          modelId: agentModelId === "auto" ? null : GROQ_MODELS.find(m => m.id === agentModelId)?.modelString ?? null,
         }),
       });
 
@@ -836,6 +847,8 @@ export default function AgentPanel() {
               currentPage={pathname.replace('/', '') || 'Dashboard'}
               recentContext={recentContext}
               disabled={loading}
+              agentModelId={agentModelId}
+              setAgentModelId={setAgentModelId}
             />
           </motion.div>
         )}

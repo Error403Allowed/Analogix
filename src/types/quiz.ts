@@ -4,16 +4,22 @@ export interface QuizOption {
   isCorrect: boolean;
 }
 
+export interface DesmosConfig {
+  expressions: Array<{ id: string; latex: string }>;
+  bounds?: { left: number; right: number; bottom: number; top: number };
+}
+
 export interface QuizQuestion {
   id: number | string;
-  type?: "multiple_choice" | "short_answer";
+  type?: "multiple_choice" | "short_answer" | "multiple_select";
   question: string;
-  analogy?: string; // Optional explanation/analogy
+  analogy?: string;
   options?: QuizOption[];
-  correctAnswer?: string; // For short answer
+  correctAnswer?: string;
   hint?: string;
   python_solution?: string;
   reasoning?: string;
+  desmos?: DesmosConfig;
 }
 
 export interface QuizData {
@@ -22,7 +28,7 @@ export interface QuizData {
 
 export interface QuizAnswerInput {
   id: number | string;
-  type: "multiple_choice" | "short_answer";
+  type: "multiple_choice" | "multiple_select" | "short_answer";
   question: string;
   correctAnswer: string;
   userAnswer: string;

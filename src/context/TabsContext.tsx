@@ -71,6 +71,7 @@ export const pathMeta = (path: string): { label: string; emoji: string } => {
   if (path === "/dashboard")    return { label: "Dashboard",   emoji: "🏠" };
   if (path === "/chat")         return { label: "AI Tutor",    emoji: "💬" };
   if (path === "/flashcards")   return { label: "Flashcards",  emoji: "🃏" };
+  if (path === "/quiz")         return { label: "Quiz Hub",    emoji: "📝" };
   if (path === "/formulas")     return { label: "Formulas",    emoji: "∑"  };
   if (path === "/resources")    return { label: "Resources",   emoji: "📚" };
   if (path === "/subjects")     return { label: "My Subjects", emoji: "🎓" };

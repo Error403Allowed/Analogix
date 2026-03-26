@@ -1261,7 +1261,7 @@ const Chat = () => {
                   numberOfQuestions: Number(quizAction.numberOfQuestions) || 5,
                   timeLimitMinutes: Number(quizAction.timeLimitMinutes) || 0,
                 }));
-                router.push("/flashcards?tab=quiz");
+                router.push("/quiz");
               } catch { /* ignore */ }
             }
 

@@ -218,6 +218,8 @@ const fetchText = async (url: string, type: SourceType) => {
     if (buffer.length > MAX_PDF_BYTES) {
       throw new Error("PDF too large");
     }
+    // Dynamic import so the native addon only loads when actually parsing a PDF,
+    // preventing it from crashing the module on startup.
     const parsed = await pdfParse(buffer);
     text = parsed.text || "";
   } else {

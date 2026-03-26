@@ -838,9 +838,6 @@ export default function Flashcards() {
           <div className="flex items-center gap-2 shrink-0">
             {topView === "library" && (
               <>
-                <Button size="sm" variant="outline" onClick={() => setTopView("quiz-hub")} className="gap-1.5 text-xs">
-                  <Target className="w-3.5 h-3.5" /> Quiz Hub
-                </Button>
                 <Button size="sm" onClick={() => setTopView("create-set")} className="gap-1.5">
                   <Plus className="w-4 h-4" /> Create set
                 </Button>
