@@ -16,6 +16,7 @@ export interface QuizQuestion {
   analogy?: string;
   options?: QuizOption[];
   correctAnswer?: string;
+  explanation?: string;
   hint?: string;
   python_solution?: string;
   reasoning?: string;
