@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { callGroqChat, formatError } from "../_utils";
 import { extractYouTubeVideoId, fetchYouTubeTranscript } from "@/lib/youtube";
+import type { GeneratedStudyGuide } from "@/services/groq";
+import { studyGuideToMarkdown } from "@/utils/studyGuideMarkdown";
 
 export const runtime = "nodejs";
 
@@ -34,7 +36,7 @@ const extractAssessmentDate = (text: string): string | null => {
   }
 
   // AU-style numeric dates: DD/MM/YYYY or DD-MM-YYYY
-  const numericRegex = /\b(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})\b/g;
+  const numericRegex = /\b(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})\b/g;
   for (const match of text.matchAll(numericRegex)) {
     let year = Number(match[3]);
     if (year < 100) year = 2000 + year;
@@ -103,7 +105,7 @@ const extractWeighting = (text: string): string | null => {
 const extractTotalMarks = (text: string): string | null => {
   const candidates: Array<{ value: string; score: number; index: number }> = [];
 
-  const totalRegex = /total\s+marks?\s*[:\-]?\s*(\d{1,4})/gi;
+  const totalRegex = /total\s+marks?\s*[:-]?\s*(\d{1,4})/gi;
   for (const match of text.matchAll(totalRegex)) {
     candidates.push({ value: match[1], score: 3, index: match.index ?? 0 });
   }
@@ -146,6 +148,7 @@ const extractExamDuration = (text: string): string | null => {
 
 export async function POST(request: Request) {
   try {
+    type StudyGuideRecord = GeneratedStudyGuide & Record<string, unknown>;
     const body = await request.json();
     let assessmentDetails: string = body.assessmentDetails || "";
     let fileName: string = body.fileName || "Assessment";
@@ -379,18 +382,20 @@ REMINDER: Replace ALL example values with real content from the document. Omit a
     // Ensure content is a string
     const contentStr = typeof content === "string" ? content : String(content);
 
-    const parseStudyGuide = (raw: string): Record<string, unknown> | null => {
+    const parseStudyGuide = (raw: string): StudyGuideRecord | null => {
       try {
         const clean = raw.replace(/```json|```/g, "").trim();
         const parsed = JSON.parse(clean);
-        return parsed.studyGuide || parsed || null;
+        return (parsed.studyGuide || parsed || null) as StudyGuideRecord | null;
       } catch {
         const match = raw.match(/\{[\s\S]*\}/);
         if (match) {
           try {
             const parsed = JSON.parse(match[0]);
-            return parsed.studyGuide || parsed || null;
-          } catch {}
+            return (parsed.studyGuide || parsed || null) as StudyGuideRecord | null;
+          } catch {
+            return null;
+          }
         }
       }
       return null;
@@ -461,10 +466,17 @@ REMINDER: Replace ALL example values with real content from the document. Omit a
     }
     // Strip customSections items that have empty/placeholder content, then delete if nothing left
     if (Array.isArray(studyGuide.customSections)) {
-      studyGuide.customSections = (studyGuide.customSections as Array<{ title?: string; content?: unknown }>).filter(
-        (s) => s.title && !isBlank(s.content)
+      const filteredSections = studyGuide.customSections.filter(
+        (
+          section,
+        ): section is NonNullable<GeneratedStudyGuide["customSections"]>[number] =>
+          Boolean(section.title) && !isBlank(section.content),
       );
-      if ((studyGuide.customSections as unknown[]).length === 0) delete studyGuide.customSections;
+      if (filteredSections.length > 0) {
+        studyGuide.customSections = filteredSections;
+      } else {
+        delete studyGuide.customSections;
+      }
     }
     // Strip empty taskStructure
     if (studyGuide.taskStructure && typeof studyGuide.taskStructure === "object") {
@@ -504,10 +516,17 @@ REMINDER: Replace ALL example values with real content from the document. Omit a
       }
       return obj;
     };
-    studyGuide = sanitisePlaceholders(studyGuide) as Record<string, unknown>;
+    studyGuide = sanitisePlaceholders(studyGuide) as StudyGuideRecord;
     studyGuide._docAnalysis = docAnalysis;
 
-    return NextResponse.json({ studyGuide });
+    const markdown = studyGuideToMarkdown(studyGuide);
+
+    return NextResponse.json({
+      studyGuide: {
+        ...studyGuide,
+        markdown,
+      },
+    });
   } catch (error) {
     const message = formatError(error);
     console.error("[/api/groq/study-guide] Error:", message);

@@ -28,6 +28,12 @@ import {
   Leaf,
   Zap
 } from "lucide-react";
+import { NextConfig } from 'next';
+
+// Caching
+const nextconfig: NextConfig = {
+  cacheComponents: true
+}
 
 export interface Achievement {
   id: string;

@@ -6,11 +6,17 @@ import {
   ArrowLeft, BookOpen, ExternalLink, FileText,
   Search, X, BookMarked, GraduationCap,
 } from "lucide-react";
+import { NextConfig } from 'next';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { SUBJECT_CATALOG } from "@/constants/subjects";
 import RESOURCES, { type ResourceLink, type SubjectResources } from "@/data/resources";
+
+// Caching
+const nextconfig: NextConfig = {
+  cacheComponents: true
+}
 
 const subjectLabel = (id: string) =>
   SUBJECT_CATALOG.find(s => s.id === id)?.label || id;

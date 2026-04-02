@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { NextConfig } from 'next';
 import { ArrowLeft, Home, RotateCcw, Trophy, Lightbulb, Loader2, Sparkles, Clock, Brain, AlertTriangle, ChevronRight, Settings2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
@@ -18,6 +19,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
 import type { QuizAnswerInput, QuizOption, QuizQuestion, QuizReview } from "@/types/quiz";
+
+// Caching
+const nextConfig: NextConfig = {
+  cacheComponents: true,
+}
 
 type QuizAnswerRecord = QuizAnswerInput & {
   options?: QuizOption[];

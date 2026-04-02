@@ -106,6 +106,7 @@ CREATE TABLE IF NOT EXISTS public.events (
   user_id    UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   title      TEXT NOT NULL,
   date       TIMESTAMPTZ NOT NULL,
+  end_date   TIMESTAMPTZ,
   type       TEXT,
   subject    TEXT,
   location   TEXT,

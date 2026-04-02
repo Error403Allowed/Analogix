@@ -9,7 +9,6 @@ import { subjectStore } from "@/utils/subjectStore";
 import { SUBJECT_CATALOG } from "@/constants/subjects";
 import { eventStore } from "@/utils/eventStore";
 import { flashcardStore } from "@/utils/flashcardStore";
-import { encodeStudyGuide } from "@/utils/studyGuideContent";
 import {
   assessmentTypeToEventType,
   formatDateKey,
@@ -17,6 +16,14 @@ import {
   parseAssessmentDate,
   pickStudyGuideTitle,
 } from "@/utils/studyGuideGeneration";
+import { studyGuideToMarkdown } from "@/utils/studyGuideMarkdown";
+import {
+  createBlockNoteContentParser,
+  serialiseBN,
+} from "@/components/blocknote/content";
+import {
+  type BlockNoteEditorBlock,
+} from "@/components/blocknote/schema";
 
 // ── Steps ────────────────────────────────────────────────────────────────────
 const STEPS = [
@@ -163,9 +170,18 @@ export default function StudyGuideLoadingPage() {
 
         // Only create document AFTER successful generation
         const doc = await subjectStore.createDocument(job.subjectId, title);
+        const markdown = (result as typeof result & { markdown?: string }).markdown || studyGuideToMarkdown(result);
+        
+        const parser = createBlockNoteContentParser();
+        const blocks = parser.parse(markdown);
+        const content = blocks ? serialiseBN(blocks as BlockNoteEditorBlock[]) : markdown;
+        
         await subjectStore.updateDocument(job.subjectId, doc.id, {
           title,
-          content: encodeStudyGuide({ ...result, title }),
+          content,
+          role: "study-guide",
+          studyGuideMarkdown: markdown,
+          studyGuideData: { ...result, title },
         });
         savedDocRef.current = { subjectId: job.subjectId, docId: doc.id };
 

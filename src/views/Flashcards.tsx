@@ -10,6 +10,7 @@ import {
   Settings2, Upload, Target, PenLine, MessageSquare,
   ListChecks, Clock,
 } from "lucide-react";
+import { NextConfig } from 'next';
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -29,6 +30,11 @@ import {
   AGENT_QUIZ_SESSION_KEY,
   type PendingAgentQuiz,
 } from "@/lib/agentQuiz";
+
+// Caching
+const nextConfig: NextConfig = {
+  cacheComponents: true,
+}
 
 const subjectLabel = (id: string) =>
   SUBJECT_CATALOG.find(s => s.id === id)?.label || id;

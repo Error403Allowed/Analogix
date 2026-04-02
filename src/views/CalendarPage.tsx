@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "sonner";
 import {
   ChevronLeft, ChevronRight, Plus, Clock, CalendarDays,
   Trash2, Search, X, Upload, Tag, LayoutGrid,
@@ -12,18 +13,31 @@ import {
   startOfWeek, endOfWeek, eachDayOfInterval, addWeeks, subWeeks,
   startOfMonth, endOfMonth, addMonths, subMonths,
   isSameMonth, isSameDay, isToday, format,
-  startOfDay, addDays, subDays, setHours, setMinutes,
+  addDays, subDays, setHours, setMinutes, addMinutes,
 } from "date-fns";
 import ICSUploader from "@/components/ICSUploader";
 import { eventStore } from "@/utils/eventStore";
 import { AppEvent } from "@/types/events";
-import { layoutEvents, type LayoutEvent } from "@/views/calendar/layoutEvents";
+import { layoutEvents } from "@/views/calendar/layoutEvents";
+import {
+  DEFAULT_EVENT_DURATION_MINUTES,
+  TIME_GRID_SNAP_MINUTES,
+  clampEventStartMinutes,
+  formatMinutesForTimeInput,
+  getEventDurationMinutes,
+  getEventStartMinutes,
+  minutesToDate,
+  normalizeMinuteRange,
+  snapMinutes,
+} from "@/views/calendar/timeGridUtils";
 import { getTermInfo, getStoredState } from "@/utils/termData";
 
 type CalendarView = "month" | "week" | "day" | "schedule";
+type TypeMeta = { color: string; label: string; icon: string };
+type BuiltinOverrides = Record<string, Partial<TypeMeta>>;
 
 // ─── Built-in types + custom tag storage ──────────────────────────────────────
-const BUILTIN_TYPES: Record<string, { color: string; label: string; icon: string }> = {
+const BUILTIN_TYPES: Record<string, TypeMeta> = {
   exam:       { color: "#ef4444", label: "Exam",       icon: "🎯" },
   assignment: { color: "#f59e0b", label: "Assignment",  icon: "📝" },
   event:      { color: "#3b82f6", label: "Event",       icon: "📌" },
@@ -32,6 +46,7 @@ const BUILTIN_TYPES: Record<string, { color: string; label: string; icon: string
   reminder:   { color: "#8b5cf6", label: "Reminder",    icon: "🔔" },
   sport:      { color: "#f97316", label: "Sport",       icon: "⚽" },
   meeting:    { color: "#06b6d4", label: "Meeting",     icon: "👥" },
+  personal:   { color: "#ec4899", label: "Personal",    icon: "🏠" },
 };
 
 export interface CustomEventType {
@@ -42,6 +57,8 @@ export interface CustomEventType {
 }
 
 const CUSTOM_TYPES_KEY = "analogix_custom_event_types";
+const DELETED_BUILTIN_TYPES_KEY = "analogix_deleted_builtin_types";
+const BUILTIN_OVERRIDES_KEY = "analogix_builtin_overrides";
 
 function loadCustomTypes(): CustomEventType[] {
   if (typeof window === "undefined") return [];
@@ -50,9 +67,70 @@ function loadCustomTypes(): CustomEventType[] {
 function saveCustomTypes(types: CustomEventType[]) {
   localStorage.setItem(CUSTOM_TYPES_KEY, JSON.stringify(types));
 }
+function loadDeletedBuiltins(): string[] {
+  if (typeof window === "undefined") return [];
+  try { return JSON.parse(localStorage.getItem(DELETED_BUILTIN_TYPES_KEY) || "[]"); } catch { return []; }
+}
+function saveDeletedBuiltins(keys: string[]) {
+  localStorage.setItem(DELETED_BUILTIN_TYPES_KEY, JSON.stringify(keys));
+}
+function loadBuiltinOverrides(): BuiltinOverrides {
+  if (typeof window === "undefined") return {};
+  try {
+    return JSON.parse(
+      localStorage.getItem(BUILTIN_OVERRIDES_KEY) || "{}"
+    );
+  } catch { return {}; }
+}
+function saveBuiltinOverrides(overrides: BuiltinOverrides) {
+  localStorage.setItem(BUILTIN_OVERRIDES_KEY, JSON.stringify(overrides));
+}
 
-function getAllTypes(customTypes: CustomEventType[]): Record<string, { color: string; label: string; icon: string }> {
-  const result = { ...BUILTIN_TYPES };
+function normalizeTagKey(label: string) {
+  return label
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function buildCustomTypeCandidate(
+  label: string,
+  icon: string,
+  color: string,
+  existingTypes: Record<string, TypeMeta>,
+): { customType?: CustomEventType; error?: string } {
+  const trimmedLabel = label.trim();
+  if (!trimmedLabel) return { error: "Enter a tag name" };
+
+  const key = normalizeTagKey(trimmedLabel);
+  if (!key) return { error: "Use letters or numbers in the tag name" };
+  if (existingTypes[key]) return { error: "That tag already exists" };
+
+  const labelTaken = Object.values(existingTypes).some(
+    (type) => type.label.trim().toLowerCase() === trimmedLabel.toLowerCase(),
+  );
+  if (labelTaken) return { error: "That tag name already exists" };
+
+  return {
+    customType: {
+      key,
+      label: trimmedLabel,
+      icon,
+      color,
+    },
+  };
+}
+
+function getAllTypes(
+  customTypes: CustomEventType[],
+  deletedBuiltins: string[],
+  builtinOverrides: BuiltinOverrides,
+): Record<string, TypeMeta> {
+  const result: Record<string, TypeMeta> = {};
+  for (const [k, v] of Object.entries(BUILTIN_TYPES)) {
+    if (!deletedBuiltins.includes(k)) result[k] = { ...v, ...builtinOverrides[k] };
+  }
   for (const t of customTypes) result[t.key] = { color: t.color, label: t.label, icon: t.icon };
   return result;
 }
@@ -132,25 +210,44 @@ function EventChip({ event, allTypes, onClick }: { event: AppEvent; allTypes: Re
 }
 
 // ─── TimeBlock (week/day) ─────────────────────────────────────────────────────
-function TimeBlock({ event, allTypes, col, totalCols, height, onDelete, onSelect }: {
+function TimeBlock({ event, allTypes, col, totalCols, span, height, onDelete, onMoveStart, onResizeStart, isDragging }: {
   event: AppEvent; allTypes: Record<string,{color:string;label:string;icon:string}>;
-  col: number; totalCols: number; height: number;
-  onDelete: () => void; onSelect: () => void;
+  col: number; totalCols: number; span: number; height: number;
+  onDelete: () => void;
+  onMoveStart: (event: React.PointerEvent<HTMLDivElement>) => void;
+  onResizeStart: (edge: "start" | "end", event: React.PointerEvent<HTMLDivElement>) => void;
+  isDragging?: boolean;
 }) {
   const meta = getTypeMeta(event.type, allTypes);
-  const colW = 100 / totalCols;
-  const left = `${col * colW + 0.5}%`;
-  const width = `${colW - 1}%`;
+  const colWidth = 100 / Math.max(totalCols, 1);
+  const left = `${col * colWidth + 0.6}%`;
+  const width = `${Math.max(span * colWidth - 1.2, 0)}%`;
   return (
-    <div onClick={onSelect}
-      className="absolute rounded-md px-1.5 py-1 overflow-hidden cursor-pointer group hover:brightness-110 transition-all shadow-sm"
-      style={{ left, width, backgroundColor: meta.color + "22", borderLeft: `3px solid ${meta.color}` }}>
+    <div
+      data-calendar-event="true"
+      onPointerDown={onMoveStart}
+      className={cn(
+        "absolute rounded-md px-1.5 py-1 overflow-hidden cursor-grab group hover:brightness-110 transition-all shadow-sm touch-none select-none",
+        isDragging && "opacity-90 ring-1 ring-white/20 cursor-grabbing",
+      )}
+      style={{ left, width, backgroundColor: meta.color + "22", borderLeft: `3px solid ${meta.color}` }}
+    >
+      <div
+        className="absolute inset-x-0 top-0 h-1.5 cursor-ns-resize opacity-0 group-hover:opacity-100 transition-opacity"
+        onPointerDown={(pointerEvent) => onResizeStart("start", pointerEvent)}
+      />
       <p className="text-[10px] font-bold truncate leading-tight" style={{ color: meta.color }}>{event.title}</p>
       {height >= 36 && <p className="text-[9px] opacity-70 leading-tight" style={{ color: meta.color }}>{format(new Date(event.date), "h:mm a")}</p>}
-      <button onClick={e => { e.stopPropagation(); onDelete(); }}
+      <button
+        onPointerDown={(clickEvent) => clickEvent.stopPropagation()}
+        onClick={e => { e.stopPropagation(); onDelete(); }}
         className="absolute top-0.5 right-0.5 opacity-0 group-hover:opacity-100 transition-opacity w-4 h-4 rounded flex items-center justify-center hover:bg-black/10">
         <X className="w-2.5 h-2.5" style={{ color: meta.color }} />
       </button>
+      <div
+        className="absolute inset-x-0 bottom-0 h-2 cursor-ns-resize opacity-0 group-hover:opacity-100 transition-opacity"
+        onPointerDown={(pointerEvent) => onResizeStart("end", pointerEvent)}
+      />
     </div>
   );
 }
@@ -198,89 +295,400 @@ function EventDetail({ event, allTypes, onClose, onDelete }: { event: AppEvent; 
   );
 }
 
-// ─── Manage Tags modal ────────────────────────────────────────────────────────
-function ManageTagsModal({ customTypes, onClose, onChange }: {
-  customTypes: CustomEventType[];
-  onClose: () => void;
-  onChange: (types: CustomEventType[]) => void;
-}) {
-  const [label, setLabel] = useState("");
-  const [icon, setIcon] = useState("🏷️");
-  const [color, setColor] = useState(PRESET_COLORS[0]);
+// ─── Emoji picker grid ────────────────────────────────────────────────────────
+const EMOJI_OPTIONS = [
+  // Activities & school
+  "🎯","📝","📌","🎓","📚","🔔","⚽","👥","🏷️","🔥","⭐","💡",
+  "🎵","🎨","🏋️","🍕","✈️","🏠","💻","📅","🧪","🔬","📊","💰",
+  "🎮","📸","🚀","🌟","❤️","🎉","🏆","⚡",
+  // More useful ones
+  "🏊","🎸","🎤","🎬","🍔","☕","🍎","🧁","🎂","🛒","🚗","🚌",
+  "🌈","🌸","🌻","🌍","🏖️","🏕️","⛷️","🤸","🧘","🏃","🚴","🤾",
+  "📖","✏️","🖊️","📐","📏","🗒️","📋","📎","🗂️","📂","📁","🗃️",
+  "💬","📞","📧","🔗","🔒","🔑","💼","👔","🎒","👟","🎀","🧩",
+  "🌙","☀️","⛅","❄️","🌊","⛰️","🦁","🐶","🐱","🦋","🌺","🍀",
+];
 
-  const handleAdd = () => {
-    if (!label.trim()) return;
-    const key = label.trim().toLowerCase().replace(/\s+/g, "-");
-    if (BUILTIN_TYPES[key] || customTypes.find(t => t.key === key)) return;
-    const updated = [...customTypes, { key, label: label.trim(), icon, color }];
-    onChange(updated);
-    saveCustomTypes(updated);
-    setLabel(""); setIcon("🏷️"); setColor(PRESET_COLORS[0]);
+function EmojiPicker({ value, onChange }: { value: string; onChange: (e: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const popoverRef = useRef<HTMLDivElement>(null);
+
+  // Close on outside click
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
+        setOpen(false);
+        setSearch("");
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  const filtered = search.trim()
+    ? EMOJI_OPTIONS.filter(e => e.includes(search.trim()))
+    : EMOJI_OPTIONS;
+
+  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    e.stopPropagation();
+    if (e.key === "Enter") {
+      // Try to use the typed text as an emoji directly
+      const segs = [...new Intl.Segmenter("en", { granularity: "grapheme" }).segment(search.trim())];
+      if (segs.length > 0 && search.trim()) {
+        onChange(segs[0].segment);
+        setOpen(false);
+        setSearch("");
+      }
+    }
   };
 
-  const handleRemove = (key: string) => {
+  return (
+    <div className="relative" ref={popoverRef}>
+      <button type="button"
+        onClick={e => { e.stopPropagation(); setOpen(o => !o); }}
+        className="w-12 h-[38px] text-lg flex items-center justify-center bg-muted/40 border border-border rounded-lg hover:bg-muted/70 transition-colors select-none">
+        {value || "🏷️"}
+      </button>
+      {open && (
+        <div
+          className="absolute top-full left-0 mt-1 z-[100] bg-card border border-border rounded-xl shadow-xl p-2"
+          style={{ width: "240px" }}
+          onClick={e => e.stopPropagation()}
+        >
+          <input
+            autoFocus
+            value={search}
+            placeholder="Search or type emoji…"
+            className="w-full text-xs bg-muted/40 border border-border rounded-lg px-2 py-1.5 outline-none focus:ring-2 focus:ring-primary/20 mb-2"
+            onChange={e => setSearch(e.target.value)}
+            onKeyDown={handleSearchKeyDown}
+          />
+          <div className="grid grid-cols-10 gap-0.5 max-h-40 overflow-y-auto">
+            {filtered.map(em => (
+              <button key={em} type="button"
+                onClick={e => { e.stopPropagation(); onChange(em); setOpen(false); setSearch(""); }}
+                className={cn("text-base w-full aspect-square flex items-center justify-center rounded hover:bg-muted transition-colors",
+                  value === em && "bg-muted ring-1 ring-primary")}>
+                {em}
+              </button>
+            ))}
+            {filtered.length === 0 && search.trim() && (
+              <button type="button"
+                onClick={e => {
+                  e.stopPropagation();
+                  const segs = [...new Intl.Segmenter("en", { granularity: "grapheme" }).segment(search.trim())];
+                  if (segs.length > 0) { onChange(segs[0].segment); setOpen(false); setSearch(""); }
+                }}
+                className="col-span-10 text-sm py-2 hover:bg-muted rounded transition-colors text-center">
+                Use "{search.trim()}"
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Inline tag editor row ────────────────────────────────────────────────────
+function TagEditorPanel({ currentLabel, currentColor, currentIcon, onSave, onCancel, saveLabel = "Save" }: {
+  currentLabel?: string;
+  currentColor: string;
+  currentIcon: string;
+  onSave: (label: string | undefined, color: string, icon: string) => void;
+  onCancel: () => void;
+  saveLabel?: string;
+}) {
+  const [label, setLabel] = useState(currentLabel ?? "");
+  const [color, setColor] = useState(currentColor);
+  const [icon, setIcon] = useState(currentIcon);
+
+  return (
+    <div className="mt-1.5 mb-1 px-2.5 py-2 rounded-lg bg-muted/50 border border-border space-y-2">
+      {currentLabel !== undefined && (
+        <input
+          aria-label="Tag name"
+          value={label}
+          onChange={(event) => setLabel(event.target.value)}
+          placeholder="Tag name"
+          className="w-full text-xs bg-background/80 border border-border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-primary/20"
+        />
+      )}
+      <EmojiPicker value={icon} onChange={setIcon} />
+      <div className="flex flex-wrap gap-1.5">
+        {PRESET_COLORS.map(c => (
+          <button key={c} type="button" onClick={() => setColor(c)}
+            className={cn("w-5 h-5 rounded-full transition-all", color === c && "ring-2 ring-offset-1 ring-primary")}
+            style={{ backgroundColor: c }} />
+        ))}
+      </div>
+      <div className="flex gap-2">
+        <button type="button" onClick={onCancel} className="flex-1 text-[10px] font-semibold py-1 rounded-lg border border-border hover:bg-muted transition-colors text-muted-foreground">Cancel</button>
+        <button
+          type="button"
+          onClick={() => onSave(currentLabel !== undefined ? label : undefined, color, icon)}
+          className="flex-1 text-[10px] font-bold py-1 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+        >
+          {saveLabel}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Manage Tags modal ────────────────────────────────────────────────────────
+export function ManageTagsModal({ customTypes, deletedBuiltins, builtinOverrides, onClose, onChange, onDeletedBuiltinsChange, onBuiltinOverridesChange, onAddCustomType }: {
+  customTypes: CustomEventType[];
+  deletedBuiltins: string[];
+  builtinOverrides: BuiltinOverrides;
+  onClose: () => void;
+  onChange: (types: CustomEventType[]) => void;
+  onDeletedBuiltinsChange: (keys: string[]) => void;
+  onBuiltinOverridesChange: (overrides: BuiltinOverrides) => void;
+  onAddCustomType: (label: string, icon: string, color: string) => CustomEventType | null;
+}) {
+  const [label, setLabel] = useState("");
+  const [newIcon, setNewIcon] = useState("🏷️");
+  const [newColor, setNewColor] = useState(PRESET_COLORS[0]);
+  // key of the tag currently being color-edited (null = none)
+  const [editingKey, setEditingKey] = useState<string | null>(null);
+  const builtinDisplay = useCallback((key: string, meta: TypeMeta) => (
+    builtinOverrides[key] ? { ...meta, ...builtinOverrides[key] } : meta
+  ), [builtinOverrides]);
+
+  const saveBuiltinOverride = (key: string, labelOverride: string | undefined, color: string, icon: string) => {
+    const baseType = BUILTIN_TYPES[key];
+    if (!baseType) return;
+
+    const nextLabel = labelOverride?.trim() || baseType.label;
+    const builtinLabelTaken = Object.entries(BUILTIN_TYPES).some(([otherKey, meta]) => (
+      otherKey !== key &&
+      builtinDisplay(otherKey, meta).label.trim().toLowerCase() === nextLabel.toLowerCase()
+    ));
+    const customLabelTaken = customTypes.some(
+      (tag) => tag.label.trim().toLowerCase() === nextLabel.toLowerCase(),
+    );
+
+    if (builtinLabelTaken || customLabelTaken) {
+      toast.error("That tag name already exists");
+      return;
+    }
+
+    const updated = {
+      ...builtinOverrides,
+      [key]: {
+        color,
+        icon,
+        label: nextLabel,
+      },
+    };
+
+    onBuiltinOverridesChange(updated);
+    saveBuiltinOverrides(updated);
+    setEditingKey(null);
+    toast.success(`Updated "${nextLabel}"`);
+  };
+
+  const handleAdd = () => {
+    const created = onAddCustomType(label, newIcon, newColor);
+    if (!created) return;
+    setLabel("");
+    setNewIcon("🏷️");
+    setNewColor(PRESET_COLORS[0]);
+  };
+
+  const handleEditCustom = (key: string, nextLabel: string | undefined, color: string, icon: string) => {
+    const trimmedLabel = nextLabel?.trim();
+    if (!trimmedLabel) {
+      toast.error("Enter a tag name");
+      return;
+    }
+
+    const labelTaken = customTypes.some(
+      (tag) => tag.key !== key && tag.label.trim().toLowerCase() === trimmedLabel.toLowerCase(),
+    );
+    const builtinLabelTaken = Object.entries(BUILTIN_TYPES).some((entry) =>
+      builtinDisplay(entry[0], entry[1]).label.trim().toLowerCase() === trimmedLabel.toLowerCase(),
+    );
+    if (labelTaken || builtinLabelTaken) {
+      toast.error("That tag name already exists");
+      return;
+    }
+
+    const updated = customTypes.map(t => t.key === key ? { ...t, label: trimmedLabel, color, icon } : t);
+    onChange(updated);
+    saveCustomTypes(updated);
+    setEditingKey(null);
+    toast.success(`Updated "${trimmedLabel}"`);
+  };
+
+  const handleRemoveCustom = (key: string) => {
     const updated = customTypes.filter(t => t.key !== key);
     onChange(updated);
     saveCustomTypes(updated);
   };
+
+  const handleDeleteBuiltin = (key: string) => {
+    const updated = [...deletedBuiltins, key];
+    onDeletedBuiltinsChange(updated);
+    saveDeletedBuiltins(updated);
+  };
+
+  const handleRestoreBuiltin = (key: string) => {
+    const updated = deletedBuiltins.filter(k => k !== key);
+    onDeletedBuiltinsChange(updated);
+    saveDeletedBuiltins(updated);
+  };
+
+  const activeBuiltins = Object.entries(BUILTIN_TYPES).filter(([k]) => !deletedBuiltins.includes(k));
+  const removedBuiltins = Object.entries(BUILTIN_TYPES).filter(([k]) => deletedBuiltins.includes(k));
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
       <motion.div initial={{ scale: 0.95, y: 12 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 12 }}
-        className="relative w-full max-w-sm rounded-2xl bg-card border border-border shadow-2xl z-10 overflow-hidden"
+        className="relative w-full max-w-sm rounded-2xl bg-card border border-border shadow-2xl z-10 overflow-hidden max-h-[85vh] flex flex-col"
         onClick={e => e.stopPropagation()}>
-        <div className="p-5">
+        <div className="p-5 overflow-y-auto flex-1">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-bold">Manage Tags</h3>
             <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground"><X className="w-4 h-4" /></button>
           </div>
-          {/* Built-in types (read-only) */}
+
+          {/* Built-in types */}
           <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/50 mb-2">Built-in</p>
-          <div className="space-y-1 mb-4">
-            {Object.entries(BUILTIN_TYPES).map(([key, m]) => (
-              <div key={key} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-muted/30">
-                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: m.color }} />
-                <span className="text-xs font-semibold text-foreground">{m.icon} {m.label}</span>
-              </div>
-            ))}
+          <div className="space-y-0.5 mb-4">
+            {activeBuiltins.map(([key, rawM]) => {
+              const m = builtinDisplay(key, rawM);
+              const isEditing = editingKey === key;
+              return (
+                <div key={key}>
+                  <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-muted/30">
+                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: m.color }} />
+                    <span className="text-xs font-semibold text-foreground flex-1">{m.icon} {m.label}</span>
+                    <button
+                      type="button"
+                      aria-label={`Edit ${m.label} tag`}
+                      onClick={() => setEditingKey(isEditing ? null : key)}
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-border text-[10px] font-semibold text-muted-foreground hover:text-foreground hover:bg-background/70 transition-colors"
+                    >
+                      <Pencil className="w-3 h-3" />
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={`Remove ${m.label} tag`}
+                      onClick={() => handleDeleteBuiltin(key)}
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-destructive/20 text-[10px] font-semibold text-destructive/70 hover:text-destructive hover:bg-destructive/5 transition-colors"
+                    >
+                      <X className="w-3 h-3" />
+                      Remove
+                    </button>
+                  </div>
+                  {isEditing && (
+                    <TagEditorPanel
+                      currentLabel={m.label}
+                      currentColor={m.color} currentIcon={m.icon}
+                      onSave={(nextLabel, color, icon) => saveBuiltinOverride(key, nextLabel, color, icon)}
+                      onCancel={() => setEditingKey(null)}
+                    />
+                  )}
+                </div>
+              );
+            })}
           </div>
+
           {/* Custom types */}
           {customTypes.length > 0 && (
             <>
               <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/50 mb-2">Custom</p>
-              <div className="space-y-1 mb-4">
-                {customTypes.map(t => (
-                  <div key={t.key} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-muted/30 group">
-                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: t.color }} />
-                    <span className="text-xs font-semibold text-foreground flex-1">{t.icon} {t.label}</span>
-                    <button onClick={() => handleRemove(t.key)} className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive/60 hover:text-destructive p-0.5 rounded">
-                      <X className="w-3 h-3" />
-                    </button>
-                  </div>
-                ))}
+              <div className="space-y-0.5 mb-4">
+                {customTypes.map(t => {
+                  const isEditing = editingKey === t.key;
+                  return (
+                    <div key={t.key}>
+                      <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-muted/30">
+                        <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: t.color }} />
+                        <span className="text-xs font-semibold text-foreground flex-1">{t.icon} {t.label}</span>
+                        <button
+                          type="button"
+                          aria-label={`Edit ${t.label} tag`}
+                          onClick={() => setEditingKey(isEditing ? null : t.key)}
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-border text-[10px] font-semibold text-muted-foreground hover:text-foreground hover:bg-background/70 transition-colors"
+                        >
+                          <Pencil className="w-3 h-3" />
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          aria-label={`Remove ${t.label} tag`}
+                          onClick={() => handleRemoveCustom(t.key)}
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-destructive/20 text-[10px] font-semibold text-destructive/70 hover:text-destructive hover:bg-destructive/5 transition-colors"
+                        >
+                          <X className="w-3 h-3" />
+                          Remove
+                        </button>
+                      </div>
+                      {isEditing && (
+                        <TagEditorPanel
+                          currentLabel={t.label}
+                          currentColor={t.color} currentIcon={t.icon}
+                          onSave={(nextLabel, color, icon) => handleEditCustom(t.key, nextLabel, color, icon)}
+                          onCancel={() => setEditingKey(null)}
+                        />
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </>
           )}
+
+          {removedBuiltins.length > 0 && (
+            <>
+              <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/50 mb-2">Removed Built-in Tags</p>
+              <div className="space-y-0.5 mb-4">
+                {removedBuiltins.map(([key, rawM]) => {
+                  const m = builtinDisplay(key, rawM);
+                  return (
+                    <div key={key} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-muted/20">
+                      <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: m.color }} />
+                      <span className="text-xs font-semibold text-muted-foreground flex-1">{m.icon} {m.label}</span>
+                      <button
+                        type="button"
+                        aria-label={`Restore ${m.label} tag`}
+                        onClick={() => handleRestoreBuiltin(key)}
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-border text-[10px] font-semibold text-muted-foreground hover:text-foreground hover:bg-background/70 transition-colors"
+                      >
+                        Restore
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+
           {/* Add new */}
           <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/50 mb-2">Add New Tag</p>
           <div className="space-y-2">
             <div className="flex gap-2">
-              <input value={icon} onChange={e => setIcon(e.target.value)} placeholder="🏷️"
-                className="w-12 text-center text-sm bg-muted/40 border border-border rounded-lg px-2 py-2 outline-none focus:ring-2 focus:ring-primary/20" maxLength={2} />
-              <input value={label} onChange={e => setLabel(e.target.value)} placeholder="Tag name"
-                onKeyDown={e => e.key === "Enter" && handleAdd()}
+              <EmojiPicker value={newIcon} onChange={setNewIcon} />
+              <input aria-label="New tag name" value={label} onChange={e => setLabel(e.target.value)} placeholder="Tag name"
+                onKeyDown={e => { e.stopPropagation(); if (e.key === "Enter") handleAdd(); }}
                 className="flex-1 text-xs bg-muted/40 border border-border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-primary/20" />
             </div>
             <div className="flex flex-wrap gap-1.5">
               {PRESET_COLORS.map(c => (
-                <button key={c} onClick={() => setColor(c)}
-                  className={cn("w-5 h-5 rounded-full transition-all", color === c && "ring-2 ring-offset-1 ring-primary")}
+              <button key={c} type="button" onClick={e => { e.stopPropagation(); setNewColor(c); }}
+                  className={cn("w-5 h-5 rounded-full transition-all", newColor === c && "ring-2 ring-offset-1 ring-primary")}
                   style={{ backgroundColor: c }} />
               ))}
             </div>
-            <button onClick={handleAdd} disabled={!label.trim()}
+            <button type="button" onClick={e => { e.stopPropagation(); handleAdd(); }} disabled={!label.trim()}
               className="w-full text-xs font-bold py-2 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 transition-all">
               Add Tag
             </button>
@@ -292,28 +700,39 @@ function ManageTagsModal({ customTypes, onClose, onChange }: {
 }
 
 // ─── Create Event Modal ────────────────────────────────────────────────────────
-function CreateEventModal({ defaultDate, defaultHour, allTypes, onClose, onSave }: {
-  defaultDate: Date; defaultHour?: number; allTypes: Record<string,{color:string;label:string;icon:string}>;
+function CreateEventModal({ defaultDate, defaultStartMin, defaultEndMin, allTypes, onClose, onSave, onManageTags, onCreateTag }: {
+  defaultDate: Date;
+  defaultStartMin?: number;
+  defaultEndMin?: number;
+  allTypes: Record<string,{color:string;label:string;icon:string}>;
   onClose: () => void; onSave: (event: AppEvent) => void;
+  onManageTags: () => void;
+  onCreateTag: (label: string, icon: string, color: string) => CustomEventType | null;
 }) {
-  const startH = defaultHour ?? 9;
-  const endH = Math.min(startH + 1, 23);
+  const startMin = defaultStartMin ?? 9 * 60;
+  const endMin = defaultEndMin ?? Math.min(startMin + DEFAULT_EVENT_DURATION_MINUTES, 23 * 60 + 45);
   const [title, setTitle] = useState("");
   const [date, setDate] = useState(format(defaultDate, "yyyy-MM-dd"));
-  const [startTime, setStartTime] = useState(`${String(startH).padStart(2, "0")}:00`);
-  const [endTime, setEndTime] = useState(`${String(endH).padStart(2, "0")}:00`);
+  const [startTime, setStartTime] = useState(formatMinutesForTimeInput(startMin));
+  const [endTime, setEndTime] = useState(formatMinutesForTimeInput(endMin));
   const [hasEndTime, setHasEndTime] = useState(true);
   const [type, setType] = useState(Object.keys(allTypes)[0] || "event");
   const [subject, setSubject] = useState("");
   const [description, setDescription] = useState("");
   const [showTypeMenu, setShowTypeMenu] = useState(false);
+  const [showQuickTagCreator, setShowQuickTagCreator] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   useEffect(() => { setTimeout(() => inputRef.current?.focus(), 50); }, []);
 
   const handleSave = () => {
     if (!title.trim() || !date) return;
     const startDate = new Date(`${date}T${startTime}`);
-    const endDate = hasEndTime ? new Date(`${date}T${endTime}`) : undefined;
+    let endDate = hasEndTime ? new Date(`${date}T${endTime}`) : undefined;
+
+    if (endDate && endDate.getTime() <= startDate.getTime()) {
+      endDate = addMinutes(startDate, TIME_GRID_SNAP_MINUTES);
+    }
+
     onSave({
       id: crypto.randomUUID(),
       title: title.trim(),
@@ -370,6 +789,49 @@ function CreateEventModal({ defaultDate, defaultHour, allTypes, onClose, onSave 
                 )}
               </AnimatePresence>
             </div>
+            <div className="flex justify-end">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowQuickTagCreator((current) => !current)}
+                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-border text-[10px] font-bold uppercase tracking-widest text-primary hover:bg-muted transition-colors"
+                >
+                  <Tag className="w-3 h-3" />
+                  {showQuickTagCreator ? "Close new tag" : "New tag"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowQuickTagCreator(false);
+                    setShowTypeMenu(false);
+                    onManageTags();
+                  }}
+                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-border text-[10px] font-bold uppercase tracking-widest text-primary hover:bg-muted transition-colors"
+                >
+                  <Pencil className="w-3 h-3" />
+                  Manage tags
+                </button>
+              </div>
+            </div>
+            {showQuickTagCreator && (
+              <div className="rounded-xl border border-border bg-muted/25 p-3">
+                <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/60 mb-2">Create Tag</p>
+                <TagEditorPanel
+                  currentLabel=""
+                  currentColor={PRESET_COLORS[0]}
+                  currentIcon="🏷️"
+                  saveLabel="Create tag"
+                  onSave={(nextLabel, color, icon) => {
+                    const created = onCreateTag(nextLabel ?? "", icon, color);
+                    if (!created) return;
+                    setType(created.key);
+                    setShowQuickTagCreator(false);
+                    setShowTypeMenu(false);
+                  }}
+                  onCancel={() => setShowQuickTagCreator(false)}
+                />
+              </div>
+            )}
             {/* Date + times */}
             <div>
               <label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground mb-1.5 block">Date</label>
@@ -379,7 +841,7 @@ function CreateEventModal({ defaultDate, defaultHour, allTypes, onClose, onSave 
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground mb-1.5 block">Start time</label>
-                <input type="time" value={startTime} onChange={e => setStartTime(e.target.value)}
+                <input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} step={TIME_GRID_SNAP_MINUTES * 60}
                   className="w-full text-xs bg-muted/40 border border-border rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-primary/20" />
               </div>
               <div>
@@ -387,7 +849,7 @@ function CreateEventModal({ defaultDate, defaultHour, allTypes, onClose, onSave 
                   <label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">End time</label>
                   <button onClick={() => setHasEndTime(v => !v)} className={cn("text-[9px] font-bold transition-colors", hasEndTime ? "text-primary" : "text-muted-foreground/50")}>{hasEndTime ? "On" : "Off"}</button>
                 </div>
-                <input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} disabled={!hasEndTime}
+                <input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} disabled={!hasEndTime} step={TIME_GRID_SNAP_MINUTES * 60}
                   className="w-full text-xs bg-muted/40 border border-border rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-40" />
               </div>
             </div>
@@ -411,13 +873,56 @@ function CreateEventModal({ defaultDate, defaultHour, allTypes, onClose, onSave 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const HOUR_H = 56;
 
-function TimeGrid({ days, events, allTypes, now, onDelete, onSelect, onClickTime }: {
+type CreateInteraction = {
+  kind: "create";
+  pointerId: number;
+  dayIndex: number;
+  anchorMin: number;
+  startMin: number;
+  endMin: number;
+  startClientX: number;
+  startClientY: number;
+  didDrag: boolean;
+};
+
+type MoveInteraction = {
+  kind: "move";
+  pointerId: number;
+  eventId: string;
+  previewDayIndex: number;
+  previewStartMin: number;
+  durationMin: number;
+  pointerOffsetMin: number;
+  startClientX: number;
+  startClientY: number;
+  didDrag: boolean;
+};
+
+type ResizeInteraction = {
+  kind: "resize";
+  pointerId: number;
+  eventId: string;
+  edge: "start" | "end";
+  dayIndex: number;
+  previewStartMin: number;
+  previewEndMin: number;
+  startClientX: number;
+  startClientY: number;
+  didDrag: boolean;
+};
+
+type GridInteraction = CreateInteraction | MoveInteraction | ResizeInteraction;
+
+function TimeGrid({ days, events, allTypes, now, onDelete, onSelect, onCreateSelection, onUpdateEvent }: {
   days: Date[]; events: AppEvent[];
   allTypes: Record<string,{color:string;label:string;icon:string}>;
   now: Date; onDelete: (id: string) => void; onSelect: (e: AppEvent) => void;
-  onClickTime: (day: Date, hour: number) => void;
+  onCreateSelection: (day: Date, startMin: number, endMin: number) => void;
+  onUpdateEvent: (id: string, updates: Pick<AppEvent, "date" | "endDate">) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const columnsRef = useRef<HTMLDivElement>(null);
+  const [interaction, setInteraction] = useState<GridInteraction | null>(null);
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
   const showNow = days.some(d => isToday(d));
 
@@ -427,6 +932,306 @@ function TimeGrid({ days, events, allTypes, now, onDelete, onSelect, onClickTime
     containerRef.current?.scrollTo({ top: scrollTop, behavior: "smooth" });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (!interaction) return;
+
+    const previousCursor = document.body.style.cursor;
+    document.body.style.cursor = interaction.kind === "move" ? "grabbing" : "ns-resize";
+
+    return () => {
+      document.body.style.cursor = previousCursor;
+    };
+  }, [interaction]);
+
+  const getPointerSlot = useCallback((clientX: number, clientY: number) => {
+    const container = containerRef.current;
+    const columns = columnsRef.current;
+    if (!container || !columns || days.length === 0) return null;
+
+    const rect = columns.getBoundingClientRect();
+    const dayWidth = rect.width / days.length;
+    const relativeX = Math.min(Math.max(clientX - rect.left, 0), Math.max(rect.width - 1, 0));
+    const relativeY = clientY - rect.top + container.scrollTop - HOUR_H / 2;
+
+    return {
+      dayIndex: Math.min(Math.max(Math.floor(relativeX / Math.max(dayWidth, 1)), 0), days.length - 1),
+      minutes: snapMinutes(relativeY / (HOUR_H / 60)),
+    };
+  }, [days.length]);
+
+  const previewEvent = useMemo(() => {
+    if (!interaction || interaction.kind === "create") return null;
+
+    const sourceEvent = events.find((event) => event.id === interaction.eventId);
+    if (!sourceEvent) return null;
+
+    if (interaction.kind === "move") {
+      const day = days[interaction.previewDayIndex];
+      const startDate = minutesToDate(day, interaction.previewStartMin);
+      const endDate = minutesToDate(day, interaction.previewStartMin + interaction.durationMin);
+
+      return {
+        ...sourceEvent,
+        date: startDate,
+        endDate,
+      };
+    }
+
+    const day = days[interaction.dayIndex];
+    return {
+      ...sourceEvent,
+      date: minutesToDate(day, interaction.previewStartMin),
+      endDate: minutesToDate(day, interaction.previewEndMin),
+    };
+  }, [days, events, interaction]);
+
+  const displayEvents = useMemo(() => {
+    if (!previewEvent) return events;
+    return events.map((event) => event.id === previewEvent.id ? previewEvent : event);
+  }, [events, previewEvent]);
+
+  const getSiblingDayEvents = useCallback((event: AppEvent) => (
+    events.filter((candidate) => isSameDay(new Date(candidate.date), new Date(event.date)))
+  ), [events]);
+
+  useEffect(() => {
+    if (!interaction) return;
+
+    const hasMovedEnough = (clientX: number, clientY: number, startClientX: number, startClientY: number) =>
+      Math.abs(clientX - startClientX) > 4 || Math.abs(clientY - startClientY) > 4;
+
+    const handlePointerMove = (pointerEvent: PointerEvent) => {
+      if (pointerEvent.pointerId !== interaction.pointerId) return;
+
+      const slot = getPointerSlot(pointerEvent.clientX, pointerEvent.clientY);
+      if (!slot) return;
+
+      setInteraction((current) => {
+        if (!current || current.pointerId !== pointerEvent.pointerId) return current;
+
+        if (current.kind === "create") {
+          const didDrag = current.didDrag || hasMovedEnough(
+            pointerEvent.clientX,
+            pointerEvent.clientY,
+            current.startClientX,
+            current.startClientY,
+          );
+
+          if (!didDrag) return current;
+
+          const { startMin, endMin } = normalizeMinuteRange(current.anchorMin, slot.minutes);
+
+          return { ...current, didDrag: true, startMin, endMin };
+        }
+
+        if (current.kind === "move") {
+          const didDrag = current.didDrag || hasMovedEnough(
+            pointerEvent.clientX,
+            pointerEvent.clientY,
+            current.startClientX,
+            current.startClientY,
+          );
+
+          if (!didDrag) return current;
+
+          const nextStartMin = clampEventStartMinutes(
+            snapMinutes(slot.minutes - current.pointerOffsetMin),
+            current.durationMin,
+          );
+
+          return {
+            ...current,
+            didDrag: true,
+            previewDayIndex: slot.dayIndex,
+            previewStartMin: nextStartMin,
+          };
+        }
+
+        const didDrag = current.didDrag || hasMovedEnough(
+          pointerEvent.clientX,
+          pointerEvent.clientY,
+          current.startClientX,
+          current.startClientY,
+        );
+
+        if (!didDrag) return current;
+
+        if (current.edge === "start") {
+          const { startMin } = normalizeMinuteRange(
+            slot.minutes,
+            current.previewEndMin,
+          );
+
+          return { ...current, didDrag: true, previewStartMin: startMin };
+        }
+
+        const { endMin } = normalizeMinuteRange(
+          current.previewStartMin,
+          slot.minutes,
+        );
+
+        return { ...current, didDrag: true, previewEndMin: endMin };
+      });
+    };
+
+    const handlePointerUp = (pointerEvent: PointerEvent) => {
+      if (pointerEvent.pointerId !== interaction.pointerId) return;
+
+      const current = interaction;
+      setInteraction(null);
+
+      if (current.kind === "create") {
+        const startMin = current.didDrag
+          ? current.startMin
+          : clampEventStartMinutes(current.anchorMin, DEFAULT_EVENT_DURATION_MINUTES);
+        const endMin = current.didDrag
+          ? current.endMin
+          : Math.min(startMin + DEFAULT_EVENT_DURATION_MINUTES, 24 * 60);
+
+        onCreateSelection(days[current.dayIndex], startMin, endMin);
+        return;
+      }
+
+      const sourceEvent = events.find((event) => event.id === current.eventId);
+      if (!sourceEvent) return;
+
+      if (current.kind === "move") {
+        if (!current.didDrag) {
+          onSelect(sourceEvent);
+          return;
+        }
+
+        const nextDay = days[current.previewDayIndex];
+        const nextStart = minutesToDate(nextDay, current.previewStartMin);
+        const nextEnd = minutesToDate(nextDay, current.previewStartMin + current.durationMin);
+
+        if (
+          nextStart.getTime() === new Date(sourceEvent.date).getTime() &&
+          nextEnd.getTime() === addMinutes(new Date(sourceEvent.date), current.durationMin).getTime()
+        ) {
+          return;
+        }
+
+        onUpdateEvent(sourceEvent.id, { date: nextStart, endDate: nextEnd });
+        return;
+      }
+
+      if (!current.didDrag) return;
+
+      const nextDay = days[current.dayIndex];
+      const nextStart = minutesToDate(nextDay, current.previewStartMin);
+      const nextEnd = minutesToDate(nextDay, current.previewEndMin);
+      const sourceDurationMinutes = getEventDurationMinutes(
+        sourceEvent,
+        DEFAULT_EVENT_DURATION_MINUTES,
+        getSiblingDayEvents(sourceEvent),
+      );
+
+      if (
+        nextStart.getTime() === new Date(sourceEvent.date).getTime() &&
+        nextEnd.getTime() === addMinutes(new Date(sourceEvent.date), sourceDurationMinutes).getTime()
+      ) {
+        return;
+      }
+
+      onUpdateEvent(sourceEvent.id, { date: nextStart, endDate: nextEnd });
+    };
+
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp);
+
+    return () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+    };
+  }, [days, events, getPointerSlot, interaction, onCreateSelection, onSelect, onUpdateEvent]);
+
+  const startCreateInteraction = (dayIndex: number, pointerEvent: React.PointerEvent<HTMLDivElement>) => {
+    if (pointerEvent.button !== 0) return;
+    if (pointerEvent.target instanceof HTMLElement && pointerEvent.target.closest("[data-calendar-event='true']")) return;
+
+    const slot = getPointerSlot(pointerEvent.clientX, pointerEvent.clientY);
+    if (!slot) return;
+
+    pointerEvent.preventDefault();
+    setInteraction({
+      kind: "create",
+      pointerId: pointerEvent.pointerId,
+      dayIndex,
+      anchorMin: slot.minutes,
+      startMin: slot.minutes,
+      endMin: Math.min(slot.minutes + DEFAULT_EVENT_DURATION_MINUTES, 24 * 60),
+      startClientX: pointerEvent.clientX,
+      startClientY: pointerEvent.clientY,
+      didDrag: false,
+    });
+  };
+
+  const startMoveInteraction = (event: AppEvent, pointerEvent: React.PointerEvent<HTMLDivElement>) => {
+    if (pointerEvent.button !== 0) return;
+
+    const slot = getPointerSlot(pointerEvent.clientX, pointerEvent.clientY);
+    const dayIndex = days.findIndex((day) => isSameDay(day, new Date(event.date)));
+    if (!slot || dayIndex === -1) return;
+
+    const startMinutes = getEventStartMinutes(event);
+    const durationMinutes = getEventDurationMinutes(
+      event,
+      DEFAULT_EVENT_DURATION_MINUTES,
+      getSiblingDayEvents(event),
+    );
+
+    pointerEvent.preventDefault();
+    pointerEvent.stopPropagation();
+
+    setInteraction({
+      kind: "move",
+      pointerId: pointerEvent.pointerId,
+      eventId: event.id,
+      previewDayIndex: dayIndex,
+      previewStartMin: startMinutes,
+      durationMin: durationMinutes,
+      pointerOffsetMin: Math.min(Math.max(slot.minutes - startMinutes, 0), durationMinutes),
+      startClientX: pointerEvent.clientX,
+      startClientY: pointerEvent.clientY,
+      didDrag: false,
+    });
+  };
+
+  const startResizeInteraction = (
+    event: AppEvent,
+    edge: "start" | "end",
+    pointerEvent: React.PointerEvent<HTMLDivElement>,
+  ) => {
+    if (pointerEvent.button !== 0) return;
+
+    const dayIndex = days.findIndex((day) => isSameDay(day, new Date(event.date)));
+    if (dayIndex === -1) return;
+
+    pointerEvent.preventDefault();
+    pointerEvent.stopPropagation();
+
+    const startMinutes = getEventStartMinutes(event);
+    const endMinutes = startMinutes + getEventDurationMinutes(
+      event,
+      DEFAULT_EVENT_DURATION_MINUTES,
+      getSiblingDayEvents(event),
+    );
+
+    setInteraction({
+      kind: "resize",
+      pointerId: pointerEvent.pointerId,
+      eventId: event.id,
+      edge,
+      dayIndex,
+      previewStartMin: startMinutes,
+      previewEndMin: endMinutes,
+      startClientX: pointerEvent.clientX,
+      startClientY: pointerEvent.clientY,
+      didDrag: false,
+    });
+  };
 
   return (
     <div ref={containerRef} className="flex overflow-y-auto flex-1 min-h-0">
@@ -445,7 +1250,7 @@ function TimeGrid({ days, events, allTypes, now, onDelete, onSelect, onClickTime
       </div>
 
       {/* Grid columns */}
-      <div className="flex flex-1 relative">
+      <div ref={columnsRef} className="flex flex-1 relative">
         {/* Live now indicator */}
         {showNow && (
           <div className="absolute left-0 right-0 z-20 flex items-center pointer-events-none"
@@ -456,17 +1261,35 @@ function TimeGrid({ days, events, allTypes, now, onDelete, onSelect, onClickTime
         )}
 
         {days.map((day, di) => {
-          const dayEvents = events.filter(e => isSameDay(new Date(e.date), day));
+          const dayEvents = displayEvents.filter(e => isSameDay(new Date(e.date), day));
           const laid = layoutEvents(dayEvents, HOUR_H);
+          const createPreview = interaction?.kind === "create" && interaction.dayIndex === di
+            ? {
+                startMin: interaction.didDrag
+                  ? interaction.startMin
+                  : clampEventStartMinutes(interaction.anchorMin, DEFAULT_EVENT_DURATION_MINUTES),
+                endMin: interaction.didDrag
+                  ? interaction.endMin
+                  : Math.min(
+                      clampEventStartMinutes(interaction.anchorMin, DEFAULT_EVENT_DURATION_MINUTES) +
+                        DEFAULT_EVENT_DURATION_MINUTES,
+                      24 * 60,
+                    ),
+              }
+            : null;
+
           return (
-            <div key={di} className="relative flex-1 border-r border-border/40 last:border-r-0">
-              {/* Hour cells — click to create */}
+            <div
+              key={di}
+              className="relative flex-1 border-r border-border/40 last:border-r-0"
+              onPointerDown={(pointerEvent) => startCreateInteraction(di, pointerEvent)}
+            >
+              {/* Hour cells */}
               <div style={{ height: HOUR_H / 2 }} />
               {HOURS.map(h => (
                 <div key={h}
                   className="border-t border-border/20 hover:bg-primary/5 transition-colors cursor-pointer group relative"
                   style={{ height: HOUR_H }}
-                  onClick={() => onClickTime(day, h)}
                 >
                   <span className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
                     <span className="text-[9px] font-bold text-primary/50">+</span>
@@ -478,14 +1301,29 @@ function TimeGrid({ days, events, allTypes, now, onDelete, onSelect, onClickTime
                 <div key={`half-${h}`} className="absolute left-0 right-0 border-t border-border/10 pointer-events-none"
                   style={{ top: HOUR_H / 2 + h * HOUR_H + HOUR_H / 2 }} />
               ))}
+              {createPreview && (
+                <div
+                  className="absolute left-[3%] right-[3%] rounded-xl border border-dashed border-primary/50 bg-primary/15 pointer-events-none"
+                  style={{
+                    top: createPreview.startMin * (HOUR_H / 60) + HOUR_H / 2,
+                    height: Math.max((createPreview.endMin - createPreview.startMin) * (HOUR_H / 60), 18),
+                  }}
+                >
+                  <div className="px-2 py-1">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-primary/80">New event</p>
+                  </div>
+                </div>
+              )}
               {/* Events with overlap layout */}
-              {laid.map(({ event, top, height, col, totalCols }) => (
+              {laid.map(({ event, top, height, col, totalCols, span }) => (
                 <div key={event.id} className="absolute left-0 right-0" style={{ top: top + HOUR_H / 2, height }}>
                   <TimeBlock
                     event={event} allTypes={allTypes}
-                    col={col} totalCols={totalCols} height={height}
+                    col={col} totalCols={totalCols} span={span} height={height}
                     onDelete={() => onDelete(event.id)}
-                    onSelect={() => onSelect(event)}
+                    onMoveStart={(pointerEvent) => startMoveInteraction(event, pointerEvent)}
+                    onResizeStart={(edge, pointerEvent) => startResizeInteraction(event, edge, pointerEvent)}
+                    isDragging={!!interaction && interaction.kind !== "create" && interaction.eventId === event.id}
                   />
                 </div>
               ))}
@@ -666,16 +1504,21 @@ const CalendarPage = () => {
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState("all");
   const [showCreate, setShowCreate] = useState(false);
-  const [createDefaults, setCreateDefaults] = useState<{ date: Date; hour?: number } | null>(null);
+  const [createDefaults, setCreateDefaults] = useState<{ date: Date; startMin?: number; endMin?: number } | null>(null);
   const [showUploader, setShowUploader] = useState(false);
   const [showManageTags, setShowManageTags] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<AppEvent | null>(null);
   const [showSearch, setShowSearch] = useState(false);
   const [customTypes, setCustomTypes] = useState<CustomEventType[]>(() => loadCustomTypes());
+  const [deletedBuiltins, setDeletedBuiltins] = useState<string[]>(() => loadDeletedBuiltins());
+  const [builtinOverrides, setBuiltinOverrides] = useState<BuiltinOverrides>(() => loadBuiltinOverrides());
   const searchRef = useRef<HTMLInputElement>(null);
   const now = useNow();
 
-  const allTypes = useMemo(() => getAllTypes(customTypes), [customTypes]);
+  const allTypes = useMemo(
+    () => getAllTypes(customTypes, deletedBuiltins, builtinOverrides),
+    [customTypes, deletedBuiltins, builtinOverrides],
+  );
 
   const loadEvents = useCallback(() => eventStore.getAll().then(setEvents), []);
   useEffect(() => {
@@ -703,13 +1546,43 @@ const CalendarPage = () => {
       .slice(0, 8),
     [filteredEvents, now]);
 
-  const openCreate = (day: Date, hour?: number) => {
-    setCreateDefaults({ date: day, hour });
+  const openCreate = (day: Date, startMin?: number, endMin?: number) => {
+    setDate(day);
+    setCreateDefaults({ date: day, startMin, endMin });
     setShowCreate(true);
   };
 
-  const handleSaveEvent = (e: AppEvent) => { eventStore.add(e); loadEvents(); };
-  const handleDelete = (id: string) => { if (confirm("Delete this event?")) { eventStore.remove(id); loadEvents(); } };
+  const handleSaveEvent = (event: AppEvent) => {
+    void eventStore.add(event);
+  };
+
+  const handleDelete = (id: string) => {
+    if (!confirm("Delete this event?")) return;
+    void eventStore.remove(id);
+  };
+
+  const handleAddCustomType = useCallback((label: string, icon: string, color: string) => {
+    const candidate = buildCustomTypeCandidate(label, icon, color, allTypes);
+    if (!candidate.customType) {
+      toast.error(candidate.error ?? "Failed to create tag");
+      return null;
+    }
+
+    const nextCustomTypes = customTypes.some((type) => type.key === candidate.customType?.key)
+      ? customTypes
+      : [...customTypes, candidate.customType];
+    setCustomTypes(nextCustomTypes);
+    saveCustomTypes(nextCustomTypes);
+    toast.success(`Added "${candidate.customType.label}"`);
+    return candidate.customType;
+  }, [allTypes, customTypes]);
+
+  const handleUpdateEvent = useCallback((id: string, updates: Pick<AppEvent, "date" | "endDate">) => {
+    setEvents((current) =>
+      current.map((event) => event.id === id ? { ...event, ...updates } : event),
+    );
+    void eventStore.update(id, updates);
+  }, []);
 
   const navigate = (dir: 1 | -1) => {
     if (view === "month") setDate(d => dir === 1 ? addMonths(d, 1) : subMonths(d, 1));
@@ -807,7 +1680,7 @@ const CalendarPage = () => {
           <AnimatePresence>
             {showUploader && (
               <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-                <ICSUploader />
+                <ICSUploader allTypes={allTypes} />
               </motion.div>
             )}
           </AnimatePresence>
@@ -897,10 +1770,30 @@ const CalendarPage = () => {
                       );
                     })}
                   </div>
-                  <TimeGrid days={weekDays} events={filteredEvents} allTypes={allTypes} now={now} onDelete={handleDelete} onSelect={setSelectedEvent} onClickTime={(day, hour) => openCreate(day, hour)} />
+                  <TimeGrid
+                    days={weekDays}
+                    events={filteredEvents}
+                    allTypes={allTypes}
+                    now={now}
+                    onDelete={handleDelete}
+                    onSelect={setSelectedEvent}
+                    onCreateSelection={(day, startMin, endMin) => openCreate(day, startMin, endMin)}
+                    onUpdateEvent={handleUpdateEvent}
+                  />
                 </div>
               )}
-              {view === "day" && <TimeGrid days={[date]} events={filteredEvents} allTypes={allTypes} now={now} onDelete={handleDelete} onSelect={setSelectedEvent} onClickTime={(day, hour) => openCreate(day, hour)} />}
+              {view === "day" && (
+                <TimeGrid
+                  days={[date]}
+                  events={filteredEvents}
+                  allTypes={allTypes}
+                  now={now}
+                  onDelete={handleDelete}
+                  onSelect={setSelectedEvent}
+                  onCreateSelection={(day, startMin, endMin) => openCreate(day, startMin, endMin)}
+                  onUpdateEvent={handleUpdateEvent}
+                />
+              )}
               {view === "schedule" && <ScheduleView events={filteredEvents} allTypes={allTypes} onSelectEvent={setSelectedEvent} onDelete={handleDelete} />}
             </motion.div>
           </AnimatePresence>
@@ -968,13 +1861,27 @@ const CalendarPage = () => {
       <AnimatePresence>
         {showCreate && <CreateEventModal
           defaultDate={createDefaults?.date ?? date}
-          defaultHour={createDefaults?.hour}
+          defaultStartMin={createDefaults?.startMin}
+          defaultEndMin={createDefaults?.endMin}
           allTypes={allTypes}
           onClose={() => { setShowCreate(false); setCreateDefaults(null); }}
           onSave={handleSaveEvent}
+          onManageTags={() => setShowManageTags(true)}
+          onCreateTag={handleAddCustomType}
         />}
         {selectedEvent && <EventDetail event={selectedEvent} allTypes={allTypes} onClose={() => setSelectedEvent(null)} onDelete={() => { handleDelete(selectedEvent.id); setSelectedEvent(null); }} />}
-        {showManageTags && <ManageTagsModal customTypes={customTypes} onClose={() => setShowManageTags(false)} onChange={setCustomTypes} />}
+        {showManageTags && (
+          <ManageTagsModal
+            customTypes={customTypes}
+            deletedBuiltins={deletedBuiltins}
+            builtinOverrides={builtinOverrides}
+            onClose={() => setShowManageTags(false)}
+            onChange={setCustomTypes}
+            onDeletedBuiltinsChange={setDeletedBuiltins}
+            onBuiltinOverridesChange={setBuiltinOverrides}
+            onAddCustomType={handleAddCustomType}
+          />
+        )}
       </AnimatePresence>
     </div>
   );

@@ -26,6 +26,14 @@ const EVENT_COLORS = {
   lesson: { bg: "bg-emerald-500", text: "text-emerald-600", light: "bg-emerald-500/10" },
 };
 
+const WIDGET_EVENT_TYPES = {
+  exam: { color: "#ef4444", label: "Exam", icon: "🎯" },
+  assignment: { color: "#f59e0b", label: "Assignment", icon: "📝" },
+  event: { color: "#3b82f6", label: "Event", icon: "📌" },
+  class: { color: "#10b981", label: "Class", icon: "🎓" },
+  lesson: { color: "#10b981", label: "Lesson", icon: "📚" },
+};
+
 const getEventStyle = (event: AppEvent) => {
   const type = event.type as keyof typeof EVENT_COLORS;
   return EVENT_COLORS[type] || EVENT_COLORS.event;
@@ -133,7 +141,7 @@ const CalendarWidget = ({ streak = 0, streakLabel = "days" }: CalendarWidgetProp
       <AnimatePresence mode="wait">
         {showUploader ? (
           <motion.div key="uploader" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
-            <ICSUploader />
+            <ICSUploader allTypes={WIDGET_EVENT_TYPES} />
           </motion.div>
         ) : (
           <motion.div key="calendar" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} className="glass-card p-3 flex flex-col bg-card/85 border border-border/70 rounded-2xl">

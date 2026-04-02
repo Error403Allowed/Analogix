@@ -5,6 +5,11 @@ import { QuizAnswerInput, QuizData, QuizReview } from "@/types/quiz";
 import { fetchJsonWithRetry } from "@/lib/fetch-wrapper";
 import { aiThrottle, heavyAiThrottle } from "@/lib/requestThrottle";
 
+interface GroqStreamClientData {
+  personality?: unknown;
+  memories?: unknown[];
+}
+
 // ─── Streaming helper ────────────────────────────────────────────────────────
 // Calls /api/groq/chat-stream and yields token chunks as they arrive.
 // Think of it like a garden hose — instead of waiting for a full bucket,
@@ -12,7 +17,7 @@ import { aiThrottle, heavyAiThrottle } from "@/lib/requestThrottle";
 export async function* getGroqStream(
   messages: ChatMessage[],
   userContext?: Partial<UserContext> & { analogyIntensity?: number; analogyAnchor?: string },
-  localStorageData?: { personality?: any; memories?: any[] } | null,
+  localStorageData?: GroqStreamClientData | null,
 ): AsyncGenerator<string> {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (localStorageData) {
@@ -402,6 +407,7 @@ export interface StudyGuideSection {
 
 export interface GeneratedStudyGuide {
   title: string;
+  markdown?: string;
   overview: string;
   assessmentDate: string;
   assessmentType: string;

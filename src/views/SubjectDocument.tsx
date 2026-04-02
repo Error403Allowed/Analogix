@@ -1,29 +1,66 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState, useMemo } from "react";
+import dynamic from "next/dynamic";
 import { useParams, useRouter } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
-import { ArrowLeft, Sparkles, Volume2, VolumeX, Pause, Play, FileText } from "lucide-react";
+import {
+  ArrowLeft,
+  BookOpenText,
+  FileText,
+  Loader2,
+  Pause,
+  Play,
+  Sparkles,
+  Volume2,
+  Wand2,
+  MoreHorizontal,
+  ChevronRight,
+  Plus,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { cn } from "@/lib/utils";
 import { SUBJECT_CATALOG } from "@/constants/subjects";
-import { subjectStore } from "@/utils/subjectStore";
-import { motion } from "framer-motion";
 import { useTabs } from "@/context/TabsContext";
 import { useTextToSpeech } from "@/hooks/useTextToSpeech";
-import dynamic from "next/dynamic";
+import { subjectStore } from "@/utils/subjectStore";
+import type { GeneratedStudyGuide } from "@/services/groq";
+import { generateStudyGuide } from "@/services/groq";
+import type { BlockNoteHandle } from "@/components/BlockNoteEditor";
 import {
-  type BlockNoteHandle,
+  BN_PREFIX,
   isBNContent,
+  serialiseBN,
 } from "@/components/BlockNoteEditor";
+import {
+  createBlockNoteContentParser,
+} from "@/components/blocknote/content";
+import {
+  type BlockNoteEditorBlock,
+} from "@/components/blocknote/schema";
+import {
+  getDocumentPlainText,
+  isStudyGuideDocument,
+  type DocumentRole,
+} from "@/lib/document-content";
+import { pickStudyGuideTitle } from "@/utils/studyGuideGeneration";
+import { studyGuideToMarkdown } from "@/utils/studyGuideMarkdown";
+import { useDocumentCollaboration } from "@/hooks/useDocumentCollaboration";
+import { EmojiPicker } from "@/components/EmojiPicker";
 
 type BlockNoteEditorComponent = typeof import("@/components/BlockNoteEditor").BlockNoteEditor;
 type BlockNoteEditorProps = React.ComponentPropsWithoutRef<BlockNoteEditorComponent>;
 
-// Dynamically import BlockNoteEditor with ssr:false — required because
-// @blocknote's ProseMirror node specs break under Turbopack's SSR evaluation.
 const BlockNoteEditor = dynamic<BlockNoteEditorProps>(
-  () => import("@/components/BlockNoteEditor").then(m => m.BlockNoteEditor as React.ComponentType<BlockNoteEditorProps>),
-  { ssr: false }
+  () => import("@/components/BlockNoteEditor").then((module) => module.BlockNoteEditor),
+  { ssr: false },
 ) as BlockNoteEditorComponent;
 
 interface SubjectDataUpdateResult {
@@ -38,47 +75,113 @@ interface SubjectDataUpdatedDetail {
   results?: SubjectDataUpdateResult[];
 }
 
-// ── Save label ────────────────────────────────────────────────────────────────
-function formatSaved(iso?: string | null) {
+const formatSaved = (iso?: string | null) => {
   if (!iso) return "Not saved";
-  const s = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
-  if (!Number.isFinite(s) || s < 10) return "Saved";
-  if (s < 60) return `Saved ${s}s ago`;
-  const m = Math.floor(s / 60);
-  if (m < 60) return `Saved ${m}m ago`;
-  return `Saved ${Math.floor(m / 60)}h ago`;
-}
+  const elapsedSeconds = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+  if (!Number.isFinite(elapsedSeconds) || elapsedSeconds < 10) return "Saved";
+  if (elapsedSeconds < 60) return `Saved ${elapsedSeconds}s ago`;
+  const minutes = Math.floor(elapsedSeconds / 60);
+  if (minutes < 60) return `Saved ${minutes}m ago`;
+  return `Saved ${Math.floor(minutes / 60)}h ago`;
+};
 
-// Normalise any stored format → something BlockNoteEditor accepts
-function normaliseContent(raw: string): string {
-  if (!raw) return "__BN__[]";
-  if (isBNContent(raw)) return raw;
-  // Legacy HTML or study guide JSON — pass as-is; BlockNoteEditor will convert
-  return raw;
-}
+const wordCount = (text: string) => text.split(/\s+/).filter(Boolean).length;
 
 export default function SubjectDocument() {
-  const params   = useParams();
-  const router   = useRouter();
+  const params = useParams();
+  const router = useRouter();
   const subjectId = (params?.id as string) || "";
-  const docId     = (params?.docId as string) || "";
-  const subject   = SUBJECT_CATALOG.find(s => s.id === subjectId);
+  const docId = (params?.docId as string) || "";
+  const subject = SUBJECT_CATALOG.find((entry) => entry.id === subjectId);
+  const editorRef = useRef<BlockNoteHandle>(null);
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastSavedRef = useRef({ title: "", content: "" });
+  const latestContentRef = useRef<string>("");
+  const remoteVersionRef = useRef("");
 
-  const [title, setTitle]           = useState("");
-  const [rawContent, setRawContent] = useState<string | null>(null); // null = loading
-  const [isSaving, setIsSaving]     = useState(false);
-  const [lastSaved, setLastSaved]   = useState<string | null>(null);
+  const [title, setTitle] = useState("");
+  const [initialContent, setInitialContent] = useState<string | null>(null);
+  const [documentRole, setDocumentRole] = useState<DocumentRole>("notes");
+  const [studyGuideData, setStudyGuideData] = useState<GeneratedStudyGuide | null>(null);
+  const [studyGuideMarkdown, setStudyGuideMarkdown] = useState<string | null>(null);
+  const [icon, setIcon] = useState<string | null>(null);
+  const [cover, setCover] = useState<string | null>(null);
+  const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
+
+  const [isSaving, setIsSaving] = useState(false);
+  const [lastSaved, setLastSaved] = useState<string | null>(null);
   const [docMissing, setDocMissing] = useState(false);
+  const [stats, setStats] = useState({ text: "", words: 0, characters: 0 });
+  const [sidebarBusy, setSidebarBusy] = useState<string | null>(null);
+  const [customInstruction, setCustomInstruction] = useState("");
+  const [userGrade, setUserGrade] = useState<string | undefined>(undefined);
 
-  const bnRef         = useRef<BlockNoteHandle>(null);
-  const lastSavedRef  = useRef<{ title: string; content: string }>({ title: "", content: "" });
-  const saveTimer     = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lastRemoteRef = useRef<string | null>(null);
+  // useDocumentCollaboration is initialised with a stable empty doc until
+  // initialContent is loaded from Supabase, then re-keyed via the BlockNote key.
+  const collab = useDocumentCollaboration({
+    documentId: docId,
+    displayName: userGrade ? `Year ${userGrade}` : undefined,
+  });
+  // Mirror live values into the shape the rest of the UI already expects.
+  const collaboration = useMemo(
+    () => ({ status: collab.status, peerCount: collab.peerCount }),
+    [collab.status, collab.peerCount],
+  );
 
   const { updateTabLabelByPath } = useTabs();
   const { isSpeaking, isPaused, supported: ttsOk, speak, pause, resume, stop } = useTextToSpeech();
 
-  // ── Load doc ────────────────────────────────────────────────────────────────
+  // Flush a final Yjs snapshot to Supabase when the user navigates away.
+  const flushRef = useRef(collab.flush);
+  useEffect(() => { flushRef.current = collab.flush; }, [collab.flush]);
+  useEffect(() => {
+    return () => { flushRef.current().catch(console.warn); };
+  }, []);
+
+  const queueSave = useCallback(async (
+    nextContent: string,
+    nextTitle: string,
+    role = documentRole,
+    guideData = studyGuideData,
+    guideMarkdown = studyGuideMarkdown,
+  ) => {
+    if (nextContent === lastSavedRef.current.content && nextTitle === lastSavedRef.current.title) {
+      setIsSaving(false);
+      return;
+    }
+
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    setIsSaving(true);
+
+    saveTimer.current = setTimeout(async () => {
+      // For BlockNote, we store the serialised string in 'content'
+      // and maybe also in 'contentJson' if we want to be compatible with existing schema.
+      // But 'content' is better for serialised BlockNote strings (starting with __BN__).
+      
+      await subjectStore.updateDocument(subjectId, docId, {
+        title: nextTitle,
+        content: nextContent,
+        role,
+        studyGuideMarkdown: role === "study-guide" ? guideMarkdown ?? null : null,
+        studyGuideData: role === "study-guide" ? guideData ?? null : null,
+      });
+
+      lastSavedRef.current = { title: nextTitle, content: nextContent };
+      remoteVersionRef.current = nextContent;
+      setIsSaving(false);
+      setLastSaved(new Date().toISOString());
+    }, 850);
+  }, [docId, documentRole, studyGuideData, studyGuideMarkdown, subjectId]);
+
+  useEffect(() => {
+    try {
+      const preferences = JSON.parse(localStorage.getItem("userPreferences") || "{}");
+      setUserGrade(typeof preferences.grade === "string" ? preferences.grade : undefined);
+    } catch {
+      setUserGrade(undefined);
+    }
+  }, []);
+
   useEffect(() => {
     let active = true;
 
@@ -86,207 +189,476 @@ export default function SubjectDocument() {
       const data = await subjectStore.getSubject(subjectId);
       if (!active) return;
 
-      const doc = (data.notes.documents || []).find(d => d.id === docId);
-      if (!doc) { setDocMissing(true); setRawContent("__BN__[]"); return; }
+      const document = (data.notes.documents || []).find((entry) => entry.id === docId);
+      if (!document) {
+        setDocMissing(true);
+        return;
+      }
 
-      const storedRaw = doc.content || "__BN__[]";
-      if (external && storedRaw === lastRemoteRef.current) return;
-      lastRemoteRef.current = storedRaw;
+      const content = document.content || "";
+      const role: DocumentRole = isStudyGuideDocument(document) ? "study-guide" : "notes";
+      const remoteKey = content;
 
-      const normTitle = doc.title || "";
-      setTitle(normTitle);
-      setLastSaved(doc.lastUpdated || null);
+      if (external && remoteKey === remoteVersionRef.current && document.title === lastSavedRef.current.title) {
+        return;
+      }
+
+      remoteVersionRef.current = remoteKey;
+      lastSavedRef.current = { title: document.title || "", content };
+      latestContentRef.current = content;
+      setTitle(document.title || "");
+      setIcon(document.icon || null);
+      setCover(document.cover || null);
+      setInitialContent(content);
+      setDocumentRole(role);
+      setStudyGuideData(document.studyGuideData || null);
+      setStudyGuideMarkdown(document.studyGuideMarkdown || null);
+      
+      const plainText = getDocumentPlainText(document);
+      setStats({
+        text: plainText,
+        words: wordCount(plainText),
+        characters: plainText.length,
+      });
+      setLastSaved(document.lastUpdated || null);
       setDocMissing(false);
 
-      // Normalise to BlockNote format
-      const normalised = normaliseContent(storedRaw);
-      setRawContent(normalised);
-      lastSavedRef.current = { title: normTitle, content: normalised };
-
-      if (normTitle) {
-        await new Promise(r => setTimeout(r, 0));
-        updateTabLabelByPath(`/subjects/${subjectId}/document/${docId}`, normTitle, "📄");
+      if (document.title) {
+        updateTabLabelByPath(`/subjects/${subjectId}/document/${docId}`, document.title, document.icon || (role === "study-guide" ? "📘" : "📄"));
       }
     };
 
     load(false);
 
-    const handler = (e: Event) => {
-      const detail = (e as CustomEvent<SubjectDataUpdatedDetail>).detail;
-      if (detail?.results) {
-        const hit = detail.results.find((r) =>
-          ["update_document","replace_study_guide"].includes(r.type) &&
-          r.success &&
-          (r.docId ? r.docId === docId : r.subjectId === subjectId)
-        );
-        if (hit?.newContent) {
-          const norm = normaliseContent(hit.newContent);
-          setRawContent(norm);
-          lastSavedRef.current.content = norm;
-          lastRemoteRef.current = hit.newContent;
-          bnRef.current?.setContent(norm);
-          toast.success("Document updated by AI");
-          return;
-        }
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent<SubjectDataUpdatedDetail>).detail;
+      if (detail?.results?.some((result) => result.success && result.docId === docId)) {
+        load(true);
+        return;
       }
       load(true);
     };
 
     window.addEventListener("subjectDataUpdated", handler);
-    return () => { active = false; window.removeEventListener("subjectDataUpdated", handler); };
-  }, [subjectId, docId, updateTabLabelByPath]);
+    return () => {
+      active = false;
+      window.removeEventListener("subjectDataUpdated", handler);
+    };
+  }, [docId, subjectId, updateTabLabelByPath]);
 
-  // ── Autosave ─────────────────────────────────────────────────────────────────
-  const handleChange = useCallback((raw: string) => {
-    setRawContent(raw);
-    if (!docId || docMissing) return;
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    setIsSaving(true);
-    saveTimer.current = setTimeout(async () => {
-      if (title === lastSavedRef.current.title && raw === lastSavedRef.current.content) {
-        setIsSaving(false); return;
-      }
-      await subjectStore.updateDocument(subjectId, docId, { title, content: raw });
-      lastSavedRef.current = { title, content: raw };
-      setIsSaving(false);
-      setLastSaved(new Date().toISOString());
-    }, 1000);
-  }, [title, subjectId, docId, docMissing]);
-
-  // Save on title change too
   useEffect(() => {
-    if (!title || !rawContent || !docId || docMissing) return;
-    if (title === lastSavedRef.current.title) return;
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    setIsSaving(true);
-    saveTimer.current = setTimeout(async () => {
-      await subjectStore.updateDocument(subjectId, docId, { title, content: rawContent });
-      lastSavedRef.current = { title, content: rawContent };
-      setIsSaving(false);
-      setLastSaved(new Date().toISOString());
-    }, 800);
-  }, [title, rawContent, docId, docMissing, subjectId]);
+    if (initialContent === null) return;
+    latestContentRef.current = initialContent;
+  }, [initialContent]);
 
-  // ── TTS ──────────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (initialContent === null) return;
+    queueSave(latestContentRef.current, title);
+  }, [queueSave, title, initialContent]);
+
+  const handleEditorChange = useCallback((raw: string) => {
+    latestContentRef.current = raw;
+    
+    // Update stats periodically or on change
+    if (editorRef.current) {
+      const text = editorRef.current.getPlainText();
+      setStats({
+        text,
+        characters: text.length,
+        words: wordCount(text),
+      });
+    }
+    
+    queueSave(raw, title);
+  }, [queueSave, title]);
+
+  const appendMarkdownSection = useCallback((heading: string, markdown: string) => {
+    if (!editorRef.current) return;
+
+    editorRef.current.appendMarkdown(`## ${heading}\n\n${markdown}`);
+  }, []);
+
+  const runSidebarAction = useCallback(async (action: string, label: string, customPrompt?: string) => {
+    const text = editorRef.current?.getPlainText().trim() || getDocumentPlainText({
+      contentText: stats.text,
+    });
+
+    if (!text) {
+      toast.error("Add some notes first.");
+      return;
+    }
+
+    setSidebarBusy(action);
+
+    try {
+      const response = await fetch("/api/groq/document-ai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action,
+          text,
+          subject: subject?.label,
+          documentText: text,
+          customPrompt,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("AI service unavailable");
+      }
+
+      const result = await response.json() as {
+        content: string;
+        format: "text" | "markdown";
+      };
+
+      appendMarkdownSection(
+        label,
+        result.format === "markdown" ? result.content : result.content.replace(/\n/g, "\n\n"),
+      );
+      toast.success(`${label} added to the document.`);
+      setCustomInstruction("");
+    } catch (issue: unknown) {
+      toast.error(issue instanceof Error ? issue.message : "Could not run AI action");
+    } finally {
+      setSidebarBusy(null);
+    }
+  }, [appendMarkdownSection, stats.text, subject?.label]);
+
+  const handleGenerateStudyGuide = useCallback(async () => {
+    const text = editorRef.current?.getPlainText().trim() || stats.text;
+    if (!text) {
+      toast.error("Add some notes before generating a study guide.");
+      return;
+    }
+
+    setSidebarBusy("study-guide");
+
+    try {
+      const result = await generateStudyGuide({
+        assessmentDetails: text,
+        fileName: title || `${subject?.label || "Notes"} Study Guide`,
+        subject: subject?.label,
+        grade: userGrade,
+      });
+
+      if (!result) {
+        throw new Error("No study guide was returned.");
+      }
+
+      const markdown = (result as GeneratedStudyGuide & { markdown?: string }).markdown || studyGuideToMarkdown(result);
+      
+      // For study guides, we can just store the markdown which BlockNote can parse,
+      // but it's better to serialise it to BN format.
+      // We can use createBlockNoteContentParser to get the blocks from markdown.
+      const parser = createBlockNoteContentParser();
+      const blocks = parser.parse(markdown);
+      const content = blocks ? serialiseBN(blocks as BlockNoteEditorBlock[]) : markdown;
+      
+      const guideTitle = pickStudyGuideTitle(result.title, `${title || subject?.label || "Study"} Guide`);
+      const created = await subjectStore.createDocument(subjectId, guideTitle);
+
+      await subjectStore.updateDocument(subjectId, created.id, {
+        title: guideTitle,
+        content,
+        role: "study-guide",
+        studyGuideMarkdown: markdown,
+        studyGuideData: result,
+      });
+
+      toast.success("Study guide created.");
+      router.push(`/subjects/${subjectId}/document/${created.id}`);
+    } catch (issue: unknown) {
+      toast.error(issue instanceof Error ? issue.message : "Could not generate study guide");
+    } finally {
+      setSidebarBusy(null);
+    }
+  }, [router, stats.text, subject?.label, subjectId, title, userGrade]);
+
   const handleListen = useCallback(() => {
-    if (isSpeaking && !isPaused) { pause(); return; }
-    if (isPaused) { resume(); return; }
-    const text = bnRef.current?.getPlainText() || "";
-    if (text) speak(text, { rate: 1.0, pitch: 1.0 });
-  }, [isSpeaking, isPaused, pause, resume, speak]);
+    if (isSpeaking && !isPaused) {
+      pause();
+      return;
+    }
+    if (isPaused) {
+      resume();
+      return;
+    }
+    const text = editorRef.current?.getPlainText() || stats.text;
+    if (text) speak(text, { rate: 1, pitch: 1 });
+  }, [isPaused, isSpeaking, pause, resume, speak, stats.text]);
 
-  // ── Guards ───────────────────────────────────────────────────────────────────
-  if (!subject) return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-8">
-      <FileText className="w-12 h-12 text-muted-foreground/20 mb-4" />
-      <p className="text-xl font-black">Subject not found</p>
-      <Button onClick={() => router.push("/subjects")} size="sm" className="mt-4">Back to subjects</Button>
-    </div>
-  );
+  if (!subject) {
+    return (
+      <div className="flex min-h-[60vh] flex-col items-center justify-center px-8 text-center">
+        <FileText className="mb-4 h-12 w-12 text-muted-foreground/20" />
+        <p className="text-xl font-black">Subject not found</p>
+        <Button onClick={() => router.push("/subjects")} size="sm" className="mt-4">Back to subjects</Button>
+      </div>
+    );
+  }
 
-  if (docMissing) return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-8">
-      <FileText className="w-12 h-12 text-muted-foreground/20 mb-4" />
-      <p className="text-xl font-black">Document not found</p>
-      <Button onClick={() => router.push(`/subjects/${subjectId}`)} size="sm" className="mt-4">Go back</Button>
-    </div>
-  );
+  if (docMissing) {
+    return (
+      <div className="flex min-h-[60vh] flex-col items-center justify-center px-8 text-center">
+        <FileText className="mb-4 h-12 w-12 text-muted-foreground/20" />
+        <p className="text-xl font-black">Document not found</p>
+        <Button onClick={() => router.push(`/subjects/${subjectId}`)} size="sm" className="mt-4">Go back</Button>
+      </div>
+    );
+  }
 
-  // ── Render ───────────────────────────────────────────────────────────────────
+  const [isAiPanelOpen, setIsAiPanelOpen] = useState(false);
+
+  const handleIconChange = useCallback(async (newIcon: string) => {
+    setIcon(newIcon);
+    updateTabLabelByPath(`/subjects/${subjectId}/document/${docId}`, title, newIcon);
+    await subjectStore.updateDocument(subjectId, docId, { icon: newIcon });
+    toast.success("Icon updated");
+  }, [docId, subjectId, title, updateTabLabelByPath]);
+
+  const handleCoverChange = useCallback(async (newCover: string | null) => {
+    setCover(newCover);
+    await subjectStore.updateDocument(subjectId, docId, { cover: newCover });
+    toast.success(newCover ? "Cover updated" : "Cover removed");
+  }, [docId, subjectId]);
+
+  const SUBJECT_COVER_STYLES: Record<string, string> = {
+    sunset: "bg-gradient-to-r from-orange-500 via-pink-500 to-purple-500",
+    ocean: "bg-gradient-to-r from-blue-400 via-cyan-500 to-teal-500",
+    forest: "bg-gradient-to-r from-green-400 via-emerald-500 to-teal-500",
+    berry: "bg-gradient-to-r from-pink-500 via-rose-500 to-red-500",
+    sky: "bg-gradient-to-r from-blue-300 via-blue-500 to-indigo-500",
+    twilight: "bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500",
+    fire: "bg-gradient-to-r from-red-500 via-orange-500 to-yellow-500",
+    midnight: "bg-gradient-to-r from-slate-900 via-purple-900 to-slate-900",
+    gold: "bg-gradient-to-r from-yellow-400 via-amber-500 to-orange-500",
+  };
+
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="relative flex min-h-full flex-col bg-background">
+    <motion.div 
+      initial={{ opacity: 0 }} 
+      animate={{ opacity: 1 }} 
+      className="document-shell notion-ui fade-in"
+    >
 
-      {/* ── Top bar ── */}
-      <div className="sticky top-0 z-20 border-b border-border/40 bg-background/80 backdrop-blur-xl">
-        <div className="mx-auto flex h-12 w-full max-w-5xl items-center justify-between gap-4 px-6">
+      {/* Header */}
+      <header className="document-header">
+        <div className="flex items-center gap-2 overflow-hidden mr-4">
+          <button
+            onClick={() => router.push("/subjects")}
+            className="notion-btn-minimal shrink-0"
+          >
+            Subjects
+          </button>
+          <span className="text-muted-foreground/30">/</span>
           <button
             onClick={() => router.push(`/subjects/${subjectId}`)}
-            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors shrink-0"
+            className="notion-btn-minimal truncate"
           >
-            <ArrowLeft className="w-3.5 h-3.5" />
             {subject.label}
           </button>
-          <span className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground/40">
-            {isSaving ? "Saving…" : formatSaved(lastSaved)}
+          <span className="text-muted-foreground/30">/</span>
+          <span className="text-sm font-medium truncate text-foreground/70 px-2">
+            {title || "Untitled"}
           </span>
         </div>
-      </div>
 
-      {/* ── Document body ── */}
-      <div className="relative mx-auto flex w-full max-w-5xl flex-1 px-4 pb-28 pt-10 sm:px-6">
-        <div className="w-full rounded-[30px] border border-border/50 bg-card/35 shadow-[0_14px_36px_rgba(15,23,42,0.08)]">
-          <div className="border-b border-border/50 px-6 py-7 sm:px-8 sm:py-8">
-            <div className="mb-4 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground/60">
-              <span className="rounded-full border border-border/60 bg-muted/45 px-2.5 py-1 font-semibold">
-                {subject.label}
-              </span>
-              <span className="flex items-center gap-1 rounded-full border border-primary/15 bg-primary/5 px-2.5 py-1 font-medium text-primary/75">
-                <Sparkles className="h-3 w-3" /> Autosave
-              </span>
-              {ttsOk && (
-                <button
-                  onClick={isSpeaking ? (isPaused ? resume : pause) : handleListen}
-                  className="flex items-center gap-1 rounded-full border border-border/60 px-2.5 py-1 text-muted-foreground/70 transition-colors hover:border-border hover:bg-muted/40 hover:text-foreground"
-                >
-                  {isSpeaking ? (isPaused ? <Play className="w-3 h-3" /> : <Pause className="w-3 h-3" />) : <Volume2 className="w-3 h-3" />}
-                  <span>{isSpeaking ? (isPaused ? "Resume" : "Pause") : "Listen"}</span>
-                </button>
-              )}
-              {isSpeaking && (
-                <button
-                  onClick={() => stop()}
-                  className="flex items-center gap-1 rounded-full border border-border/60 px-2.5 py-1 text-muted-foreground/70 transition-colors hover:border-border hover:bg-muted/40 hover:text-foreground"
-                >
-                  <VolumeX className="w-3 h-3" />
-                  <span>Stop</span>
-                </button>
+        <div className="flex items-center gap-1 shrink-0">
+          <div className="mr-2 flex items-center gap-3">
+            {isSaving ? (
+              <span className="text-[11px] text-muted-foreground/50 animate-pulse">Saving...</span>
+            ) : (
+              <span className="text-[11px] text-muted-foreground/40">{formatSaved(lastSaved)}</span>
+            )}
+            {collaboration.peerCount > 0 && (
+              <div className="flex -space-x-2">
+                {[...Array(Math.min(collaboration.peerCount + 1, 3))].map((_, i) => (
+                  <div key={i} className="w-5 h-5 rounded-full border-2 border-background bg-primary/20 flex items-center justify-center text-[8px] font-bold">
+                    {i === 0 ? "You" : ""}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <button
+            onClick={() => setIsAiPanelOpen(!isAiPanelOpen)}
+            className={cn(
+              "notion-btn-minimal",
+              isAiPanelOpen && "bg-primary/10 text-primary hover:bg-primary/20"
+            )}
+          >
+            <Wand2 className="h-4 w-4" />
+            <span className="hidden sm:inline">AI Studio</span>
+          </button>
+
+          <button className="notion-btn-minimal">
+            <MoreHorizontal className="h-4 w-4" />
+          </button>
+        </div>
+      </header>
+
+      <main className="document-content-area flex relative">
+        <div className="flex-1 overflow-y-auto custom-scrollbar">
+          <div className="document-container">
+            {/* Document Icon & Title */}
+            <div className="flex flex-col gap-4 mb-8 group/title">
+              <button
+                onClick={() => setEmojiPickerOpen(true)}
+                className="w-16 h-16 rounded-2xl flex items-center justify-center text-5xl hover:bg-muted/50 transition-colors text-left -ml-2"
+              >
+                {icon || "📄"}
+              </button>
+
+              <textarea
+                value={title}
+                onChange={(event) => {
+                  setTitle(event.target.value);
+                  event.target.style.height = "auto";
+                  event.target.style.height = `${event.target.scrollHeight}px`;
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") event.preventDefault();
+                }}
+                placeholder="Untitled"
+                rows={1}
+                style={{ resize: "none", overflow: "hidden" }}
+                className="document-title-input mb-0"
+              />
+            </div>
+
+            {/* Editor Area */}
+            <div className="min-h-[70vh]">
+              {initialContent === null ? (
+                <div className="flex h-32 items-center justify-center">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground/30" />
+                </div>
+              ) : (
+                <BlockNoteEditor
+                  key={docId}
+                  ref={editorRef}
+                  initialContent={initialContent}
+                  onChange={handleEditorChange}
+                  subjectLabel={subject.label}
+                  documentTitle={title}
+                  collaboration={collab}
+                />
               )}
             </div>
 
-            <textarea
-              value={title}
-              onChange={e => {
-                setTitle(e.target.value);
-                // Auto-grow: reset height then set to scrollHeight
-                e.target.style.height = "auto";
-                e.target.style.height = e.target.scrollHeight + "px";
-              }}
-              onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); } }}
-              placeholder="Untitled"
-              rows={1}
-              style={{ resize: "none", overflow: "hidden" }}
-              className={[
-                "w-full bg-transparent font-black tracking-[-0.02em] leading-tight text-foreground outline-none placeholder:text-muted-foreground/20 block",
-                title.length > 50
-                  ? "text-xl sm:text-2xl"
-                  : title.length > 35
-                  ? "text-2xl sm:text-3xl"
-                  : title.length > 22
-                  ? "text-3xl sm:text-4xl"
-                  : "text-4xl sm:text-5xl",
-              ].join(" ")}
-            />
-          </div>
-
-          <div className="px-3 py-4 sm:px-5 sm:py-6">
-            {rawContent === null ? (
-              <div className="flex min-h-[50vh] items-center justify-center">
-                <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary/30 border-t-primary" />
+            {/* Footer Stats */}
+            <div className="mt-24 pt-8 border-t border-border/50 flex items-center justify-between text-[11px] text-muted-foreground/40 font-medium tracking-wide uppercase">
+              <div className="flex items-center gap-6">
+                <span>{stats.words} words</span>
+                <span>{stats.characters} characters</span>
+                <span>{documentRole === "study-guide" ? "Study Guide" : "Notes"}</span>
               </div>
-            ) : (
-              <BlockNoteEditor
-                ref={bnRef}
-                key={docId}
-                initialContent={rawContent}
-                onChange={handleChange}
-                placeholder="Start writing… or type / for block types"
-                subjectLabel={subject.label}
-                documentTitle={title}
-              />
-            )}
+              {ttsOk && (
+                <button
+                  onClick={handleListen}
+                  className="hover:text-foreground transition-colors flex items-center gap-1.5"
+                >
+                  {isSpeaking ? (isPaused ? <Play className="h-3 w-3" /> : <Pause className="h-3 w-3" />) : <Volume2 className="h-3 w-3" />}
+                  {isSpeaking ? (isPaused ? "Resume" : "Pause") : "Listen"}
+                </button>
+              )}
+            </div>
           </div>
         </div>
-      </div>
+
+        {/* AI Studio Sidebar - Collapsible */}
+        <AnimatePresence>
+          {isAiPanelOpen && (
+            <motion.aside
+              initial={{ x: 300, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: 300, opacity: 0 }}
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              className="w-80 border-l border-border bg-sidebar-background overflow-y-auto p-4 space-y-6"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">AI Studio</h3>
+                <button 
+                  onClick={() => setIsAiPanelOpen(false)}
+                  className="p-1 hover:bg-muted rounded-md transition-colors"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div className="p-4 rounded-xl border border-primary/20 bg-primary/5 space-y-3">
+                  <div className="flex items-center gap-2 text-primary">
+                    <Sparkles className="h-4 w-4" />
+                    <span className="text-sm font-semibold">Transform Notes</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Convert your messy notes into structured revision materials instantly.
+                  </p>
+                  <Button
+                    onClick={handleGenerateStudyGuide}
+                    disabled={sidebarBusy !== null}
+                    className="w-full h-9 bg-primary text-primary-foreground text-xs font-semibold rounded-lg shadow-sm"
+                  >
+                    {sidebarBusy === "study-guide" ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <BookOpenText className="mr-2 h-3.5 w-3.5" />}
+                    Generate Study Guide
+                  </Button>
+                </div>
+
+                <div className="grid grid-cols-1 gap-2">
+                  {[
+                    { id: "summarise", label: "Summarise", icon: Sparkles },
+                    { id: "quiz", label: "Quiz Me", icon: BookOpenText },
+                    { id: "explain", label: "Explain Simply", icon: Wand2 },
+                    { id: "fill-gaps", label: "Find Gaps", icon: Sparkles },
+                  ].map((action) => (
+                    <button
+                      key={action.id}
+                      disabled={sidebarBusy !== null}
+                      onClick={() => runSidebarAction(action.id, action.label)}
+                      className="flex items-center gap-3 w-full p-2.5 rounded-lg text-sm font-medium text-foreground/70 hover:bg-muted transition-colors text-left disabled:opacity-50"
+                    >
+                      <action.icon className="h-4 w-4 text-muted-foreground" />
+                      {action.label}
+                      {sidebarBusy === action.id && <Loader2 className="ml-auto h-3.5 w-3.5 animate-spin" />}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="space-y-3 pt-4 border-t border-border/50">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50">Custom Command</span>
+                  </div>
+                  <textarea
+                    value={customInstruction}
+                    onChange={(event) => setCustomInstruction(event.target.value)}
+                    placeholder="e.g. Turn these notes into a rapid-recall checklist..."
+                    rows={4}
+                    className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2.5 text-xs outline-none focus:ring-1 focus:ring-primary/20 transition-all placeholder:text-muted-foreground/30"
+                  />
+                  <Button
+                    variant="secondary"
+                    className="w-full h-9 text-xs font-semibold rounded-lg"
+                    disabled={sidebarBusy !== null || !customInstruction.trim()}
+                    onClick={() => runSidebarAction("custom", "AI Output", customInstruction)}
+                  >
+                    {sidebarBusy === "custom" ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Plus className="mr-2 h-3.5 w-3.5" />}
+                    Run Instruction
+                  </Button>
+                </div>
+              </div>
+            </motion.aside>
+          )}
+        </AnimatePresence>
+      </main>
+
+      <EmojiPicker
+        open={emojiPickerOpen}
+        onOpenChange={setEmojiPickerOpen}
+        selectedEmoji={icon || "📄"}
+        onSelect={handleIconChange}
+      />
     </motion.div>
   );
 }

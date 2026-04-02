@@ -25,11 +25,18 @@ export const parseICS = async (file: File): Promise<AppEvent[]> => {
 
         const events: AppEvent[] = [];
 
-        const pushEvent = (event: ICAL.Event, startTime: ICAL.Time, title: string, description: string) => {
+        const pushEvent = (
+          event: ICAL.Event,
+          startTime: ICAL.Time,
+          endTime: ICAL.Time | null,
+          title: string,
+          description: string,
+        ) => {
           const combined = (title + " " + description).toLowerCase();
           const isExam = academicKeywords.some((kw) => combined.includes(kw));
           const isAssignment = assignmentKeywords.some((kw) => combined.includes(kw));
           const jsDate = startTime.toJSDate();
+          const jsEndDate = endTime?.toJSDate();
           if (jsDate < rangeStartJs || jsDate > rangeEndJs) return;
 
           const uid = event.uid || title || "event";
@@ -39,6 +46,10 @@ export const parseICS = async (file: File): Promise<AppEvent[]> => {
             id: occurrenceId,
             title,
             date: jsDate,
+            endDate:
+              jsEndDate && jsEndDate.getTime() > jsDate.getTime()
+                ? jsEndDate
+                : undefined,
             type: isExam ? "exam" : isAssignment ? "assignment" : "event",
             description: description || "Imported from calendar",
             source: "import",
@@ -57,12 +68,24 @@ export const parseICS = async (file: File): Promise<AppEvent[]> => {
             let guard = 0;
             while (next && next.compare(rangeEnd) <= 0 && guard < 1000) {
               const occurrence = event.getOccurrenceDetails(next);
-              pushEvent(event, occurrence.startDate, title, description);
+              pushEvent(
+                event,
+                occurrence.startDate,
+                occurrence.endDate ?? null,
+                title,
+                description,
+              );
               next = iter.next();
               guard += 1;
             }
           } else {
-            pushEvent(event, event.startDate, title, description);
+            pushEvent(
+              event,
+              event.startDate,
+              event.endDate ?? null,
+              title,
+              description,
+            );
           }
         });
 

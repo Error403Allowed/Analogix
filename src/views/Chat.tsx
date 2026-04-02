@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo, memo } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
+import { NextConfig } from 'next';
 import {
   ArrowLeft,
   ArrowDown,
@@ -51,6 +52,11 @@ import type { ResearchSource, SavedResearchSource } from "@/types/research";
 import { researchStore } from "@/utils/researchStore";
 import AISettingsSheet from "@/components/AISettingsSheet";
 import { GROQ_MODELS, type GroqModelId } from "@/types/groq-models";
+
+// Caching
+const nextConfig: NextConfig = {
+  cacheComponents: true,
+}
 
 // Splits AI response into { thinking, response } based on <think>...</think> tags.
 // Handles: leading whitespace before <think>, missing </think> (model cut off mid-think),
@@ -893,93 +899,6 @@ const Chat = () => {
       return prev.filter((_, i) => i !== index);
     });
   }, []);
-
-  // Convert study guide to HTML for RichEditor
-  const convertStudyGuideToHtml = (guide: GeneratedStudyGuide): string => {
-    const escapeHtml = (text: string) => text
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
-
-    let html = `
-      <h1 style="font-size: 2em; margin-bottom: 0.5em; color: var(--primary);">${escapeHtml(guide.title)}</h1>
-      <div style="display: flex; gap: 1em; margin-bottom: 1.5em; padding: 1em; background: var(--muted); border-radius: 8px;">
-        <div><strong>Assessment Type:</strong> ${escapeHtml(guide.assessmentType)}</div>
-        <div><strong>Due Date:</strong> ${escapeHtml(guide.assessmentDate)}</div>
-      </div>
-
-      <h2 style="font-size: 1.5em; margin: 1.5em 0 0.75em; color: var(--foreground);">📚 Topics Covered</h2>
-      <ul style="list-style-type: disc; padding-left: 1.5em; margin-bottom: 1.5em;">
-        ${guide.topics.map(t => `<li>${escapeHtml(t)}</li>`).join('')}
-      </ul>
-
-      <h2 style="font-size: 1.5em; margin: 1.5em 0 0.75em; color: var(--foreground);">📅 Study Schedule</h2>
-      <div style="display: flex; flex-direction: column; gap: 1em; margin-bottom: 1.5em;">
-        ${guide.studySchedule.map(week => `
-          <div style="padding: 1em; border: 1px solid var(--border); border-radius: 8px; background: var(--card);">
-            <h3 style="font-size: 1.1em; margin-bottom: 0.5em; color: var(--primary);">Week ${week.week}: ${escapeHtml(week.label)}</h3>
-            <ul style="list-style-type: disc; padding-left: 1.5em;">
-              ${week.tasks.map(t => `<li style="margin-bottom: 0.25em;">${escapeHtml(t)}</li>`).join('')}
-            </ul>
-          </div>
-        `).join('')}
-      </div>
-
-      <h2 style="font-size: 1.5em; margin: 1.5em 0 0.75em; color: var(--foreground);">🧠 Key Concepts</h2>
-      <div style="display: flex; flex-direction: column; gap: 1em; margin-bottom: 1.5em;">
-        ${guide.keyConcepts.map(concept => `
-          <div style="padding: 1em; border-left: 3px solid var(--primary); background: var(--muted); border-radius: 0 8px 8px 0;">
-            <h3 style="font-size: 1.1em; margin-bottom: 0.5em; color: var(--foreground);">${escapeHtml(concept.title)}</h3>
-            <p style="line-height: 1.7; white-space: pre-wrap;">${escapeHtml(concept.content)}</p>
-          </div>
-        `).join('')}
-      </div>
-
-      <h2 style="font-size: 1.5em; margin: 1.5em 0 0.75em; color: var(--foreground);">✏️ Practice Questions</h2>
-      <div style="display: flex; flex-direction: column; gap: 1.5em; margin-bottom: 1.5em;">
-        ${guide.practiceQuestions.map((pq, i) => `
-          <div style="padding: 1em; border: 1px solid var(--border); border-radius: 8px;">
-            <p style="font-weight: 600; margin-bottom: 0.75em;">Q${i + 1}: ${escapeHtml(pq.question)}</p>
-            <div style="padding: 0.75em; background: var(--success)/10; border-radius: 6px; color: var(--success); white-space: pre-wrap;">
-              <strong>Answer:</strong> ${escapeHtml(pq.answer)}
-            </div>
-          </div>
-        `).join('')}
-      </div>
-
-      <h2 style="font-size: 1.5em; margin: 1.5em 0 0.75em; color: var(--foreground);">📖 Recommended Resources</h2>
-      <ul style="list-style-type: disc; padding-left: 1.5em; margin-bottom: 1.5em;">
-        ${guide.resources.map(r => `<li>${escapeHtml(r)}</li>`).join('')}
-      </ul>
-
-      <h2 style="font-size: 1.5em; margin: 1.5em 0 0.75em; color: var(--foreground);">💡 Study Tips</h2>
-      <ul style="list-style-type: disc; padding-left: 1.5em; margin-bottom: 1.5em;">
-        ${guide.tips.map(t => `<li>${escapeHtml(t)}</li>`).join('')}
-      </ul>
-
-      ${guide.commonMistakes && guide.commonMistakes.length > 0 ? `
-        <h2 style="font-size: 1.5em; margin: 1.5em 0 0.75em; color: var(--foreground);">⚠️ Common Mistakes to Avoid</h2>
-        <ul style="list-style-type: disc; padding-left: 1.5em; margin-bottom: 1.5em;">
-          ${guide.commonMistakes.map(m => `<li>${escapeHtml(m)}</li>`).join('')}
-        </ul>
-      ` : ''}
-
-      ${guide.glossary && guide.glossary.length > 0 ? `
-        <h2 style="font-size: 1.5em; margin: 1.5em 0 0.75em; color: var(--foreground);">📖 Glossary</h2>
-        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 0.75em; margin-bottom: 1.5em;">
-          ${guide.glossary.map(g => `
-            <div style="padding: 0.75em; background: var(--muted); border-radius: 6px;">
-              <strong style="color: var(--primary);">${escapeHtml(g.term)}</strong>
-              <p style="margin-top: 0.25em; font-size: 0.9em; line-height: 1.5;">${escapeHtml(g.definition)}</p>
-            </div>
-          `).join('')}
-        </div>
-      ` : ''}
-    `;
-
-    return html;
-  };
 
   // Generate study guide from attached files — redirect to full loading page
   const handleGenerateStudyGuide = useCallback(async () => {

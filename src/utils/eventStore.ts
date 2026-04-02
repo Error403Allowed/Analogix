@@ -65,6 +65,7 @@ export const eventStore = {
         user_id: user.id,
         title: e.title,
         date: e.date,
+        end_date: e.endDate ?? null,
         type: e.type,
         subject: e.subject,
         description: e.description,
@@ -76,6 +77,38 @@ export const eventStore = {
       toast.error("Failed to add events");
       return;
     }
+    window.dispatchEvent(new Event("eventsUpdated"));
+  },
+
+  update: async (
+    id: string,
+    updates: Partial<Pick<AppEvent, "title" | "date" | "endDate" | "type" | "subject" | "description">>,
+  ): Promise<void> => {
+    const user = await getAuthUser();
+    const supabase = createClient();
+    if (!user) return;
+
+    const payload: Record<string, unknown> = {};
+
+    if (updates.title !== undefined) payload.title = updates.title;
+    if (updates.date !== undefined) payload.date = updates.date;
+    if (updates.endDate !== undefined) payload.end_date = updates.endDate ?? null;
+    if (updates.type !== undefined) payload.type = updates.type;
+    if (updates.subject !== undefined) payload.subject = updates.subject ?? null;
+    if (updates.description !== undefined) payload.description = updates.description ?? null;
+
+    const { error } = await supabase
+      .from("events")
+      .update(payload)
+      .eq("id", id)
+      .eq("user_id", user.id);
+
+    if (error) {
+      console.warn("[eventStore] update failed:", error);
+      toast.error("Failed to update event");
+      return;
+    }
+
     window.dispatchEvent(new Event("eventsUpdated"));
   },
 

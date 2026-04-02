@@ -1,27 +1,33 @@
 "use client";
 
 import {
-  LayoutDashboard, MessageCircle, BookOpen, Calendar,
-  GraduationCap, Brain, Trophy, ChevronDown, Palette,
-  Sun, Moon, BookMarkedIcon, SigmaIcon, User, Flame, Library, Scan, SquareStack, ClipboardList,
+  LayoutDashboard, MessageCircle, Calendar,
+  GraduationCap, Trophy, ChevronDown, Palette,
+  Sun, Moon, User, Flame, Library, SigmaIcon, SquareStack, ClipboardList,
+  Plus, Search, MoreHorizontal,
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarHeader,
   SidebarMenu, SidebarMenuButton, SidebarMenuItem,
-  SidebarGroup, SidebarGroupContent, SidebarTrigger,
+  SidebarGroup, SidebarGroupContent, SidebarTrigger, SidebarSeparator,
 } from "@/components/ui/sidebar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useRouter, usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useTheme } from "next-themes";
 import { useSidebar } from "@/components/ui/sidebar";
 import { applyThemeByName } from "@/components/ThemeSelector";
 import { themes } from "@/components/ThemeSelector";
 import ProfileSheet from "@/components/ProfileSheet";
+import { NewPageModal } from "@/components/NewPageModal";
 import ChatHistoryPanel from "@/components/ChatHistoryPanel";
 import { useTabs, pathMeta } from "@/context/TabsContext";
+import { subjectStore, type SubjectData } from "@/utils/subjectStore";
+import { toast } from "sonner";
+
+import { CommandMenu } from "@/components/CommandMenu";
 
 const navGroups = [
   {
@@ -63,6 +69,7 @@ export function AppSidebar() {
   const [themeOpen,        setThemeOpen]        = useState(false);
   const [profileOpen,      setProfileOpen]      = useState(false);
   const [streak,           setStreak]           = useState(0);
+  const [isNewPageModalOpen, setIsNewPageModalOpen] = useState(false);
   const isCollapsed = state === "collapsed";
   const isDark = resolvedTheme === "dark";
 
@@ -97,6 +104,47 @@ export function AppSidebar() {
     applyThemeByName(name);
     window.dispatchEvent(new Event("themeUpdated"));
   };
+
+  const handleCreatePage = async (subjectId: string, title: string) => {
+    try {
+      const created = await subjectStore.createDocument(subjectId, title);
+      toast.success(`Page "${title}" created!`);
+      setIsNewPageModalOpen(false);
+      // Force refresh sidebar state
+      const data = await subjectStore.getAll();
+      setSubjects(data);
+      openTab(`/subjects/${subjectId}/document/${created.id}`, title, "📄");
+      router.push(`/subjects/${subjectId}/document/${created.id}`);
+    } catch (error) {
+      toast.error("Failed to create page");
+    }
+  };
+
+  const [isCommandMenuOpen, setIsCommandMenuOpen] = useState(false);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setIsCommandMenuOpen(true);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  const [subjects, setSubjects] = useState<Record<string, SubjectData>>({});
+
+  const refreshSidebar = useCallback(async () => {
+    const data = await subjectStore.getAll();
+    setSubjects(data);
+  }, []);
+
+  useEffect(() => {
+    refreshSidebar();
+    window.addEventListener("subjectDataUpdated", refreshSidebar);
+    return () => window.removeEventListener("subjectDataUpdated", refreshSidebar);
+  }, [refreshSidebar]);
 
   const name      = userData?.name || "Student";
   const avatarUrl = userData?.avatarUrl || "";
@@ -135,7 +183,7 @@ export function AppSidebar() {
         </SidebarHeader>
 
         {/* ── Nav ───────────────────────────────────────────────────── */}
-        <SidebarContent className="flex-1 px-2 py-3 overflow-x-hidden overflow-y-auto">
+        <SidebarContent className="flex-1 px-2 py-3 overflow-y-auto overflow-x-hidden text-foreground custom-scrollbar">
           {navGroups.map((group) => (
             <SidebarGroup key={group.label}>
               <p className="px-2 mb-1 mt-2 text-[9px] font-black uppercase tracking-[0.25em] text-muted-foreground/40 group-data-[collapsible=icon]:hidden">
@@ -182,84 +230,76 @@ export function AppSidebar() {
               </SidebarGroupContent>
             </SidebarGroup>
           ))}
-          <SidebarGroup className="mt-3">
-            <p className="px-2 mb-2 text-[9px] font-black uppercase tracking-[0.25em] text-muted-foreground/40 group-data-[collapsible=icon]:hidden">
-              General
-            </p>
-            <SidebarGroupContent>
-              {isCollapsed ? (
-                <div className="flex flex-col items-center gap-1">
-                  {mounted && (
-                    <button onClick={() => setMode(isDark ? "light" : "dark")}
-                      className="w-9 h-9 flex items-center justify-center rounded-xl transition-colors text-muted-foreground">
-                      {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-                    </button>
-                  )}
-                  {mounted && (
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <button className="w-9 h-9 flex items-center justify-center rounded-xl transition-colors text-muted-foreground">
-                          <Palette className="w-4 h-4" />
-                        </button>
-                      </PopoverTrigger>
-                      <PopoverContent side="right" align="start" className="w-56 p-3 glass-card border-transparent ml-2 shadow-2xl">
-                        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-2">Theme</p>
-                        <div className="grid grid-cols-2 gap-1.5">
-                          {themes.map(t => (
-                            <button key={t.name} onClick={() => handleThemeSelect(t.name)}
-                              className={cn("flex flex-col gap-1 p-1.5 rounded-xl transition-all border border-transparent hover:border-primary/20 text-left",
-                                activeThemeName === t.name ? "border-primary/50 bg-primary/8" : "bg-transparent")}>
-                              <div className="w-full h-6 rounded-lg" style={{ background: `linear-gradient(135deg, ${t.g[0]}, ${t.g[1]})` }} />
-                              <span className={cn("text-[8px] font-black uppercase tracking-tight", activeThemeName === t.name ? "text-primary" : "text-muted-foreground")}>{t.name}</span>
-                            </button>
-                          ))}
-                        </div>
-                      </PopoverContent>
-                    </Popover>
-                  )}
-                </div>
-              ) : (
-                <>
-                  {/* Dark/light toggle row */}
-                  {mounted && (
-                    <button onClick={() => setMode(isDark ? "light" : "dark")}
-                      className="w-full h-9 flex items-center gap-2.5 px-3 rounded-xl transition-colors text-muted-foreground font-semibold text-sm">
-                      {isDark ? <Sun className="w-4 h-4 shrink-0" /> : <Moon className="w-4 h-4 shrink-0" />}
-                      <span className="truncate">{isDark ? "Light mode" : "Dark mode"}</span>
-                    </button>
-                  )}
-                  {/* Colour scheme collapsible */}
-                  <button onClick={() => setThemeOpen(o => !o)}
-                    className="w-full h-9 flex items-center gap-2.5 px-3 rounded-xl transition-colors text-muted-foreground font-semibold text-sm">
-                    <Palette className="w-4 h-4 shrink-0" />
-                    <span className="flex-1 text-left truncate">Colour scheme</span>
-                    <ChevronDown className={cn("w-3 h-3 transition-transform", themeOpen && "rotate-180")} />
-                  </button>
-                  <AnimatePresence initial={false}>
-                    {themeOpen && (
-                      <motion.div initial={{ height:0, opacity:0 }} animate={{ height:"auto", opacity:1 }} exit={{ height:0, opacity:0 }} transition={{ duration:0.2 }} className="overflow-hidden">
-                        <div className="px-1 pt-1 grid grid-cols-2 gap-1.5 pb-1">
-                          {themes.map(t => (
-                            <button key={t.name} onClick={() => handleThemeSelect(t.name)}
-                              className={cn("flex flex-col gap-1 p-1.5 rounded-xl transition-all border text-left",
-                                activeThemeName === t.name ? "border-primary/50 bg-primary/8" : "border-primary/10 bg-primary/5 hover:bg-primary/10")}>
-                              <div className="w-full h-6 rounded-lg" style={{ background: `linear-gradient(135deg, ${t.g[0]}, ${t.g[1]})` }} />
-                              <span className={cn("text-[8px] font-black uppercase tracking-tight", activeThemeName === t.name ? "text-primary" : "text-muted-foreground")}>{t.name}</span>
-                            </button>
-                          ))}
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </>
-              )}
-            </SidebarGroupContent>
-          </SidebarGroup>
         </SidebarContent>
-
 
         {/* ── Footer: user profile + streak ────────────────────────── */}
         <SidebarFooter className="shrink-0 p-3">
+          <SidebarMenu className="gap-1.5 mb-2">
+            {/* Search button */}
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                onClick={() => setIsCommandMenuOpen(true)}
+                className="h-9 rounded-xl transition-colors text-muted-foreground font-semibold text-sm hover:bg-muted/30"
+              >
+                <Search className="w-4 h-4 shrink-0" />
+                <span className="truncate">Search</span>
+                <span className="ml-auto text-[10px] opacity-40 group-data-[collapsible=icon]:hidden">⌘K</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+
+            {/* New page button */}
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                onClick={() => setIsNewPageModalOpen(true)}
+                className="h-9 rounded-xl transition-colors text-muted-foreground font-semibold text-sm hover:bg-muted/30"
+              >
+                <Plus className="w-4 h-4 shrink-0" />
+                <span className="truncate">New page</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+
+            {/* Dark/light toggle */}
+            {mounted && (
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  onClick={() => setMode(isDark ? "light" : "dark")}
+                  className="h-9 rounded-xl transition-colors text-muted-foreground font-semibold text-sm hover:bg-muted/30"
+                >
+                  {isDark ? <Sun className="w-4 h-4 shrink-0" /> : <Moon className="w-4 h-4 shrink-0" />}
+                  <span className="truncate">{isDark ? "Light mode" : "Dark mode"}</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            )}
+
+            {/* Colour scheme */}
+            <SidebarMenuItem>
+              <Popover open={themeOpen} onOpenChange={setThemeOpen}>
+                <PopoverTrigger asChild>
+                  <SidebarMenuButton className="h-9 rounded-xl transition-colors text-muted-foreground font-semibold text-sm hover:bg-muted/30">
+                    <Palette className="w-4 h-4 shrink-0" />
+                    <span className="truncate">Colour scheme</span>
+                    <ChevronDown className={cn("w-3 h-3 transition-transform ml-auto", themeOpen && "rotate-180")} />
+                  </SidebarMenuButton>
+                </PopoverTrigger>
+                <PopoverContent side="top" align="start" className="w-64 p-3 glass-card border-transparent shadow-2xl">
+                  <p className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-2">Theme</p>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {themes.map(t => (
+                      <button key={t.name} onClick={() => handleThemeSelect(t.name)}
+                        className={cn("flex flex-col gap-1 p-1.5 rounded-xl transition-all border text-left",
+                          activeThemeName === t.name ? "border-primary/50 bg-primary/8" : "border-primary/10 bg-primary/5 hover:bg-primary/10")}>
+                        <div className="w-full h-6 rounded-lg" style={{ background: `linear-gradient(135deg, ${t.g[0]}, ${t.g[1]})` }} />
+                        <span className={cn("text-[8px] font-black uppercase tracking-tight", activeThemeName === t.name ? "text-primary" : "text-muted-foreground")}>{t.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </SidebarMenuItem>
+          </SidebarMenu>
+
+          <SidebarSeparator className="my-2" />
+
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton size="lg" onClick={() => setProfileOpen(true)} data-tutorial="profile"
@@ -285,8 +325,8 @@ export function AppSidebar() {
                   )}
                 </div>
                 {/* Name + meta */}
-                <div className="flex-1 min-w-0 group-data-[collapsible=icon]:hidden">
-                  <p className="text-sm font-black text-foreground truncate leading-tight">{name}</p>
+                <div className="flex-1 min-w-0 group-data-[collapsible=icon]:hidden text-foreground">
+                  <p className="text-sm font-black truncate leading-tight">{name}</p>
                   <p className="text-[9px] font-bold text-muted-foreground/50 uppercase tracking-widest truncate">
                     Yr {userData?.grade || "?"} · {userData?.state || "—"}
                   </p>
@@ -298,6 +338,21 @@ export function AppSidebar() {
 
       </div>{/* end glass inner layer */}
       <ProfileSheet open={profileOpen} onOpenChange={setProfileOpen} />
+      
+      <NewPageModal
+        open={isNewPageModalOpen}
+        onClose={() => setIsNewPageModalOpen(false)}
+        onCreate={handleCreatePage}
+      />
+
+      <CommandMenu 
+        open={isCommandMenuOpen} 
+        onClose={() => setIsCommandMenuOpen(false)} 
+        onNavigate={(path) => {
+          setIsCommandMenuOpen(false);
+          router.push(path);
+        }} 
+      />
     </Sidebar>
   );
 }

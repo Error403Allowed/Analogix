@@ -109,11 +109,11 @@ export default function SubjectDocumentIndex() {
                 key={doc.id}
                 onClick={() => router.push(`/subjects/${subjectId}/document/${doc.id}`)}
                 className={cn(
-                  "w-full text-left py-3 px-1 rounded-lg hover:bg-muted/30 transition-all",
+                  "w-full text-left py-3 px-4 rounded-xl hover:bg-muted/30 transition-all border border-transparent hover:border-border/30"
                 )}
               >
                 <p className="text-sm font-bold text-foreground truncate">{doc.title || "Untitled"}</p>
-                <p className="text-[10px] uppercase tracking-widest text-muted-foreground/70 mt-1">
+                <p className="text-[10px] uppercase tracking-widest text-muted-foreground/70 mt-1.5">
                   Updated {new Date(doc.lastUpdated).toLocaleDateString()}
                 </p>
               </button>

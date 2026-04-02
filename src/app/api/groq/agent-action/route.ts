@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { studyGuideToHtml } from "@/utils/studyGuideHtml";
-import { encodeStudyGuide } from "@/utils/studyGuideContent";
+import { studyGuideToMarkdown } from "@/utils/studyGuideMarkdown";
 import type { GeneratedStudyGuide } from "@/services/groq";
 import {
   BOTTOM_RIGHT_AGENT_DOCUMENT_EDIT_MESSAGE,
@@ -232,7 +232,16 @@ export async function POST(request: Request) {
             newContent = existingContent + `<p>${field}: ${value}</p>`;
           }
           
-          const updatedDocs = documents.map(d => d === target ? { ...d, content: newContent, lastUpdated: now } : d);
+          const updatedDocs = documents.map(d => d === target ? {
+            ...d,
+            content: newContent,
+            contentJson: undefined,
+            contentText: undefined,
+            contentFormat: undefined,
+            studyGuideMarkdown: undefined,
+            studyGuideData: undefined,
+            lastUpdated: now,
+          } : d);
           await saveRow(supabase, user.id, subjectId, marks, { ...notes, documents: updatedDocs });
           
           const matchedTitle = target.title as string;
@@ -257,7 +266,16 @@ export async function POST(request: Request) {
           }
 
           const newContent = action.mode === "replace" ? (action.content ?? "") : `${existingContent}\n${action.content ?? ""}`;
-          const updatedDocs = documents.map(d => d === target ? { ...d, content: newContent, lastUpdated: now } : d);
+          const updatedDocs = documents.map(d => d === target ? {
+            ...d,
+            content: newContent,
+            contentJson: undefined,
+            contentText: undefined,
+            contentFormat: undefined,
+            studyGuideMarkdown: undefined,
+            studyGuideData: undefined,
+            lastUpdated: now,
+          } : d);
           await saveRow(supabase, user.id, subjectId, marks, { ...notes, documents: updatedDocs });
 
           const matchedTitle = target.title as string;
@@ -272,7 +290,7 @@ export async function POST(request: Request) {
           const existingContent = typeof target.content === "string" ? target.content : "";
 
           // If this isn't a study guide, fall back to update_document
-          if (!existingContent.startsWith(STUDY_GUIDE_PREFIX)) {
+          if (!existingContent.startsWith(STUDY_GUIDE_PREFIX) && target.role !== "study-guide" && !target.studyGuideData) {
             console.log("[agent-action] replace_study_guide called on regular doc, falling back to update_document");
             // Use action.content if provided, otherwise keep existing content
             // This handles cases where AI uses wrong action type but provides content
@@ -294,7 +312,16 @@ export async function POST(request: Request) {
                 }
               }
             }
-            const updatedDocs = documents.map(d => d === target ? { ...d, content: newContent, lastUpdated: now } : d);
+            const updatedDocs = documents.map(d => d === target ? {
+              ...d,
+              content: newContent,
+              contentJson: undefined,
+              contentText: undefined,
+              contentFormat: undefined,
+              studyGuideMarkdown: undefined,
+              studyGuideData: undefined,
+              lastUpdated: now,
+            } : d);
             await saveRow(supabase, user.id, subjectId, marks, { ...notes, documents: updatedDocs });
             const matchedTitle = target.title as string;
             console.log("[agent-action] fallback update_document OK:", matchedTitle);
@@ -307,8 +334,19 @@ export async function POST(request: Request) {
             }
             if (!guideObj || typeof guideObj !== "object") throw new Error("guide field is required and must be an object");
 
-            const newContent = encodeStudyGuide(guideObj as GeneratedStudyGuide);
-            const updatedDocs = documents.map(d => d === target ? { ...d, content: newContent, lastUpdated: now } : d);
+            const guide = guideObj as GeneratedStudyGuide;
+            const newContent = studyGuideToHtml(guide);
+            const updatedDocs = documents.map(d => d === target ? {
+              ...d,
+              content: newContent,
+              contentJson: undefined,
+              contentText: undefined,
+              contentFormat: undefined,
+              role: "study-guide",
+              studyGuideMarkdown: studyGuideToMarkdown(guide),
+              studyGuideData: guide,
+              lastUpdated: now,
+            } : d);
             await saveRow(supabase, user.id, subjectId, marks, { ...notes, documents: updatedDocs });
 
             const matchedTitle = target.title as string;
@@ -320,7 +358,24 @@ export async function POST(request: Request) {
         } else if (actionType === "add_flashcards") {
           const nextReview = new Date(); nextReview.setDate(nextReview.getDate() + 1);
           const cards = action.cards || [];
-          const setName = action.setName || `AI – ${new Date().toLocaleDateString("en-AU")}`;
+          // Derive a meaningful set name: use AI-provided title, or infer from cards, or fall back to subject
+          let setName: string = typeof action.setName === "string" && action.setName.trim()
+            ? action.setName.trim()
+            : "";
+          if (!setName && cards.length > 0) {
+            // Infer from the first card's front — truncate to ~40 chars
+            const firstFront = String(cards[0].front || "").trim();
+            if (firstFront) {
+              setName = firstFront.length > 40
+                ? firstFront.slice(0, 37) + "…"
+                : firstFront;
+            }
+          }
+          if (!setName) {
+            setName = subjectId
+              ? `${subjectId.charAt(0).toUpperCase() + subjectId.slice(1)} Flashcards`
+              : "Flashcard Set";
+          }
           // Create a named set first (new data model requires set_id)
           const { data: newSet, error: setError } = await supabase
             .from("flashcard_sets")

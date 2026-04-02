@@ -12,6 +12,7 @@ import { SUBJECT_CATALOG } from "@/constants/subjects";
 import { subjectStore } from "@/utils/subjectStore";
 import { toast } from "sonner";
 import { extractFileText, ACCEPTED_FILE_TYPES, ACCEPTED_FILE_LABEL } from "@/utils/extractFileText";
+import { isStudyGuideDocument } from "@/lib/document-content";
 
 export { studyGuideToHtml } from "@/utils/studyGuideHtml";
 
@@ -145,15 +146,7 @@ const StudyGuideManager = () => {
         const entries: GuideEntry[] = [];
         Object.entries(all).forEach(([subjectId, data]) => {
           (data.notes.documents || []).forEach(doc => {
-            const c = doc.content || "";
-            if (
-              c.startsWith("__STUDY_GUIDE_V2__") ||
-              c.startsWith("__STUDY_GUIDE_JSON__") ||
-              c.includes("📅 Study Schedule") ||
-              c.includes("🧠 Key Concepts") ||
-              c.includes("<h2>Study Schedule</h2>") ||
-              c.includes("<h2>Key Concepts</h2>")
-            ) {
+            if (isStudyGuideDocument(doc)) {
               entries.push({ docId: doc.id, subjectId, title: doc.title || "Untitled Guide", lastUpdated: doc.lastUpdated });
             }
           });

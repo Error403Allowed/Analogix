@@ -2,6 +2,12 @@
 
 import { createClient } from "@/lib/supabase/client";
 import type { SubjectColorId } from "@/components/ColorPicker";
+import type { GeneratedStudyGuide } from "@/services/groq";
+import {
+  EMPTY_TIPTAP_DOC,
+  TIPTAP_CONTENT_FORMAT,
+  type DocumentRole,
+} from "@/lib/document-content";
 import { getAuthUser } from "./authCache";
 
 // Alias so existing code in this file needs no changes
@@ -57,7 +63,15 @@ export interface CustomSubject {
 export interface SubjectDocumentItem {
   id: string;
   title: string;
+  icon?: string | null;
+  cover?: string | null;
   content: string;
+  contentJson?: string;
+  contentText?: string;
+  contentFormat?: string;
+  role?: DocumentRole;
+  studyGuideMarkdown?: string | null;
+  studyGuideData?: GeneratedStudyGuide | null;
   createdAt: string;
   lastUpdated: string;
 }
@@ -113,7 +127,17 @@ const normalizeDocuments = (subjectId: string, notes: SubjectNotes | undefined):
     return notes.documents.map((doc, i) => ({
       id: doc?.id || `legacy-${subjectId}-${i}`,
       title: typeof doc?.title === "string" ? doc.title : "",
+      icon: typeof doc?.icon === "string" ? doc.icon : null,
+      cover: typeof doc?.cover === "string" ? doc.cover : null,
       content: doc?.content || "",
+      contentJson: typeof doc?.contentJson === "string" ? doc.contentJson : undefined,
+      contentText: typeof doc?.contentText === "string" ? doc.contentText : undefined,
+      contentFormat: typeof doc?.contentFormat === "string" ? doc.contentFormat : undefined,
+      role: doc?.role === "study-guide" ? "study-guide" : "notes",
+      studyGuideMarkdown: typeof doc?.studyGuideMarkdown === "string" ? doc.studyGuideMarkdown : undefined,
+      studyGuideData: typeof doc?.studyGuideData === "object" && doc.studyGuideData
+        ? (doc.studyGuideData as GeneratedStudyGuide)
+        : undefined,
       createdAt: doc?.createdAt || notes.lastUpdated,
       lastUpdated: doc?.lastUpdated || notes.lastUpdated,
     }));
@@ -234,13 +258,17 @@ export const subjectStore = {
   createDocument: async (subjectId: string, title?: string): Promise<SubjectDocumentItem> => {
     const current = await subjectStore.getSubject(subjectId);
     const now = new Date().toISOString();
-    const newDoc: SubjectDocumentItem = {
-      id: crypto.randomUUID(),
-      title: typeof title === "string" ? title.trim() : "",
-      content: "__BN__[]",
-      createdAt: now,
-      lastUpdated: now,
-    };
+  const newDoc: SubjectDocumentItem = {
+    id: crypto.randomUUID(),
+    title: typeof title === "string" ? title.trim() : "",
+    content: "<p></p>",
+    contentJson: JSON.stringify(EMPTY_TIPTAP_DOC),
+    contentText: "",
+    contentFormat: TIPTAP_CONTENT_FORMAT,
+    role: "notes",
+    createdAt: now,
+    lastUpdated: now,
+  };
     await subjectStore.saveSubject(subjectId, {
       notes: { ...current.notes, documents: [newDoc, ...(current.notes.documents || [])], lastUpdated: now },
     }, current);
@@ -264,6 +292,25 @@ export const subjectStore = {
     await subjectStore.saveSubject(subjectId, {
       notes: { ...current.notes, documents: (current.notes.documents || []).filter(d => d.id !== docId), lastUpdated: new Date().toISOString() },
     }, current);
+  },
+
+  duplicateDocument: async (subjectId: string, docId: string): Promise<SubjectDocumentItem> => {
+    const current = await subjectStore.getSubject(subjectId);
+    const docs = current.notes.documents || [];
+    const target = docs.find(d => d.id === docId);
+    if (!target) throw new Error("Document not found");
+    const now = new Date().toISOString();
+    const newDoc: SubjectDocumentItem = {
+      ...target,
+      id: crypto.randomUUID(),
+      title: `${target.title} (Copy)`,
+      createdAt: now,
+      lastUpdated: now,
+    };
+    await subjectStore.saveSubject(subjectId, {
+      notes: { ...current.notes, documents: [newDoc, ...docs], lastUpdated: now },
+    }, current);
+    return newDoc;
   },
 
   updateHomework: async (subjectId: string, homework: SubjectHomework[]): Promise<void> => {

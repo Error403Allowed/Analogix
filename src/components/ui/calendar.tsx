@@ -4,6 +4,12 @@ import { DayPicker } from "react-day-picker"
 
 import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
+import { NextConfig } from 'next';
+
+// Caching
+const nextconfig: NextConfig = {
+  cacheComponents: true
+}
 
 export type CalendarProps = React.ComponentProps<typeof DayPicker>
 

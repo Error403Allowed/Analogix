@@ -54,13 +54,14 @@ Generate ${count} high-quality flashcards:
 - 40% definition/term cards, 40% concept explanation cards, 20% application/example cards
 - One idea per card, simple clear language, include examples where helpful
 - Use Australian English spelling
+- IMPORTANT: Use LaTeX notation for ALL mathematical expressions. Wrap inline maths in $...$ and display equations in $$...$$. For example: "The quadratic formula is $$x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$$" or "The gradient is $m = \\frac{rise}{run}$". Never write maths as plain text.
 
 Return ONLY valid JSON — no markdown, no preamble:
 {
   "flashcards": [
     {
-      "front": "What is photosynthesis?",
-      "back": "Photosynthesis is the process by which plants convert light energy into chemical energy. Plants use sunlight, water, and carbon dioxide to produce glucose and oxygen. The equation is: 6CO₂ + 6H₂O + light energy → C₆H₁₂O₆ + 6O₂"
+      "front": "What is the quadratic formula?",
+      "back": "The quadratic formula solves $ax^2 + bx + c = 0$ for $x$. The formula is $$x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$$ where $a$, $b$, and $c$ are coefficients."
     }
   ]
 }`;

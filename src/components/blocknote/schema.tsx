@@ -5,16 +5,19 @@ import {
   defaultBlockSpecs,
   defaultInlineContentSpecs,
   defaultStyleSpecs,
+  type BlockConfig,
 } from "@blocknote/core";
 import katex from "katex";
 
 const mathPropSchema = { formula: { default: "" } } as const;
 
-type MathBlockRenderProps = ReactCustomBlockRenderProps<
-  "math",
-  typeof mathPropSchema,
-  "none"
->;
+const mathBlockConfig = {
+  type: "math" as const,
+  propSchema: mathPropSchema,
+  content: "none" as const,
+} satisfies BlockConfig;
+
+type MathBlockRenderProps = ReactCustomBlockRenderProps<typeof mathBlockConfig>;
 
 function MathBlockView({ block, editor }: MathBlockRenderProps) {
   const [editing, setEditing] = useState(!block.props.formula);

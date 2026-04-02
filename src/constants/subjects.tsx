@@ -15,6 +15,12 @@ import {
   Stethoscope,
   Languages
 } from "lucide-react";
+import { NextConfig } from 'next';
+
+// Caching
+const nextconfig: NextConfig = {
+  cacheComponents: true
+}
 
 export type SubjectId =
   | "math"

@@ -330,7 +330,8 @@ It cannot edit, create, or rewrite documents from this panel.
 If the user asks to edit a document, tell them: "${BOTTOM_RIGHT_AGENT_DOCUMENT_EDIT_MESSAGE}"
 
 ── ACTION 1: add flashcards ──
-{"type":"add_flashcards","subjectId":"SUBJECT","cards":[{"front":"Q","back":"A"}]}
+{"type":"add_flashcards","subjectId":"SUBJECT","setName":"Descriptive Topic Title","cards":[{"front":"Q","back":"A"}]}
+IMPORTANT: Always include a meaningful "setName" — a short, specific title describing what the cards cover (e.g. "Newton's Laws of Motion", "Chapter 3 Vocab", "Photosynthesis"). Never use a date or generic name.
 
 ── ACTION 2: launch a quiz ──
 Use this when the user wants a quiz started in the quiz hub.

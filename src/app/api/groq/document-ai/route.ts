@@ -1,374 +1,211 @@
 import { NextResponse } from "next/server";
 import { callGroqChat } from "../_utils";
-import type {
-  StructuredDocument,
-  DocumentPatch,
-  StructuredAIAction,
-  Block,
-} from "@/lib/document-structure";
-import { generateBlockId } from "@/lib/document-structure";
 
 export const runtime = "nodejs";
 
-// Map simple actions to structured editing actions
-const ACTION_MAP: Record<string, StructuredAIAction> = {
-  rewrite: "rewrite_block",
-  shorten: "shorten_block",
-  simplify: "simplify_block",
-  expand: "expand_block",
-  formal: "rewrite_block",
-  casual: "rewrite_block",
-  summarise: "summarise_selection",
-  "bullet-points": "split_to_bullets",
-  checklist: "split_to_checklist",
-  "key-terms": "extract_key_terms",
-  "revision-summary": "summarise_selection",
-  explain: "add_explanation",
-  "add-examples": "add_example",
-  "add-steps": "add_steps",
-  "expand-explanations": "expand_block",
-  "fix-grammar": "fix_grammar_block",
-  flashcards: "generate_flashcards",
-  quiz: "generate_quiz",
-  "practice-problems": "generate_practice_problems",
-};
+type OutputFormat = "text" | "markdown";
+type ApplyMode = "replace" | "insert_after";
 
-const ACTION_PROMPTS: Record<StructuredAIAction, (text: string, subject?: string) => string> = {
-  rewrite_block: (text, subject) => 
-    `Rewrite this text to improve clarity, flow, and readability while keeping all key information.
-Output ONLY the rewritten text.
+interface ActionConfig {
+  format: OutputFormat;
+  mode: ApplyMode;
+  preview: string;
+  instruction: (text: string, subject?: string, documentText?: string, customPrompt?: string) => string;
+}
 
-Text to rewrite:
-${text}`,
-
-  shorten_block: (text) => 
-    `Make this text significantly shorter while keeping the key information. Remove filler and redundancy.
-Output ONLY the shortened text.
-
-Text to shorten:
-${text}`,
-
-  simplify_block: (text) => 
-    `Simplify this text. Use simpler words and shorter sentences for a high school student.
-Output ONLY the simplified text.
-
-Text to simplify:
-${text}`,
-
-  expand_block: (text, subject) => 
-    `Expand this text with more detail, explanation, and context. Add relevant examples.
-Output ONLY the expanded text.
-
-Text to expand:
-${text}`,
-
-  fix_grammar_block: (text) => 
-    `Fix all spelling, grammar, and punctuation errors. Improve clarity and flow.
-Output ONLY the corrected text.
-
-Text to fix:
-${text}`,
-
-  split_to_bullets: (text) => 
-    `Convert this text into structured bullet points. Use one idea per bullet.
-Output ONLY the bullet points, one per line.
-
-Text to convert:
-${text}`,
-
-  split_to_checklist: (text) => 
-    `Convert this text into a checklist of actionable items.
-Output ONLY the checklist items, one per line.
-
-Text to convert:
-${text}`,
-
-  merge_blocks: (text) => 
-    `Merge this content into a single coherent paragraph.
-Output ONLY the merged paragraph.
-
-Text to merge:
-${text}`,
-
-  add_explanation: (text, subject) => 
-    `Explain this concept in simple terms as if teaching a student. Use analogies where helpful.
-Output ONLY the explanation.
-
-Concept to explain:
-${text}`,
-
-  add_example: (text, subject) => 
-    `Add a relevant, concrete example that illustrates this concept.
-Output ONLY the example.
-
-Concept:
-${text}`,
-
-  add_steps: (text) => 
-    `Break this process into clear, numbered steps. Each step should be specific and actionable.
-Output ONLY the numbered steps, one per line.
-
-Process to break down:
-${text}`,
-
-  extract_key_terms: (text) => 
-    `Extract key terms and their definitions. Format as "Term: Definition" one per line.
-Output ONLY the terms and definitions.
-
-Text to extract from:
-${text}`,
-
-  summarise_selection: (text) => 
-    `Summarise this text into concise bullet points capturing key ideas only.
-Output ONLY the bullet points, one per line.
-
-Text to summarise:
-${text}`,
-
-  generate_flashcards: (text, subject) => 
-    `Create flashcards from this text. Format as:
-Q: [question]
-A: [answer]
-
-Create 5-10 flashcards. Output ONLY the flashcards.
-
-Text to convert:
-${text}`,
-
-  generate_quiz: (text, subject) => 
-    `Create practice quiz questions from this text. Include multiple choice with 4 options (A-D) and the correct answer.
-Format:
-Q: [question]
-A) [option]
-B) [option]
-C) [option]
-D) [option]
-Answer: [letter]
-
-Create 5-8 questions. Output ONLY the quiz.
-
-Text to convert:
-${text}`,
-
-  generate_practice_problems: (text, subject) => 
-    `Create practice problems based on this text. Include the problem and full solution.
-Format:
-Problem: [question]
-Solution: [worked solution]
-
-Create 5-8 problems. Output ONLY the problems.
-
-Text to base problems on:
-${text}`,
+const actionMap: Record<string, ActionConfig> = {
+  rewrite: {
+    format: "text",
+    mode: "replace",
+    preview: "Rewrote the selected text",
+    instruction: (text) => `Rewrite this text for stronger clarity, flow, and precision while preserving the original meaning.\n\n${text}`,
+  },
+  shorten: {
+    format: "text",
+    mode: "replace",
+    preview: "Condensed the selected text",
+    instruction: (text) => `Make this text much more concise without losing the key meaning.\n\n${text}`,
+  },
+  simplify: {
+    format: "text",
+    mode: "replace",
+    preview: "Simplified the selected text",
+    instruction: (text) => `Rewrite this text so a student can understand it quickly. Use simple language and shorter sentences.\n\n${text}`,
+  },
+  expand: {
+    format: "text",
+    mode: "replace",
+    preview: "Expanded the selected text",
+    instruction: (text, subject) =>
+      `Expand this text with more explanation, context, and examples.${subject ? ` The subject is ${subject}.` : ""}\n\n${text}`,
+  },
+  formal: {
+    format: "text",
+    mode: "replace",
+    preview: "Shifted the tone to formal",
+    instruction: (text) => `Rewrite this text in a formal academic tone.\n\n${text}`,
+  },
+  casual: {
+    format: "text",
+    mode: "replace",
+    preview: "Shifted the tone to conversational",
+    instruction: (text) => `Rewrite this text in a casual, conversational tone while keeping the ideas intact.\n\n${text}`,
+  },
+  "fix-grammar": {
+    format: "text",
+    mode: "replace",
+    preview: "Corrected grammar and wording",
+    instruction: (text) => `Fix spelling, grammar, punctuation, and awkward phrasing in this text.\n\n${text}`,
+  },
+  summarise: {
+    format: "markdown",
+    mode: "replace",
+    preview: "Summarised the selected text",
+    instruction: (text) =>
+      `Summarise this text into crisp markdown bullet points. Keep it exam-useful and remove filler.\n\n${text}`,
+  },
+  "bullet-points": {
+    format: "markdown",
+    mode: "replace",
+    preview: "Converted the text into bullet points",
+    instruction: (text) => `Turn this text into markdown bullet points with one idea per bullet.\n\n${text}`,
+  },
+  checklist: {
+    format: "markdown",
+    mode: "replace",
+    preview: "Converted the text into a checklist",
+    instruction: (text) => `Turn this text into a markdown task checklist of practical actions.\n\n${text}`,
+  },
+  "key-terms": {
+    format: "markdown",
+    mode: "replace",
+    preview: "Extracted key terms",
+    instruction: (text) =>
+      `Extract the key terms from this text and format them in markdown as a glossary with bold terms and short definitions.\n\n${text}`,
+  },
+  explain: {
+    format: "markdown",
+    mode: "insert_after",
+    preview: "Added a plain-English explanation",
+    instruction: (text, subject) =>
+      `Explain this material in plain English.${subject ? ` The subject is ${subject}.` : ""} Return markdown with a short heading, a simple explanation, and one helpful analogy.\n\n${text}`,
+  },
+  "add-examples": {
+    format: "markdown",
+    mode: "insert_after",
+    preview: "Added concrete examples",
+    instruction: (text, subject) =>
+      `Add 2 to 4 concrete, exam-relevant examples for this material.${subject ? ` The subject is ${subject}.` : ""} Return markdown.\n\n${text}`,
+  },
+  "add-steps": {
+    format: "markdown",
+    mode: "replace",
+    preview: "Broke the material into steps",
+    instruction: (text) => `Turn this material into a clean markdown numbered process.\n\n${text}`,
+  },
+  "revision-summary": {
+    format: "markdown",
+    mode: "insert_after",
+    preview: "Created a revision summary",
+    instruction: (text, subject) =>
+      `Create a markdown revision summary for this material.${subject ? ` The subject is ${subject}.` : ""} Include key ideas, common traps, and what to memorise.\n\n${text}`,
+  },
+  "expand-explanations": {
+    format: "markdown",
+    mode: "insert_after",
+    preview: "Expanded the explanation",
+    instruction: (text, subject) =>
+      `Expand this material into richer study notes.${subject ? ` The subject is ${subject}.` : ""} Return markdown with headings, bullets, and one worked example if relevant.\n\n${text}`,
+  },
+  flashcards: {
+    format: "markdown",
+    mode: "insert_after",
+    preview: "Generated flashcards",
+    instruction: (text, subject) =>
+      `Create 6 to 10 high-quality flashcards from this material.${subject ? ` The subject is ${subject}.` : ""} Return markdown using this pattern:\n## Flashcards\n- **Front:** ...\n  **Back:** ...\n\n${text}`,
+  },
+  quiz: {
+    format: "markdown",
+    mode: "insert_after",
+    preview: "Generated quiz questions",
+    instruction: (text, subject) =>
+      `Create 5 to 8 exam-style quiz questions from this material.${subject ? ` The subject is ${subject}.` : ""} Return markdown with each question followed by a short answer key.\n\n${text}`,
+  },
+  "practice-problems": {
+    format: "markdown",
+    mode: "insert_after",
+    preview: "Generated practice problems",
+    instruction: (text, subject) =>
+      `Create 4 to 6 practice problems with worked solutions from this material.${subject ? ` The subject is ${subject}.` : ""} Return markdown.\n\n${text}`,
+  },
+  "fill-gaps": {
+    format: "markdown",
+    mode: "insert_after",
+    preview: "Identified missing concepts",
+    instruction: (text, subject, documentText) =>
+      `You are reviewing a student's notes to find missing but important ideas.${subject ? ` The subject is ${subject}.` : ""} Use the selected material and the wider document context to identify conceptual gaps, blind spots, or weak links. Return markdown with three sections: "Missing Concepts", "Why They Matter", and "What To Add".\n\nSelected material:\n${text}\n\nDocument context:\n${(documentText || "").slice(0, 6000)}`,
+  },
+  custom: {
+    format: "markdown",
+    mode: "insert_after",
+    preview: "Applied the custom AI instruction",
+    instruction: (text, subject, documentText, customPrompt) =>
+      `Follow this instruction exactly: ${customPrompt || "Improve this material"}.\n${subject ? `The subject is ${subject}.` : ""}\nUse markdown when structure helps.\n\nSelected material:\n${text}\n\nDocument context:\n${(documentText || "").slice(0, 6000)}`,
+  },
 };
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { action, text, subject, document, selectedBlockIds } = body;
+    const action = typeof body.action === "string" ? body.action : "";
+    const text = typeof body.text === "string" ? body.text.trim() : "";
+    const subject = typeof body.subject === "string" ? body.subject : undefined;
+    const documentText = typeof body.documentText === "string" ? body.documentText : undefined;
+    const customPrompt = typeof body.customPrompt === "string" ? body.customPrompt.trim() : undefined;
 
-    if (!action || !text) {
-      return NextResponse.json({ error: "Action and text are required" }, { status: 400 });
+    if (!text) {
+      return NextResponse.json({ error: "Text is required" }, { status: 400 });
     }
 
-    const structuredAction = ACTION_MAP[action] || "rewrite_block";
-    const promptFn = ACTION_PROMPTS[structuredAction];
-    
-    if (!promptFn) {
-      return NextResponse.json({ error: "Invalid action" }, { status: 400 });
+    const config = actionMap[action];
+    if (!config) {
+      return NextResponse.json({ error: "Unsupported action" }, { status: 400 });
     }
 
-    const prompt = promptFn(text, subject);
+    const prompt = config.instruction(text, subject, documentText, customPrompt);
+    const formatHint = config.format === "markdown"
+      ? "Return markdown only. No code fences. No preamble."
+      : "Return plain text only. No markdown. No preamble.";
 
-    // Get AI response
-    const result = await callGroqChat(
+    const content = await callGroqChat(
       {
         messages: [
-          { role: "system", content: "You are an expert educational AI assistant. Output ONLY the requested content - no preamble, no explanations, no markdown unless specifically requested." },
-          { role: "user", content: prompt },
+          {
+            role: "system",
+            content: `You are Analogix Document AI, an educational writing assistant for student notes.${subject ? ` The subject is ${subject}.` : ""} ${formatHint}`,
+          },
+          {
+            role: "user",
+            content: prompt,
+          },
         ],
-        max_tokens: 2000,
-        temperature: 0.7,
+        max_tokens: 2200,
+        temperature: 0.45,
       },
-      "default"
-    );
-
-    // Build structured patch based on action type
-    const patch: DocumentPatch = buildStructuredPatch(
-      structuredAction,
-      result,
-      selectedBlockIds || [],
-      document
+      "default",
     );
 
     return NextResponse.json({
-      patch,
-      preview: generatePreview(patch, structuredAction),
+      mode: config.mode,
+      format: config.format,
+      preview: config.preview,
+      content: content.trim(),
     });
   } catch (error) {
     console.error("[/api/groq/document-ai] Error:", error);
     return NextResponse.json(
       { error: "AI service unavailable" },
-      { status: 500 }
+      { status: 500 },
     );
   }
-}
-
-/** Build a structured patch from AI response */
-function buildStructuredPatch(
-  action: StructuredAIAction,
-  aiResponse: string,
-  selectedBlockIds: string[],
-  document?: StructuredDocument
-): DocumentPatch {
-  const edits: DocumentPatch["edits"] = [];
-
-  // Parse AI response into structured edits
-  const lines = aiResponse.split("\n").filter(line => line.trim());
-
-  switch (action) {
-    case "split_to_bullets":
-    case "split_to_checklist":
-    case "add_steps": {
-      // Replace selected block with list
-      if (selectedBlockIds.length > 0 && document) {
-        const firstBlockId = selectedBlockIds[0];
-        const blockIndex = document.blocks.findIndex(b => b.id === firstBlockId);
-        
-        if (blockIndex !== -1) {
-          // Replace the block with a list
-          const items = lines.map(line => line.replace(/^[-•*]\s*/, "").replace(/^\d+\.\s*/, "").trim());
-          
-          edits.push({
-            op: "replace",
-            path: `/blocks/${blockIndex}/type`,
-            value: action === "split_to_bullets" ? "bulletList" : 
-                   action === "split_to_checklist" ? "checklist" : "numberedList",
-          });
-          edits.push({
-            op: "replace",
-            path: `/blocks/${blockIndex}/items`,
-            value: items,
-          });
-          edits.push({
-            op: "replace",
-            path: `/blocks/${blockIndex}/content`,
-            value: "",
-          });
-        }
-      }
-      break;
-    }
-
-    case "extract_key_terms": {
-      // Add new block with key terms after selection
-      if (selectedBlockIds.length > 0 && document) {
-        const lastBlockId = selectedBlockIds[selectedBlockIds.length - 1];
-        const termsBlock: Block = {
-          id: generateBlockId(),
-          type: "paragraph",
-          content: lines.join("\n"),
-        };
-        
-        edits.push({
-          op: "insert_block",
-          afterBlockId: lastBlockId,
-          block: termsBlock,
-        });
-      }
-      break;
-    }
-
-    case "generate_flashcards":
-    case "generate_quiz":
-    case "generate_practice_problems": {
-      // Add new block with generated content after selection
-      if (selectedBlockIds.length > 0 && document) {
-        const lastBlockId = selectedBlockIds[selectedBlockIds.length - 1];
-        const contentBlock: Block = {
-          id: generateBlockId(),
-          type: "paragraph",
-          content: aiResponse,
-        };
-        
-        edits.push({
-          op: "insert_block",
-          afterBlockId: lastBlockId,
-          block: contentBlock,
-        });
-      }
-      break;
-    }
-
-    case "add_explanation":
-    case "add_example": {
-      // Add explanation/example as new block after each selected block
-      if (selectedBlockIds.length > 0 && document) {
-        let afterId = selectedBlockIds[selectedBlockIds.length - 1];
-        
-        const explanationBlock: Block = {
-          id: generateBlockId(),
-          type: "callout",
-          content: action === "add_explanation" ? "💡 Explanation: " + aiResponse : "📌 Example: " + aiResponse,
-        };
-        
-        edits.push({
-          op: "insert_block",
-          afterBlockId: afterId,
-          block: explanationBlock,
-        });
-      }
-      break;
-    }
-
-    default:
-      // For rewrite, simplify, expand, etc. - replace selected block content
-      if (selectedBlockIds.length > 0 && document) {
-        selectedBlockIds.forEach((blockId, index) => {
-          const blockIndex = document.blocks.findIndex(b => b.id === blockId);
-          if (blockIndex !== -1) {
-            // If multiple blocks selected, split response among them
-            const responseLines = lines;
-            const linesPerBlock = Math.ceil(responseLines.length / selectedBlockIds.length);
-            const blockContent = responseLines
-              .slice(index * linesPerBlock, (index + 1) * linesPerBlock)
-              .join("\n");
-            
-            edits.push({
-              op: "replace",
-              path: `/blocks/${blockIndex}/content`,
-              value: blockContent || aiResponse,
-            });
-          }
-        });
-      }
-  }
-
-  return { edits };
-}
-
-/** Generate human-readable preview of changes */
-function generatePreview(patch: DocumentPatch, action: StructuredAIAction): string {
-  const editCount = patch.edits.length;
-  
-  const actionDescriptions: Record<StructuredAIAction, string> = {
-    rewrite_block: "Rewrote",
-    shorten_block: "Shortened",
-    simplify_block: "Simplified",
-    expand_block: "Expanded",
-    fix_grammar_block: "Fixed grammar in",
-    split_to_bullets: "Converted to bullet points",
-    split_to_checklist: "Converted to checklist",
-    merge_blocks: "Merged",
-    add_explanation: "Added explanation",
-    add_example: "Added example",
-    add_steps: "Broke into steps",
-    extract_key_terms: "Extracted key terms",
-    summarise_selection: "Summarised",
-    generate_flashcards: "Generated flashcards",
-    generate_quiz: "Generated quiz",
-    generate_practice_problems: "Generated practice problems",
-  };
-
-  return `${actionDescriptions[action]} ${editCount} block${editCount !== 1 ? "s" : ""}`;
 }

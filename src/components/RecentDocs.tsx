@@ -6,8 +6,7 @@ import { BookOpen, FileText, Plus, ChevronRight } from "lucide-react";
 import { subjectStore } from "@/utils/subjectStore";
 import { SUBJECT_CATALOG } from "@/constants/subjects";
 import { cn } from "@/lib/utils";
-
-const STUDY_GUIDE_PREFIX = "__STUDY_GUIDE_V2__";
+import { isStudyGuideDocument } from "@/lib/document-content";
 
 interface DocEntry {
   docId: string;
@@ -40,7 +39,7 @@ export default function RecentDocs() {
               subjectLabel,
               title: doc.title || "Untitled",
               lastUpdated: doc.lastUpdated,
-              isGuide: doc.content.startsWith(STUDY_GUIDE_PREFIX),
+              isGuide: isStudyGuideDocument(doc),
             });
           });
         });
@@ -111,21 +110,21 @@ export default function RecentDocs() {
               onClick={() =>
                 router.push(`/subjects/${doc.subjectId}/document/${doc.docId}`)
               }
-              className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg bg-muted/20 hover:bg-muted/40 transition-colors group text-left"
+              className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-muted/20 hover:bg-muted/40 transition-colors group text-left border border-transparent hover:border-border/30"
             >
               {/* Icon */}
               <div
                 className={cn(
-                  "w-6 h-6 rounded-md flex items-center justify-center shrink-0",
+                  "w-7 h-7 rounded-lg flex items-center justify-center shrink-0",
                   doc.isGuide
                     ? "bg-primary/15"
                     : "bg-muted/60"
                 )}
               >
                 {doc.isGuide ? (
-                  <BookOpen className="w-3 h-3 text-primary" />
+                  <BookOpen className="w-3.5 h-3.5 text-primary" />
                 ) : (
-                  <FileText className="w-3 h-3 text-muted-foreground" />
+                  <FileText className="w-3.5 h-3.5 text-muted-foreground" />
                 )}
               </div>
 
@@ -139,7 +138,7 @@ export default function RecentDocs() {
                 </p>
               </div>
 
-              <ChevronRight className="w-3 h-3 text-muted-foreground/20 group-hover:text-primary/40 transition-colors shrink-0" />
+              <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/20 group-hover:text-primary/40 transition-colors shrink-0" />
             </button>
           ))
         )}
