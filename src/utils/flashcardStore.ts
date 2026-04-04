@@ -180,11 +180,27 @@ export const flashcardStore = {
     if (!user) return [];
     const supabase = createClient();
 
+    // Fetch existing cards to deduplicate against
+    const existing = await flashcardStore.getAll();
+    const existingKeys = new Set(
+      existing.map(c => `${c.setId}:${c.front.trim().toLowerCase()}:${c.back.trim().toLowerCase()}`)
+    );
+
+    // Filter out duplicates (same set + same front + same back, case-insensitive)
+    const uniqueCards = cards.filter(c => {
+      const key = `${c.setId}:${c.front.trim().toLowerCase()}:${c.back.trim().toLowerCase()}`;
+      if (existingKeys.has(key)) return false;
+      existingKeys.add(key); // prevent duplicates within the batch too
+      return true;
+    });
+
+    if (uniqueCards.length === 0) return [];
+
     const now = new Date().toISOString();
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    const newCards: Flashcard[] = cards.map(c => ({
+    const newCards: Flashcard[] = uniqueCards.map(c => ({
       ...c,
       id: crypto.randomUUID(),
       nextReview: tomorrow.toISOString(),
@@ -210,8 +226,100 @@ export const flashcardStore = {
         repetitions: c.repetitions,
       })),
     );
-    if (error) console.warn("[flashcardStore] add failed:", error);
+    if (error) {
+      console.warn("[flashcardStore] add failed:", error);
+      return [];
+    }
     return newCards;
+  },
+
+  /**
+   * Remove duplicate flashcards for the current user.
+   * Keeps the oldest copy of each duplicate group (same set + front + back).
+   * Returns the number of duplicates removed.
+   */
+  removeDuplicates: async (): Promise<number> => {
+    const user = await getAuthUser();
+    if (!user) return 0;
+    const supabase = createClient();
+
+    const all = await flashcardStore.getAll();
+    const seen = new Map<string, Flashcard>();
+    const duplicates: Flashcard[] = [];
+
+    // Sort by createdAt ascending so we keep the oldest
+    all.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+
+    for (const card of all) {
+      const key = `${card.setId}:${card.front.trim().toLowerCase()}:${card.back.trim().toLowerCase()}`;
+      if (seen.has(key)) {
+        duplicates.push(card);
+      } else {
+        seen.set(key, card);
+      }
+    }
+
+    if (duplicates.length === 0) return 0;
+
+    // Delete duplicates in batches
+    const batchSize = 50;
+    for (let i = 0; i < duplicates.length; i += batchSize) {
+      const batch = duplicates.slice(i, i + batchSize);
+      const { error } = await supabase
+        .from("flashcards")
+        .delete()
+        .in("id", batch.map(c => c.id))
+        .eq("user_id", user.id);
+      if (error) {
+        console.warn("[flashcardStore] removeDuplicates batch failed:", error);
+      }
+    }
+
+    console.log(`[flashcardStore] Removed ${duplicates.length} duplicate cards`);
+    return duplicates.length;
+  },
+
+  /**
+   * Remove orphaned cards (cards with set_id = null or referencing a deleted set).
+   * Returns the number of orphaned cards removed.
+   */
+  removeOrphans: async (): Promise<number> => {
+    const user = await getAuthUser();
+    if (!user) return 0;
+    const supabase = createClient();
+
+    // Get all valid sets for this user
+    const { data: sets } = await supabase
+      .from("flashcard_sets")
+      .select("id")
+      .eq("user_id", user.id);
+
+    const validSetIds = new Set((sets || []).map((s: any) => s.id));
+
+    // Get all cards
+    const allCards = await flashcardStore.getAll();
+
+    // Find orphans: cards with no set_id or set_id not in valid sets
+    const orphans = allCards.filter(c => !c.setId || !validSetIds.has(c.setId));
+
+    if (orphans.length === 0) return 0;
+
+    // Delete orphans in batches
+    const batchSize = 50;
+    for (let i = 0; i < orphans.length; i += batchSize) {
+      const batch = orphans.slice(i, i + batchSize);
+      const { error } = await supabase
+        .from("flashcards")
+        .delete()
+        .in("id", batch.map(c => c.id))
+        .eq("user_id", user.id);
+      if (error) {
+        console.warn("[flashcardStore] removeOrphans batch failed:", error);
+      }
+    }
+
+    console.log(`[flashcardStore] Removed ${orphans.length} orphaned cards`);
+    return orphans.length;
   },
 
   review: async (cardId: string, rating: FlashcardRating): Promise<void> => {

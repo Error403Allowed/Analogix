@@ -3,6 +3,9 @@ import { callGroqChat, formatError } from "../_utils";
 
 export const runtime = "nodejs";
 
+// Cache greeting for 1 hour — it doesn't change often
+export const revalidate = 3600;
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();

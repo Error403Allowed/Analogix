@@ -4,7 +4,7 @@ import {
   LayoutDashboard, MessageCircle, Calendar,
   GraduationCap, Trophy, ChevronDown, Palette,
   Sun, Moon, User, Flame, Library, SigmaIcon, SquareStack, ClipboardList,
-  Plus, Search, MoreHorizontal,
+  Plus, Search, MoreHorizontal, Sparkles,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import {
@@ -13,9 +13,10 @@ import {
   SidebarGroup, SidebarGroupContent, SidebarTrigger, SidebarSeparator,
 } from "@/components/ui/sidebar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Switch } from "@/components/ui/switch";
 import { useRouter, usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useTheme } from "next-themes";
 import { useSidebar } from "@/components/ui/sidebar";
 import { applyThemeByName } from "@/components/ThemeSelector";
@@ -65,6 +66,8 @@ export function AppSidebar() {
   const { openTab, tabs, activeTabId } = useTabs();
   const [userData,         setUserData]         = useState<any>(null);
   const [activeThemeName,  setActiveThemeName]  = useState("Cosmic Aurora");
+  const [paperMode,        setPaperMode]        = useState(false);
+  const lastColorRef = useRef<string>("Cosmic Aurora");
   const [mounted,          setMounted]          = useState(false);
   const [themeOpen,        setThemeOpen]        = useState(false);
   const [profileOpen,      setProfileOpen]      = useState(false);
@@ -83,10 +86,23 @@ export function AppSidebar() {
         const stats = JSON.parse(localStorage.getItem("analogix_user_stats_v1") || "{}");
         setStreak(Number(stats.currentStreak) || 0);
       } catch {}
-      setActiveThemeName(localStorage.getItem("app-theme") || "Cosmic Aurora");
+      const saved = localStorage.getItem("app-theme") || "Cosmic Aurora";
+      const isPaper = localStorage.getItem("paper-mode") === "true";
+      setPaperMode(isPaper);
+      if (isPaper) {
+        setActiveThemeName("Paper");
+      } else {
+        setActiveThemeName(saved);
+        lastColorRef.current = saved;
+      }
     };
     load();
-    const onTheme = () => setActiveThemeName(localStorage.getItem("app-theme") || "Cosmic Aurora");
+    const onTheme = () => {
+      const saved = localStorage.getItem("app-theme") || "Cosmic Aurora";
+      const isPaper = localStorage.getItem("paper-mode") === "true";
+      setPaperMode(isPaper);
+      setActiveThemeName(isPaper ? "Paper" : saved);
+    };
     window.addEventListener("storage", load);
     window.addEventListener("userPreferencesUpdated", load);
     window.addEventListener("statsUpdated", load);
@@ -100,8 +116,28 @@ export function AppSidebar() {
   }, []);
 
   const handleThemeSelect = (name: string) => {
+    if (paperMode) {
+      setPaperMode(false);
+      localStorage.setItem("paper-mode", "false");
+    }
+    lastColorRef.current = name;
     setActiveThemeName(name);
     applyThemeByName(name);
+    window.dispatchEvent(new Event("themeUpdated"));
+  };
+
+  const handlePaperToggle = (checked: boolean) => {
+    setPaperMode(checked);
+    localStorage.setItem("paper-mode", String(checked));
+    if (checked) {
+      lastColorRef.current = activeThemeName === "Paper" ? lastColorRef.current : activeThemeName;
+      applyThemeByName("Paper");
+      setActiveThemeName("Paper");
+    } else {
+      const prev = lastColorRef.current || "Cosmic Aurora";
+      applyThemeByName(prev);
+      setActiveThemeName(prev);
+    }
     window.dispatchEvent(new Event("themeUpdated"));
   };
 
@@ -155,13 +191,13 @@ export function AppSidebar() {
     <Sidebar
       collapsible="icon"
       data-tutorial="sidebar"
-      className={cn(
-        "border-r-0 bg-transparent group-data-[side=left]:border-r-0 group-data-[side=right]:border-l-0",
-        /* The sidebar itself gets the glass treatment */
-      )}
+      className="!border-r-0 !border-l-0 !border-none"
+      style={{ background: "hsl(var(--background))" }}
     >
-      {/* Glass inner layer */}
-      <div className="flex flex-col h-full mx-2 my-2 rounded-3xl glass-card border-0 shadow-2xl overflow-hidden">
+      {/* Inner container — same solid bg as page */}
+      <div className="flex flex-col h-full px-2 py-2 overflow-hidden"
+        style={{ background: "hsl(var(--background))" }}
+      >
 
         {/* ── Header: logo + collapse trigger ──────────────────────── */}
         <SidebarHeader className="h-16 shrink-0 flex flex-col justify-center px-5 group-data-[collapsible=icon]:px-2">
@@ -207,17 +243,17 @@ export function AppSidebar() {
                             className={cn(
                               "h-9 rounded-xl transition-all duration-200 relative group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:-translate-x-1.5",
                               isActive
-                                ? "bg-primary/12 text-primary font-black"
-                                : "text-muted-foreground font-semibold"
+                                ? "bg-sidebar-accent text-sidebar-accent-foreground font-bold"
+                                : "text-sidebar-foreground/70 font-semibold hover:text-sidebar-foreground"
                             )}
                           >
                             {isActive && (
-                              <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-full bg-primary group-data-[collapsible=icon]:hidden" />
+                              <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-full bg-sidebar-primary group-data-[collapsible=icon]:hidden" />
                             )}
                             <item.icon
                               className={cn(
                                 "w-4 h-4 shrink-0 ml-1 transition-transform group-data-[collapsible=icon]:ml-0",
-                                isActive ? "text-primary" : "text-muted-foreground/70"
+                                isActive ? "text-sidebar-primary" : "text-sidebar-foreground/70"
                               )}
                             />
                             <span className="truncate group-data-[collapsible=icon]:hidden">{item.title}</span>
@@ -283,13 +319,28 @@ export function AppSidebar() {
                 </PopoverTrigger>
                 <PopoverContent side="top" align="start" className="w-64 p-3 glass-card border-transparent shadow-2xl">
                   <p className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-2">Theme</p>
+
+                  {/* Paper toggle */}
+                  <div className="flex items-center justify-between p-2 rounded-lg bg-muted/40 border border-border/40 mb-2">
+                    <div className="flex items-center gap-2">
+                      <div className={cn("w-6 h-6 rounded-md flex items-center justify-center transition-colors", paperMode ? "bg-foreground text-background" : "bg-muted text-muted-foreground")}>
+                        <Sparkles className="w-3 h-3" />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold">Paper</p>
+                        <p className="text-[8px] text-muted-foreground">Monochrome</p>
+                      </div>
+                    </div>
+                    <Switch checked={paperMode} onCheckedChange={handlePaperToggle} className="scale-75" />
+                  </div>
+
                   <div className="grid grid-cols-2 gap-1.5">
-                    {themes.map(t => (
+                    {themes.filter(t => t.name !== "Paper").map(t => (
                       <button key={t.name} onClick={() => handleThemeSelect(t.name)}
                         className={cn("flex flex-col gap-1 p-1.5 rounded-xl transition-all border text-left",
-                          activeThemeName === t.name ? "border-primary/50 bg-primary/8" : "border-primary/10 bg-primary/5 hover:bg-primary/10")}>
+                          activeThemeName === t.name && !paperMode ? "border-primary/50 bg-primary/8" : paperMode ? "border-border/20 opacity-40" : "border-primary/10 bg-primary/5 hover:bg-primary/10")}>
                         <div className="w-full h-6 rounded-lg" style={{ background: `linear-gradient(135deg, ${t.g[0]}, ${t.g[1]})` }} />
-                        <span className={cn("text-[8px] font-black uppercase tracking-tight", activeThemeName === t.name ? "text-primary" : "text-muted-foreground")}>{t.name}</span>
+                        <span className={cn("text-[8px] font-black uppercase tracking-tight", activeThemeName === t.name && !paperMode ? "text-primary" : "text-muted-foreground")}>{t.name}</span>
                       </button>
                     ))}
                   </div>
@@ -345,13 +396,23 @@ export function AppSidebar() {
         onCreate={handleCreatePage}
       />
 
-      <CommandMenu 
-        open={isCommandMenuOpen} 
-        onClose={() => setIsCommandMenuOpen(false)} 
+      <CommandMenu
+        open={isCommandMenuOpen}
+        onClose={() => setIsCommandMenuOpen(false)}
         onNavigate={(path) => {
           setIsCommandMenuOpen(false);
-          router.push(path);
-        }} 
+          if (path === "new-event") {
+            router.push("/calendar");
+            setTimeout(() => window.dispatchEvent(new CustomEvent("openAddEvent")), 300);
+          } else if (path.startsWith("doc:")) {
+            const [, docId, subjectId] = path.split(":");
+            router.push(`/subjects/${subjectId}/document/${docId}`);
+          } else if (path.startsWith("new-")) {
+            router.push("/dashboard");
+          } else {
+            router.push(path);
+          }
+        }}
       />
     </Sidebar>
   );

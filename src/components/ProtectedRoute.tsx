@@ -44,6 +44,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const router = useRouter();
   const [isChecking, setIsChecking] = useState(true);
   const userRef = useRef<string | null>(null);
+  const dbCheckDoneRef = useRef(false);
 
   useEffect(() => {
     // Wait for auth to finish loading
@@ -67,17 +68,21 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
       }
 
       userRef.current = user.id;
-      setIsChecking(true);
 
-      try {
-        // Fast path: check localStorage first
-        const prefs = JSON.parse(localStorage.getItem("userPreferences") || "{}");
-        if (prefs?.onboardingComplete && prefs.userId === user.id) {
-          setIsChecking(false);
-          return;
+      // Fast path: check localStorage — this is instant, no network
+      const prefs = JSON.parse(localStorage.getItem("userPreferences") || "{}");
+      if (prefs?.onboardingComplete && prefs.userId === user.id) {
+        setIsChecking(false);
+        // Defer DB sync to after page is interactive — don't block render
+        if (!dbCheckDoneRef.current) {
+          dbCheckDoneRef.current = true;
+          syncPrefsFromProfileDeferred(user.id);
         }
+        return;
+      }
 
-        // Slow path: check database
+      // Slow path: check database (only if localStorage miss)
+      try {
         const supabase = createClient();
         const { data: profile } = await supabase
           .from("profiles")
@@ -108,6 +113,24 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
     checkOnboarding();
   }, [user, loading, router]);
+
+  // Deferred DB sync — runs after page is visible
+  const syncPrefsFromProfileDeferred = async (userId: string) => {
+    try {
+      const supabase = createClient();
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("onboarding_complete, grade, state, subjects, hobbies")
+        .eq("id", userId)
+        .maybeSingle();
+
+      if (hasProfileData(profile)) {
+        syncPrefsFromProfile(profile, userId);
+      }
+    } catch {
+      // Silently fail — localStorage is our source of truth for now
+    }
+  };
 
   // Always render children to ensure proper hydration and tab caching
   // Use overlay for loading/redirect states instead of replacing content

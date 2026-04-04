@@ -158,6 +158,7 @@ export default function Flashcards() {
   const [topView, setTopView]         = useState<TopView>("library");
   const [cards, setCards]             = useState<Flashcard[]>([]);
   const [dbSets, setDbSets]           = useState<FlashcardSet[]>([]);
+  const [duplicateCount, setDuplicateCount] = useState(0);
   const [loading, setLoading]         = useState(true);
   const [userSubjects, setUserSubjects] = useState<string[]>([]);
 
@@ -286,6 +287,14 @@ export default function Flashcards() {
 
   // ── Load all cards ──
   const refresh = useCallback(async () => {
+    // Auto-cleanup: remove orphans first (cards with no valid set)
+    const orphansRemoved = await flashcardStore.removeOrphans();
+    // Then remove duplicates
+    const duplicatesRemoved = await flashcardStore.removeDuplicates();
+
+    const totalCleaned = orphansRemoved + duplicatesRemoved;
+    if (totalCleaned > 0) setDuplicateCount(totalCleaned);
+
     const [all, allSets] = await Promise.all([
       flashcardStore.getAll(),
       flashcardStore.getSets(),
@@ -880,6 +889,23 @@ export default function Flashcards() {
                   </div>
                 ))}
               </div>
+
+              {/* Cleanup notification */}
+              {duplicateCount > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="rounded-2xl border border-green-500/20 bg-green-500/5 p-4 flex items-center gap-3"
+                >
+                  <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center shrink-0">
+                    <Check className="w-4 h-4 text-green-500" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-green-600">Cleaned up {duplicateCount} orphaned/duplicate cards</p>
+                    <p className="text-xs text-muted-foreground">Cards without a valid set are automatically removed.</p>
+                  </div>
+                </motion.div>
+              )}
 
               {/* AI Generate section — upload + paste */}
               <div className="rounded-2xl border border-border bg-card overflow-hidden">

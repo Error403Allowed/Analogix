@@ -198,6 +198,15 @@ export default function TabBar({ onNavigate }: TabBarProps) {
       setNewTabOpen(false);
       return;
     }
+    if (path === "new-event") {
+      // Navigate to calendar with event creation hint
+      openTab("/calendar", "Calendar", "📅");
+      router.push("/calendar");
+      setNewTabOpen(false);
+      // Dispatch event to open the add event dialog
+      window.dispatchEvent(new CustomEvent("openAddEvent"));
+      return;
+    }
 
     const meta = pathMeta(path);
     openTab(path, meta.label, meta.emoji);

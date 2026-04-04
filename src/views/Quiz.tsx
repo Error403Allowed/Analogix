@@ -377,9 +377,6 @@ const Quiz = () => {
   if (showConfig && !isLoading) {
     return (
       <div className="min-h-full pb-4 relative overflow-hidden bg-background">
-        <div className="liquid-blob w-80 h-80 bg-primary/20 -top-40 -right-40 fixed" />
-        <div className="liquid-blob w-64 h-64 bg-accent/20 bottom-20 -left-32 fixed" />
-
         <div className="max-w-2xl mx-auto px-4 sm:px-6 pt-8 relative z-10">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -520,10 +517,6 @@ const Quiz = () => {
     ];
     return (
       <div className="min-h-full flex flex-col items-center justify-center bg-background p-6 relative overflow-hidden">
-        {/* Background blobs */}
-        <div className="liquid-blob w-80 h-80 bg-primary/10 -top-40 -right-40 fixed" />
-        <div className="liquid-blob w-64 h-64 bg-accent/10 bottom-20 -left-32 fixed" style={{ animationDelay: "-2s" }} />
-
         <div className="relative z-10 flex flex-col items-center gap-8 max-w-sm w-full">
           {/* Animated ring stack */}
           <div className="relative w-28 h-28 flex items-center justify-center">
@@ -655,11 +648,7 @@ const Quiz = () => {
       : AlertTriangle;
 
   return (
-    <div className="min-h-full pb-4 relative overflow-hidden">
-      {/* Background blobs */}
-      <div className="liquid-blob w-80 h-80 bg-primary/20 -top-40 -right-40 fixed" />
-      <div className="liquid-blob w-64 h-64 bg-accent/20 bottom-20 -left-32 fixed" style={{ animationDelay: '-2s' }} />
-
+    <div className="min-h-full pb-4 relative overflow-hidden bg-background">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-6 relative z-10">
         {/* Header */}
         <motion.header

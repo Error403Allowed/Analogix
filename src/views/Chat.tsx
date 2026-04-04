@@ -374,7 +374,8 @@ const Chat = () => {
     typeof window !== "undefined"
       ? JSON.parse(localStorage.getItem("userPreferences") || "{}")
       : {};
-  const userName = userPrefs.name || "Student";
+  const [hydratedUserName, setHydratedUserName] = useState<string>("");
+  const userName = hydratedUserName || userPrefs.name || "";
   const userHobbies = buildInterestList(userPrefs, ["gaming", "sports"]);
   const userSubjects = Array.isArray(userPrefs.subjects) ? userPrefs.subjects : [];
   const availableSubjects = useMemo(
@@ -386,6 +387,14 @@ const Chat = () => {
     [availableSubjects],
   );
   const isInputLocked = isTyping || !!streamingId;
+
+  // Load user name from localStorage after hydration to avoid mismatch
+  useEffect(() => {
+    try {
+      const prefs = JSON.parse(localStorage.getItem("userPreferences") || "{}");
+      if (prefs.name) setHydratedUserName(prefs.name);
+    } catch {}
+  }, []);
 
   useEffect(() => {
     const load = () => setSavedSources(researchStore.getAll());
@@ -1560,7 +1569,7 @@ const Chat = () => {
                     >
                       <div>
                         <p className="text-base font-semibold text-foreground/80">
-                          {userName ? `Hey ${userName}, what are you studying?` : "What are you studying?"}
+                          {userName ? `Hey ${userName}, what are you studying?` : "Hey there, what are you studying?"}
                         </p>
                         <p className="text-sm text-muted-foreground/60 mt-1">
                           Ask about any concept — I'll explain it with your interests

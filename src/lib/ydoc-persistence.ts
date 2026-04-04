@@ -245,12 +245,23 @@ function toUint8Array(value: unknown): Uint8Array {
 
   // Handle base64 (expected format)
   if (typeof value === "string") {
-    const binary = atob(value);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) {
-      bytes[i] = binary.charCodeAt(i);
+    try {
+      const binary = atob(value);
+      const length = binary.length;
+      // Validate length is reasonable (Yjs docs are typically < 1MB)
+      if (length <= 0 || length > 10_000_000) {
+        console.warn("[ydoc-persistence] Suspicious base64 length:", length);
+        return new Uint8Array();
+      }
+      const bytes = new Uint8Array(length);
+      for (let i = 0; i < length; i++) {
+        bytes[i] = binary.charCodeAt(i);
+      }
+      return bytes;
+    } catch (e) {
+      console.warn("[ydoc-persistence] Failed to decode base64:", e);
+      return new Uint8Array();
     }
-    return bytes;
   }
 
   console.warn("[ydoc-persistence] Unsupported update format, returning empty array");

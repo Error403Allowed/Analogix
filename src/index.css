@@ -59,6 +59,16 @@
     --glass-border: var(--glass-border-light);
     --glass-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 
+    /* Sidebar colors — hover states for all themes */
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 0 0% 15%;
+    --sidebar-primary: var(--p-h) var(--p-s) var(--p-l);
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 94%;
+    --sidebar-accent-foreground: 0 0% 15%;
+    --sidebar-border: 0 0% 90%;
+    --sidebar-ring: var(--p-h) var(--p-s) var(--p-l);
+
     --radius: 0.375rem;
     --blur: 8px;
     --glass-opacity: 0.95;
@@ -108,6 +118,16 @@
     --glass-tint: rgba(56, 189, 248, 0.05);
     --glass-border: transparent;
     --glass-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+
+    /* Sidebar dark — visible hover */
+    --sidebar-background: 0 0% 12%;
+    --sidebar-foreground: 0 0% 80%;
+    --sidebar-primary: var(--p-h) var(--p-s) var(--p-l);
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 18%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 0 0% 20%;
+    --sidebar-ring: var(--p-h) var(--p-s) var(--p-l);
   }
 
   * {
@@ -127,6 +147,62 @@
   }
   .dark body {
     background-image: none;
+  }
+
+  /* Paper theme — Notion-inspired warm grays
+     Uses the same CSS variable system as all themes (via withDerived).
+     Only overrides base background/foreground/sidebar values that differ. */
+  [data-theme="paper"] {
+    --background: 40 5% 99%;
+    --foreground: 40 5% 20%;
+    --card: 40 5% 100%;
+    --card-foreground: 40 5% 20%;
+    --popover: 40 5% 100%;
+    --popover-foreground: 40 5% 20%;
+    --muted: 40 5% 96%;
+    --muted-foreground: 40 4% 46%;
+    --border: 40 5% 92%;
+    --input: 40 5% 92%;
+    --ring: 40 5% 20%;
+    --accent: 40 5% 96%;
+    --accent-foreground: 40 5% 20%;
+    --secondary: 40 5% 96%;
+    --secondary-foreground: 40 5% 20%;
+    --sidebar-background: 40 5% 97%;
+    --sidebar-foreground: 40 5% 20%;
+    --sidebar-border: 40 5% 92%;
+    --sidebar-accent: 40 5% 94%;
+    --sidebar-accent-foreground: 40 5% 20%;
+    --sidebar-ring: 40 5% 20%;
+    --sidebar-primary: 40 5% 20%;
+    --sidebar-primary-foreground: 0 0% 100%;
+  }
+
+  /* Paper dark mode — Notion's actual dark palette */
+  [data-theme="paper"].dark {
+    --background: 0 0% 9.8%;
+    --foreground: 0 0% 83%;
+    --card: 0 0% 9.8%;
+    --card-foreground: 0 0% 83%;
+    --popover: 0 0% 9.8%;
+    --popover-foreground: 0 0% 83%;
+    --muted: 0 0% 14.5%;
+    --muted-foreground: 0 0% 60.8%;
+    --border: 0 0% 18%;
+    --input: 0 0% 18%;
+    --ring: 0 0% 83%;
+    --accent: 0 0% 14.5%;
+    --accent-foreground: 0 0% 83%;
+    --secondary: 0 0% 14.5%;
+    --secondary-foreground: 0 0% 83%;
+    --sidebar-background: 0 0% 12.5%;
+    --sidebar-foreground: 0 0% 83%;
+    --sidebar-border: 0 0% 18%;
+    --sidebar-accent: 0 0% 17%;
+    --sidebar-accent-foreground: 0 0% 83%;
+    --sidebar-ring: 0 0% 83%;
+    --sidebar-primary: 0 0% 83%;
+    --sidebar-primary-foreground: 0 0% 9.8%;
   }
 }
 

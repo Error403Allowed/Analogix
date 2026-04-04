@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Palette, Check, Settings2 } from "lucide-react";
+import { Palette, Check, Settings2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Switch } from "@/components/ui/switch";
 
 type HSL = { h: string; s: string; l: string };
 type Theme = {
@@ -217,6 +218,31 @@ export const themes = [
     muted: hsl(280, 18, 96),
     mutedFg: hsl(275, 16, 42),
   }),
+  // Paper — Notion-inspired monochrome, warm grays, distraction-free
+  // Uses the same CSS variable system as all other themes — only the values differ
+  withDerived({
+    name: "Paper",
+    p: hsl(40, 5, 20),
+    g: ["#373530", "#787774", "#9B9B9B"],
+    accent: hsl(40, 5, 96),
+    accent2: hsl(30, 4, 85),
+    success: hsl(145, 20, 35),
+    warning: hsl(35, 50, 45),
+    danger: hsl(5, 50, 50),
+    muted: hsl(40, 5, 96),
+    mutedFg: hsl(40, 4, 46),
+    bg: ["rgba(120,119,116,0.06)", "rgba(120,119,116,0.04)", "rgba(120,119,116,0.02)"],
+    bgDark: ["rgba(255,255,255,0.04)", "rgba(255,255,255,0.03)", "rgba(255,255,255,0.02)"],
+    glass: {
+      bg: "rgba(255,255,255,0.92)",
+      tint: "rgba(55,53,48,0.03)",
+      border: "rgba(55,53,48,0.08)",
+      darkBg: "rgba(25,25,25,0.95)",
+      darkTint: "rgba(255,255,255,0.03)",
+      darkBorder: "rgba(255,255,255,0.06)",
+    },
+    charts: ["#373530", "#787774", "#9B9B9B", "#A6A299", "#C8C7C3", "#E9E9E7"],
+  }),
 ];
 
 export const applyThemeByName = (themeName: string) => {
@@ -281,12 +307,49 @@ const ThemeSelector = () => {
     if (typeof window === "undefined") return "Classic Blue";
     return localStorage.getItem("app-theme") || "Classic Blue";
   });
+  const [paperMode, setPaperMode] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem("paper-mode") === "true";
+  });
+  const lastColorTheme = useRef<string>(activeTheme);
 
   // On mount, apply saved theme
   useEffect(() => {
     const saved = localStorage.getItem("app-theme") || "Classic Blue";
-    applyThemeByName(saved);
+    const isPaper = localStorage.getItem("paper-mode") === "true";
+    if (isPaper) {
+      applyThemeByName("Paper");
+    } else {
+      applyThemeByName(saved);
+    }
   }, []);
+
+  const handlePaperToggle = (checked: boolean) => {
+    setPaperMode(checked);
+    localStorage.setItem("paper-mode", String(checked));
+    if (checked) {
+      lastColorTheme.current = activeTheme;
+      applyThemeByName("Paper");
+      setActiveTheme("Paper");
+    } else {
+      const prev = lastColorTheme.current || "Classic Blue";
+      applyThemeByName(prev);
+      setActiveTheme(prev);
+    }
+  };
+
+  const handleThemeSelect = (name: string) => {
+    if (paperMode) {
+      // Exit paper mode when selecting a color theme
+      setPaperMode(false);
+      localStorage.setItem("paper-mode", "false");
+    }
+    lastColorTheme.current = name;
+    applyThemeByName(name);
+    setActiveTheme(name);
+  };
+
+  const colorThemes = themes.filter(t => t.name !== "Paper");
 
   return (
     <Popover>
@@ -295,32 +358,47 @@ const ThemeSelector = () => {
           <Palette className="w-5 h-5 text-gray-500 dark:text-gray-400 group-hover:text-[var(--g-1)] transition-colors" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-64 p-4 glass-card border-none mt-2" align="end">
-        <div className="flex items-center gap-2 mb-4">
-          <Settings2 className="w-4 h-4 text-primary" />
-          <h4 className="font-bold text-sm">Choose Your Vibe</h4>
+      <PopoverContent className="w-72 p-4 glass-card border-none mt-2" align="end">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Settings2 className="w-4 h-4 text-primary" />
+            <h4 className="font-bold text-sm">Choose Your Vibe</h4>
+          </div>
         </div>
-        
+
+        {/* Paper mode toggle */}
+        <div className="flex items-center justify-between p-3 rounded-xl bg-muted/50 border border-border/50 mb-3">
+          <div className="flex items-center gap-2.5">
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${paperMode ? "bg-foreground text-background" : "bg-muted text-muted-foreground"}`}>
+              <Sparkles className="w-4 h-4" />
+            </div>
+            <div>
+              <p className="text-xs font-bold">Paper</p>
+              <p className="text-[10px] text-muted-foreground">Distraction-free monochrome</p>
+            </div>
+          </div>
+          <Switch checked={paperMode} onCheckedChange={handlePaperToggle} />
+        </div>
+
         <div className="grid grid-cols-2 gap-2">
-          {themes.map((theme) => (
+          {colorThemes.map((theme) => (
             <button
               key={theme.name}
-              onClick={() => {
-                applyThemeByName(theme.name);
-                setActiveTheme(theme.name);
-              }}
+              onClick={() => handleThemeSelect(theme.name)}
               className={`relative p-2 rounded-xl border text-left transition-all hover:scale-105 ${
-                activeTheme === theme.name 
-                  ? "border-primary bg-primary/5 ring-1 ring-primary" 
+                activeTheme === theme.name && !paperMode
+                  ? "border-primary bg-primary/5 ring-1 ring-primary"
+                  : paperMode
+                  ? "border-border/30 opacity-50"
                   : "border-primary/10 bg-primary/5 hover:border-primary/30"
               }`}
             >
-              <div 
+              <div
                 className="w-full h-8 rounded-md mb-2 bg-gradient-to-r"
                 style={{ backgroundImage: `linear-gradient(to right, ${theme.g[0]}, ${theme.g[1]}, ${theme.g[2]})` }}
               />
               <span className="text-[10px] font-bold block truncate">{theme.name}</span>
-              {activeTheme === theme.name && (
+              {activeTheme === theme.name && !paperMode && (
                 <div className="absolute top-1 right-1 bg-primary rounded-full p-0.5 shadow-lg">
                   <Check className="w-2 h-2 text-white" />
                 </div>

@@ -18,6 +18,7 @@ import {
   MoreHorizontal,
   ChevronRight,
   Plus,
+  Share2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -54,6 +55,7 @@ import { pickStudyGuideTitle } from "@/utils/studyGuideGeneration";
 import { studyGuideToMarkdown } from "@/utils/studyGuideMarkdown";
 import { useDocumentCollaboration } from "@/hooks/useDocumentCollaboration";
 import { EmojiPicker } from "@/components/EmojiPicker";
+import { ShareDialog } from "@/components/ShareDialog";
 
 type BlockNoteEditorComponent = typeof import("@/components/BlockNoteEditor").BlockNoteEditor;
 type BlockNoteEditorProps = React.ComponentPropsWithoutRef<BlockNoteEditorComponent>;
@@ -107,6 +109,7 @@ export default function SubjectDocument() {
   const [icon, setIcon] = useState<string | null>(null);
   const [cover, setCover] = useState<string | null>(null);
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
 
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<string | null>(null);
@@ -493,6 +496,15 @@ export default function SubjectDocument() {
             <span className="hidden sm:inline">AI Studio</span>
           </button>
 
+          <button
+            onClick={() => setShareDialogOpen(true)}
+            className="notion-btn-minimal"
+            title="Share document"
+          >
+            <Share2 className="h-4 w-4" />
+            <span className="hidden sm:inline">Share</span>
+          </button>
+
           <button className="notion-btn-minimal">
             <MoreHorizontal className="h-4 w-4" />
           </button>
@@ -658,6 +670,14 @@ export default function SubjectDocument() {
         onOpenChange={setEmojiPickerOpen}
         selectedEmoji={icon || "📄"}
         onSelect={handleIconChange}
+      />
+
+      <ShareDialog
+        open={shareDialogOpen}
+        onOpenChange={setShareDialogOpen}
+        documentId={docId}
+        subjectId={subjectId}
+        documentTitle={title}
       />
     </motion.div>
   );

@@ -16,14 +16,11 @@ import { TourAutoTrigger } from "@/components/TourAutoTrigger";
 export default function AppProviders({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => new QueryClient());
 
-  // Log environment health on startup (development only)
+  // Non-blocking health check (fire-and-forget, dev only)
   useEffect(() => {
-    if (process.env.NODE_ENV === "development") {
-      fetch("/api/health")
-        .then((res) => res.json())
-        .then((data) => console.log("[Health check]", data))
-        .catch((err) => console.error("[Health check] failed", err));
-    }
+    if (process.env.NODE_ENV !== "development") return;
+    // Don't await — just fire it in the background
+    fetch("/api/health").catch(() => {});
   }, []);
 
   return (
