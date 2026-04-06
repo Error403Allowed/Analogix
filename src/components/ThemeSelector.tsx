@@ -108,7 +108,7 @@ export const themes = [
     name: "Oceanic Blue",
     p: hsl(199, 89, 48),
     g: ["#38bdf8", "#0ea5e9", "#0369a1"],
-    accent: hsl(176, 72, 42),
+    accent: hsl(217, 75, 58),
     accent2: hsl(220, 78, 60),
     success: hsl(158, 64, 42),
     warning: hsl(40, 92, 56),

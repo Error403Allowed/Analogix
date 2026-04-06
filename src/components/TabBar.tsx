@@ -2,9 +2,10 @@
 
 import { useRef, useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Plus, Search, FileText, Sparkles, GripHorizontal, ArrowRight } from "lucide-react";
+import { X, Plus, Search, FileText, Sparkles, GripHorizontal, ArrowRight, PanelLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTabs, type AppTab, pathMeta } from "@/context/TabsContext";
+import { useSidebar } from "@/components/ui/sidebar";
 import {
   ContextMenu,
   ContextMenuTrigger,
@@ -32,6 +33,7 @@ export default function TabBar({ onNavigate }: TabBarProps) {
   const pathname = usePathname(); // source of truth for active tab highlight
   const router = useRouter();
   const scrollRef = useRef<HTMLDivElement>(null);
+  const { toggleSidebar, open } = useSidebar();
 
   // ALL hooks must be declared before any early return
   const [newTabOpen, setNewTabOpen] = useState(false);
@@ -225,6 +227,15 @@ export default function TabBar({ onNavigate }: TabBarProps) {
         )}
       </AnimatePresence>
       <div className="h-9 flex items-end bg-background/80 backdrop-blur-sm border-b border-border/40 px-2 shrink-0">
+        {/* Sidebar toggle button */}
+        <button
+          onClick={toggleSidebar}
+          className="mr-2 h-7 w-7 shrink-0 rounded-md border border-transparent text-muted-foreground/80 hover:text-foreground hover:bg-muted/40 transition-colors flex items-center justify-center"
+          title="Toggle Sidebar"
+        >
+          <PanelLeft className="h-3.5 w-3.5" />
+        </button>
+
         <div ref={scrollRef} className="flex items-end gap-1 overflow-x-auto scrollbar-none flex-1 min-w-0">
           <AnimatePresence initial={false}>
             {pinnedTabs.map((tab, index) => {

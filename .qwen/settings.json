@@ -6,7 +6,9 @@
       "Bash(npm run *)",
       "Bash(npx *)",
       "Bash(cat *)",
-      "Bash(find *)"
+      "Bash(find *)",
+      "Bash(pkill *)",
+      "Bash(sleep *)"
     ]
   },
   "$version": 3

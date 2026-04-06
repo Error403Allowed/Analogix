@@ -1733,9 +1733,9 @@ const Chat = () => {
                             </>
                           </div>
                         ) : (
-                          <div className="flex flex-col items-end gap-2">
+                          <div className="flex flex-col items-end gap-1 max-w-[85%] sm:max-w-[75%]">
                             {message.attachments && message.attachments.length > 0 && (
-                              <div className="flex flex-wrap gap-2 mb-2 mr-4">
+                              <div className="flex flex-wrap gap-2 mb-1">
                                 {message.attachments.map((file, idx) => (
                                   <div key={idx} className="flex items-center gap-3 px-3 py-2 rounded-xl bg-primary/10 border border-primary/20">
                                     {file.isImage && file.previewUrl ? (
@@ -1754,10 +1754,10 @@ const Chat = () => {
                             )}
                             {message.content && message.content.trim() && (
                               <>
-                                <div className="max-w-[85%] sm:max-w-[75%] message-bubble-user">
-                                  <div className="whitespace-pre-wrap text-sm leading-relaxed">
-                                    <MarkdownRenderer content={message.content} />
-                                  </div>
+                                <div className="inline-block px-4 py-2.5 rounded-2xl rounded-br-sm bg-primary text-primary-foreground">
+                                  <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
+                                    {message.content}
+                                  </p>
                                 </div>
                                 <Button
                                   type="button"
@@ -1766,9 +1766,9 @@ const Chat = () => {
                                   onClick={() => handleCopy(message.content, message.id)}
                                   aria-label="Copy prompt"
                                   title="Copy prompt"
-                                  className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors sm:h-7 sm:w-7"
+                                  className="h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
                                 >
-                                  {copiedId === message.id ? <Check className="w-4 h-4 sm:w-3 sm:h-3" /> : <Copy className="w-4 h-4 sm:w-3 sm:h-3" />}
+                                  {copiedId === message.id ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
                                 </Button>
                               </>
                             )}

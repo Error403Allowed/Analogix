@@ -28,7 +28,7 @@ export default function DashLayout({ children }: { children: React.ReactNode }) 
     <AgentProvider>
       <TabsProvider initialPathname={pathname}>
         <AgentPanel />
-        <SidebarProvider defaultOpen={false}>
+        <SidebarProvider defaultOpen={true}>
           <AgentAwareLayout isChat={isChat || isCalendar} pathname={pathname}>
             {children}
           </AgentAwareLayout>

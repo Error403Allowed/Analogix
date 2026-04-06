@@ -109,7 +109,6 @@ export default function SubjectDocument() {
   const [icon, setIcon] = useState<string | null>(null);
   const [cover, setCover] = useState<string | null>(null);
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
-  const [shareDialogOpen, setShareDialogOpen] = useState(false);
 
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<string | null>(null);
@@ -496,14 +495,17 @@ export default function SubjectDocument() {
             <span className="hidden sm:inline">AI Studio</span>
           </button>
 
-          <button
-            onClick={() => setShareDialogOpen(true)}
-            className="notion-btn-minimal"
-            title="Share document"
-          >
-            <Share2 className="h-4 w-4" />
-            <span className="hidden sm:inline">Share</span>
-          </button>
+          <ShareDialog
+            documentId={docId}
+            subjectId={subjectId}
+            documentTitle={title}
+            trigger={
+              <button className="notion-btn-minimal" title="Share document">
+                <Share2 className="h-4 w-4" />
+                <span className="hidden sm:inline">Share</span>
+              </button>
+            }
+          />
 
           <button className="notion-btn-minimal">
             <MoreHorizontal className="h-4 w-4" />
@@ -670,14 +672,6 @@ export default function SubjectDocument() {
         onOpenChange={setEmojiPickerOpen}
         selectedEmoji={icon || "📄"}
         onSelect={handleIconChange}
-      />
-
-      <ShareDialog
-        open={shareDialogOpen}
-        onOpenChange={setShareDialogOpen}
-        documentId={docId}
-        subjectId={subjectId}
-        documentTitle={title}
       />
     </motion.div>
   );

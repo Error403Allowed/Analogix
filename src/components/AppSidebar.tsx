@@ -10,7 +10,7 @@ import { motion } from "framer-motion";
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarHeader,
   SidebarMenu, SidebarMenuButton, SidebarMenuItem,
-  SidebarGroup, SidebarGroupContent, SidebarTrigger, SidebarSeparator,
+  SidebarGroup, SidebarGroupContent, SidebarSeparator,
 } from "@/components/ui/sidebar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Switch } from "@/components/ui/switch";
@@ -18,7 +18,6 @@ import { useRouter, usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useTheme } from "next-themes";
-import { useSidebar } from "@/components/ui/sidebar";
 import { applyThemeByName } from "@/components/ThemeSelector";
 import { themes } from "@/components/ThemeSelector";
 import ProfileSheet from "@/components/ProfileSheet";
@@ -61,7 +60,6 @@ const navGroups = [
 export function AppSidebar() {
   const router   = useRouter();
   const pathname = usePathname();
-  const { state } = useSidebar();
   const { setTheme: setMode, resolvedTheme } = useTheme();
   const { openTab, tabs, activeTabId } = useTabs();
   const [userData,         setUserData]         = useState<any>(null);
@@ -73,7 +71,6 @@ export function AppSidebar() {
   const [profileOpen,      setProfileOpen]      = useState(false);
   const [streak,           setStreak]           = useState(0);
   const [isNewPageModalOpen, setIsNewPageModalOpen] = useState(false);
-  const isCollapsed = state === "collapsed";
   const isDark = resolvedTheme === "dark";
 
   useEffect(() => { setMounted(true); }, []);
@@ -189,7 +186,7 @@ export function AppSidebar() {
   return (
     /* Outer container — liquid glass pill matching the inspiration */
     <Sidebar
-      collapsible="icon"
+      collapsible="offcanvas"
       data-tutorial="sidebar"
       className="!border-r-0 !border-l-0 !border-none"
       style={{ background: "hsl(var(--background))" }}
@@ -199,22 +196,18 @@ export function AppSidebar() {
         style={{ background: "hsl(var(--background))" }}
       >
 
-        {/* ── Header: logo + collapse trigger ──────────────────────── */}
-        <SidebarHeader className="h-16 shrink-0 flex flex-col justify-center px-5 group-data-[collapsible=icon]:px-2">
-          <div className="flex items-center justify-between w-full group-data-[collapsible=icon]:justify-center">
+        {/* ── Header: logo ──────────────────────────────────────── */}
+        <SidebarHeader className="h-16 shrink-0 flex flex-col justify-center px-5">
+          <div className="flex items-center justify-between w-full">
             <button
               onClick={() => router.push("/?force=true")}
-              className="flex items-center gap-3.5 pl-1 hover:opacity-80 transition-all active:scale-95 group-data-[collapsible=icon]:hidden"
+              className="flex items-center gap-3.5 pl-1 hover:opacity-80 transition-all active:scale-95"
             >
               <div className="w-9 h-9 rounded-xl overflow-hidden shrink-0 shadow-lg shadow-primary/30">
                 <img src="/tab-icon.png" alt="Analogix" className="w-full h-full object-cover" />
               </div>
               <span className="text-xl font-black gradient-text tracking-tighter">Analogix</span>
             </button>
-            <SidebarTrigger
-              className="border-border/40 bg-muted/20 text-foreground hover:bg-muted/40 transition-colors"
-              data-tutorial="sidebar-trigger"
-            />
           </div>
         </SidebarHeader>
 
@@ -222,7 +215,7 @@ export function AppSidebar() {
         <SidebarContent className="flex-1 px-2 py-3 overflow-y-auto overflow-x-hidden text-foreground custom-scrollbar">
           {navGroups.map((group) => (
             <SidebarGroup key={group.label}>
-              <p className="px-2 mb-1 mt-2 text-[9px] font-black uppercase tracking-[0.25em] text-muted-foreground/40 group-data-[collapsible=icon]:hidden">
+              <p className="px-2 mb-1 mt-2 text-[9px] font-black uppercase tracking-[0.25em] text-muted-foreground/40">
                 {group.label}
               </p>
               <SidebarGroupContent>
@@ -241,22 +234,22 @@ export function AppSidebar() {
                               router.push(item.url);
                             }}
                             className={cn(
-                              "h-9 rounded-xl transition-all duration-200 relative group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:-translate-x-1.5",
+                              "h-9 rounded-xl transition-all duration-200",
                               isActive
                                 ? "bg-sidebar-accent text-sidebar-accent-foreground font-bold"
                                 : "text-sidebar-foreground/70 font-semibold hover:text-sidebar-foreground"
                             )}
                           >
                             {isActive && (
-                              <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-full bg-sidebar-primary group-data-[collapsible=icon]:hidden" />
+                              <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-full bg-sidebar-primary" />
                             )}
                             <item.icon
                               className={cn(
-                                "w-4 h-4 shrink-0 ml-1 transition-transform group-data-[collapsible=icon]:ml-0",
+                                "w-4 h-4 shrink-0 ml-1 transition-transform",
                                 isActive ? "text-sidebar-primary" : "text-sidebar-foreground/70"
                               )}
                             />
-                            <span className="truncate group-data-[collapsible=icon]:hidden">{item.title}</span>
+                            <span className="truncate">{item.title}</span>
                           </SidebarMenuButton>
                         </motion.div>
                       </SidebarMenuItem>
@@ -279,7 +272,7 @@ export function AppSidebar() {
               >
                 <Search className="w-4 h-4 shrink-0" />
                 <span className="truncate">Search</span>
-                <span className="ml-auto text-[10px] opacity-40 group-data-[collapsible=icon]:hidden">⌘K</span>
+                <span className="ml-auto text-[10px] opacity-40">⌘K</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
 
@@ -354,7 +347,7 @@ export function AppSidebar() {
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton size="lg" onClick={() => setProfileOpen(true)} data-tutorial="profile"
-                className="h-auto w-full flex items-center gap-3 p-2 rounded-2xl transition-all cursor-pointer group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-1.5">
+                className="h-auto w-full flex items-center gap-3 p-2 rounded-2xl transition-all cursor-pointer">
                 {/* Avatar */}
                 <div className="relative shrink-0">
                   <div className="w-9 h-9 rounded-xl overflow-hidden">
@@ -368,7 +361,7 @@ export function AppSidebar() {
                   </div>
                   {/* Streak badge — like the inspiration's percentage badge */}
                   {streak > 0 && (
-                    <div className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] rounded-full bg-amber-500 flex items-center justify-center px-1 shadow-md group-data-[collapsible=icon]:hidden">
+                    <div className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] rounded-full bg-amber-500 flex items-center justify-center px-1 shadow-md">
                       <span className="text-[8px] font-black text-white leading-none flex items-center gap-0.5">
                         <Flame className="w-2.5 h-2.5" />{streak}
                       </span>
@@ -376,7 +369,7 @@ export function AppSidebar() {
                   )}
                 </div>
                 {/* Name + meta */}
-                <div className="flex-1 min-w-0 group-data-[collapsible=icon]:hidden text-foreground">
+                <div className="flex-1 min-w-0 text-foreground">
                   <p className="text-sm font-black truncate leading-tight">{name}</p>
                   <p className="text-[9px] font-bold text-muted-foreground/50 uppercase tracking-widest truncate">
                     Yr {userData?.grade || "?"} · {userData?.state || "—"}
