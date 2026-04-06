@@ -81,7 +81,13 @@ export const useDocumentCollaboration = ({
   documentId: string;
   displayName?: string;
 }): DocumentCollaborationRuntime => {
-  const user = useMemo(() => getSessionIdentity(displayName), [displayName]);
+  const userRef = useRef<CollaborationUser | null>(null);
+  if (!userRef.current) userRef.current = getSessionIdentity(displayName);
+  // Update name if displayName changes but keep the same session identity
+  if (displayName && userRef.current.name !== displayName.trim()) {
+    userRef.current = { ...userRef.current, name: displayName.trim() };
+  }
+  const user = userRef.current;
   const [status, setStatus] = useState<CollaborationStatus>("connecting");
   const [peerCount, setPeerCount] = useState(0);
   const runtimeRef = useRef<DocumentCollaborationRuntime | null>(null);

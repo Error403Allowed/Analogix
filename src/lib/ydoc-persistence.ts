@@ -46,6 +46,10 @@ async function clearYDocData(docId: string, userId: string): Promise<void> {
 }
 
 export async function loadYDoc(docId: string): Promise<LoadResult> {
+  // Skip persistence entirely for non-UUID placeholder doc IDs
+  const isRealDoc = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(docId);
+  if (!isRealDoc) return { ydoc: new Y.Doc(), latestSeq: 0 };
+
   const supabase = createClient();
   const user = await getAuthUser();
   if (!user) return { ydoc: new Y.Doc(), latestSeq: 0 };
@@ -124,6 +128,8 @@ export async function appendYDocUpdate(
   docId: string,
   update: Uint8Array,
 ): Promise<number> {
+  const isRealDoc = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(docId);
+  if (!isRealDoc) return 0;
   const supabase = createClient();
   const user = await getAuthUser();
   if (!user) return 0;
@@ -158,6 +164,8 @@ export async function compactYDoc(
   ydoc: Y.Doc,
   latestSeq: number,
 ): Promise<void> {
+  const isRealDoc = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(docId);
+  if (!isRealDoc) return;
   const supabase = createClient();
   const user = await getAuthUser();
   if (!user) return;
