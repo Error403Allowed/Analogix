@@ -41,14 +41,15 @@ export async function getRelevantMemories(
   const limit = options?.limit ?? 20;
   const minImportance = options?.minImportance ?? 0;
 
+  // Fetch a larger pool and score client-side using:
+  // score = importance * 0.4 + recency * 0.3 + frequency * 0.3
   let query = supabase
     .from("ai_memory_fragments")
     .select("*")
     .eq("user_id", userId)
     .gte("importance", minImportance)
-    .order("importance", { ascending: false })
     .order("created_at", { ascending: false })
-    .limit(limit);
+    .limit(limit * 3); // fetch 3x, score, return top N
 
   if (options?.types && options.types.length > 0) {
     query = query.in("memory_type", options.types);
@@ -61,6 +62,20 @@ export async function getRelevantMemories(
     return { memories: [], summaries: [] };
   }
 
+  // Score and sort
+  const now = Date.now();
+  const scored = (memories || []).map(m => {
+    const ageMs = now - new Date(m.created_at).getTime();
+    const ageDays = ageMs / (1000 * 60 * 60 * 24);
+    const recency = Math.max(0, 1 - ageDays / 90); // decays to 0 after 90 days
+    const frequency = Math.min(1, (m.reinforcement_count || 0) / 10);
+    const score = (m.importance || 0.5) * 0.4 + recency * 0.3 + frequency * 0.3;
+    return { ...m, _score: score };
+  });
+
+  scored.sort((a, b) => b._score - a._score);
+  const topMemories = scored.slice(0, limit) as AIMemoryFragment[];
+
   // Fetch recent summaries
   const { data: summaries } = await supabase
     .from("ai_memory_summaries")
@@ -70,7 +85,7 @@ export async function getRelevantMemories(
     .limit(5);
 
   return {
-    memories: memories || [],
+    memories: topMemories,
     summaries: summaries || [],
   };
 }

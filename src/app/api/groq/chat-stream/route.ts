@@ -173,33 +173,26 @@ ${researchSources.length > 0 ? `ACADEMIC SOURCES:\n${formatResearchSources(resea
   const workspaceSection = workspaceContext || calendarContext ? `
 ${calendarContext ? `━━━ CALENDAR & DEADLINES ━━━\n${calendarContext}\n━━━ END CALENDAR ━━━\n` : ""}
 ${workspaceContext ? `━━━ YOUR WORKSPACE ━━━
-You have read AND write access to this student's Analogix workspace. You can create documents, update documents, and add flashcards during tutoring.
+You have READ-ONLY access to this student's documents — you can see them for context but CANNOT edit or create documents directly. Do NOT tell the student you can edit their documents or offer to update them.
+
+You CAN create flashcard sets and start quizzes via the <ACTIONS> block.
 
 ${workspaceContext}
 ━━━ END WORKSPACE ━━━
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-HOW TO EDIT THE WORKSPACE
+AVAILABLE ACTIONS (flashcards & quizzes only)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Put an <ACTIONS>...</ACTIONS> block at the VERY END of your message when making workspace changes.
-The block contains a single JSON object OR a JSON array of objects.
+Put an <ACTIONS>...</ACTIONS> block at the VERY END of your message ONLY for flashcards or quizzes.
 
-── ACTION 1: create_document ──
-{"type":"create_document","subjectId":"SUBJECT","title":"Title","content":"<p>HTML</p>"}
-
-── ACTION 2: update_document ──
-{"type":"update_document","subjectId":"SUBJECT","docTitle":"EXACT TITLE","content":"<p>Full HTML</p>","mode":"replace"}
-── ACTION 3: add_flashcards ──
+── ACTION: add_flashcards ──
 {"type":"add_flashcards","subjectId":"SUBJECT","setName":"Topic name","cards":[{"front":"Q","back":"A"}]}
 
-── ACTION 4: start_quiz ──
+── ACTION: start_quiz ──
 {"type":"start_quiz","subjectId":"SUBJECT","topic":"optional topic focus","difficulty":"foundational|intermediate|advanced","numberOfQuestions":5,"timeLimitMinutes":0}
 
 ── RULES ──
-- Only include <ACTIONS> when actually making a change or being explicitly asked.
-- Use EXACT docTitle from the workspace above.
-- Use update_document for ALL documents.
-- Only use mode "replace" if you include the FULL updated document content.
+- NEVER use create_document or update_document — you do not have write access to documents.
 - For add_flashcards: always include a descriptive setName (e.g. "Quadratic equations", "Chapter 3 vocab"). Say "Done! Added X flashcards on [topic]." — nothing else.
 - For start_quiz: say "Starting your quiz now!" then the <ACTIONS> block. NEVER write quiz questions in your text response.
 - CRITICAL: When using add_flashcards or start_quiz, your text response must be 1 sentence MAX. Do NOT write out flashcard content or quiz questions in the chat — they go in the <ACTIONS> block only.

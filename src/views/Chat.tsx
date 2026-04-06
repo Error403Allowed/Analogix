@@ -341,6 +341,7 @@ const Chat = () => {
   const [threadSearch, setThreadSearch] = useState("");
   const [renamingThreadId, setRenamingThreadId] = useState<string | null>(null);
   const [renamingThreadName, setRenamingThreadName] = useState("");
+  const [contextMenu, setContextMenu] = useState<{ sessionId: string; x: number; y: number } | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   // FILE UPLOADS
@@ -423,6 +424,14 @@ const Chat = () => {
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, [showModelSelector]);
+
+  // Close context menu on outside click
+  useEffect(() => {
+    if (!contextMenu) return;
+    const handleClick = () => setContextMenu(null);
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [contextMenu]);
 
   useEffect(() => {
     if (!researchMode) setLibraryOpen(false);
@@ -1221,6 +1230,18 @@ const Chat = () => {
         ));
         setStreamingId(null);
 
+      // Fire-and-forget memory extraction — runs after every assistant response
+      // Uses a cheap 8B model so it doesn't block or cost much
+      const messagesForExtraction = [
+        ...messages.filter(m => !m.isWelcome).map(m => ({ role: m.role, content: m.content })),
+        { role: "assistant" as const, content: accumulated },
+      ];
+      fetch("/api/ai/memory/extract", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: messagesForExtraction, subjectId: selectedSubject }),
+      }).then(r => r.json()).then(d => console.log("[memory] extract result:", d)).catch(() => {});
+
       // Save to Supabase
       if (activeSessionId) {
         chatStore.addMessage(activeSessionId, "assistant", accumulated).catch(e => console.error("[Chat] addMessage assistant:", e));
@@ -1228,20 +1249,33 @@ const Chat = () => {
           [...prev.map(s => s.id === activeSessionId ? { ...s, updatedAt: new Date().toISOString() } : s)]
             .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
         );
-        // Generate chat title after first user message (not welcome message)
-        // Count user messages that were sent before this AI response (excluding welcome)
-        const previousUserMessages = messages.filter(m => m.role === "user" && !m.isWelcome).length;
-        const isFirstRealExchange = previousUserMessages === 0;
-        if (isFirstRealExchange) {
+        // Generate chat title after the 2nd real exchange so we have enough context.
+        // On exchange 1 (greeting), we skip. On exchange 2-3, we retitle with richer context.
+        const realUserMessages = messages.filter(m => m.role === "user" && !m.isWelcome);
+        const previousUserMessages = realUserMessages.length;
+        const shouldTitle = previousUserMessages === 1 || previousUserMessages === 2;
+        if (shouldTitle) {
           try {
-            // Use the actual user input for title generation
-            const titlePrompt = [{ role: "user" as const, content: `Based on this question: "${input}", generate a very short (2-4 words) title for this chat. Only respond with the title, nothing else.` }];
+            // Grab up to the first 3 real user messages + their AI replies for context
+            const realExchanges = messages
+              .filter(m => !m.isWelcome)
+              .slice(0, 6) // first 3 pairs at most
+              .map(m => `${m.role === "user" ? "Student" : "Tutor"}: ${m.content.slice(0, 250)}`)
+              .join("\n");
+            const currentUserMsg = input.slice(0, 400);
+            const titlePrompt = [{ role: "user" as const, content: `You are naming a study chat session. Read the conversation so far and the latest student message, then write a short 3–6 word title capturing the SPECIFIC topic being studied. Be concrete — not "Math Help" or "Question Asked", but things like "Quadratic Formula Confusion", "WW2 Causes Breakdown", "Python List Indexing Bug", "Mitosis vs Meiosis". No quotes, no punctuation at the end, just the title.
+
+Conversation so far:
+${realExchanges}
+Student (latest): ${currentUserMsg}
+
+Title:` }];
             const titleResponse = await getGroqCompletion(titlePrompt, buildContext(null));
-            // Clean up the title - remove quotes, extra spaces, and ensure it's meaningful
+            // Clean up the title
             let chatTitle = (titleResponse.content || "").trim();
-            // Remove common AI prefixes/suffixes
-            chatTitle = chatTitle.replace(/^["']|["']$/g, "").trim();
-            chatTitle = chatTitle.replace(/^(Here's|Here is|Title:|The title is:)/i, "").trim();
+            chatTitle = chatTitle.replace(/^["'`]|["'`]$/g, "").trim();
+            chatTitle = chatTitle.replace(/^(Title:|Here'?s?( a title)?:|The title is:?)/i, "").trim();
+            chatTitle = chatTitle.replace(/[.!?]$/, "").trim();
             // If AI returned garbage or nothing, use a fallback based on the input
             if (!chatTitle || chatTitle.length < 2) {
               const words = input.trim().split(/\s+/).slice(0, 4).join(" ");
@@ -1354,8 +1388,8 @@ const Chat = () => {
     abortRef.current?.abort();
   };
 
-  const handleDeleteThread = async (sessionId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleDeleteThread = async (sessionId: string, e?: React.MouseEvent) => {
+    e?.stopPropagation();
     await chatStore.deleteSession(sessionId);
     setAllSessions(prev => prev.filter(s => s.id !== sessionId));
     if (chatSessionId === sessionId) {
@@ -1437,7 +1471,11 @@ const Chat = () => {
                   return (
                     <div
                       key={session.id}
-                      className={`group relative rounded-md transition-all ${isActive ? "bg-muted/70" : "hover:bg-muted/40"}`}
+                      className={`relative rounded-md transition-all ${isActive ? "bg-muted/70" : "hover:bg-muted/40"}`}
+                      onContextMenu={(e) => {
+                        e.preventDefault();
+                        setContextMenu({ sessionId: session.id, x: e.clientX, y: e.clientY });
+                      }}
                     >
                       <button
                         onClick={() => handleSwitchThread(session)}
@@ -1463,27 +1501,61 @@ const Chat = () => {
                           </p>
                         )}
                       </button>
-                      {!isRenaming && (
-                        <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button onClick={(e) => { e.stopPropagation(); setRenamingThreadId(session.id); setRenamingThreadName(session.title); }}
-                            className="w-6 h-6 rounded flex items-center justify-center text-muted-foreground/50 hover:text-foreground hover:bg-muted/60">
-                            <RefreshCw className="w-3 h-3" />
-                          </button>
-                          <button onClick={(e) => handleDeleteThread(session.id, e)}
-                            className="w-6 h-6 rounded flex items-center justify-center text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10">
-                            <Trash2 className="w-3 h-3" />
-                          </button>
-                        </div>
-                      )}
                     </div>
                   );
                 })}
               </>
-            );
+            )
           })()}
         </div>
       </motion.div>
       </div>{/* end sidebar wrapper */}
+
+      {/* Context Menu for Thread Actions */}
+      <AnimatePresence>
+        {contextMenu && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ duration: 0.1 }}
+            className="fixed z-[9999] min-w-[160px]"
+            style={{ left: contextMenu.x, top: contextMenu.y }}
+          >
+            <div className="rounded-lg border border-border/40 bg-card shadow-lg overflow-hidden">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const session = allSessions.find(s => s.id === contextMenu.sessionId);
+                  if (session) {
+                    setRenamingThreadId(session.id);
+                    setRenamingThreadName(session.title);
+                    setContextMenu(null);
+                  }
+                }}
+                className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted/60 transition-colors"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>Rename</span>
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const session = allSessions.find(s => s.id === contextMenu.sessionId);
+                  if (session) {
+                    handleDeleteThread(session.id);
+                    setContextMenu(null);
+                  }
+                }}
+                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Delete</span>
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="flex-1 flex flex-col w-full relative overflow-hidden">
         {/* Header */}
