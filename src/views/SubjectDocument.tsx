@@ -109,6 +109,7 @@ export default function SubjectDocument() {
   const [icon, setIcon] = useState<string | null>(null);
   const [cover, setCover] = useState<string | null>(null);
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
+  const [isAiPanelOpen, setIsAiPanelOpen] = useState(false);
 
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<string | null>(null);
@@ -399,18 +400,6 @@ export default function SubjectDocument() {
       </div>
     );
   }
-
-  if (docMissing) {
-    return (
-      <div className="flex min-h-[60vh] flex-col items-center justify-center px-8 text-center">
-        <FileText className="mb-4 h-12 w-12 text-muted-foreground/20" />
-        <p className="text-xl font-black">Document not found</p>
-        <Button onClick={() => router.push(`/subjects/${subjectId}`)} size="sm" className="mt-4">Go back</Button>
-      </div>
-    );
-  }
-
-  const [isAiPanelOpen, setIsAiPanelOpen] = useState(false);
 
   const handleIconChange = useCallback(async (newIcon: string) => {
     setIcon(newIcon);

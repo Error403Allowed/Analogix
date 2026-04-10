@@ -462,14 +462,44 @@ function SubjectForm({
   onSubmit: (subjectId: string, title: string) => void;
   onCancel: () => void;
 }) {
-  const [selectedSubject, setSelectedSubject] = useState<string>(SUBJECT_CATALOG[0]?.id || "");
+  const [subjects, setSubjects] = useState<Record<string, any>>({});
+  const [selectedSubject, setSelectedSubject] = useState<string>("");
   const [title, setTitle] = useState("");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Load user's actual subjects from store
+    const loadSubjects = async () => {
+      try {
+        const subs = await subjectStore.getAll();
+        setSubjects(subs);
+        
+        // Set default to first user subject, or fallback to catalog
+        if (Object.keys(subs).length > 0) {
+          setSelectedSubject(Object.keys(subs)[0]);
+        } else {
+          setSelectedSubject(SUBJECT_CATALOG[0]?.id || "");
+        }
+      } catch (e) {
+        console.warn("Failed to load subjects, using catalog:", e);
+        setSelectedSubject(SUBJECT_CATALOG[0]?.id || "");
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadSubjects();
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !selectedSubject) return;
     onSubmit(selectedSubject, title.trim());
   };
+
+  const subjectOptions = Object.keys(subjects).length > 0 
+    ? Object.keys(subjects)
+    : SUBJECT_CATALOG.map(s => s.id);
 
   return (
     <form onSubmit={handleSubmit}>
@@ -479,13 +509,23 @@ function SubjectForm({
           <select
             value={selectedSubject}
             onChange={e => setSelectedSubject(e.target.value)}
-            className="w-full mt-1.5 px-3 py-2 rounded-lg border border-border/50 bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+            disabled={loading}
+            className="w-full mt-1.5 px-3 py-2 rounded-lg border border-border/50 bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-50"
           >
-            {SUBJECT_CATALOG.map(subject => (
-              <option key={subject.id} value={subject.id}>
-                {subject.label}
-              </option>
-            ))}
+            {loading ? (
+              <option>Loading subjects...</option>
+            ) : subjectOptions.length === 0 ? (
+              <option>No subjects available</option>
+            ) : (
+              subjectOptions.map(subjectId => {
+                const label = subjects[subjectId]?.name || SUBJECT_CATALOG.find(s => s.id === subjectId)?.label || subjectId;
+                return (
+                  <option key={subjectId} value={subjectId}>
+                    {label}
+                  </option>
+                );
+              })
+            )}
           </select>
         </div>
 
@@ -525,7 +565,7 @@ function SubjectForm({
           type="submit"
           size="sm"
           className="gradient-primary"
-          disabled={!title.trim()}
+          disabled={!title.trim() || loading}
         >
           {mode === "document" 
             ? "Create Document" 

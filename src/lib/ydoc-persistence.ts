@@ -93,7 +93,7 @@ export async function loadYDoc(docId: string): Promise<LoadResult> {
   if (!user) return { ydoc: new Y.Doc(), latestSeq: 0 };
 
   // 1. Fetch the most recent snapshot (if any).
-  const { data: snap } = await supabase
+  const { data: snap, error: snapError } = await supabase
     .from("ydoc_snapshots")
     .select("snapshot, snapshot_seq")
     .eq("doc_id", docId)
@@ -101,6 +101,10 @@ export async function loadYDoc(docId: string): Promise<LoadResult> {
     .order("snapshot_seq", { ascending: false })
     .limit(1)
     .maybeSingle();
+
+  if (snapError) {
+    console.error("[ydoc-persistence] Error fetching snapshot:", snapError);
+  }
 
   const ydoc = new Y.Doc();
   let fromSeq = 0;
@@ -122,8 +126,24 @@ export async function loadYDoc(docId: string): Promise<LoadResult> {
         return { ydoc: new Y.Doc(), latestSeq: 0 };
       }
 
-      console.info("[ydoc-persistence] Snapshot decoded successfully, byte length:", bytes.length);
-      Y.applyUpdate(ydoc, bytes);
+      // Validate it's a reasonable Yjs update (should start with certain markers)
+      // Yjs updates are protobuf-encoded, typically start with 0x00 (read var) or small values
+      if (bytes[0] === undefined) {
+        console.error("[ydoc-persistence] Snapshot bytes empty after conversion");
+        await migrateYDocData(docId, user.id, "Snapshot bytes empty after toUint8Array");
+        return { ydoc: new Y.Doc(), latestSeq: 0 };
+      }
+
+      console.info("[ydoc-persistence] Snapshot decoded successfully, byte length:", bytes.length, "first bytes:", Array.from(bytes.slice(0, 4)).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
+      
+      try {
+        Y.applyUpdate(ydoc, bytes);
+      } catch (yError) {
+        console.error("[ydoc-persistence] Yjs rejected update as invalid:", yError);
+        await migrateYDocData(docId, user.id, `Yjs rejected snapshot: ${yError}`);
+        return { ydoc: new Y.Doc(), latestSeq: 0 };
+      }
+      
       fromSeq = snap.snapshot_seq;
     } catch (e) {
       // Binary incompatibility or corrupted data — wipe stale data and start fresh.
@@ -147,8 +167,17 @@ export async function loadYDoc(docId: string): Promise<LoadResult> {
   for (const row of updates ?? []) {
     try {
       const bytes = toUint8Array(row.update);
-      if (bytes.length > 0) {
+      if (bytes.length === 0) {
+        console.warn("[ydoc-persistence] Empty update at seq:", row.seq);
+        continue; // Skip empty updates
+      }
+      
+      try {
         Y.applyUpdate(ydoc, bytes);
+      } catch (yError) {
+        console.warn("[ydoc-persistence] Yjs rejected update at seq", row.seq, ":", yError);
+        encounteredCorruption = true;
+        break;
       }
     } catch (e) {
       console.warn("[ydoc-persistence] Corrupted update detected at seq:", row.seq, "— wiping doc");
@@ -294,12 +323,17 @@ function uint8ArrayToBase64(bytes: Uint8Array): string {
  * Convert base64 string back to Uint8Array
  */
 function base64ToUint8Array(base64: string): Uint8Array {
-  const binary = atob(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) {
-    bytes[i] = binary.charCodeAt(i);
+  try {
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    return bytes;
+  } catch (e) {
+    console.error("[ydoc-persistence] base64ToUint8Array failed:", e);
+    throw new Error(`Failed to decode base64: ${e}`);
   }
-  return bytes;
 }
 
 function toUint8Array(value: unknown): Uint8Array {

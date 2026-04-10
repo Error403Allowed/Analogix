@@ -227,7 +227,7 @@ export function AppSidebar() {
                       <SidebarMenuItem key={item.title}>
                         <motion.div whileTap={{ scale: 0.97 }} data-tutorial={item.tutorial}>
                           <SidebarMenuButton
-                            isActive={isActive}
+                            isActive={false}
                             onClick={(e) => {
                               const meta = pathMeta(item.url);
                               openTab(item.url, meta.label, meta.emoji);
