@@ -33,16 +33,54 @@ export interface LoadResult {
  * to realtime updates newer than latestSeq.
  */
 /**
- * Wipe all persisted data for a doc. Called when we detect a binary
- * incompatibility (e.g. after a yjs version upgrade).
+ * Migrate or clear stale ydoc data. Called when we detect a binary
+ * incompatibility or corruption (e.g. after a yjs version upgrade or malformed data).
  */
-async function clearYDocData(docId: string, userId: string): Promise<void> {
+async function migrateYDocData(docId: string, userId: string, reason: string): Promise<void> {
   const supabase = createClient();
-  await Promise.all([
-    supabase.from("ydoc_snapshots").delete().eq("doc_id", docId).eq("user_id", userId),
-    supabase.from("ydoc_updates").delete().eq("doc_id", docId).eq("user_id", userId),
-  ]);
-  console.warn("[ydoc-persistence] Cleared stale data for doc", docId, "— likely a yjs version upgrade.");
+  
+  try {
+    // Archive corrupted data to a separate table for debugging
+    const { data: snapshots } = await supabase
+      .from("ydoc_snapshots")
+      .select("*")
+      .eq("doc_id", docId)
+      .eq("user_id", userId);
+
+    const { data: updates } = await supabase
+      .from("ydoc_updates")
+      .select("*")
+      .eq("doc_id", docId)
+      .eq("user_id", userId);
+
+    // Insert into archive if table exists, otherwise just delete
+    if (snapshots && snapshots.length > 0) {
+      try {
+        await supabase.from("ydoc_snapshots_archive").insert(
+          snapshots.map(s => ({ ...s, archived_reason: reason, archived_at: new Date() }))
+        );
+      } catch { /* ignore if archive table doesn't exist */ }
+    }
+
+    // Delete the corrupt data
+    await Promise.all([
+      supabase.from("ydoc_snapshots").delete().eq("doc_id", docId).eq("user_id", userId),
+      supabase.from("ydoc_updates").delete().eq("doc_id", docId).eq("user_id", userId),
+    ]);
+    
+    console.warn(`[ydoc-persistence] Cleared stale data for doc ${docId}: ${reason}`);
+  } catch (e) {
+    console.error("[ydoc-persistence] Error during data migration:", e);
+    // Attempt basic deletion anyway
+    try {
+      await Promise.all([
+        supabase.from("ydoc_snapshots").delete().eq("doc_id", docId).eq("user_id", userId),
+        supabase.from("ydoc_updates").delete().eq("doc_id", docId).eq("user_id", userId),
+      ]);
+    } catch (deleteErr) {
+      console.error("[ydoc-persistence] Failed to delete corrupted data:", deleteErr);
+    }
+  }
 }
 
 export async function loadYDoc(docId: string): Promise<LoadResult> {
@@ -69,16 +107,28 @@ export async function loadYDoc(docId: string): Promise<LoadResult> {
 
   if (snap?.snapshot) {
     try {
-      // Uint8Array is returned as a Postgres bytea → parse it back.
-      const bytes = toUint8Array(snap.snapshot);
-      if (bytes.length > 0) {
-        Y.applyUpdate(ydoc, bytes);
+      // Debug what we're retrieving
+      if (typeof snap.snapshot === "string") {
+        console.info("[ydoc-persistence] Loading snapshot as string, length:", snap.snapshot.length);
+      } else {
+        console.info("[ydoc-persistence] Loading snapshot as", snap.snapshot?.constructor?.name, "length:", snap.snapshot?.length);
       }
+
+      // Convert to Uint8Array with proper error handling
+      const bytes = toUint8Array(snap.snapshot);
+      if (bytes.length === 0) {
+        console.error("[ydoc-persistence] Snapshot decoded to empty array, clearing corrupted data");
+        await migrateYDocData(docId, user.id, "Snapshot decoded to empty array");
+        return { ydoc: new Y.Doc(), latestSeq: 0 };
+      }
+
+      console.info("[ydoc-persistence] Snapshot decoded successfully, byte length:", bytes.length);
+      Y.applyUpdate(ydoc, bytes);
       fromSeq = snap.snapshot_seq;
     } catch (e) {
-      // Binary incompatibility — wipe stale data and start fresh.
-      console.error("[ydoc-persistence] Snapshot decode failed (likely version mismatch), clearing data:", e);
-      await clearYDocData(docId, user.id);
+      // Binary incompatibility or corrupted data — wipe stale data and start fresh.
+      console.error("[ydoc-persistence] Snapshot decode failed, clearing data:", e);
+      await migrateYDocData(docId, user.id, `Snapshot decode error: ${e}`);
       return { ydoc: new Y.Doc(), latestSeq: 0 };
     }
   }
@@ -111,7 +161,7 @@ export async function loadYDoc(docId: string): Promise<LoadResult> {
   // If any incremental update was corrupt, wipe everything and start fresh.
   if (encounteredCorruption) {
     console.warn("[ydoc-persistence] Corrupt updates detected — clearing all data for doc", docId);
-    await clearYDocData(docId, user.id);
+    await migrateYDocData(docId, user.id, "Incremental update corruption detected");
     return { ydoc: new Y.Doc(), latestSeq: 0 };
   }
 
@@ -143,11 +193,14 @@ export async function appendYDocUpdate(
   }
   const seq: number = seqData;
 
+  // Encode as base64 for reliable storage
+  const updateBase64 = uint8ArrayToBase64(update);
+
   await supabase.from("ydoc_updates").insert({
     doc_id: docId,
     user_id: user.id,
     seq,
-    update, // Pass Uint8Array directly to Supabase for bytea column
+    update: updateBase64, // Store as base64 string in bytea column
   });
 
   return seq;
@@ -171,12 +224,14 @@ export async function compactYDoc(
   if (!user) return;
 
   const snapshot = Y.encodeStateAsUpdate(ydoc);
+  // Encode as base64 for reliable storage/retrieval
+  const snapshotBase64 = uint8ArrayToBase64(snapshot);
 
   await supabase.from("ydoc_snapshots").insert({
     doc_id: docId,
     user_id: user.id,
     snapshot_seq: latestSeq,
-    snapshot, // Pass Uint8Array directly to Supabase for bytea column
+    snapshot: snapshotBase64, // Store as base64 string in bytea column
   });
 
   // Delete updates that are now covered by this snapshot.
@@ -224,55 +279,111 @@ export class YDocPersistenceManager {
   }
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+/**
+ * Convert Uint8Array to base64 string for safe transmission/storage
+ */
+function uint8ArrayToBase64(bytes: Uint8Array): string {
+  let binary = '';
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
+/**
+ * Convert base64 string back to Uint8Array
+ */
+function base64ToUint8Array(base64: string): Uint8Array {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
 
 function toUint8Array(value: unknown): Uint8Array {
+  // Already correct format
   if (value instanceof Uint8Array) return value;
 
-  // Handle Postgres hex format (\x...)
-  if (typeof value === "string" && value.startsWith("\\x")) {
-    const hex = value.slice(2);
-
-    // Guard against corrupted/odd-length hex strings
-    if (hex.length % 2 !== 0) {
-      console.warn("[ydoc-persistence] Invalid hex length:", hex.length);
-      return new Uint8Array();
-    }
-
-    const bytes = new Uint8Array(hex.length / 2);
-    for (let i = 0; i < hex.length; i += 2) {
-      const byte = parseInt(hex.slice(i, i + 2), 16);
-      if (Number.isNaN(byte)) {
-        console.warn("[ydoc-persistence] Invalid hex byte at index:", i);
-        return new Uint8Array();
-      }
-      bytes[i / 2] = byte;
-    }
-    return bytes;
+  if (value instanceof ArrayBuffer) {
+    return new Uint8Array(value);
   }
 
-  // Handle base64 (expected format)
-  if (typeof value === "string") {
+  if (ArrayBuffer.isView(value) && !(value instanceof Uint8Array)) {
+    return new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
+  }
+
+  if (Array.isArray(value)) {
     try {
-      const binary = atob(value);
-      const length = binary.length;
-      // Validate length is reasonable (Yjs docs are typically < 1MB)
-      if (length <= 0 || length > 10_000_000) {
-        console.warn("[ydoc-persistence] Suspicious base64 length:", length);
+      if (value.length === 0 || value.length > 10_000_000) {
+        console.warn("[ydoc-persistence] Invalid array length:", value.length);
         return new Uint8Array();
       }
-      const bytes = new Uint8Array(length);
-      for (let i = 0; i < length; i++) {
-        bytes[i] = binary.charCodeAt(i);
+      const result = new Uint8Array(value.length);
+      for (let i = 0; i < value.length; i++) {
+        const byte = Number(value[i]);
+        if (!Number.isInteger(byte) || byte < 0 || byte > 255) {
+          console.warn("[ydoc-persistence] Invalid byte at index", i, ":", byte);
+          return new Uint8Array();
+        }
+        result[i] = byte;
+      }
+      return result;
+    } catch (e) {
+      console.warn("[ydoc-persistence] Failed to convert array to Uint8Array:", e);
+      return new Uint8Array();
+    }
+  }
+
+  if (typeof value === "string") {
+    // Try base64 first (our preferred encoding for Supabase)
+    try {
+      const bytes = base64ToUint8Array(value);
+      if (bytes.length === 0 || bytes.length > 10_000_000) {
+        console.warn("[ydoc-persistence] Base64 decoded to invalid length:", bytes.length);
+        return new Uint8Array();
       }
       return bytes;
-    } catch (e) {
-      console.warn("[ydoc-persistence] Failed to decode base64:", e);
+    } catch (base64Error) {
+      // Not valid base64, try hex format
+      if (value.startsWith("\\x")) {
+        const hex = value.slice(2);
+        if (hex.length % 2 !== 0) {
+          console.warn("[ydoc-persistence] Invalid hex string (odd length)");
+          return new Uint8Array();
+        }
+        try {
+          const bytes = new Uint8Array(hex.length / 2);
+          for (let i = 0; i < hex.length; i += 2) {
+            const byte = parseInt(hex.substring(i, i + 2), 16);
+            if (Number.isNaN(byte)) {
+              console.warn("[ydoc-persistence] Invalid hex pair at index", i);
+              return new Uint8Array();
+            }
+            bytes[i / 2] = byte;
+          }
+          return bytes;
+        } catch (hexError) {
+          console.error("[ydoc-persistence] Hex decode error:", hexError);
+          return new Uint8Array();
+        }
+      }
+
+      // Neither worked
+      console.error("[ydoc-persistence] Could not decode string as base64 or hex:", {
+        firstChars: value.substring(0, 50),
+        length: value.length,
+      });
       return new Uint8Array();
     }
   }
 
-  console.warn("[ydoc-persistence] Unsupported update format, returning empty array");
+  console.error("[ydoc-persistence] Unrecognized value type:", {
+    type: typeof value,
+    constructor: value?.constructor?.name,
+    value: String(value).substring(0, 100),
+  });
   return new Uint8Array();
 }
 
