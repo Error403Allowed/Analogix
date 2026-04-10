@@ -136,10 +136,8 @@ const stats = [
 
 // ── Nav links ───────────────────────────────────────────────────────────────
 const navLinks = [
-  { label: "Tutor", path: "/chat" },
-  { label: "Flashcards & Quiz", path: "/flashcards" },
-  { label: "Calendar", path: "/calendar" },
-  { label: "Resources", path: "/resources" },
+  { label: "Features", id: "features" },
+  { label: "Why Analogix", id: "why-analogix" },
 ];
 
 // ── Main component ───────────────────────────────────────────────────────────
@@ -180,14 +178,21 @@ const Landing = () => {
   const heroY = useTransform(scrollYProgress, [0, 1], ["0%", "20%"]);
   const heroOpacity = useTransform(scrollYProgress, [0, 0.6], [1, 0]);
 
-  const handleNav = (path: string) => {
+  const handleNav = (path?: string, sectionId?: string) => {
     if (!isMounted || loading) return;
+    
+    // If scrolling to a section on this page
+    if (sectionId) {
+      document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth" });
+      return;
+    }
+    
     // If not signed in, redirect to onboarding
     // If signed in, go to dashboard
     if (!user) {
       router.push("/onboarding?step=2");
     } else {
-      router.push(path);
+      router.push(path || "/dashboard");
     }
   };
 
@@ -232,7 +237,7 @@ const Landing = () => {
           <div className="hidden md:flex items-center gap-7">
             {navLinks.map(link => (
               <button key={link.label}
-                onClick={() => handleNav(link.path)}
+                onClick={() => handleNav(undefined, link.id)}
                 className="text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors">
                 {link.label}
               </button>
@@ -409,7 +414,7 @@ const Landing = () => {
         </section>
 
         {/* ── "Built for the way you learn" section ── */}
-        <section className="py-28 px-6 border-t border-border/30">
+        <section id="why-analogix" className="py-28 px-6 border-t border-border/30">
           <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-20 items-center">
             <div>
               <motion.p initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }}

@@ -265,8 +265,8 @@
 }
 
 .bn-editor {
-  padding-left: 0 !important;
-  padding-right: 0 !important;
+  padding-left: 24px !important;
+  padding-right: 24px !important;
   font-family: var(--font-sans) !important;
 }
 
