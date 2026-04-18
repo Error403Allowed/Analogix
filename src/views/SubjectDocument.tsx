@@ -94,7 +94,36 @@ export default function SubjectDocument() {
   const router = useRouter();
   const subjectId = (params?.id as string) || "";
   const docId = (params?.docId as string) || "";
-  const subject = SUBJECT_CATALOG.find((entry) => entry.id === subjectId);
+  
+  // First try to find in catalog
+  let subject = SUBJECT_CATALOG.find((entry) => entry.id === subjectId);
+  
+  // If not in catalog, we'll load user-created subject dynamically
+  const [userSubject, setUserSubject] = useState<{ id: string; label: string } | null>(null);
+  const [subjectLoading, setSubjectLoading] = useState(!subject); // Only load if not in catalog
+  
+  // Load user-created subject if not in catalog
+  useEffect(() => {
+    if (subject || !subjectId || !subjectLoading) return;
+    
+    const loadUserSubject = async () => {
+      try {
+        await subjectStore.getSubject(subjectId);
+        // For user subjects, use the subject ID as the label
+        setUserSubject({ id: subjectId, label: subjectId });
+      } catch (error) {
+        console.error("Failed to load user subject:", error);
+      } finally {
+        setSubjectLoading(false);
+      }
+    };
+    
+    loadUserSubject();
+  }, [subject, subjectId, subjectLoading]);
+  
+  // Resolve final subject for display - use user subject as fallback
+  const displaySubject = subject || userSubject;
+  
   const editorRef = useRef<BlockNoteHandle>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastSavedRef = useRef({ title: "", content: "" });
@@ -300,7 +329,7 @@ export default function SubjectDocument() {
         body: JSON.stringify({
           action,
           text,
-          subject: subject?.label,
+          subject: displaySubject?.label,
           documentText: text,
           customPrompt,
         }),
@@ -326,7 +355,7 @@ export default function SubjectDocument() {
     } finally {
       setSidebarBusy(null);
     }
-  }, [appendMarkdownSection, stats.text, subject?.label]);
+  }, [appendMarkdownSection, stats.text, displaySubject?.label]);
 
   const handleGenerateStudyGuide = useCallback(async () => {
     const text = editorRef.current?.getPlainText().trim() || stats.text;
@@ -340,8 +369,8 @@ export default function SubjectDocument() {
     try {
       const result = await generateStudyGuide({
         assessmentDetails: text,
-        fileName: title || `${subject?.label || "Notes"} Study Guide`,
-        subject: subject?.label,
+        fileName: title || `${displaySubject?.label || "Notes"} Study Guide`,
+        subject: displaySubject?.label,
         grade: userGrade,
       });
 
@@ -358,7 +387,7 @@ export default function SubjectDocument() {
       const blocks = parser.parse(markdown);
       const content = blocks ? serialiseBN(blocks as BlockNoteEditorBlock[]) : markdown;
       
-      const guideTitle = pickStudyGuideTitle(result.title, `${title || subject?.label || "Study"} Guide`);
+      const guideTitle = pickStudyGuideTitle(result.title, `${title || displaySubject?.label || "Study"} Guide`);
       const created = await subjectStore.createDocument(subjectId, guideTitle);
 
       await subjectStore.updateDocument(subjectId, created.id, {
@@ -376,7 +405,7 @@ export default function SubjectDocument() {
     } finally {
       setSidebarBusy(null);
     }
-  }, [router, stats.text, subject?.label, subjectId, title, userGrade]);
+  }, [router, stats.text, displaySubject?.label, subjectId, title, userGrade]);
 
   const handleListen = useCallback(() => {
     if (isSpeaking && !isPaused) {
@@ -391,16 +420,6 @@ export default function SubjectDocument() {
     if (text) speak(text, { rate: 1, pitch: 1 });
   }, [isPaused, isSpeaking, pause, resume, speak, stats.text]);
 
-  if (!subject) {
-    return (
-      <div className="flex min-h-[60vh] flex-col items-center justify-center px-8 text-center">
-        <FileText className="mb-4 h-12 w-12 text-muted-foreground/20" />
-        <p className="text-xl font-black">Subject not found</p>
-        <Button onClick={() => router.push("/subjects")} size="sm" className="mt-4">Back to subjects</Button>
-      </div>
-    );
-  }
-
   const handleIconChange = useCallback(async (newIcon: string) => {
     setIcon(newIcon);
     updateTabLabelByPath(`/subjects/${subjectId}/document/${docId}`, title, newIcon);
@@ -413,6 +432,26 @@ export default function SubjectDocument() {
     await subjectStore.updateDocument(subjectId, docId, { cover: newCover });
     toast.success(newCover ? "Cover updated" : "Cover removed");
   }, [docId, subjectId]);
+
+  // Still loading user subject or subject not found
+  if (subjectLoading) {
+    return (
+      <div className="flex min-h-[60vh] flex-col items-center justify-center px-8 text-center">
+        <Loader2 className="mb-4 h-12 w-12 animate-spin text-muted-foreground/50" />
+        <p className="text-lg font-medium">Loading subject...</p>
+      </div>
+    );
+  }
+
+  if (!displaySubject) {
+    return (
+      <div className="flex min-h-[60vh] flex-col items-center justify-center px-8 text-center">
+        <FileText className="mb-4 h-12 w-12 text-muted-foreground/20" />
+        <p className="text-xl font-black">Subject not found</p>
+        <Button onClick={() => router.push("/subjects")} size="sm" className="mt-4">Back to subjects</Button>
+      </div>
+    );
+  }
 
   const SUBJECT_COVER_STYLES: Record<string, string> = {
     sunset: "bg-gradient-to-r from-orange-500 via-pink-500 to-purple-500",
@@ -447,7 +486,7 @@ export default function SubjectDocument() {
             onClick={() => router.push(`/subjects/${subjectId}`)}
             className="notion-btn-minimal truncate"
           >
-            {subject.label}
+            {displaySubject?.label}
           </button>
           <span className="text-muted-foreground/30">/</span>
           <span className="text-sm font-medium truncate text-foreground/70 px-2">
@@ -543,7 +582,7 @@ export default function SubjectDocument() {
                   ref={editorRef}
                   initialContent={initialContent}
                   onChange={handleEditorChange}
-                  subjectLabel={subject.label}
+                  subjectLabel={displaySubject?.label}
                   documentTitle={title}
                   collaboration={collab}
                 />

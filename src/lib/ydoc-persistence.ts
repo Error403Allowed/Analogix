@@ -112,17 +112,28 @@ export async function loadYDoc(docId: string): Promise<LoadResult> {
   if (snap?.snapshot) {
     try {
       // Debug what we're retrieving
+      const rawLength = typeof snap.snapshot === "string" ? snap.snapshot.length : snap.snapshot?.length;
       if (typeof snap.snapshot === "string") {
         console.info("[ydoc-persistence] Loading snapshot as string, length:", snap.snapshot.length);
       } else {
         console.info("[ydoc-persistence] Loading snapshot as", snap.snapshot?.constructor?.name, "length:", snap.snapshot?.length);
       }
 
+      // **CRITICAL: Reject obviously corrupted snapshots**
+      // A valid Yjs snapshot should be at least 30+ bytes. Anything less is almost certainly corrupt.
+      // Even valid base64 strings of 10-15 chars decode to < 20 bytes.
+      if (rawLength < 30) {
+        console.warn("[ydoc-persistence] Snapshot too short to be valid (" + rawLength + " bytes), clearing corrupted data");
+        await migrateYDocData(docId, user.id, `Snapshot too short: ${rawLength} bytes`);
+        return { ydoc: new Y.Doc(), latestSeq: 0 };
+      }
+
       // Convert to Uint8Array with proper error handling
       const bytes = toUint8Array(snap.snapshot);
-      if (bytes.length === 0) {
-        console.error("[ydoc-persistence] Snapshot decoded to empty array, clearing corrupted data");
-        await migrateYDocData(docId, user.id, "Snapshot decoded to empty array");
+      // After decoding, validate the result is also substantial (at least 30 bytes)
+      if (bytes.length < 30) {
+        console.error("[ydoc-persistence] Snapshot decoded to undersized array (" + bytes.length + " bytes), clearing corrupted data");
+        await migrateYDocData(docId, user.id, `Snapshot decoded to ${bytes.length} bytes (too short)`);
         return { ydoc: new Y.Doc(), latestSeq: 0 };
       }
 
@@ -324,6 +335,11 @@ function uint8ArrayToBase64(bytes: Uint8Array): string {
  */
 function base64ToUint8Array(base64: string): Uint8Array {
   try {
+    // Validate base64 format first (should only contain valid chars)
+    if (!/^[A-Za-z0-9+/]*={0,2}$/.test(base64)) {
+      console.debug("[ydoc-persistence] Invalid base64 characters in snapshot");
+      return new Uint8Array();
+    }
     const binary = atob(base64);
     const bytes = new Uint8Array(binary.length);
     for (let i = 0; i < binary.length; i++) {
@@ -331,8 +347,8 @@ function base64ToUint8Array(base64: string): Uint8Array {
     }
     return bytes;
   } catch (e) {
-    console.error("[ydoc-persistence] base64ToUint8Array failed:", e);
-    throw new Error(`Failed to decode base64: ${e}`);
+    console.debug("[ydoc-persistence] base64 decode failed, trying other formats");
+    return new Uint8Array(); // Return empty on failure, don't throw
   }
 }
 
@@ -372,16 +388,17 @@ function toUint8Array(value: unknown): Uint8Array {
 
   if (typeof value === "string") {
     // Try base64 first (our preferred encoding for Supabase)
-    try {
-      const bytes = base64ToUint8Array(value);
-      if (bytes.length === 0 || bytes.length > 10_000_000) {
-        console.warn("[ydoc-persistence] Base64 decoded to invalid length:", bytes.length);
-        return new Uint8Array();
-      }
+    const bytes = base64ToUint8Array(value);
+    // base64ToUint8Array now returns empty array on failure instead of throwing
+    if (bytes.length > 0 && bytes.length <= 10_000_000) {
       return bytes;
-    } catch (base64Error) {
-      // Not valid base64, try hex format
-      if (value.startsWith("\\x")) {
+    }
+    if (bytes.length > 10_000_000) {
+      console.warn("[ydoc-persistence] Decoded data too large:", bytes.length);
+      return new Uint8Array();
+    }
+    // Base64 failed or produced empty, try hex format
+    if (value.startsWith("\\x")) {
         const hex = value.slice(2);
         if (hex.length % 2 !== 0) {
           console.warn("[ydoc-persistence] Invalid hex string (odd length)");
@@ -411,7 +428,6 @@ function toUint8Array(value: unknown): Uint8Array {
       });
       return new Uint8Array();
     }
-  }
 
   console.error("[ydoc-persistence] Unrecognized value type:", {
     type: typeof value,

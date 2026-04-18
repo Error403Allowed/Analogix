@@ -463,7 +463,7 @@ function SubjectForm({
   onCancel: () => void;
 }) {
   const [subjects, setSubjects] = useState<Record<string, any>>({});
-  const [selectedSubject, setSelectedSubject] = useState<string>("");
+  const [selectedSubject, setSelectedSubject] = useState<string>(SUBJECT_CATALOG[0]?.id || "");
   const [title, setTitle] = useState("");
   const [loading, setLoading] = useState(true);
 
@@ -474,15 +474,15 @@ function SubjectForm({
         const subs = await subjectStore.getAll();
         setSubjects(subs);
         
-        // Set default to first user subject, or fallback to catalog
+        // Set default to first user subject
         if (Object.keys(subs).length > 0) {
-          setSelectedSubject(Object.keys(subs)[0]);
-        } else {
-          setSelectedSubject(SUBJECT_CATALOG[0]?.id || "");
+          const firstUserSubject = Object.keys(subs)[0];
+          setSelectedSubject(firstUserSubject);
         }
+        // Otherwise keep the catalog default we set above
       } catch (e) {
         console.warn("Failed to load subjects, using catalog:", e);
-        setSelectedSubject(SUBJECT_CATALOG[0]?.id || "");
+        // Keep default already set
       } finally {
         setLoading(false);
       }
@@ -493,7 +493,10 @@ function SubjectForm({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !selectedSubject) return;
+    if (!title.trim() || !selectedSubject) {
+      console.warn("Cannot submit: title or subject missing", { title, selectedSubject });
+      return;
+    }
     onSubmit(selectedSubject, title.trim());
   };
 

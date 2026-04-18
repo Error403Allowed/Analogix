@@ -234,7 +234,7 @@ export function AppSidebar() {
                               router.push(item.url);
                             }}
                             className={cn(
-                              "h-9 rounded-xl transition-all duration-200 text-sidebar-foreground/70 font-semibold hover:text-sidebar-foreground"
+                              "h-9 rounded-xl transition-all duration-200 text-sidebar-foreground/70 font-semibold hover:text-sidebar-foreground hover:bg-transparent"
                             )}
                           >
                             {isActive && (
