@@ -101,23 +101,24 @@ function NavItem({
 
 function DocItem({
   doc,
+  subjectId,
   subjectLabel,
   subjectEmoji,
   active,
   onSelect,
 }: {
   doc: SubjectDocumentItem;
+  subjectId: string;
   subjectLabel: string;
   subjectEmoji: string;
   active?: boolean;
   onSelect: (path: string) => void;
 }) {
-  const path = `/subjects/${doc.id}`; // We'll handle this differently
   const icon = doc.icon || (doc.role === "study-guide" ? "📘" : "📄");
 
   return (
     <button
-      onClick={() => onSelect(`doc:${doc.id}`)}
+      onClick={() => onSelect(`doc:${doc.id}:${subjectId}`)}
       data-active={active ? "true" : undefined}
       className={cn(
         "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all group",
@@ -174,7 +175,9 @@ export function CommandMenu({
       for (const [subjectId, data] of Object.entries(all)) {
         const subjectDocs = data.notes.documents || [];
         for (const doc of subjectDocs) {
-          docs.push({ doc, subjectId });
+          // Use document's stored subjectId if available, otherwise use loop variable
+          const docSubjectId = doc.subjectId || subjectId;
+          docs.push({ doc, subjectId: docSubjectId });
         }
       }
       // Sort by lastUpdated descending
@@ -265,12 +268,7 @@ export function CommandMenu({
   };
 
   const handleSelect = (path: string) => {
-    if (path.startsWith("doc:")) {
-      const [, docId, subjectId] = path.split(":");
-      onNavigate(`/subjects/${subjectId}/document/${docId}`);
-    } else {
-      onNavigate(path);
-    }
+    onNavigate(path);
   };
 
   if (!open) return null;
@@ -351,6 +349,7 @@ export function CommandMenu({
                         )}
                         <DocItem
                           doc={item.doc}
+                          subjectId={item.subjectId}
                           subjectLabel={item.subjectLabel}
                           subjectEmoji={item.subjectEmoji}
                           active={i === activeIdx}

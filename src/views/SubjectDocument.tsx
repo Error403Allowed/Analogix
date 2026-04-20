@@ -146,7 +146,14 @@ export default function SubjectDocument() {
   const [stats, setStats] = useState({ text: "", words: 0, characters: 0 });
   const [sidebarBusy, setSidebarBusy] = useState<string | null>(null);
   const [customInstruction, setCustomInstruction] = useState("");
-  const [userGrade, setUserGrade] = useState<string | undefined>(undefined);
+  const [userGrade] = useState<string | undefined>(() => {
+    try {
+      const preferences = JSON.parse(localStorage.getItem("userPreferences") || "{}");
+      return typeof preferences.grade === "string" ? preferences.grade : undefined;
+    } catch {
+      return undefined;
+    }
+  });
 
   // useDocumentCollaboration is initialised with a stable empty doc until
   // initialContent is loaded from Supabase, then re-keyed via the BlockNote key.
@@ -205,14 +212,7 @@ export default function SubjectDocument() {
     }, 850);
   }, [docId, documentRole, studyGuideData, studyGuideMarkdown, subjectId]);
 
-  useEffect(() => {
-    try {
-      const preferences = JSON.parse(localStorage.getItem("userPreferences") || "{}");
-      setUserGrade(typeof preferences.grade === "string" ? preferences.grade : undefined);
-    } catch {
-      setUserGrade(undefined);
-    }
-  }, []);
+
 
   useEffect(() => {
     let active = true;

@@ -7,6 +7,7 @@ import { subjectStore } from "@/utils/subjectStore";
 import { SUBJECT_CATALOG } from "@/constants/subjects";
 import { cn } from "@/lib/utils";
 import { isStudyGuideDocument } from "@/lib/document-content";
+import { useTabs } from "@/context/TabsContext";
 
 interface DocEntry {
   docId: string;
@@ -19,6 +20,7 @@ interface DocEntry {
 
 export default function RecentDocs() {
   const router = useRouter();
+  const { openTab } = useTabs();
   const [docs, setDocs] = useState<DocEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -28,14 +30,20 @@ export default function RecentDocs() {
       try {
         const all = await subjectStore.getAll();
         const entries: DocEntry[] = [];
-        Object.entries(all).forEach(([subjectId, data]) => {
-          const subjectLabel =
-            SUBJECT_CATALOG.find(s => s.id === subjectId)?.label || subjectId;
+        Object.entries(all).forEach(([loopSubjectId, data]) => {
           (data.notes.documents || []).forEach(doc => {
             if (!doc.title && !doc.content) return;
+            // Use document's stored subjectId if available, fallback to loop variable
+            const docSubjectId = doc.subjectId || loopSubjectId;
+            if (!docSubjectId) {
+              console.warn("[RecentDocs] Document has no subjectId:", { docId: doc.id, loopSubjectId });
+              return; // Skip documents without a subject
+            }
+            const subjectLabel =
+              SUBJECT_CATALOG.find(s => s.id === docSubjectId)?.label || docSubjectId;
             entries.push({
               docId: doc.id,
-              subjectId,
+              subjectId: docSubjectId,
               subjectLabel,
               title: doc.title || "Untitled",
               lastUpdated: doc.lastUpdated,
@@ -107,9 +115,13 @@ export default function RecentDocs() {
           docs.map(doc => (
             <button
               key={doc.docId}
-              onClick={() =>
-                router.push(`/subjects/${doc.subjectId}/document/${doc.docId}`)
-              }
+              onClick={() => {
+                // Open tab in TabsContext first
+                const icon = doc.isGuide ? "📘" : "📄";
+                openTab(`/subjects/${doc.subjectId}/document/${doc.docId}`, doc.title, icon);
+                // Then navigate
+                router.push(`/subjects/${doc.subjectId}/document/${doc.docId}`);
+              }}
               className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-muted/20 hover:bg-muted/40 transition-colors group text-left border border-transparent hover:border-border/30"
             >
               {/* Icon */}

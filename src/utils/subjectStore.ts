@@ -62,6 +62,7 @@ export interface CustomSubject {
 
 export interface SubjectDocumentItem {
   id: string;
+  subjectId: string; // Store which subject this document belongs to
   title: string;
   icon?: string | null;
   cover?: string | null;
@@ -126,6 +127,7 @@ const normalizeDocuments = (subjectId: string, notes: SubjectNotes | undefined):
   if (Array.isArray(notes.documents) && notes.documents.length > 0) {
     return notes.documents.map((doc, i) => ({
       id: doc?.id || `legacy-${subjectId}-${i}`,
+      subjectId: subjectId,
       title: typeof doc?.title === "string" ? doc.title : "",
       icon: typeof doc?.icon === "string" ? doc.icon : null,
       cover: typeof doc?.cover === "string" ? doc.cover : null,
@@ -147,6 +149,7 @@ const normalizeDocuments = (subjectId: string, notes: SubjectNotes | undefined):
   if (legacyContent || legacyTitle) {
     return [{
       id: `legacy-${subjectId}`,
+      subjectId: subjectId,
       title: legacyTitle,
       content: legacyContent,
       createdAt: notes.lastUpdated,
@@ -256,10 +259,15 @@ export const subjectStore = {
   },
 
   createDocument: async (subjectId: string, title?: string): Promise<SubjectDocumentItem> => {
+    if (!subjectId) {
+      console.error("[subjectStore] createDocument called with empty subjectId:", { subjectId, title });
+      throw new Error("Cannot create document: subjectId is required");
+    }
     const current = await subjectStore.getSubject(subjectId);
     const now = new Date().toISOString();
   const newDoc: SubjectDocumentItem = {
     id: crypto.randomUUID(),
+    subjectId: subjectId,
     title: typeof title === "string" ? title.trim() : "",
     content: "<p></p>",
     contentJson: JSON.stringify(EMPTY_TIPTAP_DOC),
@@ -269,6 +277,7 @@ export const subjectStore = {
     createdAt: now,
     lastUpdated: now,
   };
+    console.log("[subjectStore] Creating document:", { subjectId: newDoc.subjectId, docId: newDoc.id, title: newDoc.title });
     await subjectStore.saveSubject(subjectId, {
       notes: { ...current.notes, documents: [newDoc, ...(current.notes.documents || [])], lastUpdated: now },
     }, current);
@@ -303,6 +312,7 @@ export const subjectStore = {
     const newDoc: SubjectDocumentItem = {
       ...target,
       id: crypto.randomUUID(),
+      subjectId: subjectId,
       title: `${target.title} (Copy)`,
       createdAt: now,
       lastUpdated: now,

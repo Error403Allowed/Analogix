@@ -21,6 +21,7 @@ import { activityLog, type DayActivity } from "@/utils/activityLog";
 import TutorialOverlay from "@/components/TutorialOverlay";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
+import { useTabs } from "@/context/TabsContext";
 import { subjectStore } from "@/utils/subjectStore";
 import { SUBJECT_CATALOG } from "@/constants/subjects";
 import { loadTimerState, saveTimerState, getDefaultTimerState } from "@/lib/timerStore";
@@ -271,6 +272,7 @@ interface DocEntry {
 
 function DocScrollRow() {
   const router = useRouter();
+  const { openTab } = useTabs();
   const [docs, setDocs] = useState<DocEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -329,7 +331,11 @@ function DocScrollRow() {
     <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-none -mx-1 px-1">
       {docs.map(doc => (
         <button key={doc.docId}
-          onClick={() => router.push(`/subjects/${doc.subjectId}/document/${doc.docId}`)}
+          onClick={() => {
+            const url = `/subjects/${doc.subjectId}/document/${doc.docId}`;
+            openTab(url, doc.title, doc.isGuide ? "📘" : "📄");
+            router.push(url);
+          }}
           className="w-36 h-36 shrink-0 rounded-xl bg-muted/25 hover:bg-muted/45 border border-border/30 hover:border-border/60 transition-all p-3 flex flex-col items-start text-left group">
           <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center mb-auto",
             doc.isGuide ? "bg-primary/15" : "bg-muted/60")}>

@@ -395,7 +395,23 @@ export function AppSidebar() {
             router.push("/calendar");
             setTimeout(() => window.dispatchEvent(new CustomEvent("openAddEvent")), 300);
           } else if (path.startsWith("doc:")) {
-            const [, docId, subjectId] = path.split(":");
+            // Parse "doc:docId:subjectId"
+            const parts = path.split(":");
+            const docId = parts[1];
+            const subjectId = parts[2];
+            
+            if (!docId || !subjectId) {
+              console.error("[AppSidebar] Invalid doc path format:", path);
+              return;
+            }
+            
+            // Get document title for tab label
+            const allDocs = Object.values(subjects).flatMap(s => (s?.notes?.documents || []));
+            const doc = allDocs.find(d => d.id === docId);
+            const title = doc?.title || "Document";
+            const icon = doc?.role === "study-guide" ? "📘" : "📄";
+            
+            openTab(`/subjects/${subjectId}/document/${docId}`, title, icon);
             router.push(`/subjects/${subjectId}/document/${docId}`);
           } else if (path.startsWith("new-")) {
             router.push("/dashboard");

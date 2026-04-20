@@ -25,6 +25,53 @@ export interface LoadResult {
   latestSeq: number;
 }
 
+// ── Bulk cleanup ──────────────────────────────────────────────────────────────
+
+/**
+ * Bulk cleanup function to clear all corrupted snapshots from the database.
+ * This is useful for cleaning up data that was corrupted before validation was added.
+ */
+export async function cleanupCorruptedSnapshots(): Promise<{ cleaned: number }> {
+  const supabase = createClient();
+  const user = await getAuthUser();
+  if (!user) return { cleaned: 0 };
+
+  // Find all snapshots that are too short to be valid
+  const { data: snapshots, error } = await supabase
+    .from("ydoc_snapshots")
+    .select("doc_id, snapshot")
+    .eq("user_id", user.id);
+
+  if (error || !snapshots) {
+    console.error("[ydoc-persistence] Error fetching snapshots for cleanup:", error);
+    return { cleaned: 0 };
+  }
+
+  const corruptedDocIds: string[] = [];
+  
+  for (const snap of snapshots) {
+    const rawSnap = snap.snapshot as unknown;
+    const rawLength = typeof rawSnap === "string" ? (rawSnap as string).length : (rawSnap as Uint8Array)?.length ?? 0;
+    const JUNK_VALUES = new Set(["undefined", "null", "false", "true"]);
+    const isJunk = rawLength === 0 || (typeof rawSnap === "string" && JUNK_VALUES.has(rawSnap as string));
+    if (isJunk) {
+      corruptedDocIds.push(snap.doc_id);
+    }
+  }
+
+  if (corruptedDocIds.length === 0) {
+    return { cleaned: 0 };
+  }
+
+  // Clear corrupted data for all affected docs
+  for (const docId of corruptedDocIds) {
+    await migrateYDocData(docId, user.id, `Bulk cleanup: snapshot too short`);
+  }
+
+  console.warn(`[ydoc-persistence] Bulk cleaned ${corruptedDocIds.length} corrupted documents`);
+  return { cleaned: corruptedDocIds.length };
+}
+
 // ── Load ──────────────────────────────────────────────────────────────────────
 
 /**
@@ -53,14 +100,8 @@ async function migrateYDocData(docId: string, userId: string, reason: string): P
       .eq("doc_id", docId)
       .eq("user_id", userId);
 
-    // Insert into archive if table exists, otherwise just delete
-    if (snapshots && snapshots.length > 0) {
-      try {
-        await supabase.from("ydoc_snapshots_archive").insert(
-          snapshots.map(s => ({ ...s, archived_reason: reason, archived_at: new Date() }))
-        );
-      } catch { /* ignore if archive table doesn't exist */ }
-    }
+    // Archive insert skipped — ydoc_snapshots_archive table is not provisioned.
+    // Just delete the corrupt data directly.
 
     // Delete the corrupt data
     await Promise.all([
@@ -111,54 +152,49 @@ export async function loadYDoc(docId: string): Promise<LoadResult> {
 
   if (snap?.snapshot) {
     try {
-      // Debug what we're retrieving
-      const rawLength = typeof snap.snapshot === "string" ? snap.snapshot.length : snap.snapshot?.length;
-      if (typeof snap.snapshot === "string") {
-        console.info("[ydoc-persistence] Loading snapshot as string, length:", snap.snapshot.length);
-      } else {
-        console.info("[ydoc-persistence] Loading snapshot as", snap.snapshot?.constructor?.name, "length:", snap.snapshot?.length);
-      }
+      const rawSnap = snap.snapshot as unknown;
+      const rawLength = typeof rawSnap === "string" ? rawSnap.length : (rawSnap as Uint8Array)?.length ?? 0;
 
-      // **CRITICAL: Reject obviously corrupted snapshots**
-      // A valid Yjs snapshot should be at least 30+ bytes. Anything less is almost certainly corrupt.
-      // Even valid base64 strings of 10-15 chars decode to < 20 bytes.
-      if (rawLength < 30) {
-        console.warn("[ydoc-persistence] Snapshot too short to be valid (" + rawLength + " bytes), clearing corrupted data");
-        await migrateYDocData(docId, user.id, `Snapshot too short: ${rawLength} bytes`);
+      // Reject empty or obviously invalid values (e.g. "null", "undefined" stored as strings)
+      if (rawLength === 0) {
+        console.warn("[ydoc-persistence] Snapshot is empty, clearing");
+        await migrateYDocData(docId, user.id, "Snapshot empty");
         return { ydoc: new Y.Doc(), latestSeq: 0 };
       }
 
-      // Convert to Uint8Array with proper error handling
-      const bytes = toUint8Array(snap.snapshot);
-      // After decoding, validate the result is also substantial (at least 30 bytes)
-      if (bytes.length < 30) {
-        console.error("[ydoc-persistence] Snapshot decoded to undersized array (" + bytes.length + " bytes), clearing corrupted data");
-        await migrateYDocData(docId, user.id, `Snapshot decoded to ${bytes.length} bytes (too short)`);
+      // Reject known junk string values that pass base64 validation
+      const JUNK_VALUES = new Set(["undefined", "null", "false", "true"]);
+      if (typeof rawSnap === "string" && JUNK_VALUES.has(rawSnap)) {
+        console.warn("[ydoc-persistence] Snapshot is junk value:", rawSnap, "clearing");
+        await migrateYDocData(docId, user.id, `Snapshot junk value: ${rawSnap}`);
         return { ydoc: new Y.Doc(), latestSeq: 0 };
       }
 
-      // Validate it's a reasonable Yjs update (should start with certain markers)
-      // Yjs updates are protobuf-encoded, typically start with 0x00 (read var) or small values
-      if (bytes[0] === undefined) {
-        console.error("[ydoc-persistence] Snapshot bytes empty after conversion");
-        await migrateYDocData(docId, user.id, "Snapshot bytes empty after toUint8Array");
+      // Reject invalid base64
+      if (typeof rawSnap === "string" && !/^[A-Za-z0-9+/]*={0,2}$/.test(rawSnap)) {
+        console.warn("[ydoc-persistence] Snapshot contains invalid base64 characters, clearing");
+        await migrateYDocData(docId, user.id, "Invalid base64 format");
         return { ydoc: new Y.Doc(), latestSeq: 0 };
       }
 
-      console.info("[ydoc-persistence] Snapshot decoded successfully, byte length:", bytes.length, "first bytes:", Array.from(bytes.slice(0, 4)).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
-      
+      const bytes = toUint8Array(rawSnap);
+      if (bytes.length === 0) {
+        console.error("[ydoc-persistence] Snapshot decoded to empty array, clearing");
+        await migrateYDocData(docId, user.id, "Snapshot decoded to 0 bytes");
+        return { ydoc: new Y.Doc(), latestSeq: 0 };
+      }
+
       try {
         Y.applyUpdate(ydoc, bytes);
       } catch (yError) {
-        console.error("[ydoc-persistence] Yjs rejected update as invalid:", yError);
+        console.error("[ydoc-persistence] Yjs rejected snapshot:", yError);
         await migrateYDocData(docId, user.id, `Yjs rejected snapshot: ${yError}`);
         return { ydoc: new Y.Doc(), latestSeq: 0 };
       }
-      
+
       fromSeq = snap.snapshot_seq;
     } catch (e) {
-      // Binary incompatibility or corrupted data — wipe stale data and start fresh.
-      console.error("[ydoc-persistence] Snapshot decode failed, clearing data:", e);
+      console.error("[ydoc-persistence] Snapshot decode failed, clearing:", e);
       await migrateYDocData(docId, user.id, `Snapshot decode error: ${e}`);
       return { ydoc: new Y.Doc(), latestSeq: 0 };
     }
@@ -267,20 +303,53 @@ export async function compactYDoc(
   // Encode as base64 for reliable storage/retrieval
   const snapshotBase64 = uint8ArrayToBase64(snapshot);
 
-  await supabase.from("ydoc_snapshots").insert({
-    doc_id: docId,
-    user_id: user.id,
-    snapshot_seq: latestSeq,
-    snapshot: snapshotBase64, // Store as base64 string in bytea column
-  });
+  try {
+    // Use upsert to atomically replace any existing snapshot
+    // This avoids 409 conflicts from unique constraint violations
+    const { error } = await supabase.from("ydoc_snapshots").upsert(
+      {
+        doc_id: docId,
+        user_id: user.id,
+        snapshot_seq: latestSeq,
+        snapshot: snapshotBase64, // Store as base64 string in bytea column
+      },
+      { onConflict: "doc_id" }
+    );
+
+    if (error) {
+      console.error("[ydoc-persistence] Error during snapshot upsert:", error);
+      // If upsert fails, try delete + insert as fallback
+      await supabase
+        .from("ydoc_snapshots")
+        .delete()
+        .eq("doc_id", docId)
+        .eq("user_id", user.id);
+
+      await supabase.from("ydoc_snapshots").insert({
+        doc_id: docId,
+        user_id: user.id,
+        snapshot_seq: latestSeq,
+        snapshot: snapshotBase64,
+      });
+    }
+  } catch (e) {
+    console.error("[ydoc-persistence] Error during compact:", e);
+    // Ignore compact errors - updates are preserved, just not compacted
+    return;
+  }
 
   // Delete updates that are now covered by this snapshot.
-  await supabase
-    .from("ydoc_updates")
-    .delete()
-    .eq("doc_id", docId)
-    .eq("user_id", user.id)
-    .lte("seq", latestSeq);
+  try {
+    await supabase
+      .from("ydoc_updates")
+      .delete()
+      .eq("doc_id", docId)
+      .eq("user_id", user.id)
+      .lte("seq", latestSeq);
+  } catch (e) {
+    console.warn("[ydoc-persistence] Error deleting compacted updates:", e);
+    // Don't fail the whole compact if update deletion fails
+  }
 }
 
 // ── Manager class ─────────────────────────────────────────────────────────────

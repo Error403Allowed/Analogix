@@ -136,9 +136,18 @@ export default function TabBar({ onNavigate }: TabBarProps) {
 
   const handleCreateDocument = async (subjectId: string, title: string) => {
     try {
+      if (!subjectId) {
+        console.error("[TabBar] Cannot create document: subjectId is empty/undefined", { subjectId, title });
+        toast.error("Please select a subject");
+        return;
+      }
+      console.log("[TabBar] Creating document with subjectId:", { subjectId, title });
       const created = await subjectStore.createDocument(subjectId, title);
+      console.log("[TabBar] Document created with subjectId:", { subjectId, docId: created.id, createdSubjectId: created.subjectId });
       toast.success(`Document "${title}" created!`);
-      router.push(`/subjects/${subjectId}/document/${created.id}`);
+      const url = `/subjects/${subjectId}/document/${created.id}`;
+      openTab(url, title, "📄");
+      router.push(url);
       setNewTabOpen(false);
       setShowSubjectPicker(false);
     } catch (error) {
@@ -151,7 +160,9 @@ export default function TabBar({ onNavigate }: TabBarProps) {
     try {
       const created = await subjectStore.createDocument(subjectId, title);
       toast.success(`Study guide "${title}" created!`);
-      router.push(`/subjects/${subjectId}/document/${created.id}`);
+      const url = `/subjects/${subjectId}/document/${created.id}`;
+      openTab(url, title, "📘");
+      router.push(url);
       setNewTabOpen(false);
       setShowSubjectPicker(false);
     } catch (error) {
@@ -207,6 +218,19 @@ export default function TabBar({ onNavigate }: TabBarProps) {
       setNewTabOpen(false);
       // Dispatch event to open the add event dialog
       window.dispatchEvent(new CustomEvent("openAddEvent"));
+      return;
+    }
+    if (path.startsWith("doc:")) {
+      const [, docId, subjectId] = path.split(":");
+      if (!docId || !subjectId) {
+        console.error("[TabBar] Invalid doc path format:", path);
+        toast.error("Could not open document");
+        return;
+      }
+      const url = `/subjects/${subjectId}/document/${docId}`;
+      openTab(url, "Document", "📄");
+      router.push(url);
+      setNewTabOpen(false);
       return;
     }
 
@@ -518,7 +542,7 @@ function SubjectForm({
             {loading ? (
               <option>Loading subjects...</option>
             ) : subjectOptions.length === 0 ? (
-              <option>No subjects available</option>
+              <option value="">No subjects available</option>
             ) : (
               subjectOptions.map(subjectId => {
                 const label = subjects[subjectId]?.name || SUBJECT_CATALOG.find(s => s.id === subjectId)?.label || subjectId;
