@@ -19,6 +19,7 @@ import { AustralianState, STATE_LABELS } from "@/utils/termData";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/context/AuthContext";
+import OnboardingBackdrop from "@/components/OnboardingBackdrop";
 
 // ── Auth Step ─────────────────────────────────────────────────────────────────
 function AuthStep({ onAuthed, externalError }: { onAuthed: () => void; externalError?: string | null }) {
@@ -324,9 +325,8 @@ const Onboarding = () => {
   const STATES: AustralianState[] = ["NSW", "VIC", "QLD", "WA", "SA", "TAS", "ACT", "NT"];
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden bg-background">
-      <div className="liquid-blob w-96 h-96 bg-primary/20 -top-48 -left-48 fixed" />
-      <div className="liquid-blob w-80 h-80 bg-accent/20 bottom-20 right-10 fixed" style={{ animationDelay: "-3s" }} />
+    <div className="min-h-screen flex items-center justify-center p-4 relative isolate overflow-hidden bg-background">
+      <OnboardingBackdrop />
       
       <motion.div
         className={cn("w-full relative z-10", step === 1 ? "max-w-5xl" : "max-w-2xl")}

@@ -33,7 +33,7 @@ export default function TabBar({ onNavigate }: TabBarProps) {
   const pathname = usePathname(); // source of truth for active tab highlight
   const router = useRouter();
   const scrollRef = useRef<HTMLDivElement>(null);
-  const { toggleSidebar, open } = useSidebar();
+  const { toggleSidebar } = useSidebar();
 
   // ALL hooks must be declared before any early return
   const [newTabOpen, setNewTabOpen] = useState(false);
@@ -241,7 +241,7 @@ export default function TabBar({ onNavigate }: TabBarProps) {
   };
 
   if (tabs.length === 0) return null;
-  if (!hydrated) return <div className="h-9 shrink-0 border-b border-border/40" />;
+  if (!hydrated) return <div className="h-9 shrink-0 border-b border-border/20 bg-background/80" />;
 
   return (
     <>
@@ -250,17 +250,21 @@ export default function TabBar({ onNavigate }: TabBarProps) {
           <CommandMenu open={newTabOpen} onClose={() => setNewTabOpen(false)} onNavigate={handleOpenShortcut} />
         )}
       </AnimatePresence>
-      <div className="h-9 flex items-end bg-background/80 backdrop-blur-sm border-b border-border/40 px-2 shrink-0">
+      <div className="relative h-11 shrink-0 border-b border-border/20 bg-background/80 px-3 py-1.5 backdrop-blur-lg">
+        <div className="flex h-full items-center">
         {/* Sidebar toggle button */}
         <button
           onClick={toggleSidebar}
-          className="mr-2 h-7 w-7 shrink-0 rounded-md border border-transparent text-muted-foreground/80 hover:text-foreground hover:bg-muted/40 transition-colors flex items-center justify-center"
+          className="mr-2 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-black/5 bg-black/[0.03] text-muted-foreground/80 transition-all duration-200 hover:border-black/10 hover:bg-black/[0.05] hover:text-foreground dark:border-white/10 dark:bg-white/[0.04] dark:hover:border-white/15 dark:hover:bg-white/[0.07]"
           title="Toggle Sidebar"
         >
           <PanelLeft className="h-3.5 w-3.5" />
         </button>
 
-        <div ref={scrollRef} className="flex items-end gap-1 overflow-x-auto scrollbar-none flex-1 min-w-0">
+        <div
+          ref={scrollRef}
+          className="flex h-8 min-w-0 flex-1 items-center gap-1.5 overflow-x-auto scrollbar-none rounded-[20px] border border-black/[0.05] bg-black/[0.02] px-1.5 py-1 dark:border-white/[0.06] dark:bg-white/[0.02]"
+        >
           <AnimatePresence initial={false}>
             {pinnedTabs.map((tab, index) => {
               const isActive = pathname ? tab.path === pathname : tab.id === activeTabId;
@@ -287,12 +291,12 @@ export default function TabBar({ onNavigate }: TabBarProps) {
                         onMouseDown={(e) => handleMouseDown(e, tab.id)}
                         title={tab.label}
                         className={cn(
-                          "group flex items-center justify-center h-7 w-7 rounded-md cursor-pointer transition-all relative select-none text-xs font-semibold",
+                          "group relative flex h-6 w-6 cursor-pointer items-center justify-center rounded-full border text-xs font-semibold select-none transition-all duration-200",
                           isActive
-                            ? "bg-background border border-border/50 text-foreground shadow-sm"
-                            : "text-muted-foreground/70 hover:text-foreground hover:bg-muted/30",
+                            ? "border-primary/20 bg-primary/10 text-foreground shadow-sm dark:border-primary/25 dark:bg-primary/15"
+                            : "border-transparent bg-transparent text-muted-foreground/75 hover:bg-black/[0.04] hover:text-foreground dark:hover:bg-white/[0.05]",
                           isDragging && "opacity-50",
-                          isDragOver && "ring-2 ring-primary ring-offset-1"
+                          isDragOver && "ring-2 ring-foreground/10 ring-offset-1 ring-offset-background"
                         )}
                       >
                         <span className="text-[11px]">{tab.emoji}</span>
@@ -317,7 +321,7 @@ export default function TabBar({ onNavigate }: TabBarProps) {
           </AnimatePresence>
 
           {pinnedTabs.length > 0 && regularTabs.length > 0 && (
-            <div className="mx-1 h-5 w-px bg-border/50 shrink-0" />
+            <div className="mx-1 h-5 w-px shrink-0 bg-gradient-to-b from-transparent via-border/70 to-transparent" />
           )}
 
           <AnimatePresence initial={false}>
@@ -346,24 +350,24 @@ export default function TabBar({ onNavigate }: TabBarProps) {
                         onClick={() => handleTabClick(tab)}
                         onMouseDown={(e) => handleMouseDown(e, tab.id)}
                         className={cn(
-                          "group flex items-center gap-1.5 h-7 px-2.5 rounded-md cursor-pointer transition-all relative select-none whitespace-nowrap text-xs font-semibold max-w-[180px]",
+                          "group relative flex h-6 max-w-[190px] cursor-pointer select-none items-center gap-1.5 whitespace-nowrap rounded-full border px-3.5 text-xs font-semibold transition-all duration-200",
                           isActive
-                            ? "bg-background border border-border/50 text-foreground shadow-sm"
-                            : "text-muted-foreground/70 hover:text-foreground hover:bg-muted/30",
+                            ? "border-primary/20 bg-primary/10 text-foreground shadow-sm dark:border-primary/25 dark:bg-primary/15"
+                            : "border-transparent bg-transparent text-muted-foreground/75 hover:bg-black/[0.04] hover:text-foreground dark:hover:bg-white/[0.05]",
                           isDragging && "opacity-50",
-                          isDragOver && "ring-2 ring-primary ring-offset-1"
+                          isDragOver && "ring-2 ring-foreground/10 ring-offset-1 ring-offset-background"
                         )}
                       >
-                        <GripHorizontal className="w-2.5 h-2.5 text-muted-foreground/40 opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing shrink-0" />
+                        <GripHorizontal className="h-2.5 w-2.5 shrink-0 cursor-grab text-muted-foreground/35 opacity-0 transition-opacity active:cursor-grabbing group-hover:opacity-100" />
                         <span className="text-[11px] shrink-0">{tab.emoji}</span>
                         <span className="truncate">{tab.label}</span>
                         <button
                           onClick={(e) => handleClose(e, tab.id)}
                           className={cn(
-                            "shrink-0 w-4 h-4 rounded flex items-center justify-center transition-all",
+                            "flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-muted-foreground/60 transition-all",
                             "opacity-0 group-hover:opacity-100",
-                            isActive && "opacity-60",
-                            "hover:opacity-100 hover:bg-muted/60 hover:text-foreground text-muted-foreground/60"
+                            isActive && "opacity-70",
+                            "hover:bg-black/5 hover:text-foreground dark:hover:bg-white/10"
                           )}
                         >
                           <X className="w-2.5 h-2.5" />
@@ -392,11 +396,12 @@ export default function TabBar({ onNavigate }: TabBarProps) {
         {/* New tab button */}
         <button
           onClick={() => setNewTabOpen(true)}
-          className="ml-1 h-7 w-7 shrink-0 rounded-md border border-transparent text-muted-foreground/80 hover:text-foreground hover:bg-muted/40 transition-colors"
+          className="ml-2 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-dashed border-black/10 bg-black/[0.03] text-muted-foreground/80 transition-all duration-200 hover:border-black/15 hover:bg-black/[0.05] hover:text-foreground dark:border-white/10 dark:bg-white/[0.04] dark:hover:bg-white/[0.07]"
           title="New tab (jump to…)"
         >
           <Plus className="h-3.5 w-3.5 mx-auto" />
         </button>
+        </div>
       </div>
 
       {/* Subject Picker Dialog for creating documents/study guides */}

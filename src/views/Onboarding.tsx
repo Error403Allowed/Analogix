@@ -22,6 +22,7 @@ import { AustralianState, STATE_LABELS } from "@/utils/termData";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/context/AuthContext";
+import OnboardingBackdrop from "@/components/OnboardingBackdrop";
 
 // ── Typewriter ────────────────────────────────────────────────────────────────
 const TypewriterText = ({ text, delay = 0 }: { text: string; delay?: number }) => {
@@ -345,9 +346,8 @@ const Onboarding = () => {
   const iv = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden bg-background">
-      <div className="liquid-blob w-96 h-96 bg-primary/20 -top-48 -left-48 fixed" />
-      <div className="liquid-blob w-80 h-80 bg-accent/20 bottom-20 right-10 fixed" style={{ animationDelay: "-3s" }} />
+    <div className="min-h-screen flex items-center justify-center p-4 relative isolate overflow-hidden bg-background">
+      <OnboardingBackdrop />
       <motion.div className="w-full max-w-2xl relative z-10" initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }}>
         <AnimatePresence mode="wait">
           {!isComplete ? (
