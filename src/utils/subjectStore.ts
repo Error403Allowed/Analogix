@@ -110,6 +110,25 @@ export interface StudyGuideWeek {
   tasks: string[];
 }
 
+interface DocumentRow {
+  id: string;
+  owner_user_id: string;
+  subject_id: string;
+  title: string;
+  content: string;
+  content_json?: string | null;
+  content_text?: string | null;
+  content_format?: string | null;
+  role?: string | null;
+  icon?: string | null;
+  cover?: string | null;
+  study_guide_markdown?: string | null;
+  study_guide_data?: GeneratedStudyGuide | null;
+  created_at: string;
+  updated_at: string;
+  last_edited_by?: string | null;
+}
+
 const emptySubject = (subjectId: string): SubjectData => ({
   id: subjectId,
   marks: [],
@@ -122,7 +141,7 @@ const emptySubject = (subjectId: string): SubjectData => ({
   },
 });
 
-const normalizeDocuments = (subjectId: string, notes: SubjectNotes | undefined): SubjectDocumentItem[] => {
+const normalizeLegacyDocuments = (subjectId: string, notes: SubjectNotes | undefined): SubjectDocumentItem[] => {
   if (!notes) return [];
   if (Array.isArray(notes.documents) && notes.documents.length > 0) {
     return notes.documents.map((doc, i) => ({
@@ -159,35 +178,122 @@ const normalizeDocuments = (subjectId: string, notes: SubjectNotes | undefined):
   return [];
 };
 
-const normalizeNotes = (subjectId: string, notes: SubjectNotes | undefined): SubjectNotes => ({
+const normalizeDocumentRow = (doc: Partial<DocumentRow>): SubjectDocumentItem => ({
+  id: String(doc.id ?? crypto.randomUUID()),
+  subjectId: String(doc.subject_id ?? ""),
+  title: typeof doc.title === "string" ? doc.title : "",
+  icon: typeof doc.icon === "string" ? doc.icon : null,
+  cover: typeof doc.cover === "string" ? doc.cover : null,
+  content: typeof doc.content === "string" ? doc.content : "",
+  contentJson: typeof doc.content_json === "string" ? doc.content_json : undefined,
+  contentText: typeof doc.content_text === "string" ? doc.content_text : undefined,
+  contentFormat: typeof doc.content_format === "string" ? doc.content_format : undefined,
+  role: doc.role === "study-guide" ? "study-guide" : "notes",
+  studyGuideMarkdown:
+    typeof doc.study_guide_markdown === "string" ? doc.study_guide_markdown : undefined,
+  studyGuideData:
+    typeof doc.study_guide_data === "object" && doc.study_guide_data
+      ? (doc.study_guide_data as GeneratedStudyGuide)
+      : undefined,
+  createdAt: typeof doc.created_at === "string" ? doc.created_at : new Date().toISOString(),
+  lastUpdated: typeof doc.updated_at === "string" ? doc.updated_at : new Date().toISOString(),
+});
+
+const normalizeNotes = (
+  subjectId: string,
+  notes: SubjectNotes | undefined,
+  documents: SubjectDocumentItem[] = normalizeLegacyDocuments(subjectId, notes),
+): SubjectNotes => ({
   content: notes?.content || "",
   lastUpdated: notes?.lastUpdated || new Date().toISOString(),
   homework: Array.isArray(notes?.homework) ? notes!.homework : [],
   links: Array.isArray(notes?.links) ? notes!.links : [],
   title: typeof notes?.title === "string" ? notes.title : "",
-  documents: normalizeDocuments(subjectId, notes),
+  documents,
   assessments: Array.isArray(notes?.assessments) ? notes!.assessments : [],
 });
+
+const serialiseNotesForStorage = (notes: SubjectNotes | undefined): SubjectNotes => ({
+  content: notes?.content || "",
+  lastUpdated: notes?.lastUpdated || new Date().toISOString(),
+  homework: Array.isArray(notes?.homework) ? notes.homework : [],
+  links: Array.isArray(notes?.links) ? notes.links : [],
+  title: typeof notes?.title === "string" ? notes.title : "",
+  documents: [],
+  assessments: Array.isArray(notes?.assessments) ? notes.assessments : [],
+});
+
+async function fetchDocumentsForUser(
+  userId: string,
+  subjectId?: string,
+): Promise<SubjectDocumentItem[]> {
+  const supabase = createClient();
+  let query = supabase
+    .from("documents")
+    .select("*")
+    .eq("owner_user_id", userId);
+
+  if (subjectId) {
+    query = query.eq("subject_id", subjectId);
+  }
+
+  const { data, error } = await query.order("updated_at", { ascending: false });
+  if (error) {
+    console.warn("[subjectStore] fetchDocumentsForUser failed:", error);
+    return [];
+  }
+
+  return (data ?? []).map((row) => normalizeDocumentRow(row as DocumentRow));
+}
+
+function groupDocumentsBySubject(documents: SubjectDocumentItem[]) {
+  return documents.reduce<Record<string, SubjectDocumentItem[]>>((acc, document) => {
+    const bucket = acc[document.subjectId] ?? [];
+    bucket.push(document);
+    acc[document.subjectId] = bucket;
+    return acc;
+  }, {});
+}
 
 export const subjectStore = {
   getAll: async (): Promise<Record<string, SubjectData>> => {
     const user = await getUser();
     if (!user) return {};
     const supabase = createClient();
-    const { data, error } = await supabase
-      .from("subject_data")
-      .select("subject_id, marks, notes")
-      .eq("user_id", user.id)
-      .order("updated_at", { ascending: false });
-    if (error) { console.warn("[subjectStore] getAll failed:", error); return {}; }
-    return (data ?? []).reduce((acc: Record<string, SubjectData>, row: any) => {
+    const [{ data, error }, documents] = await Promise.all([
+      supabase
+        .from("subject_data")
+        .select("subject_id, marks, notes")
+        .eq("user_id", user.id)
+        .order("updated_at", { ascending: false }),
+      fetchDocumentsForUser(user.id),
+    ]);
+    if (error) {
+      console.warn("[subjectStore] getAll failed:", error);
+      return {};
+    }
+
+    const documentsBySubject = groupDocumentsBySubject(documents);
+    const subjects = (data ?? []).reduce((acc: Record<string, SubjectData>, row: any) => {
       acc[row.subject_id] = {
         id: row.subject_id,
         marks: row.marks ?? [],
-        notes: normalizeNotes(row.subject_id, row.notes),
+        notes: normalizeNotes(row.subject_id, row.notes, documentsBySubject[row.subject_id] ?? []),
       };
       return acc;
     }, {});
+
+    for (const [subjectId, docs] of Object.entries(documentsBySubject)) {
+      if (!subjects[subjectId]) {
+        subjects[subjectId] = {
+          id: subjectId,
+          marks: [],
+          notes: normalizeNotes(subjectId, undefined, docs),
+        };
+      }
+    }
+
+    return subjects;
   },
 
   // Fetch a single subject row — cached in-memory for instant repeat reads.
@@ -202,15 +308,25 @@ export const subjectStore = {
       const user = await getUser();
       if (!user) return emptySubject(subjectId);
       const supabase = createClient();
-      const { data, error } = await supabase
-        .from("subject_data")
-        .select("subject_id, marks, notes")
-        .eq("user_id", user.id)
-        .eq("subject_id", subjectId)
-        .maybeSingle();
+      const [{ data, error }, documents] = await Promise.all([
+        supabase
+          .from("subject_data")
+          .select("subject_id, marks, notes")
+          .eq("user_id", user.id)
+          .eq("subject_id", subjectId)
+          .maybeSingle(),
+        fetchDocumentsForUser(user.id, subjectId),
+      ]);
       const result: SubjectData = (error || !data)
-        ? emptySubject(subjectId)
-        : { id: data.subject_id, marks: data.marks ?? [], notes: normalizeNotes(data.subject_id, data.notes) };
+        ? {
+            ...emptySubject(subjectId),
+            notes: normalizeNotes(subjectId, undefined, documents),
+          }
+        : {
+            id: data.subject_id,
+            marks: data.marks ?? [],
+            notes: normalizeNotes(data.subject_id, data.notes, documents),
+          };
       subjectCache.set(subjectId, result);
       subjectCachePromise.delete(subjectId);
       return result;
@@ -228,12 +344,13 @@ export const subjectStore = {
     // Only fetch current data if caller didn't provide it
     const current = currentData ?? await subjectStore.getSubject(subjectId);
     const updated = { ...current, ...data };
+    const now = new Date().toISOString();
     const { error } = await supabase.from("subject_data").upsert({
       user_id: user.id,
       subject_id: subjectId,
       marks: updated.marks,
-      notes: updated.notes,
-      updated_at: new Date().toISOString(),
+      notes: serialiseNotesForStorage(updated.notes),
+      updated_at: now,
     }, { onConflict: "user_id,subject_id" });
     if (error) console.warn("[subjectStore] saveSubject failed:", error);
     // Invalidate cache so next read fetches fresh data from Supabase
@@ -263,64 +380,126 @@ export const subjectStore = {
       console.error("[subjectStore] createDocument called with empty subjectId:", { subjectId, title });
       throw new Error("Cannot create document: subjectId is required");
     }
+    const user = await getUser();
+    if (!user) throw new Error("Not authenticated");
     const current = await subjectStore.getSubject(subjectId);
+    await subjectStore.saveSubject(subjectId, current, current);
+    const supabase = createClient();
     const now = new Date().toISOString();
-  const newDoc: SubjectDocumentItem = {
-    id: crypto.randomUUID(),
-    subjectId: subjectId,
-    title: typeof title === "string" ? title.trim() : "",
-    content: "<p></p>",
-    contentJson: JSON.stringify(EMPTY_TIPTAP_DOC),
-    contentText: "",
-    contentFormat: TIPTAP_CONTENT_FORMAT,
-    role: "notes",
-    createdAt: now,
-    lastUpdated: now,
-  };
-    console.log("[subjectStore] Creating document:", { subjectId: newDoc.subjectId, docId: newDoc.id, title: newDoc.title });
-    await subjectStore.saveSubject(subjectId, {
-      notes: { ...current.notes, documents: [newDoc, ...(current.notes.documents || [])], lastUpdated: now },
-    }, current);
-    return newDoc;
+    const nextDocId = crypto.randomUUID();
+    const { data, error } = await supabase
+      .from("documents")
+      .insert({
+        id: nextDocId,
+        owner_user_id: user.id,
+        subject_id: subjectId,
+        title: typeof title === "string" ? title.trim() : "",
+        content: "<p></p>",
+        content_json: JSON.stringify(EMPTY_TIPTAP_DOC),
+        content_text: "",
+        content_format: TIPTAP_CONTENT_FORMAT,
+        role: "notes",
+        created_at: now,
+        updated_at: now,
+        last_edited_by: user.id,
+      })
+      .select("*")
+      .single();
+    if (error || !data) {
+      console.warn("[subjectStore] createDocument failed:", error);
+      throw new Error(error?.message || "Failed to create document");
+    }
+    invalidateSubjectCache(subjectId);
+    window.dispatchEvent(new Event("subjectDataUpdated"));
+    return normalizeDocumentRow(data as DocumentRow);
   },
 
   updateDocument: async (subjectId: string, docId: string, updates: Partial<SubjectDocumentItem>): Promise<void> => {
-    const current = await subjectStore.getSubject(subjectId);
+    const user = await getUser();
+    if (!user) return;
+    const supabase = createClient();
     const now = new Date().toISOString();
-    const docs = current.notes.documents || [];
-    const target = docs.find(d => d.id === docId);
-    if (!target) return;
-    const updated: SubjectDocumentItem = { ...target, ...updates, lastUpdated: now };
-    await subjectStore.saveSubject(subjectId, {
-      notes: { ...current.notes, documents: [updated, ...docs.filter(d => d.id !== docId)], lastUpdated: now },
-    }, current);
+    const payload: Record<string, unknown> = {
+      updated_at: now,
+      last_edited_by: user.id,
+    };
+
+    if (updates.title !== undefined) payload.title = updates.title;
+    if (updates.content !== undefined) payload.content = updates.content;
+    if (updates.contentJson !== undefined) payload.content_json = updates.contentJson;
+    if (updates.contentText !== undefined) payload.content_text = updates.contentText;
+    if (updates.contentFormat !== undefined) payload.content_format = updates.contentFormat;
+    if (updates.role !== undefined) payload.role = updates.role;
+    if (updates.icon !== undefined) payload.icon = updates.icon;
+    if (updates.cover !== undefined) payload.cover = updates.cover;
+    if (updates.studyGuideMarkdown !== undefined) payload.study_guide_markdown = updates.studyGuideMarkdown;
+    if (updates.studyGuideData !== undefined) payload.study_guide_data = updates.studyGuideData;
+
+    const { error } = await supabase
+      .from("documents")
+      .update(payload)
+      .eq("id", docId)
+      .eq("subject_id", subjectId);
+    if (error) {
+      console.warn("[subjectStore] updateDocument failed:", error);
+      throw new Error(error.message);
+    }
+    invalidateSubjectCache(subjectId);
+    window.dispatchEvent(new Event("subjectDataUpdated"));
   },
 
   removeDocument: async (subjectId: string, docId: string): Promise<void> => {
-    const current = await subjectStore.getSubject(subjectId);
-    await subjectStore.saveSubject(subjectId, {
-      notes: { ...current.notes, documents: (current.notes.documents || []).filter(d => d.id !== docId), lastUpdated: new Date().toISOString() },
-    }, current);
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("documents")
+      .delete()
+      .eq("id", docId)
+      .eq("subject_id", subjectId);
+    if (error) {
+      console.warn("[subjectStore] removeDocument failed:", error);
+      throw new Error(error.message);
+    }
+    invalidateSubjectCache(subjectId);
+    window.dispatchEvent(new Event("subjectDataUpdated"));
   },
 
   duplicateDocument: async (subjectId: string, docId: string): Promise<SubjectDocumentItem> => {
+    const user = await getUser();
+    if (!user) throw new Error("Not authenticated");
     const current = await subjectStore.getSubject(subjectId);
-    const docs = current.notes.documents || [];
-    const target = docs.find(d => d.id === docId);
+    const target = (current.notes.documents || []).find((d) => d.id === docId);
     if (!target) throw new Error("Document not found");
+    const supabase = createClient();
     const now = new Date().toISOString();
-    const newDoc: SubjectDocumentItem = {
-      ...target,
-      id: crypto.randomUUID(),
-      subjectId: subjectId,
-      title: `${target.title} (Copy)`,
-      createdAt: now,
-      lastUpdated: now,
-    };
-    await subjectStore.saveSubject(subjectId, {
-      notes: { ...current.notes, documents: [newDoc, ...docs], lastUpdated: now },
-    }, current);
-    return newDoc;
+    const { data, error } = await supabase
+      .from("documents")
+      .insert({
+        id: crypto.randomUUID(),
+        owner_user_id: user.id,
+        subject_id: subjectId,
+        title: `${target.title} (Copy)`,
+        content: target.content,
+        content_json: target.contentJson ?? null,
+        content_text: target.contentText ?? null,
+        content_format: target.contentFormat ?? null,
+        role: target.role ?? "notes",
+        icon: target.icon ?? null,
+        cover: target.cover ?? null,
+        study_guide_markdown: target.studyGuideMarkdown ?? null,
+        study_guide_data: target.studyGuideData ?? null,
+        created_at: now,
+        updated_at: now,
+        last_edited_by: user.id,
+      })
+      .select("*")
+      .single();
+    if (error || !data) {
+      console.warn("[subjectStore] duplicateDocument failed:", error);
+      throw new Error(error?.message || "Failed to duplicate document");
+    }
+    invalidateSubjectCache(subjectId);
+    window.dispatchEvent(new Event("subjectDataUpdated"));
+    return normalizeDocumentRow(data as DocumentRow);
   },
 
   updateHomework: async (subjectId: string, homework: SubjectHomework[]): Promise<void> => {

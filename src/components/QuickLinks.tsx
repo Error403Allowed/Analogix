@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   MessageCircle, GraduationCap, Flame, BookOpen, Calendar, Target,
-  LayoutDashboard, Timer, FileText, Zap, Brain, Plus, X, Check,
+  LayoutDashboard, Timer, FileText, Zap, Brain, Plus, X, Check, Users,
   ChevronDown, Link as LinkIcon, Pencil,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -15,6 +15,7 @@ import { AnimatePresence, motion } from "framer-motion";
 export const APP_PAGES = [
   { label: "AI Tutor",  path: "/chat",          icon: "MessageCircle"  },
   { label: "My Subjects",    path: "/subjects",       icon: "GraduationCap"  },
+  { label: "Study Rooms",    path: "/rooms",          icon: "Users"          },
   { label: "Dashboard",      path: "/dashboard",      icon: "LayoutDashboard"},
   { label: "Flashcards",     path: "/flashcards",     icon: "Brain"          },
   { label: "Quiz",           path: "/quiz",           icon: "Target"         },
@@ -28,6 +29,7 @@ export const APP_PAGES = [
 const ICON_MAP: Record<string, React.ElementType> = {
   MessageCircle, GraduationCap, Flame, BookOpen, Calendar,
   Target, LayoutDashboard, Timer, FileText, Zap, Brain, LinkIcon,
+  Users,
 };
 
 const DEFAULT_LINKS = ["/chat", "/subjects", "/achievements"];

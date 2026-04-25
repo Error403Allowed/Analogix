@@ -18,7 +18,6 @@ import {
   MoreHorizontal,
   ChevronRight,
   Plus,
-  Share2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -53,9 +52,8 @@ import {
 } from "@/lib/document-content";
 import { pickStudyGuideTitle } from "@/utils/studyGuideGeneration";
 import { studyGuideToMarkdown } from "@/utils/studyGuideMarkdown";
-import { useDocumentCollaboration } from "@/hooks/useDocumentCollaboration";
 import { EmojiPicker } from "@/components/EmojiPicker";
-import { ShareDialog } from "@/components/ShareDialog";
+import { ShareToRoomDialog } from "@/components/ShareToRoomDialog";
 
 type BlockNoteEditorComponent = typeof import("@/components/BlockNoteEditor").BlockNoteEditor;
 type BlockNoteEditorProps = React.ComponentPropsWithoutRef<BlockNoteEditorComponent>;
@@ -155,27 +153,8 @@ export default function SubjectDocument() {
     }
   });
 
-  // useDocumentCollaboration is initialised with a stable empty doc until
-  // initialContent is loaded from Supabase, then re-keyed via the BlockNote key.
-  const collab = useDocumentCollaboration({
-    documentId: docId,
-    displayName: userGrade ? `Year ${userGrade}` : undefined,
-  });
-  // Mirror live values into the shape the rest of the UI already expects.
-  const collaboration = useMemo(
-    () => ({ status: collab.status, peerCount: collab.peerCount }),
-    [collab.status, collab.peerCount],
-  );
-
   const { updateTabLabelByPath } = useTabs();
   const { isSpeaking, isPaused, supported: ttsOk, speak, pause, resume, stop } = useTextToSpeech();
-
-  // Flush a final Yjs snapshot to Supabase when the user navigates away.
-  const flushRef = useRef(collab.flush);
-  useEffect(() => { flushRef.current = collab.flush; }, [collab.flush]);
-  useEffect(() => {
-    return () => { flushRef.current().catch(console.warn); };
-  }, []);
 
   const queueSave = useCallback(async (
     nextContent: string,
@@ -501,15 +480,6 @@ export default function SubjectDocument() {
             ) : (
               <span className="text-[11px] text-muted-foreground/40">{formatSaved(lastSaved)}</span>
             )}
-            {collaboration.peerCount > 0 && (
-              <div className="flex -space-x-2">
-                {[...Array(Math.min(collaboration.peerCount + 1, 3))].map((_, i) => (
-                  <div key={i} className="w-5 h-5 rounded-full border-2 border-background bg-primary/20 flex items-center justify-center text-[8px] font-bold">
-                    {i === 0 ? "You" : ""}
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
 
           <button
@@ -523,16 +493,10 @@ export default function SubjectDocument() {
             <span className="hidden sm:inline">AI Studio</span>
           </button>
 
-          <ShareDialog
+          <ShareToRoomDialog
             documentId={docId}
-            subjectId={subjectId}
-            documentTitle={title}
-            trigger={
-              <button className="notion-btn-minimal" title="Share document">
-                <Share2 className="h-4 w-4" />
-                <span className="hidden sm:inline">Share</span>
-              </button>
-            }
+            documentTitle={title || "Untitled"}
+            trigger={<button className="notion-btn-minimal">Share to room</button>}
           />
 
           <button className="notion-btn-minimal">
@@ -584,7 +548,6 @@ export default function SubjectDocument() {
                   onChange={handleEditorChange}
                   subjectLabel={displaySubject?.label}
                   documentTitle={title}
-                  collaboration={collab}
                 />
               )}
             </div>

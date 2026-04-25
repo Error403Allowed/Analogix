@@ -70,6 +70,7 @@ export const useTabContentCache = () => {
 export const pathMeta = (path: string): { label: string; emoji: string } => {
   if (path === "/dashboard")    return { label: "Dashboard",   emoji: "🏠" };
   if (path === "/chat")         return { label: "AI Tutor",    emoji: "💬" };
+  if (path === "/rooms")        return { label: "Study Rooms", emoji: "👥" };
   if (path === "/flashcards")   return { label: "Flashcards",  emoji: "🃏" };
   if (path === "/quiz")         return { label: "Quiz Hub",    emoji: "📝" };
   if (path === "/formulas")     return { label: "Formulas",    emoji: "∑"  };
@@ -77,6 +78,7 @@ export const pathMeta = (path: string): { label: string; emoji: string } => {
   if (path === "/subjects")     return { label: "My Subjects", emoji: "🎓" };
   if (path === "/calendar")     return { label: "Calendar",    emoji: "📅" };
   if (path === "/achievements") return { label: "Achievements",emoji: "🏆" };
+  if (path.startsWith("/rooms/")) return { label: "Study Room", emoji: "👥" };
   if (path.startsWith("/subjects/") && path.includes("/document/")) return { label: "Document", emoji: "📄" };
   if (path.startsWith("/subjects/")) return { label: "Subject", emoji: "📖" };
   return { label: "Page", emoji: "📄" };

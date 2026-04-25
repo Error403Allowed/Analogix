@@ -42,7 +42,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Document content is required" }, { status: 400 });
     }
 
-    const systemPrompt = `You are Quizzy, an expert teacher creating flashcards for Australian high school students.
+    const systemPrompt = `You are Analogix AI, an expert teacher creating flashcards for Australian high school students.
 
 Your job: Create effective, educational flashcards based on the provided document content.
 

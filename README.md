@@ -8,7 +8,7 @@ Analogix is an analogy-first study platform for Australian secondary students. I
 
 ### AI Learning
 - Analogix AI tutor with analogy-first explanations, an analogy on/off toggle, and “re-explain” with a new anchor.
-- Workspace AI agent (Quizzy) that can reference your notes, flashcards, and recent chats.
+- Workspace AI agent (Analogix AI) that can reference your notes, flashcards, and recent chats.
 - Smart model routing for coding vs reasoning vs general questions.
 - Subject, grade, and state alignment to Australian curriculum terminology.
 - Formula-sheet context injected for maths/science subjects.

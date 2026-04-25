@@ -78,7 +78,7 @@ export async function POST(request: Request) {
       ? `2. LAYER COMPLEXITY GRADUALLY:\n   - Start: Plain-language summary\n   - Deepen: The mechanism\n   - Clarify: Edge cases`
       : `2. LAYER COMPLEXITY GRADUALLY:\n   - Start: Simple parallel\n   - Deepen: The mechanism\n   - Acknowledge: Where the analogy breaks`;
 
-    const systemPrompt = `You are "Quizzy", a brilliant, empathetic AI tutor helping a student write their document.
+    const systemPrompt = `You are "Analogix AI", a brilliant, empathetic AI tutor helping a student write their document.
 
 Student Location & Curriculum:
 ${curriculumContext}

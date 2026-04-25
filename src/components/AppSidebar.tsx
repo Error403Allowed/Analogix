@@ -4,7 +4,7 @@ import {
   LayoutDashboard, MessageCircle, Calendar,
   GraduationCap, Trophy, ChevronDown, Palette,
   Sun, Moon, User, Flame, Library, SigmaIcon, SquareStack, ClipboardList,
-  Plus, Search, MoreHorizontal, Sparkles,
+  Plus, Search, MoreHorizontal, Sparkles, Users,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import {
@@ -40,10 +40,11 @@ const navGroups = [
     ],
   },
   {
-    label: "Reference",
+    label: "Study",
     items: [
       { title: "Formulas",      url: "/formulas",     icon: SigmaIcon,       tutorial: "formulas-nav"     },
       { title: "Resources",     url: "/resources",    icon: Library,         tutorial: "resources-nav"    },
+      { title: "Study Rooms",   url: "/rooms",        icon: Users,           tutorial: "rooms-nav"        },
       { title: "My Subjects",   url: "/subjects",     icon: GraduationCap,   tutorial: "subjects-nav"     },
     ],
   },
@@ -184,66 +185,66 @@ export function AppSidebar() {
 
 
   return (
-    /* Outer container — liquid glass pill matching the inspiration */
+    /* Outer container — cleaner dark-friendly glass panel */
     <Sidebar
       collapsible="offcanvas"
       data-tutorial="sidebar"
-      className="!border-r-0 !border-l-0 !border-none"
-      style={{ background: "hsl(var(--background))" }}
+      className="!border-r-0 !border-l-0 !border-none rounded-[32px] border border-white/10 bg-background/95 shadow-[0_40px_120px_-60px_rgba(15,23,42,0.9)] backdrop-blur-xl dark:border-slate-800/60"
+      style={{ background: "hsl(var(--background) / 0.95)" }}
     >
-      {/* Inner container — same solid bg as page */}
-      <div className="flex flex-col h-full px-2 py-2 overflow-hidden"
-        style={{ background: "hsl(var(--background))" }}
+      {/* Inner container — clearer spacing and soft backdrop */}
+      <div className="flex flex-col h-full px-3 py-3 overflow-hidden space-y-3"
+        style={{ background: "hsl(var(--background) / 0.94)" }}
       >
 
         {/* ── Header: logo ──────────────────────────────────────── */}
-        <SidebarHeader className="h-16 shrink-0 flex flex-col justify-center px-5">
+        <SidebarHeader className="h-20 shrink-0 flex flex-col justify-center px-4 pb-2 border-b border-muted/15">
           <div className="flex items-center justify-between w-full">
             <button
               onClick={() => router.push("/?force=true")}
-              className="flex items-center gap-3.5 pl-1 hover:opacity-80 transition-all active:scale-95"
+              className="flex items-center gap-3.5 rounded-3xl px-3 py-2 hover:bg-muted/30 transition-all active:scale-[0.98]"
             >
-              <div className="w-9 h-9 rounded-xl overflow-hidden shrink-0 shadow-lg shadow-primary/30">
+              <div className="w-11 h-11 rounded-2xl overflow-hidden shrink-0 shadow-xl shadow-primary/20">
                 <img src="/tab-icon.png" alt="Analogix" className="w-full h-full object-cover" />
               </div>
-              <span className="text-xl font-black gradient-text tracking-tighter">Analogix</span>
+              <span className="text-lg font-black tracking-tight text-foreground">Analogix</span>
             </button>
           </div>
         </SidebarHeader>
 
         {/* ── Nav ───────────────────────────────────────────────────── */}
-        <SidebarContent className="flex-1 px-2 py-3 overflow-y-auto overflow-x-hidden text-foreground custom-scrollbar">
+        <SidebarContent className="flex-1 px-1 py-2 overflow-y-auto overflow-x-hidden text-foreground custom-scrollbar">
           {navGroups.map((group) => (
-            <SidebarGroup key={group.label}>
-              <p className="px-2 mb-1 mt-2 text-[9px] font-black uppercase tracking-[0.25em] text-muted-foreground/40">
+            <SidebarGroup key={group.label} className="rounded-[26px] border border-muted/15 bg-muted/10 p-3 mb-3">
+              <p className="px-2 mb-2 text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground/70">
                 {group.label}
               </p>
               <SidebarGroupContent>
-                <SidebarMenu className="gap-0.5">
+                <SidebarMenu className="gap-2">
                   {group.items.map(item => {
                     const activeTab = tabs.find(t => t.id === activeTabId);
                     const isActive = activeTab?.path === item.url || pathname === item.url;
                     return (
                       <SidebarMenuItem key={item.title}>
-                        <motion.div whileTap={{ scale: 0.97 }} data-tutorial={item.tutorial}>
+                        <motion.div whileTap={{ scale: 0.98 }} data-tutorial={item.tutorial}>
                           <SidebarMenuButton
-                            isActive={false}
-                            onClick={(e) => {
+                            isActive={isActive}
+                            onClick={() => {
                               const meta = pathMeta(item.url);
                               openTab(item.url, meta.label, meta.emoji);
                               router.push(item.url);
                             }}
                             className={cn(
-                              "h-9 rounded-xl transition-all duration-200 text-sidebar-foreground/70 font-semibold hover:text-sidebar-foreground hover:bg-transparent"
+                              "min-h-[46px] rounded-2xl px-4 transition-all duration-200 font-semibold text-sidebar-foreground/80",
+                              isActive
+                                ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-lg shadow-sidebar-accent/15"
+                                : "bg-transparent hover:bg-sidebar-accent/20 hover:text-sidebar-foreground"
                             )}
                           >
-                            {isActive && (
-                              <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-full bg-sidebar-primary" />
-                            )}
                             <item.icon
                               className={cn(
-                                "w-4 h-4 shrink-0 ml-1 transition-transform",
-                                isActive ? "text-sidebar-primary" : "text-sidebar-foreground/70"
+                                "w-5 h-5 shrink-0 transition-colors",
+                                isActive ? "text-sidebar-accent-foreground" : "text-sidebar-foreground/70"
                               )}
                             />
                             <span className="truncate">{item.title}</span>
@@ -259,17 +260,17 @@ export function AppSidebar() {
         </SidebarContent>
 
         {/* ── Footer: user profile + streak ────────────────────────── */}
-        <SidebarFooter className="shrink-0 p-3">
-          <SidebarMenu className="gap-1.5 mb-2">
+        <SidebarFooter className="shrink-0 px-4 py-4 space-y-3 border-t border-muted/15 bg-background/90 backdrop-blur-xl">
+          <SidebarMenu className="gap-2 mb-1">
             {/* Search button */}
             <SidebarMenuItem>
               <SidebarMenuButton
                 onClick={() => setIsCommandMenuOpen(true)}
-                className="h-9 rounded-xl transition-colors text-muted-foreground font-semibold text-sm hover:bg-muted/30"
+                className="min-h-[46px] rounded-2xl px-4 text-sm font-semibold text-muted-foreground transition-colors hover:bg-muted/30"
               >
                 <Search className="w-4 h-4 shrink-0" />
                 <span className="truncate">Search</span>
-                <span className="ml-auto text-[10px] opacity-40">⌘K</span>
+                <span className="ml-auto text-[10px] opacity-50">⌘K</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
 
@@ -277,7 +278,7 @@ export function AppSidebar() {
             <SidebarMenuItem>
               <SidebarMenuButton
                 onClick={() => setIsNewPageModalOpen(true)}
-                className="h-9 rounded-xl transition-colors text-muted-foreground font-semibold text-sm hover:bg-muted/30"
+                className="min-h-[46px] rounded-2xl px-4 text-sm font-semibold text-muted-foreground transition-colors hover:bg-muted/30"
               >
                 <Plus className="w-4 h-4 shrink-0" />
                 <span className="truncate">New page</span>
@@ -289,7 +290,7 @@ export function AppSidebar() {
               <SidebarMenuItem>
                 <SidebarMenuButton
                   onClick={() => setMode(isDark ? "light" : "dark")}
-                  className="h-9 rounded-xl transition-colors text-muted-foreground font-semibold text-sm hover:bg-muted/30"
+                  className="min-h-[46px] rounded-2xl px-4 text-sm font-semibold text-muted-foreground transition-colors hover:bg-muted/30"
                 >
                   {isDark ? <Sun className="w-4 h-4 shrink-0" /> : <Moon className="w-4 h-4 shrink-0" />}
                   <span className="truncate">{isDark ? "Light mode" : "Dark mode"}</span>
@@ -301,36 +302,37 @@ export function AppSidebar() {
             <SidebarMenuItem>
               <Popover open={themeOpen} onOpenChange={setThemeOpen}>
                 <PopoverTrigger asChild>
-                  <SidebarMenuButton className="h-9 rounded-xl transition-colors text-muted-foreground font-semibold text-sm hover:bg-muted/30">
+                  <SidebarMenuButton className="min-h-[46px] rounded-2xl px-4 text-sm font-semibold text-muted-foreground transition-colors hover:bg-muted/30">
                     <Palette className="w-4 h-4 shrink-0" />
                     <span className="truncate">Colour scheme</span>
                     <ChevronDown className={cn("w-3 h-3 transition-transform ml-auto", themeOpen && "rotate-180")} />
                   </SidebarMenuButton>
                 </PopoverTrigger>
-                <PopoverContent side="top" align="start" className="w-64 p-3 glass-card border-transparent shadow-2xl">
-                  <p className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-2">Theme</p>
+                <PopoverContent side="top" align="start" className="w-64 p-3 glass-card border border-muted/20 shadow-2xl bg-background/95 backdrop-blur-xl">
+                  <p className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-3">Theme</p>
 
                   {/* Paper toggle */}
-                  <div className="flex items-center justify-between p-2 rounded-lg bg-muted/40 border border-border/40 mb-2">
-                    <div className="flex items-center gap-2">
-                      <div className={cn("w-6 h-6 rounded-md flex items-center justify-center transition-colors", paperMode ? "bg-foreground text-background" : "bg-muted text-muted-foreground")}>
-                        <Sparkles className="w-3 h-3" />
+                  <div className="flex items-center justify-between p-3 rounded-2xl bg-muted/40 border border-border/40 mb-3">
+                    <div className="flex items-center gap-3">
+                      <div className={cn("w-8 h-8 rounded-2xl flex items-center justify-center transition-colors", paperMode ? "bg-foreground text-background" : "bg-muted text-muted-foreground") }>
+                        <Sparkles className="w-3.5 h-3.5" />
                       </div>
                       <div>
                         <p className="text-[10px] font-bold">Paper</p>
-                        <p className="text-[8px] text-muted-foreground">Monochrome</p>
+                        <p className="text-[8px] text-muted-foreground">Monochrome mode</p>
                       </div>
                     </div>
-                    <Switch checked={paperMode} onCheckedChange={handlePaperToggle} className="scale-75" />
+                    <Switch checked={paperMode} onCheckedChange={handlePaperToggle} className="scale-95" />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-1.5">
+                  <div className="grid grid-cols-2 gap-2">
                     {themes.filter(t => t.name !== "Paper").map(t => (
                       <button key={t.name} onClick={() => handleThemeSelect(t.name)}
-                        className={cn("flex flex-col gap-1 p-1.5 rounded-xl transition-all border text-left",
-                          activeThemeName === t.name && !paperMode ? "border-primary/50 bg-primary/8" : paperMode ? "border-border/20 opacity-40" : "border-primary/10 bg-primary/5 hover:bg-primary/10")}>
-                        <div className="w-full h-6 rounded-lg" style={{ background: `linear-gradient(135deg, ${t.g[0]}, ${t.g[1]})` }} />
-                        <span className={cn("text-[8px] font-black uppercase tracking-tight", activeThemeName === t.name && !paperMode ? "text-primary" : "text-muted-foreground")}>{t.name}</span>
+                        className={cn("flex flex-col gap-1.5 p-2 rounded-2xl transition-all border text-left",
+                          activeThemeName === t.name && !paperMode ? "border-primary/50 bg-primary/10" : paperMode ? "border-border/20 opacity-50" : "border-muted/20 bg-muted/10 hover:bg-muted/20")}
+                      >
+                        <div className="w-full h-7 rounded-xl" style={{ background: `linear-gradient(135deg, ${t.g[0]}, ${t.g[1]})` }} />
+                        <span className={cn("text-[9px] font-black uppercase tracking-tight", activeThemeName === t.name && !paperMode ? "text-primary" : "text-muted-foreground")}>{t.name}</span>
                       </button>
                     ))}
                   </div>
@@ -339,15 +341,16 @@ export function AppSidebar() {
             </SidebarMenuItem>
           </SidebarMenu>
 
-          <SidebarSeparator className="my-2" />
+          <SidebarSeparator className="my-2 border-muted/15" />
 
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton size="lg" onClick={() => setProfileOpen(true)} data-tutorial="profile"
-                className="h-auto w-full flex items-center gap-3 p-2 rounded-2xl transition-all cursor-pointer">
+                className="h-auto w-full flex items-center gap-3 p-3 rounded-[28px] border border-muted/20 bg-muted/10 transition-all hover:bg-muted/20 text-foreground cursor-pointer"
+              >
                 {/* Avatar */}
                 <div className="relative shrink-0">
-                  <div className="w-9 h-9 rounded-xl overflow-hidden">
+                  <div className="w-11 h-11 rounded-2xl overflow-hidden bg-muted">
                     {avatarUrl ? (
                       <img src={avatarUrl} alt={name} className="w-full h-full object-cover" />
                     ) : (
@@ -368,8 +371,7 @@ export function AppSidebar() {
                 {/* Name + meta */}
                 <div className="flex-1 min-w-0 text-foreground">
                   <p className="text-sm font-black truncate leading-tight">{name}</p>
-                  <p className="text-[9px] font-bold text-muted-foreground/50 uppercase tracking-widest truncate">
-                    Yr {userData?.grade || "?"} · {userData?.state || "—"}
+                  <p className="text-[9px] font-bold text-muted-foreground/60 uppercase tracking-widest truncate">
                   </p>
                 </div>
               </SidebarMenuButton>

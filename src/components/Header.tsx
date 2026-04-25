@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Settings, User, Flame, Layers, Sigma, Sparkles, Brain, BookOpenCheck } from "lucide-react";
+import { Settings, User, Flame, Layers, Sigma, Sparkles, Brain, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -242,15 +242,15 @@ const Header = ({ userName = "Student", streak = 0 }: HeaderProps) => {
 
           {/* Right: Actions */}
           <div className="flex items-center gap-2 sm:gap-4 justify-self-end">
-            {/* Shared with Me */}
+            {/* Study rooms */}
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => router.push("/shared-with-me")}
-              title="Shared with Me"
+              onClick={() => router.push("/rooms")}
+              title="Study rooms"
               className="text-muted-foreground hover:text-primary transition-colors"
             >
-              <BookOpenCheck className="w-5 h-5" />
+              <Users className="w-5 h-5" />
             </Button>
 
             {/* Flashcards */}

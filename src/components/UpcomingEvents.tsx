@@ -1,12 +1,22 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Calendar, Plus, X } from "lucide-react";
-import { eventStore } from "@/utils/eventStore";
-import { AppEvent } from "@/types/events";
+import { Calendar, Plus } from "lucide-react";
 import { format, isToday, isTomorrow, differenceInCalendarDays, addDays } from "date-fns";
 import { cn } from "@/lib/utils";
+import { useQuery } from "@apollo/client/react";
+import { CALENDAR_EVENTS_QUERY } from "@/lib/graphql/queries";
+
+type CalendarEvent = {
+  id: string;
+  title: string;
+  startAt: string;
+  endAt: string;
+};
+
+type CalendarEventsResponse = {
+  calendarEvents: CalendarEvent[];
+};
 
 const label = (date: Date) => {
   if (isToday(date))    return "Today";
@@ -16,31 +26,18 @@ const label = (date: Date) => {
   return format(date, "d MMM");
 };
 
-const dot = (type: AppEvent["type"]) =>
-  type === "exam"       ? "bg-destructive"  :
-  type === "assignment" ? "bg-amber-500"    :
-                          "bg-primary";
+const dot = "bg-primary";
 
 export default function UpcomingEvents() {
   const router = useRouter();
-  const [events, setEvents] = useState<AppEvent[]>([]);
+  const { data } = useQuery<CalendarEventsResponse>(CALENDAR_EVENTS_QUERY);
 
-  useEffect(() => {
-    const load = () =>
-      eventStore.getAll().then(all => {
-        const now   = new Date();
-        const limit = addDays(now, 30);
-        setEvents(
-          all
-            .filter(e => new Date(e.date) >= now && new Date(e.date) <= limit)
-            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-            .slice(0, 6)
-        );
-      });
-    load();
-    window.addEventListener("eventsUpdated", load);
-    return () => window.removeEventListener("eventsUpdated", load);
-  }, []);
+  const now = new Date();
+  const limit = addDays(now, 30);
+  const events = (data?.calendarEvents ?? [])
+    .filter((event) => new Date(event.startAt) >= now && new Date(event.startAt) <= limit)
+    .sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime())
+    .slice(0, 6);
 
   return (
     <div className="flex flex-col h-full min-h-0">
@@ -81,31 +78,23 @@ export default function UpcomingEvents() {
               {/* Date badge */}
               <div className="shrink-0 text-right w-[3.8rem]">
                 <p className="text-[8px] font-black uppercase text-muted-foreground/50 leading-none tracking-wider">
-                  {label(new Date(e.date))}
+                  {label(new Date(e.startAt))}
                 </p>
                 <p className="text-[9px] font-bold text-muted-foreground/60 tabular-nums leading-tight">
-                  {format(new Date(e.date), "h:mma").toLowerCase()}
+                  {format(new Date(e.startAt), "h:mma").toLowerCase()}
                 </p>
               </div>
 
               {/* Colour bar */}
-              <div className={cn("w-0.5 self-stretch rounded-full shrink-0", dot(e.type))} />
+              <div className={cn("w-0.5 self-stretch rounded-full shrink-0", dot)} />
 
               {/* Title */}
               <div className="flex-1 min-w-0">
                 <p className="text-[11px] font-bold text-foreground truncate leading-tight">{e.title}</p>
-                {e.subject && (
-                  <p className="text-[9px] text-muted-foreground/50 truncate">{e.subject}</p>
-                )}
+                <p className="text-[9px] text-muted-foreground/50 truncate">
+                  Ends {format(new Date(e.endAt), "h:mma").toLowerCase()}
+                </p>
               </div>
-
-              {/* Delete on hover */}
-              <button
-                onClick={() => eventStore.remove(e.id)}
-                className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground/30 hover:text-destructive shrink-0"
-              >
-                <X className="w-3 h-3" />
-              </button>
             </div>
           ))
         )}

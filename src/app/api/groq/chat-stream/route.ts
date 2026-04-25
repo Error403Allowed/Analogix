@@ -3,6 +3,7 @@ import type { ChatMessage, UserContext } from "@/types/chat";
 import { getFormulaSheetContext } from "@/data/formulaSheets";
 import { createClient } from "@/lib/supabase/server";
 import { buildCalendarContext } from "../_calendarContext";
+import { listUserDocuments } from "@/lib/server/documents";
 import type { ResearchSource } from "@/types/research";
 import { getUserAIPersonality, getRelevantMemories, buildMemoryContext, buildPersonalityInstructions } from "@/lib/aiMemory";
 
@@ -385,28 +386,27 @@ export async function POST(request: Request) {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         // Load calendar in parallel with workspace docs
-        const [calendarResult, subjectRowsResult] = await Promise.all([
+        const [calendarResult, documents] = await Promise.all([
           buildCalendarContext(supabase, user.id).catch(() => ""),
-          supabase.from("subject_data").select("subject_id, notes").eq("user_id", user.id),
+          listUserDocuments(supabase, user.id),
         ]);
 
         if (calendarResult) calendarCtx = calendarResult;
 
-        const subjectRows = subjectRowsResult.data;
-        if (subjectRows) {
-          type DocRow = { id?: string; title: string; content: string };
-          type SubjectRow = { subject_id: string; notes: { documents?: DocRow[] } };
-
+        if (documents.length > 0) {
           const allDocs: Array<{ subjectId: string; title: string; type: string; preview: string }> = [];
-          for (const row of (subjectRows as SubjectRow[])) {
-            for (const doc of (row.notes?.documents || [])) {
-              const isGuide = doc.content?.startsWith(STUDY_GUIDE_PREFIX);
-              if (isGuide) {
-                const readable = studyGuideToContext(doc.content);
-                allDocs.push({ subjectId: row.subject_id, title: doc.title, type: "DOC", preview: readable });
-              } else {
-                allDocs.push({ subjectId: row.subject_id, title: doc.title, type: "DOC", preview: truncate(stripHtml(doc.content || ""), 3000) });
-              }
+          for (const doc of documents) {
+            const isGuide = doc.content?.startsWith(STUDY_GUIDE_PREFIX);
+            if (isGuide) {
+              const readable = studyGuideToContext(doc.content);
+              allDocs.push({ subjectId: doc.subject_id, title: doc.title, type: "DOC", preview: readable });
+            } else {
+              allDocs.push({
+                subjectId: doc.subject_id,
+                title: doc.title,
+                type: "DOC",
+                preview: truncate(stripHtml(doc.content || ""), 3000),
+              });
             }
           }
 
@@ -430,7 +430,7 @@ export async function POST(request: Request) {
 
             workspaceContext = `Document Index:\n${docIndex}\n\nDocument Contents:\n${docContext}`;
           }
-        } // end if (subjectRows)
+        }
       }
     } catch (err) {
       // Workspace loading failed — continue without it (non-fatal)

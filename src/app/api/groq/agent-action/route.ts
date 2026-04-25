@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { listUserDocuments } from "@/lib/server/documents";
 import { studyGuideToHtml } from "@/utils/studyGuideHtml";
 import { studyGuideToMarkdown } from "@/utils/studyGuideMarkdown";
 import type { GeneratedStudyGuide } from "@/services/groq";
@@ -7,8 +8,6 @@ import {
   BOTTOM_RIGHT_AGENT_DOCUMENT_EDIT_MESSAGE,
   isBottomRightAgentActionType,
 } from "@/lib/agentActions";
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type AnySupabase = any;
 
 export const runtime = "nodejs";
 
@@ -25,85 +24,132 @@ type AgentAction = {
   value?: string;
   guide?: unknown;
   cards?: Array<{ front?: string; back?: string }>;
+  setName?: string;
 } & Record<string, unknown>;
 
-// Escape special regex characters for safe pattern matching
-const escapeRegex = (str: string) => str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+type EditableDocument = {
+  id: string;
+  owner_user_id: string;
+  subject_id: string;
+  title: string;
+  content: string;
+  role?: string | null;
+  study_guide_data?: GeneratedStudyGuide | null;
+};
+
+const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 function getRequiredDocTitle(action: AgentAction) {
-  if (typeof action.docTitle !== "string" || action.docTitle.trim() === "") {
+  if (typeof action.docTitle !== "string" || !action.docTitle.trim()) {
     throw new Error(`${action.type || "document action"} requires a docTitle`);
   }
-  return action.docTitle;
+  return action.docTitle.trim();
 }
 
-function findDoc(documents: Record<string, unknown>[], docTitle: string) {
+function findDoc(documents: EditableDocument[], docTitle: string) {
   const search = docTitle.toLowerCase().trim();
 
-  // 1. Exact match (case-insensitive)
-  const exact = documents.find(d => typeof d.title === "string" && d.title.toLowerCase() === search);
+  const exact = documents.find((document) => document.title.toLowerCase() === search);
   if (exact) return exact;
 
-  // 2. Substring match either way
-  const sub = documents.find(d => typeof d.title === "string" && (
-    d.title.toLowerCase().includes(search) || search.includes(d.title.toLowerCase())
+  const substring = documents.find((document) => (
+    document.title.toLowerCase().includes(search) ||
+    search.includes(document.title.toLowerCase())
   ));
-  if (sub) return sub;
+  if (substring) return substring;
 
-  // 3. Word-overlap score — find the doc whose title shares the most words with the search
-  const searchWords = new Set(search.split(/\W+/).filter(w => w.length > 3));
-  let bestDoc: Record<string, unknown> | undefined;
+  const searchWords = new Set(search.split(/\W+/).filter((word) => word.length > 3));
+  let best: EditableDocument | undefined;
   let bestScore = 0;
-  for (const d of documents) {
-    if (typeof d.title !== "string") continue;
-    const titleWords = d.title.toLowerCase().split(/\W+/).filter((w: string) => w.length > 3);
-    const overlap = titleWords.filter((w: string) => searchWords.has(w)).length;
+
+  for (const document of documents) {
+    const titleWords = document.title.toLowerCase().split(/\W+/).filter((word) => word.length > 3);
+    const overlap = titleWords.filter((word) => searchWords.has(word)).length;
     const score = overlap / Math.max(searchWords.size, titleWords.length, 1);
-    if (score > bestScore) { bestScore = score; bestDoc = d; }
-  }
-  // Require at least 40% word overlap to avoid false positives
-  return bestScore >= 0.4 ? bestDoc : undefined;
-}
-
-async function getRow(supabase: AnySupabase, userId: string, subjectId: string) {
-  const { data, error } = await supabase
-    .from("subject_data")
-    .select("notes, marks")
-    .eq("user_id", userId)
-    .eq("subject_id", subjectId)
-    .maybeSingle();
-  if (error) console.warn("[agent-action] getRow error:", error.message);
-  return data;
-}
-
-async function findRowByDocTitle(supabase: AnySupabase, userId: string, docTitle: string) {
-  const { data, error } = await supabase
-    .from("subject_data")
-    .select("subject_id, notes, marks")
-    .eq("user_id", userId);
-  if (error) {
-    console.warn("[agent-action] findRowByDocTitle error:", error.message);
-    return null;
-  }
-  const rows = (data || []) as Array<{ subject_id: string; notes: Record<string, unknown>; marks: unknown }>;
-  for (const row of rows) {
-    const documents = Array.isArray(row.notes?.documents) ? (row.notes.documents as Record<string, unknown>[]) : [];
-    const doc = findDoc(documents, docTitle);
-    if (doc) {
-      return { row, doc };
+    if (score > bestScore) {
+      bestScore = score;
+      best = document;
     }
   }
-  return null;
+
+  return bestScore >= 0.4 ? best : undefined;
 }
 
-async function saveRow(supabase: AnySupabase, userId: string, subjectId: string, marks: unknown, notes: Record<string, unknown>) {
-  const now = new Date().toISOString();
-  const { error } = await supabase
-    .from("subject_data")
-    .update({ marks, notes: { ...notes, lastUpdated: now }, updated_at: now })
-    .eq("user_id", userId)
-    .eq("subject_id", subjectId);
-  if (error) throw new Error(`Supabase update failed: ${error.message}`);
+async function ensureSubjectRow(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  subjectId: string,
+) {
+  await supabase.from("subject_data").upsert(
+    {
+      user_id: userId,
+      subject_id: subjectId,
+      notes: { content: "", lastUpdated: new Date().toISOString(), documents: [] },
+    },
+    { onConflict: "user_id,subject_id" },
+  );
+}
+
+async function findDocumentForAction(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  docTitle: string,
+  subjectId?: string,
+  defaultSubjectId?: string | null,
+) {
+  const documents = (await listUserDocuments(supabase, userId)).map((document) => ({
+    ...document,
+    study_guide_data: document.study_guide_data,
+  })) as EditableDocument[];
+
+  const subjectCandidates = [
+    subjectId?.toLowerCase(),
+    defaultSubjectId?.toLowerCase(),
+  ].filter(Boolean) as string[];
+
+  for (const candidate of subjectCandidates) {
+    const subjectMatch = findDoc(
+      documents.filter((document) => document.subject_id === candidate),
+      docTitle,
+    );
+    if (subjectMatch) return subjectMatch;
+  }
+
+  return findDoc(documents, docTitle) ?? null;
+}
+
+async function updateDocumentRecord(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  documentId: string,
+  payload: Record<string, unknown>,
+) {
+  const { error } = await supabase.from("documents").update(payload).eq("id", documentId);
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+function patchFieldContent(existingContent: string, field: string, value: string) {
+  const patterns = [
+    new RegExp(`(<(?:strong|b)>${escapeRegex(field)}:<\\/(?:strong|b)>\\s*)([^<]+)`, "gi"),
+    new RegExp(`(\\*\\*${escapeRegex(field)}:\\*\\*\\s*)([^\\n]+)`, "gi"),
+    new RegExp(`(${escapeRegex(field)}:\\s*)([^<\\n]+)`, "gi"),
+    new RegExp(`(<p[^>]*>\\s*${escapeRegex(field)}:\\s*)([^<]+)(\\s*<\\/p>)`, "gi"),
+  ];
+
+  for (const pattern of patterns) {
+    if (pattern.test(existingContent)) {
+      return {
+        content: existingContent.replace(pattern, (_match, prefix, _oldValue, suffix = "") => `${prefix}${value}${suffix}`),
+        replaced: true,
+      };
+    }
+  }
+
+  return {
+    content: `${existingContent}<p>${field}: ${value}</p>`,
+    replaced: false,
+  };
 }
 
 export async function POST(request: Request) {
@@ -111,21 +157,21 @@ export async function POST(request: Request) {
     const body = await request.json();
     const actions: AgentAction[] = Array.isArray(body.actions) ? body.actions : [];
     const defaultSubjectId = typeof body.defaultSubjectId === "string" ? body.defaultSubjectId : null;
-    // source: "chat" means full action set is allowed; default (agent panel) is restricted
     const source = typeof body.source === "string" ? body.source : "agent";
-    console.log("[agent-action] received", actions.length, "action(s):", actions.map((a) => `${a.type}/${a.docTitle || a.title}`).join(", "), "| source:", source);
 
     const supabase = await createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    console.log("[agent-action] auth:", user?.id ?? "null", authError?.message ?? "ok");
-    if (!user) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    }
 
     const results: Record<string, unknown>[] = [];
 
     for (const action of actions) {
       try {
-        // Agent panel is restricted to flashcard/quiz actions only
-        // Chat (source=chat) gets full action set including document editing
         if (source !== "chat" && !isBottomRightAgentActionType(action.type)) {
           results.push({
             type: action.type,
@@ -145,117 +191,130 @@ export async function POST(request: Request) {
         }
 
         const actionType = String(action.type || "");
-
-        // Normalize subjectId to lowercase (database stores as lowercase)
-        let subjectId = String(action.subjectId || "").toLowerCase();
-        let row = await getRow(supabase, user.id, subjectId);
-        if (!row) {
-          if ((actionType === "update_document" || actionType === "replace_study_guide") && typeof action.docTitle === "string") {
-            const fallback = await findRowByDocTitle(supabase, user.id, action.docTitle);
-            if (fallback) {
-              row = { notes: fallback.row.notes, marks: fallback.row.marks };
-              subjectId = fallback.row.subject_id;
-            }
-          }
-        }
-
-        if (!row && defaultSubjectId && defaultSubjectId !== subjectId) {
-          const fallbackRow = await getRow(supabase, user.id, defaultSubjectId.toLowerCase());
-          if (fallbackRow) {
-            row = fallbackRow;
-            subjectId = defaultSubjectId.toLowerCase();
-          }
-        }
-
-        if (!row) {
-          if ((actionType === "update_document" || actionType === "replace_study_guide") && typeof action.docTitle === "string") {
-            throw new Error(`No subject_data row found for subjectId="${subjectId}" and no document titled "${action.docTitle}" in any subject.`);
-          }
-          throw new Error(`No subject_data row found for subjectId="${subjectId}"`);
-        }
-
-        const notes = (row.notes || {}) as Record<string, unknown>;
-        const marks = row.marks ?? [];
-        const documents = Array.isArray(notes.documents) ? (notes.documents as Record<string, unknown>[]) : [];
+        const subjectId = String(action.subjectId || defaultSubjectId || "").toLowerCase();
         const now = new Date().toISOString();
 
-        // ── CREATE DOCUMENT ──────────────────────────────────────────────
         if (actionType === "create_document") {
-          const newDoc = { id: crypto.randomUUID(), title: action.title, content: action.content || "", createdAt: now, lastUpdated: now };
-          await saveRow(supabase, user.id, subjectId, marks, { ...notes, documents: [newDoc, ...documents] });
-          results.push({ type: "create_document", success: true, detail: `Created "${action.title}" in ${subjectId}` });
+          if (!subjectId) throw new Error("create_document requires a subjectId");
+          await ensureSubjectRow(supabase, user.id, subjectId);
+          const { data, error } = await supabase
+            .from("documents")
+            .insert({
+              owner_user_id: user.id,
+              subject_id: subjectId,
+              title: String(action.title || "Untitled"),
+              content: String(action.content || ""),
+              role: "notes",
+              created_at: now,
+              updated_at: now,
+              last_edited_by: user.id,
+            })
+            .select("*")
+            .single();
+          if (error || !data) throw new Error(error?.message || "Failed to create document");
 
-        // ── PATCH DOCUMENT FIELD (simple field update) ───────────────────
-        } else if (actionType === "patch_document_field") {
-          const docTitle = getRequiredDocTitle(action);
-          const target = findDoc(documents, docTitle);
-          if (!target) throw new Error(`"${docTitle}" not found. Available: ${documents.map(d => d.title).join(", ")}`);
-          
-          const existingContent = typeof target.content === "string" ? target.content : "";
-          const field = action.field || "";
-          const value = action.value || "";
-          
-          if (!field || !value) throw new Error("patch_document_field requires 'field' and 'value'");
-          
-          // Try to find and replace the field value in the content
-          // Look for patterns like "Duration: 45 Minutes" or "<p><strong>Duration:</strong> 45 Minutes</p>"
-          // We need to match both the label AND the value, then replace the whole thing
-          const patterns = [
-            // Pattern 1: "<strong>Duration:</strong> 45 Minutes" or "<b>Duration:</b> 45 Minutes"
-            new RegExp(`(<(?:strong|b)>${escapeRegex(field)}:<\\/(?:strong|b)>\\s*)([^<]+)`, "gi"),
-            // Pattern 2: "**Duration:** 45 Minutes" (markdown bold)
-            new RegExp(`(\\*\\*${escapeRegex(field)}:\\*\\*\\s*)([^\\n]+)`, "gi"),
-            // Pattern 3: "Duration: 45 Minutes" (plain text, no formatting)
-            new RegExp(`(${escapeRegex(field)}:\\s*)([^<\\n]+)`, "gi"),
-            // Pattern 4: "<p>Duration: 45 Minutes</p>" (in paragraph)
-            new RegExp(`(<p[^>]*>\\s*${escapeRegex(field)}:\\s*)([^<]+)(\\s*<\\/p>)`, "gi"),
-          ];
-          
-          let newContent = existingContent;
-          let replaced = false;
-          
-          for (const pattern of patterns) {
-            const match = pattern.exec(existingContent);
-            if (match) {
-              // Replace ONLY the value part (group 2), keep the label (group 1)
-              newContent = existingContent.replace(pattern, (m, p1, p2, p3) => {
-                replaced = true;
-                // p1 = label with formatting, p2 = old value, p3 = closing tag (if any)
-                return p1 + value + (p3 || "");
-              });
-              break;
+          results.push({
+            type: "create_document",
+            success: true,
+            detail: `Created "${data.title}" in ${subjectId}`,
+            subjectId,
+            docId: data.id,
+            docTitle: data.title,
+          });
+          continue;
+        }
+
+        if (actionType === "add_flashcards") {
+          const nextReview = new Date();
+          nextReview.setDate(nextReview.getDate() + 1);
+          const cards = action.cards || [];
+          let setName = typeof action.setName === "string" && action.setName.trim()
+            ? action.setName.trim()
+            : "";
+          if (!setName && cards.length > 0) {
+            const firstFront = String(cards[0].front || "").trim();
+            if (firstFront) {
+              setName = firstFront.length > 40 ? `${firstFront.slice(0, 37)}…` : firstFront;
             }
           }
-          
-          if (!replaced) {
-            // Field not found, append it at the end of existing content
-            newContent = existingContent + `<p>${field}: ${value}</p>`;
+          if (!setName) {
+            setName = subjectId
+              ? `${subjectId.charAt(0).toUpperCase() + subjectId.slice(1)} Flashcards`
+              : "Flashcard Set";
           }
-          
-          const updatedDocs = documents.map(d => d === target ? {
-            ...d,
-            content: newContent,
-            contentJson: undefined,
-            contentText: undefined,
-            contentFormat: undefined,
-            studyGuideMarkdown: undefined,
-            studyGuideData: undefined,
-            lastUpdated: now,
-          } : d);
-          await saveRow(supabase, user.id, subjectId, marks, { ...notes, documents: updatedDocs });
-          
-          const matchedTitle = target.title as string;
-          console.log("[agent-action] patch_document_field OK:", matchedTitle, "field:", field, "value:", value);
-          console.log("[agent-action] patch_document_field replaced:", replaced, "content length:", newContent.length);
-          results.push({ type: "patch_document_field", success: true, detail: `Updated ${field} to "${value}" in "${matchedTitle}"`, subjectId, docId: target.id, docTitle: matchedTitle, field, value });
-          
-        // ── UPDATE DOCUMENT (HTML) ───────────────────────────────────────
-        } else if (actionType === "update_document") {
-          const docTitle = getRequiredDocTitle(action);
-          const target = findDoc(documents, docTitle);
-          if (!target) throw new Error(`"${docTitle}" not found. Available: ${documents.map(d => d.title).join(", ")}`);
 
-          let existingContent = typeof target.content === "string" ? target.content : "";
+          const { data: flashcardSet, error: setError } = await supabase
+            .from("flashcard_sets")
+            .insert({ user_id: user.id, subject_id: subjectId || null, name: setName })
+            .select("id")
+            .single();
+          if (setError || !flashcardSet) {
+            throw new Error(setError?.message || "Failed to create flashcard set");
+          }
+
+          const rows = cards.map((card) => ({
+            user_id: user.id,
+            subject_id: subjectId || null,
+            set_id: flashcardSet.id,
+            front: card.front,
+            back: card.back,
+            next_review: nextReview.toISOString(),
+            interval_days: 1,
+            ease_factor: 2.5,
+            repetitions: 0,
+            created_at: now,
+            updated_at: now,
+          }));
+
+          const { error } = await supabase.from("flashcards").insert(rows);
+          if (error) throw new Error(error.message);
+
+          results.push({
+            type: "add_flashcards",
+            success: true,
+            detail: `Added ${cards.length} flashcard(s) to "${setName}"`,
+            setId: flashcardSet.id,
+          });
+          continue;
+        }
+
+        const docTitle = getRequiredDocTitle(action);
+        const target = await findDocumentForAction(supabase, user.id, docTitle, subjectId, defaultSubjectId);
+        if (!target) {
+          throw new Error(`"${docTitle}" not found in your documents.`);
+        }
+
+        if (actionType === "patch_document_field") {
+          const field = String(action.field || "").trim();
+          const value = String(action.value || "").trim();
+          if (!field || !value) {
+            throw new Error("patch_document_field requires 'field' and 'value'");
+          }
+
+          const { content: newContent } = patchFieldContent(target.content || "", field, value);
+          await updateDocumentRecord(supabase, target.id, {
+            content: newContent,
+            updated_at: now,
+            last_edited_by: user.id,
+            study_guide_markdown: null,
+            study_guide_data: null,
+          });
+
+          results.push({
+            type: "patch_document_field",
+            success: true,
+            detail: `Updated ${field} in "${target.title}"`,
+            subjectId: target.subject_id,
+            docId: target.id,
+            docTitle: target.title,
+            field,
+            value,
+          });
+          continue;
+        }
+
+        if (actionType === "update_document") {
+          let existingContent = target.content || "";
           if (existingContent.startsWith(STUDY_GUIDE_PREFIX)) {
             try {
               const guideObj = JSON.parse(existingContent.slice(STUDY_GUIDE_PREFIX.length));
@@ -265,148 +324,102 @@ export async function POST(request: Request) {
             }
           }
 
-          const newContent = action.mode === "replace" ? (action.content ?? "") : `${existingContent}\n${action.content ?? ""}`;
-          const updatedDocs = documents.map(d => d === target ? {
-            ...d,
+          const newContent = action.mode === "replace"
+            ? String(action.content || "")
+            : `${existingContent}\n${String(action.content || "")}`;
+
+          await updateDocumentRecord(supabase, target.id, {
             content: newContent,
-            contentJson: undefined,
-            contentText: undefined,
-            contentFormat: undefined,
-            studyGuideMarkdown: undefined,
-            studyGuideData: undefined,
-            lastUpdated: now,
-          } : d);
-          await saveRow(supabase, user.id, subjectId, marks, { ...notes, documents: updatedDocs });
+            updated_at: now,
+            last_edited_by: user.id,
+            study_guide_markdown: null,
+            study_guide_data: null,
+          });
 
-          const matchedTitle = target.title as string;
-          console.log("[agent-action] update_document OK:", matchedTitle, "mode:", action.mode, "new length:", newContent.length);
-          results.push({ type: "update_document", success: true, detail: `Updated "${matchedTitle}"`, subjectId, docId: target.id, docTitle: matchedTitle, newContent });
-
-        // ── REPLACE STUDY GUIDE (full replacement) ───────────────────────
-        } else if (actionType === "replace_study_guide") {
-          const docTitle = getRequiredDocTitle(action);
-          const target = findDoc(documents, docTitle);
-          if (!target) throw new Error(`"${docTitle}" not found. Available: ${documents.map(d => d.title).join(", ")}`);
-          const existingContent = typeof target.content === "string" ? target.content : "";
-
-          // If this isn't a study guide, fall back to update_document
-          if (!existingContent.startsWith(STUDY_GUIDE_PREFIX) && target.role !== "study-guide" && !target.studyGuideData) {
-            console.log("[agent-action] replace_study_guide called on regular doc, falling back to update_document");
-            // Use action.content if provided, otherwise keep existing content
-            // This handles cases where AI uses wrong action type but provides content
-            let newContent = existingContent;
-            if (action.content && typeof action.content === "string") {
-              newContent = action.content;
-            } else if (action.field && action.value) {
-              // Handle patch-like operations that came through as replace_study_guide
-              const patterns = [
-                new RegExp(`(<(?:strong|b)>${escapeRegex(action.field)}:<\\/(?:strong|b)>\\s*)([^<]+)`, "gi"),
-                new RegExp(`(\\*\\*${escapeRegex(action.field)}:\\*\\*\\s*)([^\\n]+)`, "gi"),
-                new RegExp(`(${escapeRegex(action.field)}:\\s*)([^<\\n]+)`, "gi"),
-              ];
-              for (const pattern of patterns) {
-                const match = pattern.exec(existingContent);
-                if (match) {
-                  newContent = existingContent.replace(pattern, (m, p1, p2) => p1 + action.value);
-                  break;
-                }
-              }
-            }
-            const updatedDocs = documents.map(d => d === target ? {
-              ...d,
-              content: newContent,
-              contentJson: undefined,
-              contentText: undefined,
-              contentFormat: undefined,
-              studyGuideMarkdown: undefined,
-              studyGuideData: undefined,
-              lastUpdated: now,
-            } : d);
-            await saveRow(supabase, user.id, subjectId, marks, { ...notes, documents: updatedDocs });
-            const matchedTitle = target.title as string;
-            console.log("[agent-action] fallback update_document OK:", matchedTitle);
-            results.push({ type: "update_document", success: true, detail: `Updated "${matchedTitle}" (fallback from replace_study_guide)`, subjectId, docId: target.id, docTitle: matchedTitle, newContent });
-          } else {
-            // action.guide is the complete new guide object
-            let guideObj = action.guide;
-            if (typeof guideObj === "string") {
-              try { guideObj = JSON.parse(guideObj); } catch { throw new Error("guide field is not valid JSON"); }
-            }
-            if (!guideObj || typeof guideObj !== "object") throw new Error("guide field is required and must be an object");
-
-            const guide = guideObj as GeneratedStudyGuide;
-            const newContent = studyGuideToHtml(guide);
-            const updatedDocs = documents.map(d => d === target ? {
-              ...d,
-              content: newContent,
-              contentJson: undefined,
-              contentText: undefined,
-              contentFormat: undefined,
-              role: "study-guide",
-              studyGuideMarkdown: studyGuideToMarkdown(guide),
-              studyGuideData: guide,
-              lastUpdated: now,
-            } : d);
-            await saveRow(supabase, user.id, subjectId, marks, { ...notes, documents: updatedDocs });
-
-            const matchedTitle = target.title as string;
-            console.log("[agent-action] replace_study_guide OK:", matchedTitle, "new content length:", newContent.length);
-            results.push({ type: "replace_study_guide", success: true, detail: `Updated study guide "${matchedTitle}"`, subjectId, docId: target.id, docTitle: matchedTitle, newContent });
-          }
-
-        // ── ADD FLASHCARDS ───────────────────────────────────────────────
-        } else if (actionType === "add_flashcards") {
-          const nextReview = new Date(); nextReview.setDate(nextReview.getDate() + 1);
-          const cards = action.cards || [];
-          // Derive a meaningful set name: use AI-provided title, or infer from cards, or fall back to subject
-          let setName: string = typeof action.setName === "string" && action.setName.trim()
-            ? action.setName.trim()
-            : "";
-          if (!setName && cards.length > 0) {
-            // Infer from the first card's front — truncate to ~40 chars
-            const firstFront = String(cards[0].front || "").trim();
-            if (firstFront) {
-              setName = firstFront.length > 40
-                ? firstFront.slice(0, 37) + "…"
-                : firstFront;
-            }
-          }
-          if (!setName) {
-            setName = subjectId
-              ? `${subjectId.charAt(0).toUpperCase() + subjectId.slice(1)} Flashcards`
-              : "Flashcard Set";
-          }
-          // Create a named set first (new data model requires set_id)
-          const { data: newSet, error: setError } = await supabase
-            .from("flashcard_sets")
-            .insert({ user_id: user.id, subject_id: subjectId, name: setName })
-            .select("id")
-            .single();
-          if (setError || !newSet) throw new Error(`Failed to create flashcard set: ${setError?.message}`);
-          const rows = cards.map((card) => ({
-            user_id: user.id, subject_id: subjectId, set_id: newSet.id,
-            front: card.front, back: card.back,
-            next_review: nextReview.toISOString(), interval_days: 1, ease_factor: 2.5, repetitions: 0,
-            created_at: now, updated_at: now,
-          }));
-          const { error } = await supabase.from("flashcards").insert(rows);
-          if (error) throw error;
-          results.push({ type: "add_flashcards", success: true, detail: `Added ${cards.length} flashcard(s) to "${setName}" in ${subjectId}`, setId: newSet.id });
-
-        } else {
-          results.push({ type: action.type, success: false, detail: `Unknown action type: ${action.type}` });
+          results.push({
+            type: "update_document",
+            success: true,
+            detail: `Updated "${target.title}"`,
+            subjectId: target.subject_id,
+            docId: target.id,
+            docTitle: target.title,
+            newContent,
+          });
+          continue;
         }
 
-      } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : "Unknown action error";
+        if (actionType === "replace_study_guide") {
+          const isStudyGuide = target.role === "study-guide" || Boolean(target.study_guide_data);
+          if (!isStudyGuide) {
+            const fallbackContent = typeof action.content === "string" ? action.content : target.content;
+            await updateDocumentRecord(supabase, target.id, {
+              content: fallbackContent,
+              updated_at: now,
+              last_edited_by: user.id,
+              study_guide_markdown: null,
+              study_guide_data: null,
+            });
+
+            results.push({
+              type: "update_document",
+              success: true,
+              detail: `Updated "${target.title}"`,
+              subjectId: target.subject_id,
+              docId: target.id,
+              docTitle: target.title,
+              newContent: fallbackContent,
+            });
+            continue;
+          }
+
+          let guideObj = action.guide;
+          if (typeof guideObj === "string") {
+            guideObj = JSON.parse(guideObj);
+          }
+          if (!guideObj || typeof guideObj !== "object") {
+            throw new Error("guide field is required and must be valid JSON");
+          }
+
+          const guide = guideObj as GeneratedStudyGuide;
+          const newContent = studyGuideToHtml(guide);
+          await updateDocumentRecord(supabase, target.id, {
+            content: newContent,
+            role: "study-guide",
+            study_guide_markdown: studyGuideToMarkdown(guide),
+            study_guide_data: guide,
+            updated_at: now,
+            last_edited_by: user.id,
+          });
+
+          results.push({
+            type: "replace_study_guide",
+            success: true,
+            detail: `Updated study guide "${target.title}"`,
+            subjectId: target.subject_id,
+            docId: target.id,
+            docTitle: target.title,
+            newContent,
+          });
+          continue;
+        }
+
+        results.push({
+          type: action.type,
+          success: false,
+          detail: `Unknown action type: ${action.type}`,
+        });
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Unknown action error";
         console.error("[agent-action] action failed:", action.type, message);
-        results.push({ type: action.type, success: false, detail: message });
+        results.push({
+          type: action.type,
+          success: false,
+          detail: message,
+        });
       }
     }
 
-    console.log("[agent-action] results:", JSON.stringify(results.map(r => ({ type: r.type, success: r.success, detail: r.detail }))));
     return NextResponse.json({ results });
-
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown server error";
     console.error("[/api/groq/agent-action] Error:", message);

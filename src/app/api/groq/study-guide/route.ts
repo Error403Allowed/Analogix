@@ -283,7 +283,7 @@ Return ONLY valid JSON (no markdown, no preamble):
       customNeeds.length > 0 ? `"customSections": [{"title": "specific descriptive title", "type": "list", "content": ["actual content item 1", "actual content item 2"]}]` : null,
     ].filter(Boolean).join(",\n      ");
 
-    const systemPrompt = `You are Quizzy, an expert study coach for Australian high school students.
+    const systemPrompt = `You are Analogix AI, an expert study coach for Australian high school students.
 
 DOCUMENT ANALYSIS RESULT: ${notes}
 Subject detected: ${docAnalysis.subjectArea || subject || "General"}

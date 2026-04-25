@@ -1,9 +1,9 @@
-import { ThemeProvider as NextThemesProvider } from "next-themes";
+import { ThemeProvider as NextThemesProvider, type Attribute } from "next-themes";
 import { ReactNode } from "react";
 
 interface ThemeProviderProps {
   children: ReactNode;
-  attribute?: string;
+  attribute?: Attribute | Attribute[];
   defaultTheme?: string;
   enableSystem?: boolean;
   disableTransitionOnChange?: boolean;

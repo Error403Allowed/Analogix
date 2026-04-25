@@ -370,7 +370,7 @@ const Onboarding = () => {
               {step === 2 && (
                 <div className="space-y-8">
                   <div>
-                    <h1 className="text-3xl font-black text-foreground tracking-tight"><TypewriterText text="Hi there! I'm Quizzy." delay={300} /></h1>
+                    <h1 className="text-3xl font-black text-foreground tracking-tight"><TypewriterText text="Hi there! I'm Analogix AI." delay={300} /></h1>
                     <p className="text-muted-foreground text-lg"><TypewriterText text="What should I call you?" delay={1200} /></p>
                   </div>
                   <div className="relative">

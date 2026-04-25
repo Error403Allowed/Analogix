@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { callGroqChat, formatError } from "../_utils";
 import { buildCalendarContext } from "../_calendarContext";
 import type { ChatMessage } from "@/types/chat";
+import { listUserDocuments } from "@/lib/server/documents";
 import {
   BOTTOM_RIGHT_AGENT_DOCUMENT_EDIT_MESSAGE,
   filterBottomRightAgentActions,
@@ -151,8 +152,7 @@ export async function POST(request: Request) {
     const intent = detectIntent(messages);
     console.log(`[agent] Intent detected: ${intent.type}, keywords: [${intent.keywords.join(", ")}]`);
 
-    type DocRow = { id?: string; title: string; content: string };
-    type SubjectRow = { subject_id: string; notes: { documents?: DocRow[] } };
+    type SubjectRow = { subject_id: string };
 
     // Run all Supabase queries in parallel — this is the main latency win
     const needsCalendar = intent.type === "calendar" || intent.type === "quiz" || intent.type === "general";
@@ -160,8 +160,9 @@ export async function POST(request: Request) {
     // Skip chat history for doc-editing requests — it adds ~200ms and is noise for edits
     const needsChatHistory = (intent.type === "general" || intent.type === "calendar") && !!chatSessionId;
 
-    const [subjectRowsResult, flashcardsResult, calendarResult, chatMessagesResult] = await Promise.all([
-      supabase.from("subject_data").select("subject_id, notes").eq("user_id", user.id),
+    const [subjectRowsResult, allDocuments, flashcardsResult, calendarResult, chatMessagesResult] = await Promise.all([
+      supabase.from("subject_data").select("subject_id").eq("user_id", user.id),
+      listUserDocuments(supabase, user.id),
       needsFlashcards
         ? supabase.from("flashcards").select("subject_id, front, back").eq("user_id", user.id).limit(intent.type === "general" ? 10 : 15)
         : Promise.resolve({ data: null }),
@@ -190,36 +191,35 @@ export async function POST(request: Request) {
     const MAX_TOTAL_CONTEXT_CHARS = 6000;
     let totalContextChars = 0;
 
-    const scoredDocs: Array<{ row: SubjectRow; doc: DocRow; score: number; isGuide: boolean }> = [];
-
-    for (const row of (subjectRows as SubjectRow[] || [])) {
-      for (const doc of (row.notes?.documents || [])) {
-        const isGuide = doc.content?.startsWith(STUDY_GUIDE_PREFIX);
-        const searchText = `${doc.title} ${stripHtml(doc.content || "")}`.toLowerCase();
-        const baseScore = intent.keywords.length > 0 ? scoreRelevance(searchText, intent.keywords) : 0;
-        const titleLower = (doc.title || "").toLowerCase();
-        const mentionBoost = mentionSet.size > 0 && (
-          mentionSet.has(titleLower) ||
-          Array.from(mentionSet).some(m => titleLower.includes(m) || m.includes(titleLower))
-        ) ? 100 : 0;
-        const score = baseScore + mentionBoost;
-        scoredDocs.push({ row, doc, score, isGuide });
-      }
-    }
+    const scoredDocs = allDocuments.map((doc) => {
+      const isGuide = doc.content?.startsWith(STUDY_GUIDE_PREFIX);
+      const searchText = `${doc.title} ${stripHtml(doc.content || "")}`.toLowerCase();
+      const baseScore = intent.keywords.length > 0 ? scoreRelevance(searchText, intent.keywords) : 0;
+      const titleLower = (doc.title || "").toLowerCase();
+      const mentionBoost = mentionSet.size > 0 && (
+        mentionSet.has(titleLower) ||
+        Array.from(mentionSet).some(m => titleLower.includes(m) || m.includes(titleLower))
+      ) ? 100 : 0;
+      return {
+        doc,
+        score: baseScore + mentionBoost,
+        isGuide,
+      };
+    });
 
     scoredDocs.sort((a, b) => b.score - a.score);
 
-    for (const { row, doc, isGuide } of scoredDocs.slice(0, MAX_DOCS * 2)) {
+    for (const { doc, isGuide } of scoredDocs.slice(0, MAX_DOCS * 2)) {
       if (allDocs.length >= MAX_DOCS) break;
       if (totalContextChars >= MAX_TOTAL_CONTEXT_CHARS) break;
       if (isGuide) {
         const readable = studyGuideToContext(doc.content);
         const preview = truncate(readable, MAX_DOC_CHARS);
-        allDocs.push({ subjectId: row.subject_id, id: doc.id || "", title: doc.title, type: "DOC", preview, relevance: scoreRelevance(readable, intent.keywords) });
+        allDocs.push({ subjectId: doc.subject_id, id: doc.id || "", title: doc.title, type: "DOC", preview, relevance: scoreRelevance(readable, intent.keywords) });
         totalContextChars += preview.length;
       } else {
         const preview = truncate(stripHtml(doc.content || ""), MAX_DOC_CHARS);
-        allDocs.push({ subjectId: row.subject_id, id: doc.id || "", title: doc.title, type: "DOC", preview, relevance: scoreRelevance(preview, intent.keywords) });
+        allDocs.push({ subjectId: doc.subject_id, id: doc.id || "", title: doc.title, type: "DOC", preview, relevance: scoreRelevance(preview, intent.keywords) });
         totalContextChars += preview.length;
       }
     }
@@ -286,11 +286,10 @@ export async function POST(request: Request) {
     let docSummary = "";
     if (intent.type === "general") {
       const allSubjectDocs = new Map<string, string[]>();
-      for (const row of (subjectRows as SubjectRow[] || [])) {
-        const titles = (row.notes?.documents || []).map(d => d.title);
-        if (titles.length > 0) {
-          allSubjectDocs.set(row.subject_id, titles);
-        }
+      for (const document of allDocuments) {
+        const titles = allSubjectDocs.get(document.subject_id) ?? [];
+        titles.push(document.title);
+        allSubjectDocs.set(document.subject_id, titles);
       }
       docSummary = `Documents: ${Array.from(allSubjectDocs.entries()).map(([subj, titles]) => `${subj}: ${titles.length} docs (${titles.slice(0, 3).map(t => `"${t}"`).join(", ")}${titles.length > 3 ? "..." : ""})`).join(" | ")}.`;
     }
@@ -306,7 +305,7 @@ export async function POST(request: Request) {
     // Add current page context
     const currentPageContext = currentPage ? `Current page: ${currentPage}` : "";
 
-    const systemPrompt = `You are "Quizzy", ${userName}'s AI study assistant. You can read their entire Analogix workspace from this bottom-right assistant.
+    const systemPrompt = `You are "Analogix AI", ${userName}'s AI study assistant. You can read their entire Analogix workspace from this bottom-right assistant.
 
 ${curriculumContext}
 Today: ${dateStr} at ${timeStr} (${timezone === "Australia/Sydney" ? "Sydney, AEST/AEDT" : timezone === "Australia/Perth" ? "Perth, AWST" : timezone === "Australia/Adelaide" ? "Adelaide, ACST/ACDT" : timezone}).

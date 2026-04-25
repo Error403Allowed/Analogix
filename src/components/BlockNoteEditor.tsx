@@ -28,7 +28,7 @@ import {
   getMathSlashMenuItems,
   MathFormattingToolbar,
 } from "@/components/blocknote/math";
-import type { DocumentCollaborationRuntime } from "@/hooks/useDocumentCollaboration";
+import type { RoomCollaborationRuntime } from "@/hooks/useRoomCollaboration";
 
 const editorStyles = `
   .document-editor-wrapper .bn-container {
@@ -63,7 +63,7 @@ interface Props {
   editable?: boolean;
   subjectLabel?: string;
   documentTitle?: string;
-  collaboration?: Pick<DocumentCollaborationRuntime, "fragment" | "user" | "provider">;
+  collaboration?: Pick<RoomCollaborationRuntime, "fragment" | "user" | "provider">;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
