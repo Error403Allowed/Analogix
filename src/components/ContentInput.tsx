@@ -78,7 +78,7 @@ export default function ContentInput({
     try { return localStorage.getItem(key); } catch { return null; }
   };
   const safeLocalStorageSet = (key: string, value: string) => {
-    try { localStorage.setItem(key, value); } catch {}
+    try { localStorage.setItem(key, value); } catch { /* ignore */ }
   };
 
   // Close model selector on outside click

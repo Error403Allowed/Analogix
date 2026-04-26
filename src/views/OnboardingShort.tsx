@@ -159,7 +159,7 @@ const Onboarding = () => {
         if (prefs?.onboardingComplete) {
           router.replace("/dashboard");
         }
-      } catch {}
+      } catch { /* ignore */ }
       return;
     }
 
@@ -173,7 +173,7 @@ const Onboarding = () => {
             router.replace("/dashboard");
             return;
           }
-        } catch {}
+        } catch { /* ignore */ }
 
         try {
           const supabase = createClient();
@@ -208,11 +208,11 @@ const Onboarding = () => {
               };
               localStorage.setItem("userPreferences", JSON.stringify(next));
               window.dispatchEvent(new Event("userPreferencesUpdated"));
-            } catch {}
+            } catch { /* ignore */ }
             router.replace("/dashboard");
             return;
           }
-        } catch {}
+        } catch { /* ignore */ }
 
         setStep(2);
       };

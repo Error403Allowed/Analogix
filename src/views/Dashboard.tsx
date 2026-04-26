@@ -80,7 +80,7 @@ function loadEnabledWidgets(): WidgetId[] {
     if (!raw) return DEFAULT_ENABLED;
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed)) return parsed as WidgetId[];
-  } catch {}
+  } catch { /* ignore parse errors */ }
   return DEFAULT_ENABLED;
 }
 
@@ -383,7 +383,7 @@ function MiniTimer() {
         setSessionsTarget(saved.sessionsTarget);
         setSettings(saved.settings);
       }
-    } catch {}
+    } catch { /* ignore restore errors */ }
   }, []);
 
   useEffect(() => {

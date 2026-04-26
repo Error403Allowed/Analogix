@@ -88,10 +88,10 @@ const safeLocalStorageGet = (key: string) => {
   try { return localStorage.getItem(key); } catch { return null; }
 };
 const safeLocalStorageSet = (key: string, value: string) => {
-  try { localStorage.setItem(key, value); } catch {}
+  try { localStorage.setItem(key, value); } catch { /* ignore storage errors */ }
 };
 const safeLocalStorageRemove = (key: string) => {
-  try { localStorage.removeItem(key); } catch {}
+  try { localStorage.removeItem(key); } catch { /* ignore storage errors */ }
 };
 
 // ── Typing animation ───────────────────────────────────────────────────────
@@ -290,10 +290,10 @@ export default function AgentPanel() {
     try { return localStorage.getItem(key); } catch { return null; }
   };
   const safeLocalStorageSet = (key: string, value: string) => {
-    try { localStorage.setItem(key, value); } catch {}
+    try { localStorage.setItem(key, value); } catch { /* ignore */ }
   };
   const safeLocalStorageRemove = (key: string) => {
-    try { localStorage.removeItem(key); } catch {}
+    try { localStorage.removeItem(key); } catch { /* ignore */ }
   };
 
   // Load persisted agent chat history when opened
@@ -355,7 +355,7 @@ export default function AgentPanel() {
         if (data.confirmations) {
           setPendingConfirmations(data.confirmations.map((c: any) => ({ id: c.id, summary: c.summary })));
         }
-      } catch {}
+      } catch { /* ignore confirmation load error */ }
     };
     loadConfirmations();
   }, [open]);
@@ -417,7 +417,7 @@ export default function AgentPanel() {
       if (res.ok) {
         setPendingConfirmations(prev => prev.filter(c => c.id !== confirmationId));
       }
-    } catch {}
+    } catch { /* ignore confirmation dismiss error */ }
   }, []);
 
   const sendMessage = useCallback(async (text?: string, selectedContextIds?: string[]) => {
@@ -481,7 +481,7 @@ export default function AgentPanel() {
 
       const assistantMsgIndex = newMessages.length; // index of the message we're about to add
       const formatAgentReply = (text: string) => {
-        let t = text
+        const t = text
           .replace(/<actions>[\s\S]*?<\/actions>/gi, "")
           .replace(/```json[\s\S]*?```/gi, "")
           .replace(/^\s*#{1,6}\s+/gm, "")

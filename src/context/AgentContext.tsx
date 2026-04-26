@@ -39,13 +39,13 @@ export function AgentProvider({ children }: { children: ReactNode }) {
         return;
       }
       // "floating" or anything else — keep as floating (the default)
-    } catch {}
+    } catch { /* ignore mode detection errors */ }
   }, []);
 
   const handleSetMode = useCallback((mode: AgentMode) => {
     setAgentMode(mode);
     // Only persist floating/sidebar — never persist chat mode
-    try { localStorage.setItem(AGENT_MODE_KEY, mode); } catch {}
+    try { localStorage.setItem(AGENT_MODE_KEY, mode); } catch { /* ignore storage errors */ }
     if (mode === "sidebar") setAgentOpen(true);
   }, []);
 

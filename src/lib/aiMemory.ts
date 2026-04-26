@@ -151,95 +151,111 @@ export function buildPersonalityInstructions(personality: AIPersonality): string
 
   instructions.push(
     [
-      "HIGH PRIORITY: PERSONALITY SETTINGS OVERRIDE EARLIER INSTRUCTIONS.",
-      "You MUST follow these settings exactly. If anything conflicts, these win.",
+      "HIGH PRIORITY: PERSONALITY SETTINGS ARE PRIMARY.",
+      "These settings ALWAYS override other instructions. Follow them exactly.",
     ].join(" ")
   );
 
   // Tone and style
   const toneDesc: string[] = [];
   if (personality.friendliness >= 70) toneDesc.push("very warm and friendly");
-  else if (personality.friendliness <= 30) toneDesc.push("more reserved and professional");
+  else if (personality.friendliness <= 30) toneDesc.push("reserved and professional");
   
-  if (personality.formality >= 70) toneDesc.push("formal and academic");
+  if (personality.formality >= 70) toneDesc.push("formal");
   else if (personality.formality <= 30) toneDesc.push("casual and conversational");
   
-  if (personality.humor >= 70) toneDesc.push("witty and playful");
+  if (personality.humor >= 70) toneDesc.push("witty with light humor");
   else if (personality.humor <= 30) toneDesc.push("serious and straightforward");
+  else toneDesc.push("occasionally warm");
 
   if (toneDesc.length > 0) {
-    instructions.push(`Your tone MUST be ${toneDesc.join(", ")}.`);
+    instructions.push(`Tone: ${toneDesc.join(", ")}.`);
   }
 
-  // Detail level
-  if (personality.detail_level >= 70) {
-    instructions.push("Provide comprehensive, detailed explanations with thorough coverage of all aspects.");
-  } else if (personality.detail_level <= 30) {
-    instructions.push("Keep explanations brief and concise. Get straight to the point.");
+  // Detail level - word count limits
+  let wordLimit = 200;
+  if (personality.detail_level >= 80) {
+    wordLimit = 500;
+    instructions.push("Responses: detailed and thorough. Show all angles. Word limit: 500.");
+  } else if (personality.detail_level >= 70) {
+    wordLimit = 400;
+    instructions.push("Responses: comprehensive. Word limit: 400.");
+  } else if (personality.detail_level >= 60) {
+    wordLimit = 300;
+    instructions.push("Responses: moderate detail. Word limit: 300.");
+  } else if (personality.detail_level >= 40) {
+    wordLimit = 200;
+    instructions.push("Responses: balanced. Word limit: 200.");
+  } else if (personality.detail_level >= 30) {
+    wordLimit = 150;
+    instructions.push("Responses: brief. Word limit: 150.");
   } else {
-    instructions.push("Provide moderate detail - enough to be clear but not overwhelming.");
+    wordLimit = 100;
+    instructions.push("Responses: concise. Get to the point fast. Word limit: 100.");
   }
 
-  // Patience and encouragement
-  if (personality.patience >= 70) {
-    instructions.push("Be very patient - don't hesitate to re-explain concepts multiple times in different ways.");
+  // Patience
+  if (personality.patience >= 80) {
+    instructions.push("VERY patient. Re-explain as many times as needed without frustration.");
+  } else if (personality.patience >= 60) {
+    instructions.push("Patient. Re-explain if they don't understand.");
+  } else if (personality.patience <= 30) {
+    instructions.push("Direct. Assume they grasp quickly after one explanation.");
   }
   
-  if (personality.encouragement >= 70) {
-    instructions.push("Be highly encouraging and supportive. Celebrate small wins and progress.");
+  // Encouragement
+  if (personality.encouragement >= 80) {
+    instructions.push("Very encouraging. Celebrate progress, use enthusiastic language.");
+  } else if (personality.encouragement >= 60) {
+    instructions.push("Encouraging. Positive reinforcement.");
   } else if (personality.encouragement <= 30) {
-    instructions.push("Be direct and honest in feedback without excessive praise.");
+    instructions.push("Direct feedback. Minimal praise - just help them improve.");
   }
 
   // Teaching methods
   if (personality.socratic_method) {
-    instructions.push("Use the Socratic method: ask guiding questions to help the student discover answers themselves rather than giving direct answers.");
+    instructions.push("Method: Guide with questions. Don't give direct answers - help them discover.");
   } else {
-    instructions.push("DO NOT use the Socratic method. Answer directly without guiding questions.");
+    instructions.push("Method: Direct answers. Explain clearly without questions.");
   }
 
-  if (personality.step_by_step) {
-    instructions.push("Always show step-by-step working for problems. Never skip steps in explanations.");
+  if (personality.step_by_step === false) {
+    instructions.push("Working: Skip unnecessary steps. Show key steps only.");
   } else {
-    instructions.push("Do NOT always show step-by-step working. Provide only the minimum necessary steps or the final result when appropriate.");
+    instructions.push("Working: Show all steps. Never skip.");
   }
 
-  if (personality.real_world_examples) {
-    instructions.push("Use real-world, practical examples to illustrate concepts.");
-  } else {
-    instructions.push("Do NOT add real-world examples. Explain concepts directly.");
+  if (personality.real_world_examples === false) {
+    instructions.push("Examples: Abstract/theoretical only. No real-world references.");
   }
 
   // Response formatting
-  if (!personality.use_emojis) {
-    instructions.push("Do NOT use emojis in your responses.");
-  } else {
-    instructions.push("Emojis are allowed. Use them sparingly only to emphasize short highlights or encouragement.");
+  if (personality.use_emojis === false) {
+    instructions.push("Formatting: No emojis.");
   }
 
-  if (!personality.use_analogies) {
-    instructions.push("DO NOT use analogies. Explain concepts directly without comparisons, even if analogy mode is enabled elsewhere.");
+  // Analogies - CRITICAL: This overrides the analogyIntensity setting
+  if (personality.use_analogies === false) {
+    instructions.push("Analogy: NEVER use analogies. Direct explanation only.");
   } else if (personality.analogy_frequency >= 4) {
-    instructions.push("Use analogies frequently - almost every explanation should include an analogy.");
-  } else if (personality.analogy_frequency <= 1) {
-    instructions.push("Use analogies sparingly - only when they truly help clarify a difficult concept.");
+    instructions.push("Analogy: Use often - every concept needs one.");
+  } else if (personality.analogy_frequency >= 2) {
+    instructions.push("Analogy: Use for tricky concepts.");
   } else {
-    instructions.push("Use analogies occasionally - use them when they improve clarity, not by default.");
+    instructions.push("Analogy: Rarely. Only when essential.");
   }
 
-  if (personality.use_section_dividers) {
-    instructions.push("Use horizontal rule dividers (⸻) to separate major sections in your response, like ChatGPT does. For example, use ⸻ between different topics, question types, or major sections of your answer.");
-  } else {
-    instructions.push("Do NOT use ⸻ section dividers in your response.");
+  if (personality.use_section_dividers === false) {
+    instructions.push("Formatting: No ⸻ dividers. Just natural paragraphs.");
   }
 
   // Custom instructions
-  if (personality.custom_instructions) {
-    instructions.push(`\nCustom instructions:\n${personality.custom_instructions}`);
+  if (personality.custom_instructions?.trim()) {
+    instructions.push(`Custom: ${personality.custom_instructions.trim()}`);
   }
 
-  if (personality.persona_description) {
-    instructions.push(`\nPersona: ${personality.persona_description}`);
+  if (personality.persona_description?.trim()) {
+    instructions.push(`Persona: ${personality.persona_description.trim()}`);
   }
 
   return instructions.join("\n");

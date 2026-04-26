@@ -3,7 +3,9 @@ import { createClient } from "@/lib/supabase/server";
 import { callGroqChat, formatError } from "../../groq/_utils";
 import { buildCalendarContext } from "../../groq/_calendarContext";
 import { listUserDocuments } from "@/lib/server/documents";
-import { detectAgentIntent, type AgentId, type AgentActionType, AGENT_ACTION_PERMISSIONS, requiresConfirmation, isAgentAllActionType, AGENT_ACTION_DEFINITIONS, canAgentPerform } from "@/lib/agentActions";
+import { AGENT_ACTION_PERMISSIONS, requiresConfirmation, isAgentAllActionType, AGENT_ACTION_DEFINITIONS, canAgentPerform } from "@/lib/agentActions";
+import type { AgentId, AgentActionType } from "@/types/agent";
+import { detectAgentIntent } from "@/types/agent";
 import { getAgentMemories, saveAgentMemory, createConfirmation, initializeUserAgents, getAgentById } from "@/lib/server/agents";
 import type { ChatMessage } from "@/types/chat";
 
@@ -169,7 +171,7 @@ export async function POST(request: Request) {
     const userName = profile?.name || "Student";
 
     const lastUserMessage = messages.filter(m => m.role === "user").pop()?.content || "";
-    const agentId = specifiedAgent || detectAgentIntent(lastUserUserMessage);
+    const agentId = specifiedAgent || detectAgentIntent(lastUserMessage);
     const pageIntent = detectPageIntent(lastUserMessage);
 
     const { data: agent } = await supabase
@@ -272,7 +274,7 @@ Example actions:
           for (const match of jsonMatches) {
             try {
               actions.push(JSON.parse(match));
-            } catch {}
+            } catch { /* skip invalid JSON */ }
           }
         }
       }
@@ -310,7 +312,7 @@ Example actions:
       }
     }
 
-    let confirmationIds: string[] = [];
+    const confirmationIds: string[] = [];
     if (confirmationsNeeded.length > 0) {
       const effectiveAgentId = agentId === 'general' ? 'planner' : agentId;
       for (const conf of confirmationsNeeded) {

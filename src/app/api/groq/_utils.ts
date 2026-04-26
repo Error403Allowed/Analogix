@@ -206,7 +206,7 @@ const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 // Global request queue to serialize requests when rate limited
 const requestQueue: Array<() => void> = [];
-let isProcessingQueue = false;
+const isProcessingQueue = false;
 
 const enqueueRequest = (): Promise<void> => {
   // Don't queue at all — let requests run concurrently.

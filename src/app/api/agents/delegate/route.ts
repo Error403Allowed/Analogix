@@ -3,7 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { callGroqChat, formatError } from "../../groq/_utils";
 import { buildCalendarContext } from "../../groq/_calendarContext";
 import { getAgentMemories, logAgentAction, delegateToAgent } from "@/lib/server/agents";
-import type { AgentId, AgentAllActionType } from "@/lib/agentActions";
+import type { AgentId } from "@/types/agent";
+import type { AgentAllActionType } from "@/lib/agentActions";
 
 export const runtime = "nodejs";
 

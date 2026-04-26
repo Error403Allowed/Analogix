@@ -143,7 +143,8 @@ export async function syncCalendar(userId: string, provider: "google" | "apple")
         .select("id")
         .eq("user_id", userId)
         .eq("google_event_id", gEvent.id)
-        .maybeSingle();
+        .maybeSingle()
+        .then(r => r.data);
 
       const eventData = {
         user_id: userId,
@@ -157,7 +158,7 @@ export async function syncCalendar(userId: string, provider: "google" | "apple")
         source: "google",
       };
 
-      if (existing) {
+      if (existing && existing.id) {
         await supabase.from("events").update(eventData).eq("id", existing.id);
       } else {
         await supabase.from("events").insert(eventData);

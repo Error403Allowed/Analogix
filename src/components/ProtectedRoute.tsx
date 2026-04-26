@@ -36,7 +36,7 @@ const syncPrefsFromProfile = (profile: any, userId: string) => {
     };
     localStorage.setItem("userPreferences", JSON.stringify(next));
     window.dispatchEvent(new Event("userPreferencesUpdated"));
-  } catch {}
+  } catch { /* ignore storage errors */ }
 };
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {

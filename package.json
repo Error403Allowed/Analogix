@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
 
-  "tests": {
+  "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
@@ -15,7 +15,12 @@
 
     "test:e2e": "playwright test",
 
-    "tests": "npm run build && npm run test && npm run test:e2e"
+    "tests": "npx tsx scripts/run-tests.ts",
+    "tests:list": "npx tsx scripts/run-tests.ts --list",
+    "tests:filter": "npx tsx scripts/run-tests.ts --filter",
+    "tests:tag": "npx tsx scripts/run-tests.ts --tag",
+
+    "test:ai": "npx tsx scripts/test-ai.ts"
   },
 
   "dependencies": {

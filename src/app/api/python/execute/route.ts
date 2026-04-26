@@ -115,7 +115,7 @@ export async function POST(request: Request) {
     `;
 
     // Execute the code
-    // eslint-disable-next-line no-new-func
+     
     const executeCode = new Function("createSafeContext", wrappedCode);
     const result = executeCode(createSafeContext);
 

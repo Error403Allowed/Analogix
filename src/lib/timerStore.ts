@@ -39,7 +39,7 @@ export function loadTimerState(): TimerState {
     const hasTimeLeft = typeof saved.timeLeft === "number" && Number.isFinite(saved.timeLeft);
     let timeLeft = hasTimeLeft ? Math.max(0, Math.floor(saved.timeLeft as number)) : settings[phase];
     let isActive = !!saved.isActive;
-    let lastTick = typeof saved.lastTick === "number" && Number.isFinite(saved.lastTick)
+    const lastTick = typeof saved.lastTick === "number" && Number.isFinite(saved.lastTick)
       ? saved.lastTick
       : Date.now();
     // If timer was active, account for elapsed time while page was closed
@@ -69,7 +69,7 @@ export function saveTimerState(state: TimerState) {
     // The native `storage` event only fires in *other* tabs, not the current one,
     // so manually dispatching it in the same window causes an infinite loop:
     // save → storage event → load state → setState → re-render → save → ...
-  } catch {}
+  } catch { /* ignore corrupted state */ }
 }
 
 export function getDefaultTimerState(): TimerState {

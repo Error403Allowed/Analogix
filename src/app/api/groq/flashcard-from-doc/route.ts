@@ -102,7 +102,7 @@ Return ONLY valid JSON — no markdown, no preamble:
               try {
                 const parsed = JSON.parse(match[0]);
                 chunkFlashcards = parsed.flashcards || parsed || [];
-              } catch {}
+              } catch { /* skip invalid JSON */ }
             }
           }
 
@@ -142,7 +142,7 @@ Return ONLY valid JSON — no markdown, no preamble:
         try {
           const parsed = JSON.parse(match[0]);
           flashcards = parsed.flashcards || parsed || [];
-        } catch {}
+        } catch { /* skip invalid JSON */ }
       }
     }
 

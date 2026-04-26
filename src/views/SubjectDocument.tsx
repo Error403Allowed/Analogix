@@ -94,7 +94,7 @@ export default function SubjectDocument() {
   const docId = (params?.docId as string) || "";
   
   // First try to find in catalog
-  let subject = SUBJECT_CATALOG.find((entry) => entry.id === subjectId);
+  const subject = SUBJECT_CATALOG.find((entry) => entry.id === subjectId);
   
   // If not in catalog, we'll load user-created subject dynamically
   const [userSubject, setUserSubject] = useState<{ id: string; label: string } | null>(null);

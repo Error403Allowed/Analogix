@@ -217,7 +217,7 @@ const Onboarding = () => {
           router.replace("/dashboard");
           return;
         }
-      } catch {}
+      } catch { /* ignore localStorage errors */ }
       // Signed in but not finished — jump to step from URL (or 2)
       const urlStep = parseInt(searchParams?.get("step") ?? "2", 10);
       setStep(isNaN(urlStep) || urlStep <= 1 ? 2 : urlStep);

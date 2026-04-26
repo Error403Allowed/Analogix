@@ -56,7 +56,7 @@ Return ONLY valid JSON with this exact structure (no markdown, no preamble):
         try {
           const parsed = JSON.parse(match[0]);
           flashcards = parsed.flashcards || [];
-        } catch {}
+        } catch { /* skip invalid JSON */ }
       }
     }
 

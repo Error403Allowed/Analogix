@@ -116,7 +116,7 @@ Return ONLY valid JSON — no markdown, no preamble:
               try {
                 const parsed = JSON.parse(match[0]);
                 chunkQuiz = parsed.quiz || parsed || null;
-              } catch {}
+              } catch { /* skip invalid JSON */ }
             }
           }
 
@@ -162,7 +162,7 @@ Return ONLY valid JSON — no markdown, no preamble:
         try {
           const parsed = JSON.parse(match[0]);
           quiz = parsed.quiz || parsed || null;
-        } catch {}
+        } catch { /* skip invalid JSON */ }
       }
     }
 

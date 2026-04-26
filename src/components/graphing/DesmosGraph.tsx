@@ -208,7 +208,7 @@ function DesmosGraph({ expressions, height = DEFAULT_HEIGHT, showEditor = false 
     }, 0);
 
     return () => { calc.destroy(); calcRef.current = null; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [ready, key, isDark]);
 
   // Sync expressions to calculator

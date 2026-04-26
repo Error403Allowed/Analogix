@@ -1,0 +1,60 @@
+{
+  "version": "1.0",
+  "description": "Dynamic test configuration for Analogix. Add tests here - no code required.",
+  "testTypes": {
+    "unit": { "description": "Test utility functions and helpers" },
+    "ai": { "description": "Test AI response quality and behavior" },
+    "integration": { "description": "Test full workflows and API endpoints" }
+  },
+  "testCases": [
+    {
+      "id": "doc-content-plaintext",
+      "name": "Extract plain text from document",
+      "type": "unit",
+      "importPath": "@/lib/document-content",
+      "function": "getDocumentPlainText",
+      "input": {
+        "contentText": "Cell Division. Mitosis creates two identical daughter cells."
+      },
+      "expected": { "result": "Cell Division" },
+      "validate": "contains",
+      "validation": { "type": "contains", "expected": "Cell Division" },
+      "tags": ["document", "parsing"]
+    },
+    {
+      "id": "doc-content-studyguide",
+      "name": "Detect study guide document",
+      "type": "unit",
+      "importPath": "@/lib/document-content",
+      "function": "isStudyGuideDocument",
+      "input": {
+        "role": "study-guide"
+      },
+      "expected": { "result": true },
+      "validate": "equals",
+      "tags": ["document", "detection"]
+    },
+    {
+      "id": "youtube-video-id",
+      "name": "Extract YouTube video ID from URL",
+      "type": "unit",
+      "importPath": "@/lib/youtube",
+      "function": "extractYouTubeVideoId",
+      "input": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+      "expected": { "result": "dQw4w9WgXcQ" },
+      "validate": "equals",
+      "tags": ["youtube", "parsing"]
+    },
+    {
+      "id": "youtube-video-id-short",
+      "name": "Extract YouTube video ID from short URL",
+      "type": "unit",
+      "importPath": "@/lib/youtube",
+      "function": "extractYouTubeVideoId",
+      "input": "https://youtu.be/dQw4w9WgXcQ",
+      "expected": { "result": "dQw4w9WgXcQ" },
+      "validate": "equals",
+      "tags": ["youtube", "parsing"]
+    }
+  ]
+}

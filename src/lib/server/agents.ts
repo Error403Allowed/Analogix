@@ -246,7 +246,7 @@ export async function delegateToAgent(
       target_agent: targetAgent,
       action,
       payload,
-      requires_confirmation,
+      requires_confirmation: requiresConfirmation,
       confirmation_message: confirmationMessage,
       status: requiresConfirmation ? 'awaiting_confirmation' : 'pending',
     })

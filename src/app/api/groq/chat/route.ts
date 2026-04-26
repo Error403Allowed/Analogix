@@ -9,6 +9,12 @@ import {
   buildMemoryContext, 
   buildPersonalityInstructions 
 } from "@/lib/aiMemory";
+import {
+  selectBestInterest,
+  buildMappingSection,
+  getDefaultAnalogy,
+  buildToneInstructions
+} from "@/lib/explanation";
 
 export const runtime = "nodejs";
 
@@ -78,8 +84,18 @@ export async function POST(request: Request) {
       analogyAnchor?: string;
     } = body.userContext || {};
 
-    // How much should the AI use analogies? (0-5 scale)
-    const analogyIntensity = userContext?.analogyIntensity ?? 1;
+    // How much should the AI use analogies? 
+    // Personality setting OVERRIDES the UI slider - this is critical
+    const personalityUseAnalogies = (aiPersonality as any)?.use_analogies;
+    const personalityAnalogyFreq = (aiPersonality as any)?.analogy_frequency ?? 3;
+    
+    // If personality explicitly disables analogies, force intensity to 0
+    let analogyIntensity = userContext?.analogyIntensity ?? 1;
+    if (personalityUseAnalogies === false) {
+      analogyIntensity = 0; // Personality overrides
+    } else if (personalityUseAnalogies === true) {
+      analogyIntensity = Math.max(analogyIntensity, personalityAnalogyFreq); // Use higher of both
+    }
 
     // Student's grade and Australian state — used to tailor curriculum context
     const studentGrade = userContext?.grade || "7-12";
@@ -124,17 +140,46 @@ export async function POST(request: Request) {
       ? getFormulaSheetContext(primarySubjectForFormulas)
       : "";
 
-    // Instructions for how long responses should be
-    const lengthGuidance = `Calibrate response length naturally to the complexity of the question:
-   - Simple or conversational questions: 1-3 sentences. Don't pad.
-   - Concept explanations: as many paragraphs as genuinely needed to make it click — don't truncate, but don't repeat yourself either.
-   - Deep dives or multi-part questions: comprehensive, covering angles, examples, edge cases.
-   - Never artificially shorten or lengthen. Write exactly as much as the topic deserves.`;
+// Instructions for how long responses should be - respect user's detail_level setting
+    const userDetailLevel = (aiPersonality as any)?.detail_level ?? 50;
+    let targetResponseLength = "moderate";
+    let maxWords = 200;
+    
+    if (userDetailLevel >= 70) {
+      targetResponseLength = "comprehensive";
+      maxWords = 400;
+    } else if (userDetailLevel <= 30) {
+      targetResponseLength = "brief";
+      maxWords = 100;
+    } else {
+      targetResponseLength = "moderate";
+      maxWords = 200;
+    }
+    
+    const lengthGuidance = `RESPONSE LENGTH (${targetResponseLength}):
+    - Keep responses under ${maxWords} words when possible
+    - Simple questions: 1-2 sentences
+    - Concept explanations: 3-5 sentences (enough to click, not an essay)
+    - If they're learning something NEW: A bit more is okay
+    - If they ask "what is X": Be direct + one example
+    - NEVER pad with recaps or "Great question!" filler
+    - Be concise — get to the point quickly`;
 
     const researchMode = Boolean(userContext?.researchMode);
 
-    // Token budget — reasonable cap so the AI isn't requesting ridiculous token counts
-    const maxTokens = researchMode ? 3000 : 2048;
+    // Token budget — respect user's detail_level preference
+    const detailLevel = (aiPersonality as any)?.detail_level ?? 50;
+    let maxTokens = 1500; // Default
+    
+    if (researchMode) {
+      maxTokens = 3000;
+    } else if (detailLevel >= 70) {
+      maxTokens = 2500; // Comprehensive
+    } else if (detailLevel <= 30) {
+      maxTokens = 800; // Brief
+    } else {
+      maxTokens = 1500; // Moderate
+    }
 
     // Get the user's hobbies/interests for making analogies
     const interestList = userContext?.hobbies?.filter(Boolean) ?? [];
@@ -217,6 +262,100 @@ RESPONSE LENGTH — BE CONCISE:
 - If they want more detail, they'll ask.
 `;
 
+    // ========================================================================
+    // STEP 2B: STRUCTURED EXPLANATION PIPELINE
+    // ========================================================================
+    
+    // Detect if this is a concept explanation request (new topic)
+    const isConceptExplanation = messages.length <= 2 && 
+      !latestUserMessage.toLowerCase().includes("solve") &&
+      !latestUserMessage.toLowerCase().includes("calculate") &&
+      !latestUserMessage.toLowerCase().includes("find the");
+    
+    // Determine concept from the message (simple keyword extraction)
+    const detectConcept = (msg: string): string => {
+      const lower = msg.toLowerCase();
+      const concepts = [
+        { keyword: "linear equation", concept: "linear equation" },
+        { keyword: "slope", concept: "linear equation" },
+        { keyword: "quadratic", concept: "quadratic equation" },
+        { keyword: "parabola", concept: "quadratic equation" },
+        { keyword: "function", concept: "function" },
+        { keyword: "derivative", concept: "calculus" },
+        { keyword: "integral", concept: "calculus" },
+        { keyword: "probability", concept: "probability" },
+        { keyword: "statistic", concept: "statistics" },
+        { keyword: "trigonometry", concept: "trigonometry" },
+        { keyword: "sine", concept: "trigonometry" },
+        { keyword: "cosine", concept: "trigonometry" },
+        { keyword: "matrix", concept: "matrix" },
+        { keyword: "algebra", concept: "algebra" },
+        { keyword: "geometry", concept: "geometry" },
+        { keyword: "circle", concept: "geometry" },
+        { keyword: "area", concept: "area" },
+        { keyword: "volume", concept: "volume" }
+      ];
+      for (const { keyword, concept } of concepts) {
+        if (lower.includes(keyword)) return concept;
+      }
+      return "general concept";
+    };
+    
+    const currentConcept = detectConcept(latestUserMessage);
+    
+    // Adjust explanation depth based on detail_level
+    const isConcise = detailLevel <= 40;
+    const isComprehensive = detailLevel >= 70;
+    
+    // Build structured explanation prompt for concept explanations
+    const explanationPipeline = isConceptExplanation && analogyIntensity >= 2
+      ? `
+      
+================================================================================
+STRUCTURED EXPLANATION - ${isConcise ? "CONCISE" : isComprehensive ? "COMPREHENSIVE" : "BALANCED"}
+================================================================================
+${isConcise ? `Keep it SHORT and snappy:
+- Hook: 1 sentence max
+- Intuition: 1-2 sentences  
+- Core Idea: Under 15 words
+- Example: Simple, just the basics` : isComprehensive ? `Go deeper:
+- Hook: 1-2 sentences with rich detail
+- Intuition: 3-5 sentences, build understanding
+- Core Idea: Under 30 words, memorable
+- Example: Show reasoning, edge cases` : `Balance:
+- Hook: 1-2 sentences
+- Intuition: 2-3 sentences
+- Core Idea: Under 20 words
+- Example: Show key steps`}
+
+1. HOOK (must start your response!)
+   - Use the Analogy Anchor: "${analogyAnchor}"
+   - NEVER: "${currentConcept} is defined as..." or "The definition of..."
+   - ALWAYS: "Think of ${currentConcept} like [analogy from ${analogyAnchor}]"
+
+2. INTUITION - What's actually happening, not just what it is
+3. CORE IDEA - ONE sentence to remember
+4. EXAMPLE - ${isConcise ? "just the answer" : "one worked example"}
+5. ${isComprehensive ? "QUICK CHECK - 1 question" : ""}
+
+QUALITY: Hook first, no definitions, clarity over cleverness
+================================================================================
+`
+      : "";
+
+    // Build concept-specific mapping section
+    const conceptMappingSection = isConceptExplanation && analogyAnchor && analogyIntensity >= 2
+      ? buildMappingSection(analogyAnchor, currentConcept, [])
+      : "";
+
+    // Add tone transformation instructions
+    const toneInstructions = analogyIntensity >= 2
+      ? `
+TONE RULES (apply to ALL outputs):
+${buildToneInstructions()}
+`
+      : "";
+
     const formatResearchSources = (sources: Array<{
       title: string;
       authors?: string[];
@@ -292,6 +431,9 @@ ${teachingApproach}
 Instructions:
 ${analogyInstructions}
 ${complexityGuidance}
+${explanationPipeline}
+${conceptMappingSection}
+${toneInstructions}
 
 4. ASK GUIDING QUESTIONS (NATURALLY): Ask 0–1 short questions inline, as part of the flow.
    - No labels. No bullet-point questions.

@@ -17,7 +17,7 @@ const truncateWorkspaceDocs = (
   allDocs: Array<{ subjectId: string; title: string; type: string; preview: string }>,
   maxTokens: number
 ): { docs: typeof allDocs; truncated: boolean } => {
-  let totalTokens = allDocs.reduce((sum, d) => sum + estimateTokens(d.preview + d.title + d.subjectId), 0);
+  const totalTokens = allDocs.reduce((sum, d) => sum + estimateTokens(d.preview + d.title + d.subjectId), 0);
   
   if (totalTokens <= maxTokens) {
     return { docs: allDocs, truncated: false };

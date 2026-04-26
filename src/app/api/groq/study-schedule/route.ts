@@ -83,7 +83,7 @@ Return ONLY valid JSON — no markdown, no preamble:
           const parsed = JSON.parse(match[0]);
           schedule = parsed.schedule || [];
           summary = parsed.summary || "";
-        } catch {}
+        } catch { /* skip invalid JSON */ }
       }
     }
 

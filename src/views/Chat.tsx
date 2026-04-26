@@ -394,7 +394,7 @@ const Chat = () => {
     try {
       const prefs = JSON.parse(localStorage.getItem("userPreferences") || "{}");
       if (prefs.name) setHydratedUserName(prefs.name);
-    } catch {}
+    } catch { /* ignore localStorage errors */ }
   }, []);
 
   useEffect(() => {

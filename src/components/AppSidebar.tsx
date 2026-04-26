@@ -83,7 +83,7 @@ export function AppSidebar() {
         setUserData(prefs);
         const stats = JSON.parse(localStorage.getItem("analogix_user_stats_v1") || "{}");
         setStreak(Number(stats.currentStreak) || 0);
-      } catch {}
+      } catch { /* ignore localStorage errors */ }
       const saved = localStorage.getItem("app-theme") || "Cosmic Aurora";
       const isPaper = localStorage.getItem("paper-mode") === "true";
       setPaperMode(isPaper);

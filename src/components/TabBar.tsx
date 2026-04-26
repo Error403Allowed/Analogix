@@ -263,10 +263,11 @@ export default function TabBar({ onNavigate }: TabBarProps) {
 
         <div
           ref={scrollRef}
-          className="flex h-8 min-w-0 flex-1 items-center gap-1.5 overflow-x-auto scrollbar-none rounded-[20px] border border-black/[0.05] bg-black/[0.02] px-1.5 py-1 dark:border-white/[0.06] dark:bg-white/[0.02]"
+          className="flex h-8 min-w-0 flex-1 items-center gap-1.5 overflow-x-auto overflow-y-hidden scrollbar-none rounded-[20px] border border-black/[0.05] bg-black/[0.02] px-1.5 py-1 dark:border-white/[0.06] dark:bg-white/[0.02]"
           style={{
             scrollbarWidth: 'none',
-            msOverflowStyle: 'none'
+            msOverflowStyle: 'none',
+            overflowY: 'hidden'
           }}
         >
           <AnimatePresence initial={false}>
