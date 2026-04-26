@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Brain, X, Send, Loader2, Sparkles, Trash2, ChevronDown,
   BookOpen, FileText, MessageSquare, CheckCircle2, AlertCircle, Zap,
-  Eye, PanelRight, Maximize2, ExternalLink,
+  Eye, PanelRight, Maximize2, ExternalLink, Calendar, Users, ClipboardList,
 } from "lucide-react";
 import ContentInput, { type ContextItem } from "@/components/ContentInput";
 import { cn } from "@/lib/utils";
@@ -38,13 +38,39 @@ const ACTION_LABELS: Record<string, string> = {
 // ── Pages where the agent should NOT appear ────────────────────────────────
 const HIDDEN_ON = ["/", "/onboarding", "/login", "/timer", "/chat", "/study-guide-loading"];
 
-// ── Suggested quick prompts ────────────────────────────────────────────────
-const QUICK_PROMPTS = [
-  { label: "Summarise my notes", icon: FileText },
-  { label: "Quiz me on my docs", icon: BookOpen },
-  { label: "What have I been studying?", icon: MessageSquare },
-  { label: "Add flashcards for my last topic", icon: Sparkles },
-];
+// ── Agent selector — icons that switch between agents ───────────────────────────────────
+const AGENT_BUTTONS = [
+  { id: 'planner', icon: Calendar, label: 'Planner', color: '#10B981' },
+  { id: 'notes', icon: FileText, label: 'Notes', color: '#3B82F6' },
+  { id: 'tasks', icon: ClipboardList, label: 'Tasks', color: '#F59E0B' },
+  { id: 'collab', icon: Users, label: 'Collaborate', color: '#8B5CF6' },
+] as const;
+
+type SelectedAgentId = typeof AGENT_BUTTONS[number]['id'];
+
+// Quick prompts change based on selected agent
+const QUICK_PROMPTS_BY_AGENT: Record<SelectedAgentId, { label: string; icon: React.ElementType }[]> = {
+  planner: [
+    { label: "Plan my week", icon: Calendar },
+    { label: "What's coming up?", icon: Calendar },
+    { label: "Create study schedule", icon: Calendar },
+  ],
+  notes: [
+    { label: "Summarise my notes", icon: FileText },
+    { label: "Extract key points", icon: FileText },
+    { label: "Create a new note", icon: FileText },
+  ],
+  tasks: [
+    { label: "Add a task", icon: ClipboardList },
+    { label: "What tasks do I have?", icon: ClipboardList },
+    { label: "Set a reminder", icon: ClipboardList },
+  ],
+  collab: [
+    { label: "Create study room", icon: Users },
+    { label: "Start collab session", icon: Users },
+    { label: "Invite a partner", icon: Users },
+  ],
+};
 
 const AGENT_SESSION_KEY = "agentChatSessionId";
 const AGENT_MODEL_KEY = "analogix_agent_model";
@@ -116,6 +142,8 @@ export default function AgentPanel() {
   const [chatSessionId, setChatSessionId] = useState<string | null>(null);
   const [historyLoaded, setHistoryLoaded] = useState(false);
   const [agentModelId, setAgentModelId] = useState<GroqModelId>("auto");
+  const [selectedAgentId, setSelectedAgentId] = useState<SelectedAgentId>('planner');
+  const [pendingConfirmations, setPendingConfirmations] = useState<Array<{ id: string; summary: string }>>([]);
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -317,6 +345,21 @@ export default function AgentPanel() {
     return () => { active = false; };
   }, [open, historyLoaded]);
 
+  // Load pending confirmations
+  useEffect(() => {
+    if (!open) return;
+    const loadConfirmations = async () => {
+      try {
+        const res = await fetch("/api/agents/confirm?action=list", { method: "POST" });
+        const data = await res.json();
+        if (data.confirmations) {
+          setPendingConfirmations(data.confirmations.map((c: any) => ({ id: c.id, summary: c.summary })));
+        }
+      } catch {}
+    };
+    loadConfirmations();
+  }, [open]);
+
   const ensureChatSession = useCallback(async () => {
     if (chatSessionId) return chatSessionId;
     const newId = await chatStore.createSession("agent", "Agent");
@@ -359,6 +402,24 @@ export default function AgentPanel() {
     return results;
   }, [currentDoc?.subjectId, router]);
 
+  // Handle confirmation response
+  const handleConfirmation = useCallback(async (confirmationId: string, approved: boolean) => {
+    try {
+      const res = await fetch("/api/agents/confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "respond",
+          confirmationId,
+          approved,
+        }),
+      });
+      if (res.ok) {
+        setPendingConfirmations(prev => prev.filter(c => c.id !== confirmationId));
+      }
+    } catch {}
+  }, []);
+
   const sendMessage = useCallback(async (text?: string, selectedContextIds?: string[]) => {
     const content = (text ?? input).trim();
     if (!content || loading) return;
@@ -399,7 +460,7 @@ export default function AgentPanel() {
       const appContext = await gatherAppContext(pathname, contextOptions);
       const messagesForRequest = newMessages.slice(-MAX_AGENT_HISTORY);
 
-      const res = await fetch("/api/groq/agent", {
+      const res = await fetch("/api/agents/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -411,6 +472,7 @@ export default function AgentPanel() {
           currentPage: pathname,
           chatSessionId: sessionId,
           modelId: agentModelId === "auto" ? null : GROQ_MODELS.find(m => m.id === agentModelId)?.modelString ?? null,
+          agentId: selectedAgentId,
         }),
       });
 
@@ -479,6 +541,17 @@ export default function AgentPanel() {
 
         if (allResults.length > 0) {
           setActionResults(prev => ({ ...prev, [assistantMsgIndex]: allResults }));
+        }
+
+        // Handle pending confirmations from agents
+        if (data.requiresConfirmation && data.confirmationIds) {
+          setPendingConfirmations(prev => [
+            ...prev,
+            ...data.confirmationIds.map((id: string) => ({
+              id,
+              summary: data.actions?.find((a: any) => a.summary)?.summary || "Action requires confirmation",
+            })),
+          ]);
         }
       }
     } catch {
@@ -578,7 +651,25 @@ export default function AgentPanel() {
                 </p>
               </div>
               <div className="flex items-center gap-1">
-                {/* Float / Sidebar toggle */}
+                {/* Agent selector */}
+                <div className="flex items-center bg-muted/30 rounded-lg p-0.5 mr-1">
+                  {AGENT_BUTTONS.map(({ id, icon: Icon, label, color }) => (
+                    <button
+                      key={id}
+                      onClick={() => setSelectedAgentId(id as SelectedAgentId)}
+                      title={label}
+                      className={cn(
+                        "w-6 h-6 rounded-md flex items-center justify-center transition-all",
+                        selectedAgentId === id
+                          ? "bg-background shadow-sm"
+                          : "text-muted-foreground/40 hover:text-muted-foreground"
+                      )}
+                      style={selectedAgentId === id ? { color } : {}}
+                    >
+                      <Icon className="w-3.5 h-3.5" />
+                    </button>
+                  ))}
+                </div>
                 <div className="flex items-center bg-muted/40 rounded-lg p-0.5 mr-1">
                   {(Object.entries(MODE_META) as [AgentMode, typeof MODE_META[AgentMode]][]).map(([mode, meta]) => {
                     const Icon = meta.icon;
@@ -626,6 +717,29 @@ export default function AgentPanel() {
               </div>
             </div>
 
+            {/* Pending confirmations banner */}
+            {pendingConfirmations.length > 0 && (
+              <div className="bg-amber-500/10 border-b border-amber-500/30 px-4 py-2 shrink-0">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                  <p className="text-xs text-amber-700 dark:text-amber-400 flex-1">
+                    {pendingConfirmations.length} action(s) waiting for confirmation
+                  </p>
+                  <div className="flex gap-1">
+                    {pendingConfirmations.slice(0, 2).map(conf => (
+                      <button
+                        key={conf.id}
+                        onClick={() => handleConfirmation(conf.id, true)}
+                        className="px-2 py-1 text-[10px] font-semibold bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-700 dark:text-emerald-400 rounded-md transition-colors"
+                      >
+                        Approve
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Messages area */}
             <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 min-h-0">
 
@@ -639,14 +753,14 @@ export default function AgentPanel() {
                 >
                   <div className="text-center space-y-1 pt-2">
                     <p className="text-sm font-semibold text-foreground/80">
-                      Ask me anything about your workspace
+                      Ask the {AGENT_BUTTONS.find(a => a.id === selectedAgentId)?.label} Agent
                     </p>
                     <p className="text-xs text-muted-foreground/50">
-                      I can read your entire workspace. Ask me to add flashcards, create quizzes, find out what class you have next, and more!
+                      I can help with {selectedAgentId === 'planner' ? 'schedules, deadlines, and study plans' : selectedAgentId === 'notes' ? 'creating and organizing notes' : selectedAgentId === 'tasks' ? 'tasks and reminders' : 'collaboration and study rooms'}.
                     </p>
                   </div>
                   <div className="grid grid-cols-2 gap-2 pt-1">
-                    {QUICK_PROMPTS.map(({ label, icon: Icon }) => (
+                    {(QUICK_PROMPTS_BY_AGENT[selectedAgentId] || []).map(({ label, icon: Icon }) => (
                       <button
                         key={label}
                         onClick={() => sendMessage(label)}

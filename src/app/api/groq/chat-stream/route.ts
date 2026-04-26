@@ -144,8 +144,8 @@ function buildSystemPrompt(
     "Use analogies sparingly — only when they genuinely help clarify a specific point.",
     "Use analogies as the primary teaching tool — lead with a hobby-based analogy before any explanation.",
     `MANDATORY: You MUST open EVERY explanation with a concrete analogy drawn from the student's interests (${allowedInterests}). Do not start with definitions or theory. Start with the analogy, build the concept through it, then circle back to lock in the idea. If the student asks 'what is X?', your first sentence should be something like 'Think of X like [interest analogy]...' — never 'X is defined as...'. This is non-negotiable when analogy mode is on.`,
-    `MANDATORY: Saturate your response with analogies from (${allowedInterests}). Every major concept gets its own analogy. Open with one, reinforce with more throughout. The student should feel like they're learning through their world, not a textbook.`,
-    `MANDATORY: Explain everything exclusively through analogies from (${allowedInterests}). No plain definitions. Each idea is expressed as a comparison or story drawn from the student's interests. Pure analogy mode.`,
+    `MANDATORY: For EVERY main point, create DIRECT MAPPING between concept and analogy. Use format: "Concept: X → Analogy: [that maps to X] → Why: [they match]"`,
+    `MANDATORY: Always show the point-by-point correspondence. The student should see exactly how each concept piece maps to each analogy piece.`,
   ][analogyIntensity];
 
   const hasExplicitSubject = (userContext?.subjects?.length ?? 0) > 0;

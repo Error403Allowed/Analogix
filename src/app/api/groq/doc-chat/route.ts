@@ -36,8 +36,8 @@ export async function POST(request: Request) {
       "Use minimal analogies - mostly facts with rare hobby-based comparisons.",
       "Use some analogies - balance facts with occasional hobby-based analogies.",
       "Use frequent analogies - explain most concepts using hobby-based analogies.",
-      "Use extensive analogies - almost every explanation should use hobby-based analogies.",
-      "Use only analogies - explain everything through hobby-based analogies exclusively.",
+      "Use extensive analogies with DIRECT MAPPING - show point-by-point correspondence between concept parts and analogy parts.",
+      "Use only analogies with DIRECT MAPPING - every concept maps to an analogy component.",
     ][analogyIntensity];
 
     const primarySubjectForFormulas = userContext?.subjects?.[0] || null;

@@ -48,8 +48,7 @@ const formatTime = (iso: string) => {
 
 export async function buildCalendarContext(supabase: AnySupabase, userId: string): Promise<string> {
   const now = new Date();
-  // Show events from 7 days ago through 90 days ahead so the AI has enough context
-  const from = new Date(now); from.setDate(from.getDate() - 7);
+  const from = new Date(now); from.setDate(from.getDate() - 90);
   const to   = new Date(now); to.setDate(to.getDate() + 90);
 
   // ── Fetch events ──────────────────────────────────────────────────────────
