@@ -78,8 +78,13 @@ export const pathMeta = (path: string): { label: string; emoji: string } => {
   if (path === "/subjects")     return { label: "My Subjects", emoji: "🎓" };
   if (path === "/calendar")     return { label: "Calendar",    emoji: "📅" };
   if (path === "/achievements") return { label: "Achievements",emoji: "🏆" };
+  if (path === "/study-guides") return { label: "Study Guides", emoji: "📘" };
   if (path.startsWith("/rooms/")) return { label: "Study Room", emoji: "👥" };
-  if (path.startsWith("/subjects/") && path.includes("/document/")) return { label: "Document", emoji: "📄" };
+  if (path.startsWith("/subjects/") && path.includes("/document/")) {
+    // Check if it's a study guide by looking at URL params or localStorage
+    // For now, use a default - actual detection happens when the document loads
+    return { label: "Document", emoji: "📄" };
+  }
   if (path.startsWith("/subjects/")) return { label: "Subject", emoji: "📖" };
   return { label: "Page", emoji: "📄" };
 };

@@ -1,4 +1,4 @@
-import type { GeneratedStudyGuide } from "@/services/groq";
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 export interface ServerDocumentRecord {
   id: string;
@@ -12,8 +12,6 @@ export interface ServerDocumentRecord {
   role?: string | null;
   icon?: string | null;
   cover?: string | null;
-  study_guide_markdown?: string | null;
-  study_guide_data?: GeneratedStudyGuide | null;
   created_at: string;
   updated_at: string;
   last_edited_by?: string | null;
@@ -32,12 +30,6 @@ export function mapServerDocument(row: Record<string, unknown>): ServerDocumentR
     role: row.role === "study-guide" ? "study-guide" : "notes",
     icon: typeof row.icon === "string" ? row.icon : null,
     cover: typeof row.cover === "string" ? row.cover : null,
-    study_guide_markdown:
-      typeof row.study_guide_markdown === "string" ? row.study_guide_markdown : null,
-    study_guide_data:
-      typeof row.study_guide_data === "object" && row.study_guide_data
-        ? (row.study_guide_data as GeneratedStudyGuide)
-        : null,
     created_at: String(row.created_at ?? new Date().toISOString()),
     updated_at: String(row.updated_at ?? new Date().toISOString()),
     last_edited_by: row.last_edited_by ? String(row.last_edited_by) : null,

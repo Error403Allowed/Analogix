@@ -6,7 +6,6 @@ import { BookOpen, FileText, Plus, ChevronRight } from "lucide-react";
 import { subjectStore } from "@/utils/subjectStore";
 import { SUBJECT_CATALOG } from "@/constants/subjects";
 import { cn } from "@/lib/utils";
-import { isStudyGuideDocument } from "@/lib/document-content";
 import { useTabs } from "@/context/TabsContext";
 
 interface DocEntry {
@@ -15,7 +14,6 @@ interface DocEntry {
   subjectLabel: string;
   title: string;
   lastUpdated: string;
-  isGuide: boolean;
 }
 
 export default function RecentDocs() {
@@ -47,7 +45,7 @@ export default function RecentDocs() {
               subjectLabel,
               title: doc.title || "Untitled",
               lastUpdated: doc.lastUpdated,
-              isGuide: isStudyGuideDocument(doc),
+              
             });
           });
         });
@@ -117,7 +115,7 @@ export default function RecentDocs() {
               key={doc.docId}
               onClick={() => {
                 // Open tab in TabsContext first
-                const icon = doc.isGuide ? "📘" : "📄";
+                const icon = "📄";
                 openTab(`/subjects/${doc.subjectId}/document/${doc.docId}`, doc.title, icon);
                 // Then navigate
                 router.push(`/subjects/${doc.subjectId}/document/${doc.docId}`);
@@ -128,16 +126,10 @@ export default function RecentDocs() {
               <div
                 className={cn(
                   "w-7 h-7 rounded-lg flex items-center justify-center shrink-0",
-                  doc.isGuide
-                    ? "bg-primary/15"
-                    : "bg-muted/60"
+                  "bg-muted/60"
                 )}
               >
-                {doc.isGuide ? (
-                  <BookOpen className="w-3.5 h-3.5 text-primary" />
-                ) : (
-                  <FileText className="w-3.5 h-3.5 text-muted-foreground" />
-                )}
+                <FileText className="w-3.5 h-3.5 text-muted-foreground" />
               </div>
 
               {/* Text */}

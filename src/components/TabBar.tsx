@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useRef, useState, useEffect, useCallback } from "react";
@@ -38,7 +39,7 @@ export default function TabBar({ onNavigate }: TabBarProps) {
   // ALL hooks must be declared before any early return
   const [newTabOpen, setNewTabOpen] = useState(false);
   const [showSubjectPicker, setShowSubjectPicker] = useState(false);
-  const [createMode, setCreateMode] = useState<"document" | "study-guide" | "flashcards" | "quiz" | null>(null);
+  const [createMode, setCreateMode] = useState<"document" | "flashcards" | "quiz" | null>(null);
   const [draggedTabId, setDraggedTabId] = useState<string | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
@@ -156,21 +157,6 @@ export default function TabBar({ onNavigate }: TabBarProps) {
     }
   };
 
-  const handleCreateStudyGuide = async (subjectId: string, title: string) => {
-    try {
-      const created = await subjectStore.createDocument(subjectId, title);
-      toast.success(`Study guide "${title}" created!`);
-      const url = `/subjects/${subjectId}/document/${created.id}`;
-      openTab(url, title, "📘");
-      router.push(url);
-      setNewTabOpen(false);
-      setShowSubjectPicker(false);
-    } catch (error) {
-      toast.error("Failed to create study guide");
-      console.error(error);
-    }
-  };
-
   const handleCreateFlashcards = async (subjectId: string, title: string) => {
     try {
       // For now, navigate to the flashcards page with the subject pre-selected
@@ -199,8 +185,8 @@ export default function TabBar({ onNavigate }: TabBarProps) {
 
   const handleOpenShortcut = (path: string) => {
     // Handle special "create" actions
-    if (path === "new-document" || path === "new-study-guide") {
-      setCreateMode(path === "new-document" ? "document" : "study-guide");
+    if (path === "new-document") {
+      setCreateMode("document");
       setShowSubjectPicker(true);
       setNewTabOpen(false);
       return;
@@ -409,7 +395,7 @@ export default function TabBar({ onNavigate }: TabBarProps) {
         </div>
       </div>
 
-      {/* Subject Picker Dialog for creating documents/study guides */}
+      {/* Subject Picker Dialog for creating documents */}
       <AnimatePresence>
         {showSubjectPicker && (
           <motion.div
@@ -430,8 +416,6 @@ export default function TabBar({ onNavigate }: TabBarProps) {
                 <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
                   {createMode === "document" ? (
                     <FileText className="w-5 h-5 text-primary" />
-                  ) : createMode === "study-guide" ? (
-                    <Sparkles className="w-5 h-5 text-primary" />
                   ) : createMode === "flashcards" ? (
                     <FileText className="w-5 h-5 text-primary" />
                   ) : (
@@ -442,8 +426,6 @@ export default function TabBar({ onNavigate }: TabBarProps) {
                   <h3 className="text-lg font-bold text-foreground">
                     {createMode === "document" 
                       ? "Create New Document" 
-                      : createMode === "study-guide"
-                      ? "Create AI Study Guide"
                       : createMode === "flashcards"
                       ? "Create Flashcards"
                       : "Create Quiz"}
@@ -451,8 +433,6 @@ export default function TabBar({ onNavigate }: TabBarProps) {
                   <p className="text-xs text-muted-foreground/60">
                     {createMode === "document"
                       ? "Start with a blank document in any subject"
-                      : createMode === "study-guide"
-                      ? "Generate a comprehensive study guide with AI"
                       : createMode === "flashcards"
                       ? "Create flashcards for a subject"
                       : "Create a quiz for a subject"}
@@ -465,8 +445,6 @@ export default function TabBar({ onNavigate }: TabBarProps) {
                 onSubmit={(subjectId, title) => {
                   if (createMode === "document") {
                     handleCreateDocument(subjectId, title);
-                  } else if (createMode === "study-guide") {
-                    handleCreateStudyGuide(subjectId, title);
                   } else if (createMode === "flashcards") {
                     handleCreateFlashcards(subjectId, title);
                   } else if (createMode === "quiz") {
@@ -492,7 +470,7 @@ function SubjectForm({
   onSubmit,
   onCancel,
 }: {
-  mode: "document" | "study-guide" | "flashcards" | "quiz";
+  mode: "document" | "flashcards" | "quiz";
   onSubmit: (subjectId: string, title: string) => void;
   onCancel: () => void;
 }) {
@@ -570,8 +548,6 @@ function SubjectForm({
           <Label className="text-xs font-semibold text-foreground/70">
             {mode === "document" 
               ? "Document Title" 
-              : mode === "study-guide"
-              ? "Study Guide Topic"
               : mode === "flashcards"
               ? "Flashcards Set Title"
               : "Quiz Title"}
@@ -582,8 +558,6 @@ function SubjectForm({
             placeholder={
               mode === "document" 
                 ? "e.g., Introduction to Algebra" 
-                : mode === "study-guide"
-                ? "e.g., Photosynthesis Basics"
                 : mode === "flashcards"
                 ? "e.g., Biology Terms"
                 : "e.g., Chemistry Quiz"
@@ -606,8 +580,6 @@ function SubjectForm({
         >
           {mode === "document" 
             ? "Create Document" 
-            : mode === "study-guide"
-            ? "Generate Study Guide"
             : mode === "flashcards"
             ? "Create Flashcards"
             : "Create Quiz"}

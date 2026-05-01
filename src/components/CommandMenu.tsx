@@ -19,11 +19,11 @@ export const NAV_SECTIONS = [
   {
     label: "Learn",
     items: [
-      { path: "/chat",       emoji: "💬", label: "AI Tutor",     desc: "Ask anything, get explained" },
-      { path: "/flashcards", emoji: "🃏", label: "Flashcards",   desc: "Review cards & spaced repetition" },
-      { path: "/quiz",       emoji: "📝", label: "Quiz Hub",     desc: "Test yourself with AI quizzes" },
-      { path: "/formulas",   emoji: "∑",  label: "Formulas",     desc: "Quick-access formula sheets" },
-      { path: "/resources",  emoji: "📚", label: "Resources",    desc: "Curated study links" },
+      { path: "/chat",         emoji: "💬", label: "AI Tutor",       desc: "Ask anything, get explained" },
+      { path: "/flashcards",   emoji: "🃏", label: "Flashcards",    desc: "Review cards & spaced repetition" },
+      { path: "/quiz",         emoji: "📝", label: "Quiz Hub",       desc: "Test yourself with AI quizzes" },
+      { path: "/formulas",     emoji: "∑",  label: "Formulas",      desc: "Quick-access formula sheets" },
+      { path: "/resources",    emoji: "📚", label: "Resources",     desc: "Curated study links" },
     ],
   },
   {
@@ -38,9 +38,9 @@ export const NAV_SECTIONS = [
   {
     label: "Create",
     items: [
-      { path: "new-document",   emoji: "📄", label: "New Document",   desc: "Create a blank document" },
-      { path: "new-flashcards", emoji: "🃏", label: "New Flashcards", desc: "Create flashcards for a subject" },
-      { path: "new-event",      emoji: "📅", label: "New Event",      desc: "Add a deadline or event" },
+      { path: "new-document",    emoji: "📄",  label: "New Document",    desc: "Create a blank document" },
+      { path: "new-flashcards",   emoji: "🃏",  label: "New Flashcards", desc: "Create flashcards for a subject" },
+      { path: "new-event",        emoji: "📅",  label: "New Event",       desc: "Add a deadline or event" },
     ],
   },
 ];
@@ -114,7 +114,7 @@ function DocItem({
   active?: boolean;
   onSelect: (path: string) => void;
 }) {
-  const icon = doc.icon || (doc.role === "study-guide" ? "📘" : "📄");
+  const icon = doc.icon || ("📄");
 
   return (
     <button
@@ -137,7 +137,6 @@ function DocItem({
         <p className="text-xs text-muted-foreground/50 leading-tight truncate mt-0.5 flex items-center gap-1">
           <span>{subjectEmoji}</span>
           <span>{subjectLabel}</span>
-          {doc.role === "study-guide" && <span className="text-[9px] uppercase font-bold tracking-wider text-primary/60">· Study Guide</span>}
         </p>
       </div>
       <ArrowRight className={cn(

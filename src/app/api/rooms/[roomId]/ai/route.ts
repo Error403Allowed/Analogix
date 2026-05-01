@@ -44,7 +44,6 @@ export async function POST(
                 contentText: document.content_text,
                 contentFormat: document.content_format,
                 role: document.role,
-                studyGuideData: document.study_guide_data,
               },
               420,
             );

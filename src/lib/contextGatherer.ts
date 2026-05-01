@@ -50,7 +50,7 @@ export async function gatherAppContext(path?: string, options: ContextOptions = 
     if (userPrefs.state) profileParts.push(`State: ${userPrefs.state}`);
     if (userPrefs.hobbies?.length) profileParts.push(`Interests/hobbies: ${userPrefs.hobbies.join(", ")}`);
     if (profileParts.length) {
-      // @ts-ignore
+      // @ts-expect-error - profileSummary is dynamically added to context
       context._profileSummary = profileParts.join(", ");
     }
 

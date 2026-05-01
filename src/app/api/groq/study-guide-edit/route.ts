@@ -29,9 +29,11 @@ function applyPatch(
       else if (typeof node === "object") (node as Record<string, unknown>)[lastKey] = edit.value;
     } else if (edit.op === "add") {
       if (Array.isArray(node)) {
-        lastKey === "-"
-          ? (node as unknown[]).push(edit.value)
-          : (node as unknown[]).splice(Number(lastKey), 0, edit.value);
+        if (lastKey === "-") {
+          (node as unknown[]).push(edit.value);
+        } else {
+          (node as unknown[]).splice(Number(lastKey), 0, edit.value);
+        }
       } else if (typeof node === "object") {
         (node as Record<string, unknown>)[lastKey] = edit.value;
       }

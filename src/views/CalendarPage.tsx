@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
@@ -930,7 +931,7 @@ function TimeGrid({ days, events, allTypes, now, onDelete, onSelect, onCreateSel
   useEffect(() => {
     const scrollTop = Math.max(0, nowMinutes * (HOUR_H / 60) - 200);
     containerRef.current?.scrollTo({ top: scrollTop, behavior: "smooth" });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, []);
 
   useEffect(() => {

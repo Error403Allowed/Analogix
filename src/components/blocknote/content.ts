@@ -1,7 +1,4 @@
 import { BlockNoteEditor as CoreBlockNoteEditor } from "@blocknote/core";
-import type { GeneratedStudyGuide } from "@/services/groq";
-import { studyGuideToHtml } from "@/utils/studyGuideHtml";
-import { decodeStudyGuide } from "@/utils/studyGuideContent";
 import {
   createBlockNoteEditorSchema,
   type BlockNoteEditorBlock,
@@ -60,10 +57,56 @@ export function htmlToPlainBlocks(html: string): BlockNoteEditorPartialBlock[] |
 
 const looksLikeHtml = (raw: string) => /<\/?[a-z][\s\S]*>/i.test(raw);
 
-const renderStudyGuide = (raw: string): string => {
-  const guide = decodeStudyGuide(raw);
-  return guide ? studyGuideToHtml(guide as GeneratedStudyGuide) : raw;
-};
+// Convert LaTeX to BlockNote math blocks
+function preprocessLatexToBlocks(raw: string): BlockNoteEditorPartialBlock[] {
+  const blocks: BlockNoteEditorPartialBlock[] = [];
+  const remaining = raw;
+  
+  // Match display math $$...$$ and inline $...$
+  const mathRegex = /\$\$([\s\S]*?)\$\$|\$([^\n]+?)\$/g;
+  let lastIndex = 0;
+  let match;
+  
+  while ((match = mathRegex.exec(remaining)) !== null) {
+    // Add text before the match
+    const textBefore = remaining.slice(lastIndex, match.index).trim();
+    if (textBefore) {
+      const textBlocks = textBefore.split(/\n{2,}/).filter(Boolean).map((para) => ({
+        type: "paragraph" as const,
+        content: [{ type: "text" as const, text: para.trim(), styles: {} as Record<string, unknown> }],
+      }));
+      blocks.push(...textBlocks);
+    }
+    
+    // Add math block - $$ is display mode, $ is inline
+    const formula = (match[1] || match[2] || "").trim();
+    if (formula) {
+      blocks.push({
+        type: "math",
+        props: { formula },
+      });
+    }
+    
+    lastIndex = match.index + match[0].length;
+  }
+  
+  // Add remaining text after last match
+  const textAfter = remaining.slice(lastIndex).trim();
+  if (textAfter) {
+    const textBlocks = textAfter.split(/\n{2,}/).filter(Boolean).map((para) => ({
+      type: "paragraph" as const,
+      content: [{ type: "text" as const, text: para.trim(), styles: {} as any }],
+    }));
+    blocks.push(...textBlocks);
+  }
+  
+  return blocks.length > 0 ? blocks : [];
+}
+
+// Check if string contains LaTeX
+function containsLatex(raw: string): boolean {
+  return /\$\$[\s\S]*?\$\$|\$[^\n]+?\$/.test(raw);
+}
 
 export function createBlockNoteContentParser() {
   const parser = CoreBlockNoteEditor.create({
@@ -75,7 +118,13 @@ export function createBlockNoteContentParser() {
       if (!raw?.trim()) return undefined;
       if (isBNContent(raw)) return parseBNBlocks(raw);
 
-      const rendered = renderStudyGuide(raw).trim();
+      // Check for LaTeX and convert to math blocks
+      if (containsLatex(raw)) {
+        const latexBlocks = preprocessLatexToBlocks(raw);
+        if (latexBlocks.length > 0) return latexBlocks;
+      }
+
+      const rendered = raw.trim();
 
       try {
         if (looksLikeHtml(rendered)) {

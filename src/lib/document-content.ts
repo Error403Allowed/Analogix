@@ -1,10 +1,9 @@
-import type { GeneratedStudyGuide } from "@/services/groq";
-import { decodeStudyGuide, STUDY_GUIDE_V2_PREFIX } from "@/utils/studyGuideContent";
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 export const TIPTAP_CONTENT_FORMAT = "tiptap-json-v1";
 export const BLOCKNOTE_CONTENT_FORMAT = "blocknote-json-v1";
 
-export type DocumentRole = "notes" | "study-guide";
+export type DocumentRole = "notes" | "flashcard" | "quiz";
 
 export interface DocumentContentLike {
   content?: string | null;
@@ -12,7 +11,6 @@ export interface DocumentContentLike {
   contentText?: string | null;
   contentFormat?: string | null;
   role?: string | null;
-  studyGuideData?: GeneratedStudyGuide | null;
 }
 
 export const EMPTY_TIPTAP_DOC: any = {
@@ -62,9 +60,6 @@ export const stripHtml = (value: string) =>
       .replace(/&quot;/g, '"')
       .replace(/&#39;/g, "'"),
   );
-
-export const isLegacyStudyGuideContent = (value?: string | null) =>
-  typeof value === "string" && value.startsWith(STUDY_GUIDE_V2_PREFIX);
 
 export const parseTipTapContentJson = (value?: string | null): any | null => {
   if (typeof value !== "string" || !value.trim()) return null;
@@ -147,69 +142,11 @@ export const blockNoteToPlainText = (content: string | null | undefined) => {
   }
 };
 
-export const studyGuideToPlainText = (guide: GeneratedStudyGuide) => {
-  const parts: string[] = [];
-
-  if (guide.title) parts.push(guide.title);
-  if (guide.overview) parts.push(guide.overview);
-  if (guide.assessmentType) parts.push(`Assessment type: ${guide.assessmentType}`);
-  if (guide.assessmentDate) parts.push(`Assessment date: ${guide.assessmentDate}`);
-  if (guide.keyPoints?.length) parts.push(`Key points:\n${guide.keyPoints.map((item) => `- ${item}`).join("\n")}`);
-  if (guide.topics?.length) parts.push(`Topics:\n${guide.topics.map((item) => `- ${item}`).join("\n")}`);
-  if (guide.requiredMaterials?.length) {
-    parts.push(`Required materials:\n${guide.requiredMaterials.map((item) => `- ${item}`).join("\n")}`);
-  }
-  if (guide.keyConcepts?.length) {
-    parts.push(
-      `Key concepts:\n${guide.keyConcepts
-        .map((concept) => `- ${concept.title}: ${concept.content}`)
-        .join("\n")}`,
-    );
-  }
-  if (guide.studySchedule?.length) {
-    parts.push(
-      `Study schedule:\n${guide.studySchedule
-        .map((week) => `Week ${week.week} ${week.label}: ${week.tasks.join("; ")}`)
-        .join("\n")}`,
-    );
-  }
-  if (guide.practiceQuestions?.length) {
-    parts.push(
-      `Practice questions:\n${guide.practiceQuestions
-        .map((question, index) => `${index + 1}. ${question.question}\nAnswer: ${question.answer}`)
-        .join("\n\n")}`,
-    );
-  }
-  if (guide.resources?.length) parts.push(`Resources:\n${guide.resources.map((item) => `- ${item}`).join("\n")}`);
-  if (guide.tips?.length) parts.push(`Study tips:\n${guide.tips.map((item) => `- ${item}`).join("\n")}`);
-  if (guide.commonMistakes?.length) {
-    parts.push(`Common mistakes:\n${guide.commonMistakes.map((item) => `- ${item}`).join("\n")}`);
-  }
-  if (guide.glossary?.length) {
-    parts.push(
-      `Glossary:\n${guide.glossary.map((entry) => `- ${entry.term}: ${entry.definition}`).join("\n")}`,
-    );
-  }
-
-  return normaliseWhitespace(parts.join("\n\n"));
-};
-
-export const isStudyGuideDocument = (document: DocumentContentLike | null | undefined) => {
-  if (!document) return false;
-  if (document.role === "study-guide") return true;
-  if (document.studyGuideData) return true;
-  return isLegacyStudyGuideContent(document.content);
-};
-
 export const getDocumentPlainText = (document: DocumentContentLike | null | undefined) => {
   if (!document) return "";
 
   if (typeof document.contentText === "string" && document.contentText.trim()) {
     return normaliseWhitespace(document.contentText);
-  }
-
-  if (document.studyGuideData) {
-    return studyGuideToPlainText(document.studyGuideData);
   }
 
   if (typeof document.content === "string" && document.content.startsWith("__BN__")) {
@@ -222,11 +159,6 @@ export const getDocumentPlainText = (document: DocumentContentLike | null | unde
 
   if (tiptapContent) {
     return tiptapJsonToPlainText(tiptapContent);
-  }
-
-  if (isLegacyStudyGuideContent(document.content)) {
-    const guide = decodeStudyGuide(document.content || "");
-    return guide ? studyGuideToPlainText(guide) : "";
   }
 
   if (typeof document.content === "string" && document.content.trim()) {

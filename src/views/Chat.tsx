@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 "use client";
 
 import { useState, useRef, useEffect, useCallback, useMemo, memo } from "react";
@@ -37,7 +38,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { getGroqCompletion, getGroqStream, getReExplanation, generateFlashcards, generateStudyGuide, type GeneratedStudyGuide, generateQuizFromDocument, generateFlashcardsFromDocument } from "@/services/groq";
+import { getGroqCompletion, getGroqStream, getReExplanation, generateFlashcards, generateQuizFromDocument, generateFlashcardsFromDocument } from "@/services/groq";
 import { searchAcademicSources } from "@/services/research";
 import { flashcardStore } from "@/utils/flashcardStore";
 import { statsStore } from "@/utils/statsStore";
@@ -741,7 +742,7 @@ const Chat = () => {
         })));
       }
     })();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [buildWelcomeMessage]);
 
   // LOAD ALL SESSIONS: Fetch the user's chat history on mount, and refresh on focus
@@ -920,24 +921,29 @@ const Chat = () => {
 
   // Generate study guide from attached files — redirect to full loading page
   const handleGenerateStudyGuide = useCallback(async () => {
-    if (!selectedSubject || attachedFiles.length === 0 || generatingStudyGuide) return;
+    if (attachedFiles.length === 0 || generatingStudyGuide) return;
+
+    // Use selectedSubject or fallback to first user subject
+    const subjectToUse = selectedSubject || userSubjects[0] || "general";
+    const subject = SUBJECT_CATALOG.find(s => s.id === subjectToUse);
 
     const combinedText = attachedFiles
       .map(f => `File: ${f.name}\n\n${f.extractedText}`)
       .join("\n\n---\n\n");
 
-    const subject = SUBJECT_CATALOG.find(s => s.id === selectedSubject);
     const fileName = attachedFiles.map(f => f.name).join(", ");
 
-    sessionStorage.setItem("studyGuideJob", JSON.stringify({
-      assessmentText: combinedText,
-      fileName,
-      subjectId: selectedSubject,
-      grade: userPrefs.grade,
-    }));
-
+    // Store in both sessionStorage and localStorage as backup
+    const studyGuideData = {
+      text: combinedText,
+      file: fileName,
+      subject: subjectToUse,
+      grade: userPrefs.grade || "",
+    };
+    sessionStorage.setItem("pendingStudyGuide", JSON.stringify(studyGuideData));
+    localStorage.setItem("pendingStudyGuide", JSON.stringify(studyGuideData));
     router.push("/study-guide-loading");
-  }, [selectedSubject, attachedFiles, generatingStudyGuide, userPrefs.grade, router]);
+  }, [selectedSubject, attachedFiles, generatingStudyGuide, userPrefs.grade, userSubjects, router]);
 
   // Generate quiz from attached files
   const handleGenerateQuiz = useCallback(async () => {

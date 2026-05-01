@@ -27,8 +27,9 @@ export async function POST(request: Request) {
       estimatedDurationSeconds: Math.ceil(text.split(/\s+/).length / 150 * 60),
     });
 
-  } catch (error: any) {
-    console.error("[/api/tts/speak] Error:", error.message);
-    return NextResponse.json({ error: error.message || "TTS service unavailable" }, { status: 500 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    console.error("[/api/tts/speak] Error:", message);
+    return NextResponse.json({ error: message || "TTS service unavailable" }, { status: 500 });
   }
 }

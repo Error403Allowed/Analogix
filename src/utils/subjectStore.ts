@@ -1,8 +1,8 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
 import type { SubjectColorId } from "@/components/ColorPicker";
-import type { GeneratedStudyGuide } from "@/services/groq";
 import {
   EMPTY_TIPTAP_DOC,
   TIPTAP_CONTENT_FORMAT,
@@ -71,8 +71,8 @@ export interface SubjectDocumentItem {
   contentText?: string;
   contentFormat?: string;
   role?: DocumentRole;
-  studyGuideMarkdown?: string | null;
-  studyGuideData?: GeneratedStudyGuide | null;
+  
+  
   createdAt: string;
   lastUpdated: string;
 }
@@ -122,8 +122,8 @@ interface DocumentRow {
   role?: string | null;
   icon?: string | null;
   cover?: string | null;
-  study_guide_markdown?: string | null;
-  study_guide_data?: GeneratedStudyGuide | null;
+  
+  
   created_at: string;
   updated_at: string;
   last_edited_by?: string | null;
@@ -154,11 +154,7 @@ const normalizeLegacyDocuments = (subjectId: string, notes: SubjectNotes | undef
       contentJson: typeof doc?.contentJson === "string" ? doc.contentJson : undefined,
       contentText: typeof doc?.contentText === "string" ? doc.contentText : undefined,
       contentFormat: typeof doc?.contentFormat === "string" ? doc.contentFormat : undefined,
-      role: doc?.role === "study-guide" ? "study-guide" : "notes",
-      studyGuideMarkdown: typeof doc?.studyGuideMarkdown === "string" ? doc.studyGuideMarkdown : undefined,
-      studyGuideData: typeof doc?.studyGuideData === "object" && doc.studyGuideData
-        ? (doc.studyGuideData as GeneratedStudyGuide)
-        : undefined,
+      role: "notes",
       createdAt: doc?.createdAt || notes.lastUpdated,
       lastUpdated: doc?.lastUpdated || notes.lastUpdated,
     }));
@@ -188,13 +184,7 @@ const normalizeDocumentRow = (doc: Partial<DocumentRow>): SubjectDocumentItem =>
   contentJson: typeof doc.content_json === "string" ? doc.content_json : undefined,
   contentText: typeof doc.content_text === "string" ? doc.content_text : undefined,
   contentFormat: typeof doc.content_format === "string" ? doc.content_format : undefined,
-  role: doc.role === "study-guide" ? "study-guide" : "notes",
-  studyGuideMarkdown:
-    typeof doc.study_guide_markdown === "string" ? doc.study_guide_markdown : undefined,
-  studyGuideData:
-    typeof doc.study_guide_data === "object" && doc.study_guide_data
-      ? (doc.study_guide_data as GeneratedStudyGuide)
-      : undefined,
+  role: "notes",
   createdAt: typeof doc.created_at === "string" ? doc.created_at : new Date().toISOString(),
   lastUpdated: typeof doc.updated_at === "string" ? doc.updated_at : new Date().toISOString(),
 });
@@ -432,8 +422,6 @@ export const subjectStore = {
     if (updates.role !== undefined) payload.role = updates.role;
     if (updates.icon !== undefined) payload.icon = updates.icon;
     if (updates.cover !== undefined) payload.cover = updates.cover;
-    if (updates.studyGuideMarkdown !== undefined) payload.study_guide_markdown = updates.studyGuideMarkdown;
-    if (updates.studyGuideData !== undefined) payload.study_guide_data = updates.studyGuideData;
 
     const { error } = await supabase
       .from("documents")
@@ -485,8 +473,6 @@ export const subjectStore = {
         role: target.role ?? "notes",
         icon: target.icon ?? null,
         cover: target.cover ?? null,
-        study_guide_markdown: target.studyGuideMarkdown ?? null,
-        study_guide_data: target.studyGuideData ?? null,
         created_at: now,
         updated_at: now,
         last_edited_by: user.id,

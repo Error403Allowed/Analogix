@@ -32,15 +32,48 @@ const isAcademic = (source: ResearchSource): boolean => {
   return Boolean(source.year);
 };
 
+interface OpenAlexAuthor {
+  author?: {
+    display_name?: string;
+  };
+}
+
+interface OpenAlexWork {
+  id?: string;
+  display_name?: string;
+  doi?: string;
+  publication_year?: number;
+  abstract_inverted_index?: Record<string, number[]>;
+  open_access?: { oa_url?: string; is_oa?: boolean };
+  primary_location?: { landing_page_url?: string };
+  host_venue?: { display_name?: string };
+  authorships?: OpenAlexAuthor[];
+}
+
+interface CrossrefAuthor {
+  given?: string;
+  family?: string;
+}
+
+interface CrossrefItem {
+  DOI?: string;
+  URL?: string;
+  title?: string | string[];
+  author?: CrossrefAuthor[];
+  issued?: { "date-parts"?: number[][] };
+  abstract?: string;
+  "container-title"?: string | string[];
+}
+
 const fetchOpenAlex = async (query: string, limit: number): Promise<ResearchSource[]> => {
   const url = `https://api.openalex.org/works?search=${encodeURIComponent(query)}&per-page=${limit}`;
   const res = await fetch(url);
   if (!res.ok) return [];
   const data = await res.json();
   const results = Array.isArray(data?.results) ? data.results : [];
-  return results.map((item: any) => {
+  return results.map((item: OpenAlexWork) => {
     const authors = Array.isArray(item.authorships)
-      ? item.authorships.map((a: any) => a?.author?.display_name).filter(Boolean)
+      ? item.authorships.map((a: OpenAlexAuthor) => a?.author?.display_name).filter((x): x is string => Boolean(x))
       : [];
     const abstract = item.abstract_inverted_index
       ? invertedIndexToText(item.abstract_inverted_index)
@@ -68,10 +101,10 @@ const fetchCrossref = async (query: string, limit: number): Promise<ResearchSour
   if (!res.ok) return [];
   const data = await res.json();
   const items = Array.isArray(data?.message?.items) ? data.message.items : [];
-  return items.map((item: any) => {
+  return items.map((item: CrossrefItem) => {
     const title = Array.isArray(item.title) ? item.title[0] : item.title;
     const authors = Array.isArray(item.author)
-      ? item.author.map((a: any) => [a.given, a.family].filter(Boolean).join(" ")).filter(Boolean)
+      ? item.author.map((a: CrossrefAuthor) => [a.given, a.family].filter(Boolean).join(" ")).filter((x): x is string => Boolean(x))
       : [];
     const year = Array.isArray(item.issued?.["date-parts"]) ? item.issued["date-parts"][0]?.[0] : undefined;
     const abstract = item.abstract ? stripHtml(item.abstract) : "";
@@ -91,15 +124,32 @@ const fetchCrossref = async (query: string, limit: number): Promise<ResearchSour
   }).filter(isAcademic);
 };
 
+interface SemanticScholarAuthor {
+  name?: string;
+}
+
+interface SemanticScholarWork {
+  paperId?: string;
+  title?: string;
+  url?: string;
+  authors?: SemanticScholarAuthor[];
+  year?: number;
+  abstract?: string;
+  venue?: string;
+  externalIds?: { DOI?: string };
+  isOpenAccess?: boolean;
+  openAccessPdf?: { url?: string };
+}
+
 const fetchSemanticScholar = async (query: string, limit: number): Promise<ResearchSource[]> => {
   const url = `https://api.semanticscholar.org/graph/v1/paper/search?query=${encodeURIComponent(query)}&limit=${limit}&fields=title,authors,year,abstract,url,venue,externalIds,isOpenAccess,openAccessPdf`;
   const res = await fetch(url);
   if (!res.ok) return [];
   const data = await res.json();
   const items = Array.isArray(data?.data) ? data.data : [];
-  return items.map((item: any) => {
+  return items.map((item: SemanticScholarWork) => {
     const authors = Array.isArray(item.authors)
-      ? item.authors.map((a: any) => a?.name).filter(Boolean)
+      ? item.authors.map((a: SemanticScholarAuthor) => a?.name).filter((x): x is string => Boolean(x))
       : [];
     return {
       id: String(item.paperId || item.externalIds?.DOI || item.url || Math.random()),

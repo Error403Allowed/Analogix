@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { callGroqChat, formatError, classifyTaskType } from "../_utils";
 import type { ChatMessage, UserContext } from "@/types/chat";
+import type { AIPersonality, AIMemoryFragment } from "@/types/ai-personality";
 import { getFormulaSheetContext } from "@/data/formulaSheets";
 import { createClient } from "@/lib/supabase/server";
 import { 
@@ -52,7 +53,7 @@ export async function POST(request: Request) {
 
       // Merge client personality over DB personality (client wins)
       if (clientPersonality) {
-        aiPersonality = { ...(aiPersonality as any), ...(clientPersonality as any) };
+        aiPersonality = { ...(aiPersonality as AIPersonality | null), ...(clientPersonality as AIPersonality) };
       }
 
       // Fetch relevant memories (only important ones, >0.5 importance)
@@ -66,9 +67,9 @@ export async function POST(request: Request) {
     } else {
       // Fallback: Check for localStorage data passed from client
       // (for localhost development without auth)
-      if (clientPersonality) aiPersonality = clientPersonality as any;
+      if (clientPersonality) aiPersonality = clientPersonality as AIPersonality;
       if (clientMemories && Array.isArray(clientMemories)) {
-        memoryContext = buildMemoryContext(clientMemories as any, []);
+        memoryContext = buildMemoryContext(clientMemories as AIMemoryFragment[], []);
       }
     }
 
@@ -86,8 +87,8 @@ export async function POST(request: Request) {
 
     // How much should the AI use analogies? 
     // Personality setting OVERRIDES the UI slider - this is critical
-    const personalityUseAnalogies = (aiPersonality as any)?.use_analogies;
-    const personalityAnalogyFreq = (aiPersonality as any)?.analogy_frequency ?? 3;
+    const personalityUseAnalogies = aiPersonality?.use_analogies;
+    const personalityAnalogyFreq = aiPersonality?.analogy_frequency ?? 3;
     
     // If personality explicitly disables analogies, force intensity to 0
     let analogyIntensity = userContext?.analogyIntensity ?? 1;
@@ -141,7 +142,7 @@ export async function POST(request: Request) {
       : "";
 
 // Instructions for how long responses should be - respect user's detail_level setting
-    const userDetailLevel = (aiPersonality as any)?.detail_level ?? 50;
+    const userDetailLevel = aiPersonality?.detail_level ?? 50;
     let targetResponseLength = "moderate";
     let maxWords = 200;
     
@@ -168,7 +169,7 @@ export async function POST(request: Request) {
     const researchMode = Boolean(userContext?.researchMode);
 
     // Token budget — respect user's detail_level preference
-    const detailLevel = (aiPersonality as any)?.detail_level ?? 50;
+    const detailLevel = aiPersonality?.detail_level ?? 50;
     let maxTokens = 1500; // Default
     
     if (researchMode) {

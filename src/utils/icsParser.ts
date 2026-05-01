@@ -14,10 +14,11 @@ export const parseICS = async (file: File): Promise<AppEvent[]> => {
 
         const academicKeywords = ["exam", "assessment", "quiz", "test", "midterm", "final"];
         const assignmentKeywords = ["assignment", "project", "deadline", "paper", "presentation", "lab", "due"];
+        const classKeywords = ["class", "lesson", "lecture", "tutorial", "workshop", "seminar"];
 
         const now = new Date();
         const rangeStartJs = new Date(now);
-        rangeStartJs.setDate(rangeStartJs.getDate() - 30);
+        rangeStartJs.setDate(rangeStartJs.getDate() - 90);
         const rangeEndJs = new Date(now);
         rangeEndJs.setDate(rangeEndJs.getDate() + 365);
         const rangeStart = ICAL.Time.fromJSDate(rangeStartJs, false);
@@ -35,6 +36,7 @@ export const parseICS = async (file: File): Promise<AppEvent[]> => {
           const combined = (title + " " + description).toLowerCase();
           const isExam = academicKeywords.some((kw) => combined.includes(kw));
           const isAssignment = assignmentKeywords.some((kw) => combined.includes(kw));
+          const isClass = classKeywords.some((kw) => combined.includes(kw));
           const jsDate = startTime.toJSDate();
           const jsEndDate = endTime?.toJSDate();
           if (jsDate < rangeStartJs || jsDate > rangeEndJs) return;
@@ -50,7 +52,7 @@ export const parseICS = async (file: File): Promise<AppEvent[]> => {
               jsEndDate && jsEndDate.getTime() > jsDate.getTime()
                 ? jsEndDate
                 : undefined,
-            type: isExam ? "exam" : isAssignment ? "assignment" : "event",
+            type: isExam ? "exam" : isAssignment ? "assignment" : isClass ? "class" : "event",
             description: description || "Imported from calendar",
             source: "import",
           });

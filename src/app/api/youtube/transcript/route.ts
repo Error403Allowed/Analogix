@@ -37,8 +37,9 @@ export async function POST(request: Request) {
       description: videoInfo?.description,
     });
 
-  } catch (error: any) {
-    console.error("[/api/youtube/transcript] Error:", error.message);
-    return NextResponse.json({ error: error.message || "Failed to fetch YouTube transcript" }, { status: 500 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    console.error("[/api/youtube/transcript] Error:", message);
+    return NextResponse.json({ error: message || "Failed to fetch YouTube transcript" }, { status: 500 });
   }
 }

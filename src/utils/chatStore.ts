@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { createClient } from "@/lib/supabase/client";
 import { getAuthUser } from "./authCache";
 
@@ -72,7 +73,6 @@ export const chatStore = {
       .maybeSingle();
 
     if (!session) {
-      console.warn("[chatStore] addMessage: session not found or doesn't belong to user:", sessionId);
       return;
     }
 

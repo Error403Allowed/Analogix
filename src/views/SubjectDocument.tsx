@@ -1,10 +1,12 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useCallback, useEffect, useRef, useState, useMemo } from "react";
 import dynamic from "next/dynamic";
 import { useParams, useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { toast } from "sonner";
+import { motion, AnimatePresence } from "framer-motion";
+
 import {
   ArrowLeft,
   BookOpenText,
@@ -18,6 +20,7 @@ import {
   MoreHorizontal,
   ChevronRight,
   Plus,
+  RotateCcw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -31,8 +34,8 @@ import { SUBJECT_CATALOG } from "@/constants/subjects";
 import { useTabs } from "@/context/TabsContext";
 import { useTextToSpeech } from "@/hooks/useTextToSpeech";
 import { subjectStore } from "@/utils/subjectStore";
-import type { GeneratedStudyGuide } from "@/services/groq";
-import { generateStudyGuide } from "@/services/groq";
+import { buildInterestList } from "@/utils/interests";
+
 import type { BlockNoteHandle } from "@/components/BlockNoteEditor";
 import {
   BN_PREFIX,
@@ -47,11 +50,8 @@ import {
 } from "@/components/blocknote/schema";
 import {
   getDocumentPlainText,
-  isStudyGuideDocument,
   type DocumentRole,
 } from "@/lib/document-content";
-import { pickStudyGuideTitle } from "@/utils/studyGuideGeneration";
-import { studyGuideToMarkdown } from "@/utils/studyGuideMarkdown";
 import { EmojiPicker } from "@/components/EmojiPicker";
 import { ShareToRoomDialog } from "@/components/ShareToRoomDialog";
 
@@ -131,8 +131,8 @@ export default function SubjectDocument() {
   const [title, setTitle] = useState("");
   const [initialContent, setInitialContent] = useState<string | null>(null);
   const [documentRole, setDocumentRole] = useState<DocumentRole>("notes");
-  const [studyGuideData, setStudyGuideData] = useState<GeneratedStudyGuide | null>(null);
-  const [studyGuideMarkdown, setStudyGuideMarkdown] = useState<string | null>(null);
+  
+  
   const [icon, setIcon] = useState<string | null>(null);
   const [cover, setCover] = useState<string | null>(null);
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
@@ -140,28 +140,80 @@ export default function SubjectDocument() {
 
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<string | null>(null);
+  const [canRevert, setCanRevert] = useState(false);
+  const [isReverting, setIsReverting] = useState(false);
   const [docMissing, setDocMissing] = useState(false);
   const [stats, setStats] = useState({ text: "", words: 0, characters: 0 });
   const [sidebarBusy, setSidebarBusy] = useState<string | null>(null);
   const [customInstruction, setCustomInstruction] = useState("");
-  const [userGrade] = useState<string | undefined>(() => {
-    try {
-      const preferences = JSON.parse(localStorage.getItem("userPreferences") || "{}");
-      return typeof preferences.grade === "string" ? preferences.grade : undefined;
-    } catch {
-      return undefined;
-    }
-  });
+   const [userGrade] = useState<string | undefined>(() => {
+     try {
+       const preferences = JSON.parse(localStorage.getItem("userPreferences") || "{}");
+       return typeof preferences.grade === "string" ? preferences.grade : undefined;
+     } catch {
+       return undefined;
+     }
+   });
+   
+   const [userHobbies] = useState<string[]>(() => {
+     try {
+       const preferences = JSON.parse(localStorage.getItem("userPreferences") || "{}");
+       return buildInterestList(preferences, []);
+     } catch {
+       return [];
+     }
+   });
 
   const { updateTabLabelByPath } = useTabs();
   const { isSpeaking, isPaused, supported: ttsOk, speak, pause, resume, stop } = useTextToSpeech();
+
+  const loadDocument = useCallback(async (external = false) => {
+    const data = await subjectStore.getSubject(subjectId);
+    if (!data) return;
+
+    const document = (data.notes.documents || []).find((entry) => entry.id === docId);
+    if (!document) {
+      setDocMissing(true);
+      return;
+    }
+
+    const content = document.content || "";
+    const role: DocumentRole = "notes";
+    const remoteKey = content;
+
+    if (external && remoteKey === remoteVersionRef.current && document.title === lastSavedRef.current.title) {
+      return;
+    }
+
+    remoteVersionRef.current = remoteKey;
+    lastSavedRef.current = { title: document.title || "", content };
+    latestContentRef.current = content;
+    setTitle(document.title || "");
+    setIcon(document.icon || null);
+    setCover(document.cover || null);
+    setInitialContent(content);
+    setDocumentRole(role);
+    
+    
+    
+    const plainText = getDocumentPlainText(document);
+    setStats({
+      text: plainText,
+      words: wordCount(plainText),
+      characters: plainText.length,
+    });
+    setLastSaved(document.lastUpdated || null);
+    setDocMissing(false);
+
+    if (document.title) {
+      updateTabLabelByPath(`/subjects/${subjectId}/document/${docId}`, document.title, document.icon || ("📄"));
+    }
+  }, [subjectId, docId, updateTabLabelByPath]);
 
   const queueSave = useCallback(async (
     nextContent: string,
     nextTitle: string,
     role = documentRole,
-    guideData = studyGuideData,
-    guideMarkdown = studyGuideMarkdown,
   ) => {
     if (nextContent === lastSavedRef.current.content && nextTitle === lastSavedRef.current.title) {
       setIsSaving(false);
@@ -180,8 +232,6 @@ export default function SubjectDocument() {
         title: nextTitle,
         content: nextContent,
         role,
-        studyGuideMarkdown: role === "study-guide" ? guideMarkdown ?? null : null,
-        studyGuideData: role === "study-guide" ? guideData ?? null : null,
       });
 
       lastSavedRef.current = { title: nextTitle, content: nextContent };
@@ -189,73 +239,68 @@ export default function SubjectDocument() {
       setIsSaving(false);
       setLastSaved(new Date().toISOString());
     }, 850);
-  }, [docId, documentRole, studyGuideData, studyGuideMarkdown, subjectId]);
+  }, [docId, documentRole, subjectId]);
 
 
 
   useEffect(() => {
-    let active = true;
+    loadDocument(false);
 
-    const load = async (external = false) => {
-      const data = await subjectStore.getSubject(subjectId);
-      if (!active) return;
-
-      const document = (data.notes.documents || []).find((entry) => entry.id === docId);
-      if (!document) {
-        setDocMissing(true);
-        return;
-      }
-
-      const content = document.content || "";
-      const role: DocumentRole = isStudyGuideDocument(document) ? "study-guide" : "notes";
-      const remoteKey = content;
-
-      if (external && remoteKey === remoteVersionRef.current && document.title === lastSavedRef.current.title) {
-        return;
-      }
-
-      remoteVersionRef.current = remoteKey;
-      lastSavedRef.current = { title: document.title || "", content };
-      latestContentRef.current = content;
-      setTitle(document.title || "");
-      setIcon(document.icon || null);
-      setCover(document.cover || null);
-      setInitialContent(content);
-      setDocumentRole(role);
-      setStudyGuideData(document.studyGuideData || null);
-      setStudyGuideMarkdown(document.studyGuideMarkdown || null);
-      
-      const plainText = getDocumentPlainText(document);
-      setStats({
-        text: plainText,
-        words: wordCount(plainText),
-        characters: plainText.length,
-      });
-      setLastSaved(document.lastUpdated || null);
-      setDocMissing(false);
-
-      if (document.title) {
-        updateTabLabelByPath(`/subjects/${subjectId}/document/${docId}`, document.title, document.icon || (role === "study-guide" ? "📘" : "📄"));
-      }
-    };
-
-    load(false);
+    // Check revert status
+    fetch(`/api/documents/revert`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ documentId: docId, action: "status" }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        setCanRevert(data.canRevert === true);
+      })
+      .catch(() => {});
 
     const handler = (event: Event) => {
       const detail = (event as CustomEvent<SubjectDataUpdatedDetail>).detail;
       if (detail?.results?.some((result) => result.success && result.docId === docId)) {
-        load(true);
+        loadDocument(true);
         return;
       }
-      load(true);
+      loadDocument(true);
     };
 
     window.addEventListener("subjectDataUpdated", handler);
     return () => {
-      active = false;
       window.removeEventListener("subjectDataUpdated", handler);
     };
-  }, [docId, subjectId, updateTabLabelByPath]);
+  }, [docId, subjectId, loadDocument]);
+
+  const handleRevert = useCallback(async () => {
+    if (!canRevert || isReverting) return;
+    
+    const confirmed = window.confirm("Revert to the previous version? This will undo your latest changes.");
+    if (!confirmed) return;
+    
+    setIsReverting(true);
+    try {
+      const res = await fetch(`/api/documents/revert`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ documentId: docId, action: "revert" }),
+      });
+      
+      const data = await res.json();
+      if (data.success) {
+        toast.success("Document reverted to previous version");
+        setCanRevert(false);
+        loadDocument(true);
+      } else {
+        toast.error(data.error || "Failed to revert");
+      }
+    } catch {
+      toast.error("Failed to revert");
+    } finally {
+      setIsReverting(false);
+    }
+  }, [docId, canRevert, isReverting, loadDocument]);
 
   useEffect(() => {
     if (initialContent === null) return;
@@ -270,15 +315,34 @@ export default function SubjectDocument() {
   const handleEditorChange = useCallback((raw: string) => {
     latestContentRef.current = raw;
     
-    // Update stats periodically or on change
+    // Update stats - try editor first, fall back to parsing raw content
+    let text = "";
     if (editorRef.current) {
-      const text = editorRef.current.getPlainText();
-      setStats({
-        text,
-        characters: text.length,
-        words: wordCount(text),
-      });
+      text = editorRef.current.getPlainText();
     }
+    // Fallback: parse raw BlockNote content if editor text is empty
+    if (!text && raw && isBNContent(raw)) {
+      try {
+        const parser = createBlockNoteContentParser();
+        const parsed = parser.parse(raw);
+        if (parsed) {
+          text = parsed.map((block: BlockNoteEditorBlock) => {
+          if (!Array.isArray(block.content)) return "";
+          return block.content.map((item) => {
+            if (item.type === "text") return item.text || "";
+            if (item.type === "link") return item.content?.map((t: any) => t.text || "").join("") || "";
+            return "";
+          }).join("");
+        }).join("\n");
+        }
+      } catch { /* ignore parse errors */ }
+    }
+    
+    setStats({
+      text,
+      characters: text.length,
+      words: wordCount(text),
+    });
     
     queueSave(raw, title);
   }, [queueSave, title]);
@@ -336,55 +400,6 @@ export default function SubjectDocument() {
     }
   }, [appendMarkdownSection, stats.text, displaySubject?.label]);
 
-  const handleGenerateStudyGuide = useCallback(async () => {
-    const text = editorRef.current?.getPlainText().trim() || stats.text;
-    if (!text) {
-      toast.error("Add some notes before generating a study guide.");
-      return;
-    }
-
-    setSidebarBusy("study-guide");
-
-    try {
-      const result = await generateStudyGuide({
-        assessmentDetails: text,
-        fileName: title || `${displaySubject?.label || "Notes"} Study Guide`,
-        subject: displaySubject?.label,
-        grade: userGrade,
-      });
-
-      if (!result) {
-        throw new Error("No study guide was returned.");
-      }
-
-      const markdown = (result as GeneratedStudyGuide & { markdown?: string }).markdown || studyGuideToMarkdown(result);
-      
-      // For study guides, we can just store the markdown which BlockNote can parse,
-      // but it's better to serialise it to BN format.
-      // We can use createBlockNoteContentParser to get the blocks from markdown.
-      const parser = createBlockNoteContentParser();
-      const blocks = parser.parse(markdown);
-      const content = blocks ? serialiseBN(blocks as BlockNoteEditorBlock[]) : markdown;
-      
-      const guideTitle = pickStudyGuideTitle(result.title, `${title || displaySubject?.label || "Study"} Guide`);
-      const created = await subjectStore.createDocument(subjectId, guideTitle);
-
-      await subjectStore.updateDocument(subjectId, created.id, {
-        title: guideTitle,
-        content,
-        role: "study-guide",
-        studyGuideMarkdown: markdown,
-        studyGuideData: result,
-      });
-
-      toast.success("Study guide created.");
-      router.push(`/subjects/${subjectId}/document/${created.id}`);
-    } catch (issue: unknown) {
-      toast.error(issue instanceof Error ? issue.message : "Could not generate study guide");
-    } finally {
-      setSidebarBusy(null);
-    }
-  }, [router, stats.text, displaySubject?.label, subjectId, title, userGrade]);
 
   const handleListen = useCallback(() => {
     if (isSpeaking && !isPaused) {
@@ -482,6 +497,21 @@ export default function SubjectDocument() {
             )}
           </div>
 
+          {canRevert && (
+            <button
+              onClick={handleRevert}
+              disabled={isReverting}
+              className="notion-btn-minimal text-amber-600 hover:text-amber-700 hover:bg-amber-500/10"
+              title="Revert to previous version"
+            >
+              {isReverting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <RotateCcw className="h-4 w-4" />
+              )}
+            </button>
+          )}
+
           <button
             onClick={() => setIsAiPanelOpen(!isAiPanelOpen)}
             className={cn(
@@ -557,7 +587,7 @@ export default function SubjectDocument() {
               <div className="flex items-center gap-6">
                 <span>{stats.words} words</span>
                 <span>{stats.characters} characters</span>
-                <span>{documentRole === "study-guide" ? "Study Guide" : "Notes"}</span>
+                <span>{"Notes"}</span>
               </div>
               {ttsOk && (
                 <button
@@ -593,24 +623,6 @@ export default function SubjectDocument() {
               </div>
 
               <div className="space-y-4">
-                <div className="p-4 rounded-xl border border-primary/20 bg-primary/5 space-y-3">
-                  <div className="flex items-center gap-2 text-primary">
-                    <Sparkles className="h-4 w-4" />
-                    <span className="text-sm font-semibold">Transform Notes</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    Convert your messy notes into structured revision materials instantly.
-                  </p>
-                  <Button
-                    onClick={handleGenerateStudyGuide}
-                    disabled={sidebarBusy !== null}
-                    className="w-full h-9 bg-primary text-primary-foreground text-xs font-semibold rounded-lg shadow-sm"
-                  >
-                    {sidebarBusy === "study-guide" ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <BookOpenText className="mr-2 h-3.5 w-3.5" />}
-                    Generate Study Guide
-                  </Button>
-                </div>
-
                 <div className="grid grid-cols-1 gap-2">
                   {[
                     { id: "summarise", label: "Summarise", icon: Sparkles },

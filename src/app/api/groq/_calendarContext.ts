@@ -24,21 +24,21 @@ interface Deadline {
   priority: string;
 }
 
-const formatDate = (iso: string) => {
+const formatDate = (iso: string | Date) => {
   try {
-    const d = new Date(iso);
+    const d = iso instanceof Date ? iso : new Date(iso + (iso.includes("Z") || iso.includes("+") ? "" : "+00:00"));
+    if (isNaN(d.getTime())) return String(iso);
     return d.toLocaleDateString("en-AU", {
       weekday: "short", day: "numeric", month: "short", year: "numeric",
     });
   } catch {
-    return iso;
+    return String(iso);
   }
 };
 
-const formatTime = (iso: string) => {
+const formatTime = (iso: string | Date) => {
   try {
-    const d = new Date(iso);
-    // If time is exactly midnight it's likely a date-only record
+    const d = iso instanceof Date ? iso : new Date(iso + (iso.includes("Z") || iso.includes("+") ? "" : "+00:00"));
     if (d.getHours() === 0 && d.getMinutes() === 0) return null;
     return d.toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit", hour12: true });
   } catch {
@@ -48,8 +48,8 @@ const formatTime = (iso: string) => {
 
 export async function buildCalendarContext(supabase: AnySupabase, userId: string): Promise<string> {
   const now = new Date();
-  const from = new Date(now); from.setDate(from.getDate() - 90);
-  const to   = new Date(now); to.setDate(to.getDate() + 90);
+  const from = new Date(now); from.setDate(from.getDate() - 180);
+  const to   = new Date(now); to.setDate(to.getDate() + 180);
 
   // ── Fetch events ──────────────────────────────────────────────────────────
   const { data: eventRows } = await supabase
@@ -60,10 +60,25 @@ export async function buildCalendarContext(supabase: AnySupabase, userId: string
     .lte("date", to.toISOString())
     .order("date", { ascending: true });
 
-  const events: CalendarEvent[] = (eventRows ?? []).map((r: any) => ({
+  interface CalendarRow {
+  title: string;
+  date: string;
+  type: string;
+  subject: string | null;
+  description: string | null;
+}
+
+interface DeadlineRow {
+  title: string;
+  due_date: string;
+  subject: string | null;
+  priority: string;
+}
+
+const events: CalendarEvent[] = (eventRows ?? []).map((r: CalendarRow) => ({
     title: r.title,
     date: r.date,
-    type: r.type,
+    type: r.type || "event",
     subject: r.subject,
     description: r.description,
   }));
@@ -77,11 +92,11 @@ export async function buildCalendarContext(supabase: AnySupabase, userId: string
     .lte("due_date", to.toISOString())
     .order("due_date", { ascending: true });
 
-  const deadlines: Deadline[] = (deadlineRows ?? []).map((r: any) => ({
+  const deadlines: Deadline[] = (deadlineRows ?? []).map((r: DeadlineRow) => ({
     title: r.title,
     dueDate: r.due_date,
     subject: r.subject,
-    priority: r.priority,
+    priority: r.priority || "medium",
   }));
 
   if (events.length === 0 && deadlines.length === 0) return "";

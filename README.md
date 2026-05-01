@@ -1,77 +1,133 @@
 # Analogix
 
-Analogix is an analogy-first study platform for Australian secondary students. It combines a Groq-powered AI tutor with a structured study workspace (documents, flashcards, quizzes, resources, and planning tools) so complex ideas feel intuitive and actionable.
+Analogix is an AI-powered study platform for Australian secondary students (Years 7-12). It combines a Groq-powered AI tutor with a structured study workspace (documents, flashcards, quizzes, study guides, collaborative rooms, and planning tools) so complex ideas feel intuitive and actionable.
 
 ---
 
 ## Features
 
-### AI Learning
-- Analogix AI tutor with analogy-first explanations, an analogy on/off toggle, and “re-explain” with a new anchor.
-- Workspace AI agent (Analogix AI) that can reference your notes, flashcards, and recent chats.
-- Smart model routing for coding vs reasoning vs general questions.
-- Subject, grade, and state alignment to Australian curriculum terminology.
-- Formula-sheet context injected for maths/science subjects.
+### AI Learning & Agents
+- **Analogix AI Tutor** - Analogy-first explanations with toggle On/Off and "re-explain" with new anchor
+- **Agentic Workflow** - 4 specialized AI agents:
+  - 📅 **Study Planner** - Schedules, deadlines, study plans, progress tracking
+  - 📝 **Notes Agent** - Create, edit, summarize documents, extract key points
+  - ✅ **Task Manager** - Tasks, reminders, prioritization
+  - 🤝 **Collaboration Agent** - Study rooms, invites, collaborative editing
+- **Workspace AI** (bottom-right) - References your notes & flashcards, generates flashcards & quizzes inline
+- **Smart Model Routing** - Automatic routing to coding, reasoning, or general models
+- **Subject Alignment** - Australian curriculum terminology (VIC, NSW, QLD, SA, WA, TAS, NT, ACT)
+- **Formula Context** - Maths/science formulas injected automatically
 
-### Documents & Study Guides
-- Per-subject document workspace with a rich editor (TipTap), math and code blocks, tables, and autosave.
-- AI helper inside documents with doc-aware chat and “insert into notes”.
-- Study guides generated from uploaded notes or assessment sheets and saved as editable documents.
-- Notes and study guides live side-by-side inside each subject.
+### Documents & Study Workspace
+- **Per-subject Documents** - Rich TipTap editor with math (KaTeX), code blocks, tables, autosave
+- **BlockNote Editor** - Notion-style blocks, slash commands, markdown shortcuts
+- **AI Document Assistant** - Doc-aware chat with "insert into notes"
+- **Study Guides** - AI-generated from uploaded notes/assessments, saved as editable documents
+- **Document Revert** - Backup and restore previous versions
+- **Yjs Collaboration** - Real-time sync using Yjs CRDT
 
 ### Flashcards & Quizzes
-- AI-generated flashcards from chat or uploaded documents, plus manual card creation.
-- Spaced repetition review (SM-2) with due scheduling.
-- Configurable quizzes with difficulty, timers, and AI review feedback.
-- Short-answer grading and analogy hints.
+- **AI Flashcards** - Generated from chat or uploaded documents
+- **Manual Flashcards** - Create your own with front/back
+- **Spaced Repetition** - SM-2 algorithm with due scheduling
+- **Adaptive Quizzes** - Difficulty levels, timers, AI review feedback
+- **Short-answer Grading** - AI-powered answer evaluation
+- **Analogy Hints** - Get hints framed as analogies
 
-### Planning & Progress
-- Calendar with day/week/month views and .ics import.
-- Deadlines widget and upcoming event tracking.
-- Pomodoro-style study timer with session goals.
-- Streaks, accuracy tracking, achievements, and activity stats.
+### Study Planning & Progress
+- **Calendar** - Day/week/month views, .ics import from school calendars
+- **Deadlines** - Assignment tracking with priority levels
+- **Study Timer** - Pomodoro-style sessions with goals
+- **Streaks** - Daily streak tracking
+- **Achievements** - Unlock badges for milestones
+- **Activity Stats** - Time spent, accuracy, progress over time
+
+### Collaboration & Rooms
+- **Study Rooms** - Create rooms for subjects or projects
+- **Room Members** - Invite peers to collaborate
+- **Real-time Editing** - Collaborative document editing in rooms
+- **Shared Flashcards** - Practice together with shared card sets
+
+### Resources & Formulas
+- **Resource Library** - Upload PDFs, DOCX, images, presentations
+- **Formula Sheets** - Subject-specific formula references
+- **Formula Search** - Search across all formula sheets
 
 ### Personalization & UX
-- Google sign-in via Supabase Auth.
-- Onboarding for subjects, grade, state, and interests.
-- Theme selector, tutorial overlays, and responsive UI.
+- **Google Sign-in** - Supabase Auth
+- **Onboarding** - Select subjects, grade, state, interests
+- **Theme Selector** - Light/dark mode, custom themes
+- **Responsive UI** - Works on desktop and tablet
+
+---
+
+## Pages
+
+| Route | Page | Description |
+|-------|------|-------------|
+| `/` | Landing | Public landing page |
+| `/login` | Login | Google authentication |
+| `/onboarding` | Onboarding | Initial subject/grade setup |
+| `/dashboard` | Dashboard | Home with stats, deadlines, streak |
+| `/subjects` | Subjects | Subject overview |
+| `/subjects/:id` | Subject Detail | Subject workspace |
+| `/subjects/:id/document/:docId` | Document Editor | Rich text editor |
+| `/chat` | Chat | AI tutor conversation |
+| `/flashcards` | Flashcards | Flashcard review |
+| `/quiz` | Quiz | Quiz practice |
+| `/calendar` | Calendar | Event calendar |
+| `/timer` | Timer | Study timer |
+| `/rooms` | Rooms | Study rooms |
+| `/rooms/:roomId` | Room Workspace | Collaborative room |
+| `/achievements` | Achievements | Badges and milestones |
+| `/resources` | Resources | File library |
+| `/formulas` | Formulas | Formula reference |
+| `/study-guides` | Study Guides | Saved study guides |
 
 ---
 
 ## AI Models (Groq)
 
-Analogix uses Groq’s OpenAI-compatible API with task-based routing:
-- `meta-llama/llama-4-scout-17b-16e-instruct` (default + coding)
-- `meta-llama/llama-3.3-70b-versatile` (default fallback)
-- `qwen/qwen3-32b` (reasoning)
-- `openai/gpt-oss-120b` (reasoning fallback)
+Analogix uses Groq's OpenAI-compatible API with task-based routing:
+
+| Model | Use Case |
+|-------|----------|
+| `meta-llama/llama-4-scout-17b-16e-instruct` | Default, coding |
+| `meta-llama/llama-3.3-70b-versatile` | Default fallback |
+| `qwen/qwen3-32b` | Reasoning |
+| `google/gemma-3-4b` | Lightweight tasks |
 
 ---
 
 ## File Uploads
-- Supported: PDF, DOCX/DOC, PPTX/PPT, TXT, MD, CSV, RTF, images
-- Max size: 50 MB per file
-- Used for chat attachments, study guides, quizzes, and flashcards
+
+- **Supported**: PDF, DOCX/DOC, PPTX/PPT, TXT, MD, CSV, RTF, images (JPG, PNG, WEBP)
+- **Max size**: 50 MB per file
+- **Used for**: Chat attachments, study guides, quizzes, flashcards, resources
 
 ---
 
 ## Tech Stack
 
 ### Frontend
-- Next.js 16 (App Router), React 18, TypeScript
+- Next.js 16 (App Router)
+- React 18, TypeScript
 - Tailwind CSS + shadcn/ui (Radix)
-- Framer Motion
-- TipTap editor + KaTeX + react-markdown
+- Framer Motion animations
+- TipTap + BlockNote editor
+- KaTeX for math, react-markdown
+- CodeMirror for code blocks
 
 ### Backend & Data
-- Groq API (OpenAI-compatible) with smart routing
+- Groq API (OpenAI-compatible)
 - Supabase Auth + Postgres + RLS
-- Supabase SSR helpers
+- TanStack Query
+- Yjs for real-time collaboration
 
 ### Utilities
-- TanStack Query
-- pdf-parse + mammoth for text extraction
-- ical.js for calendar import
+- pdf-parse + mammoth (text extraction)
+- ical.js (calendar import)
+- @codemirror/lang-python
 - Vercel Analytics + Speed Insights
 
 ---
@@ -79,62 +135,59 @@ Analogix uses Groq’s OpenAI-compatible API with task-based routing:
 ## Getting Started
 
 ### Prerequisites
-- Node.js 18+
+- Node.js 20+
 - npm or bun
 - Groq API key
-- Supabase project (Auth + Postgres)
+- Supabase project
 
 ### Setup
 
-1. Clone and install dependencies:
-   ```bash
-   git clone https://github.com/Error403Allowed/Analogix.git
-   cd Analogix
-   npm install
-   # or
-   bun install
-   ```
+1. Clone and install:
+```bash
+git clone https://github.com/Error403Allowed/Analogix.git
+cd Analogix
+npm install
+```
 
 2. Set up Supabase:
-   - Create a new Supabase project
-   - Run `supabase-schema.sql` in the SQL editor
-   - Enable Google Auth in Authentication → Providers
-   - Add your local and production callback URLs
+```bash
+# Create project at supabase.com
+# Run migrations from supabase/migrations/
+# Enable Google Auth in Authentication → Providers
+```
 
-3. Create `.env.local` in the project root:
-   ```env
-   # Groq (required)
-   GROQ_API_KEY=your_groq_api_key
+3. Create `.env.local`:
+```env
+# Groq (required)
+GROQ_API_KEY=your_groq_api_key
+GROQ_API_KEY_2=optional_secondary_key
 
-   # Groq (optional)
-   GROQ_API_KEY_2=optional_secondary_key
-   GROQ_CHAT_URL=optional_custom_chat_endpoint
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
 
-   # Supabase (required)
-   NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+# App
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
+NEXT_PUBLIC_REALTIME_URL=       # Optional for production
+```
 
-   # Supabase (optional)
-   SUPABASE_SERVICE_ROLE_KEY=required_for_account_deletion
-
-   # App (recommended for auth redirects)
-   NEXT_PUBLIC_SITE_URL=http://localhost:3000
-   ```
-
-4. Start the dev server:
-   ```bash
-   npm run dev
-   ```
-   Open `http://localhost:3000` in your browser.
+4. Run:
+```bash
+npm run dev
+```
+Open `http://localhost:3000`
 
 ---
 
 ## Scripts
-- `npm run dev`
-- `npm run build`
-- `npm run start`
-- `npm run lint`
-- `npm run test`
+
+| Command | Description |
+|--------|-------------|
+| `npm run dev` | Development server |
+| `npm run build` | Production build |
+| `npm run start` | Production server |
+| `npm run lint` | ESLint check |
+| `npm run tests` | Run tests |
 
 ---
 
@@ -142,48 +195,52 @@ Analogix uses Groq’s OpenAI-compatible API with task-based routing:
 
 ```
 src/
-  app/
-    api/
-      groq/                 # AI endpoints (chat, quiz, study guide, extract-text)
-      account/delete        # Account deletion endpoint
-      health                # Environment diagnostics
-    auth/callback           # Supabase OAuth callback
-    dashboard, chat, quiz, flashcards, subjects, resources, formulas
-    calendar, achievements, timer, study-guide-loading
-  components/               # UI + feature components
-  views/                    # Page-level screens
-  utils/                    # Stores, helpers, parsers
-  data/                     # Resources + formula sheets
+├── app/                    # Next.js App Router pages
+│   ├── api/               # API routes
+│   │   ├── groq/         # AI endpoints
+│   │   ├── agents/       # Agentic workflow
+│   │   └── ...
+│   ├── subjects/         # Subject workspace
+│   ├── rooms/            # Study rooms
+│   └── ...
+├── components/            # UI components
+├── views/                 # Page components
+├── utils/                 # Stores, hooks, parsers
+├── lib/                  # Client/server utilities
+├── services/             # API services
+└── data/               # Static resources
 ```
-
----
-
-## Troubleshooting
-
-### Missing `GROQ_API_KEY`
-- Add it to `.env.local` and restart the dev server.
-
-### Auth Redirect Errors
-- Set `NEXT_PUBLIC_SITE_URL`
-- Whitelist the callback URL in Supabase Auth settings.
-
-### File Upload Failures
-- Check the 10 MB size limit and supported formats.
 
 ---
 
 ## Deployment
 
-Vercel works out of the box:
+Vercel (recommended):
 ```bash
 npm install -g vercel
 vercel
 ```
 
-Add the same environment variables in your Vercel project settings.
+Add environment variables in Vercel project settings.
+
+---
+
+## Troubleshooting
+
+### Missing GROQ_API_KEY
+Add to `.env.local` and restart server.
+
+### Auth Redirect Errors
+Set `NEXT_PUBLIC_SITE_URL` and whitelist in Supabase Auth.
+
+### File Upload Fails
+Check file size (50MB max) and format.
+
+### TypeScript/ESLint Errors
+Run `npm run lint` and fix issues before deploying.
 
 ---
 
 ## Contributing
 
-Issues and PRs are welcome.
+Issues and PRs welcome!

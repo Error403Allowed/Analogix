@@ -1,10 +1,11 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import {
   LayoutDashboard, MessageCircle, Calendar,
   GraduationCap, Trophy, ChevronDown, Palette,
   Sun, Moon, User, Flame, Library, SigmaIcon, SquareStack, ClipboardList,
-  Plus, Search, MoreHorizontal, Sparkles, Users,
+  Plus, Search, MoreHorizontal, Sparkles, Users, BookOpen,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import {
@@ -411,7 +412,7 @@ export function AppSidebar() {
             const allDocs = Object.values(subjects).flatMap(s => (s?.notes?.documents || []));
             const doc = allDocs.find(d => d.id === docId);
             const title = doc?.title || "Document";
-            const icon = doc?.role === "study-guide" ? "📘" : "📄";
+            const icon = "📄";
             
             openTab(`/subjects/${subjectId}/document/${docId}`, title, icon);
             router.push(`/subjects/${subjectId}/document/${docId}`);

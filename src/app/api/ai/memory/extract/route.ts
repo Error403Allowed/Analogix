@@ -32,28 +32,31 @@ export async function POST(request: Request) {
       .join("\n");
 
     const extractionPrompt = `You are a memory extraction system for a student AI tutor.
-Read this conversation excerpt and extract ONLY stable, reusable facts worth remembering long-term.
+Read this conversation excerpt and extract ONLY stable facts about the REAL student.
 
-ONLY extract:
-- Stated preferences ("I prefer X", "I hate Y", "explain it like I'm 5")
-- Stable facts ("I'm in Year 10", "I use Python for computing", "I'm aiming for 85%")
-- Repeated struggle patterns ("still confused about quadratics")
-- Explicit goals ("I want to ace my HSC")
-- Tone/style signals ("the student wants blunt direct answers")
+CRITICAL RULES:
+1. NEVER extract from hypothetical/pretend scenarios - if student said "pretend", "imagine", "what if", it's NOT a real fact
+2. NEVER extract questions the student asked - "solve log x" is a QUESTION, not a fact about the student
+3. NEVER extract content the tutor explained - that's knowledge, not student info
+4. Only extract ACTUAL facts about the student themselves
 
-DO NOT extract:
-- One-off questions or temporary context
-- Things that change per conversation
-- Generic filler ("the student asked about maths")
+EXTRACT ONLY:
+- STATED FACTS about the student: "I'm in Year 10", "I hate biology", "I want to be a doctor", "I play soccer"
+- REPEATED STRUGGLES: If student says they're confused about the SAME thing multiple times
+- EXPLICIT PREFERENCES: "I prefer video explanations", "explain simply like I'm 5"
+- CLEAR GOALS: "I want 90+ in HSC", "I need to pass this exam"
 
-Return ONLY valid JSON in this exact format, no markdown, no explanation:
-{
-  "memories": [
-    { "content": "short factual statement", "type": "fact|preference|goal|skill|context", "importance": 0.0-1.0 }
-  ]
-}
+NEVER EXTRACT:
+- Questions the student asked ("how do I solve x", "what is y")
+- Concepts the tutor explained (that's knowledge, not personal info)
+- Single confusion instances (unless repeated 3+ times)
+- Anything the student was just learning about
+- Hypothetical scenarios
 
-If nothing is worth remembering, return: { "memories": [] }
+Return ONLY valid JSON:
+{ "memories": [{ "content": "factual statement about student", "type": "fact|preference|goal", "importance": 0.0-1.0 }] }
+
+If nothing worth remembering, return: { "memories": [] }
 
 Conversation:
 ${transcript}`;
@@ -79,6 +82,50 @@ ${transcript}`;
       return NextResponse.json({ ok: true, extracted: 0 });
     }
 
+    // Verify memories are accurate - filter out hypothetical/pretend scenarios
+    const verifyPrompt = `You are a memory verification system. Given a list of extracted memories from a conversation, determine which ones are accurate facts about the real student vs hypothetical scenarios, roleplay, or inaccurate information.
+
+For each memory, respond with ONLY a JSON array of booleans (true = accurate fact, false = not accurate):
+- Return true ONLY if it's a confirmed fact about the actual student
+- Return false if it's from: hypothetical/pretend scenarios, roleplay, "what if" questions, unconfirmed assumptions, or clearly wrong information
+
+Conversation excerpt:
+${transcript}
+
+Extracted memories:
+${extracted.memories.map((m: { content: string }) => `- ${m.content}`).join("\n")}
+
+Return JSON array like: [true, false, true, ...]`;
+
+    const verifyResponse = await groq.chat.completions.create({
+      model: "llama-3.1-8b-instant",
+      messages: [{ role: "user", content: verifyPrompt }],
+      max_tokens: 200,
+      temperature: 0.1,
+    });
+
+    const verifyRaw = verifyResponse.choices[0]?.message?.content?.trim() || "[]";
+    let verifiedFlags: boolean[] = [];
+    try {
+      verifiedFlags = JSON.parse(verifyRaw);
+    } catch {
+      // If parsing fails, be conservative - don't save anything
+      verifiedFlags = [];
+    }
+
+    // Filter to only accurate memories
+    const accurateMemories = extracted.memories.filter((_: unknown, idx: number) => {
+      // If verification failed or index out of bounds, be conservative and include the memory
+      // but with lower importance
+      if (idx >= verifiedFlags.length) return true;
+      return verifiedFlags[idx] === true;
+    });
+
+    if (accurateMemories.length === 0) {
+      console.log("[memory/extract] All memories filtered out as inaccurate");
+      return NextResponse.json({ ok: true, extracted: 0 });
+    }
+
     const validTypes = ["fact", "preference", "skill", "goal", "context"];
 
     // Fetch existing memories to deduplicate
@@ -91,7 +138,7 @@ ${transcript}`;
     const existingContents = (existing || []).map(m => m.content.toLowerCase());
 
     let savedCount = 0;
-    for (const mem of extracted.memories) {
+    for (const mem of accurateMemories) {
       if (!mem.content || !validTypes.includes(mem.type)) continue;
       const content = String(mem.content).slice(0, 500);
       const importance = Math.max(0.3, Math.min(1.0, Number(mem.importance) || 0.6));

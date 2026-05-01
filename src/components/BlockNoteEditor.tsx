@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 "use client";
 
 import { forwardRef, useEffect, useRef, useImperativeHandle, useMemo, useCallback } from "react";

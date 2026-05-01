@@ -6,6 +6,7 @@ import { buildCalendarContext } from "../_calendarContext";
 import { listUserDocuments } from "@/lib/server/documents";
 import type { ResearchSource } from "@/types/research";
 import { getUserAIPersonality, getRelevantMemories, buildMemoryContext, buildPersonalityInstructions } from "@/lib/aiMemory";
+import type { AIPersonality, AIMemoryFragment } from "@/types/ai-personality";
 
 export const runtime = "nodejs";
 
@@ -140,13 +141,13 @@ function buildSystemPrompt(
   const analogyAnchor = explicitFromContext || explicitFromMessage || randomInterest || undefined;
 
   const analogyGuidance = [
-    "SCHOOL MODE: This student wants responses tailored for school/assessment purposes. Be formal, precise, and curriculum-aligned. Use correct subject-specific terminology. Structure answers the way a teacher or marker would expect — clear thesis, supporting points, topic sentences, textual evidence where relevant. No analogies, no personal interests, no casual tone. Write as if preparing the student to ace an exam or assignment.",
+    "SCHOOL MODE: This student wants responses tailored for school/assessment purposes. Be formal, precise, and curriculum-aligned. Use correct subject-specific terminology. Structure answers the way a teacher or marker would expect. No analogies, no personal interests, no casual tone.",
     "Use analogies sparingly — only when they genuinely help clarify a specific point.",
     "Use analogies as the primary teaching tool — lead with a hobby-based analogy before any explanation.",
-    `MANDATORY: You MUST open EVERY explanation with a concrete analogy drawn from the student's interests (${allowedInterests}). Do not start with definitions or theory. Start with the analogy, build the concept through it, then circle back to lock in the idea. If the student asks 'what is X?', your first sentence should be something like 'Think of X like [interest analogy]...' — never 'X is defined as...'. This is non-negotiable when analogy mode is on.`,
-    `MANDATORY: For EVERY main point, create DIRECT MAPPING between concept and analogy. Use format: "Concept: X → Analogy: [that maps to X] → Why: [they match]"`,
-    `MANDATORY: Always show the point-by-point correspondence. The student should see exactly how each concept piece maps to each analogy piece.`,
-  ][analogyIntensity];
+    "MANDATORY: Open EVERY explanation with an analogy from the student's interests. Build the entire explanation around the analogy. Never start with 'X is defined as...' or give definitions first.",
+    "MANDATORY: Your FIRST SENTENCE for ANY concept explanation must be an analogy from the student's interests. Then explain through the analogy, then reveal the formal concept. Example: 'Think of [hobby analogy]... that's exactly like [concept]... here's why...'",
+    "MANDATORY: For EVERY concept you explain, you MUST use a distinct analogy from the student's interests. Map each concept piece to analogy piece. If no good analogy exists, explicitly say 'Let me find a better analogy...' before giving up.",
+  ][Math.min(analogyIntensity, 5)];
 
   const hasExplicitSubject = (userContext?.subjects?.length ?? 0) > 0;
   const primarySubjectForFormulas = hasExplicitSubject ? userContext!.subjects![0] : null;
@@ -202,7 +203,7 @@ Put an <ACTIONS>...</ACTIONS> block at the VERY END of your message ONLY for fla
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ` : ""}` : "";
 
-  return `You are "Analogix AI", a brilliant AI tutor for Australian secondary students.
+return `You are "Analogix AI", a brilliant and friendly AI tutor for Australian secondary students.
 
 Student Location & Curriculum: ${curriculumContext}
 Today's date: ${new Date().toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric" })}.
@@ -211,16 +212,18 @@ ${analogyIntensity === 0 ? `MODE: SCHOOL / ASSESSMENT ("Schoolwork!")
 The student wants help succeeding in formal academic contexts — exams, essays, assignments.
 - Formal, precise tone. Write like a model answer a teacher would give top marks.
 - Use correct subject-specific terminology and ${stateFullName || "Australian"} syllabus language.
-- Structure responses clearly: thesis, topic sentences, supporting evidence, logical flow.
-- For English/Humanities: model analytical paragraphs (TEEL, PEEL, etc.) and use proper literary terminology.
-- For Maths/Science: show working clearly, label every step, use correct notation.
-- Reference assessment criteria and marking standards where helpful.
-- No analogies. No hobby references. No casual filler.` : `MODE: REAL LEARNING ("Learning Mode")
+- Structure responses clearly but CONVERSATIONALLY. No essay-style headers like "## Step 1:" or "## Conclusion".
+- NO $\\boxed{}$ answers. Never output boxed answers like $\\boxed{0}$ or $\\boxed{x}$ unless the student explicitly asks for a specific numerical answer to a math problem.
+- For English/Humanities: conversational analysis, not formal essays.
+- For Maths/Science: conversational explanation, not step-by-step headers.
+- No analogies. No hobby references.` : `MODE: REAL LEARNING ("Learning Mode")
 Allowed Interests (verbatim): ${allowedInterests}
 Analogy Anchor: ${analogyAnchor || "Choose one from Allowed Interests."}
 Analogy Intensity: ${analogyIntensity}/5 — ${analogyGuidance}
-- Warm, conversational tone. Sound like a brilliant, slightly quirky friend who makes lightbulbs go off.
-- ${analogyIntensity >= 3 ? `CRITICAL REMINDER: Your very first sentence MUST be an analogy from (${allowedInterests}). Not a definition. Not context-setting. An analogy. The student should immediately recognise their world in your explanation.` : `Lead with an analogy from the student's interests where it helps. Build understanding through it, then close the loop.`}`}
+- ALWAYS start your response with an analogy from the student's interests (${allowedInterests}). Even if they ask a simple question, weave in a relevant analogy from their hobbies.
+- NO essay-style headers like "## Step 1:" or "## Conclusion:" — write in natural paragraphs.
+- NO $\\boxed{}$ answers. Never output boxed answers like $\\boxed{0}$ unless it's an actual math calculation the student explicitly requested.
+- Conversational, friendly tone. Like a smart friend explaining something.`}
 
 Core rules:
 - Match Year ${studentGrade} vocabulary. Australian English always.
@@ -244,7 +247,15 @@ ONLY use Step-by-step / headers / long structure when:
 - It's a brand-new multi-part concept they haven't seen before
 - A worked example genuinely requires it
 
-DEFAULT behaviour: be conversational. Talk like a smart tutor sitting next to them, not a textbook. If the student is clearly just checking something or having a quick back-and-forth, keep it tight and natural. Do NOT pad with recaps, summaries, or "great question!" filler.
+DEFAULT behaviour: be conversational. Talk like a smart tutor sitting next to them, not a textbook.
+
+NEVER use essay-style formatting:
+- Do NOT use "## Step 1:", "## Step 2:", "## Conclusion:" 
+- Do NOT use numbered lists for explanations unless explicitly asked
+- Do NOT structure responses like an essay with headers
+- Write in natural flowing paragraphs
+
+Do NOT pad with recaps, summaries, or "great question!" filler.
 
 RESPONSE LENGTH GUIDE:
 - Quick check / yes-no question → 1–3 sentences
@@ -275,33 +286,8 @@ CRITICAL DESMOS SYNTAX — follow exactly or the graph will be blank:
 WRONG: sin(x), sqrt(x), x**2, 2*x, y==x^2
 RIGHT: \\sin(x), \\sqrt{x}, x^{2}, 2\\cdot x, y=x^{2}
 
-2. GRAPH3D (Three.js) — use for surfaces, 3D shapes, parametric curves in space:
-\`\`\`graph3d
-title: Ripple surface
-type: surface
-fn: sin(sqrt(x^2 + y^2))
-bounds: -4, 4, -4, 4
-\`\`\`
-Or a shape:
-\`\`\`graph3d
-title: Torus
-shape: torus
-color: #6366f1
-\`\`\`
-Or parametric:
-\`\`\`graph3d
-title: Helix
-type: parametric
-xfn: cos(t)
-yfn: sin(t)
-zfn: t/(2*pi)
-trange: 0, 12.57
-color: #f59e0b
-\`\`\`
-
 WHEN TO USE:
 - Any equation, function, or curve → desmos (default choice, supports sliders for parameters too)
-- 3D surfaces, geometry, spatial concepts, parametric curves in 3-space → graph3d
 - Simple greetings or non-mathematical questions → NO graph
 Always place the block BEFORE the explanation so the student sees it first.
 
@@ -347,7 +333,7 @@ export async function POST(request: Request) {
 
       // Merge client personality over DB personality (client wins)
       if (clientPersonality) {
-        aiPersonality = { ...(aiPersonality as any), ...(clientPersonality as any) };
+        aiPersonality = { ...(aiPersonality as AIPersonality | null), ...(clientPersonality as AIPersonality) };
         console.log("[chat-stream] Personality merged from client overrides");
       }
       
@@ -359,12 +345,12 @@ export async function POST(request: Request) {
       console.log("[chat-stream] No user, checking localStorage from headers...");
 
       if (clientPersonality) {
-        aiPersonality = clientPersonality as any;
+        aiPersonality = clientPersonality as AIPersonality;
         console.log("[chat-stream] Personality from localStorage: YES");
       }
-      if (clientMemories && Array.isArray(clientMemories)) {
-        memoryContext = buildMemoryContext(clientMemories as any, []);
-        console.log("[chat-stream] Memories from localStorage:", (clientMemories as any[]).length);
+if (clientMemories && Array.isArray(clientMemories)) {
+        memoryContext = buildMemoryContext(clientMemories as AIMemoryFragment[], []);
+        console.log("[chat-stream] Memories from localStorage:", clientMemories.length);
       }
     }
 
@@ -439,13 +425,15 @@ export async function POST(request: Request) {
     } // end !isSimpleGreeting
 
     // Build system prompt with personality and memory
-    // If personality exists, it should govern analogy behaviour (even if the client toggles analogy mode).
+    // Use client-side analogy intensity if set, otherwise fall back to personality
+    // Prioritise the user's explicit setting over personality defaults
     const effectiveUserContext = aiPersonality
       ? {
           ...userContext,
-          analogyIntensity: aiPersonality.use_analogies
-            ? Math.max(0, Math.min(5, aiPersonality.analogy_frequency ?? 3))
-            : 0,
+          // Only override if user hasn't explicitly set analogy intensity
+          analogyIntensity: userContext.analogyIntensity !== undefined
+            ? userContext.analogyIntensity
+            : Math.max(1, Math.min(5, aiPersonality.analogy_frequency ?? 3)),
         }
       : userContext;
 
@@ -469,8 +457,9 @@ export async function POST(request: Request) {
       console.log("[chat-stream] Personality instructions injected (high priority)");
     }
     const primarySubject = userContext?.subjects?.[0];
-    const taskType = classifyTaskType(messages, primarySubject);
     const isResearchMode = Boolean(userContext?.researchMode);
+    // Use highToken model for streaming since we need more output tokens
+    const chatTaskType = isSimpleGreeting ? "default" : "highToken";
 
     const upstreamStream = await callGroqChatStream(
       {
@@ -481,7 +470,7 @@ export async function POST(request: Request) {
         max_tokens: isSimpleGreeting ? 150 : isResearchMode ? 3000 : 2048,
         temperature: isResearchMode ? 0.3 : 0.55,
       },
-      taskType,
+      chatTaskType,
       userContext?.selectedModel || null
     );
 

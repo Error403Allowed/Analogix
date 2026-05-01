@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // ============================================================================
 // STRUCTURED DOCUMENT SCHEMA (Notion-style blocks)
 // ============================================================================
@@ -172,12 +173,12 @@ export const htmlToBlocks = (html: string, title?: string): StructuredDocument =
           content: el.textContent?.trim() || "",
         });
         break;
-      case "ul":
+      case "ul": {
         const bulletItems: string[] = [];
         el.querySelectorAll("li").forEach(li => {
           bulletItems.push(li.textContent?.trim() || "");
         });
-        if (bulletItems.length > 0) {
+if (bulletItems.length > 0) {
           blocks.push({
             id: generateBlockId(),
             type: "bulletList",
@@ -186,7 +187,8 @@ export const htmlToBlocks = (html: string, title?: string): StructuredDocument =
           });
         }
         break;
-      case "ol":
+      }
+      case "ol": {
         const numberedItems: string[] = [];
         el.querySelectorAll("li").forEach(li => {
           numberedItems.push(li.textContent?.trim() || "");
@@ -200,6 +202,7 @@ export const htmlToBlocks = (html: string, title?: string): StructuredDocument =
           });
         }
         break;
+      }
       case "blockquote":
         blocks.push({
           id: generateBlockId(),
@@ -207,7 +210,7 @@ export const htmlToBlocks = (html: string, title?: string): StructuredDocument =
           content: el.textContent?.trim() || "",
         });
         break;
-      case "pre":
+      case "pre": {
         const codeEl = el.querySelector("code");
         blocks.push({
           id: generateBlockId(),
@@ -216,6 +219,7 @@ export const htmlToBlocks = (html: string, title?: string): StructuredDocument =
           language: codeEl?.className.replace("language-", "") || "text",
         });
         break;
+      }
     }
     
     // Process children

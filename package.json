@@ -3,26 +3,16 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-
-    "test": "vitest run",
-    "test:watch": "vitest",
-
-    "test:e2e": "playwright test",
-
     "tests": "npx tsx scripts/run-tests.ts",
     "tests:list": "npx tsx scripts/run-tests.ts --list",
     "tests:filter": "npx tsx scripts/run-tests.ts --filter",
-    "tests:tag": "npx tsx scripts/run-tests.ts --tag",
-
-    "test:ai": "npx tsx scripts/test-ai.ts"
+    "tests:tag": "npx tsx scripts/run-tests.ts --tag"
   },
-
   "dependencies": {
     "@ai-sdk/groq": "^3.0.29",
     "@ai-sdk/react": "^3.0.118",
@@ -35,6 +25,7 @@
     "@emoji-mart/react": "^1.1.1",
     "@google/generative-ai": "^0.24.1",
     "@hookform/resolvers": "^3.10.0",
+    "@langchain/groq": "^1.2.0",
     "@radix-ui/react-accordion": "^1.2.11",
     "@radix-ui/react-alert-dialog": "^1.1.14",
     "@radix-ui/react-aspect-ratio": "^1.1.7",
@@ -84,6 +75,8 @@
     "input-otp": "^1.4.2",
     "jose": "^6.2.2",
     "katex": "^0.16.28",
+    "langchain": "^1.3.5",
+    "langchain-core": "^0.0.4",
     "lucide-react": "^0.462.0",
     "mammoth": "^1.11.0",
     "mathjs": "^15.1.1",
@@ -115,17 +108,12 @@
     "yjs": "^13.6.30",
     "zod": "^3.25.76"
   },
-
   "overrides": {
     "yjs": "^13.6.30"
   },
-
   "devDependencies": {
     "@eslint/js": "^9.32.0",
-    "@playwright/test": "^1.59.1",
     "@tailwindcss/typography": "^0.5.16",
-    "@testing-library/jest-dom": "^5.17.0",
-    "@testing-library/react": "^16.0.0",
     "@types/node": "^22.19.11",
     "@types/react": "18.3.28",
     "@types/react-dom": "^18.3.7",
@@ -134,10 +122,8 @@
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
     "globals": "^15.15.0",
-    "jsdom": "^20.0.3",
     "postcss": "^8.5.6",
     "typescript": "5.9.3",
-    "typescript-eslint": "^8.36.0",
-    "vitest": "^3.2.4"
+    "typescript-eslint": "^8.36.0"
   }
 }

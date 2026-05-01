@@ -101,16 +101,21 @@ const closePartialMarkdown = (text: string): string => {
   }
 
   // Close unclosed $ inline math per line
-  // Be more careful - only close if we're confident it's unclosed
+  // Only close if we detect actual math delimiters, not currency or regular text
   const lines = text.split("\n");
   const closedLines = lines.map(line => {
     // Skip lines that are already closed or don't have math
     if (!line.includes("$") || line.includes("$$")) return line;
     
-    // Count unescaped $ that are likely math delimiters
-    // Ignore $ at end of line (probably currency or incomplete)
     const trimmed = line.trimEnd();
     if (trimmed.endsWith("$")) return line;
+    
+    // Only close if it looks like a math expression (has typical math chars nearby)
+    // Avoid closing currency like "$50" or words like "students" that contain $
+    const hasMathChars = /[\dxyznabcdefghijklmopqrstuvwXYZπΣ√∫∑]+/.test(trimmed);
+    // Also skip if it looks like currency ($10, $50, etc.) - digit after $
+    const isCurrency = /\$\d/.test(trimmed);
+    if (!hasMathChars || isCurrency) return line;
     
     // Count $ not preceded by backslash
     let dollarCount = 0;

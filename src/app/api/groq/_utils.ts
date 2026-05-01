@@ -8,13 +8,17 @@ const GROQ_CHAT_URL =
 // Groq model lineup — all free tier, best-in-class per task
 // Each model has its own separate TPD (tokens/day) quota — spread load across them
 const DEFAULT_MODEL            = "meta-llama/llama-4-scout-17b-16e-instruct"; // Llama 4 Scout, 128K ctx
-const DEFAULT_FALLBACK_MODEL   = "meta-llama/llama-4-maverick-17b-128e-instruct"; // Llama 4 Maverick, separate TPD
-const DEFAULT_FALLBACK_MODEL_2 = "llama-3.3-70b-versatile";                    // Llama 3.3 — third try
-const CODING_MODEL             = "meta-llama/llama-4-scout-17b-16e-instruct"; // Scout handles code well
-const REASONING_MODEL          = "deepseek-r1-distill-llama-70b";             // DeepSeek R1 - EXCELLENT at math/reasoning
-const REASONING_FALLBACK_MODEL = "meta-llama/llama-4-maverick-17b-128e-instruct"; // Separate TPD from versatile
-const LIGHTWEIGHT_MODEL        = "llama-3.1-8b-instant";                       // Fast, cheap — use for greeting/banner
-const LAST_RESORT_MODEL        = "llama-3.1-8b-instant";                       // Always works — smallest, highest TPD
+const DEFAULT_FALLBACK_MODEL   = "llama-3.3-70b-versatile";                    // Llama 3.3 
+const HIGH_TOKEN_MODEL        = "openai/gpt-oss-120b";                          // GPT-OSS 120B — 65K+ completion tokens
+
+// Compound AI systems - for agentic workflows and multi-tool tasks
+const COMPOUND_MODEL          = "groq/compound";                           // Full agentic - up to 10 tool calls
+const COMPOUND_MINI_MODEL     = "groq/compound-mini";                      // Lightweight - 1 tool call, 3x faster
+
+// Legacy/DEPRECATED (kept for fallback)
+const REASONING_MODEL          = "deepseek-r1-distill-llama-70b";           // DeepSeek R1 
+const LIGHTWEIGHT_MODEL        = "llama-3.1-8b-instant";                   // Fast, cheap
+const LAST_RESORT_MODEL        = "llama-3.1-8b-instant";                    // Always works
 
 // User-selected model (from client) — if provided, use this instead of auto-selection
 let userSelectedModel: string | null = null;
@@ -37,7 +41,7 @@ export const getUserSelectedModel = (): string | null => {
 // Model-specific token limits (safe values below actual limits)
 // Llama 4 Scout: 128K context, 8K output max
 // Llama 3.3 70B: 128K context, 8K output max
-// Qwen 3 32B: 256K context, 8K output max
+// GPT-OSS 120B: 65K+ completion tokens
 // We use conservative limits to avoid cutoff errors
 const MODEL_OUTPUT_LIMITS: Record<string, number> = {
   "meta-llama/llama-4-scout-17b-16e-instruct": 8192,
@@ -45,6 +49,7 @@ const MODEL_OUTPUT_LIMITS: Record<string, number> = {
   "llama-3.3-70b-versatile": 8192,
   "deepseek-r1-distill-llama-70b": 8192,
   "llama-3.1-8b-instant": 4096,
+  "openai/gpt-oss-120b": 32000,
 };
 
 const getSafeMaxTokens = (model: string, requested: number): number => {
@@ -54,7 +59,7 @@ const getSafeMaxTokens = (model: string, requested: number): number => {
 };
 
 // Type definition: what kind of question is the user asking?
-export type TaskType = "coding" | "reasoning" | "default" | "lightweight";
+export type TaskType = "coding" | "reasoning" | "default" | "lightweight" | "highToken" | "compound" | "compoundMini";
 
 // ============================================================================
 // SMART QUESTION DETECTION: How we figure out what type of question it is
@@ -330,14 +335,20 @@ const getModelsForTaskType = (taskType: TaskType, userModel?: string | null): st
   // Auto-selection: pick models based on task type
   switch (taskType) {
     case "coding":
-      return [CODING_MODEL, DEFAULT_MODEL, DEFAULT_FALLBACK_MODEL, LAST_RESORT_MODEL];
+      return [DEFAULT_MODEL, DEFAULT_FALLBACK_MODEL, LAST_RESORT_MODEL];
     case "reasoning":
-      return [REASONING_MODEL, REASONING_FALLBACK_MODEL, DEFAULT_MODEL, DEFAULT_FALLBACK_MODEL, DEFAULT_FALLBACK_MODEL_2, LAST_RESORT_MODEL];
+      return [DEFAULT_MODEL, DEFAULT_FALLBACK_MODEL, LAST_RESORT_MODEL];
     case "lightweight":
       return [LIGHTWEIGHT_MODEL, DEFAULT_FALLBACK_MODEL, LAST_RESORT_MODEL];
+    case "highToken":
+      return [HIGH_TOKEN_MODEL, DEFAULT_MODEL, DEFAULT_FALLBACK_MODEL, LAST_RESORT_MODEL];
+    case "compound":
+      return [COMPOUND_MODEL, DEFAULT_MODEL, DEFAULT_FALLBACK_MODEL, LAST_RESORT_MODEL];
+    case "compoundMini":
+      return [COMPOUND_MINI_MODEL, DEFAULT_MODEL, DEFAULT_FALLBACK_MODEL, LAST_RESORT_MODEL];
     case "default":
     default:
-      return [DEFAULT_MODEL, DEFAULT_FALLBACK_MODEL, DEFAULT_FALLBACK_MODEL_2, LAST_RESORT_MODEL];
+      return [DEFAULT_MODEL, DEFAULT_FALLBACK_MODEL, LAST_RESORT_MODEL];
   }
 };
 

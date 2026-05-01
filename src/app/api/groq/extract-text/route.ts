@@ -50,7 +50,7 @@ export async function POST(request: Request) {
     ) {
       const buffer = Buffer.from(await file.arrayBuffer());
       try {
-        const mammoth = require("mammoth");
+        const mammoth = (await import("mammoth")).default;
         const result = await mammoth.extractRawText({ buffer });
         text = result.value || "";
       } catch {
