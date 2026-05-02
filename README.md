@@ -22,7 +22,6 @@ Analogix is an AI-powered study platform for Australian secondary students (Year
 - **Per-subject Documents** - Rich TipTap editor with math (KaTeX), code blocks, tables, autosave
 - **BlockNote Editor** - Notion-style blocks, slash commands, markdown shortcuts
 - **AI Document Assistant** - Doc-aware chat with "insert into notes"
-- **Study Guides** - AI-generated from uploaded notes/assessments, saved as editable documents
 - **Document Revert** - Backup and restore previous versions
 - **Yjs Collaboration** - Real-time sync using Yjs CRDT
 
@@ -82,7 +81,6 @@ Analogix is an AI-powered study platform for Australian secondary students (Year
 | `/achievements` | Achievements | Badges and milestones |
 | `/resources` | Resources | File library |
 | `/formulas` | Formulas | Formula reference |
-| `/study-guides` | Study Guides | Saved study guides |
 
 ---
 
