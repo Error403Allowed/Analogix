@@ -448,13 +448,6 @@ const Chat = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Set initial textarea height
-  useEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.style.height = '80px';
-    }
-  }, []);
-
   // STUDY GUIDE GENERATION
   const [generatingStudyGuide, setGeneratingStudyGuide] = useState(false);
   const [studyGuideGenerated, setStudyGuideGenerated] = useState(false);
@@ -1748,7 +1741,7 @@ Title:` }];
                       initial={{ opacity: 0, y: 12 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.4 }}
-                      className="flex flex-col items-center justify-center h-full min-h-[40vh] gap-3 text-center"
+                      className="flex flex-col items-center justify-center h-full min-h-80px gap-3 text-center"
                     >
                       <div>
                         <p className="text-base font-semibold text-foreground/80">
@@ -2098,11 +2091,6 @@ Title:` }];
                     value={input}
                     onChange={(e) => {
                       setInput(e.target.value);
-                      // Auto-resize
-                      const target = e.target as HTMLTextAreaElement;
-                      target.style.height = 'auto';
-                      const newHeight = Math.min(target.scrollHeight, 192);
-                      target.style.height = newHeight + 'px';
                     }}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && !e.shiftKey) {
@@ -2111,8 +2099,8 @@ Title:` }];
                       }
                     }}
                     placeholder="Ask me anything"
-                    className="w-full px-3 sm:px-4 pt-3 pb-12 text-sm sm:text-base bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/50 resize-none rounded-2xl min-h-[80px] max-h-48 leading-normal"
-                    style={{ height: '80px', overflow: 'hidden' }}
+                    className="w-full px-3 sm:px-4 pt-3 pb-12 text-sm sm:text-base bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/50 resize-none rounded-2xl min-h-80px max-h-48 leading-normal"
+                    style={{ height: '84px', overflow: 'hidden' }}
                   />
                   {/* Bottom row of input */}
                   <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between px-2 sm:px-3 pb-2 sm:pb-3">
