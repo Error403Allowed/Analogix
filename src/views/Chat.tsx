@@ -451,12 +451,7 @@ const Chat = () => {
   // Set initial textarea height
   useEffect(() => {
     if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 192) + 'px';
-      // Ensure minimum 1 line
-      if (textareaRef.current.style.height === '0px' || textareaRef.current.offsetHeight < 24) {
-        textareaRef.current.style.height = '24px';
-      }
+      textareaRef.current.style.height = '80px';
     }
   }, []);
 
@@ -2116,8 +2111,8 @@ Title:` }];
                       }
                     }}
                     placeholder="Ask me anything"
-                    className="w-full px-3 sm:px-4 pt-3 pb-12 text-sm sm:text-base bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/50 resize-none rounded-2xl min-h-[48px] max-h-48 leading-normal"
-                    style={{ height: '96px', overflow: 'hidden' }}
+                    className="w-full px-3 sm:px-4 pt-3 pb-12 text-sm sm:text-base bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/50 resize-none rounded-2xl min-h-[80px] max-h-48 leading-normal"
+                    style={{ height: '80px', overflow: 'hidden' }}
                   />
                   {/* Bottom row of input */}
                   <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between px-2 sm:px-3 pb-2 sm:pb-3">
