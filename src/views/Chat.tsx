@@ -1733,7 +1733,7 @@ Title:` }];
                 onScroll={updateScrollButton}
                 className="absolute inset-0 overflow-y-auto min-h-0 chat-scroll"
               >
-                <div className="mx-auto max-w-4xl w-full px-4 flex flex-col space-y-6 pb-40 sm:pb-28 pt-4 sm:pt-4">
+                <div className="mx-auto max-w-4xl w-full px-4 flex flex-col space-y-6 pb-48 sm:pb-32 pt-4 sm:pt-4">
                   {/* Empty state — shown before any messages */}
                   {messages.length === 0 && !isTyping && (
                     <motion.div
@@ -1995,7 +1995,7 @@ Title:` }];
               )}
 
               <div className="pointer-events-none absolute top-0 left-0 right-0 h-10 bg-gradient-to-b from-background to-transparent z-20" />
-              <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-20 sm:h-16 bg-gradient-to-t from-background via-background/90 to-transparent z-20" />
+              <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-32 sm:h-24 bg-gradient-to-t from-background via-background/95 to-transparent z-20" />
 
               {/* Input */}
               <motion.div
