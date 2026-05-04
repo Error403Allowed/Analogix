@@ -606,9 +606,8 @@ REMEMBER: You aren't just an AI with an 'analogy' feature. You are the bridge be
     // STEP 3: Detect what type of question this is (coding/reasoning/general)
     // ========================================================================
     
-    // Get the primary subject if available
-    const primarySubject = userContext?.subjects?.[0];
-    const taskType = classifyTaskType(messages, primarySubject);
+    // Get the primary subject if available (already defined earlier)
+    const taskType = classifyTaskType(messages, primarySubject || undefined);
     console.log(`[/api/hf/chat] Classified as "${taskType}" question (Subject: ${primarySubject || "none"})`);
 
     // ========================================================================
