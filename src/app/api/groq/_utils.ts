@@ -128,16 +128,16 @@ const getApiKeyAtIndex = (index: number) => {
 // RATE LIMITER: Token bucket to prevent API overload
 // ============================================================================
 
-// Groq free tier limits (adjust if you have different limits)
+// Groq free tier limits - be VERY conservative
 const RATE_LIMIT_CONFIG = {
-  // Requests per minute per API key - conservative to avoid hitting Groq limits
-  rpmPerKey: 3,
-  // Tokens per minute per API key - stay well under Groq free tier limits
-  tpmPerKey: 5000,
-  // Minimum delay between requests (ms) - spreads requests out to prevent burst
-  minDelayMs: 2000,
+  // Requests per minute - extremely conservative for free tier
+  rpmPerKey: 1,
+  // Tokens per minute - stay well under Groq free tier limits (6000 TPM)
+  tpmPerKey: 3000,
+  // Minimum delay between requests (ms) - much longer to prevent burst
+  minDelayMs: 5000,
   // Maximum concurrent requests per key
-  maxConcurrentPerKey: 2,
+  maxConcurrentPerKey: 1,
 };
 
 // Token bucket state per API key
@@ -201,7 +201,24 @@ const releaseRequest = (keyIndex: number) => {
   bucket.concurrentRequests = Math.max(0, bucket.concurrentRequests - 1);
 };
 
+// Global throttle - track last request time to prevent bursting
+let lastRequestTime = 0;
+const GLOBAL_MIN_GAP_MS = 60000; // 1 minute between requests to avoid rate limit
+
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+const waitForGlobalRateLimit = async () => {
+  const now = Date.now();
+  const timeSinceLastRequest = now - lastRequestTime;
+  
+  if (timeSinceLastRequest < GLOBAL_MIN_GAP_MS) {
+    const waitTime = GLOBAL_MIN_GAP_MS - timeSinceLastRequest;
+    console.warn(`[Groq] Global rate limit: waiting ${Math.round(waitTime / 1000)}s since last request...`);
+    await delay(waitTime);
+  }
+  
+  lastRequestTime = Date.now();
+};
 
 // Global request queue to serialize requests when rate limited
 const requestQueue: Array<() => void> = [];
@@ -477,6 +494,9 @@ export const callGroqChat = async (
 
   // Wait in queue to prevent overwhelming the API
   await enqueueRequest();
+  
+  // Global throttle to prevent bursting - critical for free tier
+  await waitForGlobalRateLimit();
 
   // Try each model with each API key
   for (const model of modelsToTry) {
@@ -645,6 +665,9 @@ export const callGroqChatStream = async (
 
   // Wait in queue to prevent overwhelming the API
   await enqueueRequest();
+  
+  // Global throttle to prevent bursting - critical for free tier
+  await waitForGlobalRateLimit();
 
   // Try each model with each API key
   for (const model of modelsToTry) {
