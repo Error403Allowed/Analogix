@@ -1711,10 +1711,10 @@ Title:` }];
           {/* Chat always visible — subject auto-detected from first message */}
           <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
             {/* ── TAB CONTENT ─────────────────────────────── */}
-            <div className="flex-1 flex gap-4 min-h-0 overflow-hidden">
+            <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
               {/* Main chat column */}
               <div
-                className="flex-1 min-h-0 relative"
+                className="flex-1 min-h-0 relative overflow-hidden"
                 onDragEnter={handleDragOver}
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
@@ -1731,9 +1731,9 @@ Title:` }];
               <div
                 ref={scrollContainerRef}
                 onScroll={updateScrollButton}
-                className="absolute inset-0 overflow-y-auto min-h-0 chat-scroll"
+                className="flex-1 overflow-y-auto chat-scroll"
               >
-                <div className="mx-auto max-w-4xl w-full px-4 flex flex-col space-y-6 pb-48 sm:pb-32 pt-4 sm:pt-4">
+                <div className="mx-auto max-w-4xl w-full px-4 flex flex-col space-y-6 pt-4 sm:pt-4 pb-4">
                   {/* Empty state — shown before any messages */}
                   {messages.length === 0 && !isTyping && (
                     <motion.div
