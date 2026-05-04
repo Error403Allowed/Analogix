@@ -523,7 +523,7 @@ const effectiveUserContext = {
     
     // Inject ACARA curriculum knowledge
     const primarySubject = userContext?.subjects?.[0];
-    const studentGrade = userContext?.grade || "7-12";
+    const studentGrade = String(userContext?.grade || "7-12");
     const gradeNum = parseInt(studentGrade.replace("7-12", "7").replace("F", "0"), 10) || 7;
     
     if (primarySubject && gradeNum >= 7 && gradeNum <= 10) {

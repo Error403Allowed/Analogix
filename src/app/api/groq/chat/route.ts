@@ -100,7 +100,7 @@ export async function POST(request: Request) {
     }
 
     // Student's grade and Australian state — used to tailor curriculum context
-    const studentGrade = userContext?.grade || "7-12";
+    const studentGrade = String(userContext?.grade || "7-12");
     const studentState = userContext?.state || null;
 
     // Map state codes to full names for the prompt
