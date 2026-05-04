@@ -25,3 +25,7 @@ dist-ssr
 *.sw?
 .env
 .bun.lock
+
+# Supabase CLI
+supabase/supabase/.temp/
+tsconfig.tsbuildinfo
