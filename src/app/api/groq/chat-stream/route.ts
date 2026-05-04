@@ -1,5 +1,6 @@
 import { callGroqChatStream, formatError, classifyTaskType } from "../_utils";
 import type { ChatMessage, UserContext } from "@/types/chat";
+import { getModelBranding } from "@/types/groq-models";
 import { getFormulaSheetContext } from "@/data/formulaSheets";
 import { createClient } from "@/lib/supabase/server";
 import { buildCalendarContext } from "../_calendarContext";
@@ -102,7 +103,7 @@ const formatResearchSources = (sources: ResearchSource[]) => {
 };
 
 function buildSystemPrompt(
-  userContext: Partial<UserContext> & { analogyIntensity?: number; analogyAnchor?: string },
+  userContext: Partial<UserContext> & { analogyIntensity?: number; analogyAnchor?: string; selectedModel?: string },
   messages: ChatMessage[],
   workspaceContext?: string,
   calendarContext?: string,
@@ -110,6 +111,9 @@ function buildSystemPrompt(
   const analogyIntensity = userContext?.analogyIntensity ?? 4;
   const studentGrade = userContext?.grade || "7-12";
   const studentState = userContext?.state || null;
+  const selectedModel = userContext?.selectedModel;
+  const branding = selectedModel ? getModelBranding(selectedModel, userContext?.subjects?.[0]) : null;
+  const brandPromptAddition = branding?.systemPromptAddition || "";
 
   const STATE_FULL_NAMES: Record<string, string> = {
     NSW: "New South Wales", VIC: "Victoria", QLD: "Queensland",
@@ -296,19 +300,44 @@ WHEN TO USE:
 - Simple greetings or non-mathematical questions → NO graph
 Always place the block BEFORE the explanation so the student sees it first.
 
-REMEMBER: You are the bridge between what they love and what they need to learn.${formulaSheetContext ? `\n\n--- FORMULA REFERENCE ---\n${formulaSheetContext}\n--- END FORMULA REFERENCE ---` : ""}`;
+REMEMBER: You are the bridge between what they love and what they need to learn.${formulaSheetContext ? `\n\n--- FORMULA REFERENCE ---\n${formulaSheetContext}\n--- END FORMULA REFERENCE ---` : ""}${brandPromptAddition ? `\n\n${brandPromptAddition}` : ""}`;
 }
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
+    console.log("[chat-stream] === START ===");
+
+    let body;
+    try {
+      body = await request.json();
+      console.log("[chat-stream] Request parsed OK, messages:", body.messages?.length || 0);
+    } catch (parseErr) {
+      console.error("[chat-stream] JSON parse failed:", parseErr instanceof Error ? parseErr.message : parseErr);
+      return new Response("Invalid JSON in request body", { status: 400 });
+    }
+
     const messages: ChatMessage[] = body.messages || [];
     const userContext: Partial<UserContext> & { analogyIntensity?: number; analogyAnchor?: string } = body.userContext || {};
 
     // Get personality and memory from database or localStorage
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    
+    let supabase;
+    try {
+      supabase = await createClient();
+    } catch (err) {
+      console.error("[chat-stream] Supabase client creation failed:", err instanceof Error ? err.message : err);
+      throw new Error("Database connection failed");
+    }
+
+    let user;
+    try {
+      const authResult = await supabase.auth.getUser();
+      user = authResult.data.user;
+      console.log("[chat-stream] Auth result:", user ? `user=${user.id}` : "anonymous/guest");
+    } catch (err) {
+      console.error("[chat-stream] Auth check failed:", err instanceof Error ? err.message : err);
+      user = null;
+    }
+
     let aiPersonality: Awaited<ReturnType<typeof getUserAIPersonality>> = null;
     let memoryContext = "";
 
@@ -333,18 +362,28 @@ export async function POST(request: Request) {
     if (user) {
       // Fetch from database
       console.log("[chat-stream] Fetching personality from database...");
-      aiPersonality = await getUserAIPersonality(user.id);
-      console.log("[chat-stream] Personality fetched:", aiPersonality ? "YES" : "NO");
+      try {
+        aiPersonality = await getUserAIPersonality(user.id);
+        console.log("[chat-stream] Personality fetched:", aiPersonality ? "YES" : "NO");
+      } catch (err) {
+        console.error("[chat-stream] getUserAIPersonality FAILED:", err instanceof Error ? err.message : err);
+      }
 
       // Merge client personality over DB personality (client wins)
       if (clientPersonality) {
         aiPersonality = { ...(aiPersonality as AIPersonality | null), ...(clientPersonality as AIPersonality) };
         console.log("[chat-stream] Personality merged from client overrides");
       }
-      
-      const { memories } = await getRelevantMemories(user.id, { limit: 15, minImportance: 0.5 });
-      memoryContext = buildMemoryContext(memories, []);
-      console.log("[chat-stream] Memories fetched:", memories?.length || 0);
+
+      console.log("[chat-stream] Fetching memories from database...");
+      try {
+        const { memories } = await getRelevantMemories(user.id, { limit: 15, minImportance: 0.5 });
+        memoryContext = buildMemoryContext(memories, []);
+        console.log("[chat-stream] Memories fetched:", memories?.length || 0);
+      } catch (err) {
+        console.error("[chat-stream] getRelevantMemories FAILED:", err instanceof Error ? err.message : err);
+        memoryContext = "";
+      }
     } else {
       // Fallback to localStorage from client headers
       console.log("[chat-stream] No user, checking localStorage from headers...");
@@ -367,22 +406,34 @@ if (clientMemories && Array.isArray(clientMemories)) {
       if (c.length > 60) return false;
       return /^(hi|hello|hey|sup|yo|g'day|howdy|hiya|heya|thanks?|bye|good\s?(morning|evening|afternoon)|what'?s up|how are you)[\s!?.]*$/.test(c);
     })();
+    console.log("[chat-stream] isSimpleGreeting:", isSimpleGreeting);
 
     // ── Load workspace context from Supabase (same as agent route) ──────────
     let workspaceContext: string | undefined;
     let calendarCtx: string | undefined;
     if (!isSimpleGreeting) {
+    console.log("[chat-stream] Loading workspace context...");
     try {
       const supabase = await createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
+      const { data: { user: wsUser } } = await supabase.auth.getUser();
+      if (wsUser) {
+        console.log("[chat-stream] Loading docs and calendar for user:", wsUser.id);
         // Load calendar in parallel with workspace docs
         const [calendarResult, documents] = await Promise.all([
-          buildCalendarContext(supabase, user.id).catch(() => ""),
-          listUserDocuments(supabase, user.id),
+          buildCalendarContext(supabase, wsUser.id).catch((e) => {
+            console.error("[chat-stream] buildCalendarContext failed:", e instanceof Error ? e.message : e);
+            return "";
+          }),
+          listUserDocuments(supabase, wsUser.id).catch((e) => {
+            console.error("[chat-stream] listUserDocuments failed:", e instanceof Error ? e.message : e);
+            return [];
+          }),
         ]);
 
-        if (calendarResult) calendarCtx = calendarResult;
+        if (calendarResult) {
+          calendarCtx = calendarResult;
+          console.log("[chat-stream] Calendar loaded, length:", calendarResult.length);
+        }
 
         if (documents.length > 0) {
           const allDocs: Array<{ subjectId: string; title: string; type: string; preview: string }> = [];
@@ -488,18 +539,30 @@ if (clientMemories && Array.isArray(clientMemories)) {
     // Use highToken model for streaming since we need more output tokens
     const chatTaskType = isSimpleGreeting ? "default" : "highToken";
 
-    const upstreamStream = await callGroqChatStream(
-      {
-        messages: [
-          { role: "system", content: systemPrompt },
-          ...messages.filter(m => m.role !== "system"),
-        ],
-        max_tokens: isSimpleGreeting ? 150 : isResearchMode ? 3000 : 2048,
-        temperature: isResearchMode ? 0.3 : 0.55,
-      },
-      chatTaskType,
-      userContext?.selectedModel || null
-    );
+    console.log("[chat-stream] Calling Groq API with task:", chatTaskType, "model:", userContext?.selectedModel || "auto");
+    console.log("[chat-stream] System prompt length:", systemPrompt.length);
+    console.log("[chat-stream] User messages:", messages.length);
+
+    let upstreamStream;
+    try {
+      upstreamStream = await callGroqChatStream(
+        {
+          messages: [
+            { role: "system", content: systemPrompt },
+            ...messages.filter(m => m.role !== "system"),
+          ],
+          max_tokens: isSimpleGreeting ? 150 : isResearchMode ? 3000 : 2048,
+          temperature: isResearchMode ? 0.3 : 0.55,
+        },
+        chatTaskType,
+        userContext?.selectedModel || null
+      );
+      console.log("[chat-stream] Groq API call succeeded, returning stream");
+    } catch (groqErr) {
+      console.error("[chat-stream] callGroqChatStream FAILED:", groqErr instanceof Error ? groqErr.message : groqErr);
+      console.error("[chat-stream] Groq error stack:", groqErr instanceof Error ? groqErr.stack : "no stack");
+      throw groqErr;
+    }
 
     return new Response(upstreamStream, {
       headers: {
@@ -510,11 +573,11 @@ if (clientMemories && Array.isArray(clientMemories)) {
     });
   } catch (error) {
     const message = formatError(error);
-    console.error("[/api/groq/chat-stream] Error details:", {
-      message,
-      name: error instanceof Error ? error.name : "Unknown",
-      stack: error instanceof Error ? error.stack : undefined,
-    });
+    console.error("[/api/groq/chat-stream] === FATAL ERROR ===");
+    console.error("Error message:", message);
+    console.error("Error name:", error instanceof Error ? error.name : "Unknown");
+    console.error("Error stack:", error instanceof Error ? error.stack : "no stack");
+    console.error("==========================");
 
     // Determine appropriate status code based on error type
     let statusCode = 500;

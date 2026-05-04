@@ -539,6 +539,165 @@ export const ACARA_CURRICULUM: Record<string, CurriculumSubject> = {
           ]
         },
         achievementStandard: "Students solve problems involving simple and compound interest and exponential functions. They solve simultaneous equations and graph linear and quadratic functions. They apply trigonometric rules to non-right triangles. They prove circle theorems and use coordinate geometry. They interpret normal distribution and conduct statistical investigations. They use probability distributions and the central limit theorem for inference."
+      },
+      "11": {
+        year: 11,
+        strands: {
+          "Functions and Algebra": [
+            {
+              id: "AC-M11-FA01",
+              strand: "Functions and Algebra",
+              topic: "Working with Functions",
+              contentDescription: "examine the concept of a function and distinguish between relations and functions, use function notation, describe features of graphs of functions",
+              elaborations: ["identifying functions from mappings, tables and graphs", "using and interpreting function notation f(x)", "analysing intercepts, gradients, asymptotes and domain/range"]
+            },
+            {
+              id: "AC-M11-FA02",
+              strand: "Functions and Algebra",
+              topic: "Exponential Functions",
+              contentDescription: "work with exponential functions, their graphs and applications, including exponential growth and decay",
+              elaborations: ["graphing exponential functions", "solving exponential equations", "applying exponential models to real scenarios"]
+            },
+            {
+              id: "AC-M11-FA03",
+              strand: "Functions and Algebra",
+              topic: "Logarithmic Functions",
+              contentDescription: "understand the relationship between exponential and logarithmic functions, properties of logarithms and their applications",
+              elaborations: ["converting between exponential and logarithmic forms", "applying logarithm laws", "solving logarithmic equations"]
+            },
+            {
+              id: "AC-M11-FA04",
+              strand: "Functions and Algebra",
+              topic: "Trigonometric Functions",
+              contentDescription: "work with trigonometric functions, their graphs and applications, including the unit circle and trigonometric equations",
+              elaborations: ["using the unit circle for trigonometric values", "graphing sine, cosine and tangent functions", "solving trigonometric equations"]
+            }
+          ],
+          "Calculus": [
+            {
+              id: "AC-M11-C01",
+              strand: "Calculus",
+              topic: "Introduction to Differentiation",
+              contentDescription: "understand the concept of a gradient and the derivative as a rate of change, use differentiation techniques",
+              elaborations: ["finding gradient of secants and tangents", "understanding limit definition of derivative", "deriving basic differentiation rules"]
+            },
+            {
+              id: "AC-M11-C02",
+              strand: "Calculus",
+              topic: "Differentiation Rules",
+              contentDescription: "apply differentiation rules including chain rule, product rule and quotient rule",
+              elaborations: ["differentiating polynomial, exponential and trigonometric functions", "applying chain rule to composite functions", "using product and quotient rules"]
+            },
+            {
+              id: "AC-M11-C03",
+              strand: "Calculus",
+              topic: "Applications of Differentiation",
+              contentDescription: "apply differentiation to solve problems including stationary points, optimisation and curve sketching",
+              elaborations: ["finding and classifying stationary points", "solving optimisation problems", "sketching curves using derivative information"]
+            }
+          ],
+          "Probability and Statistics": [
+            {
+              id: "AC-M11-PS01",
+              strand: "Probability and Statistics",
+              topic: "Discrete Probability Distributions",
+              contentDescription: "understand discrete random variables, probability distributions, expected value and variance",
+              elaborations: ["defining discrete random variables", "calculating probability distributions", "computing expectation and variance"]
+            },
+            {
+              id: "AC-M11-PS02",
+              strand: "Probability and Statistics",
+              topic: "Bernoulli Trials and Binomial Distribution",
+              contentDescription: "examine Bernoulli trials, the binomial distribution and its applications",
+              elaborations: ["identifying Bernoulli trials", "calculating binomial probabilities", "applying binomial distribution to real problems"]
+            }
+          ]
+        },
+        achievementStandard: "Students examine functions and their graphs, including exponential, logarithmic and trigonometric functions. They understand the concept of differentiation and apply differentiation rules. They solve problems involving stationary points, optimisation and curve sketching. They work with discrete probability distributions and the binomial distribution."
+      },
+      "12": {
+        year: 12,
+        strands: {
+          "Further Functions and Calculus": [
+            {
+              id: "AC-M12-FC01",
+              strand: "Further Functions and Calculus",
+              topic: "Integration",
+              contentDescription: "understand integration as the reverse of differentiation, apply integration techniques and understand the Fundamental Theorem of Calculus",
+              elaborations: ["integrating polynomial, exponential and trigonometric functions", "using substitution and integration by parts", "understanding the relationship between integration and differentiation"]
+            },
+            {
+              id: "AC-M12-FC02",
+              strand: "Further Functions and Calculus",
+              topic: "Applications of Integration",
+              contentDescription: "apply integration to find areas under curves, volumes of solids of revolution and solve practical problems",
+              elaborations: ["calculating area under curves", "finding volumes of solids of revolution", "solving kinematic problems"]
+            },
+            {
+              id: "AC-M12-FC03",
+              strand: "Further Functions and Calculus",
+              topic: "Differential Equations",
+              contentDescription: "form and solve differential equations, including exponential growth and decay models",
+              elaborations: ["solving separable differential equations", "modelling growth and decay", "applying differential equations to real scenarios"]
+            }
+          ],
+          "Trigonometric Functions and Calculus": [
+            {
+              id: "AC-M12-TC01",
+              strand: "Trigonometric Functions and Calculus",
+              topic: "Advanced Trigonometry",
+              contentDescription: "work with advanced trigonometric identities, equations and applications of trigonometric functions and their calculus",
+              elaborations: ["proving and using trigonometric identities", "solving complex trigonometric equations", "differentiating and integrating trigonometric functions"]
+            },
+            {
+              id: "AC-M12-TC02",
+              strand: "Trigonometric Functions and Calculus",
+              topic: "Trigonometric Graphs and Applications",
+              contentDescription: "analyse and graph trigonometric functions and apply calculus to trigonometric models",
+              elaborations: ["graphing transformed trigonometric functions", "modelling periodic phenomena", "applying calculus to trigonometric problems"]
+            }
+          ],
+          "Probability and Statistics": [
+            {
+              id: "AC-M12-PS01",
+              strand: "Probability and Statistics",
+              topic: "Normal Distribution",
+              contentDescription: "understand the normal distribution, z-scores, standard normal distribution and applications",
+              elaborations: ["using normal distribution tables", "calculating probabilities using normal distribution", "applying normal distribution to real data"]
+            },
+            {
+              id: "AC-M12-PS02",
+              strand: "Probability and Statistics",
+              topic: "Sampling and Estimation",
+              contentDescription: "examine sampling distributions, confidence intervals and hypothesis testing",
+              elaborations: ["understanding central limit theorem", "constructing confidence intervals", "conducting hypothesis tests"]
+            },
+            {
+              id: "AC-M12-PS03",
+              strand: "Probability and Statistics",
+              topic: "Linear Regression",
+              contentDescription: "analyse bivariate data, fit linear regression models and interpret results",
+              elaborations: ["calculating regression coefficients", "interpreting correlation and causation", "using technology for regression analysis"]
+            }
+          ],
+          "Financial Mathematics": [
+            {
+              id: "AC-M12-FM01",
+              strand: "Financial Mathematics",
+              topic: "Loans and Annuities",
+              contentDescription: "understand and apply financial mathematics for loans, annuities and perpetuities",
+              elaborations: ["calculating loan repayments", "analysing annuity investments", "solving problems involving amortization"]
+            },
+            {
+              id: "AC-M12-FM02",
+              strand: "Financial Mathematics",
+              topic: "Investment and Depreciation",
+              contentDescription: "examine investment options, depreciation methods and financial decision making",
+              elaborations: ["comparing investment returns", "calculating depreciation", "making financial decisions"]
+            }
+          ]
+        },
+        achievementStandard: "Students apply integration techniques to solve problems involving areas and volumes. They solve differential equations and apply them to real-world models. They work with the normal distribution, confidence intervals and hypothesis testing. They apply financial mathematics to loans, annuities and investments."
       }
     }
   },
@@ -761,6 +920,149 @@ export const ACARA_CURRICULUM: Record<string, CurriculumSubject> = {
           ]
         },
         achievementStandard: "Students analyse how texts represent ideas and perspectives and evaluate representation effectiveness. They create sustained literary texts with deliberate stylistic effects. They analyse discourse structures and evaluate sophisticated persuasion. They read complex texts critically and justify interpretations. They plan and publish polished sophisticated texts."
+      },
+      "11": {
+        year: 11,
+        strands: {
+          "Reading and Viewing": [
+            {
+              id: "AC-E11-R01",
+              strand: "Reading and Viewing",
+              topic: "Critical Analysis",
+              contentDescription: "analyse and evaluate how texts construct meaning, position audiences and represent ideas, values and perspectives",
+              elaborations: ["analysing authorial choices and their effects", "evaluating how texts position readers", "examining representation of ideas and values"]
+            },
+            {
+              id: "AC-E11-R02",
+              strand: "Reading and Viewing",
+              topic: "Comparative Study",
+              contentDescription: "compare and contrast texts, analyzing how similar ideas are represented across different contexts and genres",
+              elaborations: ["comparing representations across texts", "analysing context and its influence", "evaluating effectiveness of representation"]
+            },
+            {
+              id: "AC-E11-R03",
+              strand: "Reading and Viewing",
+              topic: "Texts and Society",
+              contentDescription: "analyse how texts reflect social, historical and cultural contexts and how they represent identity and experience",
+              elaborations: ["examining context and representation", "analysing how texts reflect identity", "evaluating cultural positioning"]
+            }
+          ],
+          "Writing and Speaking": [
+            {
+              id: "AC-E11-W01",
+              strand: "Writing and Speaking",
+              topic: "Analytical Writing",
+              contentDescription: "compose sustained analytical essays that evaluate texts, construct arguments and demonstrate sophisticated understanding",
+              elaborations: ["developing sustained arguments", "supporting analysis with textual evidence", "demonstrating sophisticated understanding"]
+            },
+            {
+              id: "AC-E11-W02",
+              strand: "Writing and Speaking",
+              topic: "Creative Composition",
+              contentDescription: "create innovative, imaginative and cohesive texts that experiment with form, voice and stylistic choices",
+              elaborations: ["experimenting with form and style", "creating distinctive voice", "developing cohesive creative works"]
+            },
+            {
+              id: "AC-E11-W03",
+              strand: "Writing and Speaking",
+              topic: "Persuasion and Advocacy",
+              contentDescription: "compose persuasive texts that utilise sophisticated rhetorical strategies and logical argumentation",
+              elaborations: ["employing sophisticated persuasive techniques", "building logical arguments", "adapting persuasive strategies to audience"]
+            }
+          ],
+          "Language Study": [
+            {
+              id: "AC-E11-L01",
+              strand: "Language Study",
+              topic: "Language and Power",
+              contentDescription: "analyse how language choices construct and negotiate power relationships, social positions and institutional authority",
+              elaborations: ["examining language and power structures", "analysing how authority is constructed", "evaluating institutional language"]
+            },
+            {
+              id: "AC-E11-L02",
+              strand: "Language Study",
+              topic: "Intertextuality",
+              contentDescription: "analyse how texts draw upon, respond to and transform other texts, and how meaning is constructed through intertextual connections",
+              elaborations: ["identifying intertextual connections", "analysing how texts transform others", "evaluating the effect of intertextuality"]
+            }
+          ]
+        },
+        achievementStandard: "Students analyse how texts construct meaning and position audiences. They compare texts and analyse how ideas are represented across contexts. They compose sustained analytical essays and innovative creative texts. They employ sophisticated persuasive techniques. They analyse language and power, and intertextual connections."
+      },
+      "12": {
+        year: 12,
+        strands: {
+          "Reading and Viewing": [
+            {
+              id: "AC-E12-R01",
+              strand: "Reading and Viewing",
+              topic: "Advanced Critical Analysis",
+              contentDescription: "undertake sophisticated analysis of complex texts, evaluating multiple interpretations and constructing independent interpretations",
+              elaborations: ["evaluating multiple interpretations", "constructing independent arguments", "analysing complex textual features"]
+            },
+            {
+              id: "AC-E12-R02",
+              strand: "Reading and Viewing",
+              topic: "Literature and Identity",
+              contentDescription: "analyse how literature explores identity, experience and meaning, and how texts represent diverse perspectives and voices",
+              elaborations: ["examining representation of identity", "analysing diverse perspectives", "evaluating how literature constructs meaning"]
+            },
+            {
+              id: "AC-E12-R03",
+              strand: "Reading and Viewing",
+              topic: "Global Texts",
+              contentDescription: "analyse and evaluate texts from different cultural contexts, examining how culture shapes meaning and representation",
+              elaborations: ["comparing texts across cultures", "examining cultural context and meaning", "evaluating representation across cultures"]
+            }
+          ],
+          "Writing and Speaking": [
+            {
+              id: "AC-E12-W01",
+              strand: "Writing and Speaking",
+              topic: "Extended Analytical Composition",
+              contentDescription: "compose sustained, sophisticated analytical essays that demonstrate independent thinking, nuanced evaluation and masterful control of language",
+              elaborations: ["demonstrating independent interpretation", "maintaining sophisticated analysis", "exhibiting masterful language control"]
+            },
+            {
+              id: "AC-E12-W02",
+              strand: "Writing and Speaking",
+              topic: "Imaginative Writing",
+              contentDescription: "create sustained, innovative imaginative texts that demonstrate sophisticated control of narrative techniques, voice and stylistic choices",
+              elaborations: ["demonstrating narrative control", "creating distinctive voice", "employing sophisticated stylistic techniques"]
+            },
+            {
+              id: "AC-E12-W03",
+              strand: "Writing and Speaking",
+              topic: "Modular Writing",
+              contentDescription: "adapt writing for different purposes, audiences and contexts, demonstrating flexibility in style and register",
+              elaborations: ["adapting style for purpose", "varying register for audience", "responding to different contexts"]
+            }
+          ],
+          "Language and Representation": [
+            {
+              id: "AC-E12-L01",
+              strand: "Language and Representation",
+              topic: "Representation and Reality",
+              contentDescription: "analyse how language constructs representations of reality, how texts make meaning and how readers interpret representation",
+              elaborations: ["examining language and representation", "analysing how texts construct reality", "evaluating reader interpretation"]
+            },
+            {
+              id: "AC-E12-L02",
+              strand: "Language and Representation",
+              topic: "Discourse Analysis",
+              contentDescription: "undertake advanced discourse analysis, examining how language shapes knowledge, power and social structures",
+              elaborations: ["analysing discourse and power", "examining how language shapes knowledge", "evaluating social structures in language"]
+            },
+            {
+              id: "AC-E12-L03",
+              strand: "Language and Representation",
+              topic: "Meta-language",
+              contentDescription: "apply sophisticated understanding of how language works to critically evaluate and create texts for specific purposes",
+              elaborations: ["using meta-language analytically", "evaluating language choices critically", "creating texts with sophisticated language awareness"]
+            }
+          ]
+        },
+        achievementStandard: "Students undertake sophisticated analysis of complex texts and construct independent interpretations. They compose sustained analytical essays and innovative imaginative texts. They adapt writing for different purposes and audiences. They analyse how language constructs representations and shapes discourse."
       }
     }
   },
@@ -1500,6 +1802,917 @@ export const ACARA_CURRICULUM: Record<string, CurriculumSubject> = {
         achievementStandard: "Students explain movements for rights and freedoms and the Cold War. They analyse environmental change and geopolitics. They evaluate constitutional change and political participation. They analyse economic policy and workforce trends."
       }
     }
+  },
+  "Physics": {
+    subject: "Physics",
+    learningArea: "Science",
+    yearLevels: {
+      "11": {
+        year: 11,
+        strands: {
+          "Kinematics": [
+            {
+              id: "AC-P11-K01",
+              strand: "Kinematics",
+              topic: "Motion in One Dimension",
+              contentDescription: "describe and analyse motion in one dimension using equations of motion and graphical analysis",
+              elaborations: ["analysing motion from graphs", "solving problems with equations of motion", "describing displacement, velocity and acceleration"]
+            },
+            {
+              id: "AC-P11-K02",
+              strand: "Kinematics",
+              topic: "Motion in Two Dimensions",
+              contentDescription: "describe and analyse projectile and circular motion",
+              elaborations: ["analysing projectile motion", "describing circular motion", "solving two-dimensional motion problems"]
+            }
+          ],
+          "Dynamics": [
+            {
+              id: "AC-P11-D01",
+              strand: "Dynamics",
+              topic: "Newton's Laws",
+              contentDescription: "apply Newton's laws to analyse motion, including friction and inclined planes",
+              elaborations: ["applying Newton's second law", "analysing friction forces", "solving problems on inclined planes"]
+            },
+            {
+              id: "AC-P11-D02",
+              strand: "Dynamics",
+              topic: "Momentum",
+              contentDescription: "describe and apply concepts of momentum, impulse and conservation of momentum",
+              elaborations: ["calculating momentum and impulse", "applying conservation of momentum", "analysing collisions"]
+            }
+          ],
+          "Energy and Work": [
+            {
+              id: "AC-P11-E01",
+              strand: "Energy and Work",
+              topic: "Work and Energy",
+              contentDescription: "describe and calculate work, kinetic energy and potential energy",
+              elaborations: ["calculating work done", "analysing kinetic and potential energy", "applying conservation of energy"]
+            },
+            {
+              id: "AC-P11-E02",
+              strand: "Energy and Work",
+              topic: "Power",
+              contentDescription: "describe and calculate power",
+              elaborations: ["calculating power", "analysing power ratings", "solving power problems"]
+            }
+          ],
+          "Waves": [
+            {
+              id: "AC-P11-W01",
+              strand: "Waves",
+              topic: "Wave Properties",
+              contentDescription: "describe and analyse wave properties",
+              elaborations: ["analysing wave behaviour", "explaining frequency and wavelength", "solving wave problems"]
+            },
+            {
+              id: "AC-P11-W02",
+              strand: "Waves",
+              topic: "Sound",
+              contentDescription: "describe and analyse sound waves",
+              elaborations: ["explaining sound wave properties", "analysing the Doppler effect", "describing sound applications"]
+            }
+          ],
+          "Electric Fields": [
+            {
+              id: "AC-P11-EF01",
+              strand: "Electric Fields",
+              topic: "Electric Force",
+              contentDescription: "describe and calculate electric force and field strength",
+              elaborations: ["calculating electric force", "analysing electric field", "solving electrostatic problems"]
+            },
+            {
+              id: "AC-P11-EF02",
+              strand: "Electric Fields",
+              topic: "Electric Potential",
+              contentDescription: "describe and calculate electric potential and potential difference",
+              elaborations: ["calculating electric potential", "analysing potential difference", "solving potential problems"]
+            }
+          ]
+        },
+        achievementStandard: "Students describe and analyse motion using equations and graphical analysis. They apply Newton's laws to analyse motion. They apply conservation of energy and momentum. They describe and analyse wave properties and electric fields."
+      },
+      "12": {
+        year: 12,
+        strands: {
+          "Gravitational and Electric Fields": [
+            {
+              id: "AC-P12-G01",
+              strand: "Gravitational and Electric Fields",
+              topic: "Gravitational Fields",
+              contentDescription: "describe and analyse gravitational fields",
+              elaborations: ["analysing gravitational field diagrams", "calculating gravitational field strength", "explaining gravitational potential"]
+            },
+            {
+              id: "AC-P12-G02",
+              strand: "Gravitational and Electric Fields",
+              topic: "Electric Fields",
+              contentDescription: "describe and analyse electric fields in detail",
+              elaborations: ["analysing electric field patterns", "calculating field energy", "solving complex field problems"]
+            }
+          ],
+          "Electromagnetism": [
+            {
+              id: "AC-P12-EM01",
+              strand: "Electromagnetism",
+              topic: "Magnetic Fields",
+              contentDescription: "describe magnetic fields and the motor effect",
+              elaborations: ["describing magnetic field patterns", "explaining the motor effect", "calculating magnetic force"]
+            },
+            {
+              id: "AC-P12-EM02",
+              strand: "Electromagnetism",
+              topic: "Electromagnetic Induction",
+              contentDescription: "describe and explain electromagnetic induction, Faraday's law and Lenz's law",
+              elaborations: ["explaining electromagnetic induction", "applying Faraday's law", "analysing Lenz's law"]
+            },
+            {
+              id: "AC-P12-EM03",
+              strand: "Electromagnetism",
+              topic: "Applications",
+              contentDescription: "analyse generators, transformers and induced EMF",
+              elaborations: ["analysing AC and DC generators", "explaining transformer operation", "calculating induced EMF"]
+            }
+          ],
+          "Quantum Physics": [
+            {
+              id: "AC-P12-Q01",
+              strand: "Quantum Physics",
+              topic: "Wave-Particle Duality",
+              contentDescription: "explain wave-particle duality",
+              elaborations: ["explaining wave-particle duality", "calculating photon energy", "describing de Broglie wavelength"]
+            },
+            {
+              id: "AC-P12-Q02",
+              strand: "Quantum Physics",
+              topic: "Photoelectric Effect",
+              contentDescription: "describe the photoelectric effect",
+              elaborations: ["explaining photoelectric effect", "calculating work function", "analysing frequency thresholds"]
+            },
+            {
+              id: "AC-P12-Q03",
+              strand: "Quantum Physics",
+              topic: "Atomic Models",
+              contentDescription: "describe the Bohr model of the atom and atomic energy levels",
+              elaborations: ["explaining Bohr model", "describing atomic energy levels", "analysing spectral lines"]
+            }
+          ],
+          "Special Relativity": [
+            {
+              id: "AC-P12-SR01",
+              strand: "Special Relativity",
+              topic: "Relativity Postulates",
+              contentDescription: "explain the postulates of special relativity",
+              elaborations: ["explaining time dilation", "describing length contraction", "analysing relativity principles"]
+            },
+            {
+              id: "AC-P12-SR02",
+              strand: "Special Relativity",
+              topic: "Relativistic Effects",
+              contentDescription: "calculate time dilation, length contraction",
+              elaborations: ["calculating time dilation", "solving length contraction problems", "explaining relativistic mass"]
+            },
+            {
+              id: "AC-P12-SR03",
+              strand: "Special Relativity",
+              topic: "Mass-Energy Equivalence",
+              contentDescription: "describe and apply mass-energy equivalence, E = mc²",
+              elaborations: ["applying E = mc²", "explaining nuclear energy", "analysing mass defect"]
+            }
+          ],
+          "Nuclear Physics": [
+            {
+              id: "AC-P12-N01",
+              strand: "Nuclear Physics",
+              topic: "Nuclear Structure",
+              contentDescription: "describe nuclear structure",
+              elaborations: ["explaining nuclear structure", "calculating binding energy", "analysing nuclear stability"]
+            },
+            {
+              id: "AC-P12-N02",
+              strand: "Nuclear Physics",
+              topic: "Radioactivity",
+              contentDescription: "describe alpha, beta and gamma decay",
+              elaborations: ["explaining decay types", "calculating half-life", "analysing radioactive decay"]
+            },
+            {
+              id: "AC-P12-N03",
+              strand: "Nuclear Physics",
+              topic: "Nuclear Reactions",
+              contentDescription: "describe nuclear fission and fusion",
+              elaborations: ["explaining fission and fusion", "analysing stellar nucleosynthesis", "describing nuclear energy"]
+            }
+          ]
+        },
+        achievementStandard: "Students describe and analyse gravitational and electric fields in detail. They explain electromagnetic induction and its applications. They describe quantum physics, wave-particle duality and atomic models. They explain special relativity and nuclear physics."
+      }
+    }
+  },
+  "Chemistry": {
+    subject: "Chemistry",
+    learningArea: "Science",
+    yearLevels: {
+      "11": {
+        year: 11,
+        strands: {
+          "Atomic Structure": [
+            {
+              id: "AC-C11-AS01",
+              strand: "Atomic Structure",
+              topic: "Quantum Theory",
+              contentDescription: "explain quantum theory and electron configuration",
+              elaborations: ["describing quantum numbers and orbitals", "explaining electron configuration rules", "analysing periodic trends"]
+            },
+            {
+              id: "AC-C11-AS02",
+              strand: "Atomic Structure",
+              topic: "Periodicity",
+              contentDescription: "analyse periodic trends",
+              elaborations: ["explaining and calculating periodic trends", "relating trends to electron configuration", "predicting element properties"]
+            }
+          ],
+          "Chemical Bonding": [
+            {
+              id: "AC-C11-BS01",
+              strand: "Chemical Bonding",
+              topic: "Ionic and Covalent",
+              contentDescription: "explain ionic and covalent bonding",
+              elaborations: ["explaining ionic bond formation", "describing covalent bond types", "analysing bonding in detail"]
+            },
+            {
+              id: "AC-C11-BS02",
+              strand: "Chemical Bonding",
+              topic: "Intermolecular Forces",
+              contentDescription: "describe intermolecular forces",
+              elaborations: ["explaining van der Waals forces", "describing hydrogen bonding", "relating forces to properties"]
+            }
+          ],
+          "Stoichiometry": [
+            {
+              id: "AC-C11-ST01",
+              strand: "Stoichiometry",
+              topic: "Mole Concept",
+              contentDescription: "explain the mole concept",
+              elaborations: ["calculating moles and mass", "explaining Avogadro's number", "performing mole calculations"]
+            },
+            {
+              id: "AC-C11-ST02",
+              strand: "Stoichiometry",
+              topic: "Chemical Equations",
+              contentDescription: "write and balance chemical equations",
+              elaborations: ["writing balanced equations", "calculating limiting reagents", "performing yield calculations"]
+            }
+          ],
+          "Reactions": [
+            {
+              id: "AC-C11-RX01",
+              strand: "Reactions",
+              topic: "Types of Reactions",
+              contentDescription: "describe types of chemical reactions",
+              elaborations: ["identifying reaction types", "writing ionic equations", "explaining redox reactions"]
+            },
+            {
+              id: "AC-C11-RX02",
+              strand: "Reactions",
+              topic: "Oxidation and Reduction",
+              contentDescription: "explain oxidation and reduction",
+              elaborations: ["determining oxidation numbers", "writing half-equations", "balancing redox equations"]
+            }
+          ],
+          "Energy Changes": [
+            {
+              id: "AC-C11-EC01",
+              strand: "Energy Changes",
+              topic: "Enthalpy",
+              contentDescription: "describe and calculate enthalpy changes",
+              elaborations: ["calculating enthalpy changes", "applying Hess's law", "drawing energy profiles"]
+            },
+            {
+              id: "AC-C11-EC02",
+              strand: "Energy Changes",
+              topic: "Reaction Rates",
+              contentDescription: "explain factors affecting reaction rates",
+              elaborations: ["explaining rate factors", "describing collision theory", "analysing rate equations"]
+            }
+          ]
+        },
+        achievementStandard: "Students explain quantum theory, electron configuration and periodic trends. They describe ionic and covalent bonding and intermolecular forces. They perform stoichiometric calculations. They classify chemical reactions and explain enthalpy changes and reaction rates."
+      },
+      "12": {
+        year: 12,
+        strands: {
+          "Equilibrium": [
+            {
+              id: "AC-C12-EQ01",
+              strand: "Equilibrium",
+              topic: "Chemical Equilibrium",
+              contentDescription: "explain chemical equilibrium",
+              elaborations: ["writing equilibrium constant expressions", "calculating equilibrium concentrations", "applying Le Chatelier's principle"]
+            },
+            {
+              id: "AC-C12-EQ02",
+              strand: "Equilibrium",
+              topic: "Acids and Bases",
+              contentDescription: "describe acid-base theories",
+              elaborations: ["calculating pH and pOH", "explaining buffer action", "performing titration calculations"]
+            }
+          ],
+          "Organic Chemistry": [
+            {
+              id: "AC-C12-OC01",
+              strand: "Organic Chemistry",
+              topic: "Organic Compounds",
+              contentDescription: "describe organic compounds",
+              elaborations: ["identifying functional groups", "naming organic compounds", "explaining isomerism"]
+            },
+            {
+              id: "AC-C12-OC02",
+              strand: "Organic Chemistry",
+              topic: "Organic Reactions",
+              contentDescription: "describe reactions of organic compounds",
+              elaborations: ["predicting reaction products", "writing reaction mechanisms", "analysing reaction types"]
+            }
+          ],
+          "Electrochemistry": [
+            {
+              id: "AC-C12-EL01",
+              strand: "Electrochemistry",
+              topic: "Galvanic Cells",
+              contentDescription: "explain galvanic cells",
+              elaborations: ["constructing galvanic cells", "calculating cell potential", "applying Nernst equation"]
+            },
+            {
+              id: "AC-C12-EL02",
+              strand: "Electrochemistry",
+              topic: "Electrolytic Cells",
+              contentDescription: "explain electrolytic cells",
+              elaborations: ["explaining electrolysis", "applying Faraday's laws", "analysing industrial processes"]
+            }
+          ],
+          "Chemical Analysis": [
+            {
+              id: "AC-C12-CA01",
+              strand: "Chemical Analysis",
+              topic: "Qualitative Analysis",
+              contentDescription: "describe qualitative analysis",
+              elaborations: ["identifying cations and anions", "performing flame tests", "explaining precipitation analysis"]
+            },
+            {
+              id: "AC-C12-CA02",
+              strand: "Chemical Analysis",
+              topic: "Quantitative Analysis",
+              contentDescription: "describe quantitative analysis",
+              elaborations: ["performing acid-base titrations", "calculating concentrations", "explaining spectroscopic methods"]
+            }
+          ]
+        },
+        achievementStandard: "Students explain chemical equilibrium and acids and bases. They describe organic compounds and reactions. They explain galvanic and electrolytic cells. They perform qualitative and quantitative chemical analysis."
+      }
+    }
+  },
+  "Biology": {
+    subject: "Biology",
+    learningArea: "Science",
+    yearLevels: {
+      "11": {
+        year: 11,
+        strands: {
+          "Cells": [
+            {
+              id: "AC-B11-CE01",
+              strand: "Cells",
+              topic: "Cell Structure",
+              contentDescription: "describe cell structure and function",
+              elaborations: ["describing organelle function", "explaining membrane transport", "analysing cell specialization"]
+            },
+            {
+              id: "AC-B11-CE02",
+              strand: "Cells",
+              topic: "Exchange of Materials",
+              contentDescription: "explain exchange of materials across membranes",
+              elaborations: ["explaining diffusion and osmosis", "describing active transport", "analysing exchange surfaces"]
+            }
+          ],
+          "Energy": [
+            {
+              id: "AC-B11-EL01",
+              strand: "Energy",
+              topic: "Photosynthesis",
+              contentDescription: "describe photosynthesis",
+              elaborations: ["explaining light reactions", "describing Calvin cycle", "analysing factors affecting photosynthesis"]
+            },
+            {
+              id: "AC-B11-EL02",
+              strand: "Energy",
+              topic: "Cellular Respiration",
+              contentDescription: "describe cellular respiration",
+              elaborations: ["explaining aerobic and anaerobic respiration", "describing ATP production", "analysing respiratory pathways"]
+            }
+          ],
+          "Homeostasis": [
+            {
+              id: "AC-B11-HS01",
+              strand: "Homeostasis",
+              topic: "Homeostatic Principles",
+              contentDescription: "explain the principles of homeostasis",
+              elaborations: ["describing feedback loops", "explaining negative and positive feedback", "analysing homeostatic mechanisms"]
+            },
+            {
+              id: "AC-B11-HS02",
+              strand: "Homeostasis",
+              topic: "Control Systems",
+              contentDescription: "describe the nervous and endocrine systems",
+              elaborations: ["explaining nerve impulse transmission", "describing hormone action", "analysing coordination mechanisms"]
+            }
+          ],
+          "Diversity": [
+            {
+              id: "AC-B11-DC01",
+              strand: "Diversity",
+              topic: "Classification",
+              contentDescription: "describe biological classification",
+              elaborations: ["explaining taxonomic hierarchy", "describing phylogenetic trees", "analysing evolutionary relationships"]
+            },
+            {
+              id: "AC-B11-DC02",
+              strand: "Diversity",
+              topic: "Biodiversity",
+              contentDescription: "explain biodiversity",
+              elaborations: ["measuring biodiversity", "explaining species richness", "evaluating conservation strategies"]
+            }
+          ]
+        },
+        achievementStandard: "Students describe cell structure, function and membrane transport. They explain photosynthesis and cellular respiration. They describe homeostasis and control systems. They explain biological classification and biodiversity."
+      },
+      "12": {
+        year: 12,
+        strands: {
+          "Genetics": [
+            {
+              id: "AC-B12-GN01",
+              strand: "Genetics",
+              topic: "DNA and Gene Expression",
+              contentDescription: "describe DNA structure and gene expression",
+              elaborations: ["explaining DNA replication", "describing transcription and translation", "analysing gene expression"]
+            },
+            {
+              id: "AC-B12-GN02",
+              strand: "Genetics",
+              topic: "Inheritance",
+              contentDescription: "explain patterns of inheritance",
+              elaborations: ["analysing Mendel's laws", "explaining linkage and crossing over", "describing polygenic inheritance"]
+            },
+            {
+              id: "AC-B12-GN03",
+              strand: "Genetics",
+              topic: "Gene Technologies",
+              contentDescription: "describe DNA technologies",
+              elaborations: ["explaining PCR and cloning", "describing genetic engineering techniques", "analysing gene technologies"]
+            }
+          ],
+          "Evolution": [
+            {
+              id: "AC-B12-EV01",
+              strand: "Evolution",
+              topic: "Mechanisms of Evolution",
+              contentDescription: "explain mechanisms of evolution",
+              elaborations: ["analysing natural selection", "explaining genetic drift", "describing speciation mechanisms"]
+            },
+            {
+              id: "AC-B12-EV02",
+              strand: "Evolution",
+              topic: "Evidence for Evolution",
+              contentDescription: "describe evidence for evolution",
+              elaborations: ["analysing fossil evidence", "explaining comparative anatomy", "describing molecular evidence"]
+            }
+          ],
+          "Ecology": [
+            {
+              id: "AC-B12-EC01",
+              strand: "Ecology",
+              topic: "Ecosystem Dynamics",
+              contentDescription: "describe ecosystem dynamics",
+              elaborations: ["analysing energy flow", "explaining carbon and nitrogen cycles", "describing ecosystem productivity"]
+            },
+            {
+              id: "AC-B12-EC02",
+              strand: "Ecology",
+              topic: "Population Ecology",
+              contentDescription: "explain population dynamics",
+              elaborations: ["analysing population growth", "explaining carrying capacity", "describing population dynamics"]
+            },
+            {
+              id: "AC-B12-EC03",
+              strand: "Ecology",
+              topic: "Conservation",
+              contentDescription: "describe conservation biology",
+              elaborations: ["evaluating conservation strategies", "explaining habitat management", "analysing biodiversity loss"]
+            }
+          ]
+        },
+        achievementStandard: "Students describe DNA, gene expression and inheritance patterns. They explain mechanisms of evolution and evidence. They describe ecosystem dynamics and conservation."
+      }
+    }
+  },
+  "History": {
+    subject: "History",
+    learningArea: "Humanities and Social Sciences",
+    yearLevels: {
+      "11": {
+        year: 11,
+        strands: {
+          "Modern History": [
+            {
+              id: "AC-HI11-01",
+              strand: "Modern History",
+              topic: "World War I",
+              contentDescription: "analyse World War I",
+              elaborations: ["analysing causes of WWI", "examining key battles", "evaluating Treaty of Versailles"]
+            },
+            {
+              id: "AC-HI11-02",
+              strand: "Modern History",
+              topic: "Interwar Period",
+              contentDescription: "describe the interwar period",
+              elaborations: ["explaining economic impacts of Great Depression", "analysing rise of totalitarian regimes", "describing causes of WWII"]
+            }
+          ]
+        },
+        achievementStandard: "Students analyse World War I and its aftermath. They explain the interwar period, including the Great Depression and rise of authoritarian regimes."
+      },
+      "12": {
+        year: 12,
+        strands: {
+          "Modern History": [
+            {
+              id: "AC-HI12-01",
+              strand: "Modern History",
+              topic: "World War II",
+              contentDescription: "analyse World War II",
+              elaborations: ["analysing causes of WWII", "examining key campaigns", "evaluating post-war order"]
+            },
+            {
+              id: "AC-HI12-02",
+              strand: "Modern History",
+              topic: "The Cold War",
+              contentDescription: "describe the Cold War era",
+              elaborations: ["analysing Cold War tensions", "explaining nuclear age", "describing collapse of USSR"]
+            },
+            {
+              id: "AC-HI12-03",
+              strand: "Modern History",
+              topic: "Movements and Change",
+              contentDescription: "analyse social movements",
+              elaborations: ["analysing civil rights movements", "explaining feminist movement", "describing environmental movement"]
+            }
+          ]
+        },
+        achievementStandard: "Students analyse World War II and the Cold War. They explain global movements and social change."
+      }
+    }
+  },
+  "Geography": {
+    subject: "Geography",
+    learningArea: "Humanities and Social Sciences",
+    yearLevels: {
+      "11": {
+        year: 11,
+        strands: {
+          "Biophysical": [
+            {
+              id: "AC-GE11-01",
+              strand: "Biophysical",
+              topic: "Earth's Surface",
+              contentDescription: "analyse physical processes shaping Earth's surface",
+              elaborations: ["analysing weathering processes", "explaining erosion and deposition", "describing tectonic activity"]
+            },
+            {
+              id: "AC-GE11-02",
+              strand: "Biophysical",
+              topic: "Climate and Weather",
+              contentDescription: "analyse climate and weather systems",
+              elaborations: ["explaining atmospheric circulation", "analysing oceanic currents", "describing climate patterns"]
+            },
+            {
+              id: "AC-GE11-03",
+              strand: "Biophysical",
+              topic: "Ecosystems",
+              contentDescription: "analyse ecosystem dynamics",
+              elaborations: ["explaining energy flows", "analysing nutrient cycles", "describing ecological succession"]
+            }
+          ],
+          "Human": [
+            {
+              id: "AC-GE11-04",
+              strand: "Human",
+              topic: "Population",
+              contentDescription: "analyse population distribution and growth",
+              elaborations: ["analysing population patterns", "explaining demographic transition", "describing migration trends"]
+            },
+            {
+              id: "AC-GE11-05",
+              strand: "Human",
+              topic: "Urbanisation",
+              contentDescription: "analyse urbanisation patterns",
+              elaborations: ["explaining urban growth", "analysing urbanisation patterns", "describing megacities"]
+            }
+          ]
+        },
+        achievementStandard: "Students analyse physical processes shaping Earth's surface, climate systems and ecosystems. They describe population and urbanisation."
+      },
+      "12": {
+        year: 12,
+        strands: {
+          "Sustainability": [
+            {
+              id: "AC-GE12-01",
+              strand: "Sustainability",
+              topic: "Environmental Challenges",
+              contentDescription: "analyse global environmental challenges",
+              elaborations: ["analysing climate change impacts", "explaining biodiversity loss", "describing resource challenges"]
+            },
+            {
+              id: "AC-GE12-02",
+              strand: "Sustainability",
+              topic: "Sustainable Solutions",
+              contentDescription: "evaluate sustainable solutions",
+              elaborations: ["evaluating environmental policies", "analysing sustainable practices", "describing global initiatives"]
+            }
+          ],
+          "Interconnection": [
+            {
+              id: "AC-GE12-03",
+              strand: "Interconnection",
+              topic: "Global Networks",
+              contentDescription: "analyse global networks",
+              elaborations: ["analysing global trade networks", "explaining cultural globaliszation", "describing political interconnections"]
+            }
+          ]
+        },
+        achievementStandard: "Students analyse global environmental challenges and evaluate sustainable solutions. They explain global networks."
+      }
+    }
+  },
+  "Economics": {
+    subject: "Economics",
+    learningArea: "Humanities and Social Sciences",
+    yearLevels: {
+      "11": {
+        year: 11,
+        strands: {
+          "Introduction": [
+            {
+              id: "AC-EC11-01",
+              strand: "Introduction",
+              topic: "Fundamental Concepts",
+              contentDescription: "explain fundamental economic concepts",
+              elaborations: ["analysing the economic problem", "calculating opportunity cost", "explaining resource allocation"]
+            },
+            {
+              id: "AC-EC11-02",
+              strand: "Introduction",
+              topic: "Economic Models",
+              contentDescription: "describe economic models",
+              elaborations: ["applying PPF analysis", "explaining efficiency and trade-offs", "analysing economic growth"]
+            }
+          ],
+          "Microeconomics": [
+            {
+              id: "AC-EC11-03",
+              strand: "Microeconomics",
+              topic: "Demand and Supply",
+              contentDescription: "explain demand and supply",
+              elaborations: ["analysing demand determinants", "explaining supply determinants", "calculating elasticity"]
+            },
+            {
+              id: "AC-EC11-04",
+              strand: "Microeconomics",
+              topic: "Market Structures",
+              contentDescription: "describe different market structures",
+              elaborations: ["comparing market structures", "analysing perfect competition", "explaining monopoly power"]
+            }
+          ],
+          "Macroeconomics": [
+            {
+              id: "AC-EC11-05",
+              strand: "Macroeconomics",
+              topic: "Macroeconomic Concepts",
+              contentDescription: "describe macroeconomic indicators",
+              elaborations: ["calculating GDP", "measuring unemployment", "explaining inflation measurement"]
+            },
+            {
+              id: "AC-EC11-06",
+              strand: "Macroeconomics",
+              topic: "Aggregate Demand and Supply",
+              contentDescription: "explain aggregate demand and supply",
+              elaborations: ["analysing aggregate demand", "explaining aggregate supply", "describing macroeconomic equilibrium"]
+            }
+          ]
+        },
+        achievementStandard: "Students explain fundamental economic concepts and economic models. They describe demand, supply and market structures. They explain macroeconomic indicators and aggregate demand and supply."
+      },
+      "12": {
+        year: 12,
+        strands: {
+          "Microeconomics": [
+            {
+              id: "AC-EC12-01",
+              strand: "Microeconomics",
+              topic: "Theory of the Firm",
+              contentDescription: "explain the theory of the firm",
+              elaborations: ["analysing production and costs", "explaining revenue curves", "calculating profit maximisation"]
+            },
+            {
+              id: "AC-EC12-02",
+              strand: "Microeconomics",
+              topic: "Labour Markets",
+              contentDescription: "describe labour markets",
+              elaborations: ["explaining wage determination", "analysing labour market outcomes", "describing employment patterns"]
+            }
+          ],
+          "Macroeconomics": [
+            {
+              id: "AC-EC12-03",
+              strand: "Macroeconomics",
+              topic: "Economic Performance",
+              contentDescription: "analyse economic performance",
+              elaborations: ["analysing economic growth", "explaining fluctuations", "evaluating performance indicators"]
+            },
+            {
+              id: "AC-EC12-04",
+              strand: "Macroeconomics",
+              topic: "Fiscal Policy",
+              contentDescription: "explain fiscal policy",
+              elaborations: ["explaining budget components", "analysing fiscal impact", "evaluating policy effectiveness"]
+            },
+            {
+              id: "AC-EC12-05",
+              strand: "Macroeconomics",
+              topic: "Monetary Policy",
+              contentDescription: "explain monetary policy",
+              elaborations: ["explaining monetary policy tools", "analysing interest rate changes", "evaluating monetary policy effectiveness"]
+            }
+          ],
+          "International": [
+            {
+              id: "AC-EC12-06",
+              strand: "International",
+              topic: "International Trade",
+              contentDescription: "explain international trade",
+              elaborations: ["analysing trade benefits", "explaining trade patterns", "describing trade agreements"]
+            },
+            {
+              id: "AC-EC12-07",
+              strand: "International",
+              topic: "Exchange Rates",
+              contentDescription: "explain exchange rates",
+              elaborations: ["explaining exchange rate determination", "analysing currency fluctuations", "describing balance of payments"]
+            }
+          ]
+        },
+        achievementStandard: "Students explain theory of the firm and labour markets. They analyse economic performance and describe fiscal and monetary policy. They explain international trade and exchange rates."
+      }
+    }
+  },
+  "Business": {
+    subject: "Business",
+    learningArea: "Humanities and Social Sciences",
+    yearLevels: {
+      "11": {
+        year: 11,
+        strands: {
+          "Fundamentals": [
+            {
+              id: "AC-BU11-01",
+              strand: "Fundamentals",
+              topic: "Nature of Business",
+              contentDescription: "explain the nature and purpose of business",
+              elaborations: ["explaining business objectives", "describing business role in economy", "analysing stakeholder interests"]
+            },
+            {
+              id: "AC-BU11-02",
+              strand: "Fundamentals",
+              topic: "Business Types",
+              contentDescription: "compare different types of business structures",
+              elaborations: ["comparing ownership structures", "explaining legal requirements", "analysing advantages and disadvantages"]
+            }
+          ],
+          "Planning": [
+            {
+              id: "AC-BU11-03",
+              strand: "Planning",
+              topic: "Business Plan Components",
+              contentDescription: "describe the components of a business plan",
+              elaborations: ["describing executive summary", "explaining market analysis", "analysing financial projections"]
+            },
+            {
+              id: "AC-BU11-04",
+              strand: "Planning",
+              topic: "Market Research",
+              contentDescription: "explain the importance of market research",
+              elaborations: ["explaining market research methods", "describing data collection", "analysing market information"]
+            }
+          ],
+          "Marketing": [
+            {
+              id: "AC-BU11-05",
+              strand: "Marketing",
+              topic: "Marketing Fundamentals",
+              contentDescription: "explain the marketing process",
+              elaborations: ["describing market segmentation", "explaining targeting and positioning", "analysing the 4 Ps"]
+            },
+            {
+              id: "AC-BU11-06",
+              strand: "Marketing",
+              topic: "Consumer Behaviour",
+              contentDescription: "describe factors influencing consumer behaviour",
+              elaborations: ["explaining consumer decision process", "analysing buying motives", "describing consumer trends"]
+            }
+          ],
+          "Finance": [
+            {
+              id: "AC-BU11-07",
+              strand: "Finance",
+              topic: "Financial Records",
+              contentDescription: "explain financial records and basic financial statements",
+              elaborations: ["explaining income statements", "describing balance sheets", "analysing cash flow"]
+            },
+            {
+              id: "AC-BU11-08",
+              strand: "Finance",
+              topic: "Financial Analysis",
+              contentDescription: "analyse financial performance using key ratios",
+              elaborations: ["calculating profitability ratios", "explaining liquidity ratios", "analysing efficiency ratios"]
+            }
+          ]
+        },
+        achievementStandard: "Students explain the nature and purpose of business. They describe business planning and marketing. They explain financial records and analyse financial performance."
+      },
+      "12": {
+        year: 12,
+        strands: {
+          "Operations": [
+            {
+              id: "AC-BU12-01",
+              strand: "Operations",
+              topic: "Operations Management",
+              contentDescription: "explain operations management",
+              elaborations: ["describing production processes", "explaining quality management", "analysing inventory systems"]
+            }
+          ],
+          "Finance": [
+            {
+              id: "AC-BU12-02",
+              strand: "Finance",
+              topic: "Financial Management",
+              contentDescription: "explain financial management",
+              elaborations: ["explaining financing options", "analysing investment decisions", "describing capital budgeting"]
+            },
+            {
+              id: "AC-BU12-03",
+              strand: "Finance",
+              topic: "Risk Management",
+              contentDescription: "explain business risk and strategies for managing risk",
+              elaborations: ["identifying business risks", "explaining risk management strategies", "analysing insurance and hedging"]
+            }
+          ],
+          "Strategy": [
+            {
+              id: "AC-BU12-04",
+              strand: "Strategy",
+              topic: "Strategic Management",
+              contentDescription: "explain strategic management",
+              elaborations: ["analysing competitive environment", "explaining strategy options", "describing strategic implementation"]
+            },
+            {
+              id: "AC-BU12-05",
+              strand: "Strategy",
+              topic: "Growth Strategies",
+              contentDescription: "describe strategies for business growth",
+              elaborations: ["explaining organic growth", "analysing mergers and acquisitions", "describing expansion strategies"]
+            }
+          ],
+          "Human Resources": [
+            {
+              id: "AC-BU12-06",
+              strand: "Human Resources",
+              topic: "Workforce Planning",
+              contentDescription: "explain human resource management",
+              elaborations: ["explaining recruitment process", "describing training methods", "analysing performance management"]
+            },
+            {
+              id: "AC-BU12-07",
+              strand: "Human Resources",
+              topic: "Industrial Relations",
+              contentDescription: "explain workplace relations",
+              elaborations: ["explaining workplace legislation", "describing employee rights", "analysing industrial disputes"]
+            }
+          ]
+        },
+        achievementStandard: "Students explain operations management, financial management, strategic management and human resource management."
+      }
+    }
   }
 };
 
@@ -1521,7 +2734,38 @@ export const ACARA_SUBJECTS = [
   "Visual Arts",
   "Music",
   "Health and Physical Education",
-  "Languages"
+  "Languages",
+  "Physics",
+  "Chemistry",
+  "Biology",
+  "History",
+  "Geography",
+  "Economics",
+  "Business"
+];
+
+export const SENIOR_SUBJECTS = [
+  { id: "mathematics_advanced", label: "Mathematics Advanced", years: [11, 12], states: ["NSW"] },
+  { id: "mathematics_extension_1", label: "Mathematics Extension 1", years: [11, 12], states: ["NSW"] },
+  { id: "mathematics_extension_2", label: "Mathematics Extension 2", years: [12], states: ["NSW"] },
+  { id: "mathematical_methods", label: "Mathematical Methods", years: [11, 12], states: ["VIC", "QLD", "WA", "SA"] },
+  { id: "specialist_mathematics", label: "Specialist Mathematics", years: [11, 12], states: ["VIC", "QLD", "WA", "SA"] },
+  { id: "further_mathematics", label: "Further Mathematics", years: [12], states: ["VIC", "WA"] },
+  { id: "english_advanced", label: "English Advanced", years: [11, 12], states: ["NSW"] },
+  { id: "english_extension_1", label: "English Extension 1", years: [11, 12], states: ["NSW"] },
+  { id: "english_extension_2", label: "English Extension 2", years: [12], states: ["NSW"] },
+  { id: "english_standard", label: "English Standard", years: [11, 12], states: ["NSW"] },
+  { id: "biology", label: "Biology", years: [11, 12], states: ["ALL"] },
+  { id: "chemistry", label: "Chemistry", years: [11, 12], states: ["ALL"] },
+  { id: "physics", label: "Physics", years: [11, 12], states: ["ALL"] },
+  { id: "economics", label: "Economics", years: [11, 12], states: ["ALL"] },
+  { id: "business_studies", label: "Business Studies", years: [11, 12], states: ["ALL"] },
+  { id: "modern_history", label: "Modern History", years: [11, 12], states: ["ALL"] },
+  { id: "geography", label: "Geography", years: [11, 12], states: ["ALL"] },
+  { id: "pdhpe", label: "PDHPE", years: [11, 12], states: ["NSW"] },
+  { id: "french", label: "French", years: [11, 12], states: ["ALL"] },
+  { id: "japanese", label: "Japanese", years: [11, 12], states: ["ALL"] },
+  { id: "mandarin", label: "Mandarin", years: [11, 12], states: ["ALL"] }
 ];
 
 export const STATE_CURRICULUM_DOCUMENTS: Record<string, string> = {

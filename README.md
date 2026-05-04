@@ -91,10 +91,14 @@ Analogix uses Groq's OpenAI-compatible API with task-based routing:
 
 | Model | Use Case |
 |-------|----------|
-| `meta-llama/llama-4-scout-17b-16e-instruct` | Default, coding |
-| `meta-llama/llama-3.3-70b-versatile` | Default fallback |
-| `qwen/qwen3-32b` | Reasoning |
-| `google/gemma-3-4b` | Lightweight tasks |
+| `auto` | Auto-routes to best model for query |
+| `deepseek-r1-distill-llama-70b` | Analogix Maths - maths, coding, logic |
+| `qwen-3-32b` | Analogix Science - science & reasoning |
+| `meta-llama/llama-4-scout-17b-16e-instruct` | Analogix General - all subjects |
+| `llama-3.3-70b-versatile` | Analogix Expert - complex tasks |
+| `gemma2-9b-it` | Analogix Creative - creative writing |
+| `llama-3.1-8b-instant` | Analogix Quick - fast responses |
+| `openai/gpt-oss-120b` | Analogix Long - long context, high output |
 
 ---
 

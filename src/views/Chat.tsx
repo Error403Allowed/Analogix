@@ -52,7 +52,7 @@ import { extractFileText, ACCEPTED_FILE_TYPES } from "@/utils/extractFileText";
 import type { ResearchSource, SavedResearchSource } from "@/types/research";
 import { researchStore } from "@/utils/researchStore";
 import AISettingsSheet from "@/components/AISettingsSheet";
-import { GROQ_MODELS, type GroqModelId } from "@/types/groq-models";
+import { GROQ_MODELS, getModelBranding, type GroqModelId } from "@/types/groq-models";
 
 // Caching
 const nextConfig: NextConfig = {
@@ -267,6 +267,103 @@ const ResearchSourceCard = ({
 const fetchImageForQuery = async (..._args: unknown[]): Promise<string | null> => null;
 
 const allSubjects = SUBJECT_CATALOG;
+
+
+/**
+ * Portal component for model selector - modal overlay
+ */
+const ModelDropdownPortal = ({ onSelect, selectedModel, selectedSubject }: {
+  onSelect: (modelId: string) => void;
+  selectedModel: string;
+  selectedSubject: SubjectId | null;
+}) => {
+  const [isOpen, setIsOpen] = useState(true);
+
+  // Close on click outside or escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsOpen(false);
+    };
+    const handleClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.closest('.model-modal-backdrop')) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('click', handleClick);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('click', handleClick);
+    };
+  }, []);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center model-modal-backdrop bg-black/50 backdrop-blur-sm">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        transition={{ duration: 0.2 }}
+        className="w-full max-w-md mx-4 rounded-2xl border border-border bg-background shadow-2xl overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+          <h2 className="text-lg font-semibold text-foreground">Select Model</h2>
+          <button
+            type="button"
+            onClick={() => setIsOpen(false)}
+            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Model List */}
+        <div className="p-3 space-y-1 max-h-[60vh] overflow-y-auto">
+          {GROQ_MODELS.map((model) => {
+            const branding = getModelBranding(model.id, selectedSubject);
+            return (
+              <button
+                key={model.id}
+                type="button"
+                onClick={() => onSelect(model.id)}
+                className={`w-full text-left px-4 py-3 rounded-xl transition-all flex items-center gap-3 ${
+                  selectedModel === model.id
+                    ? "bg-primary/10 text-primary ring-1 ring-primary/30"
+                    : "hover:bg-muted text-foreground"
+                }`}
+              >
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                  selectedModel === model.id ? "bg-primary/20" : "bg-muted"
+                }`}>
+                  <Brain className={`w-4 h-4 ${selectedModel === model.id ? "text-primary" : "text-muted-foreground"}`} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold">{branding.name}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{branding.description}</p>
+                </div>
+                {selectedModel === model.id && (
+                  <Check className="w-5 h-5 text-primary shrink-0" />
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Footer */}
+        <div className="px-5 py-3 border-t border-border bg-muted/20">
+          <p className="text-xs text-muted-foreground text-center">
+            Auto picks the best model for your query
+          </p>
+        </div>
+      </motion.div>
+    </div>
+  );
+};
 
 
 /**
@@ -1614,7 +1711,7 @@ Title:` }];
           {/* Chat always visible — subject auto-detected from first message */}
           <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
             {/* ── TAB CONTENT ─────────────────────────────── */}
-            <div className="flex-1 flex gap-4 min-h-0">
+            <div className="flex-1 flex gap-4 min-h-0 overflow-hidden">
               {/* Main chat column */}
               <div
                 className="flex-1 min-h-0 relative"
@@ -2035,6 +2132,7 @@ Title:` }];
                       <div className="relative" ref={modelSelectorRef} data-tour="model-selector">
                         <button
                           type="button"
+                          ref={(el) => { (window as any).__modelBtnRef = el; }}
                           onClick={() => setShowModelSelector(p => !p)}
                           disabled={isInputLocked}
                           className="h-8 px-3 rounded-full bg-muted/40 flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-all hover:text-foreground hover:bg-muted/60 disabled:opacity-40"
@@ -2042,7 +2140,7 @@ Title:` }];
                         >
                           <Brain className="w-3.5 h-3.5" />
                           <span className="hidden sm:inline">
-                            {GROQ_MODELS.find(m => m.id === selectedModel)?.name || "Auto"}
+                            {getModelBranding(selectedModel, selectedSubject).name}
                           </span>
                           <ChevronUp className={`w-3 h-3 transition-transform ${showModelSelector ? "rotate-180" : ""}`} />
                         </button>
@@ -2050,46 +2148,14 @@ Title:` }];
                         {/* Model selector dropdown */}
                         <AnimatePresence>
                           {showModelSelector && (
-                            <motion.div
-                              initial={{ opacity: 0, y: 8, scale: 0.96 }}
-                              animate={{ opacity: 1, y: 0, scale: 1 }}
-                              exit={{ opacity: 0, y: 8, scale: 0.96 }}
-                              transition={{ duration: 0.15 }}
-                              className="absolute bottom-full right-0 mb-2 w-72 rounded-xl border border-border bg-popover shadow-lg shadow-black/5 z-50 overflow-hidden"
-                            >
-                              <div className="p-2 space-y-1 max-h-96 overflow-y-auto">
-                                {GROQ_MODELS.map((model) => (
-                                  <button
-                                    key={model.id}
-                                    type="button"
-                                    onClick={() => {
-                                      setSelectedModel(model.id);
-                                      setShowModelSelector(false);
-                                    }}
-                                    className={`w-full text-left px-3 py-2.5 rounded-lg transition-all ${
-                                      selectedModel === model.id
-                                        ? "bg-primary/10 text-primary"
-                                        : "hover:bg-muted text-foreground"
-                                    }`}
-                                  >
-                                    <div className="flex items-center justify-between gap-2">
-                                      <div className="flex-1 min-w-0">
-                                        <p className="text-xs font-semibold truncate">{model.name}</p>
-                                        <p className="text-[10px] text-muted-foreground/70 truncate mt-0.5">{model.description}</p>
-                                      </div>
-                                      {selectedModel === model.id && (
-                                        <Check className="w-3.5 h-3.5 text-primary shrink-0" />
-                                      )}
-                                    </div>
-                                  </button>
-                                ))}
-                              </div>
-                              <div className="px-3 py-2 border-t border-border bg-muted/30">
-                                <p className="text-[10px] text-muted-foreground/60">
-                                  Auto picks the best model for your query
-                                </p>
-                              </div>
-                            </motion.div>
+                            <ModelDropdownPortal
+                              onSelect={(modelId: string) => {
+                                setSelectedModel(modelId);
+                                setShowModelSelector(false);
+                              }}
+                              selectedModel={selectedModel}
+                              selectedSubject={selectedSubject}
+                            />
                           )}
                         </AnimatePresence>
                       </div>

@@ -1,4 +1,4 @@
-import { ACARA_CURRICULUM, ACARA_SUBJECTS, STATE_CURRICULUM_DOCUMENTS, CurriculumSubject, CurriculumYearLevel, CurriculumTopic } from "@/data/curriculum";
+import { ACARA_CURRICULUM, ACARA_SUBJECTS, SENIOR_SUBJECTS, STATE_CURRICULUM_DOCUMENTS, CurriculumSubject, CurriculumYearLevel, CurriculumTopic } from "@/data/curriculum";
 
 export function getSubjectFromKey(key: string): string {
   const subjectMap: Record<string, string> = {
@@ -6,19 +6,16 @@ export function getSubjectFromKey(key: string): string {
     "mathematics": "Mathematics",
     "english": "English",
     "science": "Science",
-    "physics": "Science",
-    "chemistry": "Science",
-    "biology": "Science",
+    "physics": "Physics",
+    "chemistry": "Chemistry",
+    "biology": "Biology",
+    "history": "History",
+    "geography": "Geography",
+    "economics": "Economics",
+    "business": "Business",
     "digital": "Digital Technologies",
     "digital technologies": "Digital Technologies",
     "computing": "Digital Technologies",
-    "hass": "HASS",
-    "humanities": "HASS",
-    "history": "HASS",
-    "geography": "HASS",
-    "economics": "HASS",
-    "business": "HASS",
-    "civics": "HASS",
     "design": "Design and Technologies",
     "design and technologies": "Design and Technologies",
     "visual arts": "Visual Arts",
@@ -27,14 +24,19 @@ export function getSubjectFromKey(key: string): string {
     "health": "Health and Physical Education",
     "pe": "Health and Physical Education",
     "physical education": "Health and Physical Education",
+    "pdhpe": "Health and Physical Education",
     "languages": "Languages",
     "french": "Languages",
     "japanese": "Languages",
     "chinese": "Languages",
+    "mandarin": "Languages",
     "german": "Languages",
     "italian": "Languages",
     "indonesian": "Languages",
-    "spanish": "Languages"
+    "spanish": "Languages",
+    "hass": "HASS",
+    "humanities": "HASS",
+    "commerce": "Economics"
   };
   return subjectMap[key.toLowerCase()] || key;
 }
@@ -210,4 +212,83 @@ export function findCurriculumForQuery(subjectName: string, yearLevel: number, q
   return result;
 }
 
-export { ACARA_CURRICULUM, ACARA_SUBJECTS, STATE_CURRICULUM_DOCUMENTS };
+export function getAvailableYears(subjectName: string): number[] {
+  const subject = getCurriculumSubject(subjectName);
+  if (!subject) return [];
+  
+  return Object.keys(subject.yearLevels)
+    .map(y => parseInt(y, 10))
+    .sort((a, b) => a - b);
+}
+
+export function isSeniorYear(yearLevel: number): boolean {
+  return yearLevel >= 11 && yearLevel <= 12;
+}
+
+export function getStateSpecificCurriculum(state: string | null): Record<string, string> {
+  if (!state) return {};
+  
+  const stateDoc = STATE_CURRICULUM_DOCUMENTS[state.toUpperCase()];
+  if (!stateDoc) return {};
+  
+  const curriculumMapping: Record<string, Record<string, string>> = {
+    NSW: {
+      mathematics: "NSW HSC - Mathematics Standard, Advanced, Extension 1 & 2",
+      english: "NSW HSC - English Standard, Advanced, Extension 1 & 2",
+      science: "NSW HSC - Biology, Chemistry, Physics",
+      history: "NSW HSC - Modern History",
+      geography: "NSW HSC - Geography",
+      economics: "NSW HSC - Economics",
+      business: "NSW HSC - Business Studies",
+      physics: "NSW HSC - Physics",
+      chemistry: "NSW HSC - Chemistry",
+      biology: "NSW HSC - Biology"
+    },
+    VIC: {
+      mathematics: "VCE - Mathematical Methods, Specialist Mathematics, Further Mathematics",
+      english: "VCE - English, Literature",
+      science: "VCE - Biology, Chemistry, Physics",
+      history: "VCE - History",
+      geography: "VCE - Geography",
+      economics: "VCE - Economics",
+      business: "VCE - Business Management",
+      physics: "VCE - Physics",
+      chemistry: "VCE - Chemistry",
+      biology: "VCE - Biology"
+    },
+    QLD: {
+      mathematics: "QCE - General Mathematics, Mathematical Methods, Specialist Mathematics",
+      english: "QCE - English, Literature",
+      science: "QCE - Biology, Chemistry, Physics",
+      history: "QCE - Modern History",
+      geography: "QCE - Geography",
+      economics: "QCE - Economics",
+      business: "QCE - Business",
+      physics: "QCE - Physics",
+      chemistry: "QCE - Chemistry",
+      biology: "QCE - Biology"
+    },
+    SA: {
+      mathematics: "SACE - Mathematics, Specialist Mathematics",
+      english: "SACE - English, English Literary Studies",
+      science: "SACE - Biology, Chemistry, Physics",
+      history: "SACE - Modern History",
+      geography: "SACE - Geography",
+      economics: "SACE - Economics",
+      business: "SACE - Business and Enterprise"
+    },
+    WA: {
+      mathematics: "WACE - Mathematics Applications, Methods, Specialist",
+      english: "WACE - English, Literature",
+      science: "WACE - Biology, Chemistry, Physics",
+      history: "WACE - History",
+      geography: "WACE - Geography",
+      economics: "WACE - Economics",
+      business: "WACE - Business Management, Accounting"
+    }
+  };
+  
+  return curriculumMapping[state.toUpperCase()] || {};
+}
+
+export { ACARA_CURRICULUM, ACARA_SUBJECTS, SENIOR_SUBJECTS, STATE_CURRICULUM_DOCUMENTS };

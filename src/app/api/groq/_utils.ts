@@ -715,7 +715,10 @@ export const callGroqChatStream = async (
         }
 
         console.log(`[Groq] ${model} ✅ streaming success with key #${keyIndex + 1}`);
-        return response.body!;
+        if (!response.body) {
+          throw new Error("Empty response body from Groq API");
+        }
+        return response.body;
 
       } catch (error) {
         // Clean up timeout
