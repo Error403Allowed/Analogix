@@ -95,7 +95,7 @@ function preprocessLatexToBlocks(raw: string): BlockNoteEditorPartialBlock[] {
   if (textAfter) {
     const textBlocks = textAfter.split(/\n{2,}/).filter(Boolean).map((para) => ({
       type: "paragraph" as const,
-      content: [{ type: "text" as const, text: para.trim(), styles: {} as any }],
+      content: [{ type: "text" as const, text: para.trim(), styles: {} as Record<string, unknown> }],
     }));
     blocks.push(...textBlocks);
   }

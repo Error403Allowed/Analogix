@@ -2136,7 +2136,7 @@ Title:` }];
                       <div className="relative" ref={modelSelectorRef} data-tour="model-selector">
                         <button
                           type="button"
-                          ref={(el) => { (window as any).__modelBtnRef = el; }}
+                          ref={(el) => { window.__modelBtnRef = el; }}
                           onClick={() => setShowModelSelector(p => !p)}
                           disabled={isInputLocked}
                           className="h-8 px-3 rounded-full bg-muted/40 flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-all hover:text-foreground hover:bg-muted/60 disabled:opacity-40"
