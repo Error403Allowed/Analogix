@@ -7,7 +7,7 @@ const GROQ_CHAT_URL =
 
 // Groq model lineup — all free tier, best-in-class per task
 // Each model has its own separate TPD (tokens/day) quota — spread load across them
-const DEFAULT_MODEL            = "meta-llama/llama-4-scout-17b-16e-instruct"; // Llama 4 Scout, 128K ctx
+const DEFAULT_MODEL            = "allam-2-7b";                            // Allam 2 - latest model
 const DEFAULT_FALLBACK_MODEL   = "llama-3.3-70b-versatile";                    // Llama 3.3 
 const HIGH_TOKEN_MODEL        = "openai/gpt-oss-120b";                          // GPT-OSS 120B — 65K+ completion tokens
 
@@ -39,13 +39,12 @@ export const getUserSelectedModel = (): string | null => {
 };
 
 // Model-specific token limits (safe values below actual limits)
-// Llama 4 Scout: 128K context, 8K output max
+// Allam 2: 128K context, 8K output max
 // Llama 3.3 70B: 128K context, 8K output max
 // GPT-OSS 120B: 65K+ completion tokens
 // We use conservative limits to avoid cutoff errors
 const MODEL_OUTPUT_LIMITS: Record<string, number> = {
-  "meta-llama/llama-4-scout-17b-16e-instruct": 8192,
-  "meta-llama/llama-4-maverick-17b-128e-instruct": 8192,
+  "allam-2-7b": 8192,
   "llama-3.3-70b-versatile": 8192,
   "deepseek-r1-distill-llama-70b": 8192,
   "llama-3.1-8b-instant": 4096,
