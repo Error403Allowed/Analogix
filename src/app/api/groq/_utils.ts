@@ -9,7 +9,7 @@ const GROQ_CHAT_URL =
 // Each model has its own separate TPD (tokens/day) quota — spread load across them
 const DEFAULT_MODEL            = "meta-llama/llama-4-scout-17b-16e-instruct"; // Llama 4 Scout, 128K ctx
 const DEFAULT_FALLBACK_MODEL   = "llama-3.3-70b-versatile";                    // Llama 3.3 
-const HIGH_TOKEN_MODEL        = "llama-3.3-70b-versatile";                    // Use llama 3.3 for high token (gpt-oss doesn't exist)
+const HIGH_TOKEN_MODEL        = "llama-3.3-70b-versatile";                    // Use llama 3.3 for high token
 
 // Compound AI systems - for agentic workflows and multi-tool tasks
 const COMPOUND_MODEL          = "groq/compound";                           // Full agentic - up to 10 tool calls
@@ -480,6 +480,7 @@ export const callGroqChat = async (
 
   // Try each model with each API key
   for (const model of modelsToTry) {
+    let attempts = 0;
     for (let keyOffset = 0; keyOffset < apiKeys.length; keyOffset++) {
       const keyIndex = (startingKeyIndex + keyOffset) % apiKeys.length;
       const apiKey = getApiKeyAtIndex(keyIndex);
@@ -545,6 +546,27 @@ export const callGroqChat = async (
           if (statusCode === 413) {
             console.warn(`[Groq] ${model} request too large on key #${keyIndex + 1}, trying next model...`);
             break; // Try next model (not just next key)
+          }
+
+          // On 404 - model not found OR rate limited, wait and retry same model first with backoff
+          if (statusCode === 404 || statusCode === 429) {
+            const isRateLimit = statusCode === 429;
+            const is404NotFound = errorMessage.includes("does not exist");
+            const waitTime = is404NotFound && attempts === 0 ? 2000 : 3000;
+            const maxAttempts = 2;
+            
+            if (attempts < maxAttempts) {
+              console.warn(`[Groq] ${model} ${isRateLimit ? "rate limited" : "not available"} (${statusCode}), attempt ${attempts + 1}/${maxAttempts}, waiting ${waitTime}ms...`);
+              await delay(waitTime);
+              attempts++;
+              continue;
+            }
+            if (!is404NotFound) {
+              console.warn(`[Groq] ${model} still rate limited after ${maxAttempts} attempts, trying next model...`);
+              break;
+            }
+            console.warn(`[Groq] ${model} permanently unavailable, trying next model...`);
+            break;
           }
 
           // On 401/403, API key is invalid - don't retry with this key
@@ -626,6 +648,7 @@ export const callGroqChatStream = async (
 
   // Try each model with each API key
   for (const model of modelsToTry) {
+    let attempts = 0;
     for (let keyOffset = 0; keyOffset < apiKeys.length; keyOffset++) {
       const keyIndex = (startingKeyIndex + keyOffset) % apiKeys.length;
       const apiKey = getApiKeyAtIndex(keyIndex);
@@ -692,7 +715,28 @@ export const callGroqChatStream = async (
             break;
           }
 
-          // On 401/403, API key is invalid
+// On 404 - model not found OR rate limited, wait and retry with backoff
+          if (statusCode === 404 || statusCode === 429) {
+            const isRateLimit = statusCode === 429;
+            const is404NotFound = errorMessage.includes("does not exist");
+            
+            if (is404NotFound && attempts < 2) {
+              console.warn(`[Groq] ${model} not available (404), attempt ${attempts + 1}/2, waiting 2000ms...`);
+              await delay(2000);
+              attempts++;
+              continue;
+            }
+            if (isRateLimit && attempts < 2) {
+              console.warn(`[Groq] ${model} rate limited (429), attempt ${attempts + 1}/2, waiting 3000ms...`);
+              await delay(3000);
+              attempts++;
+              continue;
+            }
+            console.warn(`[Groq] ${model} failed after retries, trying next model...`);
+            break;
+          }
+
+          // On 401/403, API key is invalid - don't retry with this key
           if (statusCode === 401 || statusCode === 403) {
             console.error(`[Groq] ${model} authentication failed on key #${keyIndex + 1} - check API key`);
             continue;
