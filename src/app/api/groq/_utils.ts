@@ -7,9 +7,9 @@ const GROQ_CHAT_URL =
 
 // Groq model lineup — all free tier, best-in-class per task
 // Each model has its own separate TPD (tokens/day) quota — spread load across them
-const DEFAULT_MODEL            = "allam-2-7b";                            // Allam 2 - latest model
+const DEFAULT_MODEL            = "meta-llama/llama-4-scout-17b-16e-instruct"; // Llama 4 Scout, 128K ctx
 const DEFAULT_FALLBACK_MODEL   = "llama-3.3-70b-versatile";                    // Llama 3.3 
-const HIGH_TOKEN_MODEL        = "openai/gpt-oss-120b";                          // GPT-OSS 120B — 65K+ completion tokens
+const HIGH_TOKEN_MODEL        = "llama-3.3-70b-versatile";                    // Use llama 3.3 for high token (gpt-oss doesn't exist)
 
 // Compound AI systems - for agentic workflows and multi-tool tasks
 const COMPOUND_MODEL          = "groq/compound";                           // Full agentic - up to 10 tool calls
@@ -39,16 +39,15 @@ export const getUserSelectedModel = (): string | null => {
 };
 
 // Model-specific token limits (safe values below actual limits)
-// Allam 2: 128K context, 8K output max
+// Llama 4 Scout: 128K context, 8K output max
 // Llama 3.3 70B: 128K context, 8K output max
-// GPT-OSS 120B: 65K+ completion tokens
 // We use conservative limits to avoid cutoff errors
 const MODEL_OUTPUT_LIMITS: Record<string, number> = {
-  "allam-2-7b": 8192,
+  "meta-llama/llama-4-scout-17b-16e-instruct": 8192,
+  "meta-llama/llama-4-maverick-17b-128e-instruct": 8192,
   "llama-3.3-70b-versatile": 8192,
   "deepseek-r1-distill-llama-70b": 8192,
   "llama-3.1-8b-instant": 4096,
-  "openai/gpt-oss-120b": 32000,
 };
 
 const getSafeMaxTokens = (model: string, requested: number): number => {
@@ -131,18 +130,14 @@ const getApiKeyAtIndex = (index: number) => {
 
 // Groq free tier limits (adjust if you have different limits)
 const RATE_LIMIT_CONFIG = {
-  // Requests per minute per API key (conservative to avoid 429s)
-  rpmPerKey: 10,
-  // Tokens per minute per API key — Groq free tier is 6000 TPM per key
-  // We use 14000 as a generous local-side cap (actual enforcement is by Groq).
-  // The local bucket is just a soft throttle, not a hard gate.
-  tpmPerKey: 30000,
-  // Minimum delay between requests (ms) - spreads requests out
-  minDelayMs: 100,
-  // Maximum concurrent requests per key — set high enough that normal
-  // chat usage (2-3 messages in flight) never gets blocked locally.
-  // Groq's own 429s handle real overload; this just prevents runaway loops.
-  maxConcurrentPerKey: 10,
+  // Requests per minute per API key - conservative to avoid hitting Groq limits
+  rpmPerKey: 3,
+  // Tokens per minute per API key - stay well under Groq free tier limits
+  tpmPerKey: 5000,
+  // Minimum delay between requests (ms) - spreads requests out to prevent burst
+  minDelayMs: 2000,
+  // Maximum concurrent requests per key
+  maxConcurrentPerKey: 2,
 };
 
 // Token bucket state per API key

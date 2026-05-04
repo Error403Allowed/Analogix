@@ -170,7 +170,7 @@ export const GROQ_MODELS: GroqModelConfig[] = [
     id: "llama-4-scout",
     name: "Analogix General",
     description: "Good for all subjects",
-    modelString: "allam-2-7b",
+    modelString: "meta-llama/llama-4-scout-17b-16e-instruct",
     maxTokens: 8192,
     brandingBySubject: {
       math: { name: "Analogix General", description: "Good for all subjects including maths" },
