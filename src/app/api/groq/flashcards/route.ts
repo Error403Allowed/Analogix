@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { callGroqChat } from "../_utils";
+import { buildFullCurriculumPrompt } from "@/lib/curriculum";
 
 export const runtime = "nodejs";
 
@@ -13,13 +14,24 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { content, fileName, subject, count = 15 } = body;
+    const { content, fileName, subject, count = 15, grade = "7" } = body;
 
     if (!content?.trim()) {
       return NextResponse.json({ error: "Content is required" }, { status: 400 });
     }
 
-    const prompt = `Generate ${count} high-quality flashcards from the following study content.
+    // Build curriculum context
+    const gradeNum = parseInt(grade, 10) || 7;
+    const curriculumPrompt = subject && gradeNum >= 7 && gradeNum <= 10
+      ? buildFullCurriculumPrompt(subject, gradeNum)
+      : "";
+    const curriculumSection = curriculumPrompt
+      ? `\n\nYou have deep knowledge of the ACARA Australian Curriculum for ${subject} Year ${gradeNum}. Use this to ensure flashcards align with curriculum standards.\n\n${curriculumPrompt}`
+      : "";
+
+    const prompt = `You are an expert educational content creator.${curriculumSection}
+
+Generate ${count} high-quality flashcards from the following study content.
 
 Each flashcard must:
 - Have a clear question (front) and answer (back)

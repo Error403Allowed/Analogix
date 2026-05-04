@@ -7,6 +7,7 @@ import { listUserDocuments } from "@/lib/server/documents";
 import type { ResearchSource } from "@/types/research";
 import { getUserAIPersonality, getRelevantMemories, buildMemoryContext, buildPersonalityInstructions } from "@/lib/aiMemory";
 import type { AIPersonality, AIMemoryFragment } from "@/types/ai-personality";
+import { buildFullCurriculumPrompt, findCurriculumForQuery } from "@/lib/curriculum";
 
 export const runtime = "nodejs";
 
@@ -106,7 +107,7 @@ function buildSystemPrompt(
   workspaceContext?: string,
   calendarContext?: string,
 ): string {
-  const analogyIntensity = userContext?.analogyIntensity ?? 1;
+  const analogyIntensity = userContext?.analogyIntensity ?? 4;
   const studentGrade = userContext?.grade || "7-12";
   const studentState = userContext?.state || null;
 
@@ -122,7 +123,9 @@ function buildSystemPrompt(
     : `The student is in Year ${studentGrade} in Australia. Always align explanations to the Australian curriculum for Year ${studentGrade}. Use Australian spelling and terminology.`;
 
   const interestList = userContext?.hobbies?.filter(Boolean) ?? [];
-  const allowedInterests = interestList.length > 0 ? interestList.join(", ") : "General";
+  const allowedInterests = interestList.length > 0 
+    ? interestList.join(", ") 
+    : "the student's everyday life, school experiences, or general interests (ask about theirs if unclear)";
 
   const findExplicitInterest = (text: string, interests: string[]) => {
     const lower = text.toLowerCase();
@@ -138,15 +141,17 @@ function buildSystemPrompt(
   const explicitFromContext = userContext?.analogyAnchor?.trim() || null;
   const explicitFromMessage = latestUser ? findExplicitInterest(latestUser, interestList) : null;
   const randomInterest = interestList.length > 0 ? interestList[Math.floor(Math.random() * interestList.length)] : null;
-  const analogyAnchor = explicitFromContext || explicitFromMessage || randomInterest || undefined;
+  const generalAnchors = ["everyday life", "school experiences", "sports", "gaming", "music", "movies", "friends", "family"];
+  const generalAnchor = generalAnchors[Math.floor(Math.random() * generalAnchors.length)];
+  const analogyAnchor = explicitFromContext || explicitFromMessage || randomInterest || generalAnchor;
 
   const analogyGuidance = [
     "SCHOOL MODE: This student wants responses tailored for school/assessment purposes. Be formal, precise, and curriculum-aligned. Use correct subject-specific terminology. Structure answers the way a teacher or marker would expect. No analogies, no personal interests, no casual tone.",
     "Use analogies sparingly — only when they genuinely help clarify a specific point.",
     "Use analogies as the primary teaching tool — lead with a hobby-based analogy before any explanation.",
-    "MANDATORY: Open EVERY explanation with an analogy from the student's interests. Build the entire explanation around the analogy. Never start with 'X is defined as...' or give definitions first.",
-    "MANDATORY: Your FIRST SENTENCE for ANY concept explanation must be an analogy from the student's interests. Then explain through the analogy, then reveal the formal concept. Example: 'Think of [hobby analogy]... that's exactly like [concept]... here's why...'",
-    "MANDATORY: For EVERY concept you explain, you MUST use a distinct analogy from the student's interests. Map each concept piece to analogy piece. If no good analogy exists, explicitly say 'Let me find a better analogy...' before giving up.",
+    "MANDATORY: Weave analogies throughout your ENTIRE response. For each concept/part you explain, immediately map it to the student's interests. NEVER append the analogy at the end in a separate paragraph.",
+    "MANDATORY: Interleave the analogy into every step. Don't write 'Step 1: do X. Step 2: do Y.' and then add 'Now imagine your game...' — instead write 'When you do step 1, it's like [analogy mapping for that specific step].' Map each component to its corresponding part in their interests.",
+    "MANDATORY: Every paragraph should contain both concept AND analogy woven together. If you find yourself writing a standalone analogy paragraph at the end, you've failed. The analogy should feel like a continuous thread, not a tacked-on summary.",
   ][Math.min(analogyIntensity, 5)];
 
   const hasExplicitSubject = (userContext?.subjects?.length ?? 0) > 0;
@@ -430,12 +435,15 @@ if (clientMemories && Array.isArray(clientMemories)) {
     const effectiveUserContext = aiPersonality
       ? {
           ...userContext,
-          // Only override if user hasn't explicitly set analogy intensity
+          // Default to high analogy usage - incorporate interests into EVERY response
           analogyIntensity: userContext.analogyIntensity !== undefined
             ? userContext.analogyIntensity
-            : Math.max(1, Math.min(5, aiPersonality.analogy_frequency ?? 3)),
+            : Math.max(4, Math.min(5, aiPersonality.analogy_frequency ?? 4)),
         }
-      : userContext;
+      : {
+          ...userContext,
+          analogyIntensity: userContext.analogyIntensity ?? 4,
+        };
 
     let systemPrompt = buildSystemPrompt(effectiveUserContext, messages, workspaceContext, calendarCtx);
     
@@ -456,7 +464,26 @@ if (clientMemories && Array.isArray(clientMemories)) {
       systemPrompt = `${systemPrompt}\n\n--- PERSONALITY SETTINGS (HIGH PRIORITY) ---\n${personalityInstructions}\n--- END PERSONALITY ---`;
       console.log("[chat-stream] Personality instructions injected (high priority)");
     }
+    
+    // Inject ACARA curriculum knowledge
     const primarySubject = userContext?.subjects?.[0];
+    const studentGrade = userContext?.grade || "7-12";
+    const gradeNum = parseInt(studentGrade.replace("7-12", "7").replace("F", "0"), 10) || 7;
+    
+    if (primarySubject && gradeNum >= 7 && gradeNum <= 10) {
+      const curriculumPrompt = buildFullCurriculumPrompt(primarySubject, gradeNum);
+      if (curriculumPrompt) {
+        systemPrompt = `${systemPrompt}\n\n${curriculumPrompt}`;
+        console.log("[chat-stream] ACARA curriculum injected for", primarySubject, "Year", gradeNum);
+      }
+      
+      // Also add topic-specific curriculum alignment if relevant
+      const latestUserMsg = [...messages].reverse().find(m => m.role === "user")?.content || "";
+      const topicMatch = findCurriculumForQuery(primarySubject, gradeNum, latestUserMsg);
+      if (topicMatch) {
+        systemPrompt = `${systemPrompt}\n\n--- CURRICULUM ALIGNMENT FOR THIS QUESTION ---\n${topicMatch}\n--- END ALIGNMENT ---`;
+      }
+    }
     const isResearchMode = Boolean(userContext?.researchMode);
     // Use highToken model for streaming since we need more output tokens
     const chatTaskType = isSimpleGreeting ? "default" : "highToken";

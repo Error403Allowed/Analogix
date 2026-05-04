@@ -7,7 +7,8 @@ Analogix is an AI-powered study platform for Australian secondary students (Year
 ## Features
 
 ### AI Learning & Agents
-- **Analogix AI Tutor** - Analogy-first explanations with toggle On/Off and "re-explain" with new anchor
+- **Analogix AI Tutor** - Analogy-first explanations woven throughout every response (not just at the end), connecting concepts to student's interests automatically
+- **ACARA Curriculum Integration** - Deep knowledge of Australian Curriculum v9.0 (Years 7-10) built into the AI for curriculum-aligned responses
 - **Agentic Workflow** - 4 specialized AI agents:
   - 📅 **Study Planner** - Schedules, deadlines, study plans, progress tracking
   - 📝 **Notes Agent** - Create, edit, summarize documents, extract key points
@@ -15,7 +16,7 @@ Analogix is an AI-powered study platform for Australian secondary students (Year
   - 🤝 **Collaboration Agent** - Study rooms, invites, collaborative editing
 - **Workspace AI** (bottom-right) - References your notes & flashcards, generates flashcards & quizzes inline
 - **Smart Model Routing** - Automatic routing to coding, reasoning, or general models
-- **Subject Alignment** - Australian curriculum terminology (VIC, NSW, QLD, SA, WA, TAS, NT, ACT)
+- **Subject Alignment** - Full ACARA curriculum knowledge with state-specific syllabus alignment (VIC, NSW, QLD, SA, WA, TAS, NT, ACT)
 - **Formula Context** - Maths/science formulas injected automatically
 
 ### Documents & Study Workspace
@@ -195,7 +196,7 @@ Open `http://localhost:3000`
 src/
 ├── app/                    # Next.js App Router pages
 │   ├── api/               # API routes
-│   │   ├── groq/         # AI endpoints
+│   │   ├── groq/         # AI endpoints (chat, quiz, flashcards, etc.)
 │   │   ├── agents/       # Agentic workflow
 │   │   └── ...
 │   ├── subjects/         # Subject workspace
@@ -204,9 +205,9 @@ src/
 ├── components/            # UI components
 ├── views/                 # Page components
 ├── utils/                 # Stores, hooks, parsers
-├── lib/                  # Client/server utilities
+├── lib/                  # Client/server utilities (curriculum, aiMemory, etc.)
 ├── services/             # API services
-└── data/               # Static resources
+└── data/               # Static resources (ACARA curriculum, formulaSheets, achievements)
 ```
 
 ---

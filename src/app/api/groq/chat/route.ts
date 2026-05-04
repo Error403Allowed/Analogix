@@ -10,6 +10,7 @@ import {
   buildMemoryContext, 
   buildPersonalityInstructions 
 } from "@/lib/aiMemory";
+import { buildFullCurriculumPrompt, findCurriculumForQuery, getStateCurriculumInfo } from "@/lib/curriculum";
 import {
   selectBestInterest,
   buildMappingSection,
@@ -90,8 +91,8 @@ export async function POST(request: Request) {
     const personalityUseAnalogies = aiPersonality?.use_analogies;
     const personalityAnalogyFreq = aiPersonality?.analogy_frequency ?? 3;
     
-    // If personality explicitly disables analogies, force intensity to 0
-    let analogyIntensity = userContext?.analogyIntensity ?? 1;
+    // Default to high analogy usage - incorporate interests into EVERY response
+    let analogyIntensity = userContext?.analogyIntensity ?? 4;
     if (personalityUseAnalogies === false) {
       analogyIntensity = 0; // Personality overrides
     } else if (personalityUseAnalogies === true) {
@@ -131,8 +132,8 @@ export async function POST(request: Request) {
       "Use minimal analogies - mostly facts with rare hobby-based comparisons.",
       "Use analogies as the primary teaching tool - lead with a hobby-based analogy, then back it up with facts.",
       "Use frequent analogies - explain most concepts using hobby-based analogies.",
-      "Use extensive analogies - almost every explanation should use hobby-based analogies.",
-      "Use only analogies - explain everything through hobby-based analogies exclusively.",
+      "Use extensive analogies - incorporate the student's interests into EVERY response, even simple answers.",
+      "Use only analogies - explain everything through the student's interests, make it click every time.",
     ][analogyIntensity];
 
     // Formula sheet context — injected into prompt for formula-bearing subjects
@@ -184,7 +185,10 @@ export async function POST(request: Request) {
 
     // Get the user's hobbies/interests for making analogies
     const interestList = userContext?.hobbies?.filter(Boolean) ?? [];
-    const allowedInterests = interestList.length > 0 ? interestList.join(", ") : "General";
+    // If no interests set, guide the AI to ask about them in a natural way
+    const allowedInterests = interestList.length > 0 
+      ? interestList.join(", ") 
+      : "the student's everyday life, school experiences, or general interests (ask about theirs if unclear)";
 
     const findExplicitInterest = (text: string, interests: string[]) => {
       const lower = text.toLowerCase();
@@ -204,16 +208,26 @@ export async function POST(request: Request) {
       : null;
     const explicitFromContext = userContext?.analogyAnchor?.trim() || null;
     // Pick a random interest as fallback — no extra AI call needed
+    // If no interests set, use general relatable anchors (everyday life, school, sports, gaming, etc.)
     const randomInterest = interestList.length > 0
       ? interestList[Math.floor(Math.random() * interestList.length)]
       : null;
-    const analogyAnchor = explicitFromContext || explicitFromMessage || randomInterest || undefined;
+    const generalAnchors = ["everyday life", "school experiences", "sports", "gaming", "music", "movies", "friends", "family"];
+    const generalAnchor = generalAnchors[Math.floor(Math.random() * generalAnchors.length)];
+    const analogyAnchor = explicitFromContext || explicitFromMessage || randomInterest || generalAnchor;
 
 // Detailed instructions on how to use analogies
     const analogyInstructions =
       analogyIntensity === 0
         ? `ANALOGY MODE: OFF\nUse no analogies. Explain directly, factually, and clearly. Do not reference hobbies or comparisons.`
-        : `1. ANALOGY-FIRST: Lead with an analogy drawn from the student's interests whenever explaining a concept. Don't wait to see if the explanation is clear first — use the analogy as the primary vehicle for the explanation.
+        : `1. WEAVE ANALOGIES THROUGHOUT: Don't just append an analogy at the end. Integrate the analogy into every part of the explanation. As you explain each concept, immediately show how it maps to the student's interests. The analogy should feel like a continuous thread, not a separate paragraph.
+
+    FORBIDDEN: Never write "Step 1:", "Step 2:", "First:", "Second:" or any numbered/list structure that separates the analogy from the concept. Natural paragraphs only.
+
+    CORRECT APPROACH: When explaining a concept, INTERLEAVE the analogy throughout:
+    - "So the quotient rule works like your favorite game's inventory system — when you divide [concept part], it's like moving an item from one slot to another, and [analogy mapping]"
+    - "The power rule is similar — in your game, upgrading a weapon twice multiplies its damage, just like [concept]"
+    
     - For TV/Movies: Use specific moments, scenes, character quirks, or plot beats (not vague settings). E.g., "Like when [character] does [specific action] in [episode], here's why..."
     - For Games: Reference mechanics, progression systems, or narrative beats that create the same dynamic as the concept.
     - For Sports/Music: Use specific athletes, plays, songs, or albums as parallels.
@@ -224,21 +238,14 @@ export async function POST(request: Request) {
     - Use 1–2 analogy threads per response woven throughout; don't confine the analogy to just one sentence.
     - Never mention other sports, games, or genres outside the anchor. No cross-sport/game references.
     - If the user is asking how to solve a problem, introduce the analogy first to frame the approach, then work through the solution with the analogy in mind.
-    - If the user is greeting or making small talk, respond naturally without forcing an analogy.
+    - Even for simple answers, find a way to connect back to their interests briefly.
 
-2. DIRECT MAPPING (MANDATORY): Create a point-by-point correspondence between concept parts and analogy parts. Use this structure:
-    - STATE THE CONCEPT PART → SHOW THE ANALOGY PART → EXPLAIN THE CORRESPONDENCE
-    Example format for each main point:
-    "In [CONCEPT]: [what happens]. In your [ANALOGY]: [corresponding thing]. That means [they work the same way]."
-    
-    MAPPING TEMPLATE:
-    • Concept X ↔ Analogy X: [direct correspondence]
-    • Concept Y ↔ Analogy Y: [direct correspondence]  
-    • Concept Z ↔ Analogy Z: [direct correspondence]
-    
-    For EVERY major point in your explanation, explicitly state how it maps to the analogy.
+2. MAP COMPONENTS TO COMPONENTS: For each component/aspect of the concept, identify the corresponding component in the analogy. Don't just say "it's like X" — explain WHY it maps that way.
+    - Each mathematical step should map to a specific part of the analogy
+    - Each property/rule should connect to a specific mechanic in the analogy
+    - Don't just say "logs are like inventory" — say "the quotient property is like separating items in your inventory: when you divide the arguments, it's like [specific mapping]"
 
-3. CLOSE THE LOOP: Return to the analogy at the end to reinforce — summarize how the key concept parts map back to the analogy parts.`;
+3. NEVER APPEND: Never put the analogy in a separate paragraph at the end. If you catch yourself writing a summary paragraph with the analogy, you've failed. The analogy should be embedded naturally within each explanation point.`;
 
     // Core teaching philosophy
     const teachingApproach =
@@ -399,14 +406,36 @@ ${researchSources.length > 0 ? `ACADEMIC SOURCES:\n${formatResearchSources(resea
       : "";
 
     // Build the complete system prompt for the AI
+    const primarySubject = userContext?.subjects?.[0] || null;
+    const gradeNum = parseInt(studentGrade.replace("7-12", "7").replace("F", "0"), 10) || 7;
+    
+    // Build ACARA curriculum context - this is core knowledge the AI carries
+    const curriculumPrompt = primarySubject
+      ? buildFullCurriculumPrompt(primarySubject, gradeNum)
+      : "";
+    
+    const curriculumSection = curriculumPrompt
+      ? `\n\n${curriculumPrompt}`
+      : "";
+
+    // Detect which curriculum topic the user's question relates to
+    const curriculumTopicMatch = primarySubject && gradeNum >= 7 && gradeNum <= 10
+      ? findCurriculumForQuery(primarySubject, gradeNum, latestUserMessage)
+      : "";
+    const topicSection = curriculumTopicMatch
+      ? `\n\n--- QUESTION CURRICULUM ALIGNMENT ---\n${curriculumTopicMatch}\n--- END ALIGNMENT ---`
+      : "";
+
     const systemPrompt = `You are "Analogix AI", a brilliant, empathetic, and slightly quirky AI tutor. You don't just teach; you make lightbulbs go off.
 
 Student Location & Curriculum:
 ${curriculumContext}
+${curriculumSection}
+${topicSection}
 
 Today's date: ${new Date().toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric" })}. You are fully up to date as of this date — never say your knowledge is limited to 2024 or any earlier date. If asked about recent events or developments, answer confidently based on what you know.
 
-Your Mission: Make complex ideas clear and intuitive, using analogies only when they actually help.
+Your Mission: Make complex ideas clear and intuitive by incorporating analogies into EVERY response. Always use the student's interests to make concepts relatable - even if they don't ask for an analogy. Bridge what they love with what they're learning.
 ${memoryContext ? `\n${memoryContext}` : ""}
 ${aiPersonality ? `\n\n--- PERSONALITY SETTINGS ---\n${buildPersonalityInstructions(aiPersonality)}\n--- END PERSONALITY ---` : ""}
 
