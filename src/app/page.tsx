@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import Landing from "@/views/Landing";
 import { Suspense } from "react";
 

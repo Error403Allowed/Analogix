@@ -8,7 +8,29 @@ import DashLayout from "@/components/DashLayout";
 
 export const metadata: Metadata = {
   title: "Analogix",
-  description: "Analogy-based learning platform",
+  description: "AI-powered learning platform for students",
+  openGraph: {
+    title: "Analogix",
+    description: "AI-powered learning platform for students",
+    url: "https://analogix.vercel.app",
+    siteName: "Analogix",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "Analogix - AI Learning Platform",
+      },
+    ],
+    locale: "en_AU",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Analogix",
+    description: "AI-powered learning platform for students",
+    images: ["/og-image.png"],
+  },
   icons: {
     icon: [
       { url: "/tab-icon.png", type: "image/png" },
