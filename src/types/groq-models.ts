@@ -1,14 +1,13 @@
 /**
  * Available Groq models for user selection - now with Analogix branding
  */
-export type GroqModelId = 
+export type GroqModelId =
   | "auto"
   | "llama-4-scout"
   | "llama-3.3-70b"
   | "qwen-3-32b"
-  | "deepseek-r1-distill"
   | "llama-3.1-8b"
-  | "gemma2-9b"
+  | "allam-2-7b"
   | "gpt-oss-120b";
 export type SubjectId = 
   | "math"
@@ -88,11 +87,11 @@ export const GROQ_MODELS: GroqModelConfig[] = [
     }
   },
   {
-    id: "deepseek-r1-distill",
-    name: "Analogix Maths",
-    description: "Good for maths, coding & logic",
-    modelString: "deepseek-r1-distill-llama-70b",
-    maxTokens: 8192,
+    id: "llama-3.3-70b",
+    name: "Analogix Expert",
+    description: "Reliable for complex tasks",
+    modelString: "llama-3.3-70b-versatile",
+    maxTokens: 32768,
     brandingBySubject: {
       math: { 
         name: "Analogix Maths", 
@@ -131,8 +130,8 @@ export const GROQ_MODELS: GroqModelConfig[] = [
     id: "qwen-3-32b",
     name: "Analogix Science",
     description: "Good for science & reasoning",
-    modelString: "qwen-3-32b",
-    maxTokens: 8192,
+    modelString: "qwen/qwen3-32b",
+    maxTokens: 40960,
     brandingBySubject: {
       physics: { 
         name: "Analogix Physics", 
@@ -192,55 +191,11 @@ export const GROQ_MODELS: GroqModelConfig[] = [
     }
   },
   {
-    id: "llama-3.3-70b",
-    name: "Analogix Expert",
-    description: "Reliable for complex tasks",
-    modelString: "llama-3.3-70b-versatile",
-    maxTokens: 8192,
-    brandingBySubject: {
-      history: { 
-        name: "Analogix History", 
-        description: "Specialised for history & historical analysis",
-        systemPromptAddition: "You are Analogix History, an AI specialised in history. Provide detailed historical context, analyse cause and effect, and present multiple perspectives on events. Support arguments with evidence and dates."
-      },
-      geography: { 
-        name: "Analogix Geography", 
-        description: "Specialised for geography & environmental studies",
-        systemPromptAddition: "You are Analogix Geography, an AI specialised in geography. Explain physical and human geography concepts, discuss environmental issues, and analyse spatial patterns. Connect to current events and sustainability."
-      },
-      economics: { 
-        name: "Analogix Business", 
-        description: "Specialised for economics & market analysis",
-        systemPromptAddition: "You are Analogix Business, an AI specialised in economics and business. Explain economic concepts clearly, analyse markets and policies, and discuss real-world economic applications. Use appropriate economic terminology."
-      },
-      business: { 
-        name: "Analogix Business", 
-        description: "Specialised for business studies & management",
-        systemPromptAddition: "You are Analogix Business, an AI specialised in business. Explain business concepts, strategies, and management principles. Discuss real-world examples and practical applications."
-      },
-      commerce: { 
-        name: "Analogix Business", 
-        description: "Specialised for commerce & trade",
-        systemPromptAddition: "You are Analogix Business, an AI specialised in commerce. Explain trade concepts, financial principles, and commercial practices. Focus on practical business applications."
-      },
-      english: { name: "Analogix Expert", description: "Good for complex essays" },
-      languages: { name: "Analogix Expert", description: "Good for complex language tasks" },
-      pdhpe: { name: "Analogix Expert", description: "Good for health & sports analysis" },
-      engineering: { name: "Analogix Expert", description: "Good for technical concepts" },
-      medicine: { name: "Analogix Expert", description: "Good for medical concepts" },
-      math: { name: "Analogix Expert", description: "Good for complex maths" },
-      physics: { name: "Analogix Expert", description: "Good for complex physics" },
-      chemistry: { name: "Analogix Expert", description: "Good for complex chemistry" },
-      biology: { name: "Analogix Expert", description: "Good for complex biology" },
-      computing: { name: "Analogix Expert", description: "Good for complex computing" }
-    }
-  },
-  {
-    id: "gemma2-9b",
+    id: "allam-2-7b",
     name: "Analogix Creative",
     description: "Good for creative writing & ideas",
-    modelString: "gemma2-9b-it",
-    maxTokens: 8192,
+    modelString: "allam-2-7b",
+    maxTokens: 4096,
     brandingBySubject: {
       english: { 
         name: "Analogix English", 
