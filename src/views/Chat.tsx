@@ -1715,7 +1715,7 @@ Title:` }];
             <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
               {/* Main chat column */}
               <div
-                className="flex-1 min-h-0 relative overflow-hidden"
+                className="flex-1 min-h-0 relative"
                 onDragEnter={handleDragOver}
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
