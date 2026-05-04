@@ -8,8 +8,8 @@ export type GroqModelId =
   | "qwen-3-32b"
   | "deepseek-r1-distill"
   | "llama-3.1-8b"
-  | "gemma2-9b";
-
+  | "gemma2-9b"
+  | "gpt-oss-120b";
 export type SubjectId = 
   | "math"
   | "biology"
@@ -149,7 +149,7 @@ export const GROQ_MODELS: GroqModelConfig[] = [
         description: "Specialised for biology & living systems",
         systemPromptAddition: "You are Analogix Biology, an AI specialised in biology. Explain biological concepts clearly, discuss processes and systems, and connect to ecology and health. Use appropriate scientific terminology."
       },
-      mathematics: { 
+      math: { 
         name: "Analogix Science", 
         description: "Good for mathematical reasoning",
         systemPromptAddition: "You are Analogix Science, an AI with strong reasoning capabilities. Approach problems systematically and explain your thinking clearly."

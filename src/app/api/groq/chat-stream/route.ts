@@ -1,6 +1,6 @@
 import { callGroqChatStream, formatError, classifyTaskType } from "../_utils";
 import type { ChatMessage, UserContext } from "@/types/chat";
-import { getModelBranding } from "@/types/groq-models";
+import { getModelBranding, GroqModelId } from "@/types/groq-models";
 import { getFormulaSheetContext } from "@/data/formulaSheets";
 import { createClient } from "@/lib/supabase/server";
 import { buildCalendarContext } from "../_calendarContext";
@@ -103,7 +103,7 @@ const formatResearchSources = (sources: ResearchSource[]) => {
 };
 
 function buildSystemPrompt(
-  userContext: Partial<UserContext> & { analogyIntensity?: number; analogyAnchor?: string; selectedModel?: string },
+  userContext: Partial<UserContext> & { analogyIntensity?: number; analogyAnchor?: string; selectedModel?: GroqModelId },
   messages: ChatMessage[],
   workspaceContext?: string,
   calendarContext?: string,
@@ -483,18 +483,23 @@ if (clientMemories && Array.isArray(clientMemories)) {
     // Build system prompt with personality and memory
     // Use client-side analogy intensity if set, otherwise fall back to personality
     // Prioritise the user's explicit setting over personality defaults
-    const effectiveUserContext = aiPersonality
-      ? {
-          ...userContext,
-          // Default to high analogy usage - incorporate interests into EVERY response
-          analogyIntensity: userContext.analogyIntensity !== undefined
-            ? userContext.analogyIntensity
-            : Math.max(4, Math.min(5, aiPersonality.analogy_frequency ?? 4)),
-        }
-      : {
-          ...userContext,
-          analogyIntensity: userContext.analogyIntensity ?? 4,
-        };
+    const isGroqModelId = (v?: string): v is GroqModelId => {
+  if (!v) return false;
+  return [
+    "llama3-70b",
+    "llama3-8b",
+    "mixtral-8x7b",
+  ].includes(v as GroqModelId);
+};
+
+const safeSelectedModel = isGroqModelId(userContext.selectedModel)
+  ? userContext.selectedModel
+  : undefined;
+
+const effectiveUserContext = {
+  ...userContext,
+  selectedModel: safeSelectedModel,
+};
 
     let systemPrompt = buildSystemPrompt(effectiveUserContext, messages, workspaceContext, calendarCtx);
     

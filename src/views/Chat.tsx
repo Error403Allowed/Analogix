@@ -2150,7 +2150,7 @@ Title:` }];
                           {showModelSelector && (
                             <ModelDropdownPortal
                               onSelect={(modelId: string) => {
-                                setSelectedModel(modelId);
+                                setSelectedModel(modelId as typeof selectedModel);
                                 setShowModelSelector(false);
                               }}
                               selectedModel={selectedModel}
