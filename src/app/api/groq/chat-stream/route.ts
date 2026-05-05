@@ -542,7 +542,7 @@ const effectiveUserContext = {
     }
     const isResearchMode = Boolean(userContext?.researchMode);
     // Use highToken model for streaming since we need more output tokens
-    const chatTaskType = isSimpleGreeting ? "default" : "highToken";
+    const chatTaskType = isSimpleGreeting ? "lightweight" : "default";
 
     console.log("[chat-stream] Calling Groq API with task:", chatTaskType, "model:", userContext?.selectedModel || "auto");
     console.log("[chat-stream] System prompt length:", systemPrompt.length);

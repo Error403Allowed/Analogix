@@ -8,8 +8,7 @@ const GROQ_CHAT_URL =
 // Groq model lineup — all free tier, best-in-class per task
 // Each model has its own separate TPD (tokens/day) quota — spread load across them
 const DEFAULT_MODEL            = "meta-llama/llama-4-scout-17b-16e-instruct"; // Llama 4 Scout, 128K ctx
-const DEFAULT_FALLBACK_MODEL   = "llama-3.3-70b-versatile";                    // Llama 3.3 
-const HIGH_TOKEN_MODEL        = "llama-3.3-70b-versatile";                    // Use llama 3.3 for high token
+const DEFAULT_FALLBACK_MODEL   = "llama-3.3-70b-versatile";                    // Llama 3.3
 
 // Compound AI systems - for agentic workflows and multi-tool tasks
 const COMPOUND_MODEL          = "groq/compound";                           // Full agentic - up to 10 tool calls
@@ -57,7 +56,7 @@ const getSafeMaxTokens = (model: string, requested: number): number => {
 };
 
 // Type definition: what kind of question is the user asking?
-export type TaskType = "coding" | "reasoning" | "default" | "lightweight" | "highToken" | "compound" | "compoundMini";
+export type TaskType = "coding" | "reasoning" | "default" | "lightweight" | "compound" | "compoundMini";
 
 // ============================================================================
 // SMART QUESTION DETECTION: How we figure out what type of question it is
@@ -351,8 +350,6 @@ const getModelsForTaskType = (taskType: TaskType, userModel?: string | null): st
       return [DEFAULT_MODEL, DEFAULT_FALLBACK_MODEL, LAST_RESORT_MODEL];
     case "lightweight":
       return [LIGHTWEIGHT_MODEL, DEFAULT_FALLBACK_MODEL, LAST_RESORT_MODEL];
-    case "highToken":
-      return [HIGH_TOKEN_MODEL, DEFAULT_MODEL, DEFAULT_FALLBACK_MODEL, LAST_RESORT_MODEL];
     case "compound":
       return [COMPOUND_MODEL, DEFAULT_MODEL, DEFAULT_FALLBACK_MODEL, LAST_RESORT_MODEL];
     case "compoundMini":

@@ -40,23 +40,12 @@ CRITICAL RULES:
 3. NEVER extract content the tutor explained - that's knowledge, not student info
 4. Only extract ACTUAL facts about the student themselves
 
-EXTRACT ONLY:
-- STATED FACTS about the student: "I'm in Year 10", "I hate biology", "I want to be a doctor", "I play soccer"
-- REPEATED STRUGGLES: If student says they're confused about the SAME thing multiple times
-- EXPLICIT PREFERENCES: "I prefer video explanations", "explain simply like I'm 5"
-- CLEAR GOALS: "I want 90+ in HSC", "I need to pass this exam"
+EXTRACT ONLY real facts the student explicitly stated about themselves:
+- Named subjects: "I do chemistry", "I'm in Year 11"
+- Direct preferences: "I prefer videos", "explain simply"
+- Clear goals: "I need to pass my trials", "want 90+ in HSC"
 
-NEVER EXTRACT:
-- Questions the student asked ("how do I solve x", "what is y")
-- Concepts the tutor explained (that's knowledge, not personal info)
-- Single confusion instances (unless repeated 3+ times)
-- Anything the student was just learning about
-- Hypothetical scenarios
-
-Return ONLY valid JSON:
-{ "memories": [{ "content": "factual statement about student", "type": "fact|preference|goal", "importance": 0.0-1.0 }] }
-
-If nothing worth remembering, return: { "memories": [] }
+Use ONLY the conversation below. If nothing clear was stated, return { "memories": [] }.
 
 Conversation:
 ${transcript}`;

@@ -79,6 +79,7 @@ export const PersonalityEditor: React.FC< PersonalityEditorProps> = ({ onClose }
   // Check if values have changed from original
   const hasChanges = () => {
     return (
+      personality.operational_mode !== localPersonality.operational_mode ||
       personality.friendliness !== localPersonality.friendliness ||
       personality.formality !== localPersonality.formality ||
       personality.humor !== localPersonality.humor ||
@@ -112,6 +113,7 @@ export const PersonalityEditor: React.FC< PersonalityEditorProps> = ({ onClose }
     setLocalPersonality(prev => ({
       ...prev,
       ...preset.settings,
+      operational_mode: (preset.settings.operational_mode || "teach") as "teach" | "do",
       custom_instructions: prev.custom_instructions,
       persona_description: prev.persona_description,
     }));
@@ -237,6 +239,19 @@ export const PersonalityEditor: React.FC< PersonalityEditorProps> = ({ onClose }
               Teaching Style
             </h4>
             <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label className="text-xs font-semibold text-foreground">Operational Mode</Label>
+                  <p className="text-[10px] text-muted-foreground/60 mt-0.5">
+                    Teach = guide only | Do = complete tasks
+                  </p>
+                </div>
+                <Switch
+                  checked={localPersonality.operational_mode === "do"}
+                  onCheckedChange={(checked) => updateTrait("operational_mode", checked ? "do" : "teach")}
+                />
+              </div>
+
               <div className="flex items-center justify-between">
                 <div>
                   <Label className="text-xs font-semibold text-foreground">Socratic Method</Label>
