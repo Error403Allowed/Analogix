@@ -1,6 +1,5 @@
 import { callGroqChatStream, formatError, classifyTaskType } from "../_utils";
 import type { ChatMessage, UserContext } from "@/types/chat";
-import { getModelBranding, GroqModelId } from "@/types/groq-models";
 import { getFormulaSheetContext } from "@/data/formulaSheets";
 import { createClient } from "@/lib/supabase/server";
 import { buildCalendarContext } from "../_calendarContext";
@@ -8,7 +7,6 @@ import { listUserDocuments } from "@/lib/server/documents";
 import type { ResearchSource } from "@/types/research";
 import { getUserAIPersonality, getRelevantMemories, buildMemoryContext, buildPersonalityInstructions } from "@/lib/aiMemory";
 import type { AIPersonality, AIMemoryFragment } from "@/types/ai-personality";
-import { buildFullCurriculumPrompt, findCurriculumForQuery } from "@/lib/curriculum";
 
 export const runtime = "nodejs";
 
@@ -63,6 +61,15 @@ const stripHtml = (html: string) =>
 const truncate = (text: string, max: number) =>
   text.length > max ? text.slice(0, max) + "…" : text;
 
+const getFirstSentence = (text: string): string => {
+  const cleaned = text.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  const firstPeriod = cleaned.indexOf(". ");
+  if (firstPeriod > 0 && firstPeriod < 200) {
+    return cleaned.slice(0, firstPeriod + 1);
+  }
+  return truncate(cleaned, 200);
+};
+
 const studyGuideToContext = (raw: string): string => {
   try {
     const json = raw.slice(STUDY_GUIDE_PREFIX.length);
@@ -103,17 +110,14 @@ const formatResearchSources = (sources: ResearchSource[]) => {
 };
 
 function buildSystemPrompt(
-  userContext: Partial<UserContext> & { analogyIntensity?: number; analogyAnchor?: string; selectedModel?: GroqModelId },
+  userContext: Partial<UserContext> & { analogyIntensity?: number; analogyAnchor?: string },
   messages: ChatMessage[],
   workspaceContext?: string,
   calendarContext?: string,
 ): string {
-  const analogyIntensity = userContext?.analogyIntensity ?? 4;
+  const analogyIntensity = userContext?.analogyIntensity ?? 1;
   const studentGrade = userContext?.grade || "7-12";
   const studentState = userContext?.state || null;
-  const selectedModel = userContext?.selectedModel;
-  const branding = selectedModel ? getModelBranding(selectedModel, userContext?.subjects?.[0]) : null;
-  const brandPromptAddition = branding?.systemPromptAddition || "";
 
   const STATE_FULL_NAMES: Record<string, string> = {
     NSW: "New South Wales", VIC: "Victoria", QLD: "Queensland",
@@ -127,9 +131,7 @@ function buildSystemPrompt(
     : `The student is in Year ${studentGrade} in Australia. Always align explanations to the Australian curriculum for Year ${studentGrade}. Use Australian spelling and terminology.`;
 
   const interestList = userContext?.hobbies?.filter(Boolean) ?? [];
-  const allowedInterests = interestList.length > 0 
-    ? interestList.join(", ") 
-    : "the student's everyday life, school experiences, or general interests (ask about theirs if unclear)";
+  const allowedInterests = interestList.length > 0 ? interestList.join(", ") : "General";
 
   const findExplicitInterest = (text: string, interests: string[]) => {
     const lower = text.toLowerCase();
@@ -145,17 +147,15 @@ function buildSystemPrompt(
   const explicitFromContext = userContext?.analogyAnchor?.trim() || null;
   const explicitFromMessage = latestUser ? findExplicitInterest(latestUser, interestList) : null;
   const randomInterest = interestList.length > 0 ? interestList[Math.floor(Math.random() * interestList.length)] : null;
-  const generalAnchors = ["everyday life", "school experiences", "sports", "gaming", "music", "movies", "friends", "family"];
-  const generalAnchor = generalAnchors[Math.floor(Math.random() * generalAnchors.length)];
-  const analogyAnchor = explicitFromContext || explicitFromMessage || randomInterest || generalAnchor;
+  const analogyAnchor = explicitFromContext || explicitFromMessage || randomInterest || undefined;
 
   const analogyGuidance = [
     "SCHOOL MODE: This student wants responses tailored for school/assessment purposes. Be formal, precise, and curriculum-aligned. Use correct subject-specific terminology. Structure answers the way a teacher or marker would expect. No analogies, no personal interests, no casual tone.",
     "Use analogies sparingly — only when they genuinely help clarify a specific point.",
     "Use analogies as the primary teaching tool — lead with a hobby-based analogy before any explanation.",
-    "MANDATORY: Weave analogies throughout your ENTIRE response. For each concept/part you explain, immediately map it to the student's interests. NEVER append the analogy at the end in a separate paragraph.",
-    "MANDATORY: Interleave the analogy into every step. Don't write 'Step 1: do X. Step 2: do Y.' and then add 'Now imagine your game...' — instead write 'When you do step 1, it's like [analogy mapping for that specific step].' Map each component to its corresponding part in their interests.",
-    "MANDATORY: Every paragraph should contain both concept AND analogy woven together. If you find yourself writing a standalone analogy paragraph at the end, you've failed. The analogy should feel like a continuous thread, not a tacked-on summary.",
+    "MANDATORY: Open EVERY explanation with an analogy from the student's interests. Build the entire explanation around the analogy. Never start with 'X is defined as...' or give definitions first.",
+    "MANDATORY: Your FIRST SENTENCE for ANY concept explanation must be an analogy from the student's interests. Then explain through the analogy, then reveal the formal concept. Example: 'Think of [hobby analogy]... that's exactly like [concept]... here's why...'",
+    "MANDATORY: For EVERY concept you explain, you MUST use a distinct analogy from the student's interests. Map each concept piece to analogy piece. If no good analogy exists, explicitly say 'Let me find a better analogy...' before giving up.",
   ][Math.min(analogyIntensity, 5)];
 
   const hasExplicitSubject = (userContext?.subjects?.length ?? 0) > 0;
@@ -212,132 +212,37 @@ Put an <ACTIONS>...</ACTIONS> block at the VERY END of your message ONLY for fla
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ` : ""}` : "";
 
-return `You are "Analogix AI", a brilliant and friendly AI tutor for Australian secondary students.
+return `You are "Analogix AI", a friendly AI tutor for Australian students.
 
-Student Location & Curriculum: ${curriculumContext}
-Today's date: ${new Date().toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric" })}.
+Context: Year ${studentGrade}${stateFullName ? ` in ${stateFullName}` : ""}, Australia. ${curriculumContext}
+Today: ${new Date().toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })}.
 
-${analogyIntensity === 0 ? `MODE: SCHOOL / ASSESSMENT ("Schoolwork!")
-The student wants help succeeding in formal academic contexts — exams, essays, assignments.
-- Formal, precise tone. Write like a model answer a teacher would give top marks.
-- Use correct subject-specific terminology and ${stateFullName || "Australian"} syllabus language.
-- Structure responses clearly but CONVERSATIONALLY. No essay-style headers like "## Step 1:" or "## Conclusion".
-- NO $\\boxed{}$ answers. Never output boxed answers like $\\boxed{0}$ or $\\boxed{x}$ unless the student explicitly asks for a specific numerical answer to a math problem.
-- For English/Humanities: conversational analysis, not formal essays.
-- For Maths/Science: conversational explanation, not step-by-step headers.
-- No analogies. No hobby references.` : `MODE: REAL LEARNING ("Learning Mode")
-Allowed Interests (verbatim): ${allowedInterests}
-Analogy Anchor: ${analogyAnchor || "Choose one from Allowed Interests."}
-Analogy Intensity: ${analogyIntensity}/5 — ${analogyGuidance}
-- ALWAYS start your response with an analogy from the student's interests (${allowedInterests}). Even if they ask a simple question, weave in a relevant analogy from their hobbies.
-- NO essay-style headers like "## Step 1:" or "## Conclusion:" — write in natural paragraphs.
-- NO $\\boxed{}$ answers. Never output boxed answers like $\\boxed{0}$ unless it's an actual math calculation the student explicitly requested.
-- Conversational, friendly tone. Like a smart friend explaining something.`}
+${analogyIntensity === 0 ? `MODE: School/Assessment — formal, precise, no analogies.` : 
+  `Learning Mode — ${analogyGuidance}
+Interests: ${allowedInterests}`}
 
-Core rules:
-- Match Year ${studentGrade} vocabulary. Australian English always.
-- Use LaTeX for ALL maths: inline $x$, display $\\frac{a}{b}$.
-- No emojis in body text.
-- IMPORTANT: If the student says something casual like "hi", "hello", or anything not related to a subject, just greet them warmly and ask what they'd like to study. Do NOT launch into a subject or analogy unprompted.
-- IMPORTANT: Only discuss a specific subject if the student has clearly brought it up. Never assume or invent a subject.
-
-━━ CONVERSATIONAL INTELLIGENCE — READ THE ROOM ━━
-Match your response LENGTH and FORMAT to the student's message. This is the most important rule.
-
-SHORT conversational messages → SHORT replies (1–3 sentences). No headers. No steps.
-- "is it not x + 13?" → Just say yes/no and briefly why. One paragraph max.
-- "wait so what's the inverse?" → Quick direct answer, conversational.
-- "oh I get it now" → Acknowledge and move on or ask what's next.
-- "can you explain that again?" → Re-explain naturally, no formal structure.
-- "huh?" / "what?" / "why?" → One clear sentence or two.
-
-ONLY use Step-by-step / headers / long structure when:
-- The student explicitly asks for full working ("show me all the steps", "walk me through it")
-- It's a brand-new multi-part concept they haven't seen before
-- A worked example genuinely requires it
-
-DEFAULT behaviour: be conversational. Talk like a smart tutor sitting next to them, not a textbook.
-
-NEVER use essay-style formatting:
-- Do NOT use "## Step 1:", "## Step 2:", "## Conclusion:" 
-- Do NOT use numbered lists for explanations unless explicitly asked
-- Do NOT structure responses like an essay with headers
-- Write in natural flowing paragraphs
-
-Do NOT pad with recaps, summaries, or "great question!" filler.
-
-RESPONSE LENGTH GUIDE:
-- Quick check / yes-no question → 1–3 sentences
-- Concept clarification → 1 short paragraph
-- New concept introduction → 2–3 paragraphs max, or a graph + brief explanation
-- Full worked example (only when asked) → structured steps are fine here
-${workspaceSection}
+Rules:
+- You have up to 8000 tokens available (~6000-8000 words) — use as much as needed for thorough, complete answers.
+- When asked to write a specific length (e.g., "2000 words"), you MUST count your words as you write and stop when you reach the target. Do NOT guess or estimate word counts.
+- Before finishing, verify your word count is accurate. If asked for 2000 words, actually write 2000 words — not 1000 or 2500.
+- Keep responses conversational. Match length to the query.
+- No essay headers like "## Step 1".
+- Use LaTeX for math/science: inline $x$, display $\frac{a}{b}$, $\sqrt{x}$, $\int$, $\sum$. Never use unicode math symbols.
+- No emojis.${workspaceSection}
 ${researchBlock}
-━━ GRAPHING — USE THESE BLOCKS PROACTIVELY ━━
-You have THREE rendering engines. Choose the right one and place the block BEFORE your explanation.
-
-1. DESMOS (interactive graphing calculator) — use for any 2D equation or function the student should explore interactively:
-\`\`\`desmos
-y=x^{2}
-y=2x+1
-\\sin(x)
-[bounds: -10,10,-6,6]
-\`\`\`
-One expression per line. Optional [bounds: left,right,bottom,top].
-
-CRITICAL DESMOS SYNTAX — follow exactly or the graph will be blank:
-- Trig/log MUST have backslash: \\sin(x)  \\cos(x)  \\tan(x)  \\ln(x)  \\log(x)  \\sqrt{x}
-- Exponents use braces: x^{2}  e^{-x^{2}}  NOT x^(2) or x**2
-- Multiplication: 2\\cdot x  NOT 2*x
-- Fractions: \\frac{1}{x}
-- Sliders: put a=2 on its own line, then reference a in other expressions
-- No semicolons, no comments, expressions only
-WRONG: sin(x), sqrt(x), x**2, 2*x, y==x^2
-RIGHT: \\sin(x), \\sqrt{x}, x^{2}, 2\\cdot x, y=x^{2}
-
-WHEN TO USE:
-- Any equation, function, or curve → desmos (default choice, supports sliders for parameters too)
-- Simple greetings or non-mathematical questions → NO graph
-Always place the block BEFORE the explanation so the student sees it first.
-
-REMEMBER: You are the bridge between what they love and what they need to learn.${formulaSheetContext ? `\n\n--- FORMULA REFERENCE ---\n${formulaSheetContext}\n--- END FORMULA REFERENCE ---` : ""}${brandPromptAddition ? `\n\n${brandPromptAddition}` : ""}`;
+— Analogix`;
 }
 
 export async function POST(request: Request) {
   try {
-    console.log("[chat-stream] === START ===");
-
-    let body;
-    try {
-      body = await request.json();
-      console.log("[chat-stream] Request parsed OK, messages:", body.messages?.length || 0);
-    } catch (parseErr) {
-      console.error("[chat-stream] JSON parse failed:", parseErr instanceof Error ? parseErr.message : parseErr);
-      return new Response("Invalid JSON in request body", { status: 400 });
-    }
-
+    const body = await request.json();
     const messages: ChatMessage[] = body.messages || [];
     const userContext: Partial<UserContext> & { analogyIntensity?: number; analogyAnchor?: string } = body.userContext || {};
 
     // Get personality and memory from database or localStorage
-    let supabase;
-    try {
-      supabase = await createClient();
-    } catch (err) {
-      console.error("[chat-stream] Supabase client creation failed:", err instanceof Error ? err.message : err);
-      throw new Error("Database connection failed");
-    }
-
-    let user;
-    try {
-      const authResult = await supabase.auth.getUser();
-      user = authResult.data.user;
-      console.log("[chat-stream] Auth result:", user ? `user=${user.id}` : "anonymous/guest");
-    } catch (err) {
-      console.error("[chat-stream] Auth check failed:", err instanceof Error ? err.message : err);
-      user = null;
-    }
-
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    
     let aiPersonality: Awaited<ReturnType<typeof getUserAIPersonality>> = null;
     let memoryContext = "";
 
@@ -362,28 +267,18 @@ export async function POST(request: Request) {
     if (user) {
       // Fetch from database
       console.log("[chat-stream] Fetching personality from database...");
-      try {
-        aiPersonality = await getUserAIPersonality(user.id);
-        console.log("[chat-stream] Personality fetched:", aiPersonality ? "YES" : "NO");
-      } catch (err) {
-        console.error("[chat-stream] getUserAIPersonality FAILED:", err instanceof Error ? err.message : err);
-      }
+      aiPersonality = await getUserAIPersonality(user.id);
+      console.log("[chat-stream] Personality fetched:", aiPersonality ? "YES" : "NO");
 
       // Merge client personality over DB personality (client wins)
       if (clientPersonality) {
         aiPersonality = { ...(aiPersonality as AIPersonality | null), ...(clientPersonality as AIPersonality) };
         console.log("[chat-stream] Personality merged from client overrides");
       }
-
-      console.log("[chat-stream] Fetching memories from database...");
-      try {
-        const { memories } = await getRelevantMemories(user.id, { limit: 15, minImportance: 0.5 });
-        memoryContext = buildMemoryContext(memories, []);
-        console.log("[chat-stream] Memories fetched:", memories?.length || 0);
-      } catch (err) {
-        console.error("[chat-stream] getRelevantMemories FAILED:", err instanceof Error ? err.message : err);
-        memoryContext = "";
-      }
+      
+      const { memories } = await getRelevantMemories(user.id, { limit: 5, minImportance: 0.5 });
+      memoryContext = buildMemoryContext(memories, []);
+      console.log("[chat-stream] Memories fetched:", memories?.length || 0);
     } else {
       // Fallback to localStorage from client headers
       console.log("[chat-stream] No user, checking localStorage from headers...");
@@ -406,34 +301,22 @@ if (clientMemories && Array.isArray(clientMemories)) {
       if (c.length > 60) return false;
       return /^(hi|hello|hey|sup|yo|g'day|howdy|hiya|heya|thanks?|bye|good\s?(morning|evening|afternoon)|what'?s up|how are you)[\s!?.]*$/.test(c);
     })();
-    console.log("[chat-stream] isSimpleGreeting:", isSimpleGreeting);
 
     // ── Load workspace context from Supabase (same as agent route) ──────────
     let workspaceContext: string | undefined;
     let calendarCtx: string | undefined;
     if (!isSimpleGreeting) {
-    console.log("[chat-stream] Loading workspace context...");
     try {
       const supabase = await createClient();
-      const { data: { user: wsUser } } = await supabase.auth.getUser();
-      if (wsUser) {
-        console.log("[chat-stream] Loading docs and calendar for user:", wsUser.id);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
         // Load calendar in parallel with workspace docs
         const [calendarResult, documents] = await Promise.all([
-          buildCalendarContext(supabase, wsUser.id).catch((e) => {
-            console.error("[chat-stream] buildCalendarContext failed:", e instanceof Error ? e.message : e);
-            return "";
-          }),
-          listUserDocuments(supabase, wsUser.id).catch((e) => {
-            console.error("[chat-stream] listUserDocuments failed:", e instanceof Error ? e.message : e);
-            return [];
-          }),
+          buildCalendarContext(supabase, user.id).catch(() => ""),
+          listUserDocuments(supabase, user.id),
         ]);
 
-        if (calendarResult) {
-          calendarCtx = calendarResult;
-          console.log("[chat-stream] Calendar loaded, length:", calendarResult.length);
-        }
+        if (calendarResult) calendarCtx = calendarResult;
 
         if (documents.length > 0) {
           const allDocs: Array<{ subjectId: string; title: string; type: string; preview: string }> = [];
@@ -443,19 +326,19 @@ if (clientMemories && Array.isArray(clientMemories)) {
               const readable = studyGuideToContext(doc.content);
               allDocs.push({ subjectId: doc.subject_id, title: doc.title, type: "DOC", preview: readable });
             } else {
+              const summary = getFirstSentence(doc.content || "");
               allDocs.push({
                 subjectId: doc.subject_id,
                 title: doc.title,
                 type: "DOC",
-                preview: truncate(stripHtml(doc.content || ""), 3000),
+                preview: summary + " (Full doc available on request)",
               });
             }
           }
 
           if (allDocs.length > 0) {
             // Token budget for workspace context (leave room for system prompt, messages, and response)
-            // Model limit is 12000 TPM, reserve ~4000 for response + ~2000 for messages = ~6000 for context
-            const WORKSPACE_TOKEN_BUDGET = 5000;
+            const WORKSPACE_TOKEN_BUDGET = 2000;
             const { docs: truncatedDocs, truncated } = truncateWorkspaceDocs(allDocs, WORKSPACE_TOKEN_BUDGET);
 
             if (truncated) {
@@ -480,26 +363,30 @@ if (clientMemories && Array.isArray(clientMemories)) {
     }
     } // end !isSimpleGreeting
 
+    // Detect formal academic requests - force disable analogies
+    const userMessages = messages.filter(m => m.role === "user").map(m => m.content.toLowerCase());
+    const latestUserMsg = userMessages[userMessages.length - 1] || "";
+    const isFormalRequest = /^(write|essay|assignment|report|piece|report|article|paragraph|analysis|critique|review|composition)/.test(latestUserMsg) ||
+      latestUserMsg.includes("essay on") ||
+      latestUserMsg.includes("write an") ||
+      latestUserMsg.includes("assign") ||
+      latestUserMsg.includes("composition");
+
     // Build system prompt with personality and memory
     // Use client-side analogy intensity if set, otherwise fall back to personality
     // Prioritise the user's explicit setting over personality defaults
-    const isGroqModelId = (v?: string): v is GroqModelId => {
-  if (!v) return false;
-  return [
-    "llama3-70b",
-    "llama3-8b",
-    "mixtral-8x7b",
-  ].includes(v as GroqModelId);
-};
-
-const safeSelectedModel = isGroqModelId(userContext.selectedModel)
-  ? userContext.selectedModel
-  : undefined;
-
-const effectiveUserContext = {
-  ...userContext,
-  selectedModel: safeSelectedModel,
-};
+    // For formal requests (essays), force analogyIntensity to 0
+    const effectiveUserContext = aiPersonality
+      ? {
+          ...userContext,
+          // Only override if user hasn't explicitly set analogy intensity, or for formal requests
+          analogyIntensity: userContext.analogyIntensity !== undefined
+            ? userContext.analogyIntensity
+            : isFormalRequest
+              ? 0
+              : Math.max(1, Math.min(5, aiPersonality.analogy_frequency ?? 3)),
+        }
+      : { ...userContext, analogyIntensity: isFormalRequest ? 0 : userContext.analogyIntensity };
 
     let systemPrompt = buildSystemPrompt(effectiveUserContext, messages, workspaceContext, calendarCtx);
     
@@ -516,58 +403,26 @@ const effectiveUserContext = {
     
     // Inject personality instructions at the VERY END so they override earlier system rules.
     if (aiPersonality) {
-      const personalityInstructions = buildPersonalityInstructions(aiPersonality);
+      const personalityInstructions = buildPersonalityInstructions(aiPersonality, effectiveUserContext.analogyIntensity);
       systemPrompt = `${systemPrompt}\n\n--- PERSONALITY SETTINGS (HIGH PRIORITY) ---\n${personalityInstructions}\n--- END PERSONALITY ---`;
       console.log("[chat-stream] Personality instructions injected (high priority)");
     }
-    
-    // Inject ACARA curriculum knowledge
     const primarySubject = userContext?.subjects?.[0];
-    const studentGrade = String(userContext?.grade || "7-12");
-    const gradeNum = parseInt(studentGrade.replace("7-12", "7").replace("F", "0"), 10) || 7;
-    
-    if (primarySubject && gradeNum >= 7 && gradeNum <= 10) {
-      const curriculumPrompt = buildFullCurriculumPrompt(primarySubject, gradeNum);
-      if (curriculumPrompt) {
-        systemPrompt = `${systemPrompt}\n\n${curriculumPrompt}`;
-        console.log("[chat-stream] ACARA curriculum injected for", primarySubject, "Year", gradeNum);
-      }
-      
-      // Also add topic-specific curriculum alignment if relevant
-      const latestUserMsg = [...messages].reverse().find(m => m.role === "user")?.content || "";
-      const topicMatch = findCurriculumForQuery(primarySubject, gradeNum, latestUserMsg);
-      if (topicMatch) {
-        systemPrompt = `${systemPrompt}\n\n--- CURRICULUM ALIGNMENT FOR THIS QUESTION ---\n${topicMatch}\n--- END ALIGNMENT ---`;
-      }
-    }
     const isResearchMode = Boolean(userContext?.researchMode);
-    // Use highToken model for streaming since we need more output tokens
     const chatTaskType = isSimpleGreeting ? "lightweight" : "default";
 
-    console.log("[chat-stream] Calling Groq API with task:", chatTaskType, "model:", userContext?.selectedModel || "auto");
-    console.log("[chat-stream] System prompt length:", systemPrompt.length);
-    console.log("[chat-stream] User messages:", messages.length);
-
-    let upstreamStream;
-    try {
-      upstreamStream = await callGroqChatStream(
-        {
-          messages: [
-            { role: "system", content: systemPrompt },
-            ...messages.filter(m => m.role !== "system"),
-          ],
-          max_tokens: isSimpleGreeting ? 150 : isResearchMode ? 3000 : 2048,
-          temperature: isResearchMode ? 0.3 : 0.55,
-        },
-        chatTaskType,
-        userContext?.selectedModel || null
-      );
-      console.log("[chat-stream] Groq API call succeeded, returning stream");
-    } catch (groqErr) {
-      console.error("[chat-stream] callGroqChatStream FAILED:", groqErr instanceof Error ? groqErr.message : groqErr);
-      console.error("[chat-stream] Groq error stack:", groqErr instanceof Error ? groqErr.stack : "no stack");
-      throw groqErr;
-    }
+    const upstreamStream = await callGroqChatStream(
+      {
+        messages: [
+          { role: "system", content: systemPrompt },
+          ...messages.filter(m => m.role !== "system"),
+        ],
+        max_tokens: isSimpleGreeting ? 100 : 8000,
+        temperature: isResearchMode ? 0.3 : 0.55,
+      },
+      chatTaskType,
+      userContext?.selectedModel || null
+    );
 
     return new Response(upstreamStream, {
       headers: {
@@ -578,11 +433,11 @@ const effectiveUserContext = {
     });
   } catch (error) {
     const message = formatError(error);
-    console.error("[/api/groq/chat-stream] === FATAL ERROR ===");
-    console.error("Error message:", message);
-    console.error("Error name:", error instanceof Error ? error.name : "Unknown");
-    console.error("Error stack:", error instanceof Error ? error.stack : "no stack");
-    console.error("==========================");
+    console.error("[/api/groq/chat-stream] Error details:", {
+      message,
+      name: error instanceof Error ? error.name : "Unknown",
+      stack: error instanceof Error ? error.stack : undefined,
+    });
 
     // Determine appropriate status code based on error type
     let statusCode = 500;

@@ -40,6 +40,7 @@ export const getUserSelectedModel = (): string | null => {
 // Model-specific token limits (safe values below actual limits)
 // Llama 4 Scout: 128K context, 8K output max
 // Llama 3.3 70B: 128K context, 8K output max
+// GPT-OSS 120B: 65K+ completion tokens
 // We use conservative limits to avoid cutoff errors
 const MODEL_OUTPUT_LIMITS: Record<string, number> = {
   "meta-llama/llama-4-scout-17b-16e-instruct": 8192,
@@ -51,8 +52,8 @@ const MODEL_OUTPUT_LIMITS: Record<string, number> = {
 
 const getSafeMaxTokens = (model: string, requested: number): number => {
   const limit = MODEL_OUTPUT_LIMITS[model] || 4096;
-  // Use 90% of limit to leave room for safety margin
-  return Math.min(requested, Math.floor(limit * 0.9));
+  // Use 98% of limit to allow up to 8000 tokens for Groq models
+  return Math.min(requested, Math.floor(limit * 0.98));
 };
 
 // Type definition: what kind of question is the user asking?
@@ -127,16 +128,20 @@ const getApiKeyAtIndex = (index: number) => {
 // RATE LIMITER: Token bucket to prevent API overload
 // ============================================================================
 
-// Groq free tier limits - be VERY conservative
+// Groq free tier limits (adjust if you have different limits)
 const RATE_LIMIT_CONFIG = {
-  // Requests per minute - extremely conservative for free tier
-  rpmPerKey: 1,
-  // Tokens per minute - stay well under Groq free tier limits (6000 TPM)
-  tpmPerKey: 3000,
-  // Minimum delay between requests (ms) - much longer to prevent burst
-  minDelayMs: 5000,
-  // Maximum concurrent requests per key
-  maxConcurrentPerKey: 1,
+  // Requests per minute per API key (conservative to avoid 429s)
+  rpmPerKey: 10,
+  // Tokens per minute per API key — Groq free tier is 6000 TPM per key
+  // We use 14000 as a generous local-side cap (actual enforcement is by Groq).
+  // The local bucket is just a soft throttle, not a hard gate.
+  tpmPerKey: 30000,
+  // Minimum delay between requests (ms) - spreads requests out
+  minDelayMs: 100,
+  // Maximum concurrent requests per key — set high enough that normal
+  // chat usage (2-3 messages in flight) never gets blocked locally.
+  // Groq's own 429s handle real overload; this just prevents runaway loops.
+  maxConcurrentPerKey: 10,
 };
 
 // Token bucket state per API key
@@ -200,23 +205,13 @@ const releaseRequest = (keyIndex: number) => {
   bucket.concurrentRequests = Math.max(0, bucket.concurrentRequests - 1);
 };
 
-// Global throttle - track last request time to prevent bursting
-let lastRequestTime = 0;
-const GLOBAL_MIN_GAP_MS = 60000; // 1 minute between requests to avoid rate limit
-
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-const waitForGlobalRateLimit = async () => {
-  const now = Date.now();
-  const timeSinceLastRequest = now - lastRequestTime;
-  
-  if (timeSinceLastRequest < GLOBAL_MIN_GAP_MS) {
-    const waitTime = GLOBAL_MIN_GAP_MS - timeSinceLastRequest;
-    console.warn(`[Groq] Global rate limit: waiting ${Math.round(waitTime / 1000)}s since last request...`);
-    await delay(waitTime);
-  }
-  
-  lastRequestTime = Date.now();
+const exponentialBackoff = async (attempt: number, baseMs: number = 500): Promise<void> => {
+  const waitTime = baseMs * Math.pow(2, attempt);
+  const jitter = Math.random() * 200;
+  console.log(`[Groq] Rate limited, backing off ${waitTime + jitter | 0}ms...`);
+  await delay(waitTime + jitter);
 };
 
 // Global request queue to serialize requests when rate limited
@@ -491,13 +486,9 @@ export const callGroqChat = async (
 
   // Wait in queue to prevent overwhelming the API
   await enqueueRequest();
-  
-  // Global throttle to prevent bursting - critical for free tier
-  await waitForGlobalRateLimit();
 
   // Try each model with each API key
   for (const model of modelsToTry) {
-    let attempts = 0;
     for (let keyOffset = 0; keyOffset < apiKeys.length; keyOffset++) {
       const keyIndex = (startingKeyIndex + keyOffset) % apiKeys.length;
       const apiKey = getApiKeyAtIndex(keyIndex);
@@ -553,9 +544,15 @@ export const callGroqChat = async (
               console.warn(`[Groq] ${model} daily token limit exhausted, skipping to next model...`);
               break;
             }
-            // Per-minute limit — try next key
-            console.warn(`[Groq] ${model} rate limited on key #${keyIndex + 1}, trying next key...`);
-            await delay(1000);
+            // Use exponential backoff for transient rate limits (cap at 10s max)
+            const retryAfter = response.headers.get("retry-after");
+            if (retryAfter) {
+              const waitMs = Math.min(parseInt(retryAfter, 10) * 1000, 2000);
+              console.log(`[Groq] Rate limited, waiting ${waitMs}ms...`);
+              await delay(waitMs);
+            } else {
+              await exponentialBackoff(keyOffset);
+            }
             continue;
           }
 
@@ -563,27 +560,6 @@ export const callGroqChat = async (
           if (statusCode === 413) {
             console.warn(`[Groq] ${model} request too large on key #${keyIndex + 1}, trying next model...`);
             break; // Try next model (not just next key)
-          }
-
-          // On 404 - model not found OR rate limited, wait and retry same model first with backoff
-          if (statusCode === 404 || statusCode === 429) {
-            const isRateLimit = statusCode === 429;
-            const is404NotFound = errorMessage.includes("does not exist");
-            const waitTime = is404NotFound && attempts === 0 ? 2000 : 3000;
-            const maxAttempts = 2;
-            
-            if (attempts < maxAttempts) {
-              console.warn(`[Groq] ${model} ${isRateLimit ? "rate limited" : "not available"} (${statusCode}), attempt ${attempts + 1}/${maxAttempts}, waiting ${waitTime}ms...`);
-              await delay(waitTime);
-              attempts++;
-              continue;
-            }
-            if (!is404NotFound) {
-              console.warn(`[Groq] ${model} still rate limited after ${maxAttempts} attempts, trying next model...`);
-              break;
-            }
-            console.warn(`[Groq] ${model} permanently unavailable, trying next model...`);
-            break;
           }
 
           // On 401/403, API key is invalid - don't retry with this key
@@ -662,13 +638,9 @@ export const callGroqChatStream = async (
 
   // Wait in queue to prevent overwhelming the API
   await enqueueRequest();
-  
-  // Global throttle to prevent bursting - critical for free tier
-  await waitForGlobalRateLimit();
 
   // Try each model with each API key
   for (const model of modelsToTry) {
-    let attempts = 0;
     for (let keyOffset = 0; keyOffset < apiKeys.length; keyOffset++) {
       const keyIndex = (startingKeyIndex + keyOffset) % apiKeys.length;
       const apiKey = getApiKeyAtIndex(keyIndex);
@@ -724,8 +696,15 @@ export const callGroqChatStream = async (
               console.warn(`[Groq] ${model} daily token limit exhausted, skipping to next model...`);
               break;
             }
-            console.warn(`[Groq] ${model} rate limited on key #${keyIndex + 1}, trying next key...`);
-            await delay(1000);
+            // Use exponential backoff for transient rate limits (cap at 10s max)
+            const retryAfter = response.headers.get("retry-after");
+            if (retryAfter) {
+              const waitMs = Math.min(parseInt(retryAfter, 10) * 1000, 2000);
+              console.log(`[Groq] Rate limited, waiting ${waitMs}ms...`);
+              await delay(waitMs);
+            } else {
+              await exponentialBackoff(keyOffset);
+            }
             continue;
           }
 
@@ -735,28 +714,7 @@ export const callGroqChatStream = async (
             break;
           }
 
-// On 404 - model not found OR rate limited, wait and retry with backoff
-          if (statusCode === 404 || statusCode === 429) {
-            const isRateLimit = statusCode === 429;
-            const is404NotFound = errorMessage.includes("does not exist");
-            
-            if (is404NotFound && attempts < 2) {
-              console.warn(`[Groq] ${model} not available (404), attempt ${attempts + 1}/2, waiting 2000ms...`);
-              await delay(2000);
-              attempts++;
-              continue;
-            }
-            if (isRateLimit && attempts < 2) {
-              console.warn(`[Groq] ${model} rate limited (429), attempt ${attempts + 1}/2, waiting 3000ms...`);
-              await delay(3000);
-              attempts++;
-              continue;
-            }
-            console.warn(`[Groq] ${model} failed after retries, trying next model...`);
-            break;
-          }
-
-          // On 401/403, API key is invalid - don't retry with this key
+          // On 401/403, API key is invalid
           if (statusCode === 401 || statusCode === 403) {
             console.error(`[Groq] ${model} authentication failed on key #${keyIndex + 1} - check API key`);
             continue;
@@ -773,10 +731,7 @@ export const callGroqChatStream = async (
         }
 
         console.log(`[Groq] ${model} ✅ streaming success with key #${keyIndex + 1}`);
-        if (!response.body) {
-          throw new Error("Empty response body from Groq API");
-        }
-        return response.body;
+        return response.body!;
 
       } catch (error) {
         // Clean up timeout
