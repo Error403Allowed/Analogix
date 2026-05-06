@@ -145,9 +145,13 @@ export function buildMemoryContext(
 
 /**
  * Build personality instructions for the AI prompt
+ * @param personality - The AI personality settings
+ * @param analogyIntensity - Optional override for analogy frequency (0-100)
  */
-export function buildPersonalityInstructions(personality: AIPersonality): string {
+export function buildPersonalityInstructions(personality: AIPersonality, analogyIntensity?: number): string {
   const instructions: string[] = [];
+  const useAnalogy = analogyIntensity !== undefined ? analogyIntensity > 50 : personality.use_analogies;
+  const analogyFreq = analogyIntensity ?? (personality.analogy_frequency ?? 3) * 20;
 
   instructions.push(
     [

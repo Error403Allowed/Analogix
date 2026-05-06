@@ -23,7 +23,7 @@ const syncPrefsFromProfile = (profile: any, userId: string) => {
     const existing = JSON.parse(localStorage.getItem("userPreferences") || "{}");
     const next = {
       ...existing,
-      name: profile?.name ?? existing.name,
+      name: profile?.name ?? existing.name ?? "Student",
       grade: profile?.grade ?? existing.grade ?? null,
       state: profile?.state ?? existing.state ?? null,
       subjects: Array.isArray(profile?.subjects) ? profile.subjects : (existing.subjects ?? []),
@@ -87,7 +87,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
         const supabase = createClient();
         const { data: profile } = await supabase
           .from("profiles")
-          .select("onboarding_complete, grade, state, subjects, hobbies")
+          .select("onboarding_complete, name, grade, state, subjects, hobbies, hobby_ids, hobby_details")
           .eq("id", user.id)
           .maybeSingle();
 
@@ -121,7 +121,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
       const supabase = createClient();
       const { data: profile } = await supabase
         .from("profiles")
-        .select("onboarding_complete, grade, state, subjects, hobbies")
+        .select("onboarding_complete, name, grade, state, subjects, hobbies, hobby_ids, hobby_details")
         .eq("id", userId)
         .maybeSingle();
 

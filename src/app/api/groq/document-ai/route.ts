@@ -17,138 +17,138 @@ const actionMap: Record<string, ActionConfig> = {
   rewrite: {
     format: "text",
     mode: "replace",
-    preview: "Rewrote the selected text",
+    preview: "rewrote the selected text",
     instruction: (text) => `Rewrite this text for stronger clarity, flow, and precision while preserving the original meaning.\n\n${text}`,
   },
   shorten: {
     format: "text",
     mode: "replace",
-    preview: "Condensed the selected text",
+    preview: "condensed the selected text",
     instruction: (text) => `Make this text much more concise without losing the key meaning.\n\n${text}`,
   },
   simplify: {
     format: "text",
     mode: "replace",
-    preview: "Simplified the selected text",
+    preview: "simplified the selected text",
     instruction: (text) => `Rewrite this text so a student can understand it quickly. Use simple language and shorter sentences.\n\n${text}`,
   },
   expand: {
     format: "text",
     mode: "replace",
-    preview: "Expanded the selected text",
+    preview: "expanded the selected text",
     instruction: (text, subject) =>
       `Expand this text with more explanation, context, and examples.${subject ? ` The subject is ${subject}.` : ""}\n\n${text}`,
   },
   formal: {
     format: "text",
     mode: "replace",
-    preview: "Shifted the tone to formal",
+    preview: "shifted the tone to formal",
     instruction: (text) => `Rewrite this text in a formal academic tone.\n\n${text}`,
   },
   casual: {
     format: "text",
     mode: "replace",
-    preview: "Shifted the tone to conversational",
+    preview: "shifted the tone to conversational",
     instruction: (text) => `Rewrite this text in a casual, conversational tone while keeping the ideas intact.\n\n${text}`,
   },
   "fix-grammar": {
     format: "text",
     mode: "replace",
-    preview: "Corrected grammar and wording",
+    preview: "corrected grammar and wording",
     instruction: (text) => `Fix spelling, grammar, punctuation, and awkward phrasing in this text.\n\n${text}`,
   },
   summarise: {
     format: "markdown",
     mode: "replace",
-    preview: "Summarised the selected text",
+    preview: "summarised the selected text",
     instruction: (text) =>
       `Summarise this text into crisp markdown bullet points. Keep it exam-useful and remove filler.\n\n${text}`,
   },
   "bullet-points": {
     format: "markdown",
     mode: "replace",
-    preview: "Converted the text into bullet points",
+    preview: "converted the text into bullet points",
     instruction: (text) => `Turn this text into markdown bullet points with one idea per bullet.\n\n${text}`,
   },
   checklist: {
     format: "markdown",
     mode: "replace",
-    preview: "Converted the text into a checklist",
+    preview: "converted the text into a checklist",
     instruction: (text) => `Turn this text into a markdown task checklist of practical actions.\n\n${text}`,
   },
   "key-terms": {
     format: "markdown",
-    mode: "replace",
-    preview: "Extracted key terms",
+    mode: "insert_after",
+    preview: "extracted key terms",
     instruction: (text) =>
       `Extract the key terms from this text and format them in markdown as a glossary with bold terms and short definitions.\n\n${text}`,
   },
   explain: {
     format: "markdown",
     mode: "insert_after",
-    preview: "Added a plain-English explanation",
+    preview: "added a plain-English explanation",
     instruction: (text, subject) =>
       `Explain this material in plain English.${subject ? ` The subject is ${subject}.` : ""} Return markdown with a short heading, a simple explanation, and one helpful analogy.\n\n${text}`,
   },
   "add-examples": {
     format: "markdown",
     mode: "insert_after",
-    preview: "Added concrete examples",
+    preview: "added concrete examples",
     instruction: (text, subject) =>
       `Add 2 to 4 concrete, exam-relevant examples for this material.${subject ? ` The subject is ${subject}.` : ""} Return markdown.\n\n${text}`,
   },
   "add-steps": {
     format: "markdown",
     mode: "replace",
-    preview: "Broke the material into steps",
+    preview: "broke the material into steps",
     instruction: (text) => `Turn this material into a clean markdown numbered process.\n\n${text}`,
   },
   "revision-summary": {
     format: "markdown",
     mode: "insert_after",
-    preview: "Created a revision summary",
+    preview: "created a revision summary",
     instruction: (text, subject) =>
       `Create a markdown revision summary for this material.${subject ? ` The subject is ${subject}.` : ""} Include key ideas, common traps, and what to memorise.\n\n${text}`,
   },
   "expand-explanations": {
     format: "markdown",
     mode: "insert_after",
-    preview: "Expanded the explanation",
+    preview: "expanded the explanation",
     instruction: (text, subject) =>
       `Expand this material into richer study notes.${subject ? ` The subject is ${subject}.` : ""} Return markdown with headings, bullets, and one worked example if relevant.\n\n${text}`,
   },
   flashcards: {
     format: "markdown",
     mode: "insert_after",
-    preview: "Generated flashcards",
+    preview: "generated flashcards",
     instruction: (text, subject) =>
       `Create 6 to 10 high-quality flashcards from this material.${subject ? ` The subject is ${subject}.` : ""} Return markdown using this pattern:\n## Flashcards\n- **Front:** ...\n  **Back:** ...\n\n${text}`,
   },
   quiz: {
     format: "markdown",
     mode: "insert_after",
-    preview: "Generated quiz questions",
+    preview: "generated quiz questions",
     instruction: (text, subject) =>
       `Create 5 to 8 exam-style quiz questions from this material.${subject ? ` The subject is ${subject}.` : ""} Return markdown with each question followed by a short answer key.\n\n${text}`,
   },
   "practice-problems": {
     format: "markdown",
     mode: "insert_after",
-    preview: "Generated practice problems",
+    preview: "generated practice problems",
     instruction: (text, subject) =>
       `Create 4 to 6 practice problems with worked solutions from this material.${subject ? ` The subject is ${subject}.` : ""} Return markdown.\n\n${text}`,
   },
   "fill-gaps": {
     format: "markdown",
     mode: "insert_after",
-    preview: "Identified missing concepts",
+    preview: "identified missing concepts",
     instruction: (text, subject, documentText) =>
       `You are reviewing a student's notes to find missing but important ideas.${subject ? ` The subject is ${subject}.` : ""} Use the selected material and the wider document context to identify conceptual gaps, blind spots, or weak links. Return markdown with three sections: "Missing Concepts", "Why They Matter", and "What To Add".\n\nSelected material:\n${text}\n\nDocument context:\n${(documentText || "").slice(0, 6000)}`,
   },
   custom: {
     format: "markdown",
     mode: "insert_after",
-    preview: "Applied the custom AI instruction",
+    preview: "applied the custom AI instruction",
     instruction: (text, subject, documentText, customPrompt) =>
       `Follow this instruction exactly: ${customPrompt || "Improve this material"}.\n${subject ? `The subject is ${subject}.` : ""}\nUse markdown when structure helps.\n\nSelected material:\n${text}\n\nDocument context:\n${(documentText || "").slice(0, 6000)}`,
   },

@@ -21,6 +21,29 @@ import {
   ChevronRight,
   Plus,
   RotateCcw,
+  Brain,
+  Target,
+  ListChecks,
+  GraduationCap,
+  Lightbulb,
+  MessageSquare,
+  FileQuestion,
+  Puzzle,
+  Clock,
+  AlertCircle,
+  CheckCircle2,
+  Layers,
+  Trash2,
+  Edit3,
+  Type,
+  AlignLeft,
+  BookMarked,
+  FlaskConical,
+  Calculator,
+  Atom,
+  History,
+  Globe,
+  PenTool,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -310,6 +333,15 @@ export default function SubjectDocument() {
   useEffect(() => {
     if (initialContent === null) return;
     queueSave(latestContentRef.current, title);
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setIsAiPanelOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [queueSave, title, initialContent]);
 
   const handleEditorChange = useCallback((raw: string) => {
@@ -610,39 +642,107 @@ export default function SubjectDocument() {
               animate={{ x: 0, opacity: 1 }}
               exit={{ x: 300, opacity: 0 }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="w-80 border-l border-border bg-sidebar-background overflow-y-auto p-4 space-y-6"
+              className="w-80 border-l border-border bg-sidebar-background overflow-y-auto custom-scrollbar"
             >
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">AI Studio</h3>
-                <button 
-                  onClick={() => setIsAiPanelOpen(false)}
-                  className="p-1 hover:bg-muted rounded-md transition-colors"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </button>
+              <div className="p-4 border-b border-border/50">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-primary" />
+                    <h3 className="text-sm font-semibold">AI Studio</h3>
+                  </div>
+                  <button 
+                    onClick={() => setIsAiPanelOpen(false)}
+                    className="p-1.5 hover:bg-muted rounded-md transition-colors"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+                <p className="text-[11px] text-muted-foreground/60 mt-1">Transform your notes with AI</p>
               </div>
 
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 gap-2">
-                  {[
-                    { id: "summarise", label: "Summarise", icon: Sparkles },
-                    { id: "quiz", label: "Quiz Me", icon: BookOpenText },
-                    { id: "explain", label: "Explain Simply", icon: Wand2 },
-                    { id: "fill-gaps", label: "Find Gaps", icon: Sparkles },
-                  ].map((action) => (
-                    <button
-                      key={action.id}
-                      disabled={sidebarBusy !== null}
-                      onClick={() => runSidebarAction(action.id, action.label)}
-                      className="flex items-center gap-3 w-full p-2.5 rounded-lg text-sm font-medium text-foreground/70 hover:bg-muted transition-colors text-left disabled:opacity-50"
-                    >
-                      <action.icon className="h-4 w-4 text-muted-foreground" />
-                      {action.label}
-                      {sidebarBusy === action.id && <Loader2 className="ml-auto h-3.5 w-3.5 animate-spin" />}
-                    </button>
-                  ))}
+              <div className="p-4 space-y-6">
+                {/* Quick Actions */}
+                <div className="space-y-2">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50">Quick Actions</span>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { id: "summarise", label: "Summarise", desc: "Bullet summary", icon: ListChecks, shortcut: "S" },
+                      { id: "quiz", label: "Quiz Me", desc: "Practice questions", icon: Target, shortcut: "Q" },
+                      { id: "explain", label: "Explain", desc: "Simple explanation", icon: Lightbulb, shortcut: "E" },
+                      { id: "fill-gaps", label: "Find Gaps", desc: "What's missing", icon: AlertCircle, shortcut: "G" },
+                    ].map((action) => (
+                      <button
+                        key={action.id}
+                        disabled={sidebarBusy !== null}
+                        onClick={() => runSidebarAction(action.id, action.label)}
+                        className="flex flex-col items-start p-3 rounded-lg border border-border/50 bg-background/50 hover:bg-muted/50 hover:border-primary/20 transition-all text-left group disabled:opacity-50"
+                      >
+                        <div className="flex items-center justify-between w-full">
+                          <action.icon className="h-4 w-4 text-primary/70 group-hover:text-primary transition-colors" />
+                          <kbd className="text-[9px] px-1.5 py-0.5 rounded bg-muted/50 text-muted-foreground/50 font-mono">{action.shortcut}</kbd>
+                        </div>
+                        <span className="text-xs font-medium mt-2">{action.label}</span>
+                        <span className="text-[10px] text-muted-foreground/60">{action.desc}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
+                {/* Transform */}
+                <div className="space-y-2">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50">Transform</span>
+                  <div className="space-y-1.5">
+                    {[
+                      { id: "simplify", label: "Simplify", desc: "Easier language", icon: Edit3 },
+                      { id: "expand", label: "Expand", desc: "More details", icon: AlignLeft },
+                      { id: "shorten", label: "Shorten", desc: "More concise", icon: Trash2 },
+                      { id: "rewrite", label: "Rewrite", desc: "Better flow", icon: PenTool },
+                    ].map((action) => (
+                      <button
+                        key={action.id}
+                        disabled={sidebarBusy !== null}
+                        onClick={() => runSidebarAction(action.id, action.label)}
+                        className="flex items-center gap-3 w-full p-2.5 rounded-lg text-sm font-medium text-foreground/70 hover:bg-muted transition-colors text-left disabled:opacity-50"
+                      >
+                        <action.icon className="h-4 w-4 text-muted-foreground" />
+                        <div className="flex flex-col items-start">
+                          <span>{action.label}</span>
+                          <span className="text-[10px] text-muted-foreground/50">{action.desc}</span>
+                        </div>
+                        {sidebarBusy === action.id && <Loader2 className="ml-auto h-3.5 w-3.5 animate-spin" />}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Study Tools */}
+                <div className="space-y-2">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50">Study Tools</span>
+                  <div className="space-y-1.5">
+                    {[
+                      { id: "flashcards", label: "Flashcards", desc: "Create flashcards from notes", icon: Layers },
+                      { id: "key-terms", label: "Key Terms", desc: "Glossary of important terms", icon: BookMarked },
+                      { id: "practice-problems", label: "Practice Problems", desc: "Worked solutions", icon: Puzzle },
+                      { id: "add-examples", label: "Add Examples", desc: "Concrete examples", icon: GraduationCap },
+                    ].map((action) => (
+                      <button
+                        key={action.id}
+                        disabled={sidebarBusy !== null}
+                        onClick={() => runSidebarAction(action.id, action.label)}
+                        className="flex items-center gap-3 w-full p-2.5 rounded-lg text-sm font-medium text-foreground/70 hover:bg-muted transition-colors text-left disabled:opacity-50"
+                      >
+                        <action.icon className="h-4 w-4 text-muted-foreground" />
+                        <div className="flex flex-col items-start">
+                          <span>{action.label}</span>
+                          <span className="text-[10px] text-muted-foreground/50">{action.desc}</span>
+                        </div>
+                        {sidebarBusy === action.id && <Loader2 className="ml-auto h-3.5 w-3.5 animate-spin" />}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Custom Command */}
                 <div className="space-y-3 pt-4 border-t border-border/50">
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50">Custom Command</span>

@@ -8,18 +8,14 @@ Analogix is an AI-powered study platform for Australian secondary students (Year
 
 ![Screenshot](./public/landing.png)
 
-### AI Learning & Agents
+### AI Learning 
 - **Analogix AI Tutor** - Analogy-first explanations woven throughout every response (not just at the end), connecting concepts to student's interests automatically
-- **ACARA Curriculum Integration** - Deep knowledge of Australian Curriculum v9.0 (Years 7-10) built into the AI for curriculum-aligned responses
-- **Agentic Workflow** - 4 specialized AI agents:
-  - 📅 **Study Planner** - Schedules, deadlines, study plans, progress tracking
-  - 📝 **Notes Agent** - Create, edit, summarize documents, extract key points
-  - ✅ **Task Manager** - Tasks, reminders, prioritization
-  - 🤝 **Collaboration Agent** - Study rooms, invites, collaborative editing
-- **Workspace AI** (bottom-right) - References your notes & flashcards, generates flashcards & quizzes inline
+- **ACARA Curriculum Integration** - Deep knowledge of Australian Curriculum v9.0 (Years 7-12) built into the AI for curriculum-aligned responses
+- **Workspace Context** - The AI has information to your calendar, documents, flashcards, and more!
 - **Smart Model Routing** - Automatic routing to coding, reasoning, or general models
 - **Subject Alignment** - Full ACARA curriculum knowledge with state-specific syllabus alignment (VIC, NSW, QLD, SA, WA, TAS, NT, ACT)
 - **Formula Context** - Maths/science formulas injected automatically
+- **AI Memory and Personality** - Analogix AI has extensive personality editing as well as presets, such as the friendly tutor, strict professor, and more! The AI tutor also saves memories, whether you want to manually add some, or it creates it itself, with the incorporated machine learning approach that saves memories about the user to further personalise and improve activity and responses
 
 ### Documents & Study Workspace
 - **Per-subject Documents** - Rich TipTap editor with math (KaTeX), code blocks, tables, autosave
@@ -100,7 +96,6 @@ Analogix uses Groq's OpenAI-compatible API with task-based routing:
 | `llama-3.3-70b-versatile` | Analogix Expert - complex tasks |
 | `allam-2-7b` | Analogix Creative - creative writing |
 | `llama-3.1-8b-instant` | Analogix Quick - fast responses |
-| `openai/gpt-oss-120b` | Analogix Long - long context, high output |
 
 ---
 

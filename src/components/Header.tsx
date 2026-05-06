@@ -15,6 +15,7 @@ import SettingsDialog from "./SettingsDialog";
 import ProfileSheet from "./ProfileSheet";
 import { getAIGreeting } from "@/services/groq";
 import { HOBBY_OPTIONS, POPULAR_INTERESTS } from "@/utils/interests";
+import { createClient } from "@/lib/supabase/client";
 
 interface HeaderProps {
   userName?: string;
@@ -172,7 +173,7 @@ const Header = ({ userName = "Student", streak = 0 }: HeaderProps) => {
     setCustomInterest((prev) => ({ ...prev, [id]: "" }));
   };
 
-  const saveProfile = () => {
+  const saveProfile = async () => {
     let prefs: any = {};
     try {
       prefs = JSON.parse(localStorage.getItem("userPreferences") || "{}");
@@ -200,10 +201,12 @@ const Header = ({ userName = "Student", streak = 0 }: HeaderProps) => {
       return detail ? `${label} (${detail})` : label;
     });
 
+    const name = profileName.trim() || prefs.name || "Student";
+    const grade = profileGrade || prefs.grade;
     const nextPrefs = {
       ...prefs,
-      name: profileName.trim() || prefs.name || "Student",
-      grade: profileGrade || prefs.grade,
+      name,
+      grade,
       state: prefs.state,
       subjects: selectedSubjects,
       hobbies: hobbiesWithDetails,
@@ -213,6 +216,29 @@ const Header = ({ userName = "Student", streak = 0 }: HeaderProps) => {
     };
 
     localStorage.setItem("userPreferences", JSON.stringify(nextPrefs));
+
+    // Save to Supabase database
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase.from("profiles").upsert({
+          id: user.id,
+          name,
+          grade,
+          state: prefs.state,
+          subjects: selectedSubjects,
+          hobbies: hobbiesWithDetails,
+          hobby_ids: selectedHobbies,
+          hobby_details: nextDetails,
+          onboarding_complete: true,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: "id" });
+      }
+    } catch (e) {
+      console.error("[Header] Failed to save profile to database:", e);
+    }
+
     window.location.reload();
   };
 

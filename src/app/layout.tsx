@@ -7,6 +7,7 @@ import "katex/dist/katex.min.css";
 import DashLayout from "@/components/DashLayout";
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://analogix.vercel.app"),
   title: "Analogix",
   description: "AI-powered learning platform for students",
   openGraph: {
