@@ -6,6 +6,8 @@ Analogix is an AI-powered study platform for Australian secondary students (Year
 
 ## Features
 
+![Screenshot](./public/landing.png)
+
 ### AI Learning & Agents
 - **Analogix AI Tutor** - Analogy-first explanations woven throughout every response (not just at the end), connecting concepts to student's interests automatically
 - **ACARA Curriculum Integration** - Deep knowledge of Australian Curriculum v9.0 (Years 7-10) built into the AI for curriculum-aligned responses
