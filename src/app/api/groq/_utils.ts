@@ -47,6 +47,8 @@ const MODEL_OUTPUT_LIMITS: Record<string, number> = {
   "meta-llama/llama-4-maverick-17b-128e-instruct": 8192,
   "llama-3.3-70b-versatile": 8192,
   "deepseek-r1-distill-llama-70b": 8192,
+  "qwen/qwen3-32b": 8192,
+  "qwen3-32b": 8192,
   "llama-3.1-8b-instant": 4096,
 };
 

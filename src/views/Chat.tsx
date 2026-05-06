@@ -38,7 +38,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { getGroqCompletion, getGroqStream, getReExplanation, generateFlashcards, generateQuizFromDocument, generateFlashcardsFromDocument } from "@/services/groq";
+import { getGroqCompletion, getGroqStream, getGroqPreview, getReExplanation, generateFlashcards, generateQuizFromDocument, generateFlashcardsFromDocument } from "@/services/groq";
 import { searchAcademicSources } from "@/services/research";
 import { flashcardStore } from "@/utils/flashcardStore";
 import { statsStore } from "@/utils/statsStore";
@@ -52,7 +52,7 @@ import { extractFileText, ACCEPTED_FILE_TYPES } from "@/utils/extractFileText";
 import type { ResearchSource, SavedResearchSource } from "@/types/research";
 import { researchStore } from "@/utils/researchStore";
 import AISettingsSheet from "@/components/AISettingsSheet";
-import { GROQ_MODELS, getModelBranding, type GroqModelId } from "@/types/groq-models";
+import { GROQ_MODELS, type GroqModelId } from "@/types/groq-models";
 
 // Caching
 const nextConfig: NextConfig = {
@@ -270,103 +270,6 @@ const allSubjects = SUBJECT_CATALOG;
 
 
 /**
- * Portal component for model selector - modal overlay
- */
-const ModelDropdownPortal = ({ onSelect, selectedModel, selectedSubject }: {
-  onSelect: (modelId: string) => void;
-  selectedModel: string;
-  selectedSubject: SubjectId | null;
-}) => {
-  const [isOpen, setIsOpen] = useState(true);
-
-  // Close on click outside or escape key
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setIsOpen(false);
-    };
-    const handleClick = (e: MouseEvent) => {
-      const target = e.target as HTMLElement;
-      if (target.closest('.model-modal-backdrop')) {
-        setIsOpen(false);
-      }
-    };
-    document.addEventListener('keydown', handleKeyDown);
-    document.addEventListener('click', handleClick);
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-      document.removeEventListener('click', handleClick);
-    };
-  }, []);
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center model-modal-backdrop bg-black/50 backdrop-blur-sm">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.95 }}
-        transition={{ duration: 0.2 }}
-        className="w-full max-w-md mx-4 rounded-2xl border border-border bg-background shadow-2xl overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-          <h2 className="text-lg font-semibold text-foreground">Select Model</h2>
-          <button
-            type="button"
-            onClick={() => setIsOpen(false)}
-            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Model List */}
-        <div className="p-3 space-y-1 max-h-[60vh] overflow-y-auto">
-          {GROQ_MODELS.map((model) => {
-            const branding = getModelBranding(model.id, selectedSubject);
-            return (
-              <button
-                key={model.id}
-                type="button"
-                onClick={() => onSelect(model.id)}
-                className={`w-full text-left px-4 py-3 rounded-xl transition-all flex items-center gap-3 ${
-                  selectedModel === model.id
-                    ? "bg-primary/10 text-primary ring-1 ring-primary/30"
-                    : "hover:bg-muted text-foreground"
-                }`}
-              >
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                  selectedModel === model.id ? "bg-primary/20" : "bg-muted"
-                }`}>
-                  <Brain className={`w-4 h-4 ${selectedModel === model.id ? "text-primary" : "text-muted-foreground"}`} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold">{branding.name}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{branding.description}</p>
-                </div>
-                {selectedModel === model.id && (
-                  <Check className="w-5 h-5 text-primary shrink-0" />
-                )}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Footer */}
-        <div className="px-5 py-3 border-t border-border bg-muted/20">
-          <p className="text-xs text-muted-foreground text-center">
-            Auto picks the best model for your query
-          </p>
-        </div>
-      </motion.div>
-    </div>
-  );
-};
-
-
-/**
  * AI Tutor: This is where you actually talk to Analogix AI (the AI).
  * It uses your preferences to explain things in a way that makes sense to YOU.
  */
@@ -386,6 +289,10 @@ const Chat = () => {
   
   // INPUT: What you're currently typing in the box.
   const [input, setInput] = useState("");
+  
+  // PREVIEW: Quick preview while user is typing
+  const [previewText, setPreviewText] = useState("");
+  const previewTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   // THINKING: true while waiting for the first token
   const [isTyping, setIsTyping] = useState(false);
@@ -446,7 +353,6 @@ const Chat = () => {
   const [attachedFiles, setAttachedFiles] = useState<Array<{ name: string; size: number; type: string; content: string; extractedText: string; previewUrl?: string; isImage?: boolean }>>([]);
   const [fileExtracting, setFileExtracting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // STUDY GUIDE GENERATION
   const [generatingStudyGuide, setGeneratingStudyGuide] = useState(false);
@@ -487,6 +393,59 @@ const Chat = () => {
     [availableSubjects],
   );
   const isInputLocked = isTyping || !!streamingId;
+
+  // PREVIEW: Generate preview when user stops typing
+  useEffect(() => {
+    if (isInputLocked || !input.trim() || input.trim().length < 3) {
+      if (previewTimeoutRef.current) {
+        clearTimeout(previewTimeoutRef.current);
+        previewTimeoutRef.current = null;
+      }
+      setPreviewText("");
+      return;
+    }
+
+    if (previewTimeoutRef.current) {
+      clearTimeout(previewTimeoutRef.current);
+    }
+
+    previewTimeoutRef.current = setTimeout(async () => {
+      const currentInput = input;
+      if (!currentInput.trim()) return;
+
+      const getLocalStorageData = () => {
+        if (typeof window === "undefined") return null;
+        const personality = localStorage.getItem("ai_personality");
+        const memories = localStorage.getItem("ai_memories");
+        return {
+          personality: personality ? JSON.parse(personality) : null,
+          memories: memories ? JSON.parse(memories) : [],
+        };
+      };
+
+      try {
+        const preview = await getGroqPreview(
+          messages.map(m => ({ role: m.role, content: m.content })),
+          {
+            analogyIntensity: researchMode ? 0 : (analogyModeEnabled ? 3 : 0),
+            selectedModel,
+          },
+          getLocalStorageData()
+        );
+        if (preview && input === currentInput) {
+          setPreviewText(preview);
+        }
+      } catch (e) {
+        console.warn("[Chat] preview error:", e);
+      }
+    }, 1200);
+
+    return () => {
+      if (previewTimeoutRef.current) {
+        clearTimeout(previewTimeoutRef.current);
+      }
+    };
+  }, [input, messages, isInputLocked, analogyModeEnabled, researchMode, selectedModel]);
 
   // Load user name from localStorage after hydration to avoid mismatch
   useEffect(() => {
@@ -1712,7 +1671,7 @@ Title:` }];
           {/* Chat always visible — subject auto-detected from first message */}
           <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
             {/* ── TAB CONTENT ─────────────────────────────── */}
-            <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+            <div className="flex-1 flex gap-4 min-h-0">
               {/* Main chat column */}
               <div
                 className="flex-1 min-h-0 relative"
@@ -1732,16 +1691,16 @@ Title:` }];
               <div
                 ref={scrollContainerRef}
                 onScroll={updateScrollButton}
-                className="flex-1 overflow-y-auto chat-scroll"
+                className="absolute inset-0 overflow-y-auto min-h-0 chat-scroll"
               >
-                <div className="mx-auto max-w-4xl w-full px-4 flex flex-col space-y-6 pt-4 sm:pt-4 pb-4">
+                <div className="mx-auto max-w-4xl w-full px-4 flex flex-col space-y-6 pb-40 sm:pb-28 pt-4 sm:pt-4">
                   {/* Empty state — shown before any messages */}
                   {messages.length === 0 && !isTyping && (
                     <motion.div
                       initial={{ opacity: 0, y: 12 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.4 }}
-                      className="flex flex-col items-center justify-center h-full min-h-80px gap-3 text-center"
+                      className="flex flex-col items-center justify-center h-full min-h-[40vh] gap-3 text-center"
                     >
                       <div>
                         <p className="text-base font-semibold text-foreground/80">
@@ -1996,7 +1955,7 @@ Title:` }];
               )}
 
               <div className="pointer-events-none absolute top-0 left-0 right-0 h-10 bg-gradient-to-b from-background to-transparent z-20" />
-              <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-32 sm:h-24 bg-gradient-to-t from-background via-background/95 to-transparent z-20" />
+              <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-20 sm:h-16 bg-gradient-to-t from-background via-background/90 to-transparent z-20" />
 
               {/* Input */}
               <motion.div
@@ -2087,11 +2046,8 @@ Title:` }];
                 
                 <div className="relative rounded-2xl border border-border/60 bg-card shadow-sm" style={{ overflow: 'visible' }} data-tour="chat-input">
                   <Textarea
-                    ref={textareaRef}
                     value={input}
-                    onChange={(e) => {
-                      setInput(e.target.value);
-                    }}
+                    onChange={(e) => setInput(e.target.value)}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && !e.shiftKey) {
                         e.preventDefault();
@@ -2099,9 +2055,18 @@ Title:` }];
                       }
                     }}
                     placeholder="Ask me anything"
-                    className="w-full px-3 sm:px-4 pt-3 pb-12 text-sm sm:text-base bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/50 resize-none rounded-2xl min-h-80px max-h-48 leading-normal"
-                    style={{ height: '84px', overflow: 'hidden' }}
+                    rows={Math.max(1, Math.min(8, Math.ceil(input.length / 80) || 1))}
+                    className="w-full px-3 sm:px-4 pt-3.5 pb-12 text-sm sm:text-base bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/50 resize-none overflow-y-auto max-h-48 leading-relaxed rounded-2xl"
                   />
+                  {/* Preview while typing */}
+                  {previewText && (
+                    <div className="absolute left-0 right-0 bottom-14 px-3 sm:px-4 py-2 bg-muted/50 border-t border-border/30">
+                      <div className="text-xs text-muted-foreground">
+                        <span className="text-primary/70 font-medium">Preview:</span>{" "}
+                        <span className="line-clamp-2">{previewText.slice(0, 150)}{previewText.length > 150 ? "..." : ""}</span>
+                      </div>
+                    </div>
+                  )}
                   {/* Bottom row of input */}
                   <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between px-2 sm:px-3 pb-2 sm:pb-3">
                     {/* Left side: attach + toolbar icons */}
@@ -2136,7 +2101,6 @@ Title:` }];
                       <div className="relative" ref={modelSelectorRef} data-tour="model-selector">
                         <button
                           type="button"
-                          ref={(el) => { window.__modelBtnRef = el; }}
                           onClick={() => setShowModelSelector(p => !p)}
                           disabled={isInputLocked}
                           className="h-8 px-3 rounded-full bg-muted/40 flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-all hover:text-foreground hover:bg-muted/60 disabled:opacity-40"
@@ -2144,7 +2108,7 @@ Title:` }];
                         >
                           <Brain className="w-3.5 h-3.5" />
                           <span className="hidden sm:inline">
-                            {getModelBranding(selectedModel, selectedSubject).name}
+                            {GROQ_MODELS.find(m => m.id === selectedModel)?.name || "Auto"}
                           </span>
                           <ChevronUp className={`w-3 h-3 transition-transform ${showModelSelector ? "rotate-180" : ""}`} />
                         </button>
@@ -2152,14 +2116,46 @@ Title:` }];
                         {/* Model selector dropdown */}
                         <AnimatePresence>
                           {showModelSelector && (
-                            <ModelDropdownPortal
-                              onSelect={(modelId: string) => {
-                                setSelectedModel(modelId as typeof selectedModel);
-                                setShowModelSelector(false);
-                              }}
-                              selectedModel={selectedModel}
-                              selectedSubject={selectedSubject}
-                            />
+                            <motion.div
+                              initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                              animate={{ opacity: 1, y: 0, scale: 1 }}
+                              exit={{ opacity: 0, y: 8, scale: 0.96 }}
+                              transition={{ duration: 0.15 }}
+                              className="absolute bottom-full right-0 mb-2 w-72 rounded-xl border border-border bg-popover shadow-lg shadow-black/5 z-50 overflow-hidden"
+                            >
+                              <div className="p-2 space-y-1 max-h-96 overflow-y-auto">
+                                {GROQ_MODELS.map((model) => (
+                                  <button
+                                    key={model.id}
+                                    type="button"
+                                    onClick={() => {
+                                      setSelectedModel(model.id);
+                                      setShowModelSelector(false);
+                                    }}
+                                    className={`w-full text-left px-3 py-2.5 rounded-lg transition-all ${
+                                      selectedModel === model.id
+                                        ? "bg-primary/10 text-primary"
+                                        : "hover:bg-muted text-foreground"
+                                    }`}
+                                  >
+                                    <div className="flex items-center justify-between gap-2">
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-xs font-semibold truncate">{model.name}</p>
+                                        <p className="text-[10px] text-muted-foreground/70 truncate mt-0.5">{model.description}</p>
+                                      </div>
+                                      {selectedModel === model.id && (
+                                        <Check className="w-3.5 h-3.5 text-primary shrink-0" />
+                                      )}
+                                    </div>
+                                  </button>
+                                ))}
+                              </div>
+                              <div className="px-3 py-2 border-t border-border bg-muted/30">
+                                <p className="text-[10px] text-muted-foreground/60">
+                                  Auto picks the best model for your query
+                                </p>
+                              </div>
+                            </motion.div>
                           )}
                         </AnimatePresence>
                       </div>

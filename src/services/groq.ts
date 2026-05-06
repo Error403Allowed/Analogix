@@ -95,6 +95,38 @@ export async function* getGroqStream(
 }
 
 /**
+ * Get a quick preview response while user is typing.
+ * Uses lightweight model for fast response (~500ms target).
+ */
+export const getGroqPreview = async (
+  messages: ChatMessage[],
+  userContext?: Partial<UserContext> & { analogyIntensity?: number; analogyAnchor?: string },
+  localStorageData?: GroqStreamClientData | null,
+): Promise<string> => {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (localStorageData) {
+    headers["x-client-data"] = JSON.stringify(localStorageData);
+  }
+
+  const response = await fetch("/api/groq/chat-preview", {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ messages, userContext }),
+  });
+
+  if (!response.ok) {
+    return "";
+  }
+
+  try {
+    const data = await response.json();
+    return data.content || "";
+  } catch {
+    return "";
+  }
+};
+
+/**
  * Wrapper for fetchJsonWithRetry that adds better error messages and throttling.
  * Kept for backward compatibility with existing codebase.
  */
