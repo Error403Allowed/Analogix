@@ -43,10 +43,12 @@ export const getUserSelectedModel = (): string | null => {
 // GPT-OSS 120B: 65K+ completion tokens
 // We use conservative limits to avoid cutoff errors
 const MODEL_OUTPUT_LIMITS: Record<string, number> = {
-  "meta-llama/llama-4-scout-17b-16e-instruct": 8192,
-  "meta-llama/llama-4-maverick-17b-128e-instruct": 8192,
+  "llama-4-scout-17b-16e-instruct": 16384,
+  "llama-4-scout-17b-16e": 16384,
   "llama-3.3-70b-versatile": 8192,
-  "deepseek-r1-distill-llama-70b": 8192,
+  "llama-3.1-70b-versatile": 8192,
+  "deepseek-r1-distill-llama-70b": 16384,
+  "deepseek-r1-distill-llama-70b-reasoning": 16384,
   "qwen/qwen3-32b": 8192,
   "qwen3-32b": 8192,
   "llama-3.1-8b-instant": 4096,

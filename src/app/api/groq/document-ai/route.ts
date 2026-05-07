@@ -143,14 +143,14 @@ const actionMap: Record<string, ActionConfig> = {
     mode: "insert_after",
     preview: "identified missing concepts",
     instruction: (text, subject, documentText) =>
-      `You are reviewing a student's notes to find missing but important ideas.${subject ? ` The subject is ${subject}.` : ""} Use the selected material and the wider document context to identify conceptual gaps, blind spots, or weak links. Return markdown with three sections: "Missing Concepts", "Why They Matter", and "What To Add".\n\nSelected material:\n${text}\n\nDocument context:\n${(documentText || "").slice(0, 6000)}`,
+      `You are reviewing a student's notes to find missing but important ideas.${subject ? ` The subject is ${subject}.` : ""} Use the selected material and the wider document context to identify conceptual gaps, blind spots, or weak links. Return markdown with three sections: "Missing Concepts", "Why They Matter", and "What To Add".\n\nSelected material:\n${text}\n\nDocument context:\n${documentText || ""}`,
   },
   custom: {
     format: "markdown",
     mode: "insert_after",
     preview: "applied the custom AI instruction",
     instruction: (text, subject, documentText, customPrompt) =>
-      `Follow this instruction exactly: ${customPrompt || "Improve this material"}.\n${subject ? `The subject is ${subject}.` : ""}\nUse markdown when structure helps.\n\nSelected material:\n${text}\n\nDocument context:\n${(documentText || "").slice(0, 6000)}`,
+      `Follow this instruction exactly: ${customPrompt || "Improve this material"}.\n${subject ? `The subject is ${subject}.` : ""}\nUse markdown when structure helps.\n\nSelected material:\n${text}\n\nDocument context:\n${documentText || ""}`,
   },
 };
 
@@ -189,10 +189,10 @@ export async function POST(request: Request) {
             content: prompt,
           },
         ],
-        max_tokens: 2200,
+        max_tokens: 8192,
         temperature: 0.45,
       },
-      "default",
+      "compound",
     );
 
     return NextResponse.json({

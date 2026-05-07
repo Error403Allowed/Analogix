@@ -7,8 +7,10 @@ Analogix is an AI-powered study platform for Australian secondary students (Year
 ## Features
 
 ![Screenshot](./public/landing.png)
+![Screenshot](./public/dashboard.png)
 
-### AI Learning 
+### AI Learning
+![Screenshot](./public/chat.png) 
 - **Analogix AI Tutor** - Analogy-first explanations woven throughout every response (not just at the end), connecting concepts to student's interests automatically
 - **ACARA Curriculum Integration** - Deep knowledge of Australian Curriculum v9.0 (Years 7-12) built into the AI for curriculum-aligned responses
 - **Workspace Context** - The AI has information to your calendar, documents, flashcards, and more!
@@ -18,6 +20,7 @@ Analogix is an AI-powered study platform for Australian secondary students (Year
 - **AI Memory and Personality** - Analogix AI has extensive personality editing as well as presets, such as the friendly tutor, strict professor, and more! The AI tutor also saves memories, whether you want to manually add some, or it creates it itself, with the incorporated machine learning approach that saves memories about the user to further personalise and improve activity and responses
 
 ### Documents & Study Workspace
+![Screenshot](./public/document-editor.png)
 - **Per-subject Documents** - Rich TipTap editor with math (KaTeX), code blocks, tables, autosave
 - **BlockNote Editor** - Notion-style blocks, slash commands, markdown shortcuts
 - **AI Document Assistant** - Doc-aware chat with "insert into notes"
@@ -25,6 +28,7 @@ Analogix is an AI-powered study platform for Australian secondary students (Year
 - **Yjs Collaboration** - Real-time sync using Yjs CRDT
 
 ### Flashcards & Quizzes
+![Screenshot](./public/flashcards.png)
 - **AI Flashcards** - Generated from chat or uploaded documents
 - **Manual Flashcards** - Create your own with front/back
 - **Spaced Repetition** - SM-2 algorithm with due scheduling
@@ -33,6 +37,7 @@ Analogix is an AI-powered study platform for Australian secondary students (Year
 - **Analogy Hints** - Get hints framed as analogies
 
 ### Study Planning & Progress
+![Screenshot](./public/calendar.png)
 - **Calendar** - Day/week/month views, .ics import from school calendars
 - **Deadlines** - Assignment tracking with priority levels
 - **Study Timer** - Pomodoro-style sessions with goals
@@ -41,12 +46,14 @@ Analogix is an AI-powered study platform for Australian secondary students (Year
 - **Activity Stats** - Time spent, accuracy, progress over time
 
 ### Collaboration & Rooms
+![Screenshot](./public/rooms.png)
 - **Study Rooms** - Create rooms for subjects or projects
 - **Room Members** - Invite peers to collaborate
 - **Real-time Editing** - Collaborative document editing in rooms
 - **Shared Flashcards** - Practice together with shared card sets
 
 ### Resources & Formulas
+![Screenshot](./public/formulas.png)
 - **Resource Library** - Upload PDFs, DOCX, images, presentations
 - **Formula Sheets** - Subject-specific formula references
 - **Formula Search** - Search across all formula sheets
