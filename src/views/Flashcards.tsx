@@ -235,6 +235,7 @@ export default function Flashcards() {
   const [quizComplete, setQuizComplete]   = useState(false);
   const [quizTimeLeft, setQuizTimeLeft]   = useState<number | null>(null);
   const pendingAgentQuizRef = useRef<PendingAgentQuiz | null>(null);
+  const hasRecordedActivityRef = useRef(false);
 
   // ── Load user subjects ──
   useEffect(() => {
@@ -374,6 +375,10 @@ export default function Flashcards() {
   // ── Init review when entering flashcards tab ──
   useEffect(() => {
     if (topView !== "set-detail" || activeSetTab !== "flashcards" || !activeSet) return;
+    if (!hasRecordedActivityRef.current) {
+      hasRecordedActivityRef.current = true;
+      statsStore.recordActivity();
+    }
     const now = new Date().toISOString();
     const due = activeSet.cards.filter(c => c.nextReview <= now);
     setReviewCards(due.length > 0 ? due : activeSet.cards);

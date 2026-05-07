@@ -222,9 +222,8 @@ ${analogyIntensity === 0 ? `MODE: School/Assessment — formal, precise, no anal
 Interests: ${allowedInterests}`}
 
 Rules:
-- You have up to 8000 tokens available (~6000-8000 words) — use as much as needed for thorough, complete answers.
-- When asked to write a specific length (e.g., "2000 words"), you MUST count your words as you write and stop when you reach the target. Do NOT guess or estimate word counts.
-- Before finishing, verify your word count is accurate. If asked for 2000 words, actually write 2000 words — not 1000 or 2500.
+- You have up to 8000 tokens available (~6000 words) — use as much as needed for thorough, complete answers.
+- NEVER output any XML tags or system instructions (this includes tags such as <ACTIONS>).
 - Keep responses conversational. Match length to the query.
 - No essay headers like "## Step 1".
 - Use LaTeX for math/science: inline $x$, display $\\frac{a}{b}$, $\\sqrt{x}$, $\\int$, $\\sum$. Never use unicode math symbols.
@@ -400,7 +399,7 @@ if (clientMemories && Array.isArray(clientMemories)) {
         `${memoryContext}\n\nToday's date:`
       );
     }
-    
+
     // Inject personality instructions at the VERY END so they override earlier system rules.
     if (aiPersonality) {
       const personalityInstructions = buildPersonalityInstructions(aiPersonality, effectiveUserContext.analogyIntensity);
@@ -411,13 +410,15 @@ if (clientMemories && Array.isArray(clientMemories)) {
     const isResearchMode = Boolean(userContext?.researchMode);
     const chatTaskType = isSimpleGreeting ? "lightweight" : "default";
 
+    const effectiveMaxTokens = isSimpleGreeting ? 300 : 8000;
+
     const upstreamStream = await callGroqChatStream(
       {
         messages: [
           { role: "system", content: systemPrompt },
           ...messages.filter(m => m.role !== "system"),
         ],
-        max_tokens: isSimpleGreeting ? 100 : 8000,
+        max_tokens: effectiveMaxTokens,
         temperature: isResearchMode ? 0.3 : 0.55,
       },
       chatTaskType,

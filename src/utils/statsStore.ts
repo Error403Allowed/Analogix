@@ -96,13 +96,20 @@ export const statsStore = {
     await statsStore.update({ conversationsCount: current.conversationsCount + 1, topSubject: top, subjectCounts: counts, currentStreak: newStreak });
   },
 
+  recordActivity: async (): Promise<void> => {
+    await activityLog.record();
+    const newStreak = await statsStore.computeStreak();
+    if (newStreak !== (await statsStore.get()).currentStreak) {
+      await statsStore.update({ currentStreak: newStreak });
+    }
+  },
+
   /** Recompute streak from activity log: count consecutive days up to and including today */
   computeStreak: async (): Promise<number> => {
     const user = await getAuthUser();
     if (!user) return 0;
     const supabase = createClient();
 
-    // Fetch last 365 days of activity
     const { data } = await supabase
       .from("activity_log")
       .select("date, count")
@@ -115,7 +122,12 @@ export const statsStore = {
     const activeDates = new Set(data.filter((r: any) => r.count > 0).map((r: any) => r.date as string));
 
     let streak = 0;
-    const d = new Date();
+    
+    // Use local timezone for correct date calculation
+    const now = new Date();
+    const localToday = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+    const d = new Date(localToday);
+    
     // Walk backwards from today — include today immediately (counts as day 1)
     while (true) {
       const iso = d.toISOString().slice(0, 10);

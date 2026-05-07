@@ -6,6 +6,7 @@ import { Play, Pause, RotateCcw, SkipForward, Timer as TimerIcon, Pencil, Check,
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { loadTimerState, saveTimerState, MAX_SESSIONS_TARGET, getDefaultTimerState } from "@/lib/timerStore";
+import { statsStore } from "@/utils/statsStore";
 import type { TimerPhase, TimerSettings, TimerState } from "@/lib/timerStore";
 
 const RING_R = 54;
@@ -33,6 +34,7 @@ export function TimerWidget({ compact = false }: { compact?: boolean }) {
   const phaseRef = useRef(phase);
   const settingsRef = useRef(settings);
   const sessionsTargetRef = useRef(sessionsTarget);
+  const hasRecordedActivityRef = useRef(false);
   phaseRef.current = phase;
   settingsRef.current = settings;
   sessionsTargetRef.current = sessionsTarget;
@@ -75,7 +77,13 @@ export function TimerWidget({ compact = false }: { compact?: boolean }) {
   const advancePhase = useCallback(() => {
     const current = phaseRef.current;
     const next: TimerPhase = current === "study" ? "break" : "study";
-    if (current === "study") setSessionsCompleted(s => s + 1);
+    if (current === "study") {
+      setSessionsCompleted(s => s + 1);
+      if (!hasRecordedActivityRef.current) {
+        hasRecordedActivityRef.current = true;
+        statsStore.recordActivity();
+      }
+    }
     setPhase(next);
     setIsActive(current === "study");
     setTimeLeft(settingsRef.current[next]);

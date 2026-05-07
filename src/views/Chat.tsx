@@ -1048,6 +1048,16 @@ const Chat = () => {
   const handleSend = () => {
     if ((!input.trim() && attachedFiles.length === 0) || isInputLocked) return;
 
+    // Capture preview before clearing (we might use it)
+    const capturedPreview = previewText;
+
+    // Clear preview state
+    if (previewTimeoutRef.current) {
+      clearTimeout(previewTimeoutRef.current);
+      previewTimeoutRef.current = null;
+    }
+    setPreviewText("");
+
     // 1. We show your message on the screen immediately.
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -1187,6 +1197,72 @@ const Chat = () => {
 
       const localStorageData = getLocalStorageData();
 
+      // Use pre-generated preview if available (instant response)
+      if (capturedPreview) {
+        const responseId = (Date.now() + 1).toString();
+        // Filter out internal system artifacts from model output
+        const cleanedPreview = capturedPreview
+          .replace(/<system-reminder[\s\S]*?<\/system-reminder>/gi, "")
+          .replace(/<\|[\w_]+\|>/g, "");
+        let displayContent = cleanedPreview.replace(/<ACTIONS>[\s\S]*?<\/ACTIONS>/i, "").trim() || "I'm not sure how to answer that.";
+        
+        // Strip any tracking numbers like [X tokens remaining]
+        displayContent = displayContent.replace(/\s*\[\d+\s*tokens?\s*remaining\]/gi, "").trim();
+        
+        setMessages(prev => [...prev, {
+          id: responseId,
+          role: "assistant",
+          content: displayContent,
+          sources: researchSources,
+          researchQuery: researchQuery || undefined,
+        }]);
+        setIsTyping(false);
+        setStreamingId(null);
+        lockedToBottomRef.current = false;
+        
+        // Save assistant response to Supabase
+        if (activeSessionId) {
+          chatStore.addMessage(activeSessionId, "assistant", displayContent).catch(e => console.error("[Chat] addMessage assistant:", e));
+        }
+        
+        // Handle any actions in the preview
+        const actionsMatch = capturedPreview.match(/<ACTIONS>([\s\S]*?)<\/ACTIONS>/i);
+        if (actionsMatch) {
+          try {
+            const cleaned = actionsMatch[1].trim().replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "").trim();
+            const parsed = JSON.parse(cleaned);
+            const actions = Array.isArray(parsed) ? parsed : [parsed];
+            
+            const quizAction = actions.find((a: Record<string, unknown>) => a.type === "start_quiz");
+            if (quizAction) {
+              try {
+                sessionStorage.setItem("analogix.pending-agent-quiz", JSON.stringify({
+                  subjectId: quizAction.subjectId || selectedSubject,
+                  topic: quizAction.topic || "",
+                  difficulty: quizAction.difficulty || "intermediate",
+                  numberOfQuestions: Number(quizAction.numberOfQuestions) || 5,
+                  timeLimitMinutes: Number(quizAction.timeLimitMinutes) || 0,
+                }));
+                router.push("/quiz");
+              } catch { /* ignore */ }
+            }
+            
+            const serverActions = actions.filter((a: Record<string, unknown>) => a.type !== "start_quiz");
+            if (serverActions.length > 0) {
+              fetch("/api/groq/agent-action", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ actions: serverActions, defaultSubjectId: selectedSubject, source: "chat" }),
+              }).then(r => r.json()).catch(e => console.error("[Chat] agent-action error:", e));
+            }
+          } catch { /* ignore malformed actions */ }
+        }
+        
+        requestAnimationFrame(() => scrollToBottom("smooth"));
+        return;
+      }
+
+      // No preview available - do normal streaming
       try {
         // Create a placeholder message that we'll fill with streaming tokens
         const responseId = (Date.now() + 1).toString();
@@ -1227,7 +1303,13 @@ const Chat = () => {
         }
 
         // ── Parse and execute any <ACTIONS> block from the response ──────────
-        let displayContent = accumulated || "I'm not sure how to answer that.";
+        // Filter out internal system artifacts from model output
+        const cleanedAccumulated = accumulated
+          .replace(/<system-reminder[\s\S]*?<\/system-reminder>/gi, "")
+          .replace(/<\|[\w_]+\|>/g, "")
+          .trim();
+        
+        let displayContent = cleanedAccumulated || "I'm not sure how to answer that.";
         const actionsMatch = accumulated.match(/<ACTIONS>([\s\S]*?)<\/ACTIONS>/i);
         if (actionsMatch) {
           // Strip the actions block from what the user sees
@@ -2046,15 +2128,7 @@ Title:` }];
                     rows={Math.max(1, Math.min(8, Math.ceil(input.length / 80) || 1))}
                     className="w-full px-3 sm:px-4 pt-3.5 pb-12 text-sm sm:text-base bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/50 resize-none overflow-y-auto max-h-48 leading-relaxed rounded-2xl"
                   />
-                  {/* Preview while typing */}
-                  {previewText && (
-                    <div className="absolute left-0 right-0 bottom-14 px-3 sm:px-4 py-2 bg-muted/50 border-t border-border/30">
-                      <div className="text-xs text-muted-foreground">
-                        <span className="text-primary/70 font-medium">Preview:</span>{" "}
-                        <span className="line-clamp-2">{previewText.slice(0, 150)}{previewText.length > 150 ? "..." : ""}</span>
-                      </div>
-                    </div>
-                  )}
+                  
                   {/* Bottom row of input */}
                   <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between px-2 sm:px-3 pb-2 sm:pb-3">
                     {/* Left side: attach + toolbar icons */}

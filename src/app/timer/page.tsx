@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Play, Pause, RotateCcw, SkipForward, Check, ArrowLeft, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { statsStore } from "@/utils/statsStore";
 import { loadTimerState, saveTimerState, MAX_SESSIONS_TARGET, getDefaultTimerState } from "@/lib/timerStore";
 import type { TimerPhase, TimerSettings, TimerState } from "@/lib/timerStore";
 
@@ -32,6 +33,7 @@ export default function TimerPage() {
   const phaseRef = useRef(phase);
   const settingsRef = useRef(settings);
   const sessionsTargetRef = useRef(sessionsTarget);
+  const hasRecordedActivityRef = useRef(false);
   phaseRef.current = phase;
   settingsRef.current = settings;
   sessionsTargetRef.current = sessionsTarget;
@@ -74,7 +76,13 @@ export default function TimerPage() {
   const advancePhase = useCallback(() => {
     const current = phaseRef.current;
     const next: TimerPhase = current === "study" ? "break" : "study";
-    if (current === "study") setSessionsCompleted(s => s + 1);
+    if (current === "study") {
+      setSessionsCompleted(s => s + 1);
+      if (!hasRecordedActivityRef.current) {
+        hasRecordedActivityRef.current = true;
+        statsStore.recordActivity();
+      }
+    }
     setPhase(next);
     setIsActive(current === "study");
     setTimeLeft(settingsRef.current[next]);

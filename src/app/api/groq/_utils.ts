@@ -38,17 +38,13 @@ export const getUserSelectedModel = (): string | null => {
 };
 
 // Model-specific token limits (safe values below actual limits)
-// Llama 4 Scout: 128K context, 8K output max
-// Llama 3.3 70B: 128K context, 8K output max
-// GPT-OSS 120B: 65K+ completion tokens
-// We use conservative limits to avoid cutoff errors
 const MODEL_OUTPUT_LIMITS: Record<string, number> = {
-  "llama-4-scout-17b-16e-instruct": 16384,
-  "llama-4-scout-17b-16e": 16384,
+  "llama-4-scout-17b-16e-instruct": 8192,
+  "llama-4-scout-17b-16e": 8192,
   "llama-3.3-70b-versatile": 8192,
   "llama-3.1-70b-versatile": 8192,
-  "deepseek-r1-distill-llama-70b": 16384,
-  "deepseek-r1-distill-llama-70b-reasoning": 16384,
+  "deepseek-r1-distill-llama-70b": 8192,
+  "deepseek-r1-distill-llama-70b-reasoning": 8192,
   "qwen/qwen3-32b": 8192,
   "qwen3-32b": 8192,
   "llama-3.1-8b-instant": 4096,
@@ -56,8 +52,7 @@ const MODEL_OUTPUT_LIMITS: Record<string, number> = {
 
 const getSafeMaxTokens = (model: string, requested: number): number => {
   const limit = MODEL_OUTPUT_LIMITS[model] || 4096;
-  // Use 98% of limit to allow up to 8000 tokens for Groq models
-  return Math.min(requested, Math.floor(limit * 0.98));
+  return Math.min(requested, limit);
 };
 
 // Type definition: what kind of question is the user asking?
@@ -86,10 +81,14 @@ const REASONING_KEYWORDS = [
 
 // Simple greetings/small talk that should use fast path
 const SIMPLE_MESSAGES = [
-  "hi", "hello", "hey", "greetings", "good morning", "good afternoon",
-  "good evening", "how are you", "what's up", "how's it going", "yo",
-  "thanks", "thank you", "bye", "goodbye", "see you", "ok", "okay",
-  "sure", "yes", "no", "maybe", "please", "help", "quick question"
+  "hi", "hello", "hey", "greetings", "g'day", "hiya", "heya",
+  "good morning", "good afternoon", "good evening", 
+  "how are you", "what's up", "how's it going", "how do you do",
+  "yo", "sup", "what's happening", "nice to meet you",
+  "thanks", "thank you", "cheers", "appreciate it",
+  "bye", "goodbye", "see you", "catch you later", "talk soon",
+  "ok", "okay", "sure", "yes", "no", "maybe", "alright",
+  "please", "help", "quick question", "one thing"
 ];
 
 const isSimpleMessage = (messages: Array<{ role: string; content: string }>): boolean => {
@@ -335,28 +334,46 @@ export const classifyTaskType = (
 // MODEL SELECTION
 // ============================================================================
 
+// Models that are unavailable or should not be used
+const BLOCKED_MODELS = ["gemma2-9b", "gemma-2-9b-it", "gemma2-9b-it"];
+
+const filterBlockedModels = (models: string[]): string[] => {
+  return models.filter(m => !BLOCKED_MODELS.includes(m.toLowerCase()));
+};
+
 const getModelsForTaskType = (taskType: TaskType, userModel?: string | null): string[] => {
-  // If user has explicitly selected a model, use only that model
+  // If user has explicitly selected a model, use only that model (if not blocked)
   if (userModel && userModel !== "auto") {
-    return [userModel];
+    if (BLOCKED_MODELS.includes(userModel.toLowerCase())) {
+      console.warn(`[Groq] Blocked model requested: ${userModel}, falling back to auto`);
+    } else {
+      return [userModel];
+    }
   }
 
   // Auto-selection: pick models based on task type
+  let models: string[];
   switch (taskType) {
     case "coding":
-      return [DEFAULT_MODEL, DEFAULT_FALLBACK_MODEL, LAST_RESORT_MODEL];
+      models = [DEFAULT_MODEL, DEFAULT_FALLBACK_MODEL, LAST_RESORT_MODEL];
+      break;
     case "reasoning":
-      return [DEFAULT_MODEL, DEFAULT_FALLBACK_MODEL, LAST_RESORT_MODEL];
+      models = [DEFAULT_MODEL, DEFAULT_FALLBACK_MODEL, LAST_RESORT_MODEL];
+      break;
     case "lightweight":
-      return [LIGHTWEIGHT_MODEL, DEFAULT_FALLBACK_MODEL, LAST_RESORT_MODEL];
+      models = [LIGHTWEIGHT_MODEL, DEFAULT_FALLBACK_MODEL, LAST_RESORT_MODEL];
+      break;
     case "compound":
-      return [COMPOUND_MODEL, DEFAULT_MODEL, DEFAULT_FALLBACK_MODEL, LAST_RESORT_MODEL];
+      models = [COMPOUND_MODEL, DEFAULT_MODEL, DEFAULT_FALLBACK_MODEL, LAST_RESORT_MODEL];
+      break;
     case "compoundMini":
-      return [COMPOUND_MINI_MODEL, DEFAULT_MODEL, DEFAULT_FALLBACK_MODEL, LAST_RESORT_MODEL];
+      models = [COMPOUND_MINI_MODEL, DEFAULT_MODEL, DEFAULT_FALLBACK_MODEL, LAST_RESORT_MODEL];
+      break;
     case "default":
     default:
-      return [DEFAULT_MODEL, DEFAULT_FALLBACK_MODEL, LAST_RESORT_MODEL];
+      models = [DEFAULT_MODEL, DEFAULT_FALLBACK_MODEL, LAST_RESORT_MODEL];
   }
+  return filterBlockedModels(models);
 };
 
 // DeepSeek-R1 works best with instructions in user messages, not system prompts.
@@ -389,7 +406,8 @@ const callFastChat = async (
 ): Promise<string> => {
   assertApiKeys();
 
-  const model = LIGHTWEIGHT_MODEL;
+  const availableModels = filterBlockedModels([LIGHTWEIGHT_MODEL, DEFAULT_FALLBACK_MODEL, LAST_RESORT_MODEL]);
+  const model = availableModels[0] || LAST_RESORT_MODEL;
   const keyIndex = getNextApiKeyIndex();
   const apiKey = getApiKeyAtIndex(keyIndex);
 

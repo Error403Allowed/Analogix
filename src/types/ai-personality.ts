@@ -19,9 +19,6 @@ export interface AIPersonality {
   step_by_step: boolean;
   real_world_examples: boolean;
 
-  // Operational mode: "teach" = guide only, don't do work | "do" = complete tasks for user
-  operational_mode: "teach" | "do";
-  
   // Custom instructions
   custom_instructions: string;
   persona_description: string;
@@ -80,7 +77,6 @@ export const DEFAULT_AI_PERSONALITY: AIPersonality = {
   socratic_method: false,
   step_by_step: true,
   real_world_examples: true,
-  operational_mode: "teach",
   custom_instructions: "",
   persona_description: "",
   use_emojis: true,
@@ -106,7 +102,6 @@ export const PERSONALITY_PRESETS = {
       socratic_method: true,
       step_by_step: true,
       real_world_examples: true,
-      operational_mode: "teach",
       use_emojis: true,
       use_analogies: true,
       analogy_frequency: 4,
@@ -126,7 +121,6 @@ export const PERSONALITY_PRESETS = {
       socratic_method: true,
       step_by_step: true,
       real_world_examples: false,
-      operational_mode: "teach",
       use_emojis: false,
       use_analogies: false,
       analogy_frequency: 0,
@@ -146,7 +140,6 @@ export const PERSONALITY_PRESETS = {
       socratic_method: false,
       step_by_step: true,
       real_world_examples: true,
-      operational_mode: "teach",
       use_emojis: true,
       use_analogies: true,
       analogy_frequency: 5,
@@ -166,7 +159,6 @@ export const PERSONALITY_PRESETS = {
       socratic_method: false,
       step_by_step: false,
       real_world_examples: false,
-      operational_mode: "teach",
       use_emojis: false,
       use_analogies: false,
       analogy_frequency: 0,

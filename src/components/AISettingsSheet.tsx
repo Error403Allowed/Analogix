@@ -35,17 +35,9 @@ export default function AISettingsSheet({ open, onOpenChange, defaultTab = "pers
 
         {/* Header */}
         <div className="px-5 pt-5 pb-3 border-b border-border shrink-0">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <SheetTitle className="text-base font-black tracking-tight">AI Tutor Settings</SheetTitle>
-              <p className="text-[11px] text-muted-foreground/60 mt-0.5">Personality & memory for this chat</p>
-            </div>
-            <button
-              onClick={() => onOpenChange(false)}
-              className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
+          <div className="mb-4">
+            <SheetTitle className="text-base font-black tracking-tight">AI Tutor Settings</SheetTitle>
+            <p className="text-[11px] text-muted-foreground/60 mt-0.5">Personality & memory for this chat</p>
           </div>
 
           {/* Tab switcher */}

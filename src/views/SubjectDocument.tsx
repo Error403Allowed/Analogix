@@ -77,6 +77,7 @@ import {
 } from "@/lib/document-content";
 import { EmojiPicker } from "@/components/EmojiPicker";
 import { ShareToRoomDialog } from "@/components/ShareToRoomDialog";
+import { statsStore } from "@/utils/statsStore";
 
 type BlockNoteEditorComponent = typeof import("@/components/BlockNoteEditor").BlockNoteEditor;
 type BlockNoteEditorProps = React.ComponentPropsWithoutRef<BlockNoteEditorComponent>;
@@ -150,6 +151,7 @@ export default function SubjectDocument() {
   const lastSavedRef = useRef({ title: "", content: "" });
   const latestContentRef = useRef<string>("");
   const remoteVersionRef = useRef("");
+  const hasRecordedActivityRef = useRef(false);
 
   const [title, setTitle] = useState("");
   const [initialContent, setInitialContent] = useState<string | null>(null);
@@ -267,6 +269,10 @@ export default function SubjectDocument() {
 
 
   useEffect(() => {
+    if (!hasRecordedActivityRef.current) {
+      hasRecordedActivityRef.current = true;
+      statsStore.recordActivity();
+    }
     loadDocument(false);
 
     // Check revert status

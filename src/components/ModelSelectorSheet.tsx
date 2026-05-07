@@ -2,7 +2,7 @@
 
 import React from "react";
 import { motion } from "framer-motion";
-import { Brain, Check, X } from "lucide-react";
+import { Brain, Check } from "lucide-react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
@@ -25,22 +25,14 @@ export default function ModelSelectorSheet({ open, onOpenChange, selectedModel, 
 
         {/* Header */}
         <DialogHeader className="px-5 pt-5 pb-3 border-b border-border shrink-0">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                <Brain className="w-4 h-4 text-primary" />
-              </div>
-              <div>
-                <DialogTitle className="text-base font-black tracking-tight">AI Model</DialogTitle>
-                <p className="text-[11px] text-muted-foreground/60 mt-0.5">Choose which model powers this chat</p>
-              </div>
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+              <Brain className="w-4 h-4 text-primary" />
             </div>
-            <button
-              onClick={() => onOpenChange(false)}
-              className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
+            <div>
+              <DialogTitle className="text-base font-black tracking-tight">AI Model</DialogTitle>
+              <p className="text-[11px] text-muted-foreground/60 mt-0.5">Choose which model powers this chat</p>
+            </div>
           </div>
         </DialogHeader>
 
