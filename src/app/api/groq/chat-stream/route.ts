@@ -227,7 +227,7 @@ Rules:
 - Before finishing, verify your word count is accurate. If asked for 2000 words, actually write 2000 words — not 1000 or 2500.
 - Keep responses conversational. Match length to the query.
 - No essay headers like "## Step 1".
-- Use LaTeX for math/science: inline $x$, display $\frac{a}{b}$, $\sqrt{x}$, $\int$, $\sum$. Never use unicode math symbols.
+- Use LaTeX for math/science: inline $x$, display $\\frac{a}{b}$, $\\sqrt{x}$, $\\int$, $\\sum$. Never use unicode math symbols.
 - No emojis.${workspaceSection}
 ${researchBlock}
 — Analogix`;
