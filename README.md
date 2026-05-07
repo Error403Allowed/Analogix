@@ -85,17 +85,16 @@ Analogix is an AI-powered study platform for Australian secondary students (Year
 
 ## AI Models (Groq)
 
-Analogix uses Groq's OpenAI-compatible API with task-based routing:
+Analogix uses Groq API with task-based routing:
 
 | Model | Use Case |
 |-------|----------|
 | `auto` | Auto-routes to best model for query |
-| `deepseek-r1-distill-llama-70b` | Analogix Maths - maths, coding, logic |
-| `qwen-3-32b` | Analogix Science - science & reasoning |
-| `allam-2-7b` | Analogix General - all subjects |
-| `llama-3.3-70b-versatile` | Analogix Expert - complex tasks |
-| `allam-2-7b` | Analogix Creative - creative writing |
-| `llama-3.1-8b-instant` | Analogix Quick - fast responses |
+| `llama-4-scout-17b-16e-instruct` | All-round model, specialized in maths, coding and chatting |
+| `llama-3.3-70b-versatile` | Reliable and versatile for complex tasks |
+| `qwen-3-32b` | Reasoning model for mathematics and science |
+| `deepseek-r1-distill-llama-70b` | Maths, physics and logic reasoning |
+| `llama-3.1-8b-instant` | Lightweight model for quick questions |
 
 ---
 
@@ -110,16 +109,16 @@ Analogix uses Groq's OpenAI-compatible API with task-based routing:
 ## Tech Stack
 
 ### Frontend
-- Next.js 16 (App Router)
+- Next.js 16.1.6 (App Router)
 - React 18, TypeScript
 - Tailwind CSS + shadcn/ui (Radix)
 - Framer Motion animations
-- TipTap + BlockNote editor
+- BlockNote editor (built on TipTap)
 - KaTeX for math, react-markdown
 - CodeMirror for code blocks
 
 ### Backend & Data
-- Groq API (OpenAI-compatible)
+- Groq API via Vercel AI SDK (@ai-sdk/groq)
 - Supabase Auth + Postgres + RLS
 - TanStack Query
 - Yjs for real-time collaboration
@@ -187,7 +186,10 @@ Open `http://localhost:3000`
 | `npm run build` | Production build |
 | `npm run start` | Production server |
 | `npm run lint` | ESLint check |
-| `npm run tests` | Run tests |
+| `npm run tests` | Run test suite |
+| `npm run tests:list` | List available tests |
+| `npm run tests:filter` | Run tests matching filter |
+| `npm run tests:tag` | Run tests by tag |
 
 ---
 
@@ -205,10 +207,14 @@ src/
 │   └── ...
 ├── components/            # UI components
 ├── views/                 # Page components
+├── hooks/                 # Custom React hooks
 ├── utils/                 # Stores, hooks, parsers
 ├── lib/                  # Client/server utilities (curriculum, aiMemory, etc.)
 ├── services/             # API services
-└── data/               # Static resources (ACARA curriculum, formulaSheets, achievements)
+├── data/                 # Static resources (ACARA curriculum, formulaSheets, achievements)
+├── types/                 # TypeScript type definitions
+├── constants/            # App constants
+└── context/              # React context providers
 ```
 
 ---
