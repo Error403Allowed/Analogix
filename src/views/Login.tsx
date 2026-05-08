@@ -6,19 +6,19 @@ import { Brain, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter, useSearchParams } from "next/navigation";
+import { signInWithGoogle } from "@/app/actions/auth";
 
 export default function LoginView() {
-  const { signInWithGoogle, user, loading } = useAuth();
+  const { user, loading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // Already logged in — redirect
   useEffect(() => {
     if (!loading && user) router.replace("/dashboard");
   }, [user, loading, router]);
 
   const handleGoogle = async () => {
-    await signInWithGoogle();
+    await signInWithGoogle("/onboarding?step=2");
   };
 
   if (loading) {

@@ -8,23 +8,10 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
-  signInWithGoogle: (next?: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
-
-const getRedirectBaseUrl = () => {
-  // Always prefer the actual runtime origin in the browser.
-  // This prevents local runs from accidentally using a stale deployed URL.
-  if (typeof window !== "undefined" && window.location?.origin) {
-    return window.location.origin.replace(/\/$/, "");
-  }
-
-  const envUrl = process.env.NEXT_PUBLIC_SITE_URL;
-  if (envUrl && envUrl.length > 0) return envUrl.replace(/\/$/, "");
-  return "";
-};
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Memoised so we don't recreate the client (and its subscriptions) on every render
@@ -54,21 +41,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [supabase]);
 
-  const signInWithGoogle = useCallback(async (next = "/onboarding?step=2") => {
-    await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${getRedirectBaseUrl()}/auth/callback?next=${encodeURIComponent(next)}`,
-      },
-    });
-  }, [supabase]);
-
   const signOut = useCallback(async () => {
     await supabase.auth.signOut();
   }, [supabase]);
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, signInWithGoogle, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, signOut }}>
       {children}
     </AuthContext.Provider>
   );

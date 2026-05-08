@@ -22,6 +22,7 @@ import { AustralianState, STATE_LABELS } from "@/utils/termData";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/context/AuthContext";
+import { signInWithGoogle } from "@/app/actions/auth";
 import OnboardingBackdrop from "@/components/OnboardingBackdrop";
 
 // ── Typewriter ────────────────────────────────────────────────────────────────
@@ -62,19 +63,16 @@ const TypewriterText = ({ text, delay = 0 }: { text: string; delay?: number }) =
 
 // ── Auth Step ─────────────────────────────────────────────────────────────────
 function AuthStep({ onAuthed, externalError }: { onAuthed: () => void; externalError?: string | null }) {
-  const { signInWithGoogle, user, loading } = useAuth();
+  const { user, loading } = useAuth();
   const [googleLoading, setGoogleLoading] = useState(false);
 
-  // If they're already authed (came back from OAuth redirect), skip ahead.
-  // We wait for loading=false so we don't jump before the session cookie is read.
   useEffect(() => {
     if (!loading && user) onAuthed();
   }, [user, loading, onAuthed]);
 
   const handleGoogle = async () => {
     setGoogleLoading(true);
-    await signInWithGoogle();
-    // Page will navigate away via OAuth — no need to call onAuthed()
+    await signInWithGoogle("/onboarding?step=2");
   };
 
   // Show a spinner while we're checking the session from the cookie

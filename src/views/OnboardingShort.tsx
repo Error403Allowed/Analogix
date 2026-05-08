@@ -20,11 +20,12 @@ import { AustralianState, STATE_LABELS } from "@/utils/termData";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/context/AuthContext";
+import { signInWithGoogle } from "@/app/actions/auth";
 import OnboardingBackdrop from "@/components/OnboardingBackdrop";
 
 // ── Auth Step ─────────────────────────────────────────────────────────────────
 function AuthStep({ onAuthed, externalError }: { onAuthed: () => void; externalError?: string | null }) {
-  const { signInWithGoogle, user, loading } = useAuth();
+  const { user, loading } = useAuth();
   const [googleLoading, setGoogleLoading] = useState(false);
 
   useEffect(() => {
@@ -33,7 +34,7 @@ function AuthStep({ onAuthed, externalError }: { onAuthed: () => void; externalE
 
   const handleGoogle = async () => {
     setGoogleLoading(true);
-    await signInWithGoogle();
+    await signInWithGoogle("/onboarding?step=2");
   };
 
   if (loading) {
