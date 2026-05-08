@@ -20,7 +20,7 @@ import { AustralianState, STATE_LABELS } from "@/utils/termData";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/context/AuthContext";
-import { signInWithGoogle } from "@/app/actions/auth";
+import { signInWithGoogle } from "@/lib/auth-client";
 import OnboardingBackdrop from "@/components/OnboardingBackdrop";
 
 // ── Auth Step ─────────────────────────────────────────────────────────────────

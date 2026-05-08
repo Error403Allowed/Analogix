@@ -6,7 +6,7 @@ import { Brain, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter, useSearchParams } from "next/navigation";
-import { signInWithGoogle } from "@/app/actions/auth";
+import { signInWithGoogle } from "@/lib/auth-client";
 
 export default function LoginView() {
   const { user, loading } = useAuth();
