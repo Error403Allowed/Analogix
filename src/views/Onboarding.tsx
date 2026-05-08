@@ -209,18 +209,57 @@ const Onboarding = () => {
     if (authLoading) return;
 
     if (authUser) {
+      // Check localStorage first
       try {
         const prefs = JSON.parse(localStorage.getItem("userPreferences") || "{}");
-        if (prefs?.onboardingComplete) {
+        if (prefs?.onboardingComplete && prefs.userId === authUser.id) {
           router.replace("/dashboard");
           return;
         }
       } catch { /* ignore localStorage errors */ }
-      // Signed in but not finished — jump to step from URL (or 2)
-      const urlStep = parseInt(searchParams?.get("step") ?? "2", 10);
-      setStep(isNaN(urlStep) || urlStep <= 1 ? 2 : urlStep);
+      
+      // Check database for profile data
+      const supabase = createClient();
+      supabase
+        .from("profiles")
+        .select("onboarding_complete, name, grade, state, subjects, hobbies, hobby_ids, hobby_details")
+        .eq("id", authUser.id)
+        .maybeSingle()
+        .then(({ data: profile }) => {
+          const hasProfileData = profile?.onboarding_complete 
+            || profile?.name 
+            || profile?.grade 
+            || profile?.state 
+            || (Array.isArray(profile?.subjects) && profile.subjects.length > 0)
+            || (Array.isArray(profile?.hobbies) && profile.hobbies.length > 0)
+            || (Array.isArray(profile?.hobby_ids) && profile.hobby_ids.length > 0)
+            || (profile?.hobby_details && Object.keys(profile?.hobby_details || {}).length > 0);
+          
+          if (hasProfileData) {
+            // Sync to localStorage
+            const existing = JSON.parse(localStorage.getItem("userPreferences") || "{}");
+            localStorage.setItem("userPreferences", JSON.stringify({
+              ...existing,
+              name: profile?.name ?? existing.name ?? "Student",
+              grade: profile?.grade ?? existing.grade ?? null,
+              state: profile?.state ?? existing.state ?? null,
+              subjects: Array.isArray(profile?.subjects) ? profile.subjects : (existing.subjects ?? []),
+              hobbies: Array.isArray(profile?.hobbies) ? profile.hobbies : (existing.hobbies ?? []),
+              hobbyIds: Array.isArray(profile?.hobby_ids) ? profile.hobby_ids : (existing.hobbyIds ?? []),
+              hobbyDetails: profile?.hobby_details ?? (existing.hobbyDetails ?? {}),
+              onboardingComplete: true,
+              userId: authUser.id,
+            }));
+            window.dispatchEvent(new Event("userPreferencesUpdated"));
+            router.replace("/dashboard");
+            return;
+          }
+          
+          const urlStep = parseInt(searchParams?.get("step") ?? "2", 10);
+          setStep(isNaN(urlStep) || urlStep <= 1 ? 2 : urlStep);
+        });
+      return;
     }
-    // Not signed in — stay on step 1
   }, [authUser, authLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [name, setName] = useState("");

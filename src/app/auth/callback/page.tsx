@@ -28,7 +28,16 @@ function AuthCallbackContent() {
               .eq("id", user.id)
               .maybeSingle();
 
-            if (profile?.onboarding_complete || profile?.grade || profile?.name || (Array.isArray(profile?.subjects) && profile.subjects.length > 0)) {
+            const hasProfileData = profile?.onboarding_complete 
+              || profile?.name 
+              || profile?.grade 
+              || profile?.state 
+              || (Array.isArray(profile?.subjects) && profile.subjects.length > 0)
+              || (Array.isArray(profile?.hobbies) && profile.hobbies.length > 0)
+              || (Array.isArray(profile?.hobby_ids) && profile.hobby_ids.length > 0)
+              || (profile?.hobby_details && Object.keys(profile.hobby_details).length > 0);
+
+            if (hasProfileData) {
               router.replace("/dashboard");
               return;
             }
@@ -73,3 +82,5 @@ export default function AuthCallback() {
     </Suspense>
   );
 }
+
+export const dynamic = "force-dynamic";

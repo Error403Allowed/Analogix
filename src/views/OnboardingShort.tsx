@@ -187,9 +187,13 @@ const Onboarding = () => {
 
           const hasProfile =
             profile?.onboarding_complete ||
+            !!profile?.name ||
             !!profile?.grade ||
             !!profile?.state ||
-            (Array.isArray(profile?.subjects) && profile.subjects.length > 0);
+            (Array.isArray(profile?.subjects) && profile.subjects.length > 0) ||
+            (Array.isArray(profile?.hobbies) && profile.hobbies.length > 0) ||
+            (Array.isArray(profile?.hobby_ids) && profile.hobby_ids.length > 0) ||
+            (profile?.hobby_details && Object.keys(profile?.hobby_details || {}).length > 0);
 
           if (hasProfile) {
             try {
