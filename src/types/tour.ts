@@ -46,13 +46,14 @@ export interface TourConfig {
 
 /**
  * Page-specific tours — Premium, engaging, contextual
+ * Tours are disabled - autoShow set to false
  */
 export const PAGE_TOURS: Record<string, TourConfig> = {
   dashboard: {
     id: "dashboard",
     name: "Your Command Center",
     storageKey: "tour_dashboard_seen",
-    autoShow: true,
+    autoShow: false,
     steps: [
       {
         id: "welcome",
@@ -98,7 +99,7 @@ export const PAGE_TOURS: Record<string, TourConfig> = {
     id: "chat",
     name: "AI Tutor",
     storageKey: "tour_chat_seen",
-    autoShow: true,
+    autoShow: false,
     steps: [
       {
         id: "welcome",
@@ -154,7 +155,7 @@ export const PAGE_TOURS: Record<string, TourConfig> = {
     id: "calendar",
     name: "Study Calendar",
     storageKey: "tour_calendar_seen",
-    autoShow: true,
+    autoShow: false,
     steps: [
       {
         id: "welcome",
@@ -200,7 +201,7 @@ export const PAGE_TOURS: Record<string, TourConfig> = {
     id: "flashcards",
     name: "Flashcards",
     storageKey: "tour_flashcards_seen",
-    autoShow: true,
+    autoShow: false,
     steps: [
       {
         id: "welcome",
@@ -236,7 +237,7 @@ export const PAGE_TOURS: Record<string, TourConfig> = {
     id: "quiz",
     name: "Quizzes",
     storageKey: "tour_quiz_seen",
-    autoShow: true,
+    autoShow: false,
     steps: [
       {
         id: "welcome",
@@ -272,7 +273,7 @@ export const PAGE_TOURS: Record<string, TourConfig> = {
     id: "resources",
     name: "Document Library",
     storageKey: "tour_resources_seen",
-    autoShow: true,
+    autoShow: false,
     steps: [
       {
         id: "welcome",
