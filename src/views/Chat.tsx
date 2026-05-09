@@ -2125,12 +2125,12 @@ Title:` }];
                       }
                     }}
                     placeholder="Ask me anything"
-                    rows={Math.max(1, Math.min(8, Math.ceil(input.length / 80) || 1))}
-                    className="w-full px-3 sm:px-4 pt-3.5 pb-12 text-sm sm:text-base bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/50 resize-none overflow-y-auto max-h-48 leading-relaxed rounded-2xl"
+                    rows={Math.max(1, Math.min(6, Math.ceil(input.length / 80) || 1))}
+                    className="w-full px-3 sm:px-4 pt-3.5 pb-16 text-sm sm:text-base bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/50 resize-none overflow-visible leading-relaxed rounded-2xl min-h-[60px]"
                   />
                   
                   {/* Bottom row of input */}
-                  <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between px-2 sm:px-3 pb-2 sm:pb-3">
+                  <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between px-2 sm:px-3 pb-2.5 sm:pb-3">
                     {/* Left side: attach + toolbar icons */}
                     <div className="flex items-center gap-1">
                       {/* Attach file */}
