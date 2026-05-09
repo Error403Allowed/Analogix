@@ -53,15 +53,15 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
       return;
     }
 
-    // No user - redirect to onboarding (not home)
+    // No user - redirect to login
     if (!user) {
       setIsChecking(false);
-      router.replace("/onboarding");
+      router.replace("/login");
       return;
     }
 
-    // User is authenticated - check onboarding status
-    const checkOnboarding = async () => {
+    // User is authenticated - allow access (onboarding check removed)
+    const checkAuth = async () => {
       // Only check if user changed (prevent redundant checks)
       if (userRef.current === user.id) {
         setIsChecking(false);
@@ -69,50 +69,10 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
       }
 
       userRef.current = user.id;
-
-      // Fast path: check localStorage — this is instant, no network
-      const prefs = JSON.parse(localStorage.getItem("userPreferences") || "{}");
-      if (prefs?.onboardingComplete && prefs.userId === user.id) {
-        setIsChecking(false);
-        // Defer DB sync to after page is interactive — don't block render
-        if (!dbCheckDoneRef.current) {
-          dbCheckDoneRef.current = true;
-          syncPrefsFromProfileDeferred(user.id);
-        }
-        return;
-      }
-
-      // Slow path: check database (only if localStorage miss)
-      try {
-        const supabase = createClient();
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("onboarding_complete, name, grade, state, subjects, hobbies, hobby_ids, hobby_details")
-          .eq("id", user.id)
-          .maybeSingle();
-
-        if (hasProfileData(profile)) {
-          syncPrefsFromProfile(profile, user.id);
-          if (!profile?.onboarding_complete) {
-            await supabase
-              .from("profiles")
-              .update({ onboarding_complete: true, updated_at: new Date().toISOString() })
-              .eq("id", user.id);
-          }
-          setIsChecking(false);
-          return;
-        }
-
-        // No profile data - redirect to onboarding
-        router.replace("/onboarding?step=2");
-      } catch (error) {
-        console.warn("[ProtectedRoute] Error checking onboarding:", error);
-        // On error, allow access anyway (graceful degradation)
-        setIsChecking(false);
-      }
+      setIsChecking(false);
     };
 
-    checkOnboarding();
+    checkAuth();
   }, [user, loading, router]);
 
   // Deferred DB sync — runs after page is visible

@@ -11,7 +11,7 @@ function AuthCallbackContent() {
   const code = searchParams.get("code");
   const errorParam = searchParams.get("error");
   const errorDescription = searchParams.get("error_description");
-  const next = searchParams.get("next") ?? "/onboarding?step=2";
+  const next = searchParams.get("next") ?? "/dashboard";
 
   useEffect(() => {
     const exchangeCode = async () => {
@@ -52,7 +52,7 @@ function AuthCallbackContent() {
         console.error("OAuth error:", errorParam, errorDescription);
       }
       
-      router.replace(`/onboarding?error=auth_failed`);
+      router.replace(`/login?error=auth_failed`);
     };
 
     exchangeCode();

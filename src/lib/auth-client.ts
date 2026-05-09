@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/client";
 
-export async function signInWithGoogle(next = "/onboarding?step=2") {
+export async function signInWithGoogle(next = "/dashboard") {
   const supabase = createClient();
   
   const { data, error } = await supabase.auth.signInWithOAuth({

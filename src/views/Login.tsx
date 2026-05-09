@@ -18,7 +18,7 @@ export default function LoginView() {
   }, [user, loading, router]);
 
   const handleGoogle = async () => {
-    await signInWithGoogle("/onboarding?step=2");
+    await signInWithGoogle("/dashboard");
   };
 
   if (loading) {

@@ -328,10 +328,10 @@ const Landing = () => {
       return;
     }
     
-    // If not signed in, redirect to onboarding
+    // If not signed in, redirect to login
     // If signed in, go to dashboard
     if (!user) {
-      router.push("/onboarding?step=2");
+      router.push("/login");
     } else {
       router.push(path || "/dashboard");
     }
