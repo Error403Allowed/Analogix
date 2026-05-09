@@ -22,6 +22,13 @@ function AuthCallbackContent() {
         if (!error) {
           const { data: { user } } = await supabase.auth.getUser();
           if (user) {
+            // Get user's name from Google metadata for pre-filling onboarding
+            const meta = user.user_metadata || {};
+            const firstName = meta.first_name || meta.given_name;
+            const lastName = meta.last_name || meta.family_name;
+            const fullName = meta.full_name || meta.name;
+            const googleName = [firstName, lastName].filter(Boolean).join(" ").trim() || fullName || "";
+
             const { data: profile } = await supabase
               .from("profiles")
               .select("onboarding_complete, name, grade, state, subjects, hobbies, hobby_ids, hobby_details")
@@ -38,10 +45,10 @@ function AuthCallbackContent() {
               || (profile?.hobby_details && Object.keys(profile.hobby_details).length > 0);
 
             if (hasProfileData) {
-              // Sync profile data to localStorage with onboarding complete flag
+              // Existing user - sync profile data to localStorage with onboarding complete flag
               try {
                 const existing = JSON.parse(localStorage.getItem("userPreferences") || "{}");
-                const next = {
+                const syncedPrefs = {
                   ...existing,
                   name: profile?.name ?? existing.name ?? "Student",
                   grade: profile?.grade ?? existing.grade ?? null,
@@ -55,10 +62,17 @@ function AuthCallbackContent() {
                   onboardingComplete: true,
                   userId: user.id,
                 };
-                localStorage.setItem("userPreferences", JSON.stringify(next));
+                localStorage.setItem("userPreferences", JSON.stringify(syncedPrefs));
                 window.dispatchEvent(new Event("userPreferencesUpdated"));
               } catch { /* ignore storage errors */ }
               router.replace("/dashboard");
+              return;
+            } else {
+              // New user - go to onboarding with pre-filled name from Google
+              const onboardingUrl = googleName 
+                ? `/onboarding?step=2&name=${encodeURIComponent(googleName)}`
+                : "/onboarding?step=2";
+              router.replace(onboardingUrl);
               return;
             }
           }

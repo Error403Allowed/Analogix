@@ -197,6 +197,9 @@ const Onboarding = () => {
   const searchParams = useSearchParams();
   const { user: authUser, loading: authLoading } = useAuth();
 
+  // Get pre-filled name from URL (passed from auth callback)
+  const urlNameParam = searchParams?.get("name") || "";
+
   const [authError] = useState<string | null>(
     searchParams?.get("error") === "auth_failed" ? "Authentication failed. Please try again." : null
   );
@@ -204,6 +207,27 @@ const Onboarding = () => {
   // Always start on step 1 — the gate below moves us forward once auth resolves.
   // This prevents ?step=2 in the URL from skipping auth for unauthenticated users.
   const [step, setStep] = useState(1);
+
+  // Initialize name state - will be updated via effect if URL param exists
+  const [name, setName] = useState("");
+
+  // Apply pre-filled name from URL params after mount
+  useEffect(() => {
+    if (urlNameParam && !name) {
+      setName(urlNameParam);
+    }
+  }, [urlNameParam, name]);
+  const [grade, setGrade] = useState<string | null>(null);
+  const [state, setState] = useState<AustralianState | null>(null);
+  const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
+  const [selectedHobbies, setSelectedHobbies] = useState<string[]>([]);
+  const [interestSelections, setInterestSelections] = useState<Record<string, string[]>>({});
+  const [customInterest, setCustomInterest] = useState<Record<string, string>>({});
+  const [isComplete, setIsComplete] = useState(false);
+  const [icsImporting, setIcsImporting] = useState(false);
+  const [icsImported, setIcsImported] = useState(false);
+  const [icsCount, setIcsCount] = useState(0);
+  const [icsError, setIcsError] = useState<string | null>(null);
 
   useEffect(() => {
     if (authLoading) return;
@@ -260,20 +284,7 @@ const Onboarding = () => {
         });
       return;
     }
-  }, [authUser, authLoading]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const [name, setName] = useState("");
-  const [grade, setGrade] = useState<string | null>(null);
-  const [state, setState] = useState<AustralianState | null>(null);
-  const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
-  const [selectedHobbies, setSelectedHobbies] = useState<string[]>([]);
-  const [interestSelections, setInterestSelections] = useState<Record<string, string[]>>({});
-  const [customInterest, setCustomInterest] = useState<Record<string, string>>({});
-  const [isComplete, setIsComplete] = useState(false);
-  const [icsImporting, setIcsImporting] = useState(false);
-  const [icsImported, setIcsImported] = useState(false);
-  const [icsCount, setIcsCount] = useState(0);
-  const [icsError, setIcsError] = useState<string | null>(null);
+  }, [authUser, authLoading, router, searchParams]);
 
   const toggleSubject = (id: string) =>
     setSelectedSubjects(p => p.includes(id) ? p.filter(s => s !== id) : [...p, id]);
