@@ -38,6 +38,26 @@ function AuthCallbackContent() {
               || (profile?.hobby_details && Object.keys(profile.hobby_details).length > 0);
 
             if (hasProfileData) {
+              // Sync profile data to localStorage with onboarding complete flag
+              try {
+                const existing = JSON.parse(localStorage.getItem("userPreferences") || "{}");
+                const next = {
+                  ...existing,
+                  name: profile?.name ?? existing.name ?? "Student",
+                  grade: profile?.grade ?? existing.grade ?? null,
+                  state: profile?.state ?? existing.state ?? null,
+                  subjects: Array.isArray(profile?.subjects) ? profile.subjects : (existing.subjects ?? []),
+                  hobbies: Array.isArray(profile?.hobbies) ? profile.hobbies : (existing.hobbies ?? []),
+                  hobbyIds: Array.isArray(profile?.hobby_ids) ? profile.hobby_ids : (existing.hobbyIds ?? []),
+                  hobbyDetails: profile?.hobby_details && typeof profile.hobby_details === "object"
+                    ? profile.hobby_details
+                    : (existing.hobbyDetails ?? {}),
+                  onboardingComplete: true,
+                  userId: user.id,
+                };
+                localStorage.setItem("userPreferences", JSON.stringify(next));
+                window.dispatchEvent(new Event("userPreferencesUpdated"));
+              } catch { /* ignore storage errors */ }
               router.replace("/dashboard");
               return;
             }

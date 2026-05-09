@@ -69,6 +69,13 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
       }
 
       userRef.current = user.id;
+
+      // Sync profile data to localStorage for returning users
+      if (!dbCheckDoneRef.current) {
+        dbCheckDoneRef.current = true;
+        syncPrefsFromProfileDeferred(user.id);
+      }
+
       setIsChecking(false);
     };
 

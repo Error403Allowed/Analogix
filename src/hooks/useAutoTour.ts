@@ -8,6 +8,7 @@ import { getTourForPath } from "@/types/tour";
 /**
  * AutoTour Hook
  * Automatically shows page-specific tours when user visits a page for the first time.
+ * Only shows tours for first-time users who haven't completed initial setup.
  * Waits for the target elements to be in the DOM before starting.
  */
 export const useAutoTour = () => {
@@ -22,6 +23,18 @@ export const useAutoTour = () => {
     ];
     if (skipPaths.some(path => pathname === path || pathname.startsWith(path + "/"))) {
       hasTriggeredRef.current = false;
+      return;
+    }
+
+    // Don't show tours for returning users - only first-time users
+    // Check if user has completed initial setup
+    try {
+      const prefs = JSON.parse(localStorage.getItem("userPreferences") || "{}");
+      if (prefs.onboardingComplete) {
+        return;
+      }
+    } catch {
+      // If localStorage fails, don't show tour
       return;
     }
 
