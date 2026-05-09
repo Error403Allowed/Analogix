@@ -290,6 +290,16 @@ const Chat = () => {
   
   // INPUT: What you're currently typing in the box.
   const [input, setInput] = useState("");
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  
+  // Auto-resize textarea
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (textarea) {
+      textarea.style.height = 'auto';
+      textarea.style.height = Math.min(textarea.scrollHeight, 200) + 'px';
+    }
+  }, [input]);
   
   // PREVIEW: Quick preview while user is typing
   const [previewText, setPreviewText] = useState("");
@@ -1310,10 +1320,14 @@ const Chat = () => {
           .trim();
         
         let displayContent = cleanedAccumulated || "I'm not sure how to answer that.";
-        const actionsMatch = accumulated.match(/<ACTIONS>([\s\S]*?)<\/ACTIONS>/i);
+        // More robust regex - handles optional whitespace and newlines
+        const actionsMatch = accumulated.match(/<ACTIONS\s*>[\s\S]*?<\/ACTIONS\s*>/i);
         if (actionsMatch) {
-          // Strip the actions block from what the user sees
-          displayContent = accumulated.replace(/<ACTIONS>[\s\S]*?<\/ACTIONS>/i, "").trim();
+          // Strip the actions block from what the user sees - also handle if closing tag is missing
+          displayContent = accumulated
+            .replace(/<ACTIONS\s*>[\s\S]*?<\/ACTIONS\s*>/gi, "")
+            .replace(/<ACTIONS\s*>[\s\S]*/gi, "") // Handle case without closing tag
+            .trim();
           try {
             const cleaned = actionsMatch[1].trim().replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "").trim();
             const parsed = JSON.parse(cleaned);
@@ -2114,8 +2128,9 @@ Title:` }];
                   </div>
                 )}
                 
-                <div className="relative rounded-2xl border border-border/60 bg-card shadow-sm" style={{ overflow: 'visible' }} data-tour="chat-input">
+                <div className="rounded-2xl bg-card shadow-sm" data-tour="chat-input">
                   <Textarea
+                    ref={textareaRef}
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={(e) => {
@@ -2125,12 +2140,11 @@ Title:` }];
                       }
                     }}
                     placeholder="Ask me anything"
-                    rows={Math.max(1, Math.min(6, Math.ceil(input.length / 80) || 1))}
-                    className="w-full px-3 sm:px-4 pt-3.5 pb-16 text-sm sm:text-base bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/50 resize-none overflow-visible leading-relaxed rounded-2xl min-h-[60px]"
+                    className="w-full px-3 sm:px-4 py-3 text-sm sm:text-base bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/50 resize-none leading-relaxed rounded-t-2xl"
                   />
                   
-                  {/* Bottom row of input */}
-                  <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between px-2 sm:px-3 pb-2.5 sm:pb-3">
+                  {/* Bottom row of input - separate from textarea */}
+                  <div className="flex items-center justify-between px-2 sm:px-3 pb-3 bg-card rounded-b-2xl">
                     {/* Left side: attach + toolbar icons */}
                     <div className="flex items-center gap-1">
                       {/* Attach file */}

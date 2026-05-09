@@ -91,8 +91,8 @@ export async function POST(request: Request) {
     const personalityUseAnalogies = aiPersonality?.use_analogies;
     const personalityAnalogyFreq = aiPersonality?.analogy_frequency ?? 3;
     
-    // Default to high analogy usage - incorporate interests into EVERY response
-    let analogyIntensity = userContext?.analogyIntensity ?? 4;
+    // Default to moderate - AI uses judgment for when analogies make sense
+    let analogyIntensity = userContext?.analogyIntensity ?? 2;
     if (personalityUseAnalogies === false) {
       analogyIntensity = 0; // Personality overrides
     } else if (personalityUseAnalogies === true) {
@@ -126,14 +126,14 @@ export async function POST(request: Request) {
     // STEP 2: Build AI instructions based on user preferences
     // ========================================================================
 
-    // Instructions for how much to use analogies
+    // Instructions for how much to use analogies - AI uses judgment
     const analogyGuidance = [
-      "Use no analogies at all - focus exclusively on raw facts and concepts.",
-      "Use minimal analogies - mostly facts with rare hobby-based comparisons.",
-      "Use analogies as the primary teaching tool - lead with a hobby-based analogy, then back it up with facts.",
-      "Use frequent analogies - explain most concepts using hobby-based analogies.",
-      "Use extensive analogies - incorporate the student's interests into EVERY response, even simple answers.",
-      "Use only analogies - explain everything through the student's interests, make it click every time.",
+      "Use no analogies - focus on clear, direct explanations.",
+      "Use analogies sparingly - only when they genuinely clarify the concept.",
+      "Use analogies when helpful - integrate naturally into explanations where they add clarity.",
+      "Use analogies frequently - explain concepts using the student's interests when it helps.",
+      "Use extensive analogies - weave the student's interests throughout explanations.",
+      "Use analogies as the primary tool - make concepts click through the student's interests.",
     ][analogyIntensity];
 
     // Formula sheet context — injected into prompt for formula-bearing subjects
@@ -440,7 +440,7 @@ Response Guidelines:
 - Be comprehensive - explain thoroughly with examples
 - Never give one-sentence answers to complex topics
 
-Analogy Usage: ${analogyIntensity === 0 ? "Don't use analogies" : `Incorporate the student's interests (${allowedInterests}) into explanations using "${analogyAnchor}" as the anchor.`}
+Analogy Usage: ${analogyIntensity === 0 ? "Don't use analogies" : `Use analogies when they genuinely help clarify concepts. Let the explanation dictate when an analogy adds value - don't force it. Interests (${allowedInterests}) can provide relatable anchors when useful.`}
 ${analogyIntensity === 0 ? "" : `\n${analogyInstructions}`}
 
 Math Requirements:
