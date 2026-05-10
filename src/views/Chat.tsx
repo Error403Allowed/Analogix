@@ -312,6 +312,9 @@ const Chat = () => {
   const [streamingId, setStreamingId] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   
+  // DEDUP: Track last message for spam prevention
+  const lastMessageRef = useRef<{ content: string; timestamp: number } | null>(null);
+  
   // ANALOGY MODE: Toggle analogies on/off (session-only)
   const [analogyModeEnabled, setAnalogyModeEnabled] = useState(true);
 
@@ -1058,6 +1061,18 @@ const Chat = () => {
   const handleSend = () => {
     if ((!input.trim() && attachedFiles.length === 0) || isInputLocked) return;
 
+    // Cancel any in-flight stream before starting a new one
+    abortRef.current?.abort();
+
+    // ── DEDUPLICATION: ignore duplicate messages within 1s ──
+    const now = Date.now();
+    if (lastMessageRef.current && 
+        lastMessageRef.current.content === input.trim() &&
+        now - lastMessageRef.current.timestamp < 1000) {
+      return; // Duplicate, ignore
+    }
+    lastMessageRef.current = { content: input.trim(), timestamp: now };
+
     // Capture preview before clearing (we might use it)
     const capturedPreview = previewText;
 
@@ -1292,9 +1307,9 @@ const Chat = () => {
         abortRef.current = abort;
         let accumulated = "";
 
-        // Throttle renders for readability - update every ~100ms (about 10 updates/second)
+        // Throttle renders for readability - update every ~250ms (about 4 updates/second)
         let lastRenderTime = 0;
-        const RENDER_INTERVAL = 100;
+        const RENDER_INTERVAL = 250;
 
         const stream = getGroqStream(newHistory, context, localStorageData);
         for await (const token of stream) {
@@ -1378,16 +1393,19 @@ const Chat = () => {
         setStreamingId(null);
 
       // Fire-and-forget memory extraction — runs after every assistant response
-      // Uses a cheap 8B model so it doesn't block or cost much
-      const messagesForExtraction = [
-        ...messages.filter(m => !m.isWelcome).map(m => ({ role: m.role, content: m.content })),
-        { role: "assistant" as const, content: accumulated },
-      ];
-      fetch("/api/ai/memory/extract", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: messagesForExtraction, subjectId: selectedSubject }),
-      }).then(r => r.json()).then(d => console.log("[memory] extract result:", d)).catch(() => {});
+      // Skip for trivial messages (don't waste resources on spam)
+      const trimmedAccumulated = accumulated.trim();
+      if (trimmedAccumulated.length >= 20) {
+        const messagesForExtraction = [
+          ...messages.filter(m => !m.isWelcome).map(m => ({ role: m.role, content: m.content })),
+          { role: "assistant" as const, content: trimmedAccumulated },
+        ];
+        fetch("/api/ai/memory/extract", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ messages: messagesForExtraction, subjectId: selectedSubject }),
+        }).then(r => r.json()).then(d => console.log("[memory] extract result:", d)).catch(() => {});
+      }
 
       // Save to Supabase
       if (activeSessionId) {

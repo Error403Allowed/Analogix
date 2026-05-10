@@ -235,11 +235,11 @@ class RequestThrottle {
 
 // Global throttle instance for AI requests
 export const aiThrottle = new RequestThrottle({
-  maxConcurrent: 2,      // Allow 2 concurrent requests
-  minDelay: 500,         // 500ms minimum delay between requests
-  maxRetries: 3,         // Retry up to 3 times on rate limit
-  baseDelay: 1000,       // Start with 1s backoff
-  maxDelay: 10000,       // Cap at 10s backoff
+  maxConcurrent: 2,      // 2 concurrent max per conversation - sane limit
+  minDelay: 200,          // 200ms between requests - fast but not unlimited
+  maxRetries: 3,          // Retry up to 3 times on rate limit
+  baseDelay: 500,         // Start with 500ms backoff
+  maxDelay: 5000,         // Cap at 5s backoff
 });
 
 // Throttle instance for heavy/long-running AI operations (study guides, document analysis)

@@ -10,21 +10,145 @@ interface GroqStreamClientData {
   memories?: unknown[];
 }
 
+// Token estimation: ~1 token per 4 characters
+function estimateTokens(text: string): number {
+  return Math.ceil(text.length / 4);
+}
+
+// Task-based context budgets - different sizes for different tasks
+interface TaskBudget {
+  maxTokens: number;
+  maxMessages: number;
+  maxMemories: number;
+  includePersonality: boolean;
+  includeMemories: boolean;
+}
+
+const TASK_BUDGETS: Record<string, TaskBudget> = {
+  // Lightweight: just the message, minimal context
+  lightweight: {
+    maxTokens: 1024,
+    maxMessages: 2,
+    maxMemories: 0,
+    includePersonality: false,
+    includeMemories: false,
+  },
+  // Default: normal chat, balance speed/quality
+  default: {
+    maxTokens: 4096,
+    maxMessages: 4,
+    maxMemories: 2,
+    includePersonality: true,
+    includeMemories: true,
+  },
+  // Reasoning: more context for complex questions
+  reasoning: {
+    maxTokens: 6144,
+    maxMessages: 6,
+    maxMemories: 3,
+    includePersonality: true,
+    includeMemories: true,
+  },
+  // Deep: full context for research/analysis
+  deep: {
+    maxTokens: 8192,
+    maxMessages: 10,
+    maxMemories: 5,
+    includePersonality: true,
+    includeMemories: true,
+  },
+};
+
+// Determine task type based on message
+function classifyTask(message: string): string {
+  const len = message.length;
+  const words = message.split(/\s+/).length;
+  
+  // Trivial messages get lightweight treatment
+  if (len < 20 || words <= 2) return "lightweight";
+  
+  // Reasoning questions
+  if (/\b(why|how|explain|show.*work|derive|solve|prove|calculate)\b/i.test(message)) {
+    return "reasoning";
+  }
+  
+  // Research/analysis
+  if (/\b(analyse|analyze|research|compare|contrast|review|study)\b/i.test(message)) {
+    return "deep";
+  }
+  
+  // Default for everything else
+  return "default";
+}
+
+// Trim context to fit within token budget
+function trimToBudget(
+  messages: ChatMessage[],
+  budget: TaskBudget,
+  localStorageData?: GroqStreamClientData | null
+): { messages: ChatMessage[]; memories: unknown[] } {
+  let tokenCount = 0;
+  const budgetedMemories: unknown[] = [];
+  
+  // Take only recent N messages
+  const recentMessages = messages.slice(-budget.maxMessages);
+  
+  // If still too big, truncate each message
+  const maxTokensPerMessage = Math.floor(budget.maxTokens / recentMessages.length);
+  const trimmedMessages: ChatMessage[] = [];
+  
+  for (const msg of recentMessages) {
+    const msgTokens = estimateTokens(msg.content);
+    if (tokenCount + msgTokens <= budget.maxTokens) {
+      trimmedMessages.push(msg);
+      tokenCount += msgTokens;
+    }
+    // Stop if we're over budget
+    if (tokenCount >= budget.maxTokens) break;
+  }
+  
+  // Budget memories if requested
+  if (budget.includeMemories && budget.maxMemories > 0 && localStorageData?.memories) {
+    const memories = localStorageData.memories as Array<{ content?: string }>;
+    for (const mem of memories.slice(0, budget.maxMemories)) {
+      if (mem.content) {
+        const memTokens = estimateTokens(mem.content);
+        if (tokenCount + memTokens <= budget.maxTokens - 500) { // Leave buffer
+          budgetedMemories.push(mem);
+          tokenCount += memTokens;
+        }
+      }
+    }
+  }
+  
+  return { messages: trimmedMessages, memories: budgetedMemories };
+}
+
 // ─── Streaming helper ────────────────────────────────────────────────────────
 // Calls /api/groq/chat-stream and yields token chunks as they arrive.
-// Think of it like a garden hose — instead of waiting for a full bucket,
-// water (tokens) flows out the moment it comes through.
 export async function* getGroqStream(
   messages: ChatMessage[],
   userContext?: Partial<UserContext> & { analogyIntensity?: number; analogyAnchor?: string },
   localStorageData?: GroqStreamClientData | null,
 ): AsyncGenerator<string> {
+  // ── CLASSIFY TASK and BUDGET ──
+  const userMessage = messages[messages.length - 1]?.content || "";
+  const task = classifyTask(userMessage);
+  const budget = TASK_BUDGETS[task] || TASK_BUDGETS.default;
+  
+  // ── TRIM TO TOKEN BUDGET ──
+  const { messages: budgetedMessages, memories: budgetedMemories } = trimToBudget(messages, budget, localStorageData);
+
+  // Build client data with budgeted context
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (localStorageData) {
-    headers["x-client-data"] = JSON.stringify(localStorageData);
+    headers["x-client-data"] = JSON.stringify({
+      personality: budget.includePersonality ? localStorageData.personality : null,
+      memories: budget.includeMemories ? budgetedMemories : [],
+    });
   }
 
-  // Use throttle to prevent stream overload
+  // Sane throttling - prevent spam overload while keeping responses fast
   await aiThrottle.execute(async () => {
     // Just a placeholder to use the throttle - actual fetch happens below
   });
@@ -32,7 +156,7 @@ export async function* getGroqStream(
   const response = await fetch("/api/groq/chat-stream", {
     method: "POST",
     headers,
-    body: JSON.stringify({ messages, userContext }),
+    body: JSON.stringify({ messages: budgetedMessages, userContext }),
   });
 
   if (!response.ok) {
@@ -165,10 +289,18 @@ export const getGroqCompletion = async (
     analogyAnchor?: string;
   },
 ): Promise<ChatMessage> => {
+  // ── CLASSIFY TASK and BUDGET ──
+  const userMessage = messages[messages.length - 1]?.content || "";
+  const task = classifyTask(userMessage);
+  const budget = TASK_BUDGETS[task] || TASK_BUDGETS.default;
+  
+  // ── TRIM TO TOKEN BUDGET ──
+  const { messages: budgetedMessages } = trimToBudget(messages, budget);
+  
   try {
     return await fetchJson<{ role: "assistant"; content: string }>(
       "/api/groq/chat",
-      { messages, userContext },
+      { messages: budgetedMessages, userContext },
       30000,
     );
   } catch (error) {

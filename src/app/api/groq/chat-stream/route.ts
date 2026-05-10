@@ -410,7 +410,7 @@ if (clientMemories && Array.isArray(clientMemories)) {
     const isResearchMode = Boolean(userContext?.researchMode);
     const chatTaskType = isSimpleGreeting ? "lightweight" : "default";
 
-    const effectiveMaxTokens = isSimpleGreeting ? 300 : 8000;
+    const effectiveMaxTokens = isSimpleGreeting ? 200 : 1536;
 
     const upstreamStream = await callGroqChatStream(
       {
