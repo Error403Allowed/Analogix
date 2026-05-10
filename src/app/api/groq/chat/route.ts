@@ -222,38 +222,32 @@ export async function POST(request: Request) {
     const analogyInstructions =
       analogyIntensity === 0
         ? `ANALOGY MODE: OFF\nUse no analogies. Explain directly, factually, and clearly. Do not reference hobbies or comparisons.`
-        : `1. WEAVE ANALOGIES THROUGHOUT: Don't just append an analogy at the end. Integrate the analogy into every part of the explanation. As you explain each concept, immediately show how it maps to the student's interests. The analogy should feel like a continuous thread, not a separate paragraph.
-
-    FORBIDDEN: Never write "Step 1:", "Step 2:", "First:", "Second:" or any numbered/list structure that separates the analogy from the concept. Natural paragraphs only.
-
-    CORRECT APPROACH: When explaining a concept, INTERLEAVE the analogy throughout:
-    - "So the quotient rule works like your favorite game's inventory system — when you divide [concept part], it's like moving an item from one slot to another, and [analogy mapping]"
-    - "The power rule is similar — in your game, upgrading a weapon twice multiplies its damage, just like [concept]"
+        : `1. ANALOGY-OPTIONAL: Use an analogy only when it genuinely helps clarify. Don't force it if a direct explanation works better.
     
-    - For TV/Movies: Use specific moments, scenes, character quirks, or plot beats (not vague settings). E.g., "Like when [character] does [specific action] in [episode], here's why..."
-    - For Games: Reference mechanics, progression systems, or narrative beats that create the same dynamic as the concept.
-    - For Sports/Music: Use specific athletes, plays, songs, or albums as parallels.
-    - If interests include specific subgenres or titles, ONLY use those. Do not generalize to broader categories or adjacent activities.
-    - Only use interests from the Allowed Interests list. If none apply, ask a brief clarification question instead of guessing.
-    - Choose ONE analogy anchor from the Allowed Interests per response. Never switch mid-response.
-    - If an Analogy Anchor is provided, you MUST use ONLY that anchor for this response.
-    - Use 1–2 analogy threads per response woven throughout; don't confine the analogy to just one sentence.
-    - Never mention other sports, games, or genres outside the anchor. No cross-sport/game references.
-    - If the user is asking how to solve a problem, introduce the analogy first to frame the approach, then work through the solution with the analogy in mind.
-    - Even for simple answers, find a way to connect back to their interests briefly.
-
-2. MAP COMPONENTS TO COMPONENTS: For each component/aspect of the concept, identify the corresponding component in the analogy. Don't just say "it's like X" — explain WHY it maps that way.
-    - Each mathematical step should map to a specific part of the analogy
-    - Each property/rule should connect to a specific mechanic in the analogy
-    - Don't just say "logs are like inventory" — say "the quotient property is like separating items in your inventory: when you divide the arguments, it's like [specific mapping]"
-
-3. NEVER APPEND: Never put the analogy in a separate paragraph at the end. If you catch yourself writing a summary paragraph with the analogy, you've failed. The analogy should be embedded naturally within each explanation point.`;
+    GUIDANCE:
+    - Use analogies to make abstract concepts concrete, but skip if the concept is already clear
+    - Choose ONE interest to anchor to, but acknowledge if a direct explanation is better
+    - If forcing the analogy feels awkward, explain directly instead
+    - Natural paragraphs only — no "Step 1:" structures`;
 
     // Core teaching philosophy
     const teachingApproach =
       analogyIntensity === 0
         ? "Build understanding through clear, direct explanations grounded in facts."
-        : "Lead with the analogy, build understanding THROUGH it, and close the loop by returning to it at the end. Start with what they know, layer the concept through that lens, then reveal complexity.";
+        : "Explain directly when clear, use analogies to make abstract concepts concrete when helpful.";
+
+    // TEACHING METHODOLOGY
+    const methodology = `
+    YOUR ROLE:
+    - Guide students to understand concepts, don't just give answers
+    - For homework/task questions: ask "What have you tried?" or give hints first
+    - Help them figure it out — don't do the work for them
+
+    RESPONSE BALANCE:
+    - Brief is fine for greetings: 1-2 sentences
+    - Substantive for learning: cover concept + one example
+    - Skip essays unless explicitly asked
+    - Match your answer length to the question`;
 
     // How to layer complexity in explanations
     const complexityGuidance = `EXPLANATION DEPTH:

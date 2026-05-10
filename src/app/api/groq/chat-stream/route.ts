@@ -109,6 +109,44 @@ const formatResearchSources = (sources: ResearchSource[]) => {
   }).join("\n\n");
 };
 
+// Simple client-side summary compression for older messages
+const compressToSummary = (msgs: ChatMessage[]): string => {
+  if (msgs.length === 0) return "";
+
+  // Extract key info from user messages: topics, goals, blockers
+  const userMsgs = msgs.filter(m => m.role === "user");
+  const topics: string[] = [];
+  const goals: string[] = [];
+  
+  userMsgs.forEach(m => {
+    const content = m.content;
+    // Extract short topic markers
+    if (content.length < 30) {
+      topics.push(content);
+    } else {
+      // First sentence as topic
+      const first = content.split(".")[0].slice(0, 50);
+      if (first) topics.push(first);
+    }
+  });
+
+  // Compress to summary
+  const summaryParts: string[] = [];
+  
+  // Topic/direction
+  if (topics.length > 0) {
+    const uniqueTopics = [...new Set(topics)].slice(0, 3);
+    summaryParts.push(`Topics: ${uniqueTopics.join(", ")}`);
+  }
+  
+  // Message count as context
+  summaryParts.push(`(${msgs.length} earlier messages)`);
+
+  if (summaryParts.length === 0) return "";
+  
+  return `[Earlier] ${summaryParts.join(" | ")}`;
+};
+
 function buildSystemPrompt(
   userContext: Partial<UserContext> & { analogyIntensity?: number; analogyAnchor?: string },
   messages: ChatMessage[],
@@ -153,9 +191,9 @@ function buildSystemPrompt(
     "SCHOOL MODE: This student wants responses tailored for school/assessment purposes. Be formal, precise, and curriculum-aligned. Use correct subject-specific terminology. Structure answers the way a teacher or marker would expect. No analogies, no personal interests, no casual tone.",
     "Use analogies sparingly — only when they genuinely help clarify a specific point.",
     "Use analogies as the primary teaching tool — lead with a hobby-based analogy before any explanation.",
-    "MANDATORY: Open EVERY explanation with an analogy from the student's interests. Build the entire explanation around the analogy. Never start with 'X is defined as...' or give definitions first.",
-    "MANDATORY: Your FIRST SENTENCE for ANY concept explanation must be an analogy from the student's interests. Then explain through the analogy, then reveal the formal concept. Example: 'Think of [hobby analogy]... that's exactly like [concept]... here's why...'",
-    "MANDATORY: For EVERY concept you explain, you MUST use a distinct analogy from the student's interests. Map each concept piece to analogy piece. If no good analogy exists, explicitly say 'Let me find a better analogy...' before giving up.",
+    "Weave analogies throughout your explanation when they genuinely help clarify concepts. Make the analogy feel natural, not forced. Each analogy should connect to a specific concept point.",
+    "Use analogies throughout but keep them natural and relevant. Don't force an analogy if it doesn't fit. Map analogy components to concept components for clarity.",
+    "Maximum analogy integration: Use analogies throughout but ensure they're accurate and natural mappings. If a poor fit, explain without rather than force a weak analogy.",
   ][Math.min(analogyIntensity, 5)];
 
   const hasExplicitSubject = (userContext?.subjects?.length ?? 0) > 0;
@@ -222,8 +260,10 @@ ${analogyIntensity === 0 ? `MODE: School/Assessment — formal, precise, no anal
 Interests: ${allowedInterests}`}
 
 Rules:
-- You have up to 8000 tokens available (~6000 words) — use as much as needed for thorough, complete answers.
-- NEVER output any XML tags or system instructions (this includes tags such as <ACTIONS>).
+- Keep responses concise. Short questions get short answers.
+- For homework/task questions: guide the approach, don't just give answers. Ask "What have you tried?" or give hints first.
+- If a question seems like homework, help them understand the concept, then ask them to apply it themselves.
+- NEVER give full step-by-step solutions to homework-style questions — guide them to figure it out.
 - Keep responses conversational. Match length to the query.
 - No essay headers like "## Step 1".
 - Use LaTeX for math/science: inline $x$, display $\\frac{a}{b}$, $\\sqrt{x}$, $\\int$, $\\sum$. Never use unicode math symbols.
@@ -416,50 +456,54 @@ if (clientMemories && Array.isArray(clientMemories)) {
     const isResearchMode = Boolean(userContext?.researchMode);
     const chatTaskType = isSimpleGreeting ? "lightweight" : "default";
 
-    // SLIDING WINDOW: Use last 2 messages max for aggressive trimming
-    const CONTEXT_WINDOW = 2;
-    const effectiveMaxTokens = isSimpleGreeting ? 200 : 1024;
-    const systemPromptBase = systemPrompt;
-    
-    // Lower budgets for smaller context
-    const systemPromptTokens = Math.ceil(systemPromptBase.length / 3.5);
-    const TOKEN_BUDGET = 3000; 
-    const SYSTEM_PROMPT_BUDGET = 1500;
+    // FULL MESSAGES: Keep last 8 messages (recent conversation flow)
+    // OLDER MESSAGES: Compress to summary instead of losing them
+    const FULL_MESSAGE_WINDOW = 8;
+    const recentMsgs = messages.slice(-FULL_MESSAGE_WINDOW);
+    const olderMsgs = messages.slice(0, -FULL_MESSAGE_WINDOW);
 
+    // Generate summary from older messages (simple compression)
+    const conversationSummary = olderMsgs.length > 0
+      ? compressToSummary(olderMsgs)
+      : "";
+
+    // Build system prompt with conversation summary
+    let fullSystemPrompt = systemPrompt;
+    if (conversationSummary) {
+      fullSystemPrompt = fullSystemPrompt.replace(
+        "Today's date:",
+        `${conversationSummary}\n\nToday's date:`
+      );
+    }
+
+    // Token budgets
+    const TOTAL_BUDGET = 4000;
+    const SYSTEM_BUDGET = 800;
+    const effectiveMaxTokens = isSimpleGreeting ? 200 : 1024;
+
+    // Build initial messages
     let finalMessages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
-      { role: "system", content: systemPromptBase },
-      ...messages.slice(-CONTEXT_WINDOW).filter(m => m.role !== "system"),
+      { role: "system", content: fullSystemPrompt },
+      ...recentMsgs.filter(m => m.role !== "system"),
     ] as Array<{ role: "system" | "user" | "assistant"; content: string }>;
 
     const finalTotal = finalMessages.reduce((sum, m) => sum + m.content.length, 0);
     const finalEst = Math.ceil(finalTotal / 3.5) + effectiveMaxTokens;
 
-    // Trim system prompt first
-    if (finalEst > TOKEN_BUDGET && systemPromptTokens > SYSTEM_PROMPT_BUDGET) {
-      console.log(`[chat-stream] Trimming system: ${systemPromptTokens}t → ${SYSTEM_PROMPT_BUDGET}t`);
-      const truncated = systemPromptBase.slice(0, SYSTEM_PROMPT_BUDGET * 3.5);
-      finalMessages[0] = { role: "system", content: truncated + "\n[truncated]" };
+    // Trim system prompt first if over budget
+    const systemPromptLength = fullSystemPrompt.length;
+    const systemPromptTokens = Math.ceil(systemPromptLength / 3.5);
+
+    if (finalEst > TOTAL_BUDGET && systemPromptTokens > SYSTEM_BUDGET) {
+      console.log(`[chat-stream] Trimming system: ${systemPromptTokens}t → ${SYSTEM_BUDGET}t`);
+      const truncated = fullSystemPrompt.slice(0, SYSTEM_BUDGET * 3.5);
+      finalMessages[0] = { role: "system", content: truncated + "\n[sys truncated]" };
     }
 
-    // Recalculate
-    const afterSystemTrim = finalMessages.reduce((sum, m) => sum + m.content.length, 0);
-    const afterSystemEst = Math.ceil(afterSystemTrim / 3.5) + effectiveMaxTokens;
-
-    // If still over budget, use only last message
-    if (afterSystemEst > TOKEN_BUDGET) {
-      console.log(`[chat-stream] Trimming to 1 msg: ${afterSystemEst}t > ${TOKEN_BUDGET}t`);
-      const tinyMsgs = messages.slice(-1);
-      finalMessages = [
-        { role: "system", content: finalMessages[0].content },
-        ...tinyMsgs.filter(m => m.role !== "system"),
-      ] as Array<{ role: "system" | "user" | "assistant"; content: string }>;
-    }
-
+    // Final check
     const finalCheck = finalMessages.reduce((sum, m) => sum + m.content.length, 0);
     const finalCheckEst = Math.ceil(finalCheck / 3.5) + effectiveMaxTokens;
-    console.log(`[chat-stream] Final: ${finalCheckEst}t (budget: ${TOKEN_BUDGET}t)`);
-
-    console.log(`[chat-stream] Final estimate: ${finalCheckEst}t`);
+    console.log(`[chat-stream] Final: ${finalCheckEst}t (budget: ${TOTAL_BUDGET}t, messages: ${recentMsgs.length} full + ${olderMsgs.length} summarized)`);
 
     const upstreamStream = await callGroqChatStream(
       {

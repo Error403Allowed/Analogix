@@ -25,10 +25,10 @@ interface TaskBudget {
 }
 
 const TASK_BUDGETS: Record<string, TaskBudget> = {
-  // Lightweight: just the message, minimal context
+  // Lightweight: still keep 8 messages for conversation context!
   lightweight: {
-    maxTokens: 1024,
-    maxMessages: 2,
+    maxTokens: 2048,
+    maxMessages: 8,
     maxMemories: 0,
     includePersonality: false,
     includeMemories: false,
@@ -36,7 +36,7 @@ const TASK_BUDGETS: Record<string, TaskBudget> = {
   // Default: normal chat, balance speed/quality
   default: {
     maxTokens: 4096,
-    maxMessages: 4,
+    maxMessages: 8,
     maxMemories: 2,
     includePersonality: true,
     includeMemories: true,
@@ -44,7 +44,7 @@ const TASK_BUDGETS: Record<string, TaskBudget> = {
   // Reasoning: more context for complex questions
   reasoning: {
     maxTokens: 6144,
-    maxMessages: 6,
+    maxMessages: 10,
     maxMemories: 3,
     includePersonality: true,
     includeMemories: true,
@@ -52,7 +52,7 @@ const TASK_BUDGETS: Record<string, TaskBudget> = {
   // Deep: full context for research/analysis
   deep: {
     maxTokens: 8192,
-    maxMessages: 10,
+    maxMessages: 15,
     maxMemories: 5,
     includePersonality: true,
     includeMemories: true,
@@ -60,12 +60,14 @@ const TASK_BUDGETS: Record<string, TaskBudget> = {
 };
 
 // Determine task type based on message
-function classifyTask(message: string): string {
+function classifyTask(message: string, messageCount: number = 1): string {
   const len = message.length;
   const words = message.split(/\s+/).length;
   
-  // Trivial messages get lightweight treatment
-  if (len < 20 || words <= 2) return "lightweight";
+  // Only use lightweight if:
+  // 1. Message is short AND
+  // 2. There's only 1 message in conversation (true single exchange)
+  if (messageCount === 1 && (len < 20 || words <= 2)) return "lightweight";
   
   // Reasoning questions
   if (/\b(why|how|explain|show.*work|derive|solve|prove|calculate)\b/i.test(message)) {
@@ -77,7 +79,7 @@ function classifyTask(message: string): string {
     return "deep";
   }
   
-  // Default for everything else
+  // Default for everything else (includes short messages in ongoing conversations)
   return "default";
 }
 
@@ -90,8 +92,8 @@ function trimToBudget(
   let tokenCount = 0;
   const budgetedMemories: unknown[] = [];
   
-  // Take only recent N messages
-  const recentMessages = messages.slice(-budget.maxMessages);
+  // Take only recent N messages - hardcoded to 8 minimum for conversation memory
+  const recentMessages = messages.slice(-Math.max(8, budget.maxMessages));
   
   // If still too big, truncate each message
   const maxTokensPerMessage = Math.floor(budget.maxTokens / recentMessages.length);
@@ -133,7 +135,7 @@ export async function* getGroqStream(
 ): AsyncGenerator<string> {
   // ── CLASSIFY TASK and BUDGET ──
   const userMessage = messages[messages.length - 1]?.content || "";
-  const task = classifyTask(userMessage);
+  const task = classifyTask(userMessage, messages.length);
   const budget = TASK_BUDGETS[task] || TASK_BUDGETS.default;
   
   // ── TRIM TO TOKEN BUDGET ──
@@ -291,7 +293,7 @@ export const getGroqCompletion = async (
 ): Promise<ChatMessage> => {
   // ── CLASSIFY TASK and BUDGET ──
   const userMessage = messages[messages.length - 1]?.content || "";
-  const task = classifyTask(userMessage);
+  const task = classifyTask(userMessage, messages.length);
   const budget = TASK_BUDGETS[task] || TASK_BUDGETS.default;
   
   // ── TRIM TO TOKEN BUDGET ──
