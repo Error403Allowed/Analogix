@@ -35,14 +35,15 @@ export async function getRelevantMemories(
     limit?: number;
     minImportance?: number;
     types?: Array<"fact" | "preference" | "skill" | "goal" | "context">;
+    currentMessage?: string;
   }
 ): Promise<{ memories: AIMemoryFragment[]; summaries: AIMemorySummary[] }> {
   const supabase = await createClient();
   const limit = options?.limit ?? 20;
   const minImportance = options?.minImportance ?? 0;
+  const currentMessage = options?.currentMessage || "";
 
-  // Fetch a larger pool and score client-side using:
-  // score = importance * 0.4 + recency * 0.3 + frequency * 0.3
+  // Fetch a larger pool and score client-side
   let query = supabase
     .from("ai_memory_fragments")
     .select("*")
@@ -62,19 +63,40 @@ export async function getRelevantMemories(
     return { memories: [], summaries: [] };
   }
 
-  // Score and sort
+  const currentKeywords = currentMessage.toLowerCase()
+    .split(/\s+/)
+    .filter(w => w.length > 3);
+
+  // Score and sort with semantic relevance to current message
   const now = Date.now();
   const scored = (memories || []).map(m => {
     const ageMs = now - new Date(m.created_at).getTime();
     const ageDays = ageMs / (1000 * 60 * 60 * 24);
-    const recency = Math.max(0, 1 - ageDays / 90); // decays to 0 after 90 days
+    const recency = Math.max(0, 1 - ageDays / 90);
     const frequency = Math.min(1, (m.reinforcement_count || 0) / 10);
-    const score = (m.importance || 0.5) * 0.4 + recency * 0.3 + frequency * 0.3;
-    return { ...m, _score: score };
+
+    // Semantic relevance: how many keywords match this memory?
+    let relevance = 0;
+    if (currentKeywords.length > 0) {
+      const memoryLower = m.content.toLowerCase();
+      relevance = currentKeywords.filter(kw =>
+        memoryLower.includes(kw)
+      ).length / currentKeywords.length;
+    }
+
+    // weighted scoring: relevance 70%, importance 20%, recency 10%
+    const score = relevance * 0.7 + (m.importance || 0.5) * 0.2 + recency * 0.1;
+    return { ...m, _score: score, _relevance: relevance };
   });
 
   scored.sort((a, b) => b._score - a._score);
-  const topMemories = scored.slice(0, limit) as AIMemoryFragment[];
+
+  // Filter: relevance must be > 0 if there are keywords, or keep high-importance memories
+  const filtered = scored.filter(m =>
+    currentKeywords.length === 0 || m._relevance > 0 || (m.importance || 0.5) >= 0.7
+  );
+
+  const topMemories = filtered.slice(0, limit) as AIMemoryFragment[];
 
   // Fetch recent summaries
   const { data: summaries } = await supabase
@@ -112,35 +134,34 @@ export function buildMemoryContext(
       byType[memory.memory_type]?.push(memory.content);
     });
 
+    // Compact format - no emojis, short labels
     if (byType.fact.length > 0) {
-      contextParts.push(`📚 Facts I know about you:\n${byType.fact.map(f => `• ${f}`).join("\n")}`);
+      contextParts.push(`Facts: ${byType.fact.map(f => f.slice(0, 100)).join(" | ")}`);
     }
     if (byType.preference.length > 0) {
-      contextParts.push(`⭐ Your preferences:\n${byType.preference.map(p => `• ${p}`).join("\n")}`);
+      contextParts.push(`Prefs: ${byType.preference.map(p => p.slice(0, 100)).join(" | ")}`);
     }
     if (byType.skill.length > 0) {
-      contextParts.push(`⚡ What you're good at:\n${byType.skill.map(s => `• ${s}`).join("\n")}`);
+      contextParts.push(`Skills: ${byType.skill.map(s => s.slice(0, 100)).join(" | ")}`);
     }
     if (byType.goal.length > 0) {
-      contextParts.push(`🎯 Your goals:\n${byType.goal.map(g => `• ${g}`).join("\n")}`);
-    }
-    if (byType.context.length > 0) {
-      contextParts.push(`📝 Context from past conversations:\n${byType.context.map(c => `• ${c}`).join("\n")}`);
+      contextParts.push(`Goals: ${byType.goal.map(g => g.slice(0, 100)).join(" | ")}`);
     }
   }
 
   if (summaries.length > 0) {
     const recentTopics = summaries
-      .slice(0, 3)
-      .map(s => `${s.subject_id || "General"}: ${s.summary}`);
-    contextParts.push(`📖 Recent conversations:\n${recentTopics.join("\n")}`);
+      .slice(0, 2)
+      .map(s => s.summary.slice(0, 80));
+    contextParts.push(`Recent: ${recentTopics.join(" | ")}`);
   }
 
   if (contextParts.length === 0) {
     return "";
   }
 
-  return `\n\n--- WHAT I REMEMBER ABOUT YOU ---\n${contextParts.join("\n\n")}\n--- END MEMORY ---\n`;
+  // Ultra-compact format
+  return `[Memory] ${contextParts.join(" | ")}`;
 }
 
 /**

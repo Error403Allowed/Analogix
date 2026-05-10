@@ -341,7 +341,7 @@ const filterBlockedModels = (models: string[]): string[] => {
   return models.filter(m => !BLOCKED_MODELS.includes(m.toLowerCase()));
 };
 
-const getModelsForTaskType = (taskType: TaskType, userModel?: string | null): string[] => {
+const getModelsForTaskType = (taskType: TaskType, userModel?: string | null, estimatedTokens?: number): string[] => {
   // If user has explicitly selected a model, use only that model (if not blocked)
   if (userModel && userModel !== "auto") {
     if (BLOCKED_MODELS.includes(userModel.toLowerCase())) {
@@ -349,6 +349,15 @@ const getModelsForTaskType = (taskType: TaskType, userModel?: string | null): st
     } else {
       return [userModel];
     }
+  }
+
+  // Dynamic model selection based on context size
+  // Large context = use models with larger context windows
+  const CONTEXT_LIMIT = 8192;
+  if (estimatedTokens && estimatedTokens > CONTEXT_LIMIT * 0.7) {
+    console.log(`[Groq] Large context detected (${estimatedTokens} tokens), prioritizing high-context models`);
+    // Skip lightweight models for large contexts
+    return filterBlockedModels([DEFAULT_MODEL, DEFAULT_FALLBACK_MODEL]);
   }
 
   // Auto-selection: pick models based on task type
@@ -494,12 +503,12 @@ export const callGroqChat = async (
     }
   }
 
-  const taskModels = getModelsForTaskType(taskType, userSelectedModel);
-  const modelsToTry = [...new Set([...taskModels, DEFAULT_MODEL])];
-
-  // Estimate tokens in the request (~3.5 chars per token for English, more conservative for system prompts)
+  // Estimate tokens BEFORE model selection
   const messageText = payload.messages.map(m => m.content).join(" ");
   const estimatedTokens = Math.ceil(messageText.length / 3.5) + payload.max_tokens;
+
+  const taskModels = getModelsForTaskType(taskType, userSelectedModel, estimatedTokens);
+  const modelsToTry = [...new Set([...taskModels, DEFAULT_MODEL])];
 
   console.log(`[Groq] Task: "${taskType}" → Models: ${modelsToTry.join(" → ")} | API Keys: ${apiKeys.length} | Est. tokens: ${estimatedTokens}`);
 
@@ -646,12 +655,12 @@ export const callGroqChatStream = async (
 ) => {
   assertApiKeys();
 
-  const taskModels = getModelsForTaskType(taskType, userSelectedModel);
-  const modelsToTry = [...new Set([...taskModels, DEFAULT_MODEL])];
-
-  // Estimate tokens in the request (~3.5 chars per token for English, more conservative for system prompts)
+  // Estimate tokens BEFORE model selection
   const messageText = payload.messages.map(m => m.content).join(" ");
   const estimatedTokens = Math.ceil(messageText.length / 3.5) + payload.max_tokens;
+
+  const taskModels = getModelsForTaskType(taskType, userSelectedModel, estimatedTokens);
+  const modelsToTry = [...new Set([...taskModels, DEFAULT_MODEL])];
 
   console.log(`[Groq] Task: "${taskType}" → Models: ${modelsToTry.join(" → ")} | API Keys: ${apiKeys.length} | Est. tokens: ${estimatedTokens}`);
 

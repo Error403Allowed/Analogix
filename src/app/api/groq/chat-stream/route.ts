@@ -263,6 +263,9 @@ export async function POST(request: Request) {
     
     console.log("[chat-stream] User authenticated:", user?.id || "none");
     
+    // Extract latest user message for memory relevance filtering
+    const latestUserMsg = [...messages].reverse().find(m => m.role === "user")?.content || "";
+    
     if (user) {
       // Fetch from database
       console.log("[chat-stream] Fetching personality from database...");
@@ -275,9 +278,14 @@ export async function POST(request: Request) {
         console.log("[chat-stream] Personality merged from client overrides");
       }
       
-      const { memories } = await getRelevantMemories(user.id, { limit: 5, minImportance: 0.5 });
+      // Semantic relevance: only fetch memories relevant to current message
+      const { memories } = await getRelevantMemories(user.id, { 
+        limit: 3, 
+        minImportance: 0.5,
+        currentMessage: latestUserMsg 
+      });
       memoryContext = buildMemoryContext(memories, []);
-      console.log("[chat-stream] Memories fetched:", memories?.length || 0);
+      console.log("[chat-stream] Memories fetched (semantic):", memories?.length || 0);
     } else {
       // Fallback to localStorage from client headers
       console.log("[chat-stream] No user, checking localStorage from headers...");
@@ -362,14 +370,12 @@ if (clientMemories && Array.isArray(clientMemories)) {
     }
     } // end !isSimpleGreeting
 
-    // Detect formal academic requests - force disable analogies
-    const userMessages = messages.filter(m => m.role === "user").map(m => m.content.toLowerCase());
-    const latestUserMsg = userMessages[userMessages.length - 1] || "";
-    const isFormalRequest = /^(write|essay|assignment|report|piece|report|article|paragraph|analysis|critique|review|composition)/.test(latestUserMsg) ||
-      latestUserMsg.includes("essay on") ||
-      latestUserMsg.includes("write an") ||
-      latestUserMsg.includes("assign") ||
-      latestUserMsg.includes("composition");
+    // Reuse latestUserMsg from earlier for formal request detection
+    const isFormalRequest = /^(write|essay|assignment|report|piece|report|article|paragraph|analysis|critique|review|composition)/.test(latestUserMsg.toLowerCase()) ||
+      latestUserMsg.toLowerCase().includes("essay on") ||
+      latestUserMsg.toLowerCase().includes("write an") ||
+      latestUserMsg.toLowerCase().includes("assign") ||
+      latestUserMsg.toLowerCase().includes("composition");
 
     // Build system prompt with personality and memory
     // Use client-side analogy intensity if set, otherwise fall back to personality
@@ -410,14 +416,54 @@ if (clientMemories && Array.isArray(clientMemories)) {
     const isResearchMode = Boolean(userContext?.researchMode);
     const chatTaskType = isSimpleGreeting ? "lightweight" : "default";
 
-    const effectiveMaxTokens = isSimpleGreeting ? 200 : 1536;
+    // SLIDING WINDOW: Use last 2 messages max for aggressive trimming
+    const CONTEXT_WINDOW = 2;
+    const effectiveMaxTokens = isSimpleGreeting ? 200 : 1024;
+    const systemPromptBase = systemPrompt;
+    
+    // Lower budgets for smaller context
+    const systemPromptTokens = Math.ceil(systemPromptBase.length / 3.5);
+    const TOKEN_BUDGET = 3000; 
+    const SYSTEM_PROMPT_BUDGET = 1500;
+
+    let finalMessages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
+      { role: "system", content: systemPromptBase },
+      ...messages.slice(-CONTEXT_WINDOW).filter(m => m.role !== "system"),
+    ] as Array<{ role: "system" | "user" | "assistant"; content: string }>;
+
+    const finalTotal = finalMessages.reduce((sum, m) => sum + m.content.length, 0);
+    const finalEst = Math.ceil(finalTotal / 3.5) + effectiveMaxTokens;
+
+    // Trim system prompt first
+    if (finalEst > TOKEN_BUDGET && systemPromptTokens > SYSTEM_PROMPT_BUDGET) {
+      console.log(`[chat-stream] Trimming system: ${systemPromptTokens}t → ${SYSTEM_PROMPT_BUDGET}t`);
+      const truncated = systemPromptBase.slice(0, SYSTEM_PROMPT_BUDGET * 3.5);
+      finalMessages[0] = { role: "system", content: truncated + "\n[truncated]" };
+    }
+
+    // Recalculate
+    const afterSystemTrim = finalMessages.reduce((sum, m) => sum + m.content.length, 0);
+    const afterSystemEst = Math.ceil(afterSystemTrim / 3.5) + effectiveMaxTokens;
+
+    // If still over budget, use only last message
+    if (afterSystemEst > TOKEN_BUDGET) {
+      console.log(`[chat-stream] Trimming to 1 msg: ${afterSystemEst}t > ${TOKEN_BUDGET}t`);
+      const tinyMsgs = messages.slice(-1);
+      finalMessages = [
+        { role: "system", content: finalMessages[0].content },
+        ...tinyMsgs.filter(m => m.role !== "system"),
+      ] as Array<{ role: "system" | "user" | "assistant"; content: string }>;
+    }
+
+    const finalCheck = finalMessages.reduce((sum, m) => sum + m.content.length, 0);
+    const finalCheckEst = Math.ceil(finalCheck / 3.5) + effectiveMaxTokens;
+    console.log(`[chat-stream] Final: ${finalCheckEst}t (budget: ${TOKEN_BUDGET}t)`);
+
+    console.log(`[chat-stream] Final estimate: ${finalCheckEst}t`);
 
     const upstreamStream = await callGroqChatStream(
       {
-        messages: [
-          { role: "system", content: systemPrompt },
-          ...messages.filter(m => m.role !== "system"),
-        ],
+        messages: finalMessages,
         max_tokens: effectiveMaxTokens,
         temperature: isResearchMode ? 0.3 : 0.55,
       },

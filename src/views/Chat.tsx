@@ -1392,10 +1392,23 @@ const Chat = () => {
         ));
         setStreamingId(null);
 
-      // Fire-and-forget memory extraction — runs after every assistant response
-      // Skip for trivial messages (don't waste resources on spam)
+      // Fire-and-forget memory extraction — throttled to avoid rate limits
+      // Skips: trivial inputs, greetings, very short messages, and every-other-call
       const trimmedAccumulated = accumulated.trim();
-      if (trimmedAccumulated.length >= 20) {
+      const userMessages = messages.filter(m => m.role === "user" && !m.isWelcome);
+      const lastUserMsg = userMessages[userMessages.length - 1]?.content?.trim().toLowerCase() || "";
+
+      // Check if last user message was trivial
+      const isTrivialInput = lastUserMsg.length < 15 && /^(hi|hello|hey|sup|yo|ok|k|lol|thanks?|bye|good\s?(morning|evening|afternoon)|what'?s up|how are you|\?)$/i.test(lastUserMsg);
+
+      // Only extract every 4th message to avoid hammering Groq
+      const extractionMod = 4;
+      const shouldExtract = trimmedAccumulated.length >= 20 &&
+        !isTrivialInput &&
+        lastUserMsg.length >= 15 &&
+        (userMessages.length % extractionMod === 0 || userMessages.length <= 2);
+
+      if (shouldExtract) {
         const messagesForExtraction = [
           ...messages.filter(m => !m.isWelcome).map(m => ({ role: m.role, content: m.content })),
           { role: "assistant" as const, content: trimmedAccumulated },

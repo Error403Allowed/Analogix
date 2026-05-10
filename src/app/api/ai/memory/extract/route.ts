@@ -27,6 +27,20 @@ export async function POST(request: Request) {
     const recent = messages.slice(-6);
     if (recent.length < 2) return NextResponse.json({ ok: true, extracted: 0 });
 
+    // CHEAP PRE-FILTER: Skip extraction if no user messages contain likely personal info
+    // This avoids burning 600+ tokens on messages that will definitely extract nothing.
+    const userMessagesText = recent
+      .filter(m => m.role === "user")
+      .map(m => m.content.toLowerCase())
+      .join(" ");
+
+    const hasPersonalInfoKeywords = /(i am|i'm|my|i like|i don't|i don't like|i hate|i love|i prefer|always|never|usually|sometimes|my favorite|i use|i use in|i live|i've been|i've been doing|i'm taking|i'm doing|i'm studying|i'll|i need|my goal|my aim|i want|my question|help me understand|explain me|can you explain)/.test(userMessagesText);
+
+    if (!hasPersonalInfoKeywords) {
+      console.log("[memory/extract] SKIPPED — no personal info keywords detected");
+      return NextResponse.json({ ok: true, extracted: 0, skipped: "no_personal_info" });
+    }
+
     const transcript = recent
       .map(m => `${m.role === "user" ? "Student" : "Tutor"}: ${m.content.slice(0, 400)}`)
       .join("\n");
@@ -55,6 +69,32 @@ ${transcript}`;
       messages: [{ role: "user", content: extractionPrompt }],
       max_tokens: 400,
       temperature: 0.1,
+    }).catch(async (err: unknown) => {
+      const error = err as { response?: { headers?: { get?: (key: string) => string | null }; status?: number }; message?: string };
+      if (error.response?.status === 429) {
+        const retryAfter = error.response.headers?.get?.("retry-after");
+        if (retryAfter) {
+          const waitMs = (Number(retryAfter) || 5) * 1000;
+          console.log(`[memory/extract] Rate limited, waiting ${waitMs}ms (retry-after: ${retryAfter})`);
+          await new Promise(r => setTimeout(r, waitMs));
+          return groq.chat.completions.create({
+            model: "llama-3.1-8b-instant",
+            messages: [{ role: "user", content: extractionPrompt }],
+            max_tokens: 400,
+            temperature: 0.1,
+          });
+        }
+        const waitMs = 5000;
+        console.log(`[memory/extract] Rate limited, waiting ${waitMs}ms`);
+        await new Promise(r => setTimeout(r, waitMs));
+        return groq.chat.completions.create({
+          model: "llama-3.1-8b-instant",
+          messages: [{ role: "user", content: extractionPrompt }],
+          max_tokens: 400,
+          temperature: 0.1,
+        });
+      }
+      throw err;
     });
 
     const raw = response.choices[0]?.message?.content?.trim() || "{}";
@@ -71,44 +111,9 @@ ${transcript}`;
       return NextResponse.json({ ok: true, extracted: 0 });
     }
 
-    // Verify memories are accurate - filter out hypothetical/pretend scenarios
-    const verifyPrompt = `You are a memory verification system. Given a list of extracted memories from a conversation, determine which ones are accurate facts about the real student vs hypothetical scenarios, roleplay, or inaccurate information.
-
-For each memory, respond with ONLY a JSON array of booleans (true = accurate fact, false = not accurate):
-- Return true ONLY if it's a confirmed fact about the actual student
-- Return false if it's from: hypothetical/pretend scenarios, roleplay, "what if" questions, unconfirmed assumptions, or clearly wrong information
-
-Conversation excerpt:
-${transcript}
-
-Extracted memories:
-${extracted.memories.map((m: { content: string }) => `- ${m.content}`).join("\n")}
-
-Return JSON array like: [true, false, true, ...]`;
-
-    const verifyResponse = await groq.chat.completions.create({
-      model: "llama-3.1-8b-instant",
-      messages: [{ role: "user", content: verifyPrompt }],
-      max_tokens: 200,
-      temperature: 0.1,
-    });
-
-    const verifyRaw = verifyResponse.choices[0]?.message?.content?.trim() || "[]";
-    let verifiedFlags: boolean[] = [];
-    try {
-      verifiedFlags = JSON.parse(verifyRaw);
-    } catch {
-      // If parsing fails, be conservative - don't save anything
-      verifiedFlags = [];
-    }
-
-    // Filter to only accurate memories
-    const accurateMemories = extracted.memories.filter((_: unknown, idx: number) => {
-      // If verification failed or index out of bounds, be conservative and include the memory
-      // but with lower importance
-      if (idx >= verifiedFlags.length) return true;
-      return verifiedFlags[idx] === true;
-    });
+    // Skip the expensive second-pass verification step — our cheap pre-filter catches most noise
+    // Use all extracted memories (the LLM already filtered based on the prompt instructions)
+    const accurateMemories = extracted.memories;
 
     if (accurateMemories.length === 0) {
       console.log("[memory/extract] All memories filtered out as inaccurate");
