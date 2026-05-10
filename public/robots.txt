@@ -1,0 +1,20 @@
+# Robots.txt for Analogix
+
+# Allow Vercel screenshot bot for deployment previews
+User-agent: vercel-screenshot/1.0
+Allow: /
+
+# Allow all search engine crawlers
+User-agent: Googlebot
+User-agent: Google-Extended
+User-agent: Bingbot
+User-agent: BingPreview
+User-agent: Applebot
+User-agent: DuckDuckBot
+User-agent: Yandex
+User-agent: Baiduspider
+Allow: /
+
+# Allow everything else
+User-agent: *
+Allow: /
