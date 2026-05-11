@@ -11,7 +11,7 @@ import type { QuizOption, DesmosConfig } from "@/types/quiz";
 
 function DesmosEmbed({ config }: { config: DesmosConfig }) {
   const containerRef = useRef<HTMLDivElement>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const calcRef = useRef<any>(null);
 
   useEffect(() => {

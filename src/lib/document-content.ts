@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 
 export const TIPTAP_CONTENT_FORMAT = "tiptap-json-v1";
 export const BLOCKNOTE_CONTENT_FORMAT = "blocknote-json-v1";

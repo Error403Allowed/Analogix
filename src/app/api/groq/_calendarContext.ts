@@ -5,7 +5,7 @@
  * Used by both /api/groq/agent and /api/groq/chat-stream.
  */
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 type AnySupabase = any;
 
 interface CalendarEvent {
@@ -157,7 +157,7 @@ const events: CalendarEvent[] = (eventRows ?? []).map((r: CalendarRow) => ({
     const upcomingToday = todayEvents.filter(e => new Date(e.date) > now).slice(0, 3);
     if (upcomingToday.length > 0) {
       const nextToday = upcomingToday[0];
-      const timeUntil = Math.round((nextToday.date.getTime() - now.getTime()) / 60000);
+      const timeUntil = Math.round((new Date(nextToday.date).getTime() - now.getTime()) / 60000);
       rightNowLines.push(`NEXT TODAY: "${nextToday.title}"${nextToday.subject ? ` [${nextToday.subject}]` : ""} ${timeUntil < 60 ? `in ${timeUntil} minutes` : `at ${formatTime(nextToday.date)}`}.`);
     }
   }

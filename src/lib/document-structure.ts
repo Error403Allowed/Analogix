@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 // ============================================================================
 // STRUCTURED DOCUMENT SCHEMA (Notion-style blocks)
 // ============================================================================
