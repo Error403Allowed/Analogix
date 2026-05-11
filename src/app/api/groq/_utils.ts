@@ -15,6 +15,7 @@ const normalizeModelId = (modelId: string): string => {
     "llama3-8b": "llama-3.1-8b-instant",
     "llama3-70b": "llama-3.3-70b-versatile",
     "llama-4-scout": "meta-llama/llama-4-scout-17b-16e-instruct",
+    "qwen-3-32b": "qwen/qwen3-32b",
   };
   
   // If already a full model ID, return as-is

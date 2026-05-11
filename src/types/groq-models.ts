@@ -1,7 +1,7 @@
 /**
  * Available Groq models for user selection
  */
-export type GroqModelId = 
+export type GroqModelId =
   | "auto"
   | "llama-4-scout"
   | "llama-3.3-70b"
@@ -42,7 +42,7 @@ export const GROQ_MODELS: GroqModelConfig[] = [
     id: "qwen-3-32b",
     name: "STEM Professor",
     description: "Analogix's strongest model for math, science and coding",
-    modelString: "qwen-3-32b",
+    modelString: "qwen/qwen3-32b",
     maxTokens: 8192,
   },
   {

@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Settings, User, Flame, Layers, Sigma, Sparkles, Brain, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ThemeToggle } from "./ThemeToggle";
@@ -341,6 +341,9 @@ const Header = ({ userName = "Student", streak = 0 }: HeaderProps) => {
 
       <Dialog open={showProfile} onOpenChange={setShowProfile}>
         <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+          <DialogDescription className="sr-only">
+            Edit your profile settings including name and grade
+          </DialogDescription>
           <DialogHeader>
             <DialogTitle>Edit Profile</DialogTitle>
           </DialogHeader>

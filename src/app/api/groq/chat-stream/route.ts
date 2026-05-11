@@ -189,11 +189,11 @@ function buildSystemPrompt(
 
   const analogyGuidance = [
     "SCHOOL MODE: This student wants responses tailored for school/assessment purposes. Be formal, precise, and curriculum-aligned. Use correct subject-specific terminology. Structure answers the way a teacher or marker would expect. No analogies, no personal interests, no casual tone.",
+    "SCHOOL MODE: Formal, precise responses for school. Use analogies only if they genuinely clarify a concept — don't force them. Let the explanation dictate the approach.",
+    "STANDARD LEARNING: Use direct explanations first. Add an analogy only if it would genuinely help understanding — don't force it. Clear and curriculum-aligned beats creative.",
     "Use analogies when explaining concepts — they help make abstract ideas concrete. Reference the student's interests where relevant.",
     "Use analogies as a primary teaching tool for explanations. Lead with a relatable example from everyday life or the student's interests before diving into the formal concept.",
-    "Always weave in analogies for explanation questions. Use the student's interests to make concepts stick. Map analogy parts to concept parts explicitly.",
     "Maximum analogy integration: Use analogies throughout explanations, connecting to the student's interests. Make sure each analogy maps cleanly to the concept.",
-    "Use analogies liberally throughout. Always include a relatable analogy when explaining something new. If a perfect fit doesn't exist, create a simple everyday example instead.",
   ][Math.min(analogyIntensity, 5)];
 
   const hasExplicitSubject = (userContext?.subjects?.length ?? 0) > 0;
