@@ -10,8 +10,8 @@ type AnySupabase = any;
 
 interface CalendarEvent {
   title: string;
-  date: string;       // ISO date string
-  time?: string;      // e.g. "09:00" — from the date if it has a time component
+  date: string;
+  time?: string;
   type: string;
   subject?: string;
   description?: string;
@@ -23,6 +23,15 @@ interface Deadline {
   subject?: string;
   priority: string;
 }
+
+const getTimeOfDay = (date: Date): string => {
+  const hour = date.getHours();
+  if (hour >= 5 && hour < 12) return "morning";
+  if (hour >= 12 && hour < 14) return "midday";
+  if (hour >= 14 && hour < 18) return "afternoon";
+  if (hour >= 18 && hour < 22) return "evening";
+  return "night";
+};
 
 const formatDate = (iso: string | Date) => {
   try {
@@ -48,6 +57,9 @@ const formatTime = (iso: string | Date) => {
 
 export async function buildCalendarContext(supabase: AnySupabase, userId: string): Promise<string> {
   const now = new Date();
+  const timeOfDay = getTimeOfDay(now);
+  const currentHour = now.getHours();
+  const currentMinute = now.getMinutes();
   const from = new Date(now); from.setDate(from.getDate() - 180);
   const to   = new Date(now); to.setDate(to.getDate() + 180);
 
@@ -106,22 +118,72 @@ const events: CalendarEvent[] = (eventRows ?? []).map((r: CalendarRow) => ({
     ...events.map(e => ({ title: e.title, date: new Date(e.date), type: e.type, kind: "event" as const, subject: e.subject, description: e.description })),
     ...deadlines.map(d => ({ title: d.title, date: new Date(d.dueDate), type: "deadline", kind: "deadline" as const, subject: d.subject })),
   ].filter(i => !isNaN(i.date.getTime())).sort((a, b) => a.date.getTime() - b.date.getTime());
-  
-  const nextItem = allItems.find(i => i.date >= now);
-  const nextItemStr = nextItem 
-    ? `Next: ${nextItem.kind === "event" ? nextItem.type : "Deadline"} "${nextItem.title}"${nextItem.subject ? ` [${nextItem.subject}]` : ""} on ${formatDate(nextItem.date.toISOString())}. `
-    : "";
 
+  // Find what's happening RIGHT NOW
+  const currentEvent = allItems.find(i => {
+    const eventStart = i.date;
+    const eventEnd = new Date(eventStart.getTime() + 60 * 60 * 1000); // Assume 1 hour duration
+    return now >= eventStart && now < eventEnd;
+  });
+
+  // Find next event/deadline
+  const nextItem = allItems.find(i => i.date >= now);
+  
   // Find next class/lesson specifically
   const nextClass = allItems.find(i => i.date >= now && (i.type === "class" || i.type === "lesson" || i.title.toLowerCase().includes("class") || i.title.toLowerCase().includes("lesson")));
-  const nextClassStr = nextClass && nextClass !== nextItem
-    ? `Next class: "${nextClass.title}"${nextClass.subject ? ` [${nextClass.subject}]` : ""} on ${formatDate(nextClass.date.toISOString())}. `
-    : "";
 
-  const lines: string[] = [
-    `Today is ${formatDate(now.toISOString())}. ${nextItemStr}${nextClassStr}`,
-    "",
-  ];
+  // Today's events
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
+  const todayEvents = events.filter(e => {
+    const d = new Date(e.date);
+    return d >= todayStart && d < todayEnd;
+  });
+
+  // Build the context string
+  const lines: string[] = [];
+  
+  // === RIGHT NOW SECTION ===
+  const rightNowLines: string[] = [];
+  rightNowLines.push(`It's currently ${timeOfDay} (${now.toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit", hour12: true })} on ${formatDate(now.toISOString())}).`);
+  
+  if (currentEvent) {
+    const eventEnd = new Date(currentEvent.date.getTime() + 60 * 60 * 1000);
+    const minsUntilEnd = Math.round((eventEnd.getTime() - now.getTime()) / 60000);
+    rightNowLines.push(`RIGHT NOW: You have "${currentEvent.title}"${currentEvent.subject ? ` [${currentEvent.subject}]` : ""} happening. ${minsUntilEnd > 0 ? `Ends in ${minsUntilEnd} minutes.` : "Just ended."}`);
+  }
+  
+  if (todayEvents.length > 0) {
+    const upcomingToday = todayEvents.filter(e => new Date(e.date) > now).slice(0, 3);
+    if (upcomingToday.length > 0) {
+      const nextToday = upcomingToday[0];
+      const timeUntil = Math.round((nextToday.date.getTime() - now.getTime()) / 60000);
+      rightNowLines.push(`NEXT TODAY: "${nextToday.title}"${nextToday.subject ? ` [${nextToday.subject}]` : ""} ${timeUntil < 60 ? `in ${timeUntil} minutes` : `at ${formatTime(nextToday.date)}`}.`);
+    }
+  }
+  
+  if (nextItem) {
+    const daysUntil = Math.ceil((nextItem.date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    const timeStr = formatTime(nextItem.date) || "";
+    if (daysUntil === 0) {
+      rightNowLines.push(`NEXT: "${nextItem.title}"${nextItem.subject ? ` [${nextItem.subject}]` : ""} today${timeStr ? ` at ${timeStr}` : ""}.`);
+    } else if (daysUntil === 1) {
+      rightNowLines.push(`NEXT: "${nextItem.title}"${nextItem.subject ? ` [${nextItem.subject}]` : ""} tomorrow${timeStr ? ` at ${timeStr}` : ""}.`);
+    } else {
+      rightNowLines.push(`NEXT: "${nextItem.title}"${nextItem.subject ? ` [${nextItem.subject}]` : ""} on ${formatDate(nextItem.date.toISOString())}.`);
+    }
+  }
+  
+  lines.push(...rightNowLines);
+  lines.push("");
+
+  if (nextClass && nextClass !== currentEvent && nextClass !== nextItem) {
+    const classDays = Math.ceil((nextClass.date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    if (classDays <= 3) {
+      lines.push(`NEXT CLASS: "${nextClass.title}"${nextClass.subject ? ` [${nextClass.subject}]` : ""} ${classDays === 0 ? "today" : classDays === 1 ? "tomorrow" : `on ${formatDate(nextClass.date.toISOString())}`}.`);
+      lines.push("");
+    }
+  }
 
   if (events.length > 0) {
     // Extract and highlight classes/lessons separately

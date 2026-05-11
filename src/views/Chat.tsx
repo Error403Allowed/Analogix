@@ -38,7 +38,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { getGroqCompletion, getGroqStream, getGroqPreview, getReExplanation, generateFlashcards, generateQuizFromDocument, generateFlashcardsFromDocument } from "@/services/groq";
+import { getGroqCompletion, getGroqStream, getReExplanation, generateFlashcards, generateQuizFromDocument, generateFlashcardsFromDocument } from "@/services/groq";
 import { searchAcademicSources } from "@/services/research";
 import { flashcardStore } from "@/utils/flashcardStore";
 import { statsStore } from "@/utils/statsStore";
@@ -162,6 +162,7 @@ const StreamingMessage = ({
       className="text-sm leading-relaxed"
     >
       <MarkdownRenderer content={content} className="text-sm leading-relaxed" streaming={isStreaming} />
+      {isStreaming && <span className="inline-block w-[0.6em] h-[1.1em] bg-foreground/70 ml-0.5 align-middle animate-pulse" />}
     </motion.div>
   );
 };
@@ -301,10 +302,6 @@ const Chat = () => {
     }
   }, [input]);
   
-  // PREVIEW: Quick preview while user is typing
-  const [previewText, setPreviewText] = useState("");
-  const previewTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  
   // THINKING: true while waiting for the first token
   const [isTyping, setIsTyping] = useState(false);
   
@@ -406,59 +403,6 @@ const Chat = () => {
     [availableSubjects],
   );
   const isInputLocked = isTyping || !!streamingId;
-
-  // PREVIEW: Generate preview when user stops typing
-  useEffect(() => {
-    if (isInputLocked || !input.trim() || input.trim().length < 3) {
-      if (previewTimeoutRef.current) {
-        clearTimeout(previewTimeoutRef.current);
-        previewTimeoutRef.current = null;
-      }
-      setPreviewText("");
-      return;
-    }
-
-    if (previewTimeoutRef.current) {
-      clearTimeout(previewTimeoutRef.current);
-    }
-
-    previewTimeoutRef.current = setTimeout(async () => {
-      const currentInput = input;
-      if (!currentInput.trim()) return;
-
-      const getLocalStorageData = () => {
-        if (typeof window === "undefined") return null;
-        const personality = localStorage.getItem("ai_personality");
-        const memories = localStorage.getItem("ai_memories");
-        return {
-          personality: personality ? JSON.parse(personality) : null,
-          memories: memories ? JSON.parse(memories) : [],
-        };
-      };
-
-      try {
-        const preview = await getGroqPreview(
-          messages.map(m => ({ role: m.role, content: m.content })),
-          {
-            analogyIntensity: researchMode ? 0 : (analogyModeEnabled ? 3 : 0),
-            selectedModel,
-          },
-          getLocalStorageData()
-        );
-        if (preview && input === currentInput) {
-          setPreviewText(preview);
-        }
-      } catch (e) {
-        console.warn("[Chat] preview error:", e);
-      }
-    }, 1200);
-
-    return () => {
-      if (previewTimeoutRef.current) {
-        clearTimeout(previewTimeoutRef.current);
-      }
-    };
-  }, [input, messages, isInputLocked, analogyModeEnabled, researchMode, selectedModel]);
 
   // Load user name from localStorage after hydration to avoid mismatch
   useEffect(() => {
@@ -1073,16 +1017,6 @@ const Chat = () => {
     }
     lastMessageRef.current = { content: input.trim(), timestamp: now };
 
-    // Capture preview before clearing (we might use it)
-    const capturedPreview = previewText;
-
-    // Clear preview state
-    if (previewTimeoutRef.current) {
-      clearTimeout(previewTimeoutRef.current);
-      previewTimeoutRef.current = null;
-    }
-    setPreviewText("");
-
     // 1. We show your message on the screen immediately.
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -1222,72 +1156,7 @@ const Chat = () => {
 
       const localStorageData = getLocalStorageData();
 
-      // Use pre-generated preview if available (instant response)
-      if (capturedPreview) {
-        const responseId = (Date.now() + 1).toString();
-        // Filter out internal system artifacts from model output
-        const cleanedPreview = capturedPreview
-          .replace(/<system-reminder[\s\S]*?<\/system-reminder>/gi, "")
-          .replace(/<\|[\w_]+\|>/g, "");
-        let displayContent = cleanedPreview.replace(/<ACTIONS>[\s\S]*?<\/ACTIONS>/i, "").trim() || "I'm not sure how to answer that.";
-        
-        // Strip any tracking numbers like [X tokens remaining]
-        displayContent = displayContent.replace(/\s*\[\d+\s*tokens?\s*remaining\]/gi, "").trim();
-        
-        setMessages(prev => [...prev, {
-          id: responseId,
-          role: "assistant",
-          content: displayContent,
-          sources: researchSources,
-          researchQuery: researchQuery || undefined,
-        }]);
-        setIsTyping(false);
-        setStreamingId(null);
-        lockedToBottomRef.current = false;
-        
-        // Save assistant response to Supabase
-        if (activeSessionId) {
-          chatStore.addMessage(activeSessionId, "assistant", displayContent).catch(e => console.error("[Chat] addMessage assistant:", e));
-        }
-        
-        // Handle any actions in the preview
-        const actionsMatch = capturedPreview.match(/<ACTIONS>([\s\S]*?)<\/ACTIONS>/i);
-        if (actionsMatch) {
-          try {
-            const cleaned = actionsMatch[1].trim().replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "").trim();
-            const parsed = JSON.parse(cleaned);
-            const actions = Array.isArray(parsed) ? parsed : [parsed];
-            
-            const quizAction = actions.find((a: Record<string, unknown>) => a.type === "start_quiz");
-            if (quizAction) {
-              try {
-                sessionStorage.setItem("analogix.pending-agent-quiz", JSON.stringify({
-                  subjectId: quizAction.subjectId || selectedSubject,
-                  topic: quizAction.topic || "",
-                  difficulty: quizAction.difficulty || "intermediate",
-                  numberOfQuestions: Number(quizAction.numberOfQuestions) || 5,
-                  timeLimitMinutes: Number(quizAction.timeLimitMinutes) || 0,
-                }));
-                router.push("/quiz");
-              } catch { /* ignore */ }
-            }
-            
-            const serverActions = actions.filter((a: Record<string, unknown>) => a.type !== "start_quiz");
-            if (serverActions.length > 0) {
-              fetch("/api/groq/agent-action", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ actions: serverActions, defaultSubjectId: selectedSubject, source: "chat" }),
-              }).then(r => r.json()).catch(e => console.error("[Chat] agent-action error:", e));
-            }
-          } catch { /* ignore malformed actions */ }
-        }
-        
-        requestAnimationFrame(() => scrollToBottom("smooth"));
-        return;
-      }
-
-      // No preview available - do normal streaming
+      // Normal streaming
       try {
         // Create a placeholder message that we'll fill with streaming tokens
         const responseId = (Date.now() + 1).toString();
@@ -1307,9 +1176,21 @@ const Chat = () => {
         abortRef.current = abort;
         let accumulated = "";
 
-        // Throttle renders for readability - update every ~250ms (about 4 updates/second)
+        // Throttle renders for smoothness - update every ~40ms (about 25 updates/second)
         let lastRenderTime = 0;
-        const RENDER_INTERVAL = 250;
+        const RENDER_INTERVAL = 40;
+
+        // Use requestAnimationFrame to batch visual updates with browser refresh rate
+        let rafId: number | null = null;
+        const scheduleUpdate = (content: string) => {
+          if (rafId) return;
+          rafId = requestAnimationFrame(() => {
+            setMessages(prev => prev.map(m =>
+              m.id === responseId ? { ...m, content } : m
+            ));
+            rafId = null;
+          });
+        };
 
         const stream = getGroqStream(newHistory, context, localStorageData);
         for await (const token of stream) {
@@ -1319,12 +1200,16 @@ const Chat = () => {
           const now = Date.now();
           if (now - lastRenderTime > RENDER_INTERVAL) {
             const displayAccumulated = accumulated.replace(/<ACTIONS>[\s\S]*?(<\/ACTIONS>|$)/i, "").trim();
-            setMessages(prev => prev.map(m =>
-              m.id === responseId ? { ...m, content: displayAccumulated } : m
-            ));
+            scheduleUpdate(displayAccumulated);
             lastRenderTime = now;
             // No auto-scroll here — user is in control during generation
           }
+        }
+
+        // Cancel any pending animation frame
+        if (rafId) {
+          cancelAnimationFrame(rafId);
+          rafId = null;
         }
 
         // ── Parse and execute any <ACTIONS> block from the response ──────────

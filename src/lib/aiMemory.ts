@@ -167,12 +167,21 @@ export function buildMemoryContext(
 /**
  * Build personality instructions for the AI prompt
  * @param personality - The AI personality settings
- * @param analogyIntensity - Optional override for analogy frequency (0-100)
+ * @param analogyIntensity - Optional override for analogy frequency (0-5 scale)
  */
 export function buildPersonalityInstructions(personality: AIPersonality, analogyIntensity?: number): string {
   const instructions: string[] = [];
-  const useAnalogy = analogyIntensity !== undefined ? analogyIntensity > 50 : personality.use_analogies;
-  const analogyFreq = analogyIntensity ?? (personality.analogy_frequency ?? 3) * 20;
+  
+  // Determine if analogies should be used:
+  // - If analogyIntensity is explicitly 0, disable analogies (user toggle in chat)
+  // - If analogyIntensity > 0, use that level
+  // - Otherwise fall back to personality setting
+  let effectiveAnalogyIntensity: number;
+  if (analogyIntensity !== undefined) {
+    effectiveAnalogyIntensity = analogyIntensity;
+  } else {
+    effectiveAnalogyIntensity = personality.use_analogies ? (personality.analogy_frequency ?? 3) : 0;
+  }
 
   instructions.push(
     [
@@ -259,15 +268,17 @@ export function buildPersonalityInstructions(personality: AIPersonality, analogy
     instructions.push("Formatting: No emojis.");
   }
 
-  // Analogies - CRITICAL: This overrides the analogyIntensity setting
-  if (personality.use_analogies === false) {
+  // Analogies - Use effectiveAnalogyIntensity which considers both personality and chat context
+  if (effectiveAnalogyIntensity === 0) {
     instructions.push("Analogy: NEVER use analogies. Direct explanation only.");
-  } else if (personality.analogy_frequency >= 4) {
-    instructions.push("Analogy: Use often - every concept needs one.");
-  } else if (personality.analogy_frequency >= 2) {
-    instructions.push("Analogy: Use for tricky concepts.");
+  } else if (effectiveAnalogyIntensity >= 4) {
+    instructions.push("Analogy: Use often - weave analogies throughout explanations to make concepts memorable. Connect to the student's interests.");
+  } else if (effectiveAnalogyIntensity >= 3) {
+    instructions.push("Analogy: Use frequently - explain concepts using analogies from the student's interests when helpful.");
+  } else if (effectiveAnalogyIntensity >= 2) {
+    instructions.push("Analogy: Use for tricky concepts - analogies help when explaining difficult ideas.");
   } else {
-    instructions.push("Analogy: Rarely. Only when essential.");
+    instructions.push("Analogy: Rarely. Only when essential for understanding.");
   }
 
   if (personality.use_section_dividers === false) {

@@ -250,16 +250,27 @@ Put an <ACTIONS>...</ACTIONS> block at the VERY END of your message ONLY for fla
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ` : ""}` : "";
 
+// Get current time context
+const now = new Date();
+const hour = now.getHours();
+const timeOfDay = hour >= 5 && hour < 12 ? "morning" : hour >= 12 && hour < 14 ? "midday" : hour >= 14 && hour < 18 ? "afternoon" : hour >= 18 && hour < 22 ? "evening" : "night";
+const timeString = now.toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit", hour12: true });
+const dayOfWeek = now.toLocaleDateString("en-AU", { weekday: "long" });
+
 return `You are "Analogix AI", a friendly AI tutor for Australian students.
 
 Context: Year ${studentGrade}${stateFullName ? ` in ${stateFullName}` : ""}, Australia. ${curriculumContext}
-Today: ${new Date().toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })}.
+TIME CONTEXT: It's ${dayOfWeek}, ${timeOfDay}, ${timeString} (${new Date().toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })}).
+${calendarContext ? `When the user asks about their schedule, events, deadlines, or what's coming up, use the CALENDAR & DEADLINES section below to give accurate, specific answers.` : ''}
 
 ${analogyIntensity === 0 ? `MODE: School/Assessment — formal, precise, no analogies.` : 
   `Learning Mode — ${analogyGuidance}
 Interests: ${allowedInterests}`}
 
 Rules:
+- When user asks about schedule, classes, events, deadlines, or "what's next" — ALWAYS check the calendar context and give specific answers.
+- If user asks "what do I have" or "what's happening" — list today's events from the calendar.
+- If user asks about a specific time (e.g., "do I have class tomorrow?") — check the calendar and confirm.
 - Keep responses concise. Short questions get short answers.
 - For homework/task questions: guide the approach, don't just give answers. Ask "What have you tried?" or give hints first.
 - If a question seems like homework, help them understand the concept, then ask them to apply it themselves.
@@ -482,7 +493,7 @@ if (clientMemories && Array.isArray(clientMemories)) {
     const effectiveMaxTokens = isSimpleGreeting ? 200 : 1024;
 
     // Build initial messages
-    let finalMessages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
+    const finalMessages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
       { role: "system", content: fullSystemPrompt },
       ...recentMsgs.filter(m => m.role !== "system"),
     ] as Array<{ role: "system" | "user" | "assistant"; content: string }>;

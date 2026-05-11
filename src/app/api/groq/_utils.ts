@@ -5,19 +5,36 @@
 const GROQ_CHAT_URL =
   process.env.GROQ_CHAT_URL || "https://api.groq.com/openai/v1/chat/completions";
 
-// Groq model lineup — all free tier, best-in-class per task
-// Each model has its own separate TPD (tokens/day) quota — spread load across them
-const DEFAULT_MODEL            = "meta-llama/llama-4-scout-17b-16e-instruct"; // Llama 4 Scout, 128K ctx
-const DEFAULT_FALLBACK_MODEL   = "llama-3.3-70b-versatile";                    // Llama 3.3
+// Model name normalization - fixes any short names to full model IDs
+// Groq API requires exact model IDs like "llama-3.1-8b-instant", not "llama-3.1-8b"
+const normalizeModelId = (modelId: string): string => {
+  const modelMap: Record<string, string> = {
+    "llama-3.1-8b": "llama-3.1-8b-instant",
+    "llama-3.1-70b": "llama-3.1-70b-versatile",
+    "llama-3.3-70b": "llama-3.3-70b-versatile",
+    "llama3-8b": "llama-3.1-8b-instant",
+    "llama3-70b": "llama-3.3-70b-versatile",
+    "llama-4-scout": "meta-llama/llama-4-scout-17b-16e-instruct",
+  };
+  
+  // If already a full model ID, return as-is
+  if (modelId.includes("-instant") || modelId.includes("-versatile") || modelId.includes("meta-llama/")) {
+    return modelId;
+  }
+  
+  return modelMap[modelId] || modelId;
+};
 
-// Compound AI systems - for agentic workflows and multi-tool tasks
-const COMPOUND_MODEL          = "groq/compound";                           // Full agentic - up to 10 tool calls
-const COMPOUND_MINI_MODEL     = "groq/compound-mini";                      // Lightweight - 1 tool call, 3x faster
+// Groq model lineup — using verified working model IDs from Groq API
+// Last verified: May 2025
+const DEFAULT_MODEL            = "llama-3.3-70b-versatile";                // Llama 3.3 70B - best quality
+const DEFAULT_FALLBACK_MODEL   = "llama-3.1-8b-instant";                   // Llama 3.1 8B - fast & cheap
 
-// Legacy/DEPRECATED (kept for fallback)
-const REASONING_MODEL          = "deepseek-r1-distill-llama-70b";           // DeepSeek R1 
+// Additional models for specific use cases
 const LIGHTWEIGHT_MODEL        = "llama-3.1-8b-instant";                   // Fast, cheap
-const LAST_RESORT_MODEL        = "llama-3.1-8b-instant";                    // Always works
+const REASONING_MODEL          = "llama-3.3-70b-versatile";                // Use 70B for reasoning (DeepSeek R1 was decommissioned)
+const LARGE_MODEL              = "llama-3.3-70b-versatile";                // Large model
+const LAST_RESORT_MODEL        = "llama-3.1-8b-instant";                   // Fallback
 
 // User-selected model (from client) — if provided, use this instead of auto-selection
 let userSelectedModel: string | null = null;
@@ -39,15 +56,13 @@ export const getUserSelectedModel = (): string | null => {
 
 // Model-specific token limits (safe values below actual limits)
 const MODEL_OUTPUT_LIMITS: Record<string, number> = {
-  "llama-4-scout-17b-16e-instruct": 8192,
-  "llama-4-scout-17b-16e": 8192,
-  "llama-3.3-70b-versatile": 8192,
-  "llama-3.1-70b-versatile": 8192,
-  "deepseek-r1-distill-llama-70b": 8192,
-  "deepseek-r1-distill-llama-70b-reasoning": 8192,
+  "llama-3.3-70b-versatile": 32768,
+  "llama-3.1-70b-versatile": 32768,
+  "llama-3.1-8b-instant": 8192,
+  "meta-llama/llama-4-scout-17b-16e-instruct": 8192,
+  "openai/gpt-oss-20b": 65536,
+  "openai/gpt-oss-120b": 65536,
   "qwen/qwen3-32b": 8192,
-  "qwen3-32b": 8192,
-  "llama-3.1-8b-instant": 4096,
 };
 
 const getSafeMaxTokens = (model: string, requested: number): number => {
@@ -338,16 +353,19 @@ export const classifyTaskType = (
 const BLOCKED_MODELS = ["gemma2-9b", "gemma-2-9b-it", "gemma2-9b-it"];
 
 const filterBlockedModels = (models: string[]): string[] => {
-  return models.filter(m => !BLOCKED_MODELS.includes(m.toLowerCase()));
+  return models
+    .map(m => normalizeModelId(m))  // Normalize each model ID
+    .filter(m => !BLOCKED_MODELS.includes(m.toLowerCase()));
 };
 
 const getModelsForTaskType = (taskType: TaskType, userModel?: string | null, estimatedTokens?: number): string[] => {
   // If user has explicitly selected a model, use only that model (if not blocked)
   if (userModel && userModel !== "auto") {
-    if (BLOCKED_MODELS.includes(userModel.toLowerCase())) {
-      console.warn(`[Groq] Blocked model requested: ${userModel}, falling back to auto`);
+    const normalizedModel = normalizeModelId(userModel);
+    if (BLOCKED_MODELS.includes(normalizedModel.toLowerCase())) {
+      console.warn(`[Groq] Blocked model requested: ${normalizedModel}, falling back to auto`);
     } else {
-      return [userModel];
+      return [normalizedModel];
     }
   }
 
@@ -367,16 +385,10 @@ const getModelsForTaskType = (taskType: TaskType, userModel?: string | null, est
       models = [DEFAULT_MODEL, DEFAULT_FALLBACK_MODEL, LAST_RESORT_MODEL];
       break;
     case "reasoning":
-      models = [DEFAULT_MODEL, DEFAULT_FALLBACK_MODEL, LAST_RESORT_MODEL];
+      models = [REASONING_MODEL, DEFAULT_MODEL, DEFAULT_FALLBACK_MODEL, LAST_RESORT_MODEL];
       break;
     case "lightweight":
       models = [LIGHTWEIGHT_MODEL, DEFAULT_FALLBACK_MODEL, LAST_RESORT_MODEL];
-      break;
-    case "compound":
-      models = [COMPOUND_MODEL, DEFAULT_MODEL, DEFAULT_FALLBACK_MODEL, LAST_RESORT_MODEL];
-      break;
-    case "compoundMini":
-      models = [COMPOUND_MINI_MODEL, DEFAULT_MODEL, DEFAULT_FALLBACK_MODEL, LAST_RESORT_MODEL];
       break;
     case "default":
     default:

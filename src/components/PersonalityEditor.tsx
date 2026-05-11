@@ -76,6 +76,21 @@ export const PersonalityEditor: React.FC< PersonalityEditorProps> = ({ onClose }
     setDirty(true);
   };
 
+  // Auto-save after changes (debounced)
+  useEffect(() => {
+    if (!dirty || saving) return;
+    
+    const timer = setTimeout(async () => {
+      const success = await savePersonality(localPersonality);
+      if (success) {
+        setDirty(false);
+        toast.success("Settings saved");
+      }
+    }, 600); // Auto-save after 600ms of no changes
+
+    return () => clearTimeout(timer);
+  }, [localPersonality, dirty, saving, savePersonality]);
+
   // Check if values have changed from original
   const hasChanges = () => {
     return (
@@ -389,7 +404,7 @@ export const PersonalityEditor: React.FC< PersonalityEditorProps> = ({ onClose }
         </div>
       </ScrollArea>
 
-      {/* Footer Actions */}
+      {/* Footer Actions - Auto-save enabled */}
       <div className="flex items-center gap-2 pt-4 border-t border-border/60">
         <Button
           variant="outline"
@@ -401,34 +416,25 @@ export const PersonalityEditor: React.FC< PersonalityEditorProps> = ({ onClose }
           <RotateCcw className="w-3.5 h-3.5 mr-1.5" />
           Reset
         </Button>
-        <Button
-          size="sm"
-          className="flex-1 rounded-xl text-xs gradient-primary"
-          onClick={handleSave}
-          disabled={saving || !hasChanges()}
-        >
+        <div className="flex-1 rounded-xl text-xs bg-muted/30 border border-border/60 px-3 py-2 text-center text-muted-foreground/70">
           {saving ? (
-            <>
-              <Sparkles className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+            <span className="flex items-center justify-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 animate-spin" />
               Saving...
-            </>
+            </span>
+          ) : dirty ? (
+            <span className="flex items-center justify-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+              Auto-save enabled
+            </span>
           ) : (
-            <>
-              <Save className="w-3.5 h-3.5 mr-1.5" />
-              Save Changes
-            </>
+            <span className="flex items-center justify-center gap-1.5">
+              <Check className="w-3.5 h-3.5 text-emerald-500" />
+              All changes saved
+            </span>
           )}
-        </Button>
-      </div>
-
-      {hasChanges() && (
-        <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/10 border border-primary/30">
-          <Check className="w-4 h-4 text-primary" />
-          <p className="text-xs text-primary font-medium">
-            You have unsaved changes
-          </p>
         </div>
-      )}
+      </div>
     </div>
   );
 };

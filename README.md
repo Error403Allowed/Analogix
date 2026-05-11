@@ -100,7 +100,6 @@ Analogix uses Groq API with task-based routing:
 | `llama-4-scout-17b-16e-instruct` | All-round model, specialized in maths, coding and chatting |
 | `llama-3.3-70b-versatile` | Reliable and versatile for complex tasks |
 | `qwen-3-32b` | Reasoning model for mathematics and science |
-| `deepseek-r1-distill-llama-70b` | Maths, physics and logic reasoning |
 | `llama-3.1-8b-instant` | Lightweight model for quick questions |
 
 ---

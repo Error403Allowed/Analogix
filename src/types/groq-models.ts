@@ -6,7 +6,6 @@ export type GroqModelId =
   | "llama-4-scout"
   | "llama-3.3-70b"
   | "qwen-3-32b"
-  | "deepseek-r1-distill"
   | "llama-3.1-8b";
 
 export interface GroqModelConfig {
@@ -44,13 +43,6 @@ export const GROQ_MODELS: GroqModelConfig[] = [
     name: "STEM Professor",
     description: "Analogix's strongest model for math, science and coding",
     modelString: "qwen-3-32b",
-    maxTokens: 8192,
-  },
-  {
-    id: "deepseek-r1-distill",
-    name: "STEM Teacher",
-    description: "Analogix's proprietary model, logically coded for STEM subjects",
-    modelString: "deepseek-r1-distill-llama-70b",
     maxTokens: 8192,
   },
   {
