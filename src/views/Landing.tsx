@@ -8,7 +8,7 @@ import {
   Calculator, FlaskConical, Check, ChevronRight, Rocket, Shield,
   Lightbulb, Zap, Target, Clock, FileText, GraduationCap,
   Calendar, Layers, Star, TrendingUp, BookMarked, PenTool, Cpu,
-  BookOpenText,
+  BookOpenText, Github, ExternalLink, Users
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -127,19 +127,9 @@ const features = [
     label: "AI Tutor",
     color: "blue",
     headline: "Explains things using what YOU love",
-    desc: "The AI tutor learns your hobbies — gaming, sport, music — and uses them as analogies to explain any concept. Maths via FIFA stats. Chemistry via cooking. History via game lore. Finally, a tutor that actually speaks your language.",
+    desc: "The AI tutor learns your hobbies — gaming, sport, music — and uses them as analogies to explain any concept. Maths using FIFA stats. Chemistry through cooking. History as game lore. Finally, a tutor that actually teaches you.",
     tags: ["Unlimited use", "Free", "Analogy-first"],
     size: "lg",
-  },
-  {
-    id: "study-guides",
-    icon: BookOpenText,
-    label: "Study Guides",
-    color: "violet",
-    headline: "AI generates complete guides from any file",
-    desc: "Upload your notes, slides, or textbook chapters and watch AI transform them into comprehensive study guides. Complete with summaries, practice questions, and study schedules — all in seconds.",
-    tags: ["Auto-generated", "Any file type", "Practice questions"],
-    size: "sm",
   },
   {
     id: "flashcards",
@@ -159,6 +149,16 @@ const features = [
     headline: "AI quizzes with analogy hints built in",
     desc: "Every question comes with an analogy hint tied to your interests. Choose difficulty, set a timer, and get a full AI-powered review of where you went wrong.",
     tags: ["Configurable difficulty", "Timed mode", "AI review"],
+    size: "sm",
+  },
+  {
+    id: "rooms",
+    icon: Users,
+    label: "Study Rooms",
+    color: "violet",
+    headline: "Virtual study rooms with built-in AI help",
+    desc: "Create a virtual study room, invite friends, and get an AI assistant that can answer questions, quiz you, or help with group projects. Study together, even when you're apart.",
+    tags: ["Group study", "AI assistant", "Virtual rooms"],
     size: "sm",
   },
   {
@@ -261,6 +261,10 @@ const navLinks = [
   { label: "Features", id: "features" },
   { label: "Why Analogix", id: "why-analogix" },
 ];
+
+const GITHUB_URL = "https://github.com/Error403Allowed/Analogix";
+const SUPPORT_URL = "/support";
+const PRIVACY_URL = "/privacy";
 
 // ── Main component ───────────────────────────────────────────────────────────
 
@@ -396,7 +400,7 @@ const Landing = () => {
 
           <div className="hidden md:flex items-center gap-7">
             {navLinks.map((link, i) => (
-              <motion.button 
+              <motion.button
                 key={link.label}
                 initial={{ opacity: 0, y: -8 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -409,17 +413,23 @@ const Landing = () => {
             ))}
           </div>
 
-          <motion.div
-            initial={{ opacity: 0, x: 16, filter: "blur(4px)" }}
-            animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
-            transition={{ duration: 0.4 }}
-          >
+          <div className="flex items-center gap-3">
+            <a
+              href={GITHUB_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-8 h-8 rounded-full hover:bg-accent flex items-center justify-center transition-colors text-muted-foreground hover:text-foreground border border-border"
+              title="View on GitHub"
+            >
+              <Github className="w-4 h-4" />
+            </a>
+
             <Button size="sm" className="rounded-full px-5 font-bold shadow-md shadow-primary/15"
               onClick={() => handleNav("/dashboard")}>
               {user ? "Dashboard" : "Get Started"}
               <ChevronRight className="w-3.5 h-3.5 ml-1" />
             </Button>
-          </motion.div>
+          </div>
         </div>
       </nav>
 
@@ -812,13 +822,28 @@ const Landing = () => {
             <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
               © 2026 Analogix · Built for all Australian students
             </p>
-            <div className="flex gap-7">
-              {["Support", "Privacy"].map(item => (
-                <button key={item}
-                  className="text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors">
-                  {item}
-                </button>
-              ))}
+            <div className="flex items-center gap-6">
+              <a
+                href={SUPPORT_URL}
+                className="text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Support
+              </a>
+              <a
+                href={PRIVACY_URL}
+                className="text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Privacy
+              </a>
+              <a
+                href={GITHUB_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-muted-foreground hover:text-foreground transition-colors"
+                title="GitHub"
+              >
+                <Github className="w-4 h-4" />
+              </a>
             </div>
           </div>
         </footer>
