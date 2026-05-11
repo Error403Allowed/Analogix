@@ -109,41 +109,7 @@ export async function getUpcomingEvents(
   return allEvents.slice(0, 20);
 }
 
-export async function createCalendarEvent(
-  userId: string,
-  params: CreateEventParams
-): Promise<{ success: boolean; eventId?: string; error?: string }> {
-  const supabase = createToolsClient();
 
-  try {
-    const insertData: EventInsertParams = {
-      user_id: userId,
-      title: params.title,
-      date: params.date,
-      end_date: params.endDate,
-      type: params.type,
-      subject: params.subject,
-      description: params.description,
-      source: 'ai',
-    };
-
-    const { data, error } = await supabase
-      .from('events')
-      .insert(insertData as any)
-      .select('id')
-      .single() as { data: { id: string } | null; error: unknown };
-
-    if (error) {
-      console.error('[createCalendarEvent] Error:', error);
-      return { success: false, error: (error as Error).message };
-    }
-
-    return { success: true, eventId: data?.id };
-  } catch (err) {
-    console.error('[createCalendarEvent] Exception:', err);
-    return { success: false, error: 'Failed to create event' };
-  }
-}
 
 export async function getSubjects(userId: string): Promise<{ id: string; name: string }[]> {
   const supabase = createToolsClient();

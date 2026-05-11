@@ -1,7 +1,7 @@
-import { createFlashcardSet, getFlashcardSets, type CreateFlashcardsParams } from './handlers/flashcard';
+import { getFlashcardSets, type CreateFlashcardsParams } from './handlers/flashcard';
 import { getDocuments, searchWorkspace, type GetDocumentsParams } from './handlers/document';
 import { getQuizPerformance, getWeakAreas, type StartQuizParams } from './handlers/quiz';
-import { getUpcomingEvents, createCalendarEvent, getSubjects, type CreateEventParams } from './handlers/calendar';
+import { getUpcomingEvents, getSubjects } from './handlers/calendar';
 import { storeMemory, retrieveRelevantMemories, type StoreMemoryParams } from './handlers/memory';
 import type { ToolName } from './registry';
 
@@ -24,8 +24,7 @@ export async function executeToolCall(
 
   try {
     switch (name) {
-      case 'create_flashcards':
-        return await handleCreateFlashcards(userId, args);
+      
 
       case 'get_documents':
         return await handleGetDocuments(userId, args);
@@ -42,8 +41,7 @@ export async function executeToolCall(
       case 'get_upcoming_events':
         return await handleGetUpcomingEvents(userId, args);
 
-      case 'create_calendar_event':
-        return await handleCreateCalendarEvent(userId, args);
+      
 
       case 'get_subjects':
         return await handleGetSubjects(userId);
@@ -70,19 +68,6 @@ export async function executeToolCall(
     console.error(`[executeToolCall] Error in ${name}:`, err);
     return { success: false, error: `Tool execution failed: ${err}` };
   }
-}
-
-async function handleCreateFlashcards(userId: string, args: Record<string, unknown>): Promise<ToolResult> {
-  const params: CreateFlashcardsParams = {
-    subjectId: args.subjectId as string,
-    setName: args.setName as string,
-    cards: args.cards as CreateFlashcardsParams['cards'],
-  };
-
-  const result = await createFlashcardSet(userId, params);
-  return result.success
-    ? { success: true, data: { setId: result.setId } }
-    : { success: false, error: result.error };
 }
 
 async function handleGetDocuments(userId: string, args: Record<string, unknown>): Promise<ToolResult> {
@@ -139,22 +124,6 @@ async function handleGetUpcomingEvents(userId: string, args: Record<string, unkn
     args.subjectId as string | undefined
   );
   return { success: true, data: events };
-}
-
-async function handleCreateCalendarEvent(userId: string, args: Record<string, unknown>): Promise<ToolResult> {
-  const params: CreateEventParams = {
-    title: args.title as string,
-    date: args.date as string,
-    endDate: args.endDate as string | undefined,
-    type: args.type as string,
-    subject: args.subject as string | undefined,
-    description: args.description as string | undefined,
-  };
-
-  const result = await createCalendarEvent(userId, params);
-  return result.success
-    ? { success: true, data: { eventId: result.eventId } }
-    : { success: false, error: result.error };
 }
 
 async function handleGetSubjects(userId: string): Promise<ToolResult> {

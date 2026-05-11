@@ -1,19 +1,6 @@
 import { z } from 'zod';
 
 export const ToolSchemas = {
-  create_flashcards: {
-    name: 'create_flashcards',
-    description: 'Create a new flashcard set from study content. Use this when the student wants to save information as flashcards for review.',
-    parameters: z.object({
-      subjectId: z.string().describe('The subject ID for the flashcards (e.g., "maths", "science")'),
-      setName: z.string().describe('A descriptive name for the flashcard set'),
-      cards: z.array(z.object({
-        front: z.string().describe('The question or prompt'),
-        back: z.string().describe('The answer or explanation'),
-      })).describe('Array of flashcard objects with front and back'),
-    }),
-  },
-
   start_quiz: {
     name: 'start_quiz',
     description: 'Start an interactive quiz on a specific topic. Use when the student wants to test their knowledge.',
@@ -80,19 +67,6 @@ export const ToolSchemas = {
     parameters: z.object({
       subjectId: z.string().optional().describe('Filter by subject'),
       limit: z.number().min(1).max(20).default(10).describe('Number of recent quizzes'),
-    }),
-  },
-
-  create_calendar_event: {
-    name: 'create_calendar_event',
-    description: 'Add a new calendar event or deadline.',
-    parameters: z.object({
-      title: z.string().describe('Event title'),
-      date: z.string().describe('Date in ISO format'),
-      endDate: z.string().optional().describe('End date in ISO format'),
-      type: z.string().describe('Event type (exam, assignment, study_session, other)'),
-      subject: z.string().optional().describe('Associated subject'),
-      description: z.string().optional().describe('Event description'),
     }),
   },
 

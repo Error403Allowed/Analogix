@@ -19,39 +19,7 @@ export interface FlashcardSet {
   created_at: string;
 }
 
-export async function createFlashcardSet(
-  userId: string,
-  params: CreateFlashcardsParams
-): Promise<{ success: boolean; setId?: string; error?: string }> {
-  const supabase = createToolsClient();
 
-  try {
-    const now = new Date().toISOString();
-    const cardDocs = params.cards.map((card, idx) => ({
-      id: `card_${Date.now()}_${idx}`,
-      owner_user_id: userId,
-      subject_id: params.subjectId,
-      title: params.setName,
-      content: JSON.stringify(card),
-      role: 'flashcard',
-      created_at: now,
-      updated_at: now,
-      last_edited_by: userId,
-    }));
-
-    const { error } = await supabase.from('documents').insert(cardDocs as any);
-
-    if (error) {
-      console.error('[createFlashcardSet] Error:', error);
-      return { success: false, error: error.message };
-    }
-
-    return { success: true, setId: cardDocs[0].id };
-  } catch (err) {
-    console.error('[createFlashcardSet] Exception:', err);
-    return { success: false, error: 'Failed to create flashcard set' };
-  }
-}
 
 export async function getFlashcardSets(
   userId: string,
