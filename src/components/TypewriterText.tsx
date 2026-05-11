@@ -22,7 +22,7 @@ const TypewriterText = ({ text, className = "", delay = 0 }: TypewriterTextProps
           setDisplayedText(text.slice(0, charIndex + 1));
           charIndex++;
           const char = text[charIndex - 1];
-          const speed = char === " " ? 30 : char === "." || char === "!" || char === "?" ? 150 : 50;
+          const speed = char === " " ? 120 : char === "." || char === "!" || char === "?" ? 600 : 200;
           timeoutId = setTimeout(typeNextChar, speed);
         } else {
           setIsComplete(true);

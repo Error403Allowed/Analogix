@@ -158,7 +158,7 @@ const StreamingMessage = ({
     <motion.div
       initial={isStreaming ? { opacity: 0.55 } : { opacity: 1 }}
       animate={{ opacity: 1 }}
-      transition={{ duration: 0.4, ease: "easeOut" }}
+      transition={{ duration: 1.6, ease: "easeOut" }}
       className="text-sm leading-relaxed"
     >
       <MarkdownRenderer content={content} className="text-sm leading-relaxed" streaming={isStreaming} />
