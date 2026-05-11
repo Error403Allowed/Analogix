@@ -297,8 +297,9 @@ const Chat = () => {
   useEffect(() => {
     const textarea = textareaRef.current;
     if (textarea) {
-      textarea.style.height = 'auto';
-      textarea.style.height = Math.min(textarea.scrollHeight, 200) + 'px';
+      textarea.style.height = '56px';
+      const newHeight = Math.min(Math.max(textarea.scrollHeight, 56), 300) + 'px';
+      textarea.style.height = newHeight;
     }
   }, [input]);
   
@@ -2044,7 +2045,10 @@ Title:` }];
                   </div>
                 )}
                 
-                <div className="rounded-2xl bg-card shadow-sm" data-tour="chat-input">
+                <div className="relative rounded-2xl bg-card border border-border/50 shadow-lg shadow-black/5" data-tour="chat-input">
+                  {/* Subtle top gradient accent */}
+                  <div className="absolute top-0 left-4 right-4 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
+
                   <Textarea
                     ref={textareaRef}
                     value={input}
@@ -2055,16 +2059,17 @@ Title:` }];
                         handleSend();
                       }
                     }}
-                    placeholder="Ask me anything"
-                    className="w-full px-3 sm:px-4 py-3 text-sm sm:text-base bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/50 resize-none leading-relaxed rounded-t-2xl"
+                    placeholder="Ask me anything..."
+                    style={{ minHeight: 56, height: 56 }}
+                    className="w-full px-4 py-4 text-sm sm:text-base bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/40 resize-none leading-relaxed rounded-t-2xl"
                   />
-                  
+
                   {/* Bottom row of input - separate from textarea */}
-                  <div className="flex items-center justify-between px-2 sm:px-3 pb-3 bg-card rounded-b-2xl">
+                  <div className="flex items-center justify-between px-3 pb-3 pt-1 bg-card rounded-b-2xl">
                     {/* Left side: attach + toolbar icons */}
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-0.5">
                       {/* Attach file */}
-                      <div className="relative w-8 h-8 group">
+                      <div className="relative w-9 h-9 group">
                         <input
                           ref={fileInputRef}
                           type="file"
@@ -2078,27 +2083,27 @@ Title:` }];
                         <button
                           type="button"
                           disabled={fileExtracting}
-                          className="w-8 h-8 rounded-full bg-muted/40 flex items-center justify-center text-muted-foreground transition-all disabled:opacity-50 group-hover:bg-primary/10 group-hover:text-primary"
+                          className="w-9 h-9 rounded-xl bg-muted/50 hover:bg-muted flex items-center justify-center text-muted-foreground transition-all disabled:opacity-50 group-hover:text-foreground"
                           title={fileExtracting ? "Extracting file…" : "Attach files"}
                           aria-hidden="true"
                           tabIndex={-1}
                         >
                           {fileExtracting
-                            ? <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                            : <Paperclip className="w-3.5 h-3.5" />}
+                            ? <RefreshCw className="w-4 h-4 animate-spin" />
+                            : <Paperclip className="w-4 h-4" />}
                         </button>
                       </div>
 
                       {/* Model selector button */}
-                      <div className="flex flex-col items-center gap-0.5" data-tour="model-selector">
+                      <div className="flex items-center gap-0.5 ml-1" data-tour="model-selector">
                         <button
                           type="button"
                           onClick={() => setShowModelSelector(true)}
                           disabled={isInputLocked}
-                          className="h-8 px-3 rounded-full bg-muted/40 flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-all hover:text-foreground hover:bg-muted/60 disabled:opacity-40"
+                          className="h-9 px-3 rounded-xl bg-muted/50 hover:bg-muted flex items-center gap-2 text-xs font-medium text-muted-foreground transition-all hover:text-foreground disabled:opacity-40"
                           title="Select AI model"
                         >
-                          <Brain className="w-3.5 h-3.5" />
+                          <Brain className="w-4 h-4" />
                           <span className="hidden sm:inline">
                             {GROQ_MODELS.find(m => m.id === selectedModel)?.name || "Auto"}
                           </span>
@@ -2107,43 +2112,41 @@ Title:` }];
                       </div>
 
                       {/* Research mode */}
-                      <div className="flex flex-col items-center gap-0.5" data-tour="research-toggle">
+                      <div className="flex items-center gap-0.5" data-tour="research-toggle">
                         <button
                           type="button"
                           onClick={() => setResearchMode(p => !p)}
                           disabled={isInputLocked}
-                          className={`w-8 h-8 rounded-full flex items-center justify-center transition-all disabled:opacity-40 ${researchMode ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"}`}
-                          title={researchMode ? "Research mode on — click to turn off" : "Research mode off — click to turn on"}
+                          className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all disabled:opacity-40 ${researchMode ? "text-primary bg-primary/10" : "text-muted-foreground bg-muted/50 hover:bg-muted hover:text-foreground"}`}
+                          title={researchMode ? "Research mode on" : "Research mode off"}
                         >
-                          {researchLoading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Atom className="w-3.5 h-3.5" />}
+                          {researchLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Atom className="w-4 h-4" />}
                         </button>
                       </div>
 
-
-
                       {/* AI Settings button */}
-                      <div className="flex flex-col items-center gap-0.5">
+                      <div className="flex items-center gap-0.5">
                         <button
                           type="button"
                           onClick={() => setShowAISettings(true)}
                           disabled={isInputLocked}
-                          className="w-8 h-8 rounded-full flex items-center justify-center transition-all text-muted-foreground hover:text-primary hover:bg-primary/10"
-                          title="AI Settings — Customize personality & memory"
+                          className="w-9 h-9 rounded-xl flex items-center justify-center transition-all text-muted-foreground bg-muted/50 hover:bg-muted hover:text-foreground"
+                          title="AI Settings"
                         >
-                          <Settings2 className="w-3.5 h-3.5" />
+                          <Settings2 className="w-4 h-4" />
                         </button>
                       </div>
 
                       {/* Formula sheet — only if subject has formulas */}
                       {getFormulaSheet(selectedSubject || "") && (
-                        <div className="flex flex-col items-center gap-0.5">
+                        <div className="flex items-center gap-0.5">
                           <button
                             type="button"
                             onClick={() => setFormulaPanelOpen(o => !o)}
-                            className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${formulaPanelOpen ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"}`}
+                            className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all ${formulaPanelOpen ? "text-primary bg-primary/10" : "text-muted-foreground bg-muted/50 hover:bg-muted hover:text-foreground"}`}
                             title="Formula sheet"
                           >
-                            <Sigma className="w-3.5 h-3.5" />
+                            <Sigma className="w-4 h-4" />
                           </button>
                         </div>
                       )}
@@ -2152,18 +2155,18 @@ Title:` }];
                       <button
                         type="button"
                         onClick={() => { abortRef.current?.abort(); setStreamingId(null); setIsTyping(false); }}
-                        className="w-9 h-9 sm:w-8 sm:h-8 rounded-full bg-foreground/10 hover:bg-foreground/20 flex items-center justify-center text-foreground/70 transition-all"
+                        className="w-10 h-10 rounded-xl bg-foreground/10 hover:bg-foreground/20 flex items-center justify-center text-foreground/70 transition-all"
                       >
-                        <Square className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
+                        <Square className="w-5 h-5" />
                       </button>
                     ) : (
                       <button
                         type="button"
                         onClick={handleSend}
                         disabled={!input.trim() && attachedFiles.length === 0}
-                        className="w-9 h-9 sm:w-8 sm:h-8 rounded-full bg-primary flex items-center justify-center text-white transition-all hover:bg-primary/90 active:scale-95 disabled:opacity-30 disabled:pointer-events-none"
+                        className="w-10 h-10 rounded-xl bg-primary hover:bg-primary/90 flex items-center justify-center text-white transition-all hover:shadow-lg hover:shadow-primary/25 active:scale-95 disabled:opacity-30 disabled:pointer-events-none disabled:hover:shadow-none"
                       >
-                        <Send className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
+                        <Send className="w-5 h-5" />
                       </button>
                     )}
                   </div>

@@ -189,11 +189,11 @@ function buildSystemPrompt(
 
   const analogyGuidance = [
     "SCHOOL MODE: This student wants responses tailored for school/assessment purposes. Be formal, precise, and curriculum-aligned. Use correct subject-specific terminology. Structure answers the way a teacher or marker would expect. No analogies, no personal interests, no casual tone.",
-    "Use analogies sparingly — only when they genuinely help clarify a specific point.",
-    "Use analogies as the primary teaching tool — lead with a hobby-based analogy before any explanation.",
-    "Weave analogies throughout your explanation when they genuinely help clarify concepts. Make the analogy feel natural, not forced. Each analogy should connect to a specific concept point.",
-    "Use analogies throughout but keep them natural and relevant. Don't force an analogy if it doesn't fit. Map analogy components to concept components for clarity.",
-    "Maximum analogy integration: Use analogies throughout but ensure they're accurate and natural mappings. If a poor fit, explain without rather than force a weak analogy.",
+    "Use analogies when explaining concepts — they help make abstract ideas concrete. Reference the student's interests where relevant.",
+    "Use analogies as a primary teaching tool for explanations. Lead with a relatable example from everyday life or the student's interests before diving into the formal concept.",
+    "Always weave in analogies for explanation questions. Use the student's interests to make concepts stick. Map analogy parts to concept parts explicitly.",
+    "Maximum analogy integration: Use analogies throughout explanations, connecting to the student's interests. Make sure each analogy maps cleanly to the concept.",
+    "Use analogies liberally throughout. Always include a relatable analogy when explaining something new. If a perfect fit doesn't exist, create a simple everyday example instead.",
   ][Math.min(analogyIntensity, 5)];
 
   const hasExplicitSubject = (userContext?.subjects?.length ?? 0) > 0;
@@ -257,7 +257,7 @@ const timeOfDay = hour >= 5 && hour < 12 ? "morning" : hour >= 12 && hour < 14 ?
 const timeString = now.toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit", hour12: true });
 const dayOfWeek = now.toLocaleDateString("en-AU", { weekday: "long" });
 
-return `You are "Analogix AI", a friendly AI tutor for Australian students.
+return `You are "Analogix AI", a friendly and knowledgeable AI tutor for Australian students. You are here to help students learn, understand concepts deeply, and succeed in their studies.
 
 Context: Year ${studentGrade}${stateFullName ? ` in ${stateFullName}` : ""}, Australia. ${curriculumContext}
 TIME CONTEXT: It's ${dayOfWeek}, ${timeOfDay}, ${timeString} (${new Date().toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })}).
@@ -271,13 +271,11 @@ Rules:
 - When user asks about schedule, classes, events, deadlines, or "what's next" — ALWAYS check the calendar context and give specific answers.
 - If user asks "what do I have" or "what's happening" — list today's events from the calendar.
 - If user asks about a specific time (e.g., "do I have class tomorrow?") — check the calendar and confirm.
-- Keep responses concise. Short questions get short answers.
-- For homework/task questions: guide the approach, don't just give answers. Ask "What have you tried?" or give hints first.
-- If a question seems like homework, help them understand the concept, then ask them to apply it themselves.
-- NEVER give full step-by-step solutions to homework-style questions — guide them to figure it out.
-- Keep responses conversational. Match length to the query.
-- No essay headers like "## Step 1".
-- Use LaTeX for math/science: inline $x$, display $\\frac{a}{b}$, $\\sqrt{x}$, $\\int$, $\\sum$. Never use unicode math symbols.
+- RESPONSE STRUCTURE: Start with a clear, direct answer. Then explain the concept. Include a worked example for math/science topics. End by connecting to the broader topic.
+- Use bullet points or numbered lists when listing definitions, rules, or key steps — they help students scan and remember.
+- For math/science questions: always include a worked example showing step-by-step reasoning with LaTeX formatting. $\\frac{a}{b}$, $\\sqrt{x}$, $\\int$, $\\sum$.
+- For explanation questions: weave in an analogy or real-world example to make the concept click. Use the student's interests if you know them. Analogies help abstract ideas click faster.
+- Be conversational and approachable, like a patient tutor. Avoid textbook formality.
 - No emojis.${workspaceSection}
 ${researchBlock}
 — Analogix`;
@@ -488,9 +486,9 @@ if (clientMemories && Array.isArray(clientMemories)) {
     }
 
     // Token budgets
-    const TOTAL_BUDGET = 4000;
-    const SYSTEM_BUDGET = 800;
-    const effectiveMaxTokens = isSimpleGreeting ? 200 : 1024;
+    const TOTAL_BUDGET = 16000;
+    const SYSTEM_BUDGET = 2000;
+    const effectiveMaxTokens = isSimpleGreeting ? 300 : 8000;
 
     // Build initial messages
     const finalMessages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [

@@ -71,7 +71,7 @@ export const DEFAULT_AI_PERSONALITY: AIPersonality = {
   friendliness: 70,
   formality: 30,
   humor: 50,
-  detail_level: 50,
+  detail_level: 65,
   patience: 70,
   encouragement: 70,
   socratic_method: false,

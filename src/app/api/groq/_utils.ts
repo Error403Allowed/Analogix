@@ -59,10 +59,10 @@ const MODEL_OUTPUT_LIMITS: Record<string, number> = {
   "llama-3.3-70b-versatile": 32768,
   "llama-3.1-70b-versatile": 32768,
   "llama-3.1-8b-instant": 8192,
-  "meta-llama/llama-4-scout-17b-16e-instruct": 8192,
+  "meta-llama/llama-4-scout-17b-16e-instruct": 32768,
   "openai/gpt-oss-20b": 65536,
   "openai/gpt-oss-120b": 65536,
-  "qwen/qwen3-32b": 8192,
+  "qwen/qwen3-32b": 32768,
 };
 
 const getSafeMaxTokens = (model: string, requested: number): number => {

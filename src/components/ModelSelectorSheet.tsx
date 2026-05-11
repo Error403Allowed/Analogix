@@ -18,7 +18,7 @@ interface ModelSelectorSheetProps {
 export default function ModelSelectorSheet({ open, onOpenChange, selectedModel, onSelectModel }: ModelSelectorSheetProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="glass p-0 border-border sm:max-w-[420px] shadow-2xl rounded-2xl overflow-hidden">
+      <DialogContent className="glass p-0 border-border sm:max-w-[500px] shadow-2xl rounded-2xl overflow-hidden">
         <DialogDescription className="sr-only">
           Select the AI model to use for this chat
         </DialogDescription>
@@ -55,7 +55,7 @@ export default function ModelSelectorSheet({ open, onOpenChange, selectedModel, 
               <div className="flex items-center justify-between gap-3">
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-bold truncate">{model.name}</p>
-                  <p className="text-xs text-muted-foreground/70 truncate mt-1 leading-relaxed">{model.description}</p>
+                  <p className="text-xs text-muted-foreground/70 mt-1 leading-relaxed line-clamp-2">{model.description}</p>
                 </div>
                 {selectedModel === model.id && (
                   <Check className="w-4 h-4 text-primary shrink-0" />
