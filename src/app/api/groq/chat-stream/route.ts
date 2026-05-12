@@ -253,14 +253,29 @@ Put an <ACTIONS>...</ACTIONS> block at the VERY END of your message ONLY for fla
 // Get current time context
 const now = new Date();
 const hour = now.getHours();
+const minute = now.getMinutes();
 const timeOfDay = hour >= 5 && hour < 12 ? "morning" : hour >= 12 && hour < 14 ? "midday" : hour >= 14 && hour < 18 ? "afternoon" : hour >= 18 && hour < 22 ? "evening" : "night";
 const timeString = now.toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit", hour12: true });
 const dayOfWeek = now.toLocaleDateString("en-AU", { weekday: "long" });
+const dateString = now.toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" });
+
+const isSchoolHours = hour >= 8 && hour < 16 && dayOfWeek !== "Saturday" && dayOfWeek !== "Sunday";
+const isEveningStudy = hour >= 18 && hour < 22;
+const isWeekend = dayOfWeek === "Saturday" || dayOfWeek === "Sunday";
+const isLikelyFree = (hour >= 15 && hour < 18) || (hour >= 19 && hour < 21);
+
+const timeAwareness = [
+  `TIME CONTEXT: It's ${dayOfWeek}, ${timeOfDay} — ${timeString} on ${dateString} (Australia).`,
+  isSchoolHours ? "The student is likely in school or study period right now." : isEveningStudy ? "It's evening — likely study/homework time." : isWeekend ? "It's the weekend — student may have more free time." : "Outside typical school hours.",
+  isLikelyFree ? "The student probably has time for a longer session or detailed explanation." : "Keep responses focused — they may be checking between activities.",
+].join("\n");
 
 return `You are "Analogix AI", a friendly and knowledgeable AI tutor for Australian students. You are here to help students learn, understand concepts deeply, and succeed in their studies.
 
+TIME CONTEXT:
+${timeAwareness}
+
 Context: Year ${studentGrade}${stateFullName ? ` in ${stateFullName}` : ""}, Australia. ${curriculumContext}
-TIME CONTEXT: It's ${dayOfWeek}, ${timeOfDay}, ${timeString} (${new Date().toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })}).
 ${calendarContext ? `When the user asks about their schedule, events, deadlines, or what's coming up, use the CALENDAR & DEADLINES section below to give accurate, specific answers.` : ''}
 
 ${analogyIntensity === 0 ? `MODE: School/Assessment — formal, precise, no analogies.` : 
@@ -276,7 +291,8 @@ Rules:
 - For math/science questions: always include a worked example showing step-by-step reasoning with LaTeX formatting. $\\frac{a}{b}$, $\\sqrt{x}$, $\\int$, $\\sum$.
 - For explanation questions: weave in an analogy or real-world example to make the concept click. Use the student's interests if you know them. Analogies help abstract ideas click faster.
 - Be conversational and approachable, like a patient tutor. Avoid textbook formality.
-- No emojis.${workspaceSection}
+- No emojis.
+- NOTE: If asked to write something very long (essays, reports, etc.), explain that responses are capped at ~1900 tokens due to API rate limits, but offer to continue in a follow-up message.${workspaceSection}
 ${researchBlock}
 — Analogix`;
 }
@@ -485,10 +501,14 @@ if (clientMemories && Array.isArray(clientMemories)) {
       );
     }
 
-    // Token budgets
-    const TOTAL_BUDGET = 16000;
-    const SYSTEM_BUDGET = 2000;
-    const effectiveMaxTokens = isSimpleGreeting ? 300 : 8000;
+    // Token budgets. Hard cap at 1900 due to Groq's ~6k TPM rate limit
+    // (leaving ~4000 for input to stay comfortably under limits)
+    const OUTPUT_HARD_CAP = 1900;
+    const wantsLongResponse = isResearchMode || isFormalRequest ||
+      /\b(detailed|comprehensive|essay|report|study guide|lesson plan|long answer)\b/i.test(latestUserMsg);
+    const TOTAL_BUDGET = 5900; // Reduced to stay under 6k TPM with output cap
+    const SYSTEM_BUDGET = 1800;
+    const targetMaxTokens = isSimpleGreeting ? 300 : wantsLongResponse ? OUTPUT_HARD_CAP : 1500;
 
     // Build initial messages
     const finalMessages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
@@ -497,7 +517,7 @@ if (clientMemories && Array.isArray(clientMemories)) {
     ] as Array<{ role: "system" | "user" | "assistant"; content: string }>;
 
     const finalTotal = finalMessages.reduce((sum, m) => sum + m.content.length, 0);
-    const finalEst = Math.ceil(finalTotal / 3.5) + effectiveMaxTokens;
+    const finalEst = Math.ceil(finalTotal / 3.5) + targetMaxTokens;
 
     // Trim system prompt first if over budget
     const systemPromptLength = fullSystemPrompt.length;
@@ -509,9 +529,27 @@ if (clientMemories && Array.isArray(clientMemories)) {
       finalMessages[0] = { role: "system", content: truncated + "\n[sys truncated]" };
     }
 
-    // Final check
-    const finalCheck = finalMessages.reduce((sum, m) => sum + m.content.length, 0);
-    const finalCheckEst = Math.ceil(finalCheck / 3.5) + effectiveMaxTokens;
+    // Final check. If a large conversation still exceeds budget after system
+    // trimming, drop the oldest recent turns while preserving the latest user ask.
+    let finalCheck = finalMessages.reduce((sum, m) => sum + m.content.length, 0);
+    let finalCheckEst = Math.ceil(finalCheck / 3.5) + targetMaxTokens;
+    let droppedRecentMessages = 0;
+
+    while (finalCheckEst > TOTAL_BUDGET && finalMessages.length > 2) {
+      finalMessages.splice(1, 1);
+      droppedRecentMessages += 1;
+      finalCheck = finalMessages.reduce((sum, m) => sum + m.content.length, 0);
+      finalCheckEst = Math.ceil(finalCheck / 3.5) + targetMaxTokens;
+    }
+
+    if (droppedRecentMessages > 0) {
+      console.log(`[chat-stream] Dropped ${droppedRecentMessages} old recent messages to fit token budget`);
+    }
+
+    const promptTokens = Math.ceil(finalCheck / 3.5);
+    const maxAvailableOutputTokens = Math.max(300, TOTAL_BUDGET - promptTokens);
+    const effectiveMaxTokens = Math.min(targetMaxTokens, maxAvailableOutputTokens);
+
     console.log(`[chat-stream] Final: ${finalCheckEst}t (budget: ${TOTAL_BUDGET}t, messages: ${recentMsgs.length} full + ${olderMsgs.length} summarized)`);
 
     const upstreamStream = await callGroqChatStream(
@@ -540,7 +578,10 @@ if (clientMemories && Array.isArray(clientMemories)) {
     });
 
     // Determine appropriate status code based on error type
-    let statusCode = 500;
+    const upstreamStatus = error && typeof error === "object" && "statusCode" in error
+      ? Number((error as { statusCode?: unknown }).statusCode)
+      : NaN;
+    let statusCode = Number.isFinite(upstreamStatus) ? upstreamStatus : 500;
     let userMessage = "AI service unavailable. Please try again in a moment.";
 
     if (message.includes("Missing GROQ_API_KEY")) {
@@ -558,9 +599,12 @@ if (clientMemories && Array.isArray(clientMemories)) {
     } else if (message.includes("401") || message.includes("403")) {
       statusCode = 503;
       userMessage = "AI service authentication failed. Please contact support.";
+    } else if (message.includes("AI service failed after trying all models")) {
+      statusCode = 503;
+      userMessage = "AI service unavailable. Please try again in a moment.";
     } else if (message.toLowerCase().includes("token") || message.toLowerCase().includes("length")) {
       statusCode = 400;
-      userMessage = "Response too long - the AI generated more content than allowed. Please try a shorter request or break it into parts.";
+      userMessage = "Response limit reached - I'm capped at ~1900 tokens per response due to API rate limits (Groq's free tier allows ~6000 tokens/minute). This keeps responses fast and reliable. For longer content, try breaking your question into parts or ask me to continue in a follow-up message.";
     }
 
     return new Response(

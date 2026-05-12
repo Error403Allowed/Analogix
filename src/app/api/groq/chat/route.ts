@@ -167,22 +167,25 @@ export async function POST(request: Request) {
     - Maximum ${maxWords} words - go longer only when topic truly demands it
     - Simple questions: 2-3 sentences
     - Complex topics: Use full paragraphs, multiple examples, thorough coverage
-    - Don't hold back on detail when students need to understand something deeply`;
+    - Don't hold back on detail when students need to understand something deeply
+    - NOTE: If asked to write something very long (essays, reports, etc.), explain that responses are capped at ~1900 tokens due to API rate limits, but offer to continue in a follow-up message`;
 
     const researchMode = Boolean(userContext?.researchMode);
 
-    // Token budget — respect user's detail_level preference
+    // Token budget — respect user's detail_level preference but hard cap at 1900
+    // due to Groq's ~6k TPM rate limit (leaving ~4000 for input)
     const detailLevel = aiPersonality?.detail_level ?? 50;
-    let maxTokens = 1536; // Default
+    const HARD_CAP = 1900;
+    let maxTokens = 1500; // Default
     
     if (researchMode) {
-      maxTokens = 2048;
+      maxTokens = HARD_CAP;
     } else if (detailLevel >= 70) {
-      maxTokens = 2048; // Comprehensive
+      maxTokens = HARD_CAP; // Comprehensive
     } else if (detailLevel <= 30) {
-      maxTokens = 768; // Brief
+      maxTokens = 600; // Brief
     } else {
-      maxTokens = 1536; // Balanced
+      maxTokens = 1500; // Balanced
     }
 
     // Get the user's hobbies/interests for making analogies
