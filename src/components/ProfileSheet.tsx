@@ -24,6 +24,7 @@ import { achievementStore } from "@/utils/achievementStore";
 import { HOBBY_OPTIONS, POPULAR_INTERESTS } from "@/utils/interests";
 import type { HobbyId } from "@/utils/interests";
 import { AustralianState, STATE_LABELS } from "@/utils/termData";
+import { createClient } from "@/lib/supabase/client";
 
 
 
@@ -218,7 +219,7 @@ const ProfileSheet = ({ open, onOpenChange }: ProfileSheetProps) => {
     mark();
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     // Build hobbies array (label + details) same format as onboarding
     const hobbiesWithDetails = hobbyIds.map(id => {
       const label = HOBBY_OPTIONS.find(h => h.id === id)?.label || id;
@@ -240,6 +241,29 @@ const ProfileSheet = ({ open, onOpenChange }: ProfileSheetProps) => {
     };
     localStorage.setItem("userPreferences", JSON.stringify(next));
     window.dispatchEvent(new Event("userPreferencesUpdated"));
+
+    // Save to Supabase
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase.from("profiles").upsert({
+          id: user.id,
+          name: next.name,
+          grade: next.grade,
+          state: next.state,
+          subjects: next.subjects,
+          hobbies: next.hobbies,
+          hobby_ids: next.hobbyIds,
+          hobby_details: next.hobbyDetails,
+          onboarding_complete: true,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: "id" });
+      }
+    } catch (e) {
+      console.error("[ProfileSheet] Supabase save failed:", e);
+    }
+
     toast.success("Profile saved!");
     setDirty(false);
     onOpenChange(false);

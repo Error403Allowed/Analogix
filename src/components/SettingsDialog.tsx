@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { achievementStore } from "@/utils/achievementStore";
+import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { resetAllTours, haveAllToursBeenSeen } from "@/types/tour";
@@ -46,9 +47,26 @@ const SettingsDialog = ({ open, onOpenChange }: SettingsDialogProps) => {
     }
   };
 
-  const handleSave = () => {
-    localStorage.setItem("userPreferences", JSON.stringify({ ...prefs, name }));
+  const handleSave = async () => {
+    const updatedPrefs = { ...prefs, name };
+    localStorage.setItem("userPreferences", JSON.stringify(updatedPrefs));
     window.dispatchEvent(new Event("userPreferencesUpdated"));
+
+    // Save to Supabase
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase.from("profiles").upsert({
+          id: user.id,
+          name,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: "id" });
+      }
+    } catch (e) {
+      console.error("[SettingsDialog] Supabase save failed:", e);
+    }
+
     toast.success("Settings saved!");
     onOpenChange(false);
   };

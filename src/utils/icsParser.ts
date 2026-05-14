@@ -13,7 +13,7 @@ export const parseICS = async (file: File): Promise<AppEvent[]> => {
         const vevents = comp.getAllSubcomponents("vevent");
 
         const academicKeywords = ["exam", "assessment", "quiz", "test", "midterm", "final"];
-        const assignmentKeywords = ["assignment", "project", "deadline", "paper", "presentation", "lab", "due"];
+        const assignmentKeywords = ["assignment", "project", "deadline", "Paper", "presentation", "lab", "due"];
         const classKeywords = ["class", "lesson", "lecture", "tutorial", "workshop", "seminar"];
 
         const now = new Date();

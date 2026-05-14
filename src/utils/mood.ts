@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/client";
 import { getAuthUser } from "./authCache";
-import { applyThemeByName } from "@/components/ThemeSelector";
+import { applyThemeByName } from "@/utils/theme";
 
 export type MoodProfile = {
   label: string;
@@ -15,7 +15,7 @@ export type MoodProfile = {
 export const moodProfiles = {
   focus: {
     label: "Focus",
-    theme: "Classic Blue",
+    theme: "Blue",
     dashboard: {
       calendarTitle: "Upcoming lessons",
       deadlinesTitle: "Due soon",
@@ -24,7 +24,7 @@ export const moodProfiles = {
   },
   energized: {
     label: "Energized",
-    theme: "Sunset Ember",
+    theme: "Red",
     dashboard: {
       calendarTitle: "Let us move",
       deadlinesTitle: "Next sprints",
@@ -33,7 +33,7 @@ export const moodProfiles = {
   },
   calm: {
     label: "Calm",
-    theme: "Oceanic Blue",
+    theme: "Light Blue",
     dashboard: {
       calendarTitle: "Gentle schedule",
       deadlinesTitle: "Light reminders",
@@ -51,7 +51,7 @@ export const moodProfiles = {
   },
   bold: {
     label: "Bold",
-    theme: "Cyber Neon",
+    theme: "Pink",
     dashboard: {
       calendarTitle: "Big moves",
       deadlinesTitle: "High impact",
@@ -60,7 +60,7 @@ export const moodProfiles = {
   },
   dreamy: {
     label: "Dreamy",
-    theme: "Cosmic Aurora",
+    theme: "Blue + Green",
     dashboard: {
       calendarTitle: "Drift ahead",
       deadlinesTitle: "Soft checkpoints",
@@ -69,7 +69,7 @@ export const moodProfiles = {
   },
   focused: {
     label: "Focus",
-    theme: "Classic Blue",
+    theme: "Blue",
     dashboard: {
       calendarTitle: "Upcoming lessons",
       deadlinesTitle: "Due soon",
