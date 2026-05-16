@@ -62,45 +62,32 @@ const nextConfig: NextConfig = {
 
 // Splits AI response into { thinking, response } based on <think>...</think> tags.
 // Handles: leading whitespace before <think>, missing </think> (model cut off mid-think),
-// and partial/incomplete <think tags during streaming.
-const parseThinkingContent = (content: string, isStreaming: boolean = false): { thinking: string | null; response: string } => {
+// and <think> appearing anywhere in the response.
+const parseThinkingContent = (content: string): { thinking: string | null; response: string } => {
   const trimmed = content.trimStart();
 
-  // Case 1: Incomplete <think tag (no closing > yet) — hide everything during streaming
-  if (isStreaming && /^<think[^>]*$/.test(trimmed)) {
-    return { thinking: null, response: "" };
-  }
-
-  // Case 2: <think>...</think> is present and complete — strip it out
+  // Case 1: <think>...</think> is present and complete — strip it out
   const completeMatch = trimmed.match(/^<think>([\s\S]*?)<\/think>\s*/);
   if (completeMatch) {
     const response = trimmed.slice(completeMatch[0].length).trim();
     // If the model ONLY returned a think block with no actual response, return a fallback
     if (!response) {
-      if (isStreaming) {
-        // Still streaming — response tokens likely haven't arrived yet
-        return { thinking: completeMatch[1].trim(), response: "" };
-      }
       return { thinking: completeMatch[1].trim(), response: "*(The model did not return a response after thinking. Please try again.)*" };
     }
     return { thinking: completeMatch[1].trim(), response };
   }
 
-  // Case 3: <think> opened but </think> never closed (model cut off mid-think)
-  // Treat everything inside as thinking
+  // Case 2: <think> opened but </think> never closed (model cut off mid-think)
+  // Treat everything inside as thinking, return fallback response
   const openOnly = trimmed.match(/^<think>([\s\S]*)$/);
   if (openOnly) {
-    if (isStreaming) {
-      // Still streaming — don't show fallback, model may still be thinking
-      return { thinking: openOnly[1].trim(), response: "" };
-    }
     return {
       thinking: openOnly[1].trim(),
       response: "*(The model's reasoning was cut off. Please try again.)*",
     };
   }
 
-  // Case 4: No think tags at all — return as-is
+  // Case 3: No think tags at all — return as-is
   return { thinking: null, response: content };
 };
 
@@ -1707,7 +1694,7 @@ Title:` }];
                 onScroll={updateScrollButton}
                 className="absolute inset-0 overflow-y-auto min-h-0 chat-scroll"
               >
-                <div className="mx-auto max-w-4xl w-full px-4 flex flex-col space-y-6 pb-48 sm:pb-36 pt-4 sm:pt-4">
+                <div className="mx-auto max-w-4xl w-full px-4 flex flex-col space-y-6 pb-40 sm:pb-28 pt-4 sm:pt-4">
                   {/* Empty state — shown before any messages */}
                   {messages.length === 0 && !isTyping && (
                     <motion.div
@@ -1742,11 +1729,11 @@ Title:` }];
                         className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
                       >
                         {message.role === "assistant" ? (
-                          <div className="max-w-[95%] sm:max-w-[90%] message-bubble-assistant">
+                          <div className="max-w-[85%] sm:max-w-[80%] message-bubble-assistant">
                             <div className="mb-2" />
                             <>
                               {(() => {
-                                const { thinking } = parseThinkingContent(message.content, message.isStreaming);
+                                const { thinking } = parseThinkingContent(message.content);
                                 return thinking ? <ThinkingBlock content={thinking} /> : null;
                               })()}
                               {message.imageUrl && (
@@ -1764,7 +1751,7 @@ Title:` }];
                                   />
                                 </a>
                               )}
-                              {message.isStreaming && !parseThinkingContent(message.content, message.isStreaming).response.trim() && (
+                              {message.isStreaming && !parseThinkingContent(message.content).response.trim() && (
                                 <div className="flex items-center gap-1.5 py-1">
                                   <div className="w-1.5 h-1.5 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: '0ms' }} />
                                   <div className="w-1.5 h-1.5 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: '120ms' }} />
@@ -1772,7 +1759,7 @@ Title:` }];
                                 </div>
                               )}
                               <StreamingMessage
-                                content={parseThinkingContent(message.content, message.isStreaming).response}
+                                content={parseThinkingContent(message.content).response}
                                 isStreaming={!!message.isStreaming}
                               />
                               {message.sources && message.sources.length > 0 && (
@@ -1962,19 +1949,18 @@ Title:` }];
                   }}
                   aria-label="Scroll to latest"
                   title="Scroll to latest"
-                  className="absolute bottom-40 left-1/2 -translate-x-1/2 z-40 h-9 w-9 rounded-full bg-muted/60 text-muted-foreground/70 shadow-sm backdrop-blur hover:bg-muted/80"
+                  className="absolute bottom-32 sm:bottom-24 left-1/2 -translate-x-1/2 z-40 h-9 w-9 rounded-full bg-primary/40 text-white/90 shadow-md backdrop-blur hover:bg-primary/60"
                 >
                   <ArrowDown className="w-4 h-4" />
                 </Button>
               )}
 
               <div className="pointer-events-none absolute top-0 left-0 right-0 h-10 bg-gradient-to-b from-background to-transparent z-20" />
-              <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-36 bg-background z-20" />
-              <div className="pointer-events-none absolute bottom-36 left-0 right-0 h-12 bg-gradient-to-t from-background to-transparent z-20" />
+              <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-20 sm:h-16 bg-gradient-to-t from-background via-background/90 to-transparent z-20" />
 
               {/* Input */}
               <motion.div
-              className="absolute bottom-0 left-0 right-0 z-30 px-3 sm:px-4 pb-[max(env(safe-area-inset-bottom,0px)+8px)] sm:pb-4 pt-6 pointer-events-auto"
+              className="absolute bottom-0 left-0 right-0 z-30 px-3 sm:px-4 pb-[max(env(safe-area-inset-bottom,0px)+8px)] sm:pb-4 pt-2 pointer-events-auto"
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3 }}

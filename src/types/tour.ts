@@ -132,7 +132,7 @@ export const PAGE_TOURS: Record<string, TourConfig> = {
       {
         id: "research-mode",
         title: "Research Mode",
-        content: "Need academic sources? This pulls citations from research Papers. Great for essays and assignments.",
+        content: "Need academic sources? This pulls citations from research papers. Great for essays and assignments.",
         targetSelector: "[data-tour='research-toggle']",
         position: "top",
         icon: "📑",

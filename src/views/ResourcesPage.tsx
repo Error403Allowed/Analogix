@@ -110,9 +110,9 @@ export default function ResourcesPage() {
     );
   };
 
-  // Past Papers: show user's state first (prioritised), then all untagged ones.
+  // Past papers: show user's state first (prioritised), then all untagged ones.
   // If no state set, show everything. Textbooks are never state-filtered — they're universal.
-  const PaperMatchesState = (link: ResourceLink) => {
+  const paperMatchesState = (link: ResourceLink) => {
     if (!userState) return true;
     if (!link.states || link.states.length === 0) return true;
     return link.states.includes(userState) || link.states.includes("ALL");
@@ -123,16 +123,16 @@ export default function ResourcesPage() {
     const results: { subjectId: string; link: ResourceLink; type: Tab }[] = [];
     for (const sr of subjectResources) {
       for (const link of sr.pastPapers) {
-        if (matchesQuery(link) && PaperMatchesState(link)) results.push({ subjectId: sr.subjectId, link, type: "pastPapers" });
+        if (matchesQuery(link) && paperMatchesState(link)) results.push({ subjectId: sr.subjectId, link, type: "pastPapers" });
       }
       for (const link of sr.textbooks) {
         if (matchesQuery(link)) results.push({ subjectId: sr.subjectId, link, type: "textbooks" });
       }
     }
     return results;
-  }, [isCrossSearch, subjectResources, query, userState, matchesQuery, PaperMatchesState]);
+  }, [isCrossSearch, subjectResources, query, userState, matchesQuery, paperMatchesState]);
 
-  const visiblePapers = activeResource?.pastPapers.filter(l => matchesQuery(l) && PaperMatchesState(l)) ?? [];
+  const visiblePapers = activeResource?.pastPapers.filter(l => matchesQuery(l) && paperMatchesState(l)) ?? [];
   const visibleTextbooks = activeResource?.textbooks.filter(l => matchesQuery(l)) ?? [];
 
   const tabItems: { key: Tab; label: string; icon: typeof FileText }[] = [
@@ -207,7 +207,7 @@ export default function ResourcesPage() {
                           ? "text-primary-foreground/80"
                           : "text-muted-foreground"
                       )}>
-                        {sr.pastPapers.filter(l => !l.states || l.states.length === 0 || !userState || l.states.includes(userState)).length} Papers · {sr.textbooks.length} books
+                        {sr.pastPapers.filter(l => !l.states || l.states.length === 0 || !userState || l.states.includes(userState)).length} papers · {sr.textbooks.length} books
                       </span>
                     </button>
                   ))
@@ -244,7 +244,7 @@ export default function ResourcesPage() {
                   <p className="text-xs text-muted-foreground">
                     {isCrossSearch
                       ? "Results across every subject."
-                      : "Past Papers, textbooks, and free study links."}
+                      : "Past papers, textbooks, and free study links."}
                   </p>
                 </div>
                 <div className="relative w-full sm:max-w-sm">
@@ -334,7 +334,7 @@ export default function ResourcesPage() {
                 {activeTab === "pastPapers" ? (
                   visiblePapers.length === 0 ? (
                     <div className="rounded-2xl border border-dashed border-border p-10 text-center text-sm text-muted-foreground">
-                      No past Papers found for that search.
+                      No past papers found for that search.
                     </div>
                   ) : (
                     <div className="grid gap-3 md:grid-cols-2">

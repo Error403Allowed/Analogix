@@ -224,7 +224,7 @@ CREATE POLICY "Users manage their own activity log"
 CREATE TABLE IF NOT EXISTS public.user_preferences (
   user_id    UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   mood       TEXT DEFAULT 'focus',
-  theme      TEXT DEFAULT 'Blue',
+  theme      TEXT DEFAULT 'Classic Blue',
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 

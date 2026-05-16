@@ -1,37 +1,40 @@
 'use client';
 
 import { useRouter, usePathname } from 'next/navigation';
-import { cn } from '@/lib/utils';
-import {
-  HomeRounded, ChatRounded, QuizRounded, CalendarMonthRounded, PersonRounded,
-} from '@mui/icons-material';
 
 const items = [
-  { label: 'Home',     icon: <HomeRounded />,          path: '/dashboard' },
-  { label: 'Tutor',    icon: <ChatRounded />,          path: '/chat' },
-  { label: 'Quiz',     icon: <QuizRounded />,          path: '/quiz' },
-  { label: 'Calendar', icon: <CalendarMonthRounded />, path: '/calendar' },
-  { label: 'Profile',  icon: <PersonRounded />,        path: '/support' },
+  { label: 'Home',     path: '/dashboard' },
+  { label: 'Tutor',    path: '/chat' },
+  { label: 'Quiz',     path: '/quiz' },
+  { label: 'Calendar', path: '/calendar' },
+  { label: 'Profile',  path: '/support' },
 ];
 
 export default function M3BottomNav() {
   const router = useRouter();
   const pathname = usePathname();
 
-  const activeIndex = items.findIndex(i => pathname.startsWith(i.path));
-
   return (
-    <nav className="md:hidden m3-navbar">
-      {items.map((item, i) => (
-        <button
-          key={item.label}
-          onClick={() => router.push(item.path)}
-          className={cn('m3-navbar-item', i === activeIndex && 'active')}
-        >
-          <span className="w-6 h-6 flex items-center justify-center">{item.icon}</span>
-          <span className="text-[10px] leading-none">{item.label}</span>
-        </button>
-      ))}
+    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around h-14 px-2 border-t" style={{
+      background: 'var(--md-sys-color-surface)',
+      borderColor: 'var(--md-sys-color-outline-variant)',
+    }}>
+      {items.map((item) => {
+        const active = pathname.startsWith(item.path);
+        const icons: Record<string, string> = {
+          '/dashboard': 'home', '/chat': 'chat', '/quiz': 'quiz',
+          '/calendar': 'calendar_today', '/support': 'person',
+        };
+        return (
+          <button key={item.path} onClick={() => router.push(item.path)}
+            className="flex flex-col items-center justify-center gap-0.5 h-10 px-3 rounded-xl transition-colors relative"
+            style={{ color: active ? 'var(--md-sys-color-primary)' : 'var(--md-sys-color-on-surface-variant)' }}>
+            {active && <span className="absolute -top-0.5 left-1/2 -translate-x-1/2 w-8 h-[3px] rounded-b-sm" style={{ background: 'var(--md-sys-color-primary)' }} />}
+            <span className="material-symbols-outlined text-xl">{icons[item.path]}</span>
+            <span className="text-[10px] font-medium">{item.label}</span>
+          </button>
+        );
+      })}
     </nav>
   );
 }

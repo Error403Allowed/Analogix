@@ -1,13 +1,13 @@
 import { useEffect } from "react";
-import { applyThemeByName } from "@/utils/theme";
+import { applyThemeByName } from "@/components/ThemeSelector";
 
 const ThemeSync = () => {
   useEffect(() => {
-    const savedTheme = localStorage.getItem("app-theme") || "Blue + Green";
+    const savedTheme = localStorage.getItem("app-theme") || "Classic Blue";
     applyThemeByName(savedTheme);
 
     const handleThemeChange = () => {
-      const theme = localStorage.getItem("app-theme") || "Blue + Green";
+      const theme = localStorage.getItem("app-theme") || "Classic Blue";
       applyThemeByName(theme);
     };
 

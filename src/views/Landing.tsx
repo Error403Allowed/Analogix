@@ -186,9 +186,9 @@ const features = [
     icon: BookMarked,
     label: "Resources Hub",
     color: "cyan",
-    headline: "Past Papers & textbooks, all in one place",
-    desc: "Curated past Papers and textbook links for every subject, filtered to your state's curriculum. Stop Googling. Everything's already here.",
-    tags: ["Past Papers", "Textbooks", "State-filtered"],
+    headline: "Past papers & textbooks, all in one place",
+    desc: "Curated past papers and textbook links for every subject, filtered to your state's curriculum. Stop Googling. Everything's already here.",
+    tags: ["Past papers", "Textbooks", "State-filtered"],
     size: "sm",
   },
   {

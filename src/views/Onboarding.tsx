@@ -335,17 +335,15 @@ const Onboarding = () => {
       const detail = hobbyDetails[id] || "";
       return detail ? `${label} (${detail})` : label;
     });
+    const prefs = {
+      name: name.trim(), grade, state, subjects: selectedSubjects,
+      hobbies, hobbyIds, hobbyDetails, onboardingComplete: true,
+    };
+    localStorage.setItem("userPreferences", JSON.stringify(prefs));
+
     try {
       const supabase = createClient();
       const { data: { user: currentUser } } = await supabase.auth.getUser();
-      const userId = currentUser?.id;
-      const prefs = {
-        name: name.trim(), grade, state, subjects: selectedSubjects,
-        hobbies, hobbyIds, hobbyDetails, onboardingComplete: true,
-        userId,
-      };
-      localStorage.setItem("userPreferences", JSON.stringify(prefs));
-
       if (currentUser) {
         await supabase.from("profiles").upsert({
           id: currentUser.id, name: prefs.name, grade: prefs.grade, state: prefs.state,

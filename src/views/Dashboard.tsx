@@ -17,8 +17,8 @@ import QuickLinks from "@/components/QuickLinks";
 import { statsStore } from "@/utils/statsStore";
 import type { UserStats } from "@/types/stats";
 import { useAchievementChecker } from "@/hooks/useAchievementChecker";
+import { applyThemeByName } from "@/components/ThemeSelector";
 import { activityLog, type DayActivity } from "@/utils/activityLog";
-import { createClient } from "@/lib/supabase/client";
 import TutorialOverlay from "@/components/TutorialOverlay";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
@@ -485,16 +485,7 @@ function MiniTimer() {
 }
 
 // ── Dashboard ─────────────────────────────────────────────────────────────────
-type Prefs = {
-  name?: string;
-  grade?: string;
-  state?: string;
-  subjects?: string[];
-  hobbies?: string[];
-  hobbyIds?: string[];
-  hobbyDetails?: Record<string, string>;
-  onboardingComplete?: boolean;
-};
+type Prefs = { name?: string; subjects?: string[] };
 
 export default function Dashboard() {
   useAchievementChecker();
@@ -517,36 +508,6 @@ export default function Dashboard() {
     const update = () => setPrefs(readJson("userPreferences", {}));
     window.addEventListener("userPreferencesUpdated", update);
     window.addEventListener("storage", update);
-
-    // Sync from Supabase if localStorage is empty
-    (async () => {
-      const local = readJson<Prefs>("userPreferences", {});
-      if (local.name && local.grade) return; // already have data
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("name, grade, state, subjects, hobbies, hobby_ids, hobby_details")
-        .eq("id", user.id)
-        .maybeSingle();
-      if (profile && (profile.name || profile.grade)) {
-        const synced: Prefs = {
-          ...local,
-          name: profile.name ?? local.name ?? "Student",
-          grade: profile.grade ?? local.grade,
-          state: (profile.state ?? local.state) as Prefs["state"],
-          subjects: Array.isArray(profile.subjects) ? profile.subjects : (local.subjects ?? []),
-          hobbies: Array.isArray(profile.hobbies) ? profile.hobbies : (local.hobbies ?? []),
-          hobbyIds: Array.isArray(profile.hobby_ids) ? profile.hobby_ids : (local.hobbyIds ?? []),
-          hobbyDetails: profile.hobby_details ?? (local.hobbyDetails ?? {}),
-          onboardingComplete: true,
-        };
-        localStorage.setItem("userPreferences", JSON.stringify(synced));
-        setPrefs(synced);
-      }
-    })();
-
     return () => { window.removeEventListener("userPreferencesUpdated", update); window.removeEventListener("storage", update); };
   }, []);
 
@@ -565,6 +526,10 @@ export default function Dashboard() {
     refresh();
     window.addEventListener("statsUpdated", refresh);
     return () => window.removeEventListener("statsUpdated", refresh);
+  }, []);
+
+  useEffect(() => {
+    applyThemeByName(localStorage.getItem("app-theme") || "Cosmic Aurora");
   }, []);
 
   useEffect(() => {

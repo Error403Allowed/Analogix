@@ -28,7 +28,7 @@ const SOURCE_LIST: PastPaperSource[] = [
   {
     id: "naplan-2008-2011",
     label: "NAPLAN 2008-2011 Test Papers (ACARA)",
-    url: "https://www.acara.edu.au/assessment/naplan/naplan-2008-2011-test-Papers",
+    url: "https://www.acara.edu.au/assessment/naplan/naplan-2008-2011-test-papers",
     type: "html",
     states: "ALL",
     grades: ["junior", "middle"],
@@ -36,15 +36,15 @@ const SOURCE_LIST: PastPaperSource[] = [
   {
     id: "naplan-2012-2016",
     label: "NAPLAN 2012-2016 Test Papers (ACARA)",
-    url: "https://www.acara.edu.au/assessment/naplan/naplan-2012-2016-test-Papers",
+    url: "https://www.acara.edu.au/assessment/naplan/naplan-2012-2016-test-papers",
     type: "html",
     states: "ALL",
     grades: ["junior", "middle"],
   },
   {
-    id: "nsw-hsc-Papers",
+    id: "nsw-hsc-papers",
     label: "NSW HSC Exam Papers (NESA)",
-    url: "https://www.nsw.gov.au/education-and-training/nesa/curriculum/hsc-exam-Papers",
+    url: "https://www.nsw.gov.au/education-and-training/nesa/curriculum/hsc-exam-papers",
     type: "html",
     states: ["NSW"],
     grades: ["senior"],
@@ -89,7 +89,7 @@ const SOURCE_LIST: PastPaperSource[] = [
   {
     id: "tas-tasc-past-exams",
     label: "TAS Previous Exam Papers (TASC)",
-    url: "https://www.tasc.tas.gov.au/students/years-11-and-12/preparing-for-exams/previous-exam-Papers/",
+    url: "https://www.tasc.tas.gov.au/students/years-11-and-12/preparing-for-exams/previous-exam-papers/",
     type: "html",
     states: ["TAS"],
     grades: ["senior"],
