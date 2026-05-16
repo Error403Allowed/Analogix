@@ -1,0 +1,197 @@
+import { useState } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { toast } from "sonner";
+import { achievementStore } from "@/utils/achievementStore";
+import { createClient } from "@/lib/supabase/client";
+import { useAuth } from "@/context/AuthContext";
+import { useRouter } from "next/navigation";
+import { resetAllTours, haveAllToursBeenSeen } from "@/types/tour";
+import { useTour } from "@/context/TourContext";
+import { getTourForPath } from "@/types/tour";
+import { Sparkles } from "lucide-react";
+
+interface SettingsDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+const SettingsDialog = ({ open, onOpenChange }: SettingsDialogProps) => {
+  const router = useRouter();
+  const { signOut } = useAuth();
+  const { startTour } = useTour();
+  const [deletingAccount, setDeletingAccount] = useState(false);
+  const [allToursSeen, setAllToursSeen] = useState(() => 
+    typeof window !== "undefined" ? haveAllToursBeenSeen() : false
+  );
+  const [prefs, setPrefs] = useState(() =>
+    typeof window !== "undefined"
+      ? JSON.parse(localStorage.getItem("userPreferences") || "{}")
+      : {},
+  );
+  const [name, setName] = useState(prefs.name || "");
+
+  const handleReplayTours = () => {
+    resetAllTours();
+    setAllToursSeen(false);
+    toast.success("Tours reset! Refresh the page or navigate to see them again.");
+    
+    // Optionally start the dashboard tour immediately if on dashboard
+    const currentPath = window.location.pathname;
+    const tour = getTourForPath(currentPath);
+    if (tour) {
+      startTour(tour);
+    }
+  };
+
+  const handleSave = async () => {
+    const updatedPrefs = { ...prefs, name };
+    localStorage.setItem("userPreferences", JSON.stringify(updatedPrefs));
+    window.dispatchEvent(new Event("userPreferencesUpdated"));
+
+    // Save to Supabase
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase.from("profiles").upsert({
+          id: user.id,
+          name,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: "id" });
+      }
+    } catch (e) {
+      console.error("[SettingsDialog] Supabase save failed:", e);
+    }
+
+    toast.success("Settings saved!");
+    onOpenChange(false);
+  };
+
+  const handleReset = () => {
+    if (confirm("Are you sure? This will delete all progress, including achievements and exams.")) {
+      localStorage.clear();
+      achievementStore.reset();
+      window.location.reload();
+    }
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    onOpenChange(false);
+    router.replace("/onboarding");
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!confirm("This permanently deletes your account and profile data. Continue?")) return;
+    const confirmation = prompt('Type DELETE to confirm.');
+    if (confirmation !== "DELETE") {
+      toast.error("Account deletion cancelled.");
+      return;
+    }
+
+    setDeletingAccount(true);
+    try {
+      const response = await fetch("/api/account/delete", { method: "DELETE" });
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(data?.error || "Could not delete your account.");
+      }
+
+      localStorage.clear();
+      achievementStore.reset();
+      toast.success("Account deleted.");
+      onOpenChange(false);
+      router.replace("/onboarding");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Could not delete your account.";
+      toast.error(message);
+    } finally {
+      setDeletingAccount(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="glass p-6 border-border sm:max-w-[425px] shadow-2xl rounded-2xl">
+        <DialogHeader>
+          <DialogTitle>Settings</DialogTitle>
+          <DialogDescription>
+            Manage your account preferences and data.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-6 py-4">
+          <div className="grid gap-2">
+            <Label htmlFor="name">Display Name</Label>
+            <Input 
+              id="name" 
+              value={name} 
+              onChange={(e) => setName(e.target.value)} 
+              className="glass"
+            />
+          </div>
+          
+          <div className="flex items-center justify-between space-x-2">
+            <Label htmlFor="notifications" className="flex flex-col space-y-1">
+              <span>Notifications</span>
+              <span className="font-normal text-xs text-muted-foreground">Receive alerts about exams</span>
+            </Label>
+            <Switch id="notifications" defaultChecked />
+          </div>
+
+          <div className="pt-4 border-t border-border space-y-3">
+            <div className="flex items-center justify-between space-x-2">
+              <Label htmlFor="tours" className="flex flex-col space-y-1">
+                <span className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-primary" />
+                  Replay Tours
+                </span>
+                <span className="font-normal text-xs text-muted-foreground">
+                  {allToursSeen ? "See the guides again" : "Tours already seen"}
+                </span>
+              </Label>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleReplayTours}
+                className="gap-2"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                Reset Tours
+              </Button>
+            </div>
+            
+            <Button variant="outline" size="sm" onClick={handleSignOut} className="w-full">
+              Sign Out
+            </Button>
+            <div>
+              <h4 className="text-sm font-bold text-destructive mb-2">Danger Zone</h4>
+              <Button variant="destructive" size="sm" onClick={handleReset} className="w-full mb-2">
+                Reset All Data
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleDeleteAccount}
+                className="w-full"
+                disabled={deletingAccount}
+              >
+                {deletingAccount ? "Deleting Account..." : "Delete Account"}
+              </Button>
+            </div>
+          </div>
+        </div>
+        <div className="flex justify-end gap-2">
+           <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
+           <Button onClick={handleSave} className="gradient-primary">Save Changes</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+export default SettingsDialog;

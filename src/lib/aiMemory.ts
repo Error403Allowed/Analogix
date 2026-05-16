@@ -1,0 +1,354 @@
+import { createClient } from "@/lib/supabase/server";
+import type { AIPersonality, AIMemoryFragment, AIMemorySummary } from "@/types/ai-personality";
+import { DEFAULT_AI_PERSONALITY } from "@/types/ai-personality";
+
+/**
+ * Fetch the user's AI personality settings
+ */
+export async function getUserAIPersonality(userId: string): Promise<AIPersonality | null> {
+  const supabase = await createClient();
+  
+  const { data: personality, error } = await supabase
+    .from("ai_personalities")
+    .select("*")
+    .eq("user_id", userId)
+    .single();
+
+  // If the row doesn't exist yet, use defaults so the app still behaves predictably.
+  if (error) {
+    if (error.code === "PGRST116") return DEFAULT_AI_PERSONALITY; // no rows found
+    if (error.code === "PGRST205") return DEFAULT_AI_PERSONALITY; // tables not exposed by PostgREST yet
+    return null;
+  }
+
+  if (!personality) return DEFAULT_AI_PERSONALITY;
+
+  return personality as AIPersonality;
+}
+
+/**
+ * Fetch relevant memories for the current conversation context
+ */
+export async function getRelevantMemories(
+  userId: string,
+  options?: {
+    limit?: number;
+    minImportance?: number;
+    types?: Array<"fact" | "preference" | "skill" | "goal" | "context">;
+    currentMessage?: string;
+  }
+): Promise<{ memories: AIMemoryFragment[]; summaries: AIMemorySummary[] }> {
+  const supabase = await createClient();
+  const limit = options?.limit ?? 20;
+  const minImportance = options?.minImportance ?? 0;
+  const currentMessage = options?.currentMessage || "";
+
+  // Fetch a larger pool and score client-side
+  let query = supabase
+    .from("ai_memory_fragments")
+    .select("*")
+    .eq("user_id", userId)
+    .gte("importance", minImportance)
+    .order("created_at", { ascending: false })
+    .limit(limit * 3); // fetch 3x, score, return top N
+
+  if (options?.types && options.types.length > 0) {
+    query = query.in("memory_type", options.types);
+  }
+
+  const { data: memories, error: memoriesError } = await query;
+
+  if (memoriesError) {
+    console.error("[getRelevantMemories] Error fetching memories:", memoriesError);
+    return { memories: [], summaries: [] };
+  }
+
+  const currentKeywords = currentMessage.toLowerCase()
+    .split(/\s+/)
+    .filter(w => w.length > 3);
+
+  // Score and sort with semantic relevance to current message
+  const now = Date.now();
+  const scored = (memories || []).map(m => {
+    const ageMs = now - new Date(m.created_at).getTime();
+    const ageDays = ageMs / (1000 * 60 * 60 * 24);
+    const recency = Math.max(0, 1 - ageDays / 90);
+    const frequency = Math.min(1, (m.reinforcement_count || 0) / 10);
+
+    // Semantic relevance: how many keywords match this memory?
+    let relevance = 0;
+    if (currentKeywords.length > 0) {
+      const memoryLower = m.content.toLowerCase();
+      relevance = currentKeywords.filter(kw =>
+        memoryLower.includes(kw)
+      ).length / currentKeywords.length;
+    }
+
+    // weighted scoring: relevance 70%, importance 20%, recency 10%
+    const score = relevance * 0.7 + (m.importance || 0.5) * 0.2 + recency * 0.1;
+    return { ...m, _score: score, _relevance: relevance };
+  });
+
+  scored.sort((a, b) => b._score - a._score);
+
+  // Filter: relevance must be > 0 if there are keywords, or keep high-importance memories
+  const filtered = scored.filter(m =>
+    currentKeywords.length === 0 || m._relevance > 0 || (m.importance || 0.5) >= 0.7
+  );
+
+  const topMemories = filtered.slice(0, limit) as AIMemoryFragment[];
+
+  // Fetch recent summaries
+  const { data: summaries } = await supabase
+    .from("ai_memory_summaries")
+    .select("*")
+    .eq("user_id", userId)
+    .order("end_date", { ascending: false })
+    .limit(5);
+
+  return {
+    memories: topMemories,
+    summaries: summaries || [],
+  };
+}
+
+/**
+ * Build a context string from memories to inject into the AI prompt
+ */
+export function buildMemoryContext(
+  memories: AIMemoryFragment[],
+  summaries: AIMemorySummary[]
+): string {
+  const contextParts: string[] = [];
+
+  if (memories.length > 0) {
+    const byType: Record<string, string[]> = {
+      fact: [],
+      preference: [],
+      skill: [],
+      goal: [],
+      context: [],
+    };
+
+    memories.forEach(memory => {
+      byType[memory.memory_type]?.push(memory.content);
+    });
+
+    // Compact format - no emojis, short labels
+    if (byType.fact.length > 0) {
+      contextParts.push(`Facts: ${byType.fact.map(f => f.slice(0, 100)).join(" | ")}`);
+    }
+    if (byType.preference.length > 0) {
+      contextParts.push(`Prefs: ${byType.preference.map(p => p.slice(0, 100)).join(" | ")}`);
+    }
+    if (byType.skill.length > 0) {
+      contextParts.push(`Skills: ${byType.skill.map(s => s.slice(0, 100)).join(" | ")}`);
+    }
+    if (byType.goal.length > 0) {
+      contextParts.push(`Goals: ${byType.goal.map(g => g.slice(0, 100)).join(" | ")}`);
+    }
+  }
+
+  if (summaries.length > 0) {
+    const recentTopics = summaries
+      .slice(0, 2)
+      .map(s => s.summary.slice(0, 80));
+    contextParts.push(`Recent: ${recentTopics.join(" | ")}`);
+  }
+
+  if (contextParts.length === 0) {
+    return "";
+  }
+
+  // Ultra-compact format
+  return `[Memory] ${contextParts.join(" | ")}`;
+}
+
+/**
+ * Build personality instructions for the AI prompt
+ * @param personality - The AI personality settings
+ * @param analogyIntensity - Optional override for analogy frequency (0-5 scale)
+ */
+export function buildPersonalityInstructions(personality: AIPersonality, analogyIntensity?: number): string {
+  const instructions: string[] = [];
+  
+  // Determine if analogies should be used:
+  // - If analogyIntensity is explicitly 0, disable analogies (user toggle in chat)
+  // - If analogyIntensity > 0, use that level
+  // - Otherwise fall back to personality setting
+  let effectiveAnalogyIntensity: number;
+  if (analogyIntensity !== undefined) {
+    effectiveAnalogyIntensity = analogyIntensity;
+  } else {
+    effectiveAnalogyIntensity = personality.use_analogies ? (personality.analogy_frequency ?? 3) : 0;
+  }
+
+  instructions.push(
+    [
+      "HIGH PRIORITY: PERSONALITY SETTINGS ARE PRIMARY.",
+      "These settings ALWAYS override other instructions. Follow them exactly.",
+    ].join(" ")
+  );
+
+  // Tone and style
+  const toneDesc: string[] = [];
+  if (personality.friendliness >= 70) toneDesc.push("very warm and friendly");
+  else if (personality.friendliness <= 30) toneDesc.push("reserved and professional");
+  
+  if (personality.formality >= 70) toneDesc.push("formal");
+  else if (personality.formality <= 30) toneDesc.push("casual and conversational");
+  
+  if (personality.humor >= 70) toneDesc.push("witty with light humor");
+  else if (personality.humor <= 30) toneDesc.push("serious and straightforward");
+  else toneDesc.push("occasionally warm");
+
+  if (toneDesc.length > 0) {
+    instructions.push(`Tone: ${toneDesc.join(", ")}.`);
+  }
+
+  // Detail level - word count limits
+  let wordLimit = 200;
+  if (personality.detail_level >= 80) {
+    wordLimit = 500;
+    instructions.push("Responses: detailed and thorough. Show all angles. Word limit: 500.");
+  } else if (personality.detail_level >= 70) {
+    wordLimit = 400;
+    instructions.push("Responses: comprehensive. Word limit: 400.");
+  } else if (personality.detail_level >= 60) {
+    wordLimit = 300;
+    instructions.push("Responses: moderate detail. Word limit: 300.");
+  } else if (personality.detail_level >= 40) {
+    wordLimit = 200;
+    instructions.push("Responses: balanced. Word limit: 200.");
+  } else if (personality.detail_level >= 30) {
+    wordLimit = 150;
+    instructions.push("Responses: brief. Word limit: 150.");
+  } else {
+    wordLimit = 100;
+    instructions.push("Responses: concise. Get to the point fast. Word limit: 100.");
+  }
+
+  // Patience
+  if (personality.patience >= 80) {
+    instructions.push("VERY patient. Re-explain as many times as needed without frustration.");
+  } else if (personality.patience >= 60) {
+    instructions.push("Patient. Re-explain if they don't understand.");
+  } else if (personality.patience <= 30) {
+    instructions.push("Direct. Assume they grasp quickly after one explanation.");
+  }
+  
+  // Encouragement
+  if (personality.encouragement >= 80) {
+    instructions.push("Very encouraging. Celebrate progress, use enthusiastic language.");
+  } else if (personality.encouragement >= 60) {
+    instructions.push("Encouraging. Positive reinforcement.");
+  } else if (personality.encouragement <= 30) {
+    instructions.push("Direct feedback. Minimal praise - just help them improve.");
+  }
+
+  // Teaching methods
+  if (personality.socratic_method) {
+    instructions.push("Method: Guide with questions. Don't give direct answers - help them discover.");
+  } else {
+    instructions.push("Method: Direct answers. Explain clearly without questions.");
+  }
+
+  if (personality.step_by_step === false) {
+    instructions.push("Working: Skip unnecessary steps. Show key steps only.");
+  } else {
+    instructions.push("Working: Show all steps. Never skip.");
+  }
+
+  if (personality.real_world_examples === false) {
+    instructions.push("Examples: Abstract/theoretical only. No real-world references.");
+  }
+
+  // Response formatting
+  if (personality.use_emojis === false) {
+    instructions.push("Formatting: No emojis.");
+  }
+
+  // Analogies - Use effectiveAnalogyIntensity which considers both personality and chat context
+  if (effectiveAnalogyIntensity === 0) {
+    instructions.push("Analogy: NEVER use analogies. Direct explanation only.");
+  } else if (effectiveAnalogyIntensity >= 4) {
+    instructions.push("Analogy: Use often - weave analogies throughout explanations to make concepts memorable. Connect to the student's interests.");
+  } else if (effectiveAnalogyIntensity >= 3) {
+    instructions.push("Analogy: Use frequently - explain concepts using analogies from the student's interests when helpful.");
+  } else if (effectiveAnalogyIntensity >= 2) {
+    instructions.push("Analogy: Use for tricky concepts - analogies help when explaining difficult ideas.");
+  } else {
+    instructions.push("Analogy: Rarely. Only when essential for understanding.");
+  }
+
+  if (personality.use_section_dividers === false) {
+    instructions.push("Formatting: No ⸻ dividers. Just natural paragraphs.");
+  }
+
+  // Custom instructions
+  if (personality.custom_instructions?.trim()) {
+    instructions.push(`Custom: ${personality.custom_instructions.trim()}`);
+  }
+
+  if (personality.persona_description?.trim()) {
+    instructions.push(`Persona: ${personality.persona_description.trim()}`);
+  }
+
+  return instructions.join("\n");
+}
+
+/**
+ * Extract memories from a conversation to save
+ * This can be called after a conversation to automatically create memories
+ */
+export async function extractMemoriesFromConversation(
+  userId: string,
+  messages: Array<{ role: string; content: string }>,
+  subjectId?: string
+): Promise<void> {
+  const supabase = await createClient();
+  
+  // Get the last few user messages
+  const userMessages = messages
+    .filter(m => m.role === "user")
+    .slice(-5);
+
+  // Look for preference patterns
+  const preferenceKeywords = [
+    "i prefer", "i like", "i don't like", "i hate", "i love",
+    "prefer", "always", "never", "usually", "sometimes"
+  ];
+
+  const potentialMemories: Array<{ content: string; type: "preference" | "fact" | "goal" }> = [];
+
+  userMessages.forEach(msg => {
+    const lower = msg.content.toLowerCase();
+    
+    // Detect preferences
+    if (preferenceKeywords.some(kw => lower.includes(kw))) {
+      potentialMemories.push({
+        content: msg.content.slice(0, 500),
+        type: "preference",
+      });
+    }
+
+    // Detect goals
+    if (lower.includes("i want to") || lower.includes("i need to") || lower.includes("my goal")) {
+      potentialMemories.push({
+        content: msg.content.slice(0, 500),
+        type: "goal",
+      });
+    }
+  });
+
+  // Save high-confidence memories
+  for (const memory of potentialMemories.slice(0, 3)) {
+    await supabase.from("ai_memory_fragments").insert({
+      user_id: userId,
+      content: memory.content,
+      memory_type: memory.type,
+      importance: 0.6,
+      session_id: null,
+    });
+  }
+}

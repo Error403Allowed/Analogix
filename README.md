@@ -1,0 +1,258 @@
+# Analogix
+
+Analogix is an AI-powered study platform for Australian secondary students (Years 7-12). It combines a Groq-powered AI tutor with a structured study workspace (documents, flashcards, quizzes, study guides, collaborative rooms, and planning tools) so complex ideas feel intuitive and actionable.
+
+---
+
+## Features
+
+![Screenshot](./public/landing.png)
+![Screenshot](./public/dashboard.png)
+
+### AI Learning
+![Screenshot](./public/chat.png) 
+- **Analogix AI Tutor** - Analogy-first explanations woven throughout every response (not just at the end), connecting concepts to student's interests automatically
+- **ACARA Curriculum Integration** - Deep knowledge of Australian Curriculum v9.0 (Years 7-12) built into the AI for curriculum-aligned responses
+- **Workspace Context** - The AI has information to your calendar, documents, flashcards, and more!
+- **Smart Model Routing** - Automatic routing to coding, reasoning, or general models
+- **Subject Alignment** - Full ACARA curriculum knowledge with state-specific syllabus alignment (VIC, NSW, QLD, SA, WA, TAS, NT, ACT)
+- **Formula Context** - Maths/science formulas injected automatically
+- **AI Memory and Personality** - Analogix AI has extensive personality editing as well as presets, such as the friendly tutor, strict professor, and more! The AI tutor also saves memories, whether you want to manually add some, or it creates it itself, with the incorporated machine learning approach that saves memories about the user to further personalise and improve activity and responses
+
+### Documents & Study Workspace
+![Screenshot](./public/document-editor.png)
+- **Per-subject Documents** - Rich TipTap editor with math (KaTeX), code blocks, tables, autosave
+- **BlockNote Editor** - Notion-style blocks, slash commands, markdown shortcuts
+- **AI Document Assistant** - Doc-aware chat with "insert into notes"
+- **Document Revert** - Backup and restore previous versions
+- **Yjs Collaboration** - Real-time sync using Yjs CRDT
+
+### Flashcards & Quizzes
+![Screenshot](./public/flashcards.png)
+- **AI Flashcards** - Generated from chat or uploaded documents
+- **Manual Flashcards** - Create your own with front/back
+- **Spaced Repetition** - SM-2 algorithm with due scheduling
+- **Adaptive Quizzes** - Difficulty levels, timers, AI review feedback
+- **Short-answer Grading** - AI-powered answer evaluation
+- **Analogy Hints** - Get hints framed as analogies
+
+### Study Planning & Progress
+![Screenshot](./public/calendar.png)
+- **Calendar** - Day/week/month views, .ics import from school calendars
+- **Deadlines** - Assignment tracking with priority levels
+- **Study Timer** - Pomodoro-style sessions with goals
+- **Streaks** - Daily streak tracking
+- **Achievements** - Unlock badges for milestones
+- **Activity Stats** - Time spent, accuracy, progress over time
+
+### Collaboration & Rooms
+![Screenshot](./public/rooms.png)
+- **Study Rooms** - Create rooms for subjects or projects
+- **Room Members** - Invite peers to collaborate
+- **Real-time Editing** - Collaborative document editing in rooms
+- **Shared Flashcards** - Practice together with shared card sets
+
+### Resources & Formulas
+![Screenshot](./public/formulas.png)
+- **Resource Library** - Upload PDFs, DOCX, images, presentations
+- **Formula Sheets** - Subject-specific formula references
+- **Formula Search** - Search across all formula sheets
+
+### Personalization & UX
+- **Google Sign-in** - Supabase Auth
+- **Onboarding** - Select subjects, grade, state, interests
+- **Theme Selector** - Light/dark mode, custom themes
+- **Responsive UI** - Works on desktop and tablet
+
+---
+
+## Pages
+
+| Route | Page | Description |
+|-------|------|-------------|
+| `/` | Landing | Public landing page |
+| `/login` | Login | Google authentication |
+| `/onboarding` | Onboarding | Initial subject/grade setup |
+| `/dashboard` | Dashboard | Home with stats, deadlines, streak |
+| `/subjects` | Subjects | Subject overview |
+| `/subjects/:id` | Subject Detail | Subject workspace |
+| `/subjects/:id/document/:docId` | Document Editor | Rich text editor |
+| `/chat` | Chat | AI tutor conversation |
+| `/flashcards` | Flashcards | Flashcard review |
+| `/quiz` | Quiz | Quiz practice |
+| `/calendar` | Calendar | Event calendar |
+| `/timer` | Timer | Study timer |
+| `/rooms` | Rooms | Study rooms |
+| `/rooms/:roomId` | Room Workspace | Collaborative room |
+| `/achievements` | Achievements | Badges and milestones |
+| `/resources` | Resources | File library |
+| `/formulas` | Formulas | Formula reference |
+
+---
+
+## AI Models (Groq)
+
+Analogix uses Groq API with task-based routing:
+
+| Model | Use Case |
+|-------|----------|
+| `auto` | Auto-routes to best model for query |
+| `llama-4-scout-17b-16e-instruct` | All-round model, specialized in maths, coding and chatting |
+| `llama-3.3-70b-versatile` | Reliable and versatile for complex tasks |
+| `qwen-3-32b` | Reasoning model for mathematics and science |
+| `llama-3.1-8b-instant` | Lightweight model for quick questions |
+
+---
+
+## File Uploads
+
+- **Supported**: PDF, DOCX/DOC, PPTX/PPT, TXT, MD, CSV, RTF, images (JPG, PNG, WEBP)
+- **Max size**: 50 MB per file
+- **Used for**: Chat attachments, study guides, quizzes, flashcards, resources
+
+---
+
+## Tech Stack
+
+### Frontend
+- Next.js 16.1.6 (App Router)
+- React 18, TypeScript
+- Tailwind CSS + shadcn/ui (Radix)
+- Framer Motion animations
+- BlockNote editor (built on TipTap)
+- KaTeX for math, react-markdown
+- CodeMirror for code blocks
+
+### Backend & Data
+- Groq API via Vercel AI SDK (@ai-sdk/groq)
+- Supabase Auth + Postgres + RLS
+- TanStack Query
+- Yjs for real-time collaboration
+
+### Utilities
+- pdf-parse + mammoth (text extraction)
+- ical.js (calendar import)
+- @codemirror/lang-python
+- Vercel Analytics + Speed Insights
+
+---
+
+## Getting Started
+
+### Prerequisites
+- Node.js 20+
+- npm or bun
+- Groq API key
+- Supabase project
+
+### Setup
+
+1. Clone and install:
+```bash
+git clone https://github.com/Error403Allowed/Analogix.git
+cd Analogix
+npm install
+```
+
+2. Set up Supabase:
+```bash
+# Create project at supabase.com
+# Run migrations from supabase/migrations/
+# Enable Google Auth in Authentication → Providers
+```
+
+3. Create `.env.local`:
+```env
+# Groq (required)
+GROQ_API_KEY=your_groq_api_key
+GROQ_API_KEY_2=optional_secondary_key
+
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
+
+# App
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
+NEXT_PUBLIC_REALTIME_URL=       # Optional for production
+```
+
+4. Run:
+```bash
+npm run dev
+```
+Open `http://localhost:3000`
+
+---
+
+## Scripts
+
+| Command | Description |
+|--------|-------------|
+| `npm run dev` | Development server |
+| `npm run build` | Production build |
+| `npm run start` | Production server |
+| `npm run lint` | ESLint check |
+| `npm run tests` | Run test suite |
+| `npm run tests:list` | List available tests |
+| `npm run tests:filter` | Run tests matching filter |
+| `npm run tests:tag` | Run tests by tag |
+
+---
+
+## Project Structure
+
+```
+src/
+├── app/                    # Next.js App Router pages
+│   ├── api/               # API routes
+│   │   ├── groq/         # AI endpoints (chat, quiz, flashcards, etc.)
+│   │   ├── agents/       # Agentic workflow
+│   │   └── ...
+│   ├── subjects/         # Subject workspace
+│   ├── rooms/            # Study rooms
+│   └── ...
+├── components/            # UI components
+├── views/                 # Page components
+├── hooks/                 # Custom React hooks
+├── utils/                 # Stores, hooks, parsers
+├── lib/                  # Client/server utilities (curriculum, aiMemory, etc.)
+├── services/             # API services
+├── data/                 # Static resources (ACARA curriculum, formulaSheets, achievements)
+├── types/                 # TypeScript type definitions
+├── constants/            # App constants
+└── context/              # React context providers
+```
+
+---
+
+## Deployment
+
+Vercel (recommended):
+```bash
+npm install -g vercel
+vercel
+```
+
+Add environment variables in Vercel project settings.
+
+---
+
+## Troubleshooting
+
+### Missing GROQ_API_KEY
+Add to `.env.local` and restart server.
+
+### Auth Redirect Errors
+Set `NEXT_PUBLIC_SITE_URL` and whitelist in Supabase Auth.
+
+### File Upload Fails
+Check file size (50MB max) and format.
+
+### TypeScript/ESLint Errors
+Run `npm run lint` and fix issues before deploying.
+
+---
+
+## Contributing
+
+Issues and PRs welcome!

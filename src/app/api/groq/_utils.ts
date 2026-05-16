@@ -1,0 +1,911 @@
+// ============================================================================
+// CONFIGURATION: Where we send AI requests and which models to use
+// ============================================================================
+
+const GROQ_CHAT_URL =
+  process.env.GROQ_CHAT_URL || "https://api.groq.com/openai/v1/chat/completions";
+
+// Model name normalization - fixes any short names to full model IDs
+// Groq API requires exact model IDs like "llama-3.1-8b-instant", not "llama-3.1-8b"
+const normalizeModelId = (modelId: string): string => {
+  const modelMap: Record<string, string> = {
+    "llama-3.1-8b": "llama-3.1-8b-instant",
+    "llama-3.1-70b": "llama-3.1-70b-versatile",
+    "llama-3.3-70b": "llama-3.3-70b-versatile",
+    "llama3-8b": "llama-3.1-8b-instant",
+    "llama3-70b": "llama-3.3-70b-versatile",
+    "llama-4-scout": "meta-llama/llama-4-scout-17b-16e-instruct",
+    "qwen-3-32b": "qwen/qwen3-32b",
+  };
+  
+  // If already a full model ID, return as-is
+  if (modelId.includes("-instant") || modelId.includes("-versatile") || modelId.includes("meta-llama/")) {
+    return modelId;
+  }
+  
+  return modelMap[modelId] || modelId;
+};
+
+// Groq model lineup — using verified working model IDs from Groq API
+// Last verified: May 2025
+const DEFAULT_MODEL            = "llama-3.3-70b-versatile";                // Llama 3.3 70B - best quality
+const DEFAULT_FALLBACK_MODEL   = "llama-3.1-8b-instant";                   // Llama 3.1 8B - fast & cheap
+const HIGH_THROUGHPUT_MODEL    = "meta-llama/llama-4-scout-17b-16e-instruct"; // Higher TPM fallback for larger prompts
+
+// Additional models for specific use cases
+const LIGHTWEIGHT_MODEL        = "llama-3.1-8b-instant";                   // Fast, cheap
+const REASONING_MODEL          = "llama-3.3-70b-versatile";                // Use 70B for reasoning (DeepSeek R1 was decommissioned)
+const LARGE_MODEL              = "llama-3.3-70b-versatile";                // Large model
+const LAST_RESORT_MODEL        = "llama-3.1-8b-instant";                   // Fallback
+
+// User-selected model (from client) — if provided, use this instead of auto-selection
+let userSelectedModel: string | null = null;
+
+/**
+ * Set the user-selected model
+ * @param model The model string to use (e.g., "llama-3.3-70b-versatile"), or null to use auto-selection
+ */
+export const setUserSelectedModel = (model: string | null) => {
+  userSelectedModel = model;
+};
+
+/**
+ * Get the user-selected model, or null if auto-selection is enabled
+ */
+export const getUserSelectedModel = (): string | null => {
+  return userSelectedModel;
+};
+
+// Model-specific token limits - hard capped at 1900 to stay under Groq's 6k TPM rate limit
+// This leaves ~4000 tokens for input, keeping total request well within rate limits
+const MODEL_OUTPUT_LIMITS: Record<string, number> = {
+  "llama-3.3-70b-versatile": 1900,
+  "llama-3.1-70b-versatile": 1900,
+  "llama-3.1-8b-instant": 1900,
+  "meta-llama/llama-4-scout-17b-16e-instruct": 1900,
+  "openai/gpt-oss-20b": 1900,
+  "openai/gpt-oss-120b": 1900,
+  "qwen/qwen3-32b": 1900,
+};
+
+const MODEL_CONTEXT_LIMITS: Record<string, number> = {
+  "llama-3.3-70b-versatile": 131072,
+  "llama-3.1-70b-versatile": 131072,
+  "llama-3.1-8b-instant": 131072,
+  "meta-llama/llama-4-scout-17b-16e-instruct": 131072,
+  "openai/gpt-oss-20b": 131072,
+  "openai/gpt-oss-120b": 131072,
+  "qwen/qwen3-32b": 131072,
+};
+
+// Conservative per-request caps based on Groq free-tier ~6k TPM
+// With 1900 output tokens, we have ~4000 for input to stay comfortably under rate limits
+const MODEL_REQUEST_TOKEN_BUDGETS: Record<string, number> = {
+  "llama-3.3-70b-versatile": 5900,
+  "llama-3.1-70b-versatile": 5900,
+  "llama-3.1-8b-instant": 5900,
+  "meta-llama/llama-4-scout-17b-16e-instruct": 5900,
+  "openai/gpt-oss-20b": 5900,
+  "openai/gpt-oss-120b": 5900,
+  "qwen/qwen3-32b": 5900,
+};
+
+const MIN_COMPLETION_TOKENS = 256;
+
+const getSafeMaxTokens = (model: string, requested: number, estimatedInputTokens: number = 0): number => {
+  const limit = MODEL_OUTPUT_LIMITS[model] || 4096;
+  const requestBudget = MODEL_REQUEST_TOKEN_BUDGETS[model];
+  const maxByRequestBudget = requestBudget
+    ? Math.max(MIN_COMPLETION_TOKENS, requestBudget - estimatedInputTokens)
+    : requested;
+  return Math.min(requested, limit, maxByRequestBudget);
+};
+
+// Type definition: what kind of question is the user asking?
+export type TaskType = "coding" | "reasoning" | "default" | "lightweight" | "compound" | "compoundMini";
+
+// ============================================================================
+// SMART QUESTION DETECTION: How we figure out what type of question it is
+// ============================================================================
+
+// Words that indicate a CODING question
+const CODING_KEYWORDS = [
+  "code", "coding", "program", "programming", "function", "method", "class",
+  "debug", "debugging", "algorithm", "script", "syntax", "compiler", "variable",
+  "api", "endpoint", "database", "sql", "query", "javascript", "python", "java",
+  "typescript", "react", "node", "html", "css", "git", "github", "array", "object", 
+  "loop", "json", "const", "let", "var", "npm", "component", "interface"
+];
+
+// Words that indicate a REASONING / MATH / SCIENCE question
+// Keep this minimal - let the AI handle the actual reasoning
+const REASONING_KEYWORDS = [
+  "solve", "calculate", "find", "prove", "derivative", "integral",
+  "equation", "formula", "quadratic", "algebra", "geometry", "calculus",
+  "physics", "chemistry", "biology", "science"
+];
+
+// Simple greetings/small talk that should use fast path
+const SIMPLE_MESSAGES = [
+  "hi", "hello", "hey", "greetings", "g'day", "hiya", "heya",
+  "good morning", "good afternoon", "good evening", 
+  "how are you", "what's up", "how's it going", "how do you do",
+  "yo", "sup", "what's happening", "nice to meet you",
+  "thanks", "thank you", "cheers", "appreciate it",
+  "bye", "goodbye", "see you", "catch you later", "talk soon",
+  "ok", "okay", "sure", "yes", "no", "maybe", "alright",
+  "please", "help", "quick question", "one thing"
+];
+
+const isSimpleMessage = (messages: Array<{ role: string; content: string }>): boolean => {
+  // Check if there's only one short user message
+  const userMessages = messages.filter(m => m.role === "user");
+  if (userMessages.length !== 1) return false;
+  
+  const content = userMessages[0].content.toLowerCase().trim();
+  if (content.length > 50) return false;
+  
+  return SIMPLE_MESSAGES.some(simple => content.includes(simple));
+};
+
+// ============================================================================
+// API KEY MANAGEMENT
+// ============================================================================
+
+const apiKeys = [
+  process.env.GROQ_API_KEY,
+  process.env.GROQ_API_KEY_2,
+].filter((key): key is string => Boolean(key));
+
+// Simple round-robin: get next key index, wrapping around
+const getNextApiKeyIndex = (() => {
+  let index = 0;
+  return () => {
+    if (apiKeys.length === 0) return 0;
+    const currentIndex = index % apiKeys.length;
+    index = (index + 1) % apiKeys.length;
+    return currentIndex;
+  };
+})();
+
+const getApiKeyAtIndex = (index: number) => {
+  if (apiKeys.length === 0 || index < 0 || index >= apiKeys.length) return null;
+  return apiKeys[index];
+};
+
+// ============================================================================
+// RATE LIMITER: Token bucket to prevent API overload
+// ============================================================================
+
+// Groq free tier limits (adjust if you have different limits)
+const RATE_LIMIT_CONFIG = {
+  // Requests per minute per API key (conservative to avoid 429s)
+  rpmPerKey: 10,
+  // Tokens per minute per API key — Groq free tier is 6000 TPM per key
+  // We use 14000 as a generous local-side cap (actual enforcement is by Groq).
+  // The local bucket is just a soft throttle, not a hard gate.
+  tpmPerKey: 30000,
+  // Minimum delay between requests (ms) - spreads requests out
+  minDelayMs: 100,
+  // Maximum concurrent requests per key — set high enough that normal
+  // chat usage (2-3 messages in flight) never gets blocked locally.
+  // Groq's own 429s handle real overload; this just prevents runaway loops.
+  maxConcurrentPerKey: 10,
+};
+
+// Token bucket state per API key
+interface TokenBucket {
+  tokens: number;
+  lastRefill: number;
+  concurrentRequests: number;
+}
+
+const keyBuckets = new Map<number, TokenBucket>();
+
+const getOrCreateBucket = (keyIndex: number): TokenBucket => {
+  if (!keyBuckets.has(keyIndex)) {
+    keyBuckets.set(keyIndex, {
+      tokens: RATE_LIMIT_CONFIG.tpmPerKey,
+      lastRefill: Date.now(),
+      concurrentRequests: 0,
+    });
+  }
+  return keyBuckets.get(keyIndex)!;
+};
+
+const refillTokens = (bucket: TokenBucket) => {
+  const now = Date.now();
+  const elapsedMs = now - bucket.lastRefill;
+  // Refill at per-key rate only (not multiplied by key count)
+  const tokensPerMs = RATE_LIMIT_CONFIG.tpmPerKey / 60000;
+  const newTokens = Math.min(
+    RATE_LIMIT_CONFIG.tpmPerKey,
+    bucket.tokens + elapsedMs * tokensPerMs
+  );
+  bucket.tokens = newTokens;
+  bucket.lastRefill = now;
+};
+
+const waitForToken = async (
+  keyIndex: number,
+  requiredTokens: number
+): Promise<boolean> => {
+  const bucket = getOrCreateBucket(keyIndex);
+  refillTokens(bucket);
+
+  // Never block on concurrent requests locally — Groq handles real overload via 429.
+  // Just track it for observability.
+  bucket.concurrentRequests++;
+
+  // Deduct tokens if available; if not, let it through anyway (soft throttle only).
+  const effectiveRequired = Math.min(requiredTokens, RATE_LIMIT_CONFIG.tpmPerKey * 0.9);
+  if (bucket.tokens >= effectiveRequired) {
+    bucket.tokens -= effectiveRequired;
+  } else {
+    // Bucket empty — let it through, Groq will 429 if truly overloaded
+    bucket.tokens = 0;
+  }
+
+  return true;
+};
+
+const releaseRequest = (keyIndex: number) => {
+  const bucket = getOrCreateBucket(keyIndex);
+  bucket.concurrentRequests = Math.max(0, bucket.concurrentRequests - 1);
+};
+
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+const exponentialBackoff = async (attempt: number, baseMs: number = 500): Promise<void> => {
+  const waitTime = baseMs * Math.pow(2, attempt);
+  const jitter = Math.random() * 200;
+  console.log(`[Groq] Rate limited, backing off ${waitTime + jitter | 0}ms...`);
+  await delay(waitTime + jitter);
+};
+
+// Global request queue to serialize requests when rate limited
+const requestQueue: Array<() => void> = [];
+const isProcessingQueue = false;
+
+const enqueueRequest = (): Promise<void> => {
+  // Don't queue at all — let requests run concurrently.
+  // The token bucket and Groq's own 429s handle actual overload.
+  // The old serialisation was the primary cause of "can't reach AI service"
+  // on second messages (message 2 would queue behind message 1's stream).
+  return Promise.resolve();
+};
+
+// ============================================================================
+// ERROR HANDLING
+// ============================================================================
+
+const parseErrorMessage = async (response: Response) => {
+  try {
+    const raw = await response.text();
+    if (!raw) return response.statusText || `HTTP ${response.status}`;
+
+    try {
+      const parsed = JSON.parse(raw);
+      if (typeof parsed === "string") return parsed;
+      if (parsed?.error) {
+        if (typeof parsed.error === "string") {
+          // Enhance token limit error messages with explanation
+          if (response.status !== 429 && (parsed.error.toLowerCase().includes("token") || parsed.error.toLowerCase().includes("length"))) {
+            return "Response limit reached - I'm capped at ~1900 tokens per response due to API rate limits (Groq's free tier allows ~6000 tokens/minute). This keeps responses fast and reliable. For longer content, try breaking your question into parts or ask me to continue in a follow-up message.";
+          }
+          return parsed.error;
+        }
+        if (typeof parsed.error === "object" && parsed.error.message) {
+          // Enhance token limit error messages with explanation
+          const msg = parsed.error.message.toLowerCase();
+          if (response.status !== 429 && (msg.includes("token") || msg.includes("length") || msg.includes("maximum"))) {
+            return "Response limit reached - I'm capped at ~1900 tokens per response due to API rate limits (Groq's free tier allows ~6000 tokens/minute). This keeps responses fast and reliable. For longer content, try breaking your question into parts or ask me to continue in a follow-up message.";
+          }
+          return parsed.error.message;
+        }
+        return JSON.stringify(parsed.error);
+      }
+      if (parsed?.message) return parsed.message;
+      return JSON.stringify(parsed);
+    } catch {
+      return raw.slice(0, 500); // Return first 500 chars of raw response
+    }
+  } catch (e) {
+    console.error("[parseErrorMessage] Failed to parse error response:", e);
+    return response.statusText || `HTTP ${response.status}`;
+  }
+};
+
+export const assertApiKeys = () => {
+  if (apiKeys.length === 0) {
+    const errorMsg = "Missing GROQ_API_KEY environment variable. Please check your .env.local file.";
+    console.error("[assertApiKeys]", errorMsg);
+    throw new Error(errorMsg);
+  }
+};
+
+export const formatError = (error: unknown): string => {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  if (typeof error === "string") {
+    return error;
+  }
+  if (error && typeof error === "object" && "message" in error) {
+    return String((error as { message: unknown }).message);
+  }
+  return "Unknown error occurred";
+};
+
+// ============================================================================
+// QUESTION CLASSIFIER
+// ============================================================================
+
+export const classifyTaskType = (
+  messages: Array<{ role: string; content: string }>,
+  subject?: string
+): TaskType => {
+  // 1. Explicit subject-based overrides (Highest priority)
+  if (subject === "computing") {
+    return "coding";
+  }
+
+  const reasoningSubjects = ["math", "physics", "chemistry", "biology", "engineering"];
+  if (subject && reasoningSubjects.includes(subject)) {
+    return "reasoning";
+  }
+
+  // 2. Simple keyword detection - let the AI model do the heavy lifting
+  const userMessages = messages
+    .filter(m => m.role === "user")
+    .map(m => m.content.toLowerCase())
+    .join(" ");
+
+  const codingMatches = CODING_KEYWORDS.filter(keyword => userMessages.includes(keyword)).length;
+  const reasoningMatches = REASONING_KEYWORDS.filter(keyword => userMessages.includes(keyword)).length;
+
+  // Use reasoning model for math/science, coding model for programming
+  if (reasoningMatches >= 1 && reasoningMatches >= codingMatches) {
+    return "reasoning";
+  }
+  
+  if (codingMatches >= 1) {
+    return "coding";
+  }
+
+  return "default";
+};
+
+// ============================================================================
+// MODEL SELECTION
+// ============================================================================
+
+// Models that are unavailable or should not be used
+const BLOCKED_MODELS = ["gemma2-9b", "gemma-2-9b-it", "gemma2-9b-it"];
+
+const filterBlockedModels = (models: string[]): string[] => {
+  return models
+    .map(m => normalizeModelId(m))  // Normalize each model ID
+    .filter(m => !BLOCKED_MODELS.includes(m.toLowerCase()));
+};
+
+class GroqUpstreamError extends Error {
+  statusCode: number;
+
+  constructor(statusCode: number, message: string) {
+    super(message);
+    this.name = "GroqUpstreamError";
+    this.statusCode = statusCode;
+  }
+}
+
+const getRetryAfterMs = (response: Response): number => {
+  const retryAfter = response.headers.get("retry-after");
+  if (!retryAfter) return 0;
+
+  const seconds = Number.parseFloat(retryAfter);
+  if (Number.isFinite(seconds)) {
+    return Math.min(seconds * 1000, 8000);
+  }
+
+  const retryAt = Date.parse(retryAfter);
+  if (Number.isFinite(retryAt)) {
+    return Math.min(Math.max(0, retryAt - Date.now()), 8000);
+  }
+
+  return 0;
+};
+
+const getModelsForTaskType = (taskType: TaskType, userModel?: string | null, estimatedTokens?: number): string[] => {
+  // If user has explicitly selected a model, use only that model (if not blocked)
+  if (userModel && userModel !== "auto") {
+    const normalizedModel = normalizeModelId(userModel);
+    if (BLOCKED_MODELS.includes(normalizedModel.toLowerCase())) {
+      console.warn(`[Groq] Blocked model requested: ${normalizedModel}, falling back to auto`);
+    } else {
+      return [normalizedModel];
+    }
+  }
+
+  // Dynamic model selection based on context size
+  // Large context = use models with larger context windows
+  const defaultTokenBudget = MODEL_REQUEST_TOKEN_BUDGETS[DEFAULT_MODEL] || 12000;
+  if (estimatedTokens && estimatedTokens > defaultTokenBudget) {
+    console.log(`[Groq] Large request detected (${estimatedTokens} tokens), prioritizing high-throughput models`);
+    return filterBlockedModels([HIGH_THROUGHPUT_MODEL, DEFAULT_MODEL, DEFAULT_FALLBACK_MODEL]);
+  }
+
+  const CONTEXT_LIMIT = 8192;
+  if (estimatedTokens && estimatedTokens > CONTEXT_LIMIT * 0.7) {
+    console.log(`[Groq] Large context detected (${estimatedTokens} tokens), avoiding lightweight-only routing`);
+    return filterBlockedModels([DEFAULT_MODEL, HIGH_THROUGHPUT_MODEL, DEFAULT_FALLBACK_MODEL]);
+  }
+
+  // Auto-selection: pick models based on task type
+  let models: string[];
+  switch (taskType) {
+    case "coding":
+      models = [DEFAULT_MODEL, DEFAULT_FALLBACK_MODEL, LAST_RESORT_MODEL];
+      break;
+    case "reasoning":
+      models = [REASONING_MODEL, DEFAULT_MODEL, DEFAULT_FALLBACK_MODEL, LAST_RESORT_MODEL];
+      break;
+    case "lightweight":
+      models = [LIGHTWEIGHT_MODEL, DEFAULT_FALLBACK_MODEL, LAST_RESORT_MODEL];
+      break;
+    case "default":
+    default:
+      models = [DEFAULT_MODEL, DEFAULT_FALLBACK_MODEL, LAST_RESORT_MODEL];
+  }
+  return filterBlockedModels(models);
+};
+
+// DeepSeek-R1 works best with instructions in user messages, not system prompts.
+// This merges any system message into the first user message.
+const foldSystemIntoUser = (
+  messages: Array<{ role: "system" | "user" | "assistant"; content: string }>
+) => {
+  const systemMsg = messages.find(m => m.role === "system");
+  if (!systemMsg) return messages;
+  const rest = messages.filter(m => m.role !== "system");
+  const firstUser = rest.find(m => m.role === "user");
+  if (!firstUser) return rest;
+  return rest.map(m =>
+    m === firstUser
+      ? { ...m, content: `${systemMsg.content}\n\n${m.content}` }
+      : m
+  );
+};
+
+// ============================================================================
+// FAST PATH: For simple messages like greetings - no queue, lightweight model
+// ============================================================================
+
+const callFastChat = async (
+  payload: {
+    messages: Array<{ role: "system" | "user" | "assistant"; content: string }>;
+    max_tokens: number;
+    temperature: number;
+  }
+): Promise<string> => {
+  assertApiKeys();
+
+  const availableModels = filterBlockedModels([LIGHTWEIGHT_MODEL, DEFAULT_FALLBACK_MODEL, LAST_RESORT_MODEL]);
+  const model = availableModels[0] || LAST_RESORT_MODEL;
+  const keyIndex = getNextApiKeyIndex();
+  const apiKey = getApiKeyAtIndex(keyIndex);
+
+  if (!apiKey) {
+    throw new Error("No API key available");
+  }
+
+  // Estimate token size - skip fast path if request is too large
+  const messageText = payload.messages.map(m => m.content).join(" ");
+  const estimatedTokens = Math.ceil(messageText.length / 3.5);
+  const FAST_PATH_TOKEN_LIMIT = 5000; // Leave room for response tokens
+
+  if (estimatedTokens > FAST_PATH_TOKEN_LIMIT) {
+    console.log(`[Groq] FAST PATH skipped: request too large (${estimatedTokens} tokens)`);
+    throw new Error("Request too large for fast path");
+  }
+
+  console.log(`[Groq] FAST PATH: ${model} with key #${keyIndex + 1}`);
+
+  let controller: AbortController | null = null;
+  let timeoutId: NodeJS.Timeout | null = null;
+
+  try {
+    controller = new AbortController();
+    timeoutId = setTimeout(() => controller?.abort(), 8000); // 8s timeout for fast path
+
+    // Apply safe max tokens limit for lightweight model
+    const safeMaxTokens = getSafeMaxTokens(model, payload.max_tokens, estimatedTokens);
+
+    const response = await fetch(GROQ_CHAT_URL, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model,
+        messages: payload.messages,
+        max_tokens: Math.min(safeMaxTokens, 200), // Keep greeting replies short & fast
+        temperature: payload.temperature,
+      }),
+      signal: controller.signal,
+    });
+
+    if (timeoutId) clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      const errorMessage = await parseErrorMessage(response);
+      // If fast path fails, still return an error - don't fall back to slow path
+      throw new Error(`Fast path failed: ${response.status} - ${errorMessage}`);
+    }
+
+    const data = await response.json();
+    return data.choices?.[0]?.message?.content || "";
+
+  } catch (error) {
+    if (timeoutId) clearTimeout(timeoutId);
+    throw error;
+  }
+};
+
+// ============================================================================
+// MAIN API CALL
+// ============================================================================
+
+export const callGroqChat = async (
+  payload: {
+    messages: Array<{ role: "system" | "user" | "assistant"; content: string }>;
+    max_tokens: number;
+    temperature: number;
+  },
+  taskType: TaskType = "default",
+  userSelectedModel?: string | null
+) => {
+  assertApiKeys();
+
+  // FAST PATH: Simple messages like "hi" skip the queue and use lightweight model only
+  if (isSimpleMessage(payload.messages)) {
+    try {
+      return await callFastChat(payload);
+    } catch (error) {
+      // Fast path failed (e.g., request too large), fall through to normal path
+      console.log("[Groq] Fast path failed, using normal path");
+    }
+  }
+
+  // Estimate tokens BEFORE model selection
+  const messageText = payload.messages.map(m => m.content).join(" ");
+  const estimatedInputTokens = Math.ceil(messageText.length / 3.5);
+  const estimatedTokens = estimatedInputTokens + payload.max_tokens;
+
+  const taskModels = getModelsForTaskType(taskType, userSelectedModel, estimatedTokens);
+  const modelsToTry = [...new Set([...taskModels, DEFAULT_MODEL])];
+
+  console.log(`[Groq] Task: "${taskType}" → Models: ${modelsToTry.join(" → ")} | API Keys: ${apiKeys.length} | Est. tokens: ${estimatedTokens}`);
+
+  let lastError: unknown = null;
+  const startingKeyIndex = getNextApiKeyIndex();
+
+  // Wait in queue to prevent overwhelming the API
+  await enqueueRequest();
+
+  const MAX_RETRY_ROUNDS_PER_MODEL = 2;
+
+  // Try each model with each API key. Retry transient 429s after the advertised
+  // wait, otherwise a short retry-after just burns time and the model is never
+  // attempted again.
+  for (const model of modelsToTry) {
+    const contextLimit = MODEL_CONTEXT_LIMITS[model] || 8192;
+    if (estimatedInputTokens + MIN_COMPLETION_TOKENS > contextLimit) {
+      lastError = new GroqUpstreamError(413, `Groq API Error: 413 - Request too large for ${model}`);
+      console.warn(`[Groq] ${model} skipped: prompt exceeds context window`);
+      continue;
+    }
+
+    let tryNextModel = false;
+
+    for (let retryRound = 0; retryRound < MAX_RETRY_ROUNDS_PER_MODEL && !tryNextModel; retryRound++) {
+      for (let keyOffset = 0; keyOffset < apiKeys.length; keyOffset++) {
+        const keyIndex = (startingKeyIndex + keyOffset) % apiKeys.length;
+        const apiKey = getApiKeyAtIndex(keyIndex);
+
+        if (!apiKey) continue;
+
+        // Apply safe max tokens limit for this specific model and current prompt.
+        const safeMaxTokens = getSafeMaxTokens(model, payload.max_tokens, estimatedInputTokens);
+        const requestTokens = estimatedInputTokens + safeMaxTokens;
+
+        await waitForToken(keyIndex, requestTokens);
+
+        let controller: AbortController | null = null;
+        let timeoutId: NodeJS.Timeout | null = null;
+
+        try {
+          console.log(`[Groq] Trying: ${model} with key #${keyIndex + 1}${retryRound > 0 ? ` (retry ${retryRound + 1})` : ""}`);
+
+          // Set up timeout for the request (120 seconds)
+          controller = new AbortController();
+          timeoutId = setTimeout(() => {
+            console.warn(`[Groq] Request timeout for ${model} after 120s`);
+            controller!.abort();
+          }, 120000);
+
+          const response = await fetch(GROQ_CHAT_URL, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${apiKey}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              model,
+              messages: payload.messages,
+              max_tokens: safeMaxTokens,
+              temperature: payload.temperature,
+            }),
+            signal: controller.signal,
+          });
+
+          // Clear timeout and release slot
+          if (timeoutId) clearTimeout(timeoutId);
+          releaseRequest(keyIndex);
+
+          if (!response.ok) {
+            const errorMessage = await parseErrorMessage(response);
+            const statusCode = response.status;
+
+            // On 429 (rate limit) — detect TPD vs per-minute limits
+            if (statusCode === 429) {
+              lastError = new GroqUpstreamError(429, `Groq API Error: 429 - ${errorMessage}`);
+              const isDaily = errorMessage.includes("per day") || errorMessage.includes("tokens per day") || errorMessage.includes("TPD");
+              if (isDaily) {
+                // Daily limit hit — no other key can help, skip to next model entirely
+                console.warn(`[Groq] ${model} daily token limit exhausted, skipping to next model...`);
+                tryNextModel = true;
+                break;
+              }
+              const waitMs = getRetryAfterMs(response);
+              if (waitMs > 0) {
+                console.log(`[Groq] Rate limited, waiting ${waitMs}ms...`);
+                await delay(waitMs);
+              } else {
+                await exponentialBackoff(keyOffset + retryRound);
+              }
+              continue;
+            }
+
+            // On 413 (request too large), this model won't work - try next model
+            if (statusCode === 413) {
+              lastError = new GroqUpstreamError(413, `Groq API Error: 413 - ${errorMessage}`);
+              console.warn(`[Groq] ${model} request too large on key #${keyIndex + 1}, trying next model...`);
+              tryNextModel = true;
+              break; // Try next model (not just next key)
+            }
+
+            // On 401/403, API key is invalid - don't retry with this key
+            if (statusCode === 401 || statusCode === 403) {
+              lastError = new GroqUpstreamError(503, `Groq API Error: ${statusCode} - ${errorMessage}`);
+              console.error(`[Groq] ${model} authentication failed on key #${keyIndex + 1} - check API key`);
+              continue; // Try next key
+            }
+
+            // On 5xx errors, Groq has an issue - try next key
+            if (statusCode >= 500 && statusCode < 600) {
+              lastError = new GroqUpstreamError(503, `Groq API Error: ${statusCode} - ${errorMessage}`);
+              console.warn(`[Groq] ${model} server error (${statusCode}) on key #${keyIndex + 1}, trying next key...`);
+              await delay(500);
+              continue;
+            }
+
+            throw new GroqUpstreamError(statusCode, `Groq API Error: ${statusCode} - ${errorMessage}`);
+          }
+
+          const data = await response.json();
+          const content = data.choices?.[0]?.message?.content || "";
+          console.log(`[Groq] ${model} ✅ success with key #${keyIndex + 1}`);
+          return content;
+
+        } catch (error) {
+          // Clean up timeout
+          if (timeoutId) clearTimeout(timeoutId);
+          releaseRequest(keyIndex);
+
+          lastError = error;
+
+          // Handle abort/timeout errors
+          if (error instanceof Error && error.name === "AbortError") {
+            console.warn(`[Groq] Request timeout for model ${model}`);
+            continue;
+          }
+
+          const message = formatError(error);
+          const statusMatch = message.match(/Groq API Error: (\d+)/);
+          const statusCode = statusMatch ? statusMatch[1] : "ERR";
+          console.warn(`[Groq] ${model} ❌ key #${keyIndex + 1} failed (${statusCode})`);
+          // Continue to next API key
+        }
+      }
+    }
+    // All keys exhausted for this model, try next model
+  }
+
+  throw lastError instanceof Error ? lastError : new GroqUpstreamError(503, "AI service failed after trying all models and API keys");
+};
+
+// ============================================================================
+// MAIN API CALL - STREAMING VERSION
+// ============================================================================
+
+export const callGroqChatStream = async (
+  payload: {
+    messages: Array<{ role: "system" | "user" | "assistant"; content: string }>;
+    max_tokens: number;
+    temperature: number;
+  },
+  taskType: TaskType = "default",
+  userSelectedModel?: string | null
+) => {
+  assertApiKeys();
+
+  // Estimate tokens BEFORE model selection
+  const messageText = payload.messages.map(m => m.content).join(" ");
+  const estimatedInputTokens = Math.ceil(messageText.length / 3.5);
+  const estimatedTokens = estimatedInputTokens + payload.max_tokens;
+
+  const taskModels = getModelsForTaskType(taskType, userSelectedModel, estimatedTokens);
+  const modelsToTry = [...new Set([...taskModels, DEFAULT_MODEL])];
+
+  console.log(`[Groq] Task: "${taskType}" → Models: ${modelsToTry.join(" → ")} | API Keys: ${apiKeys.length} | Est. tokens: ${estimatedTokens}`);
+
+  let lastError: unknown = null;
+  const startingKeyIndex = getNextApiKeyIndex();
+
+  // Wait in queue to prevent overwhelming the API
+  await enqueueRequest();
+
+  const MAX_RETRY_ROUNDS_PER_MODEL = 2;
+
+  // Try each model with each API key. Retry transient 429s after waiting so
+  // short Groq retry-after windows do not immediately fall through to 500s.
+  for (const model of modelsToTry) {
+    const contextLimit = MODEL_CONTEXT_LIMITS[model] || 8192;
+    if (estimatedInputTokens + MIN_COMPLETION_TOKENS > contextLimit) {
+      lastError = new GroqUpstreamError(413, `Groq API Error: 413 - Request too large for ${model}`);
+      console.warn(`[Groq] ${model} skipped: prompt exceeds context window`);
+      continue;
+    }
+
+    let tryNextModel = false;
+
+    for (let retryRound = 0; retryRound < MAX_RETRY_ROUNDS_PER_MODEL && !tryNextModel; retryRound++) {
+      for (let keyOffset = 0; keyOffset < apiKeys.length; keyOffset++) {
+        const keyIndex = (startingKeyIndex + keyOffset) % apiKeys.length;
+        const apiKey = getApiKeyAtIndex(keyIndex);
+
+        if (!apiKey) continue;
+
+        // Apply safe max tokens limit for this specific model and current prompt.
+        const safeMaxTokens = getSafeMaxTokens(model, payload.max_tokens, estimatedInputTokens);
+        const requestTokens = estimatedInputTokens + safeMaxTokens;
+
+        await waitForToken(keyIndex, requestTokens);
+
+        let controller: AbortController | null = null;
+        let timeoutId: NodeJS.Timeout | null = null;
+
+        try {
+          console.log(`[Groq] Trying: ${model} with key #${keyIndex + 1} (streaming${retryRound > 0 ? ` retry ${retryRound + 1}` : ""})`);
+
+          // Set up timeout for the request (90 seconds for streaming)
+          controller = new AbortController();
+          timeoutId = setTimeout(() => {
+            console.warn(`[Groq] Streaming request timeout for ${model} after 90s`);
+            controller!.abort();
+          }, 90000);
+
+          const response = await fetch(GROQ_CHAT_URL, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${apiKey}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              model,
+              stream: true,
+              messages: payload.messages,
+              max_tokens: safeMaxTokens,
+              temperature: payload.temperature,
+            }),
+            signal: controller.signal,
+          });
+
+          // Clear timeout and release slot
+          if (timeoutId) clearTimeout(timeoutId);
+          releaseRequest(keyIndex);
+
+          if (!response.ok) {
+            const errorMessage = await parseErrorMessage(response);
+            const statusCode = response.status;
+
+            // On 429 (rate limit) — detect TPD vs per-minute limits
+            if (statusCode === 429) {
+              lastError = new GroqUpstreamError(429, `Groq API Error: 429 - ${errorMessage}`);
+              const isDaily = errorMessage.includes("per day") || errorMessage.includes("tokens per day") || errorMessage.includes("TPD");
+              if (isDaily) {
+                console.warn(`[Groq] ${model} daily token limit exhausted, skipping to next model...`);
+                tryNextModel = true;
+                break;
+              }
+              const waitMs = getRetryAfterMs(response);
+              if (waitMs > 0) {
+                console.log(`[Groq] Rate limited, waiting ${waitMs}ms...`);
+                await delay(waitMs);
+              } else {
+                await exponentialBackoff(keyOffset + retryRound);
+              }
+              continue;
+            }
+
+            // On 413 (request too large), this model won't work - try next model
+            if (statusCode === 413) {
+              lastError = new GroqUpstreamError(413, `Groq API Error: 413 - ${errorMessage}`);
+              console.warn(`[Groq] ${model} request too large on key #${keyIndex + 1}, trying next model...`);
+              tryNextModel = true;
+              break;
+            }
+
+            // On 401/403, API key is invalid
+            if (statusCode === 401 || statusCode === 403) {
+              lastError = new GroqUpstreamError(503, `Groq API Error: ${statusCode} - ${errorMessage}`);
+              console.error(`[Groq] ${model} authentication failed on key #${keyIndex + 1} - check API key`);
+              continue;
+            }
+
+            // On 5xx errors, Groq has an issue - try next key
+            if (statusCode >= 500 && statusCode < 600) {
+              lastError = new GroqUpstreamError(503, `Groq API Error: ${statusCode} - ${errorMessage}`);
+              console.warn(`[Groq] ${model} server error (${statusCode}) on key #${keyIndex + 1}, trying next key...`);
+              await delay(500);
+              continue;
+            }
+
+            throw new GroqUpstreamError(statusCode, `Groq API Error: ${statusCode} - ${errorMessage}`);
+          }
+
+          console.log(`[Groq] ${model} ✅ streaming success with key #${keyIndex + 1}`);
+          return response.body!;
+
+        } catch (error) {
+          // Clean up timeout
+          if (timeoutId) clearTimeout(timeoutId);
+          releaseRequest(keyIndex);
+
+          lastError = error;
+
+          // Handle abort/timeout errors
+          if (error instanceof Error && error.name === "AbortError") {
+            console.warn(`[Groq] Streaming request timeout for model ${model}`);
+            continue;
+          }
+
+          const message = formatError(error);
+          const statusMatch = message.match(/Groq API Error: (\d+)/);
+          const statusCode = statusMatch ? statusMatch[1] : "ERR";
+          console.warn(`[Groq] ${model} ❌ key #${keyIndex + 1} failed (${statusCode})`);
+          // Continue to next API key
+        }
+      }
+    }
+    // All keys exhausted for this model, try next model
+  }
+
+  throw lastError instanceof Error ? lastError : new GroqUpstreamError(503, "AI service failed after trying all models and API keys");
+};
+
+// Backward compatibility aliases
+export const callHfChat = callGroqChat;
+export const callHfChatStream = callGroqChatStream;
