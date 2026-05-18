@@ -150,11 +150,6 @@ export async function* getGroqStream(
     });
   }
 
-  // Sane throttling - prevent spam overload while keeping responses fast
-  await aiThrottle.execute(async () => {
-    // Just a placeholder to use the throttle - actual fetch happens below
-  });
-
   const response = await fetch("/api/groq/chat-stream", {
     method: "POST",
     headers,

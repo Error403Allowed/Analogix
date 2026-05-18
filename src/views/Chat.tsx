@@ -308,6 +308,7 @@ const Chat = () => {
   
   // STREAMING: id of the message currently receiving tokens (null = idle)
   const [streamingId, setStreamingId] = useState<string | null>(null);
+  const [streamingContent, setStreamingContent] = useState("");
   const abortRef = useRef<AbortController | null>(null);
   
   // DEDUP: Track last message for spam prevention
@@ -1171,64 +1172,33 @@ const Chat = () => {
         }]);
         setIsTyping(false);
         setStreamingId(responseId);
+        setStreamingContent("");
         lockedToBottomRef.current = false;
 
         const abort = new AbortController();
         abortRef.current = abort;
         let accumulated = "";
 
-        // Throttle renders for smoothness - update every ~40ms (about 25 updates/second)
-        let lastRenderTime = 0;
-        const RENDER_INTERVAL = 40;
-
-        // Use requestAnimationFrame to batch visual updates with browser refresh rate
-        let rafId: number | null = null;
-        const scheduleUpdate = (content: string) => {
-          if (rafId) return;
-          rafId = requestAnimationFrame(() => {
-            setMessages(prev => prev.map(m =>
-              m.id === responseId ? { ...m, content } : m
-            ));
-            rafId = null;
-          });
+        // Strip internal artifacts from displayed content
+        const cleanForDisplay = (text: string) => {
+          return text
+            .replace(/<system-reminder[\s\S]*?<\/system-reminder>/gi, "")
+            .replace(/<\|[\w_]+\|>/g, "")
+            .replace(/<ACTIONS\s*>[\s\S]*?<\/ACTIONS\s*>/gi, "")
+            .replace(/<ACTIONS\s*>[\s\S]*/gi, "") // Handle unclosed tag
+            .trim();
         };
 
         const stream = getGroqStream(newHistory, context, localStorageData);
         for await (const token of stream) {
           if (abort.signal.aborted) break;
           accumulated += token;
-
-          const now = Date.now();
-          if (now - lastRenderTime > RENDER_INTERVAL) {
-            const displayAccumulated = accumulated.replace(/<ACTIONS>[\s\S]*?(<\/ACTIONS>|$)/i, "").trim();
-            scheduleUpdate(displayAccumulated);
-            lastRenderTime = now;
-            // No auto-scroll here — user is in control during generation
-          }
-        }
-
-        // Cancel any pending animation frame
-        if (rafId) {
-          cancelAnimationFrame(rafId);
-          rafId = null;
+          setStreamingContent(cleanForDisplay(accumulated));
         }
 
         // ── Parse and execute any <ACTIONS> block from the response ──────────
-        // Filter out internal system artifacts from model output
-        const cleanedAccumulated = accumulated
-          .replace(/<system-reminder[\s\S]*?<\/system-reminder>/gi, "")
-          .replace(/<\|[\w_]+\|>/g, "")
-          .trim();
-        
-        let displayContent = cleanedAccumulated || "I'm not sure how to answer that.";
-        // More robust regex - handles optional whitespace and newlines
         const actionsMatch = accumulated.match(/<ACTIONS\s*>[\s\S]*?<\/ACTIONS\s*>/i);
         if (actionsMatch) {
-          // Strip the actions block from what the user sees - also handle if closing tag is missing
-          displayContent = accumulated
-            .replace(/<ACTIONS\s*>[\s\S]*?<\/ACTIONS\s*>/gi, "")
-            .replace(/<ACTIONS\s*>[\s\S]*/gi, "") // Handle case without closing tag
-            .trim();
           try {
             const cleaned = actionsMatch[1].trim().replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "").trim();
             const parsed = JSON.parse(cleaned);
@@ -1272,38 +1242,42 @@ const Chat = () => {
           }
         }
 
-        // Final update with any remaining content
+        // Final update — merge streaming content into messages and mark streaming as done
+        const finalContent = cleanForDisplay(accumulated) || "I'm not sure how to answer that.";
         setMessages(prev => prev.map(m =>
-          m.id === responseId ? { ...m, isStreaming: false, content: displayContent } : m
+          m.id === responseId ? { ...m, isStreaming: false, content: finalContent } : m
         ));
         setStreamingId(null);
+        setStreamingContent("");
 
       // Fire-and-forget memory extraction — throttled to avoid rate limits
-      // Skips: trivial inputs, greetings, very short messages, and every-other-call
+      // Skips: trivial inputs, greetings, very short messages
       const trimmedAccumulated = accumulated.trim();
-      const userMessages = messages.filter(m => m.role === "user" && !m.isWelcome);
-      const lastUserMsg = userMessages[userMessages.length - 1]?.content?.trim().toLowerCase() || "";
+      const lastUserMsg = userContent.trim().toLowerCase();
 
       // Check if last user message was trivial
       const isTrivialInput = lastUserMsg.length < 15 && /^(hi|hello|hey|sup|yo|ok|k|lol|thanks?|bye|good\s?(morning|evening|afternoon)|what'?s up|how are you|\?)$/i.test(lastUserMsg);
 
-      // Only extract every 4th message to avoid hammering Groq
-      const extractionMod = 4;
-      const shouldExtract = trimmedAccumulated.length >= 20 &&
-        !isTrivialInput &&
-        lastUserMsg.length >= 15 &&
-        (userMessages.length % extractionMod === 0 || userMessages.length <= 2);
+      // Extract on every meaningful exchange (not every 4th — that was too sparse)
+      const shouldExtract = trimmedAccumulated.length >= 20 && !isTrivialInput && lastUserMsg.length >= 10;
+
+      console.log("[memory] shouldExtract:", shouldExtract, "| isTrivial:", isTrivialInput, "| userMsgLen:", lastUserMsg.length, "| aiRespLen:", trimmedAccumulated.length);
 
       if (shouldExtract) {
+        // Include the full conversation: prior messages + current user message + AI response
         const messagesForExtraction = [
-          ...messages.filter(m => !m.isWelcome).map(m => ({ role: m.role, content: m.content })),
-          { role: "assistant" as const, content: trimmedAccumulated },
+          ...newHistory, // includes all prior messages + current user message
+          { role: "assistant" as const, content: trimmedAccumulated }, // current AI response
         ];
+        console.log("[memory] Sending extraction request with", messagesForExtraction.length, "messages");
         fetch("/api/ai/memory/extract", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ messages: messagesForExtraction, subjectId: selectedSubject }),
-        }).then(r => r.json()).then(d => console.log("[memory] extract result:", d)).catch(() => {});
+        })
+          .then(r => r.json())
+          .then(d => console.log("[memory] extract result:", d))
+          .catch(err => console.error("[memory] extract error:", err));
       }
 
       // Save to Supabase
@@ -1368,6 +1342,7 @@ Title:` }];
           content: "I couldn't reach the AI service, you've either hit the rate limit of 1000 requests per day or you need to check your internet.",
         }]);
         setStreamingId(null);
+        setStreamingContent("");
       } finally {
         setIsTyping(false);
         abortRef.current = null;
@@ -1419,6 +1394,7 @@ Title:` }];
     setChatSessionId(session.id);
     setMessages([]);
     setStreamingId(null);
+    setStreamingContent("");
 
     const msgs = await chatStore.getMessages(session.id);
     if (msgs.length === 0) {
@@ -1449,6 +1425,7 @@ Title:` }];
     setChatSessionId(null);
     setInput("");
     setStreamingId(null);
+    setStreamingContent("");
     abortRef.current?.abort();
   };
 
@@ -1751,7 +1728,7 @@ Title:` }];
                                   />
                                 </a>
                               )}
-                              {message.isStreaming && !parseThinkingContent(message.content).response.trim() && (
+                              {message.isStreaming && !parseThinkingContent(message.isStreaming ? streamingContent : message.content).response.trim() && (
                                 <div className="flex items-center gap-1.5 py-1">
                                   <div className="w-1.5 h-1.5 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: '0ms' }} />
                                   <div className="w-1.5 h-1.5 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: '120ms' }} />
@@ -1759,7 +1736,7 @@ Title:` }];
                                 </div>
                               )}
                               <StreamingMessage
-                                content={parseThinkingContent(message.content).response}
+                                content={parseThinkingContent(message.isStreaming ? streamingContent : message.content).response}
                                 isStreaming={!!message.isStreaming}
                               />
                               {message.sources && message.sources.length > 0 && (
@@ -2024,22 +2001,6 @@ Title:` }];
                           )}
                           {generatingQuiz ? 'Generating...' : quizGenerated ? 'Created!' : 'Quiz'}
                         </button>
-                        <button
-                          type="button"
-                          onClick={handleGenerateStudyGuide}
-                          disabled={generatingStudyGuide}
-                          className="flex items-center gap-2 px-4 py-2 rounded-xl gradient-primary text-white text-xs font-bold hover:opacity-90 transition-opacity disabled:opacity-50"
-                          title="Generate comprehensive study guide"
-                        >
-                          {generatingStudyGuide ? (
-                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                          ) : studyGuideGenerated ? (
-                            <Check className="w-3.5 h-3.5" />
-                          ) : (
-                            <BookOpen className="w-3.5 h-3.5" />
-                          )}
-                          {generatingStudyGuide ? 'Generating...' : studyGuideGenerated ? 'Guide Created!' : 'Study Guide'}
-                        </button>
                       </div>
                     )}
                   </div>
@@ -2047,7 +2008,6 @@ Title:` }];
                 
                 <div className="relative rounded-2xl bg-card border border-border/50 shadow-lg shadow-black/5" data-tour="chat-input">
                   {/* Subtle top gradient accent */}
-                  <div className="absolute top-0 left-4 right-4 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
 
                   <Textarea
                     ref={textareaRef}
@@ -2065,11 +2025,11 @@ Title:` }];
                   />
 
                   {/* Bottom row of input - separate from textarea */}
-                  <div className="flex items-center justify-between px-3 pb-3 pt-1 bg-card rounded-b-2xl">
+                  <div className="flex items-center justify-between px-2.5 pb-2.5 pt-1 bg-card rounded-b-2xl">
                     {/* Left side: attach + toolbar icons */}
-                    <div className="flex items-center gap-0.5">
+                    <div className="flex items-center gap-1">
                       {/* Attach file */}
-                      <div className="relative w-9 h-9 group">
+                      <div className="relative w-8 h-8 group">
                         <input
                           ref={fileInputRef}
                           type="file"
@@ -2083,90 +2043,83 @@ Title:` }];
                         <button
                           type="button"
                           disabled={fileExtracting}
-                          className="w-9 h-9 rounded-xl bg-muted/50 hover:bg-muted flex items-center justify-center text-muted-foreground transition-all disabled:opacity-50 group-hover:text-foreground"
+                          className="w-8 h-8 rounded-lg bg-transparent hover:bg-muted/60 flex items-center justify-center text-muted-foreground/60 transition-all disabled:opacity-50 group-hover:text-foreground"
                           title={fileExtracting ? "Extracting file…" : "Attach files"}
                           aria-hidden="true"
                           tabIndex={-1}
                         >
                           {fileExtracting
-                            ? <RefreshCw className="w-4 h-4 animate-spin" />
-                            : <Paperclip className="w-4 h-4" />}
+                            ? <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                            : <Paperclip className="w-3.5 h-3.5" />}
                         </button>
                       </div>
 
                       {/* Model selector button */}
-                      <div className="flex items-center gap-0.5 ml-1" data-tour="model-selector">
-                        <button
-                          type="button"
-                          onClick={() => setShowModelSelector(true)}
-                          disabled={isInputLocked}
-                          className="h-9 px-3 rounded-xl bg-muted/50 hover:bg-muted flex items-center gap-2 text-xs font-medium text-muted-foreground transition-all hover:text-foreground disabled:opacity-40"
-                          title="Select AI model"
-                        >
-                          <Brain className="w-4 h-4" />
-                          <span className="hidden sm:inline">
-                            {GROQ_MODELS.find(m => m.id === selectedModel)?.name || "Auto"}
-                          </span>
-                          <ChevronUp className="w-3 h-3" />
-                        </button>
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setShowModelSelector(true)}
+                        disabled={isInputLocked}
+                        className="h-8 px-2.5 rounded-lg hover:bg-muted/60 flex items-center gap-1.5 text-xs font-medium text-muted-foreground/70 transition-all hover:text-foreground disabled:opacity-40"
+                        title="Select AI model"
+                      >
+                        <Brain className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline truncate max-w-[130px]">
+                          {GROQ_MODELS.find(m => m.id === selectedModel)?.name || "Auto"}
+                        </span>
+                      </button>
 
                       {/* Research mode */}
-                      <div className="flex items-center gap-0.5" data-tour="research-toggle">
-                        <button
-                          type="button"
-                          onClick={() => setResearchMode(p => !p)}
-                          disabled={isInputLocked}
-                          className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all disabled:opacity-40 ${researchMode ? "text-primary bg-primary/10" : "text-muted-foreground bg-muted/50 hover:bg-muted hover:text-foreground"}`}
-                          title={researchMode ? "Research mode on" : "Research mode off"}
-                        >
-                          {researchLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Atom className="w-4 h-4" />}
-                        </button>
-                      </div>
-
-                      {/* AI Settings button */}
-                      <div className="flex items-center gap-0.5">
-                        <button
-                          type="button"
-                          onClick={() => setShowAISettings(true)}
-                          disabled={isInputLocked}
-                          className="w-9 h-9 rounded-xl flex items-center justify-center transition-all text-muted-foreground bg-muted/50 hover:bg-muted hover:text-foreground"
-                          title="AI Settings"
-                        >
-                          <Settings2 className="w-4 h-4" />
-                        </button>
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setResearchMode(p => !p)}
+                        disabled={isInputLocked}
+                        className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all disabled:opacity-40 ${researchMode ? "text-primary bg-primary/10" : "text-muted-foreground/60 hover:bg-muted/60 hover:text-foreground"}`}
+                        title={researchMode ? "Research mode on" : "Research mode off"}
+                      >
+                        {researchLoading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Atom className="w-3.5 h-3.5" />}
+                      </button>
 
                       {/* Formula sheet — only if subject has formulas */}
                       {getFormulaSheet(selectedSubject || "") && (
-                        <div className="flex items-center gap-0.5">
-                          <button
-                            type="button"
-                            onClick={() => setFormulaPanelOpen(o => !o)}
-                            className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all ${formulaPanelOpen ? "text-primary bg-primary/10" : "text-muted-foreground bg-muted/50 hover:bg-muted hover:text-foreground"}`}
-                            title="Formula sheet"
-                          >
-                            <Sigma className="w-4 h-4" />
-                          </button>
-                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setFormulaPanelOpen(o => !o)}
+                          className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${formulaPanelOpen ? "text-primary bg-primary/10" : "text-muted-foreground/60 hover:bg-muted/60 hover:text-foreground"}`}
+                          title="Formula sheet"
+                        >
+                          <Sigma className="w-3.5 h-3.5" />
+                        </button>
                       )}
+
+                      {/* AI Settings button */}
+                      <button
+                        type="button"
+                        onClick={() => setShowAISettings(true)}
+                        disabled={isInputLocked}
+                        className="w-8 h-8 rounded-lg flex items-center justify-center transition-all text-muted-foreground/60 hover:bg-muted/60 hover:text-foreground"
+                        title="AI Settings"
+                      >
+                        <Settings2 className="w-3.5 h-3.5" />
+                      </button>
                     </div>
+
+                    {/* Right side: send/stop button */}
                     {(isTyping || streamingId) ? (
                       <button
                         type="button"
-                        onClick={() => { abortRef.current?.abort(); setStreamingId(null); setIsTyping(false); }}
-                        className="w-10 h-10 rounded-xl bg-foreground/10 hover:bg-foreground/20 flex items-center justify-center text-foreground/70 transition-all"
+                        onClick={() => { abortRef.current?.abort(); setStreamingId(null); setStreamingContent(""); setIsTyping(false); }}
+                        className="w-9 h-9 rounded-lg bg-muted/60 hover:bg-muted flex items-center justify-center text-foreground/70 transition-all"
                       >
-                        <Square className="w-5 h-5" />
+                        <Square className="w-4 h-4" />
                       </button>
                     ) : (
                       <button
                         type="button"
                         onClick={handleSend}
                         disabled={!input.trim() && attachedFiles.length === 0}
-                        className="w-10 h-10 rounded-xl bg-primary hover:bg-primary/90 flex items-center justify-center text-white transition-all hover:shadow-lg hover:shadow-primary/25 active:scale-95 disabled:opacity-30 disabled:pointer-events-none disabled:hover:shadow-none"
+                        className="w-9 h-9 rounded-lg bg-primary hover:bg-primary/90 flex items-center justify-center text-white transition-all hover:shadow-md hover:shadow-primary/20 active:scale-95 disabled:opacity-30 disabled:pointer-events-none disabled:hover:shadow-none"
                       >
-                        <Send className="w-5 h-5" />
+                        <Send className="w-4 h-4" />
                       </button>
                     )}
                   </div>

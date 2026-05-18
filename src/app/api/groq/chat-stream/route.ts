@@ -344,13 +344,13 @@ export async function POST(request: Request) {
       }
       
       // Semantic relevance: only fetch memories relevant to current message
-      const { memories } = await getRelevantMemories(user.id, { 
-        limit: 3, 
-        minImportance: 0.5,
+      const { memories, summaries } = await getRelevantMemories(user.id, { 
+        limit: 15, 
+        minImportance: 0.3,
         currentMessage: latestUserMsg 
       });
-      memoryContext = buildMemoryContext(memories, []);
-      console.log("[chat-stream] Memories fetched (semantic):", memories?.length || 0);
+      memoryContext = buildMemoryContext(memories, summaries);
+      console.log("[chat-stream] Memories fetched (semantic):", memories?.length || 0, "| Summaries:", summaries?.length || 0);
     } else {
       // Fallback to localStorage from client headers
       console.log("[chat-stream] No user, checking localStorage from headers...");
@@ -463,24 +463,6 @@ if (clientMemories && Array.isArray(clientMemories)) {
     console.log("[chat-stream] Injecting memory context:", memoryContext ? "YES" : "NO");
     console.log("[chat-stream] Injecting personality:", aiPersonality ? "YES" : "NO");
     
-    // Inject memory context
-    if (memoryContext) {
-      systemPrompt = systemPrompt.replace(
-        "Today's date:",
-        `${memoryContext}\n\nToday's date:`
-      );
-    }
-
-    // Inject personality instructions at the VERY END so they override earlier system rules.
-    if (aiPersonality) {
-      const personalityInstructions = buildPersonalityInstructions(aiPersonality, effectiveUserContext.analogyIntensity);
-      systemPrompt = `${systemPrompt}\n\n--- PERSONALITY SETTINGS (HIGH PRIORITY) ---\n${personalityInstructions}\n--- END PERSONALITY ---`;
-      console.log("[chat-stream] Personality instructions injected (high priority)");
-    }
-    const primarySubject = userContext?.subjects?.[0];
-    const isResearchMode = Boolean(userContext?.researchMode);
-    const chatTaskType = isSimpleGreeting ? "lightweight" : "default";
-
     // FULL MESSAGES: Keep last 8 messages (recent conversation flow)
     // OLDER MESSAGES: Compress to summary instead of losing them
     const FULL_MESSAGE_WINDOW = 8;
@@ -492,14 +474,28 @@ if (clientMemories && Array.isArray(clientMemories)) {
       ? compressToSummary(olderMsgs)
       : "";
 
-    // Build system prompt with conversation summary
-    let fullSystemPrompt = systemPrompt;
-    if (conversationSummary) {
-      fullSystemPrompt = fullSystemPrompt.replace(
-        "Today's date:",
-        `${conversationSummary}\n\nToday's date:`
-      );
+    // Build context blocks to inject at the top of the system prompt
+    const contextBlocks: string[] = [];
+    if (memoryContext) contextBlocks.push(memoryContext);
+    if (conversationSummary) contextBlocks.push(conversationSummary);
+
+    // Inject all context blocks at once before personality
+    if (contextBlocks.length > 0) {
+      systemPrompt = contextBlocks.join("\n\n") + "\n\n" + systemPrompt;
     }
+
+    // Inject personality instructions at the VERY END so they override earlier system rules.
+    if (aiPersonality) {
+      const personalityInstructions = buildPersonalityInstructions(aiPersonality, effectiveUserContext.analogyIntensity);
+      systemPrompt = `${systemPrompt}\n\n--- PERSONALITY SETTINGS (HIGH PRIORITY) ---\n${personalityInstructions}\n--- END PERSONALITY ---`;
+      console.log("[chat-stream] Personality instructions injected (high priority)");
+    }
+
+    const fullSystemPrompt = systemPrompt;
+
+    const primarySubject = userContext?.subjects?.[0];
+    const isResearchMode = Boolean(userContext?.researchMode);
+    const chatTaskType = isSimpleGreeting ? "lightweight" : "default";
 
     // Token budgets. Hard cap at 1900 due to Groq's ~6k TPM rate limit
     // (leaving ~4000 for input to stay comfortably under limits)

@@ -5,7 +5,7 @@ import { setContext } from "@apollo/client/link/context";
 import { createClient } from "@/lib/supabase/client";
 
 const graphqlUrl =
-  process.env.NEXT_PUBLIC_GRAPHQL_URL ?? "http://localhost:4000/graphql";
+  process.env.NEXT_PUBLIC_GRAPHQL_URL ?? "/api/graphql";
 
 const supabase = createClient();
 

@@ -134,34 +134,36 @@ export function buildMemoryContext(
       byType[memory.memory_type]?.push(memory.content);
     });
 
-    // Compact format - no emojis, short labels
+    // Clear, explicit format so the AI can actually recall and use these
     if (byType.fact.length > 0) {
-      contextParts.push(`Facts: ${byType.fact.map(f => f.slice(0, 100)).join(" | ")}`);
+      contextParts.push(`Student Facts: ${byType.fact.join("; ")}`);
     }
     if (byType.preference.length > 0) {
-      contextParts.push(`Prefs: ${byType.preference.map(p => p.slice(0, 100)).join(" | ")}`);
+      contextParts.push(`Student Preferences: ${byType.preference.join("; ")}`);
     }
     if (byType.skill.length > 0) {
-      contextParts.push(`Skills: ${byType.skill.map(s => s.slice(0, 100)).join(" | ")}`);
+      contextParts.push(`Student Skills: ${byType.skill.join("; ")}`);
     }
     if (byType.goal.length > 0) {
-      contextParts.push(`Goals: ${byType.goal.map(g => g.slice(0, 100)).join(" | ")}`);
+      contextParts.push(`Student Goals: ${byType.goal.join("; ")}`);
+    }
+    if (byType.context.length > 0) {
+      contextParts.push(`Student Context: ${byType.context.join("; ")}`);
     }
   }
 
   if (summaries.length > 0) {
     const recentTopics = summaries
       .slice(0, 2)
-      .map(s => s.summary.slice(0, 80));
-    contextParts.push(`Recent: ${recentTopics.join(" | ")}`);
+      .map(s => s.summary.slice(0, 120));
+    contextParts.push(`Recent Study Topics: ${recentTopics.join("; ")}`);
   }
 
   if (contextParts.length === 0) {
     return "";
   }
 
-  // Ultra-compact format
-  return `[Memory] ${contextParts.join(" | ")}`;
+  return `STUDENT MEMORY — Use these facts about the student in your responses:\n${contextParts.join("\n")}`;
 }
 
 /**

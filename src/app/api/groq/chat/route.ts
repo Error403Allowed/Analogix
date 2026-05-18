@@ -56,22 +56,10 @@ export async function POST(request: Request) {
       if (clientPersonality) {
         aiPersonality = { ...(aiPersonality as AIPersonality | null), ...(clientPersonality as AIPersonality) };
       }
-
-      // Fetch relevant memories (only important ones, >0.5 importance)
-      const { memories, summaries } = await getRelevantMemories(user.id, {
-        limit: 15,
-        minImportance: 0.5,
-      });
-
-      // Build memory context string
-      memoryContext = buildMemoryContext(memories, summaries);
     } else {
       // Fallback: Check for localStorage data passed from client
       // (for localhost development without auth)
       if (clientPersonality) aiPersonality = clientPersonality as AIPersonality;
-      if (clientMemories && Array.isArray(clientMemories)) {
-        memoryContext = buildMemoryContext(clientMemories as AIMemoryFragment[], []);
-      }
     }
 
     // ========================================================================
@@ -85,6 +73,19 @@ export async function POST(request: Request) {
       responseLength?: number;
       analogyAnchor?: string;
     } = body.userContext || {};
+
+    // Fetch relevant memories with semantic relevance to current message
+    if (user) {
+      const latestUserMsg = [...messages].reverse().find(m => m.role === "user")?.content || "";
+      const { memories, summaries } = await getRelevantMemories(user.id, {
+        limit: 15,
+        minImportance: 0.3,
+        currentMessage: latestUserMsg,
+      });
+      memoryContext = buildMemoryContext(memories, summaries);
+    } else if (clientMemories && Array.isArray(clientMemories)) {
+      memoryContext = buildMemoryContext(clientMemories as AIMemoryFragment[], []);
+    }
 
     // How much should the AI use analogies? 
     // Personality setting OVERRIDES the UI slider - this is critical
