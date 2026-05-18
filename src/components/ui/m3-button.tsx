@@ -1,12 +1,24 @@
 import { forwardRef, type ButtonHTMLAttributes } from 'react';
-import { cn } from '@/lib/utils';
 
-type V = 'filled' | 'tonal' | 'outlined' | 'text';
-type S = 'sm' | 'md' | 'lg';
-const vc: Record<V, string> = { filled: 'm3-btn m3-btn-filled', tonal: 'm3-btn m3-btn-tonal', outlined: 'm3-btn m3-btn-outlined', text: 'm3-btn m3-btn-text' };
-const sc: Record<S, string> = { sm: 'h-9 px-4 text-xs', md: 'h-10 px-6', lg: 'm3-btn-lg' };
+const variants: Record<string, React.CSSProperties> = {
+  filled: { background: 'var(--md-sys-color-primary)', color: 'var(--md-sys-color-on-primary)' },
+  tonal: { background: 'var(--md-sys-color-secondary-container)', color: 'var(--md-sys-color-on-secondary-container)' },
+  outlined: { background: 'transparent', color: 'var(--md-sys-color-primary)', border: '1px solid var(--md-sys-color-outline)' },
+  text: { background: 'transparent', color: 'var(--md-sys-color-primary)' },
+};
 
-export const M3Button = forwardRef<HTMLButtonElement, ButtonHTMLAttributes<HTMLButtonElement> & { variant?: V; size?: S }>(({ className, variant = 'filled', size = 'md', ...p }, ref) => (
-  <button ref={ref} className={cn(vc[variant], sc[size], className)} {...p} />
-));
+export const M3Button = forwardRef<HTMLButtonElement, ButtonHTMLAttributes<HTMLButtonElement> & { variant?: string }>(
+  ({ variant = 'filled', style, children, ...p }, ref) => (
+    <button ref={ref} style={{
+      display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+      height: '40px', padding: '0 24px', borderRadius: '9999px', border: 'none', cursor: 'pointer',
+      fontFamily: 'Roboto, system-ui, sans-serif', fontSize: '0.875rem', fontWeight: 500,
+      lineHeight: '1.25rem', letterSpacing: '0.00625em',
+      ...variants[variant] || variants.filled,
+      ...style,
+    }} {...p}>
+      {children}
+    </button>
+  )
+);
 M3Button.displayName = 'M3Button';

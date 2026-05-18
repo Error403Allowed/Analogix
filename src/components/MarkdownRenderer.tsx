@@ -55,29 +55,22 @@ const useCleanCopy = (ref: React.RefObject<HTMLDivElement>) => {
 // Normalise LaTeX delimiters so remark-math always sees $...$ / $$...$$
 // Models often output \(...\) for inline and \[...\] for display math.
 // Also handles \begin{aligned}...\end{aligned} environments.
-// Extracts fenced code blocks first so transforms don't corrupt them.
 const normaliseLatex = (text: string): string => {
-  const blocks: string[] = [];
-  const stripped = text.replace(/^```[\s\S]*?^```/gm, (m) => {
-    blocks.push(m);
-    return `\x00BLOCK${blocks.length - 1}\x00`;
-  });
-
-  let result = stripped;
-
+  let result = text;
+  
+  // Handle \begin{...}...\end{...} environments — wrap in $$ for display math
   result = result.replace(
     /\\begin\{(aligned|align|gather|gathered|matrix|pmatrix|bmatrix|vmatrix|cases|equation|eqnarray)\*?\}([\s\S]*?)\\end\{\1\*?\}/g,
     (_m, _env, body) => `$$\n${body.trim()}\n$$`
   );
-
+  
+  // Normalize LaTeX delimiters
   result = result
-    .replace(/\\\[\s*/g, "$$\n")
-    .replace(/\s*\\\]/g, "\n$$")
-    .replace(/\\\(/g, "$")
-    .replace(/\\\)/g, "$");
-
-  result = result.replace(/\x00BLOCK(\d+)\x00/g, (_, i) => blocks[+i]);
-
+    .replace(/\\\[\s*/g, "$$\n")      // \[ → $$
+    .replace(/\s*\\\]/g, "\n$$")      // \] → $$
+    .replace(/\\\(/g, "$")            // \( → $
+    .replace(/\\\)/g, "$");           // \) → $
+  
   return result;
 };
 
@@ -175,14 +168,12 @@ const MarkdownRenderer = ({ content, className, streaming = false }: MarkdownRen
               {children}
             </blockquote>
           ),
-          // pre wraps block code — intercept desmos graph blocks
+          // pre wraps block code — intercept plotly/graph blocks
           pre: ({ children }) => {
-            const codeEl = Array.isArray(children) ? children[0] : (children as React.ReactElement | null);
+            // Dig out the <code> child to check language
+            const codeEl = (children as React.ReactElement);
             const lang = codeEl?.props?.className as string | undefined;
-            const rawBlock = (Array.isArray(codeEl?.props?.children)
-              ? (codeEl?.props?.children as unknown[]).join("")
-              : String(codeEl?.props?.children ?? "")
-            ).replace(/\n$/, "");
+            const rawBlock = String(codeEl?.props?.children ?? "").replace(/\n$/, "");
 
             const streamingPlaceholder = (
               <div className="my-4 rounded-2xl overflow-hidden border border-border/30 bg-muted/20 p-6 flex items-center justify-center gap-2">

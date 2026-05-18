@@ -61,25 +61,11 @@ function sanitiseLatex(raw: string): string {
 
 let scriptLoaded = false;
 let scriptLoading = false;
-let scriptFailed = false;
 const readyCallbacks: Array<() => void> = [];
-const errorCallbacks: Array<() => void> = [];
-let loadTimer: ReturnType<typeof setTimeout> | null = null;
 
-function loadDesmosScript(onReady: () => void, onError: () => void) {
+function loadDesmosScript(onReady: () => void) {
   if (scriptLoaded) { onReady(); return; }
-
-  if (scriptFailed) {
-    // Retry: reset and try loading a fresh script
-    scriptFailed = false;
-    scriptLoading = false;
-    // Remove the old failed script tag if present
-    const old = document.querySelector('script[src*="desmos.com/api"]');
-    if (old) old.remove();
-  }
-
   readyCallbacks.push(onReady);
-  errorCallbacks.push(onError);
   if (scriptLoading) return;
   scriptLoading = true;
 
@@ -87,38 +73,16 @@ function loadDesmosScript(onReady: () => void, onError: () => void) {
   const apiKey = process.env.NEXT_PUBLIC_DESMOS_API_KEY || "dcb31709b452b1cf9dc26972add0fda6";
   script.src = `https://www.desmos.com/api/v1.9/calculator.js?apiKey=${apiKey}`;
   script.async = true;
-
-  const complete = () => {
-    if (loadTimer) { clearTimeout(loadTimer); loadTimer = null; }
-  };
-
   script.onload = () => {
-    complete();
     scriptLoaded = true;
     readyCallbacks.forEach(cb => cb());
     readyCallbacks.length = 0;
-    errorCallbacks.length = 0;
   };
   script.onerror = () => {
-    complete();
-    scriptFailed = true;
+    console.error("Failed to load Desmos script");
     scriptLoading = false;
-    errorCallbacks.forEach(cb => cb());
-    readyCallbacks.length = 0;
-    errorCallbacks.length = 0;
   };
   document.head.appendChild(script);
-
-  // Timeout after 15s
-  loadTimer = setTimeout(() => {
-    if (!scriptLoaded) {
-      scriptFailed = true;
-      scriptLoading = false;
-      errorCallbacks.forEach(cb => cb());
-      readyCallbacks.length = 0;
-      errorCallbacks.length = 0;
-    }
-  }, 15000);
 }
 
 const DESMOS_COLORS = [
@@ -137,7 +101,6 @@ function DesmosGraph({ expressions, height = DEFAULT_HEIGHT, showEditor = false 
   const dragStartHeight = useRef<number>(DEFAULT_HEIGHT);
 
   const [ready, setReady] = useState(false);
-  const [scriptError, setScriptError] = useState(false);
   const [key, setKey] = useState(0);
   const [showExprEditor, setShowExprEditor] = useState(showEditor);
   const [editLatex, setEditLatex] = useState("");
@@ -190,12 +153,7 @@ function DesmosGraph({ expressions, height = DEFAULT_HEIGHT, showEditor = false 
 
   useEffect(() => { setCorrectedIndices(corrected); }, [corrected]);
   useEffect(() => { setLocalExprs(exprs); }, [exprs]);
-  useEffect(() => {
-    loadDesmosScript(
-      () => setReady(true),
-      () => setScriptError(true),
-    );
-  }, []);
+  useEffect(() => { loadDesmosScript(() => setReady(true)); }, []);
 
   // HSL → hex for Desmos backgroundColor
   const hslToHex = (h: number, s: number, l: number) => {
@@ -394,7 +352,7 @@ function DesmosGraph({ expressions, height = DEFAULT_HEIGHT, showEditor = false 
       ref={wrapperRef}
       className={isFullscreen
         ? "fixed inset-0 z-50 flex flex-col bg-background"
-        : "my-4 w-full rounded-2xl overflow-hidden border border-border/40 shadow-lg bg-background"
+        : "my-4 rounded-2xl overflow-hidden border border-border/40 shadow-lg bg-background"
       }
     >
       {/* ── Header ── */}
@@ -557,27 +515,9 @@ function DesmosGraph({ expressions, height = DEFAULT_HEIGHT, showEditor = false 
 
       {/* ── Calculator ── */}
       <div className="relative flex-1" style={isFullscreen ? { minHeight: 0 } : { height: graphHeight }}>
-        {!ready && !scriptError && (
+        {!ready && (
           <div className="absolute inset-0 flex items-center justify-center z-10">
             <Loader2 className="w-5 h-5 animate-spin text-primary/40" />
-          </div>
-        )}
-        {scriptError && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 z-10">
-            <p className="text-xs text-muted-foreground/60">Could not load graphing calculator</p>
-            <button
-              onClick={() => {
-                setScriptError(false);
-                loadDesmosScript(
-                  () => setReady(true),
-                  () => setScriptError(true),
-                );
-              }}
-              className="flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80 transition-colors"
-            >
-              <RefreshCw className="w-3 h-3" />
-              Retry
-            </button>
           </div>
         )}
         <div

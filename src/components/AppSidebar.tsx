@@ -5,7 +5,7 @@ import {
   LayoutDashboard, MessageCircle, Calendar,
   GraduationCap, Trophy, ChevronDown, Palette,
   Sun, Moon, User, Flame, Library, SigmaIcon, SquareStack, ClipboardList,
-  Plus, Search, MoreHorizontal, Users, BookOpen,
+  Plus, Search, MoreHorizontal, Sparkles, Users, BookOpen,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import {
@@ -13,12 +13,14 @@ import {
   SidebarMenu, SidebarMenuButton, SidebarMenuItem,
   SidebarGroup, SidebarGroupContent, SidebarSeparator,
 } from "@/components/ui/sidebar";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Switch } from "@/components/ui/switch";
 import { useRouter, usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useTheme } from "next-themes";
-import { useThemeSelector } from "@/hooks/useThemeSelector";
+import { applyThemeByName } from "@/components/ThemeSelector";
+import { themes } from "@/components/ThemeSelector";
 import ProfileSheet from "@/components/ProfileSheet";
 import { NewPageModal } from "@/components/NewPageModal";
 import ChatHistoryPanel from "@/components/ChatHistoryPanel";
@@ -62,18 +64,12 @@ export function AppSidebar() {
   const pathname = usePathname();
   const { setTheme: setMode, resolvedTheme } = useTheme();
   const { openTab, tabs, activeTabId } = useTabs();
-  const {
-    activeTheme,
-    themeOpen,
-    setThemeOpen,
-    themes,
-    handleThemeSelect,
-    handleThemeHover,
-    handleThemeHoverEnd,
-  } = useThemeSelector();
-
   const [userData,         setUserData]         = useState<any>(null);
+  const [activeThemeName,  setActiveThemeName]  = useState("Cosmic Aurora");
+  const [paperMode,        setPaperMode]        = useState(false);
+  const lastColorRef = useRef<string>("Cosmic Aurora");
   const [mounted,          setMounted]          = useState(false);
+  const [themeOpen,        setThemeOpen]        = useState(false);
   const [profileOpen,      setProfileOpen]      = useState(false);
   const [streak,           setStreak]           = useState(0);
   const [isNewPageModalOpen, setIsNewPageModalOpen] = useState(false);
@@ -89,17 +85,60 @@ export function AppSidebar() {
         const stats = JSON.parse(localStorage.getItem("analogix_user_stats_v1") || "{}");
         setStreak(Number(stats.currentStreak) || 0);
       } catch { /* ignore localStorage errors */ }
+      const saved = localStorage.getItem("app-theme") || "Cosmic Aurora";
+      const isPaper = localStorage.getItem("paper-mode") === "true";
+      setPaperMode(isPaper);
+      if (isPaper) {
+        setActiveThemeName("Paper");
+      } else {
+        setActiveThemeName(saved);
+        lastColorRef.current = saved;
+      }
     };
     load();
+    const onTheme = () => {
+      const saved = localStorage.getItem("app-theme") || "Cosmic Aurora";
+      const isPaper = localStorage.getItem("paper-mode") === "true";
+      setPaperMode(isPaper);
+      setActiveThemeName(isPaper ? "Paper" : saved);
+    };
     window.addEventListener("storage", load);
     window.addEventListener("userPreferencesUpdated", load);
     window.addEventListener("statsUpdated", load);
+    window.addEventListener("themeUpdated", onTheme);
     return () => {
       window.removeEventListener("storage", load);
       window.removeEventListener("userPreferencesUpdated", load);
       window.removeEventListener("statsUpdated", load);
+      window.removeEventListener("themeUpdated", onTheme);
     };
   }, []);
+
+  const handleThemeSelect = (name: string) => {
+    if (paperMode) {
+      setPaperMode(false);
+      localStorage.setItem("paper-mode", "false");
+    }
+    lastColorRef.current = name;
+    setActiveThemeName(name);
+    applyThemeByName(name);
+    window.dispatchEvent(new Event("themeUpdated"));
+  };
+
+  const handlePaperToggle = (checked: boolean) => {
+    setPaperMode(checked);
+    localStorage.setItem("paper-mode", String(checked));
+    if (checked) {
+      lastColorRef.current = activeThemeName === "Paper" ? lastColorRef.current : activeThemeName;
+      applyThemeByName("Paper");
+      setActiveThemeName("Paper");
+    } else {
+      const prev = lastColorRef.current || "Cosmic Aurora";
+      applyThemeByName(prev);
+      setActiveThemeName(prev);
+    }
+    window.dispatchEvent(new Event("themeUpdated"));
+  };
 
   const handleCreatePage = async (subjectId: string, title: string) => {
     try {
@@ -226,93 +265,80 @@ export function AppSidebar() {
           <SidebarMenu className="gap-2 mb-1">
             {/* Search button */}
             <SidebarMenuItem>
-              <motion.div whileTap={{ scale: 0.97 }}>
-                <SidebarMenuButton
-                  onClick={() => setIsCommandMenuOpen(true)}
-                  className="min-h-[46px] rounded-2xl px-4 text-sm font-semibold text-muted-foreground transition-all duration-200 hover:bg-muted/30"
-                >
-                  <Search className="w-4 h-4 shrink-0" />
-                  <span className="truncate">Search</span>
-                  <span className="ml-auto text-[10px] font-medium text-muted-foreground/40">⌘K</span>
-                </SidebarMenuButton>
-              </motion.div>
+              <SidebarMenuButton
+                onClick={() => setIsCommandMenuOpen(true)}
+                className="min-h-[46px] rounded-2xl px-4 text-sm font-semibold text-muted-foreground transition-colors hover:bg-muted/30"
+              >
+                <Search className="w-4 h-4 shrink-0" />
+                <span className="truncate">Search</span>
+                <span className="ml-auto text-[10px] opacity-50">⌘K</span>
+              </SidebarMenuButton>
             </SidebarMenuItem>
 
             {/* New page button */}
             <SidebarMenuItem>
-              <motion.div whileTap={{ scale: 0.97 }}>
-                <SidebarMenuButton
-                  onClick={() => setIsNewPageModalOpen(true)}
-                  className="min-h-[46px] rounded-2xl px-4 text-sm font-semibold text-muted-foreground transition-all duration-200 hover:bg-muted/30"
-                >
-                  <Plus className="w-4 h-4 shrink-0" />
-                  <span className="truncate">New page</span>
-                </SidebarMenuButton>
-              </motion.div>
+              <SidebarMenuButton
+                onClick={() => setIsNewPageModalOpen(true)}
+                className="min-h-[46px] rounded-2xl px-4 text-sm font-semibold text-muted-foreground transition-colors hover:bg-muted/30"
+              >
+                <Plus className="w-4 h-4 shrink-0" />
+                <span className="truncate">New page</span>
+              </SidebarMenuButton>
             </SidebarMenuItem>
 
             {/* Dark/light toggle */}
             {mounted && (
               <SidebarMenuItem>
-                <motion.div whileTap={{ scale: 0.97 }}>
-                  <SidebarMenuButton
-                    onClick={() => setMode(isDark ? "light" : "dark")}
-                    className="min-h-[46px] rounded-2xl px-4 text-sm font-semibold text-muted-foreground transition-all duration-200 hover:bg-muted/30 active:scale-[0.97]"
-                  >
-                    <motion.span
-                      key={isDark ? "sun" : "moon"}
-                      initial={{ rotate: -90, opacity: 0 }}
-                      animate={{ rotate: 0, opacity: 1 }}
-                      transition={{ duration: 0.2 }}
-                    >
-                      {isDark ? <Sun className="w-4 h-4 shrink-0" /> : <Moon className="w-4 h-4 shrink-0" />}
-                    </motion.span>
-                    <span className="truncate">{isDark ? "Light mode" : "Dark mode"}</span>
-                  </SidebarMenuButton>
-                </motion.div>
+                <SidebarMenuButton
+                  onClick={() => setMode(isDark ? "light" : "dark")}
+                  className="min-h-[46px] rounded-2xl px-4 text-sm font-semibold text-muted-foreground transition-colors hover:bg-muted/30"
+                >
+                  {isDark ? <Sun className="w-4 h-4 shrink-0" /> : <Moon className="w-4 h-4 shrink-0" />}
+                  <span className="truncate">{isDark ? "Light mode" : "Dark mode"}</span>
+                </SidebarMenuButton>
               </SidebarMenuItem>
             )}
 
             {/* Colour scheme */}
             <SidebarMenuItem>
-              <Sheet open={themeOpen} onOpenChange={setThemeOpen}>
-                <SheetTrigger asChild>
-                  <SidebarMenuButton className="min-h-[46px] rounded-2xl px-4 text-sm font-semibold text-muted-foreground transition-all duration-200 hover:bg-muted/30 active:scale-[0.97]">
+              <Popover open={themeOpen} onOpenChange={setThemeOpen}>
+                <PopoverTrigger asChild>
+                  <SidebarMenuButton className="min-h-[46px] rounded-2xl px-4 text-sm font-semibold text-muted-foreground transition-colors hover:bg-muted/30">
                     <Palette className="w-4 h-4 shrink-0" />
                     <span className="truncate">Colour scheme</span>
                     <ChevronDown className={cn("w-3 h-3 transition-transform ml-auto", themeOpen && "rotate-180")} />
                   </SidebarMenuButton>
-                </SheetTrigger>
-                <SheetContent side="bottom" className="w-full max-w-xl mx-auto rounded-t-3xl border border-muted/20 shadow-2xl bg-background/95 backdrop-blur-xl pb-8 pt-2">
-                  <div className="flex justify-center mb-4">
-                    <div className="w-8 h-1 rounded-full bg-muted-foreground/20" />
-                  </div>
-                  <p className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-4">Theme</p>
-                    <div className="flex gap-0 overflow-x-auto pb-2">
-                      {themes.map(t =>
-                        <button
-                          key={t.name}
-                          onClick={() => handleThemeSelect(t.name)}
-                          onMouseEnter={() => handleThemeHover(t.name)}
-                          onMouseLeave={handleThemeHoverEnd}
-                          aria-label={t.name}
-                          className={cn(
-                            "aspect-square min-w-[72px] max-w-[96px] flex-1 rounded-3xl transition-all border p-1 flex flex-col gap-[1px] overflow-hidden",
-                            activeTheme === t.name
-                              ? "border-primary/60 ring-1 ring-primary/30 scale-105"
-                              : "border-muted/20 hover:scale-105"
-                          )}
-                        >
-                          <div className="flex gap-[1px] w-full flex-1 min-h-0">
-                            <div className="flex-1" style={{ background: t.g[0] }} />
-                            <div className="flex-1" style={{ background: t.g[1] }} />
-                          </div>
-                          <div className="w-full h-[30%]" style={{ background: t.g[2] }} />
-                        </button>
-                      )}
+                </PopoverTrigger>
+                <PopoverContent side="top" align="start" className="w-64 p-3 glass-card border border-muted/20 shadow-2xl bg-background/95 backdrop-blur-xl">
+                  <p className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-3">Theme</p>
+
+                  {/* Paper toggle */}
+                  <div className="flex items-center justify-between p-3 rounded-2xl bg-muted/40 border border-border/40 mb-3">
+                    <div className="flex items-center gap-3">
+                      <div className={cn("w-8 h-8 rounded-2xl flex items-center justify-center transition-colors", paperMode ? "bg-foreground text-background" : "bg-muted text-muted-foreground") }>
+                        <Sparkles className="w-3.5 h-3.5" />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold">Paper</p>
+                        <p className="text-[8px] text-muted-foreground">Monochrome mode</p>
+                      </div>
                     </div>
-                </SheetContent>
-              </Sheet>
+                    <Switch checked={paperMode} onCheckedChange={handlePaperToggle} className="scale-95" />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    {themes.filter(t => t.name !== "Paper").map(t => (
+                      <button key={t.name} onClick={() => handleThemeSelect(t.name)}
+                        className={cn("flex flex-col gap-1.5 p-2 rounded-2xl transition-all border text-left",
+                          activeThemeName === t.name && !paperMode ? "border-primary/50 bg-primary/10" : paperMode ? "border-border/20 opacity-50" : "border-muted/20 bg-muted/10 hover:bg-muted/20")}
+                      >
+                        <div className="w-full h-7 rounded-xl" style={{ background: `linear-gradient(135deg, ${t.g[0]}, ${t.g[1]})` }} />
+                        <span className={cn("text-[9px] font-black uppercase tracking-tight", activeThemeName === t.name && !paperMode ? "text-primary" : "text-muted-foreground")}>{t.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
             </SidebarMenuItem>
           </SidebarMenu>
 
@@ -320,10 +346,9 @@ export function AppSidebar() {
 
           <SidebarMenu>
             <SidebarMenuItem>
-              <motion.div whileTap={{ scale: 0.97 }}>
-                <SidebarMenuButton size="lg" onClick={() => setProfileOpen(true)} data-tutorial="profile"
-                  className="h-auto w-full flex items-center gap-3 p-3 rounded-[28px] border border-muted/20 bg-muted/10 transition-all duration-200 hover:bg-muted/20 hover:border-muted/30 text-foreground cursor-pointer"
-                >
+              <SidebarMenuButton size="lg" onClick={() => setProfileOpen(true)} data-tutorial="profile"
+                className="h-auto w-full flex items-center gap-3 p-3 rounded-[28px] border border-muted/20 bg-muted/10 transition-all hover:bg-muted/20 text-foreground cursor-pointer"
+              >
                 {/* Avatar */}
                 <div className="relative shrink-0">
                   <div className="w-11 h-11 rounded-2xl overflow-hidden bg-muted">
@@ -351,7 +376,6 @@ export function AppSidebar() {
                   </p>
                 </div>
               </SidebarMenuButton>
-              </motion.div>
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarFooter>

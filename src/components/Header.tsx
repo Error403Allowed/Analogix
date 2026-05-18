@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ThemeToggle } from "./ThemeToggle";
+import ThemeSelector from "./ThemeSelector";
 import { useRouter } from "next/navigation";
 import SettingsDialog from "./SettingsDialog";
 import ProfileSheet from "./ProfileSheet";

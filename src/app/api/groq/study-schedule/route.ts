@@ -48,7 +48,7 @@ Return ONLY valid JSON — no markdown, no preamble:
         {
           "subject": "Mathematics",
           "duration": "60 min",
-          "focus": "Quadratic equations — practice past Paper questions",
+          "focus": "Quadratic equations — practice past paper questions",
           "tip": "Use the formula sheet and time yourself"
         }
       ]

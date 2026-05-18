@@ -129,7 +129,7 @@ interface SemanticScholarAuthor {
 }
 
 interface SemanticScholarWork {
-  PaperId?: string;
+  paperId?: string;
   title?: string;
   url?: string;
   authors?: SemanticScholarAuthor[];
@@ -142,7 +142,7 @@ interface SemanticScholarWork {
 }
 
 const fetchSemanticScholar = async (query: string, limit: number): Promise<ResearchSource[]> => {
-  const url = `https://api.semanticscholar.org/graph/v1/Paper/search?query=${encodeURIComponent(query)}&limit=${limit}&fields=title,authors,year,abstract,url,venue,externalIds,isOpenAccess,openAccessPdf`;
+  const url = `https://api.semanticscholar.org/graph/v1/paper/search?query=${encodeURIComponent(query)}&limit=${limit}&fields=title,authors,year,abstract,url,venue,externalIds,isOpenAccess,openAccessPdf`;
   const res = await fetch(url);
   if (!res.ok) return [];
   const data = await res.json();
@@ -152,7 +152,7 @@ const fetchSemanticScholar = async (query: string, limit: number): Promise<Resea
       ? item.authors.map((a: SemanticScholarAuthor) => a?.name).filter((x): x is string => Boolean(x))
       : [];
     return {
-      id: String(item.PaperId || item.externalIds?.DOI || item.url || Math.random()),
+      id: String(item.paperId || item.externalIds?.DOI || item.url || Math.random()),
       title: String(item.title || "Untitled"),
       url: item.url || undefined,
       pdfUrl: item.openAccessPdf?.url || undefined,
