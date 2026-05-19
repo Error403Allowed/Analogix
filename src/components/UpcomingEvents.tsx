@@ -1,21 +1,17 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Calendar, Plus } from "lucide-react";
 import { format, isToday, isTomorrow, differenceInCalendarDays, addDays } from "date-fns";
 import { cn } from "@/lib/utils";
-import { useQuery } from "@apollo/client/react";
-import { CALENDAR_EVENTS_QUERY } from "@/lib/graphql/queries";
+import { createClient } from "@/lib/supabase/client";
 
 type CalendarEvent = {
   id: string;
   title: string;
-  startAt: string;
-  endAt: string;
-};
-
-type CalendarEventsResponse = {
-  calendarEvents: CalendarEvent[];
+  start_at: string;
+  end_at: string;
 };
 
 const label = (date: Date) => {
@@ -30,14 +26,24 @@ const dot = "bg-primary";
 
 export default function UpcomingEvents() {
   const router = useRouter();
-  const { data } = useQuery<CalendarEventsResponse>(CALENDAR_EVENTS_QUERY);
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
 
-  const now = new Date();
-  const limit = addDays(now, 30);
-  const events = (data?.calendarEvents ?? [])
-    .filter((event) => new Date(event.startAt) >= now && new Date(event.startAt) <= limit)
-    .sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime())
-    .slice(0, 6);
+  useEffect(() => {
+    const fetchEvents = async () => {
+      const supabase = createClient();
+      const now = new Date().toISOString();
+      const limit = addDays(new Date(), 30).toISOString();
+      const { data } = await supabase
+        .from("events")
+        .select("id, title, start_at, end_at")
+        .gte("start_at", now)
+        .lte("start_at", limit)
+        .order("start_at", { ascending: true })
+        .limit(6);
+      setEvents(data || []);
+    };
+    fetchEvents();
+  }, []);
 
   return (
     <div className="flex flex-col h-full min-h-0">
@@ -78,10 +84,10 @@ export default function UpcomingEvents() {
               {/* Date badge */}
               <div className="shrink-0 text-right w-[3.8rem]">
                 <p className="text-[8px] font-black uppercase text-muted-foreground/50 leading-none tracking-wider">
-                  {label(new Date(e.startAt))}
+                  {label(new Date(e.start_at))}
                 </p>
                 <p className="text-[9px] font-bold text-muted-foreground/60 tabular-nums leading-tight">
-                  {format(new Date(e.startAt), "h:mma").toLowerCase()}
+                  {format(new Date(e.start_at), "h:mma").toLowerCase()}
                 </p>
               </div>
 
@@ -92,7 +98,7 @@ export default function UpcomingEvents() {
               <div className="flex-1 min-w-0">
                 <p className="text-[11px] font-bold text-foreground truncate leading-tight">{e.title}</p>
                 <p className="text-[9px] text-muted-foreground/50 truncate">
-                  Ends {format(new Date(e.endAt), "h:mma").toLowerCase()}
+                  Ends {format(new Date(e.end_at), "h:mma").toLowerCase()}
                 </p>
               </div>
             </div>

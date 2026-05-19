@@ -24,8 +24,6 @@ import { SubjectCustomizationSheet } from "@/components/SubjectCustomizationShee
 import { subjectStore, type CustomSubject } from "@/utils/subjectStore";
 import { SUBJECT_COLORS } from "@/components/ColorPicker";
 import { DynamicIcon } from "@/components/IconPicker";
-import { useQuery } from "@apollo/client/react";
-import { SUBJECTS_QUERY } from "@/lib/graphql/queries";
 
 type SubjectPagePrefs = {
   subjects?: string[];
@@ -60,7 +58,6 @@ export default function SubjectsOverview() {
   const [statsData, setStatsData] = useState<any>({});
   const [customSubjects, setCustomSubjects] = useState<Record<string, CustomSubject>>({});
   const [customizeSubjectId, setCustomizeSubjectId] = useState<SubjectId | null>(null);
-  const { data: gqlSubjects } = useQuery<{ subjects: { id: string }[] }>(SUBJECTS_QUERY);
 
   useEffect(() => {
     const saved = localStorage.getItem("subjectsLayout") as "list" | "grid" | null;
@@ -89,10 +86,8 @@ export default function SubjectsOverview() {
   }, [customSubjects]);
 
   const activeSubjectObjects = useMemo(() => {
-    const gqlSubjectIds = (gqlSubjects?.subjects ?? []).map((item) => item.id);
-    const ids = gqlSubjectIds.length > 0 ? gqlSubjectIds : userSubjects;
-    return SUBJECT_CATALOG.filter((subject) => ids.includes(subject.id));
-  }, [gqlSubjects?.subjects, userSubjects]);
+    return SUBJECT_CATALOG.filter((subject) => userSubjects.includes(subject.id));
+  }, [userSubjects]);
 
   const getActivityCount = useCallback(
     (subject: any) => (statsData.subjectCounts?.[subject.id] || 0),

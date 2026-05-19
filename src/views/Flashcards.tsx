@@ -5,17 +5,15 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft, BookOpen, Check, Edit3, RotateCcw,
   Sparkles, Trash2, X, ChevronLeft, ChevronRight, Brain,
-  Zap, Trophy, FileText, Plus, FolderOpen,
-  CheckCircle2, XCircle, Loader2, AlertTriangle, Eye, EyeOff,
-  Settings2, Upload, Target, PenLine, MessageSquare,
+  Zap, Trophy, Plus, FolderOpen,
+  CheckCircle2, XCircle, Loader2, Eye, EyeOff,
+  Upload, Target, PenLine, MessageSquare,
   ListChecks, Clock,
 } from "lucide-react";
 import { NextConfig } from 'next';
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Slider } from "@/components/ui/slider";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { SUBJECT_CATALOG } from "@/constants/subjects";
 import { DynamicIcon } from "@/components/IconPicker";
@@ -44,7 +42,7 @@ const subjectIconName = (id: string) =>
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type TopView = "library" | "subject-detail" | "set-detail" | "create-set" | "quiz-hub";
-type SetTab  = "flashcards" | "learn" | "test";
+type SetTab  = "flashcards" | "learn";
 
 interface CardSet {
   set: FlashcardSet;
@@ -180,16 +178,6 @@ export default function Flashcards() {
   const [learnComplete, setLearnComplete] = useState(false);
   const [learnAnswers, setLearnAnswers]   = useState<("correct" | "incorrect" | null)[]>([]);
   const [learnReady, setLearnReady]       = useState(false);
-
-  // ── Test mode ──
-  const [testNumQ, setTestNumQ]           = useState(5);
-  const [testDifficulty, setTestDifficulty] = useState("intermediate");
-  const [testQuestions, setTestQuestions] = useState<QuizQuestion[]>([]);
-  const [testCurrentQ, setTestCurrentQ]   = useState(0);
-  const [testAnswers, setTestAnswers]     = useState<Array<QuizAnswerRecord | null>>([]);
-  const [testLoading, setTestLoading]     = useState(false);
-  const [testStarted, setTestStarted]     = useState(false);
-  const [testComplete, setTestComplete]   = useState(false);
 
   // ── Create set ──
   const [newSetSubject, setNewSetSubject] = useState("");
@@ -406,13 +394,11 @@ export default function Flashcards() {
     setTopView("set-detail");
     resetReview();
     resetLearn();
-    resetTest();
   };
 
   // ── Resets ──
   const resetReview = () => { setFlipped(false); setReviewComplete(false); setReviewIndex(0); };
   const resetLearn  = () => { setLearnReady(false); setLearnComplete(false); setLearnIndex(0); setLearnFlipped(false); setLearnAnswers([]); };
-  const resetTest   = () => { setTestStarted(false); setTestComplete(false); setTestQuestions([]); setTestAnswers([]); setTestCurrentQ(0); };
 
   // ── Init review when entering flashcards tab ──
   useEffect(() => {
@@ -440,16 +426,6 @@ export default function Flashcards() {
     setLearnAnswers(Array(shuffled.length).fill(null));
     setLearnReady(true);
   }, [topView, activeSetId, activeSetTab]); // eslint-disable-line
-
-  // ── Init test config when entering test tab ──
-  useEffect(() => {
-    if (topView !== "set-detail" || activeSetTab !== "test") return;
-    setTestStarted(false);
-    setTestComplete(false);
-    setTestQuestions([]);
-    setTestAnswers([]);
-    setTestCurrentQ(0);
-  }, [topView, activeSetId, activeSetTab]);
 
   // ── Flashcard review handlers ──
   const handleRate = useCallback(async (rating: FlashcardRating) => {
@@ -563,72 +539,6 @@ export default function Flashcards() {
     reviewComplete,
     topView,
   ]);
-
-  // ── Test: run using card content as context ──
-  const runTest = async () => {
-    if (!activeSet) return;
-    setTestLoading(true);
-    setTestStarted(true);
-    const prefs = typeof window !== "undefined"
-      ? JSON.parse(localStorage.getItem("userPreferences") || "{}") : {};
-
-    // Build a topic description from the actual card content
-    const cardContext = activeSet.cards
-      .slice(0, 30)
-      .map(c => `${c.front}: ${c.back}`)
-      .join("\n");
-
-    const topicInput = `Generate questions specifically about the following flashcard content:\n${cardContext}`;
-    const seed = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}-${activeSet.set.subjectId}-${testDifficulty}`;
-
-    const quizData = await generateQuiz(
-      topicInput,
-      {
-        grade: prefs.grade,
-        state: prefs.state,
-        hobbies: prefs.hobbies || [],
-        subject: activeSet.set.subjectId,
-        difficulty: testDifficulty,
-      },
-      testNumQ,
-      { diversitySeed: seed },
-    );
-
-    if (quizData?.questions) {
-      setTestQuestions(quizData.questions as QuizQuestion[]);
-      setTestAnswers(Array(quizData.questions.length).fill(null));
-      setTestCurrentQ(0);
-    }
-    setTestLoading(false);
-  };
-
-  const handleTestAnswer = (payload: { isCorrect: boolean; userAnswer: string; feedback?: string }) => {
-    const q = testQuestions[testCurrentQ];
-    if (!q || testAnswers[testCurrentQ]) return;
-    const correct = q.options?.find(o => o.isCorrect)?.text || q.correctAnswer || "";
-    setTestAnswers(prev => {
-      const next = [...prev];
-      next[testCurrentQ] = {
-        id: q.id, type: q.type || "multiple_choice",
-        question: q.question, options: q.options,
-        userAnswer: payload.userAnswer, correctAnswer: correct,
-        isCorrect: payload.isCorrect, feedback: payload.feedback,
-      };
-      return next;
-    });
-  };
-
-  const handleTestNext = () => {
-    if (testCurrentQ + 1 >= testQuestions.length) {
-      const score = testAnswers.filter(a => a?.isCorrect).length;
-      statsStore.addQuiz((score / testQuestions.length) * 100);
-      setTestComplete(true);
-    } else {
-      setTestCurrentQ(i => i + 1);
-    }
-  };
-
-  const testScore = testAnswers.filter(a => a?.isCorrect).length;
 
   // ── Quiz Hub: run custom quiz ──
   // Track previously seen quiz questions to avoid repetition
@@ -1461,7 +1371,6 @@ export default function Flashcards() {
                 {([
                   { tab: "flashcards" as SetTab, label: "Flashcards", icon: Zap },
                   { tab: "learn" as SetTab,      label: "Learn",       icon: Brain },
-                  { tab: "test" as SetTab,        label: "Test",        icon: FileText },
                 ] as const).map(({ tab, label, icon: Icon }) => (
                   <button key={tab}
                     onClick={() => setActiveSetTab(tab)}
@@ -1658,9 +1567,6 @@ export default function Flashcards() {
                           }}>
                             <RotateCcw className="w-4 h-4 mr-2" /> Again
                           </Button>
-                          <Button onClick={() => setActiveSetTab("test")}>
-                            <FileText className="w-4 h-4 mr-2" /> Take a Test
-                          </Button>
                         </div>
                       </motion.div>
                     ) : learnCards.length === 0 ? (
@@ -1719,124 +1625,6 @@ export default function Flashcards() {
                           for got it.
                         </p>
                       </div>
-                    )}
-                  </motion.div>
-                )}
-
-                {/* ── TEST TAB ── */}
-                {activeSetTab === "test" && (
-                  <motion.div key="test" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="max-w-2xl mx-auto space-y-5">
-
-                    {/* Config */}
-                    {!testStarted && !testLoading && (
-                      <div className="rounded-2xl border border-border bg-card p-7 space-y-6">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                            <Settings2 className="w-5 h-5 text-primary" />
-                          </div>
-                          <div>
-                            <h3 className="text-lg font-black">Test — {subjectLabel(activeSet.set.subjectId)}</h3>
-                            <p className="text-xs text-muted-foreground">AI generates questions from your actual card content</p>
-                          </div>
-                        </div>
-                        <div className="space-y-3">
-                          <div className="flex justify-between items-center">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Questions</label>
-                            <span className="text-sm font-black text-primary">{testNumQ}</span>
-                          </div>
-                          <Slider value={[testNumQ]} onValueChange={([v]) => setTestNumQ(v)} min={3} max={Math.min(15, activeSet.cards.length * 2)} step={1} />
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Difficulty</label>
-                          <Select value={testDifficulty} onValueChange={setTestDifficulty}>
-                            <SelectTrigger className="rounded-xl h-11"><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="foundational">Foundational</SelectItem>
-                              <SelectItem value="intermediate">Intermediate</SelectItem>
-                              <SelectItem value="advanced">Advanced</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <Button size="lg" className="w-full" onClick={runTest}>
-                          <Sparkles className="w-4 h-4 mr-2" /> Start test
-                        </Button>
-                      </div>
-                    )}
-
-                    {/* Loading */}
-                    {testLoading && (
-                      <div className="text-center py-20 space-y-3">
-                        <Loader2 className="w-10 h-10 mx-auto animate-spin text-primary" />
-                        <p className="text-sm text-muted-foreground">Generating test from your cards...</p>
-                      </div>
-                    )}
-
-                    {/* Error */}
-                    {testStarted && !testLoading && testQuestions.length === 0 && !testComplete && (
-                      <div className="text-center py-20 space-y-3">
-                        <AlertTriangle className="w-10 h-10 mx-auto text-destructive/50" />
-                        <p className="text-sm text-muted-foreground">Couldn't generate questions. Try again.</p>
-                        <Button variant="outline" onClick={() => { setTestStarted(false); }}>Try again</Button>
-                      </div>
-                    )}
-
-                    {/* Questions */}
-                    {!testLoading && testQuestions.length > 0 && !testComplete && (
-                      <>
-                        <div className="flex items-center justify-between rounded-2xl border border-border bg-card px-5 py-3">
-                          <span className="text-sm font-bold">{testCurrentQ + 1} / {testQuestions.length}</span>
-                          <Badge variant="outline">{subjectLabel(activeSet.set.subjectId)}</Badge>
-                        </div>
-                        <AnimatePresence mode="wait">
-                          <motion.div key={testCurrentQ}
-                            initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }}>
-                            <QuizCard
-                              type={testQuestions[testCurrentQ]?.type}
-                              question={testQuestions[testCurrentQ]?.question}
-                              options={testQuestions[testCurrentQ]?.options}
-                              correctAnswer={testQuestions[testCurrentQ]?.correctAnswer}
-                              questionNumber={testCurrentQ + 1}
-                              totalQuestions={testQuestions.length}
-                              onAnswer={handleTestAnswer}
-                              hint={testQuestions[testCurrentQ]?.hint}
-                            />
-                          </motion.div>
-                        </AnimatePresence>
-                        {testAnswers[testCurrentQ] && (
-                          <div className="flex justify-end">
-                            <Button onClick={handleTestNext} className="gap-2">
-                              {testCurrentQ + 1 >= testQuestions.length ? "Finish test" : "Next"}
-                              <ChevronRight className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        )}
-                      </>
-                    )}
-
-                    {/* Results */}
-                    {testComplete && (
-                      <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }}
-                        className="rounded-2xl border border-border bg-card p-8 text-center space-y-5">
-                        <Trophy className="w-14 h-14 mx-auto text-primary" />
-                        <h3 className="text-2xl font-black">Test complete!</h3>
-                        <p className="text-muted-foreground">Score: <span className="text-2xl font-black text-primary">{testScore}/{testQuestions.length}</span></p>
-                        <div className="flex justify-center gap-1.5 flex-wrap">
-                          {testAnswers.map((a, i) => (
-                            <div key={i} className={cn("w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold",
-                              a?.isCorrect ? "bg-emerald-500/20 text-emerald-500" : "bg-red-500/20 text-red-500")}>
-                              {a?.isCorrect ? "✓" : "✗"}
-                            </div>
-                          ))}
-                        </div>
-                        <div className="flex gap-3 justify-center">
-                          <Button variant="outline" onClick={() => { setTestStarted(false); setTestComplete(false); setTestQuestions([]); }}>
-                            <RotateCcw className="w-4 h-4 mr-2" /> New test
-                          </Button>
-                          <Button onClick={() => setActiveSetTab("flashcards")}>
-                            <Zap className="w-4 h-4 mr-2" /> Back to cards
-                          </Button>
-                        </div>
-                      </motion.div>
                     )}
                   </motion.div>
                 )}

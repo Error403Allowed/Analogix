@@ -161,12 +161,6 @@ Analogix uses Groq API with task-based routing:
 
 ## API Endpoints
 
-### GraphQL API
-Analogix includes a full GraphQL API layer (`/api/graphql`) using graphql-yoga and Pothos:
-- **Queries**: profiles, stats, events, deadlines, flashcards, rooms, AI personality, AI memories, agents, activity logs, preferences, workspace entities, calendar integrations, quiz performance, study sessions
-- **Mutations**: CRUD operations for all entities
-- **Client**: Apollo Client integration
-
 ### REST API Endpoints
 
 #### AI & Groq
@@ -251,7 +245,6 @@ Analogix includes a full GraphQL API layer (`/api/graphql`) using graphql-yoga a
 
 ### Backend & Data
 - Groq API via Vercel AI SDK (@ai-sdk/groq)
-- GraphQL API (graphql-yoga, Pothos, Apollo Client)
 - Supabase Auth + Postgres + RLS
 - TanStack Query
 - Yjs for real-time collaboration
@@ -347,7 +340,6 @@ src/
 │   │   ├── groq/         # AI endpoints (chat, quiz, flashcards, study-schedule, etc.)
 │   │   ├── agents/       # Agentic workflow
 │   │   ├── ai/           # AI operations (execute, operations, validate)
-│   │   ├── graphql/      # GraphQL API endpoint
 │   │   ├── tts/          # Text-to-speech
 │   │   ├── research/     # Academic research search
 │   │   ├── health/       # Health check
@@ -365,7 +357,6 @@ src/
 ├── hooks/                 # Custom React hooks
 ├── utils/                 # Stores, hooks, parsers
 ├── lib/                  # Client/server utilities
-│   ├── graphql/          # GraphQL layer (schema, resolvers, context, client)
 │   ├── curriculum/       # ACARA curriculum data
 │   ├── aiMemory/         # AI memory management
 │   └── ...
@@ -414,11 +405,12 @@ Check file size (50MB max) and format.
 ### TypeScript/ESLint Errors
 Run `npm run lint` and fix issues before deploying.
 
-### GraphQL Errors
-Ensure all environment variables are set and Supabase migrations are applied.
-
 ---
 
 ## Contributing
 
 Issues and PRs welcome!
+
+## Future Projects?
+
+There may be an Analogix native mobile app coming through for android and iOS, built in react native. Stay posted! 
