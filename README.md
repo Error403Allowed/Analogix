@@ -49,6 +49,9 @@ Analogix is an AI-powered study platform for Australian secondary students (Year
 - **Streaks** - Daily streak tracking
 - **Achievements** - Unlock badges for milestones
 - **Activity Stats** - Time spent, accuracy, progress over time
+- **3D Visualization** - Three.js for interactive 3D concept rendering
+- **Data Charts** - Progress visualization with Recharts
+- **Function Plotting** - Mathematical graph visualization with function-plot
 
 ### Collaboration & Rooms
 ![Screenshot](./public/rooms.png)
@@ -103,6 +106,39 @@ Analogix is an AI-powered study platform for Australian secondary students (Year
 | `/support` | Support | FAQ page with quick links to GitHub issues, bug reports, and feature requests |
 | `/privacy` | Privacy Policy | Detailed privacy policy |
 | `/not-found` | 404 Page | Custom not-found page |
+
+---
+
+## Sitemap
+
+```
+/
+├── Landing page
+├── Login (Google OAuth)
+├── Onboarding (subject/grade/state setup)
+├── Dashboard (stats, deadlines, streak)
+├── Subjects
+│   └── [subjectId]
+│       ├── Document editor
+│       ├── Flashcards
+│       ├── Quiz
+│       └── Resources
+├── Study Map
+│   └── [subjectId] (task management, momentum scores)
+├── Chat (AI tutor)
+├── Flashcards (global review)
+├── Quiz (global practice)
+├── Calendar (day/week/month views)
+├── Timer (study sessions)
+├── Rooms
+│   └── [roomId] (collaborative workspace)
+├── Achievements
+├── Resources (file library)
+├── Formulas
+├── Support
+├── Privacy
+└── 404
+```
 
 ---
 
@@ -207,6 +243,9 @@ Analogix includes a full GraphQL API layer (`/api/graphql`) using graphql-yoga a
 - BlockNote editor (built on TipTap)
 - KaTeX for math, react-markdown
 - CodeMirror for code blocks
+- Three.js for 3D visualization
+- Recharts for data visualization
+- function-plot for math graphing
 - Emoji Mart for emoji picker
 - Sonner for toast notifications
 - Vaul for drawer components
@@ -346,7 +385,7 @@ src/
 ### Next.js Configuration (next.config.mjs)
 - **Server External Packages**: `pdf-parse`, `pdfjs-dist`
 - **Server Actions Body Size Limit**: 50MB
-- **Package Import Optimization**: lucide-react, Radix packages, date-fns, framer-motion
+- **Package Import Optimization**: lucide-react, Radix packages, recharts, date-fns, framer-motion
 - **Image Formats**: AVIF, WebP
 
 ---
