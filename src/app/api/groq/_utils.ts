@@ -31,11 +31,13 @@ const normalizeModelId = (modelId: string): string => {
 const DEFAULT_MODEL            = "llama-3.3-70b-versatile";                // Llama 3.3 70B - best quality
 const DEFAULT_FALLBACK_MODEL   = "llama-3.1-8b-instant";                   // Llama 3.1 8B - fast & cheap
 const HIGH_THROUGHPUT_MODEL    = "meta-llama/llama-4-scout-17b-16e-instruct"; // Higher TPM fallback for larger prompts
+const QWEN_MODEL               = "qwen/qwen3-32b";                         // Strong for math/science/coding
 
 // Additional models for specific use cases
 const LIGHTWEIGHT_MODEL        = "llama-3.1-8b-instant";                   // Fast, cheap
-const REASONING_MODEL          = "llama-3.3-70b-versatile";                // Use 70B for reasoning (DeepSeek R1 was decommissioned)
-const LARGE_MODEL              = "llama-3.3-70b-versatile";                // Large model
+const REASONING_MODEL          = "qwen/qwen3-32b";                         // Qwen3 for math/science reasoning
+const CODING_MODEL             = "llama-3.3-70b-versatile";                // 70B for coding tasks
+const LARGE_MODEL              = "meta-llama/llama-4-scout-17b-16e-instruct"; // Large context tasks
 const LAST_RESORT_MODEL        = "llama-3.1-8b-instant";                   // Fallback
 
 // User-selected model (from client) — if provided, use this instead of auto-selection
@@ -114,15 +116,39 @@ const CODING_KEYWORDS = [
   "debug", "debugging", "algorithm", "script", "syntax", "compiler", "variable",
   "api", "endpoint", "database", "sql", "query", "javascript", "python", "java",
   "typescript", "react", "node", "html", "css", "git", "github", "array", "object", 
-  "loop", "json", "const", "let", "var", "npm", "component", "interface"
+  "loop", "json", "const", "let", "var", "npm", "component", "interface",
+  "implement", "refactor", "deploy", "build", "compile", "runtime", "framework",
+  "library", "package", "module", "export", "import", "async", "await", "promise",
+  "callback", "middleware", "server", "client", "rest", "graphql", "docker",
+  "kubernetes", "ci/cd", "pipeline", "test", "unit test", "integration test"
 ];
 
 // Words that indicate a REASONING / MATH / SCIENCE question
-// Keep this minimal - let the AI handle the actual reasoning
 const REASONING_KEYWORDS = [
   "solve", "calculate", "find", "prove", "derivative", "integral",
   "equation", "formula", "quadratic", "algebra", "geometry", "calculus",
-  "physics", "chemistry", "biology", "science"
+  "physics", "chemistry", "biology", "science",
+  "theorem", "hypothesis", "experiment", "analysis", "statistic", "probability",
+  "matrix", "vector", "polynomial", "logarithm", "trigonometry", "differential",
+  "molecular", "atomic", "reaction", "force", "velocity", "acceleration",
+  "energy", "momentum", "entropy", "wavelength", "frequency", "circuit",
+  "organic", "inorganic", "stoichiometry", "periodic", "isotope", "enzyme",
+  "cell", "dna", "rna", "protein", "metabolism", "evolution", "genetics"
+];
+
+// Words that indicate a CREATIVE / WRITING task (benefits from larger models)
+const CREATIVE_KEYWORDS = [
+  "write", "essay", "story", "poem", "creative", "describe", "explain in detail",
+  "compare", "contrast", "analyze", "discuss", "evaluate", "critique", "review",
+  "summarize", "outline", "draft", "compose", "narrative", "argument", "thesis",
+  "persuade", "opinion", "interpret", "meaning", "theme", "symbolism", "metaphor"
+];
+
+// Words that indicate a simple/conversational message (lightweight is fine)
+const CONVERSATIONAL_KEYWORDS = [
+  "thanks", "thank", "appreciate", "great", "awesome", "perfect", "nice",
+  "cool", "ok", "okay", "sure", "got it", "understood", "makes sense",
+  "interesting", "wow", "haha", "lol", "good", "bad", "right", "wrong"
 ];
 
 // Simple greetings/small talk that should use fast path
@@ -355,25 +381,83 @@ export const classifyTaskType = (
     return "reasoning";
   }
 
-  // 2. Simple keyword detection - let the AI model do the heavy lifting
+  // 2. Quick lightweight detection for obvious simple messages
   const userMessages = messages
     .filter(m => m.role === "user")
-    .map(m => m.content.toLowerCase())
-    .join(" ");
-
-  const codingMatches = CODING_KEYWORDS.filter(keyword => userMessages.includes(keyword)).length;
-  const reasoningMatches = REASONING_KEYWORDS.filter(keyword => userMessages.includes(keyword)).length;
-
-  // Use reasoning model for math/science, coding model for programming
-  if (reasoningMatches >= 1 && reasoningMatches >= codingMatches) {
+    .map(m => m.content);
+  const latestMessage = userMessages[userMessages.length - 1] || "";
+  
+  // Check for obvious code blocks
+  if (/```[\s\S]*```/.test(latestMessage) || /^\s*```/.test(latestMessage)) {
+    return "coding";
+  }
+  
+  // Check for code snippets with technical syntax
+  if (/\b(function|class|interface|const|let|var|import|export|return|async|await)\b/.test(latestMessage)) {
+    return "coding";
+  }
+  
+  // Check for obvious math/science notation
+  if (/\$[^$]+\$|\\\(|\\\[|\\\d+|sin|cos|tan|∫|∑|√|π|θ|φ|λ|Δ|∂|∇/.test(latestMessage)) {
     return "reasoning";
   }
   
-  if (codingMatches >= 1) {
-    return "coding";
+  // Check for obvious short conversational messages
+  if (latestMessage.length < 50 && isSimpleMessage(messages)) {
+    return "lightweight";
   }
 
+  // 3. For ambiguous cases, fall back to default lightweight behavior.
+  // (We previously attempted to call an external classifier here, but
+  // synchronous callers expect a direct TaskType. Keep the runtime
+  // deterministic and return 'default'.)
   return "default";
+};
+
+const classifyWithAI = async (userMessage: string): Promise<TaskType> => {
+  try {
+    const apiKey = getApiKeyAtIndex(0);
+    if (!apiKey) return "default";
+
+    const classificationPrompt = `You are a task classifier. Analyze this user message and respond with ONLY one of these labels: coding, reasoning, default, lightweight
+
+Message: "${userMessage.slice(0, 500)}"
+
+Respond with only the label (no explanation):`;
+
+    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "mixtral-8x7b-32768",
+        messages: [{ role: "user", content: classificationPrompt }],
+        temperature: 0,
+        max_tokens: 10,
+      }),
+    });
+
+    if (!response.ok) {
+      console.warn("[classifyWithAI] Classification API returned:", response.status);
+      return "default";
+    }
+
+    const data = await response.json() as { choices: Array<{ message: { content: string } }> };
+    const classification = data.choices?.[0]?.message?.content?.trim().toLowerCase() || "";
+    
+    // Validate and return the classification
+    const validTypes: TaskType[] = ["coding", "reasoning", "default", "lightweight"];
+    if (validTypes.includes(classification as TaskType)) {
+      return classification as TaskType;
+    }
+    
+    return "default";
+  } catch (error) {
+    console.warn("[classifyWithAI] Failed to classify with AI:", formatError(error));
+    return "default";
+  }
 };
 
 // ============================================================================
@@ -445,17 +529,21 @@ const getModelsForTaskType = (taskType: TaskType, userModel?: string | null, est
   let models: string[];
   switch (taskType) {
     case "coding":
-      models = [DEFAULT_MODEL, DEFAULT_FALLBACK_MODEL, LAST_RESORT_MODEL];
+      // Use 70B for coding, fallback to 8B if rate limited
+      models = [CODING_MODEL, HIGH_THROUGHPUT_MODEL, DEFAULT_FALLBACK_MODEL];
       break;
     case "reasoning":
-      models = [REASONING_MODEL, DEFAULT_MODEL, DEFAULT_FALLBACK_MODEL, LAST_RESORT_MODEL];
+      // Use Qwen3 for math/science reasoning, fallback to 70B then 8B
+      models = [REASONING_MODEL, DEFAULT_MODEL, DEFAULT_FALLBACK_MODEL];
       break;
     case "lightweight":
+      // Fast 8B model for simple queries
       models = [LIGHTWEIGHT_MODEL, DEFAULT_FALLBACK_MODEL, LAST_RESORT_MODEL];
       break;
     case "default":
     default:
-      models = [DEFAULT_MODEL, DEFAULT_FALLBACK_MODEL, LAST_RESORT_MODEL];
+      // General purpose: 70B first, then fallbacks
+      models = [DEFAULT_MODEL, HIGH_THROUGHPUT_MODEL, DEFAULT_FALLBACK_MODEL];
   }
   return filterBlockedModels(models);
 };

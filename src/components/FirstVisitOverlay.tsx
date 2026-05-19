@@ -200,7 +200,7 @@ const FirstVisitOverlay = () => {
 
             {/* Bottom divider */}
             <motion.div
-              className="mt-10 mx-auto h-px w-32 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+              className="mt-10 mx-auto h-[0.5px] w-32 bg-gradient-to-r from-transparent via-current/20 to-transparent"
               initial={{ scaleX: 0 }}
               animate={{ scaleX: 1 }}
               transition={{ delay: 1.8, duration: 0.6 }}

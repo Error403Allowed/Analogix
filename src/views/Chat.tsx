@@ -63,7 +63,7 @@ const nextConfig: NextConfig = {
 // Splits AI response into { thinking, response } based on <think>...</think> tags.
 // Handles: leading whitespace before <think>, missing </think> (model cut off mid-think),
 // and <think> appearing anywhere in the response.
-const parseThinkingContent = (content: string): { thinking: string | null; response: string } => {
+const parseThinkingContent = (content: string, isFinal = true): { thinking: string | null; response: string } => {
   const trimmed = content.trimStart();
 
   // Case 1: <think>...</think> is present and complete — strip it out
@@ -72,18 +72,25 @@ const parseThinkingContent = (content: string): { thinking: string | null; respo
     const response = trimmed.slice(completeMatch[0].length).trim();
     // If the model ONLY returned a think block with no actual response, return a fallback
     if (!response) {
-      return { thinking: completeMatch[1].trim(), response: "*(The model did not return a response after thinking. Please try again.)*" };
+      return {
+        thinking: completeMatch[1].trim(),
+        response: isFinal
+          ? "*(The model did not return a response after thinking. Please try again.)*"
+          : "",
+      };
     }
     return { thinking: completeMatch[1].trim(), response };
   }
 
   // Case 2: <think> opened but </think> never closed (model cut off mid-think)
-  // Treat everything inside as thinking, return fallback response
+  // Treat everything inside as thinking, but only show an error after streaming is complete.
   const openOnly = trimmed.match(/^<think>([\s\S]*)$/);
   if (openOnly) {
     return {
       thinking: openOnly[1].trim(),
-      response: "*(The model's reasoning was cut off. Please try again.)*",
+      response: isFinal
+        ? "*(The model's reasoning was cut off. Please try again.)*"
+        : "",
     };
   }
 
@@ -135,9 +142,7 @@ const ThinkingBlock = ({ content }: { content: string }) => {
 };
 
 // ─── StreamingMessage ──────────────────────────────────────────────────────
-// Fades in new content as it arrives instead of a typewriter effect.
-// Think of it like a Polaroid developing — the image gradually becomes visible
-// rather than being typed letter-by-letter.
+// Claude-style streaming: text appears immediately with a smooth cursor
 const StreamingMessage = ({
   content,
   isStreaming,
@@ -145,25 +150,11 @@ const StreamingMessage = ({
   content: string;
   isStreaming: boolean;
 }) => {
-  const prevLenRef = useRef(0);
-
-  useEffect(() => {
-    if (isStreaming && content.length > prevLenRef.current) {
-      prevLenRef.current = content.length;
-    }
-    if (!isStreaming) prevLenRef.current = 0;
-  }, [content, isStreaming]);
-
   return (
-    <motion.div
-      initial={isStreaming ? { opacity: 0.55 } : { opacity: 1 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 1.6, ease: "easeOut" }}
-      className="text-sm leading-relaxed"
-    >
+    <div className="text-sm leading-relaxed">
       <MarkdownRenderer content={content} className="text-sm leading-relaxed" streaming={isStreaming} />
-      {isStreaming && <span className="inline-block w-[0.6em] h-[1.1em] bg-foreground/70 ml-0.5 align-middle animate-pulse" />}
-    </motion.div>
+      {isStreaming && <span className="inline-block w-[2px] h-[1.2em] bg-foreground/80 ml-[2px] -mb-[2px] align-middle animate-[blink_1s_ease-in-out_infinite]" />}
+    </div>
   );
 };
 
@@ -1233,6 +1224,22 @@ const Chat = () => {
                   console.log("[Chat] agent-action results:", data.results);
                   if (data.results?.length) {
                     window.dispatchEvent(new CustomEvent("subjectDataUpdated", { detail: { results: data.results } }));
+                    
+                    // Add system message for successful flashcard creation
+                    const flashcardResults = data.results.filter((r: any) => r.type === "add_flashcards" && r.status === "success");
+                    if (flashcardResults.length > 0) {
+                      const messages = flashcardResults.map((r: any) => 
+                        `✓ Saved "${r.setName}" (${r.cardCount} cards) to Flashcard Library`
+                      ).join("\n");
+                      
+                      setMessages(prev => [...prev, {
+                        id: `system_${Date.now()}`,
+                        role: "assistant",
+                        content: messages,
+                        createdAt: new Date().toISOString(),
+                        isSystemNotification: true,
+                      } as any]);
+                    }
                   }
                 })
                 .catch(err => console.error("[Chat] agent-action error:", err));
@@ -1287,9 +1294,8 @@ const Chat = () => {
           [...prev.map(s => s.id === activeSessionId ? { ...s, updatedAt: new Date().toISOString() } : s)]
             .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
         );
-        // Generate chat title after the 2nd real exchange so we have enough context.
-        // On exchange 1 (greeting), we skip. On exchange 2-3, we retitle with richer context.
-        const realUserMessages = messages.filter(m => m.role === "user" && !m.isWelcome);
+        // Generate chat title after the first real exchange so we have enough context.
+        const realUserMessages = newHistory.filter(m => m.role === "user");
         const previousUserMessages = realUserMessages.length;
         const shouldTitle = previousUserMessages === 1 || previousUserMessages === 2;
         if (shouldTitle) {
@@ -1459,7 +1465,7 @@ Title:` }];
       <motion.div
         animate={{ opacity: sidebarOpen ? 1 : 0 }}
         transition={{ duration: 0.2 }}
-        className="flex flex-col my-2 ml-2 mr-0 rounded-2xl border border-border/20 overflow-hidden bg-card/60 backdrop-blur-sm shadow-sm"
+        className="flex flex-col my-2 mr-2 rounded-2xl border border-border/60 overflow-hidden bg-card/60 backdrop-blur-sm shadow-md"
         style={{ width: 256, height: 'calc(100% - 16px)' }}
       >
         {/* New Chat */}
@@ -1706,144 +1712,153 @@ Title:` }];
                         className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
                       >
                         {message.role === "assistant" ? (
-                          <div className="max-w-[85%] sm:max-w-[80%] message-bubble-assistant">
-                            <div className="mb-2" />
-                            <>
-                              {(() => {
-                                const { thinking } = parseThinkingContent(message.content);
-                                return thinking ? <ThinkingBlock content={thinking} /> : null;
-                              })()}
-                              {message.imageUrl && (
-                                <a
-                                  href={message.imageUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="block mb-3 rounded-xl overflow-hidden border border-border/60 bg-muted/30 focus:outline-none focus:ring-2 focus:ring-primary/40 ring-offset-2 ring-offset-transparent"
-                                >
-                                  <img
-                                    src={message.imageUrl}
-                                    alt="Related to this topic"
-                                    className="w-full max-h-56 object-cover"
-                                    loading="lazy"
-                                  />
-                                </a>
-                              )}
-                              {message.isStreaming && !parseThinkingContent(message.isStreaming ? streamingContent : message.content).response.trim() && (
-                                <div className="flex items-center gap-1.5 py-1">
-                                  <div className="w-1.5 h-1.5 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: '0ms' }} />
-                                  <div className="w-1.5 h-1.5 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: '120ms' }} />
-                                  <div className="w-1.5 h-1.5 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: '240ms' }} />
-                                </div>
-                              )}
-                              <StreamingMessage
-                                content={parseThinkingContent(message.isStreaming ? streamingContent : message.content).response}
-                                isStreaming={!!message.isStreaming}
-                              />
-                              {message.sources && message.sources.length > 0 && (
-                                <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                  {message.sources.map((source, i) => (
-                                    <ResearchSourceCard
-                                      key={`${source.id}-${i}`}
-                                      source={source}
-                                      index={i + 1}
-                                      saved={isSourceSaved(source)}
-                                      onToggleSave={toggleSaveSource}
+                          <div className={`max-w-[85%] sm:max-w-[80%] ${(message as any).isSystemNotification ? "max-w-2xl mx-auto" : "message-bubble-assistant"}`}>
+                            {(message as any).isSystemNotification ? (
+                              <div className="rounded-xl border border-green-500/30 bg-green-500/5 p-4 text-center">
+                                <p className="text-sm font-medium text-green-700 dark:text-green-400 whitespace-pre-line">
+                                  {message.content}
+                                </p>
+                              </div>
+                            ) : (
+                              <div>
+                                <div className="mb-2" />
+                                {(() => {
+                                  const { thinking } = parseThinkingContent(message.content);
+                                  return thinking ? <ThinkingBlock content={thinking} /> : null;
+                                })()}
+                                {message.imageUrl && (
+                                  <a
+                                    href={message.imageUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="block mb-3 rounded-xl overflow-hidden border border-border/60 bg-muted/30 focus:outline-none focus:ring-2 focus:ring-primary/40 ring-offset-2 ring-offset-transparent"
+                                  >
+                                    <img
+                                      src={message.imageUrl}
+                                      alt="Related to this topic"
+                                      className="w-full max-h-56 object-cover"
+                                      loading="lazy"
                                     />
-                                  ))}
-                                </div>
-                              )}
-                              <AnimatePresence>
-                              {!message.isStreaming && (
-                              <motion.div
-                                key="actions"
-                                initial={{ opacity: 0, y: 4 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ duration: 0.25, ease: "easeOut" }}
-                                className="mt-3 flex items-center justify-between gap-0.5"
-                              >
-                                {/* Explain it differently */}
-                                <div className="relative">
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => setReExplainOpenId(prev => prev === message.id ? null : message.id)}
-                                    disabled={isInputLocked}
-                                    className="h-7 gap-1.5 px-2 rounded-lg text-[11px] text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                                  >
-                                    {reExplainingId === message.id ? (
-                                      <RefreshCw className="w-3 h-3 animate-spin" />
-                                    ) : (
-                                      <Shuffle className="w-3 h-3" />
-                                    )}
-                                    Explain differently
-                                    <ChevronDown className="w-2.5 h-2.5 opacity-50" />
-                                  </Button>
-                                  <AnimatePresence>
-                                    {reExplainOpenId === message.id && (
-                                      <motion.div
-                                        initial={{ opacity: 0, y: -6, scale: 0.97 }}
-                                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                                        exit={{ opacity: 0, y: -6, scale: 0.97 }}
-                                        transition={{ duration: 0.15 }}
-                                        className="absolute left-0 top-9 z-50 w-56 rounded-xl border border-border bg-card shadow-xl p-2"
-                                      >
-                                        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-2 py-1">
-                                          Anchor to interest
-                                        </p>
-                                        <button
-                                          type="button"
-                                          onClick={() => handleReExplain(message.id)}
-                                          className="w-full text-left text-xs px-2 py-1.5 rounded-lg hover:bg-muted/60 text-foreground font-medium"
-                                        >
-                                          🎲 Surprise me
-                                        </button>
-                                        {userHobbies.map(interest => (
-                                          <button
-                                            key={interest}
-                                            type="button"
-                                            onClick={() => handleReExplain(message.id, interest)}
-                                            className="w-full text-left text-xs px-2 py-1.5 rounded-lg hover:bg-muted/60 text-foreground truncate"
-                                          >
-                                            {interest}
-                                          </button>
-                                        ))}
-                                      </motion.div>
-                                    )}
-                                  </AnimatePresence>
-                                </div>
+                                  </a>
+                                )}
+                                {(() => {
+                                  const parsed = parseThinkingContent(
+                                    message.isStreaming ? streamingContent : message.content,
+                                    !message.isStreaming
+                                  );
+                                  return (
+                                    <StreamingMessage
+                                      content={parsed.response}
+                                      isStreaming={!!message.isStreaming}
+                                    />
+                                  );
+                                })()}
+                                {message.sources && message.sources.length > 0 && (
+                                  <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                    {message.sources.map((source, i) => (
+                                      <ResearchSourceCard
+                                        key={`${source.id}-${i}`}
+                                        source={source}
+                                        index={i + 1}
+                                        saved={isSourceSaved(source)}
+                                        onToggleSave={toggleSaveSource}
+                                      />
+                                    ))}
+                                  </div>
+                                )}
 
-                                <div className="flex items-center opacity-70 hover:opacity-100 transition-opacity">
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => handleCopy(parseThinkingContent(message.content).response, message.id)}
-                                    aria-label="Copy response"
-                                    title="Copy response"
-                                    className="h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                                  >
-                                    {copiedId === message.id ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                                  </Button>
-                                  {canRegenerate && (
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="icon"
-                                      onClick={() => handleRegenerate(message.id)}
-                                      disabled={isInputLocked}
-                                      aria-label="Regenerate response"
-                                      title="Regenerate response"
-                                      className="h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                                <AnimatePresence>
+                                  {!message.isStreaming && (
+                                    <motion.div
+                                      key="actions"
+                                      initial={{ opacity: 0, y: 4 }}
+                                      animate={{ opacity: 1, y: 0 }}
+                                      transition={{ duration: 0.25, ease: "easeOut" }}
+                                      className="mt-3 flex items-center justify-between gap-0.5"
                                     >
-                                      <RefreshCw className="w-3 h-3" />
-                                    </Button>
+                                      <div className="relative">
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => setReExplainOpenId(prev => prev === message.id ? null : message.id)}
+                                          disabled={isInputLocked}
+                                          className="h-7 gap-1.5 px-2 rounded-lg text-[11px] text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                                        >
+                                          {reExplainingId === message.id ? (
+                                            <RefreshCw className="w-3 h-3 animate-spin" />
+                                          ) : (
+                                            <Shuffle className="w-3 h-3" />
+                                          )}
+                                          Explain differently
+                                          <ChevronDown className="w-2.5 h-2.5 opacity-50" />
+                                        </Button>
+                                        <AnimatePresence>
+                                          {reExplainOpenId === message.id && (
+                                            <motion.div
+                                              initial={{ opacity: 0, y: -6, scale: 0.97 }}
+                                              animate={{ opacity: 1, y: 0, scale: 1 }}
+                                              exit={{ opacity: 0, y: -6, scale: 0.97 }}
+                                              transition={{ duration: 0.15 }}
+                                              className="absolute left-0 top-9 z-50 w-56 rounded-xl border border-border bg-card shadow-xl p-2"
+                                            >
+                                              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-2 py-1">
+                                                Anchor to interest
+                                              </p>
+                                              <button
+                                                type="button"
+                                                onClick={() => handleReExplain(message.id)}
+                                                className="w-full text-left text-xs px-2 py-1.5 rounded-lg hover:bg-muted/60 text-foreground font-medium"
+                                              >
+                                                🎲 Surprise me
+                                              </button>
+                                              {userHobbies.map(interest => (
+                                                <button
+                                                  key={interest}
+                                                  type="button"
+                                                  onClick={() => handleReExplain(message.id, interest)}
+                                                  className="w-full text-left text-xs px-2 py-1.5 rounded-lg hover:bg-muted/60 text-foreground truncate"
+                                                >
+                                                  {interest}
+                                                </button>
+                                              ))}
+                                            </motion.div>
+                                          )}
+                                        </AnimatePresence>
+                                      </div>
+
+                                      <div className="flex items-center opacity-70 hover:opacity-100 transition-opacity">
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="icon"
+                                          onClick={() => handleCopy(parseThinkingContent(message.content).response, message.id)}
+                                          aria-label="Copy response"
+                                          title="Copy response"
+                                          className="h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                                        >
+                                          {copiedId === message.id ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                                        </Button>
+                                        {canRegenerate && (
+                                          <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => handleRegenerate(message.id)}
+                                            disabled={isInputLocked}
+                                            aria-label="Regenerate response"
+                                            title="Regenerate response"
+                                            className="h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                                          >
+                                            <RefreshCw className="w-3 h-3" />
+                                          </Button>
+                                        )}
+                                      </div>
+                                    </motion.div>
                                   )}
-                                </div>
-                              </motion.div>
-                              )}
-                              </AnimatePresence>
-                            </>
+                                </AnimatePresence>
+                              </div>
+                            )}
                           </div>
                         ) : (
                           <div className="flex flex-col items-end gap-1 max-w-[85%] sm:max-w-[75%]">
@@ -1942,7 +1957,7 @@ Title:` }];
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3 }}
               >
-                <div className="mx-auto w-full max-w-3xl">
+                <div className="mx-auto w-full max-w-4xl">
                 {/* Attached files preview */}
                 {attachedFiles.length > 0 && (
                   <div className="mb-2 flex flex-wrap items-center gap-2">

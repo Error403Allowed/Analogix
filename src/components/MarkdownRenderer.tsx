@@ -210,7 +210,7 @@ const MarkdownRenderer = ({ content, className, streaming = false }: MarkdownRen
               <code className="bg-muted px-1 py-0.5 rounded text-sm font-mono text-primary select-text">{children}</code>
             );
           },
-          hr: () => <hr className="border-border/40 my-6" />,
+          hr: () => <hr className="border-current/40 border-t-[0.5px] my-6" />,
           table: ({ children }) => (
             <div className="overflow-x-auto my-4">
               <table className="w-full border-collapse text-sm select-text">{children}</table>

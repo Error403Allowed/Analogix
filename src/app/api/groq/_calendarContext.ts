@@ -143,46 +143,44 @@ const events: CalendarEvent[] = (eventRows ?? []).map((r: CalendarRow) => ({
   // Build the context string
   const lines: string[] = [];
   
-  // === RIGHT NOW SECTION ===
+  // === RIGHT NOW SECTION (conversational, not robotic) ===
   const rightNowLines: string[] = [];
-  rightNowLines.push(`It's currently ${timeOfDay} (${now.toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit", hour12: true })} on ${formatDate(now.toISOString())}).`);
   
   if (currentEvent) {
     const eventEnd = new Date(currentEvent.date.getTime() + 60 * 60 * 1000);
     const minsUntilEnd = Math.round((eventEnd.getTime() - now.getTime()) / 60000);
-    rightNowLines.push(`RIGHT NOW: You have "${currentEvent.title}"${currentEvent.subject ? ` [${currentEvent.subject}]` : ""} happening. ${minsUntilEnd > 0 ? `Ends in ${minsUntilEnd} minutes.` : "Just ended."}`);
+    rightNowLines.push(`Right now: ${currentEvent.title}${currentEvent.subject ? ` (${currentEvent.subject})` : ""}${minsUntilEnd > 0 ? ` — ends in ${minsUntilEnd} mins` : ""}`);
   }
   
-  if (todayEvents.length > 0) {
-    const upcomingToday = todayEvents.filter(e => new Date(e.date) > now).slice(0, 3);
+  if (todayEvents.length > 0 && !currentEvent) {
+    const upcomingToday = todayEvents.filter(e => new Date(e.date) > now).slice(0, 1);
     if (upcomingToday.length > 0) {
       const nextToday = upcomingToday[0];
       const timeUntil = Math.round((new Date(nextToday.date).getTime() - now.getTime()) / 60000);
-      rightNowLines.push(`NEXT TODAY: "${nextToday.title}"${nextToday.subject ? ` [${nextToday.subject}]` : ""} ${timeUntil < 60 ? `in ${timeUntil} minutes` : `at ${formatTime(nextToday.date)}`}.`);
+      const timeStr = timeUntil < 60 ? `in ${timeUntil} mins` : `at ${formatTime(nextToday.date)}`;
+      rightNowLines.push(`Next: ${nextToday.title}${nextToday.subject ? ` (${nextToday.subject})` : ""} — ${timeStr}`);
     }
   }
   
-  if (nextItem) {
-    const daysUntil = Math.ceil((nextItem.date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-    const timeStr = formatTime(nextItem.date) || "";
-    if (daysUntil === 0) {
-      rightNowLines.push(`NEXT: "${nextItem.title}"${nextItem.subject ? ` [${nextItem.subject}]` : ""} today${timeStr ? ` at ${timeStr}` : ""}.`);
-    } else if (daysUntil === 1) {
-      rightNowLines.push(`NEXT: "${nextItem.title}"${nextItem.subject ? ` [${nextItem.subject}]` : ""} tomorrow${timeStr ? ` at ${timeStr}` : ""}.`);
-    } else {
-      rightNowLines.push(`NEXT: "${nextItem.title}"${nextItem.subject ? ` [${nextItem.subject}]` : ""} on ${formatDate(nextItem.date.toISOString())}.`);
-    }
-  }
-  
-  lines.push(...rightNowLines);
-  lines.push("");
-
-  if (nextClass && nextClass !== currentEvent && nextClass !== nextItem) {
+  if (nextClass && !currentEvent && !rightNowLines.some(l => l.includes(nextClass.title))) {
+    const classMins = Math.round((nextClass.date.getTime() - now.getTime()) / 60000);
     const classDays = Math.ceil((nextClass.date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-    if (classDays <= 3) {
-      lines.push(`NEXT CLASS: "${nextClass.title}"${nextClass.subject ? ` [${nextClass.subject}]` : ""} ${classDays === 0 ? "today" : classDays === 1 ? "tomorrow" : `on ${formatDate(nextClass.date.toISOString())}`}.`);
-      lines.push("");
+    let when = "";
+    if (classMins < 60) {
+      when = `in ${classMins} mins`;
+    } else if (classDays === 0) {
+      when = `today at ${formatTime(nextClass.date)}`;
+    } else if (classDays === 1) {
+      when = `tomorrow at ${formatTime(nextClass.date)}`;
+    } else {
+      when = `${formatDate(nextClass.date.toISOString())}`;
     }
+    rightNowLines.push(`You've got ${nextClass.title}${nextClass.subject ? ` (${nextClass.subject})` : ""} — ${when}`);
+  }
+  
+  if (rightNowLines.length > 0) {
+    lines.push(...rightNowLines);
+    lines.push("");
   }
 
   if (events.length > 0) {

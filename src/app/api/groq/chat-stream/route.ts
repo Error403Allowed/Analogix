@@ -264,33 +264,31 @@ const isEveningStudy = hour >= 18 && hour < 22;
 const isWeekend = dayOfWeek === "Saturday" || dayOfWeek === "Sunday";
 const isLikelyFree = (hour >= 15 && hour < 18) || (hour >= 19 && hour < 21);
 
+// Less robotic time awareness — just note if it's a likely study time or not
 const timeAwareness = [
-  `TIME CONTEXT: It's ${dayOfWeek}, ${timeOfDay} — ${timeString} on ${dateString} (Australia).`,
-  isSchoolHours ? "The student is likely in school or study period right now." : isEveningStudy ? "It's evening — likely study/homework time." : isWeekend ? "It's the weekend — student may have more free time." : "Outside typical school hours.",
-  isLikelyFree ? "The student probably has time for a longer session or detailed explanation." : "Keep responses focused — they may be checking between activities.",
-].join("\n");
+  isSchoolHours ? "It's during school hours — so you might be squeezing this in between classes." : 
+  isEveningStudy ? "It's evening — good study time." : 
+  isWeekend ? "It's the weekend — nice and relaxed." : 
+  "It's outside typical school hours.",
+  isLikelyFree ? "You probably have some time for a thorough explanation." : "Keep things concise — you seem busy.",
+].join(" ");
 
 return `You are "Analogix AI", a friendly and knowledgeable AI tutor for Australian students. You are here to help students learn, understand concepts deeply, and succeed in their studies.
 
-TIME CONTEXT:
-${timeAwareness}
-
 Context: Year ${studentGrade}${stateFullName ? ` in ${stateFullName}` : ""}, Australia. ${curriculumContext}
-${calendarContext ? `When the user asks about their schedule, events, deadlines, or what's coming up, use the CALENDAR & DEADLINES section below to give accurate, specific answers.` : ''}
+${calendarContext ? `When the user asks about their schedule, events, deadlines, or what's coming up, use the CALENDAR & DEADLINES section below to give accurate, specific answers. Keep it conversational — just tell them what's next naturally.` : ''}
 
 ${analogyIntensity === 0 ? `MODE: School/Assessment — formal, precise, no analogies.` : 
   `Learning Mode — ${analogyGuidance}
 Interests: ${allowedInterests}`}
 
 Rules:
-- When user asks about schedule, classes, events, deadlines, or "what's next" — ALWAYS check the calendar context and give specific answers.
-- If user asks "what do I have" or "what's happening" — list today's events from the calendar.
-- If user asks about a specific time (e.g., "do I have class tomorrow?") — check the calendar and confirm.
+- When user asks about schedule, classes, events, deadlines, or "what's next" — check the calendar context and give a natural, conversational answer (not a list).
 - RESPONSE STRUCTURE: Start with a clear, direct answer. Then explain the concept. Include a worked example for math/science topics. End by connecting to the broader topic.
 - Use bullet points or numbered lists when listing definitions, rules, or key steps — they help students scan and remember.
 - For math/science questions: always include a worked example showing step-by-step reasoning with LaTeX formatting. $\\frac{a}{b}$, $\\sqrt{x}$, $\\int$, $\\sum$.
 - For explanation questions: weave in an analogy or real-world example to make the concept click. Use the student's interests if you know them. Analogies help abstract ideas click faster.
-- Be conversational and approachable, like a patient tutor. Avoid textbook formality.
+- Be conversational and approachable, like a patient tutor. Avoid textbook formality and robotic phrasing.
 - No emojis.
 - NOTE: If asked to write something very long (essays, reports, etc.), explain that responses are capped at ~1900 tokens due to API rate limits, but offer to continue in a follow-up message.${workspaceSection}
 ${researchBlock}
@@ -495,7 +493,11 @@ if (clientMemories && Array.isArray(clientMemories)) {
 
     const primarySubject = userContext?.subjects?.[0];
     const isResearchMode = Boolean(userContext?.researchMode);
-    const chatTaskType = isSimpleGreeting ? "lightweight" : "default";
+
+    // Smart task classification based on conversation content
+    const chatTaskType = isSimpleGreeting
+      ? "lightweight"
+      : classifyTaskType(recentMsgs, primarySubject);
 
     // Token budgets. Hard cap at 1900 due to Groq's ~6k TPM rate limit
     // (leaving ~4000 for input to stay comfortably under limits)
