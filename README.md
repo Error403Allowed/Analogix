@@ -50,7 +50,8 @@ Analogix is an AI-powered study platform for Australian secondary students (Year
 - **Achievements** - Unlock badges for milestones
 - **Activity Stats** - Time spent, accuracy, progress over time
 - **Data Charts** - AI-generated charts with Recharts (bar, line, pie, area)
-- **Function Plotting** - Mathematical graph visualization with function-plot
+- **3D Concept Visualisation** - AI-generated 3D scenes with Three.js (atoms, molecules, networks, hierarchies, timelines)
+- **Function Plotting** - Mathematical graph visualization with Desmos
 
 ### Collaboration & Rooms
 ![Screenshot](./public/rooms.png)
@@ -237,7 +238,8 @@ Analogix uses Groq API with task-based routing:
 - KaTeX for math, react-markdown
 - CodeMirror for code blocks
 - Recharts for AI-generated data visualization
-- function-plot for math graphing
+- Three.js for AI-generated 3D concept visualization
+- Desmos for interactive math graphing
 - Emoji Mart for emoji picker
 - Sonner for toast notifications
 - Vaul for drawer components

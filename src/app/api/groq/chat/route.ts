@@ -452,34 +452,72 @@ Math Requirements:
 ${formulaSheetContext ? `\nFormulas: ${formulaSheetContext}` : ""}
 ${researchBlock}
 
-Chart Generation:
-When presenting numerical data, comparisons, trends, distributions, statistics, or percentages, ALWAYS generate a visual chart using a JSON code block with the language "recharts". If the user asks for a chart, or if showing data visually would help them understand, you MUST include a chart.
+Visualisations — you have THREE tools to make concepts visual and memorable:
 
-Supported chart types: "bar", "line", "pie", "area"
+1. DESMOS GRAPHS (for math functions):
+   Use a code block with language "desmos" to render interactive graphs.
+   Format: \`\`\`desmos
+   y = x^2
+   y = 2x + 1
+   \`\`\`
+   Use for: any math function, equation, inequality, parametric curve.
 
-Format:
-\`\`\`recharts
-{
-  "type": "bar",
-  "title": "Chart Title",
-  "xKey": "name",
-  "categories": ["value1", "value2"],
-  "data": [
-    {"name": "Label 1", "value1": 10, "value2": 20},
-    {"name": "Label 2", "value1": 15, "value2": 25}
-  ]
-}
-\`\`\`
+2. RECHARTS (for data & statistics):
+   When presenting numerical data, comparisons, trends, distributions, statistics, or percentages, ALWAYS generate a chart using a JSON code block with language "recharts".
+   Supported types: "bar" (comparisons), "line" (trends over time), "pie" (part-to-whole), "area" (cumulative trends).
+   Format:
+   \`\`\`recharts
+   {
+     "type": "bar",
+     "title": "Chart Title",
+     "xKey": "name",
+     "categories": ["value1", "value2"],
+     "data": [
+       {"name": "Label 1", "value1": 10, "value2": 20},
+       {"name": "Label 2", "value1": 15, "value2": 25}
+     ]
+   }
+   \`\`\`
 
-Rules:
-- Use "bar" for comparisons between categories (e.g., test scores by subject, population by country)
-- Use "line" for trends over time (e.g., temperature over months, growth over years)
-- Use "pie" for part-to-whole percentages (e.g., budget breakdown, survey results)
-- Use "area" for cumulative trends (e.g., total revenue over time)
-- Keep data points concise (5-10 max)
-- Always include meaningful labels and a descriptive title
-- Use numeric values only
-- Place the chart after your explanation, not before`;
+3. THREE.JS 3D SCENES (for concepts & structures):
+   When explaining abstract concepts, structures, systems, or relationships, generate a 3D scene using a JSON code block with language "three".
+   Use for: atoms/molecules, solar systems, biological structures, networks, hierarchies, timelines, ecosystems, flow diagrams, or ANY concept that benefits from a visual spatial representation.
+   Format:
+   \`\`\`three
+   {
+     "title": "Short display title",
+     "description": "1-2 sentence explanation",
+     "sceneType": "atom" | "solar" | "molecule" | "wave" | "dna" | "cell" | "graph" | "geometry" | "network" | "timeline" | "hierarchy" | "flow" | "ecosystem" | "generic",
+     "primaryColor": "#hexcolor",
+     "secondaryColor": "#hexcolor",
+     "objects": [
+       {
+         "id": "unique_id",
+         "shape": "sphere" | "torus" | "box" | "cylinder" | "cone" | "helix" | "ring" | "pyramid",
+         "label": "short label",
+         "color": "#hexcolor",
+         "size": 1.0,
+         "position": {"x": 0, "y": 0, "z": 0},
+         "orbitRadius": null,
+         "orbitSpeed": null,
+         "pulsates": false
+       }
+     ],
+     "connections": [
+       {"from": "object_id", "to": "object_id", "color": "#hexcolor"}
+     ],
+     "analogyHint": "A fun one-liner analogy or memory tip"
+   }
+   \`\`\`
+   Rules for 3D scenes:
+   - Include 4-10 objects spread across the full position range (x: -3 to 3, y: -2 to 2, z: -2 to 2)
+   - Layout should reflect the concept's structure (timeline = left to right, hierarchy = top to bottom)
+   - Use orbitRadius/orbitSpeed for objects that should animate (electrons, planets)
+   - Use pulsates: true for living things, energy, or active processes
+   - Use meaningful, distinct colours
+   - Keep labels short (2-3 words max)
+
+IMPORTANT: If the user asks for a visual, diagram, or graph — use the right tool. Math functions → Desmos. Data/statistics → Recharts. Concepts/structures → Three.js. Don't just describe it — SHOW it.`;
 
     // ========================================================================
     // STEP 3: Detect what type of question this is (coding/reasoning/general)

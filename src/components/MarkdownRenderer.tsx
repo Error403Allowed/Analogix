@@ -30,7 +30,18 @@ const RechartsGraph = dynamic(() => import("@/components/graphing/RechartsGraph"
   ),
 });
 
+const ThreeScene = dynamic(() => import("@/components/graphing/ThreeScene"), {
+  ssr: false,
+  loading: () => (
+    <div className="my-4 rounded-2xl overflow-hidden border border-border/30 bg-muted/20 p-6 flex items-center justify-center gap-2">
+      <div className="w-1.5 h-1.5 rounded-full bg-primary/40 animate-pulse" />
+      <p className="text-xs text-muted-foreground/50 italic">3D scene rendering…</p>
+    </div>
+  ),
+});
+
 import type { ChartSpec } from "@/components/graphing/RechartsGraph";
+import type { ThreeSceneSpec } from "@/components/graphing/ThreeScene";
 
 
 interface MarkdownRendererProps {
@@ -212,6 +223,21 @@ const MarkdownRenderer = ({ content, className, streaming = false }: MarkdownRen
               try {
                 const spec = JSON.parse(rawBlock) as ChartSpec;
                 return <RechartsGraph spec={spec} />;
+              } catch {
+                return (
+                  <pre className="bg-muted/40 border border-border/40 rounded-xl p-4 overflow-x-auto text-sm my-4 select-text">
+                    {children}
+                  </pre>
+                );
+              }
+            }
+
+            // Check for three.js / 3D scene block
+            if (lang === "language-three" || lang === "language-3d" || lang === "language-scene") {
+              if (!blockComplete) return streamingPlaceholder;
+              try {
+                const spec = JSON.parse(rawBlock) as ThreeSceneSpec;
+                return <ThreeScene spec={spec} />;
               } catch {
                 return (
                   <pre className="bg-muted/40 border border-border/40 rounded-xl p-4 overflow-x-auto text-sm my-4 select-text">
