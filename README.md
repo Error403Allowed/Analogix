@@ -18,13 +18,9 @@ Analogix is an AI-powered study platform for Australian secondary students (Year
 - **Subject Alignment** - Full ACARA curriculum knowledge with state-specific syllabus alignment (VIC, NSW, QLD, SA, WA, TAS, NT, ACT)
 - **Formula Context** - Maths/science formulas injected automatically
 - **AI Memory and Personality** - Analogix AI has extensive personality editing as well as presets, such as the friendly tutor, strict professor, and more! The AI tutor also saves memories, whether you want to manually add some, or it creates it itself, with the incorporated machine learning approach that saves memories about the user to further personalise and improve activity and responses
-- **Multi-Model Support** - Groq API + Google Gemini AI for diverse capabilities
-- **LangChain Integration** - Advanced AI workflows and agentic capabilities
-- **3D/AR Concept Visualization** - AI-powered 3D scene generation using Three.js for any concept
 - **Study Schedule Generator** - AI creates day-by-day study schedules from calendar events
 - **Assessment Guide Generator** - Upload assessment notifications (PDF) to get AI-generated study plans
 - **Text-to-Speech** - TTS integration using browser SpeechSynthesis API
-- **YouTube Transcript Extraction** - Fetch transcripts and metadata from YouTube videos
 - **Academic Research Search** - Search academic papers via OpenAlex, Crossref, and Semantic Scholar
 
 ### Documents & Study Workspace
@@ -53,8 +49,6 @@ Analogix is an AI-powered study platform for Australian secondary students (Year
 - **Streaks** - Daily streak tracking
 - **Achievements** - Unlock badges for milestones
 - **Activity Stats** - Time spent, accuracy, progress over time
-- **Function Plotting** - Mathematical graph visualization
-- **Data Charts** - Progress visualization with Recharts
 
 ### Collaboration & Rooms
 ![Screenshot](./public/rooms.png)
@@ -78,7 +72,6 @@ Analogix is an AI-powered study platform for Australian secondary students (Year
 - **Toast Notifications** - Sonner toast library
 - **Drawer Components** - Vaul drawer library
 - **Resizable Panels** - Layout management with react-resizable-panels
-- **Material UI Components** - MUI alongside shadcn/ui
 - **OTP Input** - Verification code input component
 - **Account Deletion** - Users can delete their accounts
 
@@ -126,11 +119,7 @@ Analogix uses Groq API with task-based routing:
 | `qwen-3-32b` | Reasoning model for mathematics and science |
 | `llama-3.1-8b-instant` | Lightweight model for quick questions |
 
-### Google Gemini
-- **Google Generative AI** - Additional model capabilities via `@google/generative-ai`
-
 ### AI Frameworks
-- **LangChain** - Advanced AI workflows and agentic capabilities
 - **Vercel AI SDK** - Core AI integration (`ai` v6, `@ai-sdk/groq` v3, `@ai-sdk/react`)
 
 ---
@@ -153,7 +142,6 @@ Analogix includes a full GraphQL API layer (`/api/graphql`) using graphql-yoga a
 | `/api/groq/flashcards` | Flashcard generation |
 | `/api/groq/study-schedule` | AI-generated study schedule from deadlines |
 | `/api/groq/assessment-guide` | AI assessment guide from PDFs |
-| `/api/groq/ar-concept` | 3D/AR concept visualization |
 | `/api/groq/tutor` | Dedicated tutor endpoint |
 | `/api/groq/reexplain` | Re-explain concept |
 | `/api/groq/quiz-review` | Quiz review feedback |
@@ -176,9 +164,7 @@ Analogix includes a full GraphQL API layer (`/api/graphql`) using graphql-yoga a
 #### Utilities
 | Endpoint | Description |
 |----------|-------------|
-| `/api/python/execute` | Python-like math execution sandbox |
 | `/api/tts/speak` | Text-to-speech |
-| `/api/youtube/transcript` | YouTube transcript extraction |
 | `/api/research/search` | Academic research search (OpenAlex, Crossref, Semantic Scholar) |
 | `/api/health` | Health check endpoint |
 | `/api/account/delete` | Account deletion (DELETE) |
@@ -221,22 +207,15 @@ Analogix includes a full GraphQL API layer (`/api/graphql`) using graphql-yoga a
 - BlockNote editor (built on TipTap)
 - KaTeX for math, react-markdown
 - CodeMirror for code blocks
-- Three.js for 3D visualization
-- Recharts for data visualization
-- Function Plot for math graphing
 - Emoji Mart for emoji picker
-- Material UI components
 - Sonner for toast notifications
 - Vaul for drawer components
 - React Resizable Panels
 
 ### Backend & Data
 - Groq API via Vercel AI SDK (@ai-sdk/groq)
-- Google Gemini AI (@google/generative-ai)
-- LangChain framework (@langchain/groq, langchain, langchain-core)
 - GraphQL API (graphql-yoga, Pothos, Apollo Client)
 - Supabase Auth + Postgres + RLS
-- MongoDB driver
 - TanStack Query
 - Yjs for real-time collaboration
 
@@ -244,8 +223,6 @@ Analogix includes a full GraphQL API layer (`/api/graphql`) using graphql-yoga a
 - pdf-parse + mammoth (text extraction)
 - ical.js (calendar import)
 - @codemirror/lang-python
-- Pyodide (Python in browser via WebAssembly)
-- mathjs for math computations
 - jose for JWT/JOSE
 - dataloader for batching/caching
 - rxjs for reactive programming
@@ -282,9 +259,6 @@ npm install
 # Groq (required)
 GROQ_API_KEY=your_groq_api_key
 GROQ_API_KEY_2=optional_secondary_key
-
-# Google Gemini (optional)
-GOOGLE_GENERATIVE_AI_API_KEY=your_google_ai_key
 
 # Supabase
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
@@ -337,9 +311,7 @@ src/
 │   │   ├── agents/       # Agentic workflow
 │   │   ├── ai/           # AI operations (execute, operations, validate)
 │   │   ├── graphql/      # GraphQL API endpoint
-│   │   ├── python/       # Python math execution sandbox
 │   │   ├── tts/          # Text-to-speech
-│   │   ├── youtube/      # YouTube transcript extraction
 │   │   ├── research/     # Academic research search
 │   │   ├── health/       # Health check
 │   │   ├── account/      # Account deletion
@@ -374,7 +346,7 @@ src/
 ### Next.js Configuration (next.config.mjs)
 - **Server External Packages**: `pdf-parse`, `pdfjs-dist`
 - **Server Actions Body Size Limit**: 50MB
-- **Package Import Optimization**: lucide-react, Radix packages, recharts, date-fns, framer-motion
+- **Package Import Optimization**: lucide-react, Radix packages, date-fns, framer-motion
 - **Image Formats**: AVIF, WebP
 
 ---
@@ -407,9 +379,6 @@ Run `npm run lint` and fix issues before deploying.
 
 ### GraphQL Errors
 Ensure all environment variables are set and Supabase migrations are applied.
-
-### Python Execution Fails
-Pyodide runs in the browser via WebAssembly - ensure modern browser is used.
 
 ---
 
