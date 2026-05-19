@@ -1163,6 +1163,7 @@ const Chat = () => {
               .replace(/^```(?:json)?\n?/, "")
               .replace(/\n?```$/, "")
               .trim();
+            if (!cleaned) return;
             const parsed = JSON.parse(cleaned);
             const actions = Array.isArray(parsed) ? parsed : [parsed];
             console.log("[Chat] dispatching", actions.length, "action(s)");

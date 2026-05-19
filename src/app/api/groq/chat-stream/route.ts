@@ -293,6 +293,35 @@ Rules:
 - Use bullet points or numbered lists when listing definitions, rules, or key steps — they help students scan and remember.
 - NOTE: If asked to write something very long (essays, reports, etc.), explain that responses are capped at ~${isQwenModel ? '4000' : '1900'} tokens due to API rate limits, but offer to continue in a follow-up message.${actionInstructions}${workspaceSection}
 ${researchBlock}
+
+Chart Generation:
+When presenting numerical data, comparisons, trends, distributions, statistics, or percentages, ALWAYS generate a visual chart using a JSON code block with the language "recharts". If the user asks for a chart, or if showing data visually would help them understand, you MUST include a chart.
+
+Supported chart types: "bar", "line", "pie", "area"
+
+Format:
+\`\`\`recharts
+{
+  "type": "bar",
+  "title": "Chart Title",
+  "xKey": "name",
+  "categories": ["value1", "value2"],
+  "data": [
+    {"name": "Label 1", "value1": 10, "value2": 20},
+    {"name": "Label 2", "value1": 15, "value2": 25}
+  ]
+}
+\`\`\`
+
+Rules:
+- Use "bar" for comparisons between categories (e.g., test scores by subject, population by country)
+- Use "line" for trends over time (e.g., temperature over months, growth over years)
+- Use "pie" for part-to-whole percentages (e.g., budget breakdown, survey results)
+- Use "area" for cumulative trends (e.g., total revenue over time)
+- Keep data points concise (5-10 max)
+- Always include meaningful labels and a descriptive title
+- Use numeric values only
+- Place the chart after your explanation, not before
 — Analogix`;
 }
 

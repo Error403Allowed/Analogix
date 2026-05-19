@@ -453,7 +453,7 @@ ${formulaSheetContext ? `\nFormulas: ${formulaSheetContext}` : ""}
 ${researchBlock}
 
 Chart Generation:
-When presenting numerical data, comparisons, trends, or distributions, generate a visual chart using a JSON code block with the language "recharts". Use charts to make data easier to understand.
+When presenting numerical data, comparisons, trends, distributions, statistics, or percentages, ALWAYS generate a visual chart using a JSON code block with the language "recharts". If the user asks for a chart, or if showing data visually would help them understand, you MUST include a chart.
 
 Supported chart types: "bar", "line", "pie", "area"
 
@@ -472,13 +472,14 @@ Format:
 \`\`\`
 
 Rules:
-- Use "bar" for comparisons between categories
-- Use "line" for trends over time
-- Use "pie" for part-to-whole percentages
-- Use "area" for cumulative trends
+- Use "bar" for comparisons between categories (e.g., test scores by subject, population by country)
+- Use "line" for trends over time (e.g., temperature over months, growth over years)
+- Use "pie" for part-to-whole percentages (e.g., budget breakdown, survey results)
+- Use "area" for cumulative trends (e.g., total revenue over time)
 - Keep data points concise (5-10 max)
-- Always include meaningful labels
-- Use numeric values only`;
+- Always include meaningful labels and a descriptive title
+- Use numeric values only
+- Place the chart after your explanation, not before`;
 
     // ========================================================================
     // STEP 3: Detect what type of question this is (coding/reasoning/general)
