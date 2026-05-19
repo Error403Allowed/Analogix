@@ -49,8 +49,7 @@ Analogix is an AI-powered study platform for Australian secondary students (Year
 - **Streaks** - Daily streak tracking
 - **Achievements** - Unlock badges for milestones
 - **Activity Stats** - Time spent, accuracy, progress over time
-- **3D Visualization** - Three.js for interactive 3D concept rendering
-- **Data Charts** - Progress visualization with Recharts
+- **Data Charts** - AI-generated charts with Recharts (bar, line, pie, area)
 - **Function Plotting** - Mathematical graph visualization with function-plot
 
 ### Collaboration & Rooms
@@ -243,8 +242,7 @@ Analogix includes a full GraphQL API layer (`/api/graphql`) using graphql-yoga a
 - BlockNote editor (built on TipTap)
 - KaTeX for math, react-markdown
 - CodeMirror for code blocks
-- Three.js for 3D visualization
-- Recharts for data visualization
+- Recharts for AI-generated data visualization
 - function-plot for math graphing
 - Emoji Mart for emoji picker
 - Sonner for toast notifications
