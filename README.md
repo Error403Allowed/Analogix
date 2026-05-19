@@ -18,6 +18,14 @@ Analogix is an AI-powered study platform for Australian secondary students (Year
 - **Subject Alignment** - Full ACARA curriculum knowledge with state-specific syllabus alignment (VIC, NSW, QLD, SA, WA, TAS, NT, ACT)
 - **Formula Context** - Maths/science formulas injected automatically
 - **AI Memory and Personality** - Analogix AI has extensive personality editing as well as presets, such as the friendly tutor, strict professor, and more! The AI tutor also saves memories, whether you want to manually add some, or it creates it itself, with the incorporated machine learning approach that saves memories about the user to further personalise and improve activity and responses
+- **Multi-Model Support** - Groq API + Google Gemini AI for diverse capabilities
+- **LangChain Integration** - Advanced AI workflows and agentic capabilities
+- **3D/AR Concept Visualization** - AI-powered 3D scene generation using Three.js for any concept
+- **Study Schedule Generator** - AI creates day-by-day study schedules from calendar events
+- **Assessment Guide Generator** - Upload assessment notifications (PDF) to get AI-generated study plans
+- **Text-to-Speech** - TTS integration using browser SpeechSynthesis API
+- **YouTube Transcript Extraction** - Fetch transcripts and metadata from YouTube videos
+- **Academic Research Search** - Search academic papers via OpenAlex, Crossref, and Semantic Scholar
 
 ### Documents & Study Workspace
 ![Screenshot](./public/document-editor.png)
@@ -38,12 +46,15 @@ Analogix is an AI-powered study platform for Australian secondary students (Year
 
 ### Study Planning & Progress
 ![Screenshot](./public/calendar.png)
+- **Study Map** - v2 workspace for subject overview with pending tasks, document counts, and momentum scores
 - **Calendar** - Day/week/month views, .ics import from school calendars
 - **Deadlines** - Assignment tracking with priority levels
 - **Study Timer** - Pomodoro-style sessions with goals
 - **Streaks** - Daily streak tracking
 - **Achievements** - Unlock badges for milestones
 - **Activity Stats** - Time spent, accuracy, progress over time
+- **Function Plotting** - Mathematical graph visualization
+- **Data Charts** - Progress visualization with Recharts
 
 ### Collaboration & Rooms
 ![Screenshot](./public/rooms.png)
@@ -59,10 +70,17 @@ Analogix is an AI-powered study platform for Australian secondary students (Year
 - **Formula Search** - Search across all formula sheets
 
 ### Personalization & UX
-- **Google Sign-in** - Supabase Auth
+- **Google Sign-in** - Supabase Auth with Google OAuth
 - **Onboarding** - Select subjects, grade, state, interests
 - **Theme Selector** - Light/dark mode, custom themes
 - **Responsive UI** - Works on desktop and tablet
+- **Emoji Picker** - emoji-mart integration
+- **Toast Notifications** - Sonner toast library
+- **Drawer Components** - Vaul drawer library
+- **Resizable Panels** - Layout management with react-resizable-panels
+- **Material UI Components** - MUI alongside shadcn/ui
+- **OTP Input** - Verification code input component
+- **Account Deletion** - Users can delete their accounts
 
 ---
 
@@ -70,28 +88,34 @@ Analogix is an AI-powered study platform for Australian secondary students (Year
 
 | Route | Page | Description |
 |-------|------|-------------|
-| `/` | Landing | Public landing page |
+| `/` | Landing | Public landing page (v2 redesign) |
 | `/login` | Login | Google authentication |
 | `/onboarding` | Onboarding | Initial subject/grade setup |
 | `/dashboard` | Dashboard | Home with stats, deadlines, streak |
 | `/subjects` | Subjects | Subject overview |
 | `/subjects/:id` | Subject Detail | Subject workspace |
 | `/subjects/:id/document/:docId` | Document Editor | Rich text editor |
-| `/chat` | Chat | AI tutor conversation |
-| `/flashcards` | Flashcards | Flashcard review |
-| `/quiz` | Quiz | Quiz practice |
+| `/study-map` | Study Map Home | Subject overview with pending tasks, document counts, and momentum scores |
+| `/study-map/[subjectId]` | Study Map Subject | Per-subject workspace with homework/task management |
+| `/chat` | Chat | AI tutor conversation (v2 ChatStudio) |
+| `/flashcards` | Flashcards | Flashcard review (v2 FlashcardsStudio) |
+| `/quiz` | Quiz | Quiz practice (v2 QuizStudio) |
 | `/calendar` | Calendar | Event calendar |
 | `/timer` | Timer | Study timer |
 | `/rooms` | Rooms | Study rooms |
 | `/rooms/:roomId` | Room Workspace | Collaborative room |
 | `/achievements` | Achievements | Badges and milestones |
-| `/resources` | Resources | File library |
+| `/resources` | Resources | File library (v2 ResourcesStudio) |
 | `/formulas` | Formulas | Formula reference |
+| `/support` | Support | FAQ page with quick links to GitHub issues, bug reports, and feature requests |
+| `/privacy` | Privacy Policy | Detailed privacy policy |
+| `/not-found` | 404 Page | Custom not-found page |
 
 ---
 
-## AI Models (Groq)
+## AI Models
 
+### Groq API
 Analogix uses Groq API with task-based routing:
 
 | Model | Use Case |
@@ -101,6 +125,81 @@ Analogix uses Groq API with task-based routing:
 | `llama-3.3-70b-versatile` | Reliable and versatile for complex tasks |
 | `qwen-3-32b` | Reasoning model for mathematics and science |
 | `llama-3.1-8b-instant` | Lightweight model for quick questions |
+
+### Google Gemini
+- **Google Generative AI** - Additional model capabilities via `@google/generative-ai`
+
+### AI Frameworks
+- **LangChain** - Advanced AI workflows and agentic capabilities
+- **Vercel AI SDK** - Core AI integration (`ai` v6, `@ai-sdk/groq` v3, `@ai-sdk/react`)
+
+---
+
+## API Endpoints
+
+### GraphQL API
+Analogix includes a full GraphQL API layer (`/api/graphql`) using graphql-yoga and Pothos:
+- **Queries**: profiles, stats, events, deadlines, flashcards, rooms, AI personality, AI memories, agents, activity logs, preferences, workspace entities, calendar integrations, quiz performance, study sessions
+- **Mutations**: CRUD operations for all entities
+- **Client**: Apollo Client integration
+
+### REST API Endpoints
+
+#### AI & Groq
+| Endpoint | Description |
+|----------|-------------|
+| `/api/groq/chat` | AI chat conversation |
+| `/api/groq/quiz` | Quiz generation |
+| `/api/groq/flashcards` | Flashcard generation |
+| `/api/groq/study-schedule` | AI-generated study schedule from deadlines |
+| `/api/groq/assessment-guide` | AI assessment guide from PDFs |
+| `/api/groq/ar-concept` | 3D/AR concept visualization |
+| `/api/groq/tutor` | Dedicated tutor endpoint |
+| `/api/groq/reexplain` | Re-explain concept |
+| `/api/groq/quiz-review` | Quiz review feedback |
+| `/api/groq/notion-ai` | Notion-style AI content generation |
+| `/api/groq/banner` | Banner generation |
+| `/api/groq/greeting` | Greeting generation |
+| `/api/groq/extract-text` | Text extraction from documents |
+| `/api/groq/study-guide-edit` | Study guide editing |
+| `/api/groq/agent-action` | Agent action execution |
+| `/api/groq/flashcard-from-doc` | Flashcard generation from documents |
+| `/api/groq/quiz-from-doc` | Quiz generation from documents |
+
+#### AI Operations
+| Endpoint | Description |
+|----------|-------------|
+| `/api/ai/execute` | AI execution |
+| `/api/ai/operations` | AI operations |
+| `/api/ai/validate` | AI validation |
+
+#### Utilities
+| Endpoint | Description |
+|----------|-------------|
+| `/api/python/execute` | Python-like math execution sandbox |
+| `/api/tts/speak` | Text-to-speech |
+| `/api/youtube/transcript` | YouTube transcript extraction |
+| `/api/research/search` | Academic research search (OpenAlex, Crossref, Semantic Scholar) |
+| `/api/health` | Health check endpoint |
+| `/api/account/delete` | Account deletion (DELETE) |
+
+#### Documents
+| Endpoint | Description |
+|----------|-------------|
+| `/api/documents/revert` | Document version revert |
+
+#### Rooms
+| Endpoint | Description |
+|----------|-------------|
+| `/api/rooms/[roomId]/presence` | Room presence tracking |
+| `/api/rooms/[roomId]/timer` | Room timer management |
+| `/api/rooms/[roomId]/leave` | Room leave |
+| `/api/rooms/[roomId]/documents` | Room documents |
+| `/api/rooms/[roomId]/documents/[documentId]` | Individual room document |
+| `/api/rooms/[roomId]/members` | Room members |
+| `/api/rooms/[roomId]/ai` | Room AI chat |
+| `/api/rooms/[roomId]/messages` | Room messages |
+| `/api/rooms/[roomId]/canvas` | Room canvas |
 
 ---
 
@@ -122,10 +221,22 @@ Analogix uses Groq API with task-based routing:
 - BlockNote editor (built on TipTap)
 - KaTeX for math, react-markdown
 - CodeMirror for code blocks
+- Three.js for 3D visualization
+- Recharts for data visualization
+- Function Plot for math graphing
+- Emoji Mart for emoji picker
+- Material UI components
+- Sonner for toast notifications
+- Vaul for drawer components
+- React Resizable Panels
 
 ### Backend & Data
 - Groq API via Vercel AI SDK (@ai-sdk/groq)
+- Google Gemini AI (@google/generative-ai)
+- LangChain framework (@langchain/groq, langchain, langchain-core)
+- GraphQL API (graphql-yoga, Pothos, Apollo Client)
 - Supabase Auth + Postgres + RLS
+- MongoDB driver
 - TanStack Query
 - Yjs for real-time collaboration
 
@@ -133,6 +244,11 @@ Analogix uses Groq API with task-based routing:
 - pdf-parse + mammoth (text extraction)
 - ical.js (calendar import)
 - @codemirror/lang-python
+- Pyodide (Python in browser via WebAssembly)
+- mathjs for math computations
+- jose for JWT/JOSE
+- dataloader for batching/caching
+- rxjs for reactive programming
 - Vercel Analytics + Speed Insights
 
 ---
@@ -167,13 +283,25 @@ npm install
 GROQ_API_KEY=your_groq_api_key
 GROQ_API_KEY_2=optional_secondary_key
 
+# Google Gemini (optional)
+GOOGLE_GENERATIVE_AI_API_KEY=your_google_ai_key
+
 # Supabase
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+
+# Google OAuth
+GOOGLE_CLIENT_ID=your_google_client_id
+GOOGLE_CLIENT_SECRET=your_google_client_secret
 
 # App
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 NEXT_PUBLIC_REALTIME_URL=       # Optional for production
+
+# Optional
+DESMOS_API_KEY=your_desmos_api_key
+ALLOW_DEV_API=true               # Development API flag
 ```
 
 4. Run:
@@ -205,23 +333,49 @@ Open `http://localhost:3000`
 src/
 ├── app/                    # Next.js App Router pages
 │   ├── api/               # API routes
-│   │   ├── groq/         # AI endpoints (chat, quiz, flashcards, etc.)
+│   │   ├── groq/         # AI endpoints (chat, quiz, flashcards, study-schedule, etc.)
 │   │   ├── agents/       # Agentic workflow
-│   │   └── ...
+│   │   ├── ai/           # AI operations (execute, operations, validate)
+│   │   ├── graphql/      # GraphQL API endpoint
+│   │   ├── python/       # Python math execution sandbox
+│   │   ├── tts/          # Text-to-speech
+│   │   ├── youtube/      # YouTube transcript extraction
+│   │   ├── research/     # Academic research search
+│   │   ├── health/       # Health check
+│   │   ├── account/      # Account deletion
+│   │   ├── documents/    # Document operations
+│   │   └── rooms/        # Room-specific endpoints
 │   ├── subjects/         # Subject workspace
+│   ├── study-map/        # Study Map v2 workspace
 │   ├── rooms/            # Study rooms
 │   └── ...
 ├── components/            # UI components
+│   └── v2/               # v2 redesigned components
 ├── views/                 # Page components
+│   └── v2/               # v2 studio components (ChatStudio, QuizStudio, etc.)
 ├── hooks/                 # Custom React hooks
 ├── utils/                 # Stores, hooks, parsers
-├── lib/                  # Client/server utilities (curriculum, aiMemory, etc.)
+├── lib/                  # Client/server utilities
+│   ├── graphql/          # GraphQL layer (schema, resolvers, context, client)
+│   ├── curriculum/       # ACARA curriculum data
+│   ├── aiMemory/         # AI memory management
+│   └── ...
 ├── services/             # API services
 ├── data/                 # Static resources (ACARA curriculum, formulaSheets, achievements)
 ├── types/                 # TypeScript type definitions
 ├── constants/            # App constants
 └── context/              # React context providers
 ```
+
+---
+
+## Configuration
+
+### Next.js Configuration (next.config.mjs)
+- **Server External Packages**: `pdf-parse`, `pdfjs-dist`
+- **Server Actions Body Size Limit**: 50MB
+- **Package Import Optimization**: lucide-react, Radix packages, recharts, date-fns, framer-motion
+- **Image Formats**: AVIF, WebP
 
 ---
 
@@ -250,6 +404,12 @@ Check file size (50MB max) and format.
 
 ### TypeScript/ESLint Errors
 Run `npm run lint` and fix issues before deploying.
+
+### GraphQL Errors
+Ensure all environment variables are set and Supabase migrations are applied.
+
+### Python Execution Fails
+Pyodide runs in the browser via WebAssembly - ensure modern browser is used.
 
 ---
 
