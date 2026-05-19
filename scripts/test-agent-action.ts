@@ -43,7 +43,7 @@ const run = async () => {
     ],
   };
 
-  const result = await handleAddFlashcards(supabase, userId, action, "math");
+  const result = await handleAddFlashcards(supabase, userId, action, "math", new Set(["math", "physics", "chemistry", "biology", "english"]));
   console.log("[test-agent-action] handleAddFlashcards result:", result);
 
   if (result.status !== "success") {

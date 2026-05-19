@@ -242,12 +242,41 @@ export class ContextAssembler {
   private buildCalendarSection(workspace: WorkspaceContext): string {
     if (workspace.calendar_events.length === 0) return '';
 
+    const formatDateTime = (isoString: string | undefined | null) => {
+      if (!isoString) return null;
+      const date = new Date(isoString);
+      if (isNaN(date.getTime())) return null;
+      const datePart = date.toLocaleDateString('en-AU', {
+        weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
+      });
+      const timePart = date.toLocaleTimeString('en-AU', {
+        hour: '2-digit', minute: '2-digit', hour12: true,
+      });
+      return `${datePart} at ${timePart}`;
+    };
+
+    const timeOnly = (isoString: string | undefined | null) => {
+      if (!isoString) return null;
+      const date = new Date(isoString);
+      if (isNaN(date.getTime())) return null;
+      return date.toLocaleTimeString('en-AU', {
+        hour: '2-digit', minute: '2-digit', hour12: true,
+      });
+    };
+
     const parts: string[] = ['━━━ CALENDAR & DEADLINES ━━━'];
     
-    const upcoming = workspace.calendar_events.slice(0, 5);
+    const upcoming = [...workspace.calendar_events]
+      .sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime())
+      .slice(0, 5);
+
     upcoming.forEach(e => {
-      const date = new Date(e.start_date).toLocaleDateString('en-AU');
-      parts.push(`• ${e.title} (${date})`);
+      const start = formatDateTime(e.start_date);
+      const end = formatDateTime(e.end_date);
+      const subject = e.subject ? ` [${e.subject}]` : '';
+      const typeLabel = e.type ? `${e.type.charAt(0).toUpperCase()}${e.type.slice(1)}` : 'Event';
+      const timeLabel = start ? (end ? ` from ${start} to ${end}` : ` at ${timeOnly(e.start_date) || start}`) : '';
+      parts.push(`• ${typeLabel}: "${e.title}"${subject}${timeLabel}`);
     });
 
     parts.push('━━━ END CALENDAR ━━━');

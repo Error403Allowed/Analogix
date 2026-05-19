@@ -138,14 +138,31 @@ export async function POST(request: Request) {
 
       const events = retrievalResult.scopes.calendar || [];
       if (events.length > 0) {
+        const formatDateTime = (value: unknown) => {
+          if (!value) return null;
+          const parsed = value instanceof Date ? value : new Date(String(value));
+          if (isNaN(parsed.getTime())) return null;
+          const datePart = parsed.toLocaleDateString('en-AU', {
+            weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
+          });
+          const timePart = parsed.toLocaleTimeString('en-AU', {
+            hour: '2-digit', minute: '2-digit', hour12: true,
+          });
+          return `${datePart} at ${timePart}`;
+        };
+
         calendarContext = events.slice(0, 5).map((e) => {
-          const startDate = e.entity.entity_data?.start_date;
-          const parsedDate =
-            startDate instanceof Date || typeof startDate === 'string' || typeof startDate === 'number'
-              ? new Date(startDate)
-              : undefined;
-          const date = parsedDate?.toLocaleDateString('en-AU') ?? 'Unknown date';
-          return `${e.entity.metadata?.title} - ${date}`;
+          const title = e.entity.metadata?.title || 'Untitled event';
+          const subject = e.entity.metadata?.subject_id ? ` [${e.entity.metadata?.subject_id}]` : '';
+          const start = formatDateTime(e.entity.entity_data?.start_date ?? e.entity.entity_data?.date);
+          const end = formatDateTime(e.entity.entity_data?.end_date);
+          if (start && end) {
+            return `${title}${subject} — ${start} to ${end}`;
+          }
+          if (start) {
+            return `${title}${subject} — ${start}`;
+          }
+          return `${title}${subject} — ${String((e.entity.entity_data?.start_date ?? e.entity.entity_data?.date) || 'Unknown date')}`;
         }).join('\n');
       }
     }

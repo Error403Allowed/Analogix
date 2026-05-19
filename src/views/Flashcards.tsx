@@ -310,6 +310,42 @@ export default function Flashcards() {
     refresh().finally(() => setLoading(false));
   }, [refresh]);
 
+  // Listen for flashcard updates from chat (agentic actions)
+  useEffect(() => {
+    const handler = () => refresh();
+    window.addEventListener("flashcardsUpdated", handler);
+    window.addEventListener("subjectDataUpdated", handler);
+    return () => {
+      window.removeEventListener("flashcardsUpdated", handler);
+      window.removeEventListener("subjectDataUpdated", handler);
+    };
+  }, [refresh]);
+
+  // ── Cross-tab synchronization ──
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    // Listen for storage events from other tabs
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "analogix_flashcard_update") {
+        refresh();
+      }
+    };
+
+    // Also use BroadcastChannel for real-time sync (faster than storage events)
+    const channel = new BroadcastChannel("analogix_flashcards");
+    const handleBroadcast = () => refresh();
+
+    window.addEventListener("storage", handleStorageChange);
+    channel.addEventListener("message", handleBroadcast);
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      channel.removeEventListener("message", handleBroadcast);
+      channel.close();
+    };
+  }, [refresh]);
+
   // ── Derived ──
   const subjectOptions = useMemo(() =>
     userSubjects.length > 0 ? userSubjects : SUBJECT_CATALOG.map(s => s.id), [userSubjects]);
@@ -343,6 +379,12 @@ export default function Flashcards() {
   const subjectsWithSets = useMemo(() =>
     userSubjects.filter(id => (setsBySubject[id]?.length ?? 0) > 0),
   [userSubjects, setsBySubject]);
+
+  // All subjects to display in library: user subjects + any subjects that have sets
+  const librarySubjects = useMemo(() => {
+    const all = new Set([...userSubjects, ...Object.keys(setsBySubject)]);
+    return Array.from(all);
+  }, [userSubjects, setsBySubject]);
 
   const activeSet = sets.find(s => s.set.id === activeSetId);
   const totalCards = cards.length;
@@ -1068,7 +1110,7 @@ export default function Flashcards() {
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {userSubjects.map(subId => {
+                    {librarySubjects.map(subId => {
                       const subSets = setsBySubject[subId] || [];
                       const totalSubCards = subSets.reduce((n, s) => n + s.cards.length, 0);
                       const dueSubCards = subSets.reduce((n, s) => n + s.dueCount, 0);

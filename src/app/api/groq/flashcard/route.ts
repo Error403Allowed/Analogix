@@ -15,6 +15,12 @@ export async function POST(request: Request) {
 
 Your job: Extract ${count} key concepts from the provided conversation and turn them into clear, concise flashcards.
 
+CRITICAL RULES — READ CAREFULLY:
+- ONLY create flashcards about actual educational topics, concepts, theories, formulas, definitions, and subject matter.
+- NEVER create flashcards about administrative details such as: due dates, assessment notifications, task deadlines, assignment instructions, submission guidelines, class schedules, room numbers, teacher names, or any logistical/administrative information.
+- If the conversation contains mixed content, IGNORE the administrative parts and ONLY create flashcards from the educational/subject matter.
+- Focus on helping the student LEARN and UNDERSTAND the subject — not memorise dates or administrative details.
+
 Rules:
 - Each flashcard should test ONE specific concept, term, formula, or fact.
 - Front: a clear question or term (not too long — max 20 words).

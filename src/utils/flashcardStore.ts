@@ -82,6 +82,22 @@ const toCard = (row: Record<string, unknown>): Flashcard => ({
   updatedAt:       row.updated_at as string,
 });
 
+// ── Cross-tab sync helper ─────────────────────────────────────────────────────
+
+const broadcastChange = () => {
+  if (typeof window === "undefined") return;
+  // Use BroadcastChannel for same-origin tabs
+  try {
+    const channel = new BroadcastChannel("analogix_flashcards");
+    channel.postMessage({ type: "change", timestamp: Date.now() });
+    channel.close();
+  } catch { /* ignore */ }
+  // Also write to localStorage as fallback for older browsers
+  try {
+    localStorage.setItem("analogix_flashcard_update", Date.now().toString());
+  } catch { /* ignore */ }
+};
+
 // ── Store ─────────────────────────────────────────────────────────────────────
 
 export const flashcardStore = {
@@ -111,6 +127,7 @@ export const flashcardStore = {
       .select()
       .single();
     if (error) { console.warn("[flashcardStore] createSet failed:", error); return null; }
+    broadcastChange();
     return toSet(data as Record<string, unknown>);
   },
 
@@ -124,6 +141,7 @@ export const flashcardStore = {
       .eq("id", setId)
       .eq("user_id", user.id);
     if (error) console.warn("[flashcardStore] renameSet failed:", error);
+    broadcastChange();
   },
 
   deleteSet: async (setId: string): Promise<void> => {
@@ -137,6 +155,7 @@ export const flashcardStore = {
       .eq("id", setId)
       .eq("user_id", user.id);
     if (error) console.warn("[flashcardStore] deleteSet failed:", error);
+    broadcastChange();
   },
 
   // ── Cards ─────────────────────────────────────────────────────────────────
@@ -231,6 +250,7 @@ export const flashcardStore = {
       console.warn("[flashcardStore] add failed:", error);
       return [];
     }
+    broadcastChange();
     return newCards;
   },
 
@@ -277,6 +297,7 @@ export const flashcardStore = {
     }
 
     console.log(`[flashcardStore] Removed ${duplicates.length} duplicate cards`);
+    broadcastChange();
     return duplicates.length;
   },
 
@@ -320,6 +341,7 @@ export const flashcardStore = {
     }
 
     console.log(`[flashcardStore] Removed ${orphans.length} orphaned cards`);
+    broadcastChange();
     return orphans.length;
   },
 
@@ -339,6 +361,7 @@ export const flashcardStore = {
       updated_at: new Date().toISOString(),
     }).eq("id", cardId).eq("user_id", user.id);
     if (error) console.warn("[flashcardStore] review failed:", error);
+    broadcastChange();
   },
 
   update: async (cardId: string, changes: { front?: string; back?: string }): Promise<void> => {
@@ -350,6 +373,7 @@ export const flashcardStore = {
       updated_at: new Date().toISOString(),
     }).eq("id", cardId).eq("user_id", user.id);
     if (error) console.warn("[flashcardStore] update failed:", error);
+    broadcastChange();
   },
 
   delete: async (cardId: string): Promise<void> => {
@@ -359,5 +383,6 @@ export const flashcardStore = {
     const { error } = await supabase.from("flashcards").delete()
       .eq("id", cardId).eq("user_id", user.id);
     if (error) console.warn("[flashcardStore] delete failed:", error);
+    broadcastChange();
   },
 };

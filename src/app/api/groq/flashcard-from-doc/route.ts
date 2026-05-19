@@ -48,6 +48,12 @@ Your job: Create effective, educational flashcards based on the provided documen
 
 The student is in Year ${grade}${subject ? ` studying ${subject}` : ""}.
 
+CRITICAL RULES — READ CAREFULLY:
+- ONLY extract flashcards about actual educational topics, concepts, theories, formulas, definitions, and subject matter.
+- NEVER create flashcards about administrative details such as: due dates, assessment notifications, task deadlines, assignment instructions, submission guidelines, class schedules, room numbers, teacher names, or any logistical/administrative information.
+- If the document contains mixed content (e.g., a notification that also includes topic content), IGNORE the administrative parts and ONLY create flashcards from the educational/subject matter.
+- Focus on helping the student LEARN and UNDERSTAND the subject — not memorise dates or administrative details.
+
 Generate ${count} high-quality flashcards:
 - Front: Clear, specific question or term (concise)
 - Back: Complete answer with context and explanation (2-4 sentences)

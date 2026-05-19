@@ -65,7 +65,7 @@ export async function fetchProfilesMap(supabase: ServerSupabase, userIds: string
     return {};
   }
 
-  return (data ?? []).reduce<Record<string, Record<string, unknown>>>((acc, row) => {
+  return (data ?? []).reduce((acc, row) => {
     acc[String(row.id)] = row as Record<string, unknown>;
     return acc;
   }, {});
@@ -274,7 +274,7 @@ export async function listRoomSharedDocuments(
       ? { data: [] as Record<string, unknown>[] }
       : await supabase.from("documents").select("*").in("id", documentIds);
 
-  const documentMap = (documents ?? []).reduce<Record<string, Record<string, unknown>>>((acc, row) => {
+  const documentMap = (documents ?? []).reduce((acc, row) => {
     acc[String(row.id)] = row as Record<string, unknown>;
     return acc;
   }, {});

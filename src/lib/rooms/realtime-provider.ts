@@ -68,7 +68,7 @@ export class RoomRealtimeProvider {
       config: { broadcast: { self: false } },
     });
 
-    this.channel.on<DocUpdatePayload>(
+    this.channel!.on<DocUpdatePayload>(
       "broadcast",
       { event: "doc-update" },
       ({ payload }) => {
@@ -77,7 +77,7 @@ export class RoomRealtimeProvider {
       },
     );
 
-    this.channel.on<AwarenessPayload>(
+    this.channel!.on<AwarenessPayload>(
       "broadcast",
       { event: "awareness-update" },
       ({ payload }) => {
@@ -86,7 +86,7 @@ export class RoomRealtimeProvider {
       },
     );
 
-    this.channel.subscribe((status) => {
+    this.channel!.subscribe((status) => {
       if (status === "SUBSCRIBED" && !this.destroyed) {
         this.channel?.send({
           type: "broadcast",
@@ -96,7 +96,7 @@ export class RoomRealtimeProvider {
       }
     });
 
-    this.channel.on("broadcast", { event: "sync-request" }, () => {
+    this.channel!.on("broadcast", { event: "sync-request" }, () => {
       if (this.destroyed) return;
       const update = Y.encodeStateAsUpdate(this.ydoc);
       this.broadcast("doc-update", { update: Array.from(update) });
@@ -114,7 +114,7 @@ export class RoomRealtimeProvider {
 
   private broadcast(event: string, payload: Record<string, unknown>) {
     if (this.destroyed || !this.channel) return;
-    this.channel.send({ type: "broadcast", event, payload });
+    this.channel!.send({ type: "broadcast", event, payload });
   }
 
   private handleDocUpdate = (update: Uint8Array, origin: unknown) => {

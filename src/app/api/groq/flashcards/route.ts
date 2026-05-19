@@ -31,6 +31,12 @@ export async function POST(request: Request) {
 
     const prompt = `You are an expert educational content creator.${curriculumSection}
 
+CRITICAL RULES — READ CAREFULLY:
+- ONLY create flashcards about actual educational topics, concepts, theories, formulas, definitions, and subject matter.
+- NEVER create flashcards about administrative details such as: due dates, assessment notifications, task deadlines, assignment instructions, submission guidelines, class schedules, room numbers, teacher names, or any logistical/administrative information.
+- If the content contains mixed content, IGNORE the administrative parts and ONLY create flashcards from the educational/subject matter.
+- Focus on helping the student LEARN and UNDERSTAND the subject — not memorise dates or administrative details.
+
 Generate ${count} high-quality flashcards from the following study content.
 
 Each flashcard must:

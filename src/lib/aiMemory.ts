@@ -187,116 +187,117 @@ export function buildPersonalityInstructions(personality: AIPersonality, analogy
 
   instructions.push(
     [
-      "HIGH PRIORITY: PERSONALITY SETTINGS ARE PRIMARY.",
-      "These settings ALWAYS override other instructions. Follow them exactly.",
+      "CRITICAL: PERSONALITY SETTINGS BELOW. You MUST follow these in EVERY response.",
+      "These override ALL other instructions. Do not ignore them.",
+      "Before responding, check these settings and shape your response accordingly.",
     ].join(" ")
   );
 
-  // Tone and style
-  const toneDesc: string[] = [];
-  if (personality.friendliness >= 70) toneDesc.push("very warm and friendly");
-  else if (personality.friendliness <= 30) toneDesc.push("reserved and professional");
+  // Tone and style — concrete behavioral instructions, not vague descriptions
+  const toneRules: string[] = [];
   
-  if (personality.formality >= 70) toneDesc.push("formal");
-  else if (personality.formality <= 30) toneDesc.push("casual and conversational");
+  if (personality.friendliness >= 70) {
+    toneRules.push("Start responses warmly — use phrases like 'Great question!' or 'Let's work through this together'. Address the student naturally.");
+  } else if (personality.friendliness <= 30) {
+    toneRules.push("Keep a professional, measured tone. No casual greetings or warm-up phrases. Get straight to the content.");
+  }
   
-  if (personality.humor >= 70) toneDesc.push("witty with light humor");
-  else if (personality.humor <= 30) toneDesc.push("serious and straightforward");
-  else toneDesc.push("occasionally warm");
-
-  if (toneDesc.length > 0) {
-    instructions.push(`Tone: ${toneDesc.join(", ")}.`);
+  if (personality.formality >= 70) {
+    toneRules.push("Use formal academic language. Avoid contractions (use 'do not' not 'don't'). Structure responses like a textbook or lecture.");
+  } else if (personality.formality <= 30) {
+    toneRules.push("Use casual, conversational language. Contractions are fine. Talk like a helpful study buddy, not a textbook. Use phrases like 'Here's the thing' or 'Think of it this way'.");
+  }
+  
+  if (personality.humor >= 70) {
+    toneRules.push("Add light humor or witty remarks where appropriate — a clever observation, playful comparison, or dry joke related to the topic.");
+  } else if (personality.humor <= 30) {
+    toneRules.push("Stay serious and focused. No jokes or playful remarks.");
   }
 
-  // Detail level - word count limits
-  let wordLimit = 200;
+  if (toneRules.length > 0) {
+    instructions.push(`TONE RULES:\n${toneRules.map(r => `- ${r}`).join("\n")}`);
+  }
+
+  // Detail level — concrete instructions with examples
   if (personality.detail_level >= 80) {
-    wordLimit = 500;
-    instructions.push("Responses: detailed and thorough. Show all angles. Word limit: 500.");
-  } else if (personality.detail_level >= 70) {
-    wordLimit = 400;
-    instructions.push("Responses: comprehensive. Word limit: 400.");
+    instructions.push("DEPTH: Give thorough, comprehensive explanations. Cover the concept from multiple angles. Include background context, edge cases, and connections to related topics. No need to be brief.");
   } else if (personality.detail_level >= 60) {
-    wordLimit = 300;
-    instructions.push("Responses: moderate detail. Word limit: 300.");
+    instructions.push("DEPTH: Give solid explanations with moderate detail. Cover the main concept and one example. Don't over-explain, but don't skip important context either.");
   } else if (personality.detail_level >= 40) {
-    wordLimit = 200;
-    instructions.push("Responses: balanced. Word limit: 200.");
-  } else if (personality.detail_level >= 30) {
-    wordLimit = 150;
-    instructions.push("Responses: brief. Word limit: 150.");
+    instructions.push("DEPTH: Balanced responses. Give the core explanation plus one clear example. Skip tangential details.");
   } else {
-    wordLimit = 100;
-    instructions.push("Responses: concise. Get to the point fast. Word limit: 100.");
+    instructions.push("DEPTH: Keep it short and direct. One or two sentences for the core answer, maybe one example. No elaboration unless asked.");
   }
 
-  // Patience
+  // Patience — how to handle follow-ups and confusion
   if (personality.patience >= 80) {
-    instructions.push("VERY patient. Re-explain as many times as needed without frustration.");
-  } else if (personality.patience >= 60) {
-    instructions.push("Patient. Re-explain if they don't understand.");
+    instructions.push("PATIENCE: If the student seems confused, re-explain from a completely different angle. Offer multiple approaches. Never imply they should already know something.");
   } else if (personality.patience <= 30) {
-    instructions.push("Direct. Assume they grasp quickly after one explanation.");
+    instructions.push("PATIENCE: Give one clear explanation. If they ask again, restate it more concisely. Assume they can connect the dots themselves.");
   }
-  
-  // Encouragement
+
+  // Encouragement — how to react to answers and progress
   if (personality.encouragement >= 80) {
-    instructions.push("Very encouraging. Celebrate progress, use enthusiastic language.");
+    instructions.push("ENCOURAGEMENT: Actively celebrate correct answers and effort. Use phrases like 'Exactly right!', 'You're getting this!', 'Nice work on that one'.");
   } else if (personality.encouragement >= 60) {
-    instructions.push("Encouraging. Positive reinforcement.");
+    instructions.push("ENCOURAGEMENT: Acknowledge good answers with brief positive feedback like 'Correct' or 'Good thinking'.");
   } else if (personality.encouragement <= 30) {
-    instructions.push("Direct feedback. Minimal praise - just help them improve.");
+    instructions.push("ENCOURAGEMENT: No praise or cheerleading. Just give factual feedback — correct or incorrect, and why.");
   }
 
   // Teaching methods
   if (personality.socratic_method) {
-    instructions.push("Method: Guide with questions. Don't give direct answers - help them discover.");
-  } else {
-    instructions.push("Method: Direct answers. Explain clearly without questions.");
+    instructions.push("TEACHING STYLE: Do NOT give the answer directly. Ask guiding questions that lead the student to figure it out themselves. Example: instead of 'The answer is 42', say 'What happens if you substitute x=3 into the equation?'");
   }
 
   if (personality.step_by_step === false) {
-    instructions.push("Working: Skip unnecessary steps. Show key steps only.");
+    instructions.push("WORKING: Show only the key steps. Skip obvious algebra or trivial intermediate steps. Jump to the important parts.");
   } else {
-    instructions.push("Working: Show all steps. Never skip.");
+    instructions.push("WORKING: Show every single step. Never skip algebra, even simple rearrangements. Write out each transformation explicitly.");
   }
 
-  if (personality.real_world_examples === false) {
-    instructions.push("Examples: Abstract/theoretical only. No real-world references.");
+  if (personality.real_world_examples) {
+    instructions.push("EXAMPLES: Use real-world, practical examples to illustrate concepts. Connect abstract ideas to everyday situations.");
+  } else if (personality.real_world_examples === false) {
+    instructions.push("EXAMPLES: Use abstract, theoretical examples only. No real-world references or practical scenarios.");
   }
 
-  // Response formatting
-  if (personality.use_emojis === false) {
-    instructions.push("Formatting: No emojis.");
-  }
-
-  // Analogies - Use effectiveAnalogyIntensity which considers both personality and chat context
+  // Analogies
   if (effectiveAnalogyIntensity === 0) {
-    instructions.push("Analogy: NEVER use analogies. Direct explanation only.");
+    instructions.push("ANALOGIES: Do NOT use analogies. Give direct, literal explanations only.");
   } else if (effectiveAnalogyIntensity >= 4) {
-    instructions.push("Analogy: Use often - weave analogies throughout explanations to make concepts memorable. Connect to the student's interests.");
+    instructions.push("ANALOGIES: Lead with an analogy for every concept. Compare abstract ideas to everyday things the student knows. Make the analogy the centerpiece of the explanation.");
   } else if (effectiveAnalogyIntensity >= 3) {
-    instructions.push("Analogy: Use frequently - explain concepts using analogies from the student's interests when helpful.");
+    instructions.push("ANALOGIES: Use analogies regularly. When explaining a concept, include a comparison to something familiar.");
   } else if (effectiveAnalogyIntensity >= 2) {
-    instructions.push("Analogy: Use for tricky concepts - analogies help when explaining difficult ideas.");
+    instructions.push("ANALOGIES: Use an analogy only when the concept is tricky or abstract. Don't force one for straightforward topics.");
   } else {
-    instructions.push("Analogy: Rarely. Only when essential for understanding.");
+    instructions.push("ANALOGIES: Almost never use analogies. Only in rare cases where no direct explanation would work.");
   }
 
-  if (personality.use_section_dividers === false) {
-    instructions.push("Formatting: No ⸻ dividers. Just natural paragraphs.");
+  // Formatting
+  if (personality.use_section_dividers) {
+    instructions.push("FORMATTING: Use ⸻ horizontal dividers between sections of your response to keep things organized.");
+  } else {
+    instructions.push("FORMATTING: No horizontal dividers. Use natural paragraph breaks only.");
+  }
+
+  if (personality.use_emojis) {
+    instructions.push("EMOJIS: Use emojis naturally in your responses to add warmth and visual interest.");
+  } else {
+    instructions.push("EMOJIS: Do NOT use any emojis.");
   }
 
   // Custom instructions
   if (personality.custom_instructions?.trim()) {
-    instructions.push(`Custom: ${personality.custom_instructions.trim()}`);
+    instructions.push(`CUSTOM RULES: ${personality.custom_instructions.trim()}`);
   }
 
   if (personality.persona_description?.trim()) {
-    instructions.push(`Persona: ${personality.persona_description.trim()}`);
+    instructions.push(`WHO YOU ARE: ${personality.persona_description.trim()}`);
   }
 
-  return instructions.join("\n");
+  return instructions.join("\n\n");
 }
 
 /**

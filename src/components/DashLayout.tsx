@@ -2,11 +2,13 @@
 
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { TabsProvider, useTabs, pathMeta } from "@/context/TabsContext";
 import TabBar from "@/components/TabBar";
-import { useEffect, useCallback, useRef } from "react";
+import { useEffect, useRef, Suspense } from "react";
+import { PageLoader } from "@/components/PageSkeleton";
+import dynamic from "next/dynamic";
 
 export default function DashLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -14,9 +16,9 @@ export default function DashLayout({ children }: { children: React.ReactNode }) 
   const isLanding          = pathname === "/" || !pathname;
   const isOnboarding       = pathname === "/onboarding";
   const isTimerFullscreen  = pathname === "/timer";
-  const isChat             = pathname === "/chat";
-  const isCalendar         = pathname === "/calendar";
   const isPublicPage       = pathname === "/support" || pathname === "/privacy";
+  const isChatLike         = pathname === "/chat" || pathname === "/calendar";
+
   if (isLanding || isOnboarding || isTimerFullscreen || isPublicPage) {
     return <>{children}</>;
   }
@@ -27,7 +29,7 @@ export default function DashLayout({ children }: { children: React.ReactNode }) 
         <div className="flex h-screen w-full bg-background overflow-hidden">
           <AppSidebar />
           <SidebarInset className="flex flex-col flex-1 min-w-0 min-h-0">
-            <DashContent isChat={isChat || isCalendar} pathname={pathname}>
+            <DashContent isChatLike={isChatLike} pathname={pathname}>
               {children}
             </DashContent>
           </SidebarInset>
@@ -37,12 +39,66 @@ export default function DashLayout({ children }: { children: React.ReactNode }) 
   );
 };
 
-function DashContent({ children, isChat, pathname }: { children: React.ReactNode; isChat: boolean; pathname: string }) {
+// Stable page component definitions
+const LazyDashboardPage = dynamic(() => import("@/app/dashboard/page"), {
+  ssr: false,
+  loading: () => <PageLoader message="Loading dashboard..." />,
+});
+const LazyChatPage = dynamic(() => import("@/app/chat/page"), {
+  ssr: false,
+  loading: () => <PageLoader message="Loading tutor..." />,
+});
+const LazyRoomsPage = dynamic(() => import("@/app/rooms/page"), {
+  ssr: false,
+  loading: () => <PageLoader message="Loading rooms..." />,
+});
+const LazyFlashcardsPage = dynamic(() => import("@/app/flashcards/page"), {
+  ssr: false,
+  loading: () => <PageLoader message="Loading flashcards..." />,
+});
+const LazyQuizPage = dynamic(() => import("@/app/quiz/page"), {
+  ssr: false,
+  loading: () => <PageLoader message="Loading quiz..." />,
+});
+const LazyFormulasPage = dynamic(() => import("@/app/formulas/page"), {
+  ssr: false,
+  loading: () => <PageLoader message="Loading formulas..." />,
+});
+const LazyResourcesPage = dynamic(() => import("@/app/resources/page"), {
+  ssr: false,
+  loading: () => <PageLoader message="Loading resources..." />,
+});
+const LazySubjectsPage = dynamic(() => import("@/app/subjects/page"), {
+  ssr: false,
+  loading: () => <PageLoader message="Loading subjects..." />,
+});
+const LazyCalendarPage = dynamic(() => import("@/app/calendar/page"), {
+  ssr: false,
+  loading: () => <PageLoader message="Loading calendar..." />,
+});
+const LazyAchievementsPage = dynamic(() => import("@/app/achievements/page"), {
+  ssr: false,
+  loading: () => <PageLoader message="Loading achievements..." />,
+});
+
+function getPageForPath(path: string) {
+  if (path === "/dashboard") return LazyDashboardPage;
+  if (path === "/chat") return LazyChatPage;
+  if (path === "/rooms" || path.startsWith("/rooms/")) return LazyRoomsPage;
+  if (path === "/flashcards") return LazyFlashcardsPage;
+  if (path === "/quiz") return LazyQuizPage;
+  if (path === "/formulas") return LazyFormulasPage;
+  if (path === "/resources") return LazyResourcesPage;
+  if (path === "/subjects" || path.startsWith("/subjects/") || path.startsWith("/study-guides")) return LazySubjectsPage;
+  if (path === "/calendar") return LazyCalendarPage;
+  if (path === "/achievements") return LazyAchievementsPage;
+  return LazyDashboardPage;
+}
+
+function DashContent({ children, isChatLike, pathname }: { children: React.ReactNode; isChatLike: boolean; pathname: string }) {
   const { openTab, tabs, activeTabId, setActiveTab } = useTabs();
   const router = useRouter();
   const prevPathRef = useRef<string | null>(null);
-
-  const activePath = pathname;
 
   useEffect(() => {
     if (prevPathRef.current !== pathname) {
@@ -63,63 +119,37 @@ function DashContent({ children, isChat, pathname }: { children: React.ReactNode
     router.push(path);
   };
 
-  const renderAllTabs = useCallback(() => {
-    return tabs.map((tab) => (
-      <PageCache
-        key={tab.path}
-        path={tab.path}
-        activePath={activePath}
-      >
-        {children}
-      </PageCache>
-    ));
-  }, [tabs, activePath, children]);
-
   return (
     <>
       <TabBar onNavigate={handleNavigate} />
-      <div className={`flex-1 min-h-0 ${isChat ? 'overflow-hidden' : 'overflow-y-auto'}`}>
+      <div className={`flex-1 min-h-0 ${isChatLike ? 'overflow-hidden' : 'overflow-y-auto'}`}>
         <motion.div
-          key="tab-container"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.12 }}
-          className={isChat ? 'h-full' : 'min-h-full'}
+          className={isChatLike ? 'h-full' : 'min-h-full'}
         >
-          {renderAllTabs()}
+          {tabs.map((tab) => {
+            const isActive = tab.path === pathname && tab.id === activeTabId;
+            const PageComponent = getPageForPath(tab.path);
+
+            return (
+              <div
+                key={tab.id}
+                style={{
+                  display: isActive ? "block" : "none",
+                  height: "100%",
+                  overflow: isChatLike ? "hidden" : "auto",
+                }}
+              >
+                <Suspense fallback={<PageLoader message="Loading..." />}>
+                  <PageComponent />
+                </Suspense>
+              </div>
+            );
+          })}
         </motion.div>
       </div>
     </>
-  );
-}
-
-function PageCache({
-  path,
-  activePath,
-  children,
-}: {
-  path: string;
-  activePath: string | null;
-  children: React.ReactNode;
-}) {
-  const isActive = path === activePath;
-  const frozenRef = useRef<React.ReactNode>(null);
-
-  if (isActive) {
-    frozenRef.current = children;
-  }
-
-  const content = frozenRef.current;
-  if (!content) return null;
-
-  return (
-    <div
-      style={{
-        display: isActive ? "block" : "none",
-        height: "100%",
-      }}
-    >
-      {content}
-    </div>
   );
 }

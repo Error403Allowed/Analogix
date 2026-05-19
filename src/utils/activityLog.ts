@@ -66,7 +66,7 @@ export const activityLog = {
 
     const map = new Map((data ?? []).map((r: any) => [r.date, r.count]));
     for (const date of dates) {
-      result.push({ date, count: map.get(date) ?? 0 });
+      result.push({ date, count: (map.get(date) as number) ?? 0 });
     }
     return result;
   },

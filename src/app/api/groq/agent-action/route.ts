@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { randomUUID } from "crypto";
+import { SUBJECT_CATALOG } from "@/constants/subjects";
 
 export const runtime = "nodejs";
 
@@ -11,6 +12,8 @@ interface ActionPayload {
   cards?: Array<{ front: string; back: string }>;
 }
 
+const VALID_SUBJECT_IDS = new Set(SUBJECT_CATALOG.map(s => s.id));
+
 export async function POST(request: Request) {
   try {
     const supabase = await createClient();
@@ -20,11 +23,26 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { actions = [], defaultSubjectId = "general", source = "chat" } = body;
+    const { actions = [], defaultSubjectId = "math", source = "chat" } = body;
 
     if (!Array.isArray(actions) || actions.length === 0) {
       return NextResponse.json({ results: [] });
     }
+
+    // Fetch user's actual subjects from profile
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("subjects")
+      .eq("id", user.id)
+      .single();
+
+    const userSubjects: string[] = profile?.subjects || [];
+    const userSubjectSet = new Set(userSubjects);
+
+    // Resolve the default subject: must be one the user actually picked
+    const resolvedDefault = VALID_SUBJECT_IDS.has(defaultSubjectId) && userSubjectSet.has(defaultSubjectId)
+      ? defaultSubjectId
+      : userSubjects[0] || "math";
 
     const results: any[] = [];
 
@@ -34,11 +52,11 @@ export async function POST(request: Request) {
           supabase,
           user.id,
           action as ActionPayload,
-          defaultSubjectId
+          resolvedDefault,
+          userSubjectSet
         );
         results.push(result);
       }
-      // Other action types can be added here
     }
 
     return NextResponse.json({ results });
@@ -55,10 +73,16 @@ export async function handleAddFlashcards(
   supabase: any,
   userId: string,
   action: ActionPayload,
-  defaultSubjectId: string
+  defaultSubjectId: string,
+  userSubjectSet: Set<string>
 ): Promise<any> {
   try {
-    const subjectId = action.subjectId || defaultSubjectId;
+    // Only accept subjectIds the user actually has
+    let subjectId = action.subjectId;
+    if (!subjectId || !userSubjectSet.has(subjectId)) {
+      subjectId = defaultSubjectId;
+    }
+
     const setName = action.setName || `Study Notes – ${new Date().toLocaleDateString()}`;
     const cards = action.cards || [];
 

@@ -25,9 +25,6 @@ import {
   Target,
   FileText,
   Search,
-  Library,
-  Bookmark,
-  BookmarkCheck,
   ExternalLink,
   Sparkles,
   Atom,
@@ -49,8 +46,7 @@ import MarkdownRenderer from "@/components/MarkdownRenderer";
 import { SUBJECT_CATALOG, SubjectId } from "@/constants/subjects";
 import { buildInterestList } from "@/utils/interests";
 import { extractFileText, ACCEPTED_FILE_TYPES } from "@/utils/extractFileText";
-import type { ResearchSource, SavedResearchSource } from "@/types/research";
-import { researchStore } from "@/utils/researchStore";
+import type { ResearchSource } from "@/types/research";
 import AISettingsSheet from "@/components/AISettingsSheet";
 import ModelSelectorSheet from "@/components/ModelSelectorSheet";
 import { GROQ_MODELS, type GroqModelId } from "@/types/groq-models";
@@ -202,14 +198,10 @@ const sourceKey = (source: ResearchSource): string => {
 const ResearchSourceCard = ({
   source,
   index,
-  saved,
-  onToggleSave,
   compact = false,
 }: {
   source: ResearchSource;
   index: number;
-  saved: boolean;
-  onToggleSave: (source: ResearchSource) => void;
   compact?: boolean;
 }) => {
   const displayUrl = source.url || source.pdfUrl;
@@ -229,7 +221,7 @@ const ResearchSourceCard = ({
           {source.abstract}
         </p>
       )}
-      <div className="mt-2 flex items-center justify-between">
+      <div className="mt-2">
         {displayUrl ? (
           <a
             href={displayUrl}
@@ -243,14 +235,6 @@ const ResearchSourceCard = ({
         ) : (
           <span className="text-[10px] text-muted-foreground/60">Local file</span>
         )}
-        <button
-          type="button"
-          onClick={() => onToggleSave(source)}
-          className={`text-[10px] font-semibold inline-flex items-center gap-1 ${saved ? "text-emerald-500" : "text-muted-foreground/70 hover:text-foreground"}`}
-        >
-          {saved ? <BookmarkCheck className="w-3 h-3" /> : <Bookmark className="w-3 h-3" />}
-          {saved ? "Saved" : "Save"}
-        </button>
       </div>
     </div>
   );
@@ -320,8 +304,6 @@ const Chat = () => {
   // RESEARCH MODE: Bohrium-style academic sourcing
   const [researchMode, setResearchMode] = useState(false);
   const [researchLoading, setResearchLoading] = useState(false);
-  const [libraryOpen, setLibraryOpen] = useState(false);
-  const [savedSources, setSavedSources] = useState<SavedResearchSource[]>([]);
 
   // AI SETTINGS: Show personality & memory settings
   const [showAISettings, setShowAISettings] = useState(false);
@@ -406,12 +388,8 @@ const Chat = () => {
   }, []);
 
   useEffect(() => {
-    const load = () => setSavedSources(researchStore.getAll());
-    load();
-    window.addEventListener("researchLibraryUpdated", load);
     // Run health check once to surface any Supabase table issues in console
     checkChatStoreHealth();
-    return () => window.removeEventListener("researchLibraryUpdated", load);
   }, []);
 
   // Persist model selection to localStorage
@@ -429,21 +407,7 @@ const Chat = () => {
     return () => document.removeEventListener("mousedown", handleClick);
   }, [contextMenu]);
 
-  useEffect(() => {
-    if (!researchMode) setLibraryOpen(false);
-  }, [researchMode]);
-
   const latestAssistantId = [...messages].reverse().find((m) => m.role === "assistant")?.id;
-
-  const savedKeys = useMemo(() => new Set(savedSources.map(sourceKey)), [savedSources]);
-  const isSourceSaved = useCallback((source: ResearchSource) => savedKeys.has(sourceKey(source)), [savedKeys]);
-  const toggleSaveSource = useCallback((source: ResearchSource) => {
-    if (savedKeys.has(sourceKey(source))) {
-      researchStore.remove(source);
-    } else {
-      researchStore.add(source);
-    }
-  }, [savedKeys]);
 
   const findAnchor = useCallback((text: string) => {
     const lower = text.toLowerCase();
@@ -621,9 +585,10 @@ const Chat = () => {
       }
       setFlashcardsSaved(true);
       setTimeout(() => setFlashcardsSaved(false), 3000);
+      router.push(`/flashcards?subjectId=${selectedSubject}`);
     }
     setSavingFlashcards(false);
-  }, [selectedSubject, messages, savingFlashcards, userPrefs.grade]);
+  }, [selectedSubject, messages, savingFlashcards, userPrefs.grade, router]);
 
   const handleReExplain = useCallback(async (messageId: string, chosenAnchor?: string) => {
     if (isInputLocked) return;
@@ -1112,7 +1077,7 @@ const Chat = () => {
             : [];
           researchSources = [...localSources, ...externalSources].slice(0, 12);
           // Auto-open the library panel whenever sources come back
-          if (researchSources.length > 0) setLibraryOpen(true);
+
         } finally {
           setResearchLoading(false);
         }
@@ -1191,7 +1156,13 @@ const Chat = () => {
         const actionsMatch = accumulated.match(/<ACTIONS\s*>[\s\S]*?<\/ACTIONS\s*>/i);
         if (actionsMatch) {
           try {
-            const cleaned = actionsMatch[1].trim().replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "").trim();
+            const cleaned = actionsMatch[0]
+              .replace(/<ACTIONS\s*>/i, "")
+              .replace(/<\/ACTIONS\s*>/i, "")
+              .trim()
+              .replace(/^```(?:json)?\n?/, "")
+              .replace(/\n?```$/, "")
+              .trim();
             const parsed = JSON.parse(cleaned);
             const actions = Array.isArray(parsed) ? parsed : [parsed];
             console.log("[Chat] dispatching", actions.length, "action(s)");
@@ -1214,10 +1185,11 @@ const Chat = () => {
             // Send all non-quiz actions to agent-action (with source=chat for full permissions)
             const serverActions = actions.filter((a: Record<string, unknown>) => a.type !== "start_quiz");
             if (serverActions.length > 0) {
+              const effectiveSubject = selectedSubject || userSubjects[0] || "math";
               fetch("/api/groq/agent-action", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ actions: serverActions, defaultSubjectId: selectedSubject, source: "chat" }),
+                body: JSON.stringify({ actions: serverActions, defaultSubjectId: effectiveSubject, source: "chat" }),
               })
                 .then(r => r.json())
                 .then(data => {
@@ -1228,6 +1200,7 @@ const Chat = () => {
                     // Add system message for successful flashcard creation
                     const flashcardResults = data.results.filter((r: any) => r.type === "add_flashcards" && r.status === "success");
                     if (flashcardResults.length > 0) {
+                      window.dispatchEvent(new CustomEvent("flashcardsUpdated"));
                       const messages = flashcardResults.map((r: any) => 
                         `✓ Saved "${r.setName}" (${r.cardCount} cards) to Flashcard Library`
                       ).join("\n");
@@ -1466,7 +1439,7 @@ Title:` }];
         animate={{ opacity: sidebarOpen ? 1 : 0 }}
         transition={{ duration: 0.2 }}
         className="flex flex-col my-2 mr-2 rounded-2xl border border-border/60 overflow-hidden bg-card/60 backdrop-blur-sm shadow-md"
-        style={{ width: 256, height: 'calc(100% - 16px)' }}
+        style={{ width: 256, height: 'calc(100% - 16px)', padding: 8 }}
       >
         {/* New Chat */}
         <div className="flex-shrink-0 p-3 pt-4">
@@ -1677,7 +1650,7 @@ Title:` }];
                 onScroll={updateScrollButton}
                 className="absolute inset-0 overflow-y-auto min-h-0 chat-scroll"
               >
-                <div className="mx-auto max-w-4xl w-full px-4 flex flex-col space-y-6 pb-40 sm:pb-28 pt-4 sm:pt-4">
+                <div className="mx-auto max-w-4xl w-full px-4 flex flex-col space-y-6 pb-56 sm:pb-44 pt-4 sm:pt-4">
                   {/* Empty state — shown before any messages */}
                   {messages.length === 0 && !isTyping && (
                     <motion.div
@@ -1760,8 +1733,6 @@ Title:` }];
                                         key={`${source.id}-${i}`}
                                         source={source}
                                         index={i + 1}
-                                        saved={isSourceSaved(source)}
-                                        onToggleSave={toggleSaveSource}
                                       />
                                     ))}
                                   </div>
@@ -1930,33 +1901,15 @@ Title:` }];
                 </div>
               </div>
 
-              {showScrollToBottom && (
-                <Button
-                  type="button"
-                  variant="default"
-                  size="icon"
-                  onClick={() => {
-                    lockedToBottomRef.current = true;
-                    scrollToBottom("smooth");
-                  }}
-                  aria-label="Scroll to latest"
-                  title="Scroll to latest"
-                  className="absolute bottom-32 sm:bottom-24 left-1/2 -translate-x-1/2 z-40 h-9 w-9 rounded-full bg-primary/40 text-white/90 shadow-md backdrop-blur hover:bg-primary/60"
-                >
-                  <ArrowDown className="w-4 h-4" />
-                </Button>
-              )}
-
-              <div className="pointer-events-none absolute top-0 left-0 right-0 h-10 bg-gradient-to-b from-background to-transparent z-20" />
-              <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-20 sm:h-16 bg-gradient-to-t from-background via-background/90 to-transparent z-20" />
-
               {/* Input */}
               <motion.div
-              className="absolute bottom-0 left-0 right-0 z-30 px-3 sm:px-4 pb-[max(env(safe-area-inset-bottom,0px)+8px)] sm:pb-4 pt-2 pointer-events-auto"
+              className="absolute bottom-0 left-0 right-0 z-30 pointer-events-auto"
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3 }}
               >
+                <div className="h-12 bg-gradient-to-t from-background to-transparent pointer-events-none" />
+                <div className="px-3 sm:px-4 pb-[max(env(safe-area-inset-bottom,0px)+8px)] sm:pb-4 pt-2 bg-background">
                 <div className="mx-auto w-full max-w-4xl">
                 {/* Attached files preview */}
                 {attachedFiles.length > 0 && (
@@ -2139,68 +2092,11 @@ Title:` }];
                     )}
                   </div>
                 </div>
-                </div> {/* end max-w-3xl wrapper */}
+                </div>
+                </div>
               </motion.div>
             </div>
 
-              {/* Research library side panel — auto-populated from conversation sources */}
-              <AnimatePresence>
-                {libraryOpen && researchMode && (
-                  <motion.div
-                    key="research-library"
-                    initial={{ opacity: 0, x: 20, width: 0 }}
-                    animate={{ opacity: 1, x: 0, width: "280px" }}
-                    exit={{ opacity: 0, x: 20, width: 0 }}
-                    transition={{ type: "spring", stiffness: 300, damping: 28 }}
-                    className="hidden sm:flex flex-col border border-border rounded-xl bg-card overflow-hidden shrink-0 max-h-[calc(100vh-180px)]"
-                    style={{ width: 280 }}
-                  >
-                    <div className="flex items-center justify-between px-3 py-2.5 border-b border-border">
-                      <button type="button" onClick={() => setLibraryOpen(false)} className="text-muted-foreground hover:text-foreground p-1 rounded-lg hover:bg-muted">
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                    <div className="flex-1 overflow-y-auto p-2 space-y-2">
-                      {/* Session sources — all sources from this conversation */}
-                      {(() => {
-                        const sessionSources = messages
-                          .filter(m => m.sources && m.sources.length > 0)
-                          .flatMap(m => m.sources!);
-                        // Deduplicate by key
-                        const seen = new Set<string>();
-                        const unique = sessionSources.filter(s => {
-                          const k = sourceKey(s); if (seen.has(k)) return false; seen.add(k); return true;
-                        });
-                        if (unique.length === 0 && savedSources.length === 0) return (
-                          <div className="text-center text-[11px] text-muted-foreground/60 py-6">
-                            Sources will appear here when you send a message in research mode.
-                          </div>
-                        );
-                        return (
-                          <>
-                            {unique.length > 0 && (
-                              <>
-                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 px-1">This session</p>
-                                {unique.map((source, i) => (
-                                  <ResearchSourceCard key={`session-${i}`} source={source} index={i + 1} saved={isSourceSaved(source)} onToggleSave={toggleSaveSource} compact />
-                                ))}
-                              </>
-                            )}
-                            {savedSources.length > 0 && (
-                              <>
-                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 px-1 mt-2">Saved</p>
-                                {savedSources.map((source, i) => (
-                                  <ResearchSourceCard key={`saved-${i}`} source={source} index={i + 1} saved={isSourceSaved(source)} onToggleSave={toggleSaveSource} compact />
-                                ))}
-                              </>
-                            )}
-                          </>
-                        );
-                      })()}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
 
               {/* Formula sheet side panel */}
               <AnimatePresence>

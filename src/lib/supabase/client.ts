@@ -13,5 +13,13 @@ if (!browserSupabaseUrl || !browserSupabaseAnonKey) {
   );
 }
 
-export const createClient = () =>
-  createSupabaseClient(browserSupabaseUrl, browserSupabaseAnonKey);
+// Singleton pattern — one Supabase client per tab to avoid multiple GoTrueClient instances
+// which can cause undefined behavior with auth state and token refresh
+let cachedClient: ReturnType<typeof createSupabaseClient> | null = null;
+
+export const createClient = (): any => {
+  if (!cachedClient) {
+    cachedClient = createSupabaseClient(browserSupabaseUrl, browserSupabaseAnonKey);
+  }
+  return cachedClient;
+};

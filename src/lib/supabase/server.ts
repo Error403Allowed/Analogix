@@ -6,7 +6,7 @@ const serverSupabaseUrl =
 const serverSupabaseAnonKey =
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? process.env.SUPABASE_ANON_KEY;
 
-export const createClient = async () => {
+export const createClient = async (): Promise<any> => {
   const cookieStore = await cookies();
 
   if (!serverSupabaseUrl || !serverSupabaseAnonKey) {

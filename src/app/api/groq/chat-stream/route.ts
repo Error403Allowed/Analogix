@@ -219,15 +219,11 @@ function buildSystemPrompt(
 ${researchSources.length > 0 ? `ACADEMIC SOURCES:\n${formatResearchSources(researchSources)}` : "ACADEMIC SOURCES: (none found)"}`
     : "";
 
-  const workspaceSection = workspaceContext || calendarContext ? `
-${calendarContext ? `━━━ CALENDAR & DEADLINES ━━━\n${calendarContext}\n━━━ END CALENDAR ━━━\n` : ""}
-${workspaceContext ? `━━━ YOUR WORKSPACE ━━━
-You have READ-ONLY access to this student's documents — you can see them for context but CANNOT edit or create documents directly. Do NOT tell the student you can edit their documents or offer to update them.
+  const selectedModel = userContext?.selectedModel || null;
+  const isQwenModel = selectedModel ? selectedModel.toLowerCase().includes("qwen") : false;
 
-You CAN create flashcard sets and start quizzes via the <ACTIONS> block.
-
-${workspaceContext}
-━━━ END WORKSPACE ━━━
+  const actionInstructions = `
+You have WRITE access for flashcards and quizzes. When you emit an add_flashcards or start_quiz action in the <ACTIONS> block, those actions will actually create flashcards in the user's library or start a quiz session. This is not just a chat suggestion.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 AVAILABLE ACTIONS (flashcards & quizzes only)
@@ -242,12 +238,21 @@ Put an <ACTIONS>...</ACTIONS> block at the VERY END of your message ONLY for fla
 
 ── RULES ──
 - NEVER use create_document or update_document — you do not have write access to documents.
-- For add_flashcards: always include a descriptive setName (e.g. "Quadratic equations", "Chapter 3 vocab"). Say "Done! Added X flashcards on [topic]." — nothing else.
-- For start_quiz: say "Starting your quiz now!" then the <ACTIONS> block. NEVER write quiz questions in your text response.
+- For add_flashcards: always include a descriptive setName (e.g. "Quadratic equations", "Chapter 3 vocab"). This will create a flashcard set in the user's library. Say "Done! Added X flashcards on [topic]." — nothing else.
+- For start_quiz: say "Starting your quiz now!" then the <ACTIONS> block. This will start a quiz session; NEVER write quiz questions in your text response.
 - CRITICAL: When using add_flashcards or start_quiz, your text response must be 1 sentence MAX. Do NOT write out flashcard content or quiz questions in the chat — they go in the <ACTIONS> block only.
 - Use add_flashcards when student says "make flashcards", "create cards", "save these as flashcards" etc.
 - Use start_quiz when student says "quiz me", "test me", "start a quiz" etc.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+`;
+
+  const workspaceSection = workspaceContext || calendarContext ? `
+${calendarContext ? `━━━ CALENDAR & DEADLINES ━━━\n${calendarContext}\n━━━ END CALENDAR ━━━\n` : ""}
+${workspaceContext ? `━━━ YOUR WORKSPACE ━━━
+You have READ-ONLY access to this student's documents — you can see them for context but CANNOT edit or create documents directly. Do NOT tell the student you can edit their documents or offer to update them.
+
+${workspaceContext}
+━━━ END WORKSPACE ━━━
 ` : ""}` : "";
 
 // Get current time context
@@ -273,7 +278,7 @@ const timeAwareness = [
   isLikelyFree ? "You probably have some time for a thorough explanation." : "Keep things concise — you seem busy.",
 ].join(" ");
 
-return `You are "Analogix AI", a friendly and knowledgeable AI tutor for Australian students. You are here to help students learn, understand concepts deeply, and succeed in their studies.
+return `You are "Analogix AI", an AI tutor for Australian students. Your core job is to help students understand concepts and succeed in their studies.
 
 Context: Year ${studentGrade}${stateFullName ? ` in ${stateFullName}` : ""}, Australia. ${curriculumContext}
 ${calendarContext ? `When the user asks about their schedule, events, deadlines, or what's coming up, use the CALENDAR & DEADLINES section below to give accurate, specific answers. Keep it conversational — just tell them what's next naturally.` : ''}
@@ -284,13 +289,9 @@ Interests: ${allowedInterests}`}
 
 Rules:
 - When user asks about schedule, classes, events, deadlines, or "what's next" — check the calendar context and give a natural, conversational answer (not a list).
-- RESPONSE STRUCTURE: Start with a clear, direct answer. Then explain the concept. Include a worked example for math/science topics. End by connecting to the broader topic.
-- Use bullet points or numbered lists when listing definitions, rules, or key steps — they help students scan and remember.
 - For math/science questions: always include a worked example showing step-by-step reasoning with LaTeX formatting. $\\frac{a}{b}$, $\\sqrt{x}$, $\\int$, $\\sum$.
-- For explanation questions: weave in an analogy or real-world example to make the concept click. Use the student's interests if you know them. Analogies help abstract ideas click faster.
-- Be conversational and approachable, like a patient tutor. Avoid textbook formality and robotic phrasing.
-- No emojis.
-- NOTE: If asked to write something very long (essays, reports, etc.), explain that responses are capped at ~1900 tokens due to API rate limits, but offer to continue in a follow-up message.${workspaceSection}
+- Use bullet points or numbered lists when listing definitions, rules, or key steps — they help students scan and remember.
+- NOTE: If asked to write something very long (essays, reports, etc.), explain that responses are capped at ~${isQwenModel ? '4000' : '1900'} tokens due to API rate limits, but offer to continue in a follow-up message.${actionInstructions}${workspaceSection}
 ${researchBlock}
 — Analogix`;
 }
@@ -482,11 +483,12 @@ if (clientMemories && Array.isArray(clientMemories)) {
       systemPrompt = contextBlocks.join("\n\n") + "\n\n" + systemPrompt;
     }
 
-    // Inject personality instructions at the VERY END so they override earlier system rules.
+    // Inject personality instructions at the VERY BEGINNING so they set the tone
+    // for the entire response and have maximum influence on the model.
     if (aiPersonality) {
       const personalityInstructions = buildPersonalityInstructions(aiPersonality, effectiveUserContext.analogyIntensity);
-      systemPrompt = `${systemPrompt}\n\n--- PERSONALITY SETTINGS (HIGH PRIORITY) ---\n${personalityInstructions}\n--- END PERSONALITY ---`;
-      console.log("[chat-stream] Personality instructions injected (high priority)");
+      systemPrompt = `--- PERSONALITY SETTINGS (HIGHEST PRIORITY) ---\n${personalityInstructions}\n--- END PERSONALITY ---\n\n${systemPrompt}`;
+      console.log("[chat-stream] Personality instructions injected at top (highest priority)");
     }
 
     const fullSystemPrompt = systemPrompt;
@@ -499,14 +501,14 @@ if (clientMemories && Array.isArray(clientMemories)) {
       ? "lightweight"
       : classifyTaskType(recentMsgs, primarySubject);
 
-    // Token budgets. Hard cap at 1900 due to Groq's ~6k TPM rate limit
-    // (leaving ~4000 for input to stay comfortably under limits)
-    const OUTPUT_HARD_CAP = 1900;
+    // Token budgets — use model-specific limits for Qwen which supports longer outputs
+    const isQwenModel = chatTaskType === "reasoning";
+    const OUTPUT_HARD_CAP = isQwenModel ? 4096 : 1900;
+    const TOTAL_BUDGET = isQwenModel ? 8000 : 5900;
     const wantsLongResponse = isResearchMode || isFormalRequest ||
       /\b(detailed|comprehensive|essay|report|study guide|lesson plan|long answer)\b/i.test(latestUserMsg);
-    const TOTAL_BUDGET = 5900; // Reduced to stay under 6k TPM with output cap
     const SYSTEM_BUDGET = 1800;
-    const targetMaxTokens = isSimpleGreeting ? 300 : wantsLongResponse ? OUTPUT_HARD_CAP : 1500;
+    const targetMaxTokens = isSimpleGreeting ? 300 : wantsLongResponse ? OUTPUT_HARD_CAP : (isQwenModel ? 3000 : 1500);
 
     // Build initial messages
     const finalMessages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
@@ -517,14 +519,15 @@ if (clientMemories && Array.isArray(clientMemories)) {
     const finalTotal = finalMessages.reduce((sum, m) => sum + m.content.length, 0);
     const finalEst = Math.ceil(finalTotal / 3.5) + targetMaxTokens;
 
-    // Trim system prompt first if over budget
+    // Trim system prompt if over budget — preserve personality (at top), trim from end
     const systemPromptLength = fullSystemPrompt.length;
     const systemPromptTokens = Math.ceil(systemPromptLength / 3.5);
 
     if (finalEst > TOTAL_BUDGET && systemPromptTokens > SYSTEM_BUDGET) {
       console.log(`[chat-stream] Trimming system: ${systemPromptTokens}t → ${SYSTEM_BUDGET}t`);
+      // Keep the first SYSTEM_BUDGET tokens (includes personality at top), truncate the rest
       const truncated = fullSystemPrompt.slice(0, SYSTEM_BUDGET * 3.5);
-      finalMessages[0] = { role: "system", content: truncated + "\n[sys truncated]" };
+      finalMessages[0] = { role: "system", content: truncated + "\n[truncated]" };
     }
 
     // Final check. If a large conversation still exceeds budget after system

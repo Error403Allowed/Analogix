@@ -58,8 +58,8 @@ export const getUserSelectedModel = (): string | null => {
   return userSelectedModel;
 };
 
-// Model-specific token limits - hard capped at 1900 to stay under Groq's 6k TPM rate limit
-// This leaves ~4000 tokens for input, keeping total request well within rate limits
+// Model-specific token limits - capped to stay under Groq's rate limits
+// Qwen3-32B supports longer outputs for math/science reasoning
 const MODEL_OUTPUT_LIMITS: Record<string, number> = {
   "llama-3.3-70b-versatile": 1900,
   "llama-3.1-70b-versatile": 1900,
@@ -67,7 +67,7 @@ const MODEL_OUTPUT_LIMITS: Record<string, number> = {
   "meta-llama/llama-4-scout-17b-16e-instruct": 1900,
   "openai/gpt-oss-20b": 1900,
   "openai/gpt-oss-120b": 1900,
-  "qwen/qwen3-32b": 1900,
+  "qwen/qwen3-32b": 4096,
 };
 
 const MODEL_CONTEXT_LIMITS: Record<string, number> = {
@@ -81,7 +81,7 @@ const MODEL_CONTEXT_LIMITS: Record<string, number> = {
 };
 
 // Conservative per-request caps based on Groq free-tier ~6k TPM
-// With 1900 output tokens, we have ~4000 for input to stay comfortably under rate limits
+// Qwen gets a higher budget for detailed math/science reasoning
 const MODEL_REQUEST_TOKEN_BUDGETS: Record<string, number> = {
   "llama-3.3-70b-versatile": 5900,
   "llama-3.1-70b-versatile": 5900,
@@ -89,7 +89,7 @@ const MODEL_REQUEST_TOKEN_BUDGETS: Record<string, number> = {
   "meta-llama/llama-4-scout-17b-16e-instruct": 5900,
   "openai/gpt-oss-20b": 5900,
   "openai/gpt-oss-120b": 5900,
-  "qwen/qwen3-32b": 5900,
+  "qwen/qwen3-32b": 8000,
 };
 
 const MIN_COMPLETION_TOKENS = 256;

@@ -33,9 +33,6 @@ const nextConfig = {
   images: {
     formats: ['image/avif', 'image/webp'],
   },
-  turbopack: {
-    root: __dirname,
-  },
 };
 
 export default nextConfig;

@@ -346,7 +346,7 @@ const Landing = () => {
   const restFeatures = features.filter(f => f.size !== "lg");
 
   return (
-    <div ref={containerRef} className="min-h-screen bg-background text-foreground selection:bg-primary/30">
+    <div ref={containerRef} className="min-h-screen bg-background text-foreground selection:bg-primary/30 relative">
       <CursorParticles />
       
       {/* Scroll progress indicator */}

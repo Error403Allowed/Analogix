@@ -163,6 +163,9 @@ export async function POST(request: Request) {
       maxWords = 300;
     }
     
+    const selectedModel = userContext?.selectedModel || null;
+    const isQwenModel = selectedModel ? selectedModel.toLowerCase().includes("qwen") : false;
+    
     const lengthGuidance = `RESPONSE LENGTH (${targetResponseLength}):
     - Minimum ${minWords} words for substantive answers
     - Maximum ${maxWords} words - go longer only when topic truly demands it
