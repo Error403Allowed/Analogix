@@ -20,6 +20,18 @@ const DesmosGraph = dynamic(() => import("@/components/graphing/DesmosGraph"), {
   ),
 });
 
+const RechartsGraph = dynamic(() => import("@/components/graphing/RechartsGraph"), {
+  ssr: false,
+  loading: () => (
+    <div className="my-4 rounded-2xl overflow-hidden border border-border/30 bg-muted/20 p-6 flex items-center justify-center gap-2">
+      <div className="w-1.5 h-1.5 rounded-full bg-primary/40 animate-pulse" />
+      <p className="text-xs text-muted-foreground/50 italic">Chart rendering…</p>
+    </div>
+  ),
+});
+
+import type { ChartSpec } from "@/components/graphing/RechartsGraph";
+
 
 interface MarkdownRendererProps {
   content: string;
@@ -192,6 +204,21 @@ const MarkdownRenderer = ({ content, className, streaming = false }: MarkdownRen
             if (lang === "language-desmos") {
               if (!blockComplete) return streamingPlaceholder;
               return <DesmosGraph expressions={rawBlock} showEditor={true} />;
+            }
+
+            // Check for recharts block
+            if (lang === "language-recharts" || lang === "language-chart") {
+              if (!blockComplete) return streamingPlaceholder;
+              try {
+                const spec = JSON.parse(rawBlock) as ChartSpec;
+                return <RechartsGraph spec={spec} />;
+              } catch {
+                return (
+                  <pre className="bg-muted/40 border border-border/40 rounded-xl p-4 overflow-x-auto text-sm my-4 select-text">
+                    {children}
+                  </pre>
+                );
+              }
             }
 
             // Fallback: regular code block

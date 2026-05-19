@@ -450,7 +450,35 @@ Math Requirements:
 - Verify solutions by plugging back in
 
 ${formulaSheetContext ? `\nFormulas: ${formulaSheetContext}` : ""}
-${researchBlock}`;
+${researchBlock}
+
+Chart Generation:
+When presenting numerical data, comparisons, trends, or distributions, generate a visual chart using a JSON code block with the language "recharts". Use charts to make data easier to understand.
+
+Supported chart types: "bar", "line", "pie", "area"
+
+Format:
+\`\`\`recharts
+{
+  "type": "bar",
+  "title": "Chart Title",
+  "xKey": "name",
+  "categories": ["value1", "value2"],
+  "data": [
+    {"name": "Label 1", "value1": 10, "value2": 20},
+    {"name": "Label 2", "value1": 15, "value2": 25}
+  ]
+}
+\`\`\`
+
+Rules:
+- Use "bar" for comparisons between categories
+- Use "line" for trends over time
+- Use "pie" for part-to-whole percentages
+- Use "area" for cumulative trends
+- Keep data points concise (5-10 max)
+- Always include meaningful labels
+- Use numeric values only`;
 
     // ========================================================================
     // STEP 3: Detect what type of question this is (coding/reasoning/general)
