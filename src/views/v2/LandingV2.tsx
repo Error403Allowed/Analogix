@@ -72,7 +72,10 @@ export default function LandingV2() {
 
       <section className="border-t border-border/70">
         <div className="mx-auto grid w-full max-w-[1240px] gap-4 px-5 py-12 sm:grid-cols-2 lg:grid-cols-4 lg:px-8">
-          {pillars.map((pillar, index) => (
+          {pillars.map((pillar, index) => {
+            const Icon = pillar.icon;
+
+            return (
             <motion.article
               key={pillar.title}
               initial={{ opacity: 0, y: 14 }}
@@ -81,11 +84,12 @@ export default function LandingV2() {
               transition={{ duration: 0.4, delay: index * 0.05 }}
               className="rounded-lg border border-border/60 bg-card/55 p-5"
             >
-              <pillar.icon className="h-5 w-5 text-primary" />
+              <Icon className="h-5 w-5 text-primary" />
               <h2 className="mt-4 text-xl font-semibold tracking-tight">{pillar.title}</h2>
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{pillar.copy}</p>
             </motion.article>
-          ))}
+            );
+          })}
         </div>
       </section>
     </div>

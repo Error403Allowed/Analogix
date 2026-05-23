@@ -61,12 +61,12 @@ export const getUserSelectedModel = (): string | null => {
 // Model-specific token limits - capped to stay under Groq's rate limits
 // Qwen3-32B supports longer outputs for math/science reasoning
 const MODEL_OUTPUT_LIMITS: Record<string, number> = {
-  "llama-3.3-70b-versatile": 1900,
-  "llama-3.1-70b-versatile": 1900,
-  "llama-3.1-8b-instant": 1900,
-  "meta-llama/llama-4-scout-17b-16e-instruct": 1900,
-  "openai/gpt-oss-20b": 1900,
-  "openai/gpt-oss-120b": 1900,
+  "llama-3.3-70b-versatile": 3000,
+  "llama-3.1-70b-versatile": 3000,
+  "llama-3.1-8b-instant": 3000,
+  "meta-llama/llama-4-scout-17b-16e-instruct": 3000,
+  "openai/gpt-oss-20b": 3000,
+  "openai/gpt-oss-120b": 3000,
   "qwen/qwen3-32b": 4096,
 };
 
@@ -83,13 +83,13 @@ const MODEL_CONTEXT_LIMITS: Record<string, number> = {
 // Conservative per-request caps based on Groq free-tier ~6k TPM
 // Qwen gets a higher budget for detailed math/science reasoning
 const MODEL_REQUEST_TOKEN_BUDGETS: Record<string, number> = {
-  "llama-3.3-70b-versatile": 5900,
-  "llama-3.1-70b-versatile": 5900,
-  "llama-3.1-8b-instant": 5900,
-  "meta-llama/llama-4-scout-17b-16e-instruct": 5900,
-  "openai/gpt-oss-20b": 5900,
-  "openai/gpt-oss-120b": 5900,
-  "qwen/qwen3-32b": 8000,
+  "llama-3.3-70b-versatile": 12000,
+  "llama-3.1-70b-versatile": 12000,
+  "llama-3.1-8b-instant": 12000,
+  "meta-llama/llama-4-scout-17b-16e-instruct": 12000,
+  "openai/gpt-oss-20b": 12000,
+  "openai/gpt-oss-120b": 12000,
+  "qwen/qwen3-32b": 16000,
 };
 
 const MIN_COMPLETION_TOKENS = 256;

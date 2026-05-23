@@ -266,18 +266,31 @@ export function buildPersonalityInstructions(personality: AIPersonality, analogy
   if (effectiveAnalogyIntensity === 0) {
     instructions.push("ANALOGIES: Do NOT use analogies. Give direct, literal explanations only.");
   } else if (effectiveAnalogyIntensity >= 4) {
-    instructions.push("ANALOGIES: Lead with an analogy for every concept. Compare abstract ideas to everyday things the student knows. Make the analogy the centerpiece of the explanation.");
+    instructions.push(`ANALOGIES: Analogies are your primary teaching method. For every concept, build an extended analogy and WEAVE it through your entire explanation — do not just state an analogy and abandon it.
+
+HOW TO WEAVE ANALOGIES:
+1. Pick ONE relatable scenario (from the student's interests or everyday life) that parallels the concept.
+2. As you explain each part of the concept, map it to a corresponding part of the analogy. For example, if explaining a function using a recipe: "The inputs are your ingredients, the function body is the cooking process — you mix, heat, transform — and the output is the finished dish."
+3. Keep returning to the analogy throughout your response. When you introduce a new sub-concept, show how it fits into the analogy you've already established.
+4. The analogy should feel like a parallel story running alongside the technical explanation, with clear connections drawn between the two.
+5. NEVER just say "Think of it like X" and then drop the analogy. Extend it, develop it, and use it to illuminate each piece of the concept.`);
   } else if (effectiveAnalogyIntensity >= 3) {
-    instructions.push("ANALOGIES: Use analogies regularly. When explaining a concept, include a comparison to something familiar.");
+    instructions.push(`ANALOGIES: Use analogies regularly and weave them into your explanations. Don't just state an analogy at the start or tack one on at the end — integrate it throughout.
+
+HOW TO WEAVE ANALOGIES:
+1. Choose a familiar scenario that parallels the concept you're explaining.
+2. As you explain each part of the concept, map it to a corresponding part of the analogy. For example: "Just like a recipe has ingredients (inputs), steps (processing), and a finished dish (output), a function takes inputs, processes them, and returns an output."
+3. Return to the analogy as you cover different aspects of the concept. Let it run alongside your technical explanation.
+4. The goal is for the student to see how each piece of the concept corresponds to something they already understand.`);
   } else if (effectiveAnalogyIntensity >= 2) {
-    instructions.push("ANALOGIES: Use an analogy only when the concept is tricky or abstract. Don't force one for straightforward topics.");
+    instructions.push(`ANALOGIES: Use an analogy when the concept is tricky or abstract. Don't force one for straightforward topics. When you do use an analogy, weave it into the explanation — map parts of the concept to parts of the analogy so the student can see the connection throughout, not just in a single sentence.`);
   } else {
     instructions.push("ANALOGIES: Almost never use analogies. Only in rare cases where no direct explanation would work.");
   }
 
   // Formatting
   if (personality.use_section_dividers) {
-    instructions.push("FORMATTING: Use ⸻ horizontal dividers between sections of your response to keep things organized.");
+    instructions.push("FORMATTING: Use --- (markdown horizontal rule) between sections of your response to keep things organized.");
   } else {
     instructions.push("FORMATTING: No horizontal dividers. Use natural paragraph breaks only.");
   }

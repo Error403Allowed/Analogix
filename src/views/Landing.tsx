@@ -687,7 +687,10 @@ const Landing = () => {
                     title: "Everything is free",
                     desc: "No subscriptions, no paywalls, no ads. Every single feature — AI tutor, flashcards, quizzes, all of it — completely free."
                   },
-                ].map((item, i) => (
+                ].map((item, i) => {
+                  const Icon = item.icon;
+
+                  return (
                   <StaggerItem key={i}>
                     <motion.div 
                       whileHover={{ x: 8, scale: 1.01 }}
@@ -698,7 +701,7 @@ const Landing = () => {
                         whileHover={{ rotate: 15, scale: 1.1 }}
                         className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 mt-0.5"
                       >
-                        <item.icon className="w-4 h-4 text-primary" />
+                        <Icon className="w-4 h-4 text-primary" />
                       </motion.div>
                       <div>
                         <h4 className="font-black mb-1">{item.title}</h4>
@@ -706,7 +709,8 @@ const Landing = () => {
                       </div>
                     </motion.div>
                   </StaggerItem>
-                ))}
+                  );
+                })}
               </StaggeredList>
             </div>
 
@@ -717,7 +721,10 @@ const Landing = () => {
                 {[
                   { icon: Trophy, label: "Achievement", value: "Quiz Master", color: "text-amber-500" },
                   { icon: Rocket, label: "Momentum", value: "7 Day Streak", color: "text-primary", dark: true },
-                ].map((card, i) => (
+                ].map((card, i) => {
+                  const Icon = card.icon;
+
+                  return (
                   <motion.div 
                     key={i}
                     initial={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -731,7 +738,7 @@ const Landing = () => {
                     )}
                   >
                     <motion.div whileHover={{ rotate: 15, scale: 1.1 }}>
-                      <card.icon className={cn("w-7 h-7", card.dark ? "text-primary-foreground" : card.color)} />
+                      <Icon className={cn("w-7 h-7", card.dark ? "text-primary-foreground" : card.color)} />
                     </motion.div>
                     <div>
                       <p className={cn("text-[10px] font-black uppercase tracking-widest mb-1",
@@ -741,13 +748,17 @@ const Landing = () => {
                       <p className="text-lg font-black">{card.value}</p>
                     </div>
                   </motion.div>
-                ))}
+                  );
+                })}
               </div>
               <div className="space-y-4">
                 {[
                   { icon: TrendingUp, label: "Accuracy", value: "87%", progress: 87, color: "bg-emerald-500" },
                   { icon: Target, label: "Quizzes done", value: "23", color: "bg-blue-500" },
-                ].map((card, i) => (
+                ].map((card, i) => {
+                  const Icon = card.icon;
+
+                  return (
                   <motion.div 
                     key={i}
                     initial={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -758,7 +769,7 @@ const Landing = () => {
                     className="rounded-3xl bg-card border border-border p-6 flex flex-col gap-6 shadow-xl cursor-pointer"
                   >
                     <motion.div whileHover={{ rotate: 15, scale: 1.1 }}>
-                      <card.icon className="w-7 h-7 text-muted-foreground" />
+                      <Icon className="w-7 h-7 text-muted-foreground" />
                     </motion.div>
                     <div>
                       <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">{card.label}</p>
@@ -776,7 +787,8 @@ const Landing = () => {
                       )}
                     </div>
                   </motion.div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </div>

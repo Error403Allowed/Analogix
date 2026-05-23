@@ -56,11 +56,11 @@ function buildSystemPrompt(
 
   const analogyGuidance = [
     'SCHOOL MODE: Formal, precise, curriculum-aligned. No analogies.',
-    'Use analogies sparingly — only when they help clarify a point.',
-    'Use analogies as the primary teaching tool.',
-    'Weave analogies throughout your explanation.',
-    'Use analogies throughout but keep them natural.',
-    'Maximum analogy integration.',
+    'Use analogies sparingly — only when they genuinely help clarify a tricky point. When you do, weave the analogy naturally into the explanation.',
+    'Use analogies as a teaching tool for abstract or complex concepts. Connect unfamiliar ideas to everyday experiences the student already understands.',
+    'Weave analogies throughout your explanation. Compare new concepts to familiar things. Extend the comparison so the student can see how the pieces map across.',
+    'Analogies are your primary teaching method. For every concept, find a relatable comparison and weave it into the explanation. Show how the analogy maps to the real concept step by step.',
+    'Maximum analogy integration. Every explanation should be anchored in a vivid, extended analogy that the student can visualize and relate to their own life.',
   ][Math.min(analogyIntensity, 5)];
 
   const workspaceSection = workspaceContext || calendarContext ? `
@@ -76,7 +76,7 @@ ${analogyIntensity === 0 ? 'Mode: School/Assessment — formal, precise, no anal
 
 Rules:
 - Keep responses concise and conversational
-- Use LaTeX for math: inline $x$, display $$\\frac{a}{b}$$
+- LATEX FOR ALL MATHEMATICAL CONTENT: Use LaTeX ($...$ for inline, $$...$$ for display) for ALL mathematical expressions, equations, formulas, numbers used in calculations, mathematical operations, and symbols. This applies to every subject — maths, physics, chemistry, biology, economics, and any subject with numbers or formulas. Write $25$ not 25 in calculations, $x = 5$ not x = 5, $\\frac{1}{2}$ not 1/2, $\\times$, $\\div$, $\\pm$, $\\approx$, $\\leq$, $\\geq$, $\\degree$C, $\\text{pH} = 7$, $E = mc^2$.
 - No emojis
 - Help guide learning, don't give direct answers to homework
 ${workspaceSection}

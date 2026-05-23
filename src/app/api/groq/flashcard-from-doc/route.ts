@@ -36,7 +36,7 @@ export async function POST(request: Request) {
     const fileName: string = body.fileName || "Document";
     const subject: string = body.subject || "";
     const grade: string = body.grade || "7-12";
-    const count: number = body.count || 15;
+    const count: number = Math.max(5, body.count || 15);
 
     if (!documentContent.trim()) {
       return NextResponse.json({ error: "Document content is required" }, { status: 400 });
@@ -53,6 +53,8 @@ CRITICAL RULES — READ CAREFULLY:
 - NEVER create flashcards about administrative details such as: due dates, assessment notifications, task deadlines, assignment instructions, submission guidelines, class schedules, room numbers, teacher names, or any logistical/administrative information.
 - If the document contains mixed content (e.g., a notification that also includes topic content), IGNORE the administrative parts and ONLY create flashcards from the educational/subject matter.
 - Focus on helping the student LEARN and UNDERSTAND the subject — not memorise dates or administrative details.
+- You MUST create at least 5 flashcards. Do NOT create fewer than 5.
+- Do NOT default to maths-only flashcards. Cover a diverse range of topics from the document — include definitions, concepts, processes, relationships, and factual knowledge. Only include maths flashcards if the document is specifically about mathematics.
 
 Generate ${count} high-quality flashcards:
 - Front: Clear, specific question or term (concise)
@@ -99,7 +101,7 @@ Return ONLY valid JSON — no markdown, no preamble:
 
           let chunkFlashcards: Array<{ front: string; back: string }> = [];
           try {
-            const clean = chunkContent.replace(/```json|```/g, "").trim();
+            const clean = chunkContent.replace(/```(?:json)?\s*|\s*```/g, "").trim();
             const parsed = JSON.parse(clean);
             chunkFlashcards = parsed.flashcards || parsed || [];
           } catch {
@@ -108,9 +110,20 @@ Return ONLY valid JSON — no markdown, no preamble:
               try {
                 const parsed = JSON.parse(match[0]);
                 chunkFlashcards = parsed.flashcards || parsed || [];
-              } catch { /* skip invalid JSON */ }
+              } catch {
+                // Try extracting flashcards array pattern
+                const fcMatch = chunkContent.match(/"flashcards"\s*:\s*(\[[\s\S]*\])/);
+                if (fcMatch) {
+                  try { chunkFlashcards = JSON.parse(fcMatch[1]); } catch { /* skip */ }
+                }
+              }
             }
           }
+
+          // Validate
+          chunkFlashcards = chunkFlashcards.filter(
+            (fc) => fc.front?.trim() && fc.back?.trim()
+          );
 
           allFlashcards.push(...chunkFlashcards);
         } catch (chunkError) {
@@ -139,7 +152,7 @@ Return ONLY valid JSON — no markdown, no preamble:
 
     let flashcards: Array<{ front: string; back: string }> = [];
     try {
-      const clean = content.replace(/```json|```/g, "").trim();
+      const clean = content.replace(/```(?:json)?\s*|\s*```/g, "").trim();
       const parsed = JSON.parse(clean);
       flashcards = parsed.flashcards || parsed || [];
     } catch {
@@ -148,9 +161,19 @@ Return ONLY valid JSON — no markdown, no preamble:
         try {
           const parsed = JSON.parse(match[0]);
           flashcards = parsed.flashcards || parsed || [];
-        } catch { /* skip invalid JSON */ }
+        } catch {
+          const fcMatch = content.match(/"flashcards"\s*:\s*(\[[\s\S]*\])/);
+          if (fcMatch) {
+            try { flashcards = JSON.parse(fcMatch[1]); } catch { /* skip */ }
+          }
+        }
       }
     }
+
+    // Validate
+    flashcards = flashcards.filter(
+      (fc) => fc.front?.trim() && fc.back?.trim()
+    );
 
     return NextResponse.json({ flashcards });
   } catch (error) {

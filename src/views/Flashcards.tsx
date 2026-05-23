@@ -8,12 +8,14 @@ import {
   Zap, Trophy, Plus, FolderOpen,
   CheckCircle2, XCircle, Loader2, Eye, EyeOff,
   Upload, Target, PenLine, MessageSquare,
-  ListChecks, Clock,
+  ListChecks, Clock, AlertTriangle,
 } from "lucide-react";
 import { NextConfig } from 'next';
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Slider } from "@/components/ui/slider";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { SUBJECT_CATALOG } from "@/constants/subjects";
 import { DynamicIcon } from "@/components/IconPicker";

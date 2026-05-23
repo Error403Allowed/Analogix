@@ -191,9 +191,9 @@ function buildSystemPrompt(
     "SCHOOL MODE: This student wants responses tailored for school/assessment purposes. Be formal, precise, and curriculum-aligned. Use correct subject-specific terminology. Structure answers the way a teacher or marker would expect. No analogies, no personal interests, no casual tone.",
     "SCHOOL MODE: Formal, precise responses for school. Use analogies only if they genuinely clarify a concept — don't force them. Let the explanation dictate the approach.",
     "STANDARD LEARNING: Use direct explanations first. Add an analogy only if it would genuinely help understanding — don't force it. Clear and curriculum-aligned beats creative.",
-    "Use analogies when explaining concepts — they help make abstract ideas concrete. Reference the student's interests where relevant.",
-    "Use analogies as a primary teaching tool for explanations. Lead with a relatable example from everyday life or the student's interests before diving into the formal concept.",
-    "Maximum analogy integration: Use analogies throughout explanations, connecting to the student's interests. Make sure each analogy maps cleanly to the concept.",
+    "Use analogies when explaining concepts — they help make abstract ideas concrete. When you use an analogy, draw it from the student's listed interests and weave it through your explanation: map each part of the concept to a corresponding part of the analogy, and keep returning to it as you cover different aspects. Don't just state an analogy and drop it.",
+    "Use analogies as a primary teaching tool. Build an extended analogy from the student's specific interests listed below, and thread it through your entire response. As you explain each part of the concept, show how it maps to the analogy. The analogy must be drawn from the student's actual interests — not generic examples. The analogy should run parallel to the technical explanation, with clear connections throughout.",
+    "Maximum analogy integration: Every explanation should be anchored in a vivid, extended analogy drawn from the student's specific interests. Build the analogy from the start and develop it throughout — map concept elements to analogy elements, return to the analogy for each sub-point, and let the parallel story illuminate the concept step by step. NEVER use a generic analogy when the student's interests provide a better one.",
   ][Math.min(analogyIntensity, 5)];
 
   const hasExplicitSubject = (userContext?.subjects?.length ?? 0) > 0;
@@ -223,26 +223,24 @@ ${researchSources.length > 0 ? `ACADEMIC SOURCES:\n${formatResearchSources(resea
   const isQwenModel = selectedModel ? selectedModel.toLowerCase().includes("qwen") : false;
 
   const actionInstructions = `
-You have WRITE access for flashcards and quizzes. When you emit an add_flashcards or start_quiz action in the <ACTIONS> block, those actions will actually create flashcards in the user's library or start a quiz session. This is not just a chat suggestion.
-
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-AVAILABLE ACTIONS (flashcards & quizzes only)
+FLASHCARDS & QUIZZIES
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Put an <ACTIONS>...</ACTIONS> block at the VERY END of your message ONLY for flashcards or quizzes.
+When creating flashcards or quizzes, place a JSON block wrapped in <internal>...</internal> tags at the VERY END of your message. This block is hidden from the student — never mention it in your visible text.
 
-── ACTION: add_flashcards ──
-{"type":"add_flashcards","subjectId":"SUBJECT","setName":"Topic name","cards":[{"front":"Q","back":"A"}]}
+── FLASHCARDS ──
+<internal>[{"type":"add_flashcards","subjectId":"SUBJECT","setName":"Topic name","cards":[{"front":"Q","back":"A"}]}]</internal>
 
-── ACTION: start_quiz ──
-{"type":"start_quiz","subjectId":"SUBJECT","topic":"optional topic focus","difficulty":"foundational|intermediate|advanced","numberOfQuestions":5,"timeLimitMinutes":0}
+── QUIZZES ──
+<internal>[{"type":"start_quiz","subjectId":"SUBJECT","topic":"optional topic","difficulty":"foundational|intermediate|advanced","numberOfQuestions":5,"timeLimitMinutes":0}]</internal>
 
 ── RULES ──
-- NEVER use create_document or update_document — you do not have write access to documents.
-- For add_flashcards: always include a descriptive setName (e.g. "Quadratic equations", "Chapter 3 vocab"). This will create a flashcard set in the user's library. Say "Done! Added X flashcards on [topic]." — nothing else.
-- For start_quiz: say "Starting your quiz now!" then the <ACTIONS> block. This will start a quiz session; NEVER write quiz questions in your text response.
-- CRITICAL: When using add_flashcards or start_quiz, your text response must be 1 sentence MAX. Do NOT write out flashcard content or quiz questions in the chat — they go in the <ACTIONS> block only.
-- Use add_flashcards when student says "make flashcards", "create cards", "save these as flashcards" etc.
-- Use start_quiz when student says "quiz me", "test me", "start a quiz" etc.
+- For flashcards: you MUST include AT LEAST 5 cards. If you cannot make 5 meaningful cards, do NOT use the action at all.
+- For flashcards: your visible text should be 1 sentence only, e.g. "Done! Added 5 flashcards on quadratics." Then the <internal> block.
+- For quizzes: your visible text should be "Starting your quiz now!" Then the <internal> block.
+- Use flashcards when the student says "make flashcards", "create cards", "save these" etc.
+- Use quizzes when the student says "quiz me", "test me", "start a quiz" etc.
+- The <internal> block must contain ONLY a valid JSON array — no markdown, no code fences, no extra text.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 `;
 
@@ -285,41 +283,57 @@ ${calendarContext ? `When the user asks about their schedule, events, deadlines,
 
 ${analogyIntensity === 0 ? `MODE: School/Assessment — formal, precise, no analogies.` : 
   `Learning Mode — ${analogyGuidance}
-Interests: ${allowedInterests}`}
+Student Interests (use these for analogies and examples): ${allowedInterests}`}
 
 Rules:
 - When user asks about schedule, classes, events, deadlines, or "what's next" — check the calendar context and give a natural, conversational answer (not a list).
-- For math/science questions: always include a worked example showing step-by-step reasoning with LaTeX formatting. $\\frac{a}{b}$, $\\sqrt{x}$, $\\int$, $\\sum$.
-- Use bullet points or numbered lists when listing definitions, rules, or key steps — they help students scan and remember.
+- Make sure all your responses reflect the values and outcomes/requirements of the ACARA curriculum. Do not force the curriculum informaiton on the student, but make sure you frame your response to be ACARA-worthy. 
+- LATEX FOR ALL MATHEMATICAL CONTENT: Use LaTeX ($...$ for inline, $$...$$ for display) for ALL mathematical expressions, equations, formulas, numbers used in calculations, mathematical operations, symbols, and scientific notation. This applies to EVERY subject — maths, physics, chemistry, biology, economics, engineering, and any other subject where numbers, formulas, or mathematical symbols appear. Examples: write $25$ not 25 when it's a value in a calculation, $x = 5$ not x = 5, $\\frac{1}{2}$ not 1/2, $\\times$ for multiplication, $\\div$ for division, $\\pm$, $\\approx$, $\\leq$, $\\geq$, $\\degree$C, $\\text{pH} = 7$, $E = mc^2$, $n = 3$ moles, $v = 30\\,\\text{m/s}$. ANY number that is part of a formula, equation, measurement, calculation, or mathematical relationship MUST be wrapped in $...$. Chemical equations, physics formulas, statistical values, percentages, ratios — all use LaTeX.
+- CHARTS: If the user asks for a graph, chart, or visualisation of data, use the Recharts format described at the end of this prompt to create an interactive chart. Make sure this chart can render accurately and properly on the frontend. 
+- DESMOS: If the user asks for a graph of a mathematical function, equation, or inequality, you MUST output a \`\`\`desmos code block with the equation(s). NEVER output a URL or just describe the graph.
+- 3D VISUALISATIONS: For complex concepts, structures, systems, or relationships (e.g. solar system, atomic structure, biological processes, networks), use the Three.js format described at the end of this prompt to create an interactive 3D scene that illustrates the concept.
 - NOTE: If asked to write something very long (essays, reports, etc.), explain that responses are capped at ~${isQwenModel ? '4000' : '1900'} tokens due to API rate limits, but offer to continue in a follow-up message.${actionInstructions}${workspaceSection}
 ${researchBlock}
 
 Visualisations — you have THREE tools to make concepts visual and memorable:
 
-1. DESMOS GRAPHS (for math functions):
-   Use a code block with language "desmos" to render interactive graphs.
-   Format: \`\`\`desmos
-   y = x^2
-   y = 2x + 1
-   \`\`\`
-   Use for: any math function, equation, inequality, parametric curve.
+ 1. DESMOS GRAPHS (for math functions):
+    When the user asks to graph, plot, or visualise ANY equation, function, or inequality, you MUST output a code block with language "desmos" containing the raw equation(s).
+    Format: \`\`\`desmos
+    y = x^2 - 4*x + 3
+    \`\`\`
+    Rules:
+    - Put ONLY the equation(s) inside the code block — one per line.
+    - Use * for multiplication (e.g. 2*x not 2x, 4*x^2 not 4x^2).
+    - NEVER output a desmos.com URL. NEVER say "copy this link". NEVER describe the graph instead of showing it.
+    - After the code block, you may briefly describe key features (vertex, intercepts, etc.).
+    Use for: any math function, equation, inequality, parametric curve.
 
-2. RECHARTS (for data & statistics):
-   When presenting numerical data, comparisons, trends, distributions, statistics, or percentages, ALWAYS generate a chart using a JSON code block with language "recharts".
-   Supported types: "bar" (comparisons), "line" (trends over time), "pie" (part-to-whole), "area" (cumulative trends).
-   Format:
-   \`\`\`recharts
-   {
-     "type": "bar",
-     "title": "Chart Title",
-     "xKey": "name",
-     "categories": ["value1", "value2"],
-     "data": [
-       {"name": "Label 1", "value1": 10, "value2": 20},
-       {"name": "Label 2", "value1": 15, "value2": 25}
-     ]
-   }
-   \`\`\`
+ 2. RECHARTS (for data & statistics):
+     When the user asks for a chart, graph, or visualisation of NUMERICAL DATA or STATISTICS, you MUST output a code block with language "recharts" containing a JSON object.
+     Format: \`\`\`recharts
+     {
+       "type": "line",
+       "title": "World Population (billions)",
+       "xKey": "name",
+       "categories": ["population"],
+       "data": [
+         {"name": "1950", "population": 2.5},
+         {"name": "1975", "population": 4.0},
+         {"name": "2000", "population": 6.1},
+         {"name": "2020", "population": 7.8}
+       ]
+     }
+     \`\`\`
+     Rules:
+     - The block MUST be valid JSON only — NO imports, NO React components, NO JSX, NO chart.js, NO function definitions.
+     - "type" must be one of: "line", "bar", "pie", "area".
+     - "xKey" is the data key for the x-axis (e.g. "name", "year", "label").
+     - "categories" is an array of data keys for the y-axis values to plot.
+     - "data" is an array of objects where each object has the xKey field and one field per category.
+     - NEVER output JavaScript, React code, or chart.js code. The frontend expects ONLY JSON.
+     Types: "bar" for comparisons, "line" for trends over time, "pie" for parts of a whole, "area" for cumulative trends.
+     Use for: any numerical data, comparisons, trends, distributions, statistics, or percentages.
 
 3. THREE.JS 3D SCENES (for concepts & structures):
    When explaining abstract concepts, structures, systems, or relationships, generate a 3D scene using a JSON code block with language "three".
@@ -569,13 +583,14 @@ if (clientMemories && Array.isArray(clientMemories)) {
       : classifyTaskType(recentMsgs, primarySubject);
 
     // Token budgets — use model-specific limits for Qwen which supports longer outputs
-    const isQwenModel = chatTaskType === "reasoning";
-    const OUTPUT_HARD_CAP = isQwenModel ? 4096 : 1900;
-    const TOTAL_BUDGET = isQwenModel ? 8000 : 5900;
+    const selectedModelStr = userContext?.selectedModel || "";
+    const isQwenModel = chatTaskType === "reasoning" || selectedModelStr.toLowerCase().includes("qwen");
+    const OUTPUT_HARD_CAP = isQwenModel ? 4096 : 3000;
+    const TOTAL_BUDGET = isQwenModel ? 16000 : 12000;
     const wantsLongResponse = isResearchMode || isFormalRequest ||
       /\b(detailed|comprehensive|essay|report|study guide|lesson plan|long answer)\b/i.test(latestUserMsg);
-    const SYSTEM_BUDGET = 1800;
-    const targetMaxTokens = isSimpleGreeting ? 300 : wantsLongResponse ? OUTPUT_HARD_CAP : (isQwenModel ? 3000 : 1500);
+    const SYSTEM_BUDGET = 2200;
+    const targetMaxTokens = isSimpleGreeting ? 300 : wantsLongResponse ? OUTPUT_HARD_CAP : (isQwenModel ? 4000 : 3000);
 
     // Build initial messages
     const finalMessages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [

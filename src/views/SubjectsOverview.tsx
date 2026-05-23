@@ -191,9 +191,6 @@ export default function SubjectsOverview() {
                       </p>
                     </div>
                     <div className="mt-6 flex items-center justify-between border-t border-border/50 pt-4">
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/40">
-                        {activity} Sessions
-                      </span>
                       <ArrowRight className="h-4 w-4 text-muted-foreground/20 transition-transform group-hover:translate-x-1 group-hover:text-primary" />
                     </div>
                   </div>

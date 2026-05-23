@@ -577,15 +577,26 @@ const Chat = () => {
       .map(m => `${m.role === "user" ? "Student" : "Analogix AI"}: ${m.content}`)
       .join("\n\n");
 
-    const raw = await generateFlashcards(conversationText, selectedSubject, userPrefs.grade, 5);
-    if (raw.length > 0) {
-      const chatSet = await flashcardStore.createSet(selectedSubject, `Chat – ${new Date().toLocaleDateString()}`);
-      if (chatSet) {
-        await flashcardStore.add(raw.map(c => ({ setId: chatSet.id, subjectId: selectedSubject, front: c.front, back: c.back })));
+    const raw = await generateFlashcards(conversationText, selectedSubject, userPrefs.grade, 10);
+    if (raw.length >= 5) {
+      const allSets = await flashcardStore.getSets();
+      const subjectSets = allSets.filter(s => s.subjectId === selectedSubject);
+      const existingChatSet = subjectSets.find(s => s.name.toLowerCase().includes("chat"));
+
+      let targetSetId: string | null = existingChatSet?.id ?? null;
+      if (!targetSetId) {
+        const newSet = await flashcardStore.createSet(selectedSubject, `Chat – ${new Date().toLocaleDateString()}`);
+        if (newSet) targetSetId = newSet.id;
+      }
+
+      if (targetSetId) {
+        await flashcardStore.add(raw.map(c => ({ setId: targetSetId!, subjectId: selectedSubject, front: c.front, back: c.back })));
       }
       setFlashcardsSaved(true);
       setTimeout(() => setFlashcardsSaved(false), 3000);
       router.push(`/flashcards?subjectId=${selectedSubject}`);
+    } else if (raw.length > 0) {
+      toast.error(`Only ${raw.length} flashcards generated — need at least 5. Try a longer conversation.`);
     }
     setSavingFlashcards(false);
   }, [selectedSubject, messages, savingFlashcards, userPrefs.grade, router]);
@@ -1139,9 +1150,12 @@ const Chat = () => {
         const cleanForDisplay = (text: string) => {
           return text
             .replace(/<system-reminder[\s\S]*?<\/system-reminder>/gi, "")
+            .replace(/<system-reminder[\s\S]*$/gi, "")
             .replace(/<\|[\w_]+\|>/g, "")
-            .replace(/<ACTIONS\s*>[\s\S]*?<\/ACTIONS\s*>/gi, "")
-            .replace(/<ACTIONS\s*>[\s\S]*/gi, "") // Handle unclosed tag
+            .replace(/<internal\s*>[\s\S]*?<\/internal\s*>/gi, "")
+            .replace(/<internal\s*>[\s\S]*/gi, "")
+            .replace(/\n\s*Actions\s*$/gi, "")
+            .replace(/\n\s*\n\s*$/g, "\n")
             .trim();
         };
 
@@ -1152,20 +1166,93 @@ const Chat = () => {
           setStreamingContent(cleanForDisplay(accumulated));
         }
 
-        // ── Parse and execute any <ACTIONS> block from the response ──────────
-        const actionsMatch = accumulated.match(/<ACTIONS\s*>[\s\S]*?<\/ACTIONS\s*>/i);
+        // ── Parse and execute any <internal> block from the response ──────────
+        const actionsMatch = accumulated.match(/<internal\s*>([\s\S]*?)<\/internal\s*>/i);
         if (actionsMatch) {
           try {
-            const cleaned = actionsMatch[0]
-              .replace(/<ACTIONS\s*>/i, "")
-              .replace(/<\/ACTIONS\s*>/i, "")
-              .trim()
-              .replace(/^```(?:json)?\n?/, "")
-              .replace(/\n?```$/, "")
+                const cleaned = actionsMatch[1]
               .trim();
             if (!cleaned) return;
-            const parsed = JSON.parse(cleaned);
-            const actions = Array.isArray(parsed) ? parsed : [parsed];
+
+            // Try parsing as array first, then as single object, then try to extract JSON
+            let actions: Array<Record<string, unknown>> = [];
+            try {
+              const parsed = JSON.parse(cleaned);
+              actions = Array.isArray(parsed) ? parsed : [parsed];
+            } catch {
+              // Try extracting JSON objects/arrays from the text
+              // Use a balanced-bracket finder instead of greedy regex
+              const findJsonArray = (text: string): string | null => {
+                let depth = 0;
+                let start = -1;
+                let inString = false;
+                let escapeNext = false;
+                for (let i = 0; i < text.length; i++) {
+                  const ch = text[i];
+                  if (escapeNext) { escapeNext = false; continue; }
+                  if (ch === '\\' && inString) { escapeNext = true; continue; }
+                  if (ch === '"') { inString = !inString; continue; }
+                  if (inString) continue;
+                  if (ch === '[') {
+                    if (depth === 0) start = i;
+                    depth++;
+                  } else if (ch === ']') {
+                    depth--;
+                    if (depth === 0 && start !== -1) {
+                      return text.slice(start, i + 1);
+                    }
+                  }
+                }
+                return null;
+              };
+
+              const findJsonObject = (text: string): string | null => {
+                let depth = 0;
+                let start = -1;
+                let inString = false;
+                let escapeNext = false;
+                for (let i = 0; i < text.length; i++) {
+                  const ch = text[i];
+                  if (escapeNext) { escapeNext = false; continue; }
+                  if (ch === '\\' && inString) { escapeNext = true; continue; }
+                  if (ch === '"') { inString = !inString; continue; }
+                  if (inString) continue;
+                  if (ch === '{') {
+                    if (depth === 0) start = i;
+                    depth++;
+                  } else if (ch === '}') {
+                    depth--;
+                    if (depth === 0 && start !== -1) {
+                      return text.slice(start, i + 1);
+                    }
+                  }
+                }
+                return null;
+              };
+
+              const arrayStr = findJsonArray(cleaned);
+              if (arrayStr) {
+                try {
+                  const parsed = JSON.parse(arrayStr);
+                  actions = Array.isArray(parsed) ? parsed : [parsed];
+                } catch { /* fall through */ }
+              }
+
+              if (actions.length === 0) {
+                const objStr = findJsonObject(cleaned);
+                if (objStr) {
+                  try {
+                    const parsed = JSON.parse(objStr);
+                    actions = [parsed];
+                  } catch { /* give up */ }
+                }
+              }
+            }
+
+            if (actions.length === 0) {
+              console.warn("[Chat] Failed to parse internal block. Raw content:", cleaned.slice(0, 500));
+              return;
+            }
             console.log("[Chat] dispatching", actions.length, "action(s)");
 
             // Handle start_quiz client-side (navigate to quiz hub with params)
@@ -1192,8 +1279,12 @@ const Chat = () => {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ actions: serverActions, defaultSubjectId: effectiveSubject, source: "chat" }),
               })
-                .then(r => r.json())
+                .then(r => {
+                  if (!r.ok) return null;
+                  return r.json();
+                })
                 .then(data => {
+                  if (!data) return;
                   console.log("[Chat] agent-action results:", data.results);
                   if (data.results?.length) {
                     window.dispatchEvent(new CustomEvent("subjectDataUpdated", { detail: { results: data.results } }));
@@ -1219,7 +1310,7 @@ const Chat = () => {
                 .catch(err => console.error("[Chat] agent-action error:", err));
             }
           } catch (e) {
-            console.warn("[Chat] Failed to parse ACTIONS block:", e);
+            console.warn("[Chat] Failed to parse internal block:", e);
           }
         }
 
@@ -1256,8 +1347,11 @@ const Chat = () => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ messages: messagesForExtraction, subjectId: selectedSubject }),
         })
-          .then(r => r.json())
-          .then(d => console.log("[memory] extract result:", d))
+          .then(r => {
+            if (!r.ok) return null;
+            return r.json();
+          })
+          .then(d => { if (d) console.log("[memory] extract result:", d); })
           .catch(err => console.error("[memory] extract error:", err));
       }
 
@@ -1289,8 +1383,11 @@ Student (latest): ${currentUserMsg}
 
 Title:` }];
             const titleResponse = await getGroqCompletion(titlePrompt, buildContext(null));
-            // Clean up the title
-            let chatTitle = (titleResponse.content || "").trim();
+            // Clean up the title — strip any <think>...</think> blocks first
+            let chatTitle = (titleResponse.content || "")
+              .replace(/^<think>[\s\S]*?<\/think>\s*/i, "")
+              .replace(/^<think>[\s\S]*$/i, "")
+              .trim();
             chatTitle = chatTitle.replace(/^["'`]|["'`]$/g, "").trim();
             chatTitle = chatTitle.replace(/^(Title:|Here'?s?( a title)?:|The title is:?)/i, "").trim();
             chatTitle = chatTitle.replace(/[.!?]$/, "").trim();

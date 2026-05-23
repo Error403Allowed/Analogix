@@ -7,10 +7,11 @@ import {
   Globe, Scale, Cookie, Baby, Clock, FileText, ExternalLink,
   ChevronDown, ArrowUpRight, Github
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
 type Section = {
   id: string;
-  icon: React.ComponentType<{ className?: string }>;
+  icon: LucideIcon;
   color: string;
   title: string;
   content?: string;
@@ -176,7 +177,10 @@ export default function PrivacyPage() {
 
         {/* Sections */}
         <div className="space-y-3">
-          {sections.map((section, i) => (
+          {sections.map((section, i) => {
+            const Icon = section.icon;
+
+            return (
             <motion.div
               key={section.id}
               initial={{ opacity: 0, y: 10 }}
@@ -189,7 +193,7 @@ export default function PrivacyPage() {
                 className="w-full flex items-center gap-4 px-5 py-[1.125rem] text-left hover:border-primary/30 border border-transparent rounded-2xl transition-all"
               >
                 <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${section.color}`}>
-                  <section.icon className="w-4 h-4" />
+                  <Icon className="w-4 h-4" />
                 </div>
                 <span className="flex-1 text-sm font-semibold leading-tight">{section.title}</span>
                 <motion.div
@@ -246,7 +250,8 @@ export default function PrivacyPage() {
                 )}
               </AnimatePresence>
             </motion.div>
-          ))}
+            );
+          })}
         </div>
 
         {/* Changes to Policy */}

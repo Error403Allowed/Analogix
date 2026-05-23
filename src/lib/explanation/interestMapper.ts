@@ -244,15 +244,19 @@ export function buildMappingSection(
   }
 
   const lines = [
-    `\nANALOGY MAPPING (${interest} → ${concept}):`
+    `\nANALOGY MAP (${interest} → ${concept}):`
   ];
 
   for (const m of mappings) {
     lines.push(`  • ${m.conceptElement} ↔ ${m.analogyElement}: ${m.whyTheyMatch}`);
   }
 
-  lines.push("\nIMPORTANT: Use these mappings DIRECTLY in your explanation.");
-  lines.push("Every concept element MUST map to an analogy element with explicit correspondence.");
+  lines.push("\nHOW TO USE THESE MAPPINGS:");
+  lines.push("Do NOT present this as a reference table. Instead, weave each mapping naturally into your prose.");
+  lines.push("For example, instead of listing 'slope ↔ speed: both measure rate of change', write:");
+  lines.push(`"Just like speed tells you how fast a car is moving, the slope tells you how fast the output changes as the input shifts."`);
+  lines.push("Map each concept element to its analogy counterpart within the flow of your explanation.");
+  lines.push("Return to the analogy repeatedly — let it run parallel to the technical explanation throughout your response.");
 
   return lines.join("\n");
 }

@@ -82,15 +82,29 @@ export async function handleAddFlashcards(
     if (!subjectId || !userSubjectSet.has(subjectId)) {
       subjectId = defaultSubjectId;
     }
+    // Final fallback if default subject is also not in user's subjects
+    if (!subjectId || !userSubjectSet.has(subjectId)) {
+      subjectId = userSubjectSet.values().next().value || "math";
+    }
 
-    const setName = action.setName || `Study Notes – ${new Date().toLocaleDateString()}`;
-    const cards = action.cards || [];
+    const setName = (action.setName || `Study Notes – ${new Date().toLocaleDateString()}`).trim();
+    const cards = (action.cards || []).filter(
+      (c) => c.front?.trim() && c.back?.trim()
+    );
 
     if (cards.length === 0) {
       return {
         type: "add_flashcards",
         status: "failed",
-        message: "No cards provided",
+        message: "No valid cards provided (each card needs non-empty front and back)",
+      };
+    }
+
+    if (cards.length < 5) {
+      return {
+        type: "add_flashcards",
+        status: "failed",
+        message: `Only ${cards.length} card(s) provided — flashcard sets must have at least 5 cards. No cards were saved.`,
       };
     }
 
@@ -112,6 +126,24 @@ export async function handleAddFlashcards(
 
     if (setError) {
       console.error("[agent-action] Set creation error:", setError);
+      // If the set already exists (duplicate key), try to use existing set
+      if (setError.code === "23505" || setError.message?.includes("duplicate")) {
+        // Fetch the existing set
+        const { data: existingSet } = await supabase
+          .from("flashcard_sets")
+          .select("id")
+          .eq("user_id", userId)
+          .eq("name", setName)
+          .eq("subject_id", subjectId)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .single();
+        
+        if (existingSet) {
+          // Use existing set ID and still insert cards
+          return await insertFlashcards(supabase, userId, existingSet.id, setName, subjectId as string, cards, now);
+        }
+      }
       return {
         type: "add_flashcards",
         status: "failed",
@@ -119,50 +151,7 @@ export async function handleAddFlashcards(
       };
     }
 
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const nextReview = tomorrow.toISOString();
-
-    const cardDocs = cards.map((card) => ({
-      id: randomUUID(),
-      user_id: userId,
-      set_id: setId,
-      subject_id: subjectId,
-      front: card.front,
-      back: card.back,
-      next_review: nextReview,
-      interval_days: 1,
-      ease_factor: 2.5,
-      repetitions: 0,
-      created_at: now,
-      updated_at: now,
-    }));
-
-    if (cardDocs.length > 0) {
-      const { error: cardsError } = await supabase
-        .from("flashcards")
-        .insert(cardDocs);
-
-      if (cardsError) {
-        console.error("[agent-action] Cards insertion error:", cardsError);
-        return {
-          type: "add_flashcards",
-          status: "partial",
-          message: `Set created but some cards failed: ${cardsError.message}`,
-          setId: setId,
-          cardCount: 0,
-        };
-      }
-    }
-
-    return {
-      type: "add_flashcards",
-      status: "success",
-      setId: setId,
-      setName: setName,
-      cardCount: cards.length,
-      message: `Created "${setName}" with ${cards.length} cards`,
-    };
+    return await insertFlashcards(supabase, userId, setId, setName, subjectId as string, cards, now);
   } catch (error) {
     console.error("[handleAddFlashcards] Error:", error);
     return {
@@ -171,4 +160,73 @@ export async function handleAddFlashcards(
       message: `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
     };
   }
+}
+
+async function insertFlashcards(
+  supabase: any,
+  userId: string,
+  setId: string,
+  setName: string,
+  subjectId: string,
+  cards: Array<{ front: string; back: string }>,
+  now: string
+): Promise<any> {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const nextReview = tomorrow.toISOString();
+
+  const cardDocs = cards.map((card) => ({
+    id: randomUUID(),
+    user_id: userId,
+    set_id: setId,
+    subject_id: subjectId,
+    front: card.front.trim(),
+    back: card.back.trim(),
+    next_review: nextReview,
+    interval_days: 1,
+    ease_factor: 2.5,
+    repetitions: 0,
+    created_at: now,
+    updated_at: now,
+  }));
+
+  // Insert in batches to avoid hitting row limits
+  const BATCH_SIZE = 50;
+  let insertedCount = 0;
+  let lastError: string | null = null;
+
+  for (let i = 0; i < cardDocs.length; i += BATCH_SIZE) {
+    const batch = cardDocs.slice(i, i + BATCH_SIZE);
+    const { error: cardsError } = await supabase
+      .from("flashcards")
+      .insert(batch);
+
+    if (cardsError) {
+      console.error("[agent-action] Cards insertion error (batch):", cardsError);
+      lastError = cardsError.message;
+      // Continue to next batch anyway
+    } else {
+      insertedCount += batch.length;
+    }
+  }
+
+  if (insertedCount === 0) {
+    return {
+      type: "add_flashcards",
+      status: "failed",
+      message: `All cards failed to insert: ${lastError}`,
+      setId,
+      setName,
+      cardCount: 0,
+    };
+  }
+
+  return {
+    type: "add_flashcards",
+    status: insertedCount === cards.length ? "success" : "partial",
+    setId,
+    setName,
+    cardCount: insertedCount,
+    message: `Created "${setName}" with ${insertedCount}/${cards.length} cards`,
+  };
 }

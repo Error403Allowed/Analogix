@@ -1,7 +1,7 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { NextConfig } from 'next';
 import { ArrowLeft, Home, RotateCcw, Trophy, Lightbulb, Loader2, Sparkles, Clock, Brain, AlertTriangle, ChevronRight, Settings2 } from "lucide-react";
@@ -43,6 +43,7 @@ const Quiz = () => {
   const [review, setReview] = useState<QuizReview | null>(null);
   const [reviewError, setReviewError] = useState<string | null>(null);
   const [isReviewLoading, setIsReviewLoading] = useState(false);
+  const [quizError, setQuizError] = useState<string | null>(null);
 
   /* Quiz Configuration State */
   const [selectedSubject, setSelectedSubject] = useState<SubjectId>(() => {
@@ -54,6 +55,7 @@ const Quiz = () => {
   const [numQuestions, setNumQuestions] = useState(5);
   const [timeLimit, setTimeLimit] = useState(5); // minutes
   const [difficulty, setDifficulty] = useState("intermediate");
+  const [topic, setTopic] = useState("");
 
   /* New State Variables */
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
@@ -98,7 +100,7 @@ const Quiz = () => {
     ]
   }[gradeBand];
 
-  const topic = pendingConfig?.topic || selectedSubject;
+  const topicValue = pendingConfig?.topic || topic || selectedSubject;
   const subjectLabel = SUBJECT_CATALOG.find(s => s.id === (pendingConfig?.subject || selectedSubject))?.label || "General";
   const numQuestionsTarget = pendingConfig?.numQuestions || numQuestions;
   const timerSetting = pendingConfig?.timerDuration ?? (timeLimit * 60);
@@ -186,50 +188,57 @@ const Quiz = () => {
 
   const fetchQuiz = async () => {
     setIsLoading(true);
+    setQuizError(null);
     const recent = getRecentQuestions();
     const baseSeed = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const seenThisRun = new Set(recent);
     const collected: QuizQuestion[] = [];
     const normalizedCollected: string[] = [];
 
-    // Single attempt — one API call is enough. Only retry once if we get nothing back at all.
     const maxAttempts = 2;
+    let lastError: string | null = null;
 
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
-      const quizData = await generateQuiz(
-        topic,
-        {
-          grade: userPrefs.grade,
-          state: userPrefs.state,
-          hobbies: userPrefs.hobbies || [],
-          subject: pendingConfig?.subject || selectedSubject,
-          difficulty: quizDifficulty
-        },
-        numQuestionsTarget,
-        {
-          diversitySeed: `${baseSeed}-${attempt}`,
-          avoidQuestions: Array.from(seenThisRun).slice(-60),
+      try {
+        const quizData = await generateQuiz(
+          topicValue,
+          {
+            grade: userPrefs.grade,
+            state: userPrefs.state,
+            hobbies: userPrefs.hobbies || [],
+            subject: pendingConfig?.subject || selectedSubject,
+            difficulty: quizDifficulty
+          },
+          numQuestionsTarget,
+          {
+            diversitySeed: `${baseSeed}-${attempt}`,
+            avoidQuestions: Array.from(seenThisRun).slice(-60),
+          }
+        );
+
+        if (!quizData || !quizData.questions) {
+          lastError = "AI returned no questions. Try again.";
+          continue;
         }
-      );
 
-      if (!quizData || !quizData.questions) continue;
+        for (const question of quizData.questions as QuizQuestion[]) {
+          const raw = question.question || "";
+          if (/2\s*x\s*\+\s*5\s*=\s*11/i.test(raw)) continue;
+          const normalized = normalizeQuestion(raw);
+          if (!normalized) continue;
+          if (seenThisRun.has(normalized)) continue;
 
-      for (const question of quizData.questions as QuizQuestion[]) {
-        const raw = question.question || "";
-        if (/2\s*x\s*\+\s*5\s*=\s*11/i.test(raw)) continue;
-        const normalized = normalizeQuestion(raw);
-        if (!normalized) continue;
-        if (seenThisRun.has(normalized)) continue;
+          collected.push(question);
+          normalizedCollected.push(normalized);
+          seenThisRun.add(normalized);
 
-        collected.push(question);
-        normalizedCollected.push(normalized);
-        seenThisRun.add(normalized);
+          if (collected.length >= numQuestionsTarget) break;
+        }
 
-        if (collected.length >= numQuestionsTarget) break;
+        if (collected.length > 0) break;
+      } catch (err) {
+        lastError = err instanceof Error ? err.message : "Unknown error";
       }
-
-      // Accept whatever we got — even if slightly under the target count
-      if (collected.length > 0) break;
     }
 
     if (collected.length > 0) {
@@ -246,6 +255,7 @@ const Quiz = () => {
     } else {
       setQuestions([]);
       setAnswerRecords([]);
+      setQuizError(lastError || "Failed to generate quiz questions.");
     }
     setIsLoading(false);
   };
@@ -292,10 +302,14 @@ const Quiz = () => {
     }
   }, [isConfigLoaded]);
 
+  const reviewRequestedRef = useRef(false);
+
   useEffect(() => {
     if (!isComplete) return;
-    if (isReviewLoading || review || reviewError) return;
     if (answeredRecords.length === 0) return;
+    if (reviewRequestedRef.current) return;
+
+    reviewRequestedRef.current = true;
 
     const answersForReview: QuizAnswerInput[] = answeredRecords.map((record) => ({
       id: record.id,
@@ -319,17 +333,13 @@ const Quiz = () => {
       })
       .catch(() => setReviewError("Couldn't generate AI feedback right now."))
       .finally(() => setIsReviewLoading(false));
-  }, [
-    isComplete,
-    isReviewLoading,
-    review,
-    reviewError,
-    answeredRecords,
-    userPrefs.grade,
-    pendingConfig?.subject,
-    selectedSubject,
-    quizDifficulty,
-  ]);
+  }, [isComplete, answeredRecords.length]);
+
+  const retryReview = () => {
+    setReview(null);
+    setReviewError(null);
+    reviewRequestedRef.current = false;
+  };
 
 
   const handleAnswer = (payload: { isCorrect: boolean; userAnswer: string; feedback?: string }) => {
@@ -399,7 +409,10 @@ const Quiz = () => {
               <div className="space-y-3">
                 <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground/80">Subject</Label>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {availableSubjects.map((s) => (
+                  {availableSubjects.map((s) => {
+                    const Icon = s.icon;
+
+                    return (
                     <motion.button
                       key={s.id}
                       whileHover={{ scale: 1.02 }}
@@ -412,11 +425,25 @@ const Quiz = () => {
                           : "border-border/70 bg-card/80 text-foreground/85 hover:border-primary/50 hover:text-foreground hover:bg-primary/5"
                       )}
                     >
-                      <s.icon className="w-4 h-4" />
+                      <Icon className="w-4 h-4" />
                       {s.label}
                     </motion.button>
-                  ))}
+                    );
+                  })}
                 </div>
+              </div>
+
+              {/* Topic Input */}
+              <div className="space-y-3">
+                <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground/80">Topic (optional)</Label>
+                <input
+                  type="text"
+                  value={topic}
+                  onChange={(e) => setTopic(e.target.value)}
+                  placeholder={`e.g. Photosynthesis, Quadratic equations, World War II...`}
+                  className="w-full h-11 rounded-xl border border-border/70 bg-card/80 px-4 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50 transition-all"
+                />
+                <p className="text-[10px] text-muted-foreground/60">Leave blank for a general {subjectLabel} quiz</p>
               </div>
 
               {/* Amount of Questions */}
@@ -549,7 +576,7 @@ const Quiz = () => {
               Building your quiz
             </motion.h2>
             <p className="text-sm text-muted-foreground">
-              Year {userPrefs.grade || "10"} · {subjectLabel} · <span className="capitalize">{quizDifficulty}</span>
+              Year {userPrefs.grade || "10"} · {subjectLabel}{topicValue !== selectedSubject ? ` · ${topicValue}` : ""} · <span className="capitalize">{quizDifficulty}</span>
             </p>
           </div>
 
@@ -595,16 +622,16 @@ const Quiz = () => {
           transition={{ duration: 2, repeat: Infinity }}
         >
           <Brain className="w-4 h-4" />
-          Powered by AI
+          Powered by Analogix AI 
         </motion.div>
       </div>
     );
   }
 
-  if (questions.length === 0) {
+  if (questions.length === 0 && !isLoading) {
     return (
       <div className="min-h-full flex flex-col items-center justify-center p-4">
-         <motion.div 
+         <motion.div
            initial={{ scale: 0.8, opacity: 0 }}
            animate={{ scale: 1, opacity: 1 }}
            className="flex flex-col items-center text-center gap-3"
@@ -614,12 +641,12 @@ const Quiz = () => {
            </div>
            <h2 className="text-lg font-bold text-foreground">Quiz Generation Failed</h2>
            <p className="text-sm text-muted-foreground max-w-xs">
-             Couldn't generate quiz right now. Please check your connection and try again.
+             {quizError || "Couldn't generate quiz right now. Please check your connection and try again."}
            </p>
          </motion.div>
          <div className="mt-6 flex gap-3">
-          <Button onClick={() => router.push("/dashboard")} variant="outline">Back to Dashboard</Button>
-          <Button onClick={() => window.location.reload()}>Try Again</Button>
+          <Button onClick={() => { setShowConfig(true); setQuizError(null); }} variant="outline">Back to Config</Button>
+          <Button onClick={() => { setShowConfig(false); fetchQuiz(); }}>Try Again</Button>
          </div>
       </div>
     );
@@ -718,7 +745,7 @@ const Quiz = () => {
                     <Lightbulb className="w-5 h-5 text-warning flex-shrink-0 mt-0.5" />
                     <div>
                       <p className="text-sm font-medium text-foreground mb-1">Analogy Hint</p>
-                      <div className="text-sm text-foreground/80">
+                      <div className="text-sm text-foreground/80 [&_.katex-display]:my-3 [&_.katex-display]:max-w-full [&_.katex-display]:overflow-x-auto">
                         <MarkdownRenderer content={questions[currentQuestion].analogy || ""} />
                       </div>
                     </div>

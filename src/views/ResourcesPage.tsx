@@ -268,7 +268,10 @@ export default function ResourcesPage() {
             {/* Tabs — only shown in single-subject mode */}
             {!isCrossSearch && (
               <div className="flex gap-2">
-                {tabItems.map(tab => (
+                {tabItems.map(tab => {
+                  const Icon = tab.icon;
+
+                  return (
                   <button
                     key={tab.key}
                     type="button"
@@ -280,10 +283,11 @@ export default function ResourcesPage() {
                         : "border-border bg-card text-muted-foreground hover:text-foreground hover:border-primary/40"
                     )}
                   >
-                    <tab.icon className="w-3.5 h-3.5" />
+                    <Icon className="w-3.5 h-3.5" />
                     {tab.label}
                   </button>
-                ))}
+                  );
+                })}
               </div>
             )}
 

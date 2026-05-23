@@ -7,7 +7,7 @@ import rehypeKatex from "rehype-katex";
 import "katex/dist/katex.min.css";
 import { cn } from "@/lib/utils";
 import dynamic from "next/dynamic";
-import { useEffect, useRef, memo } from "react";
+import React, { useEffect, useRef, memo } from "react";
 
 // Load graphing components dynamically with no SSR
 const DesmosGraph = dynamic(() => import("@/components/graphing/DesmosGraph"), {
@@ -40,8 +40,75 @@ const ThreeScene = dynamic(() => import("@/components/graphing/ThreeScene"), {
   ),
 });
 
-import type { ChartSpec } from "@/components/graphing/RechartsGraph";
+import type { ChartSpec, ChartDataPoint } from "@/components/graphing/RechartsGraph";
 import type { ThreeSceneSpec } from "@/components/graphing/ThreeScene";
+
+// Extract a ChartSpec from AI-generated JSX/React code that uses recharts.
+// The AI often outputs full React components instead of the JSON spec we expect.
+// This function parses the JSX and converts it to a renderable ChartSpec.
+function extractChartFromJsx(code: string): ChartSpec | null {
+  // Only process if it imports from recharts
+  if (!/from\s+['"]recharts['"]/.test(code)) return null;
+
+  // Detect chart type from the JSX component name
+  const chartTypeMatch = code.match(/<(LineChart|BarChart|PieChart|AreaChart)\b/);
+  if (!chartTypeMatch) return null;
+  const typeMap: Record<string, "line" | "bar" | "pie" | "area"> = {
+    LineChart: "line",
+    BarChart: "bar",
+    PieChart: "pie",
+    AreaChart: "area",
+  };
+  const type = typeMap[chartTypeMatch[1]];
+
+  // Extract the data variable name used in the chart (e.g., data={worldPopulationData})
+  const dataVarMatch = code.match(/data=\{(\w+)\}/);
+  if (!dataVarMatch) return null;
+  const dataVarName = dataVarMatch[1];
+
+  // Extract the data array definition (const dataVarName = [...])
+  const dataDefRegex = new RegExp(
+    `(?:const|let|var)\\s+${dataVarName}\\s*=\\s*(\\[[\\s\\S]*?\\])\\s*;?`,
+    "m"
+  );
+  const dataDefMatch = code.match(dataDefRegex);
+  if (!dataDefMatch) return null;
+
+  let data: ChartDataPoint[];
+  try {
+    // AI outputs JS object literals (unquoted keys, trailing commas), not valid JSON.
+    // Convert to valid JSON before parsing.
+    let jsonStr = dataDefMatch[1];
+    // Quote unquoted keys: { year: 1950 } → { "year": 1950 }
+    jsonStr = jsonStr.replace(/(\{|,)\s*([a-zA-Z_$][a-zA-Z0-9_$]*)\s*:/g, '$1 "$2":');
+    // Remove trailing commas before } or ]
+    jsonStr = jsonStr.replace(/,\s*([}\]])/g, '$1');
+    data = JSON.parse(jsonStr) as ChartDataPoint[];
+  } catch {
+    return null;
+  }
+  if (!Array.isArray(data) || data.length === 0) return null;
+
+  // Extract XAxis dataKey
+  const xKeyMatch = code.match(/<XAxis[^>]*dataKey=["']([^"']+)["']/);
+  const xKey = xKeyMatch ? xKeyMatch[1] : "name";
+
+  // Extract dataKey(s) from Line/Bar/Area/Pie components
+  const categories: string[] = [];
+  const catRegex = /<(Line|Bar|Area|Pie)[^>]*dataKey=["']([^"']+)["']/g;
+  let catMatch: RegExpExecArray | null;
+  while ((catMatch = catRegex.exec(code)) !== null) {
+    if (!categories.includes(catMatch[2])) {
+      categories.push(catMatch[2]);
+    }
+  }
+
+  // Extract title from nearby text or use a default
+  const titleMatch = code.match(/title=["']([^"']+)["']/);
+  const title = titleMatch ? titleMatch[1] : undefined;
+
+  return { type, title, data, xKey, categories: categories.length > 0 ? categories : undefined };
+}
 
 
 interface MarkdownRendererProps {
@@ -161,6 +228,18 @@ const closePartialMarkdown = (text: string): string => {
 // and inline code as just <code>...</code> without a parent <pre>.
 // We override `pre` to apply block styling, and `code` for inline styling.
 
+// Recursively extract plain text from React children (handles strings, arrays, and React elements)
+const extractText = (children: React.ReactNode): string => {
+  if (typeof children === "string") return children;
+  if (typeof children === "number") return String(children);
+  if (Array.isArray(children)) return children.map(extractText).join("");
+  if (React.isValidElement(children)) {
+    const props = children.props as { children?: React.ReactNode };
+    return props.children ? extractText(props.children) : "";
+  }
+  return "";
+};
+
 const MarkdownRenderer = ({ content, className, streaming = false }: MarkdownRendererProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   
@@ -197,7 +276,7 @@ const MarkdownRenderer = ({ content, className, streaming = false }: MarkdownRen
             // Dig out the <code> child to check language
             const codeEl = (children as React.ReactElement);
             const lang = codeEl?.props?.className as string | undefined;
-            const rawBlock = String(codeEl?.props?.children ?? "").replace(/\n$/, "");
+            const rawBlock = extractText(codeEl?.props?.children).replace(/\n$/, "");
 
             const streamingPlaceholder = (
               <div className="my-4 rounded-2xl overflow-hidden border border-border/30 bg-muted/20 p-6 flex items-center justify-center gap-2">
@@ -247,6 +326,15 @@ const MarkdownRenderer = ({ content, className, streaming = false }: MarkdownRen
               }
             }
 
+            // Detect recharts JSX code blocks (AI often outputs React components instead of JSON)
+            if (lang === "language-jsx" || lang === "language-javascript" || lang === "language-tsx" || lang === "language-typescript") {
+              if (!blockComplete) return streamingPlaceholder;
+              const chartSpec = extractChartFromJsx(rawBlock);
+              if (chartSpec) {
+                return <RechartsGraph spec={chartSpec} />;
+              }
+            }
+
             // Fallback: regular code block
             return (
               <pre className="bg-muted/40 border border-border/40 rounded-xl p-4 overflow-x-auto text-sm my-4 select-text">
@@ -264,7 +352,7 @@ const MarkdownRenderer = ({ content, className, streaming = false }: MarkdownRen
               <code className="bg-muted px-1 py-0.5 rounded text-sm font-mono text-primary select-text">{children}</code>
             );
           },
-          hr: () => <hr className="border-current/40 border-t-[0.5px] my-6" />,
+          hr: () => <div style={{ marginLeft: "-2rem", marginRight: "-2rem", width: "calc(100% + 4rem)" }} className="h-px bg-border/70 my-6" />,
           table: ({ children }) => (
             <div className="overflow-x-auto my-4">
               <table className="w-full border-collapse text-sm select-text">{children}</table>

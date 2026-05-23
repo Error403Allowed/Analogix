@@ -131,10 +131,10 @@ export async function POST(request: Request) {
     const analogyGuidance = [
       "Use no analogies - focus on clear, direct explanations.",
       "Use analogies sparingly - only when they genuinely clarify the concept.",
-      "Use analogies when helpful - integrate naturally into explanations where they add clarity.",
-      "Use analogies frequently - explain concepts using the student's interests when it helps.",
-      "Use extensive analogies - weave the student's interests throughout explanations.",
-      "Use analogies as the primary tool - make concepts click through the student's interests.",
+      "Use analogies when helpful - when you do, weave the analogy through your explanation by mapping parts of the concept to parts of the analogy. Don't just state it and drop it.",
+      "Use analogies frequently - build an extended analogy and thread it through your response. Map each part of the concept to a corresponding part of the analogy, and keep returning to it.",
+      "Use extensive analogies - every explanation should be anchored in a vivid, extended analogy. Build it from the start, develop it throughout, and map concept elements to analogy elements at every step.",
+      "Use analogies as the primary tool - every concept should be explained through a rich, extended analogy. Weave the analogy through your entire response, showing how each piece of the concept maps to the analogy.",
     ][analogyIntensity];
 
     // Formula sheet context — injected into prompt for formula-bearing subjects
@@ -179,17 +179,17 @@ export async function POST(request: Request) {
     // Token budget — respect user's detail_level preference but hard cap at 1900
     // due to Groq's ~6k TPM rate limit (leaving ~4000 for input)
     const detailLevel = aiPersonality?.detail_level ?? 50;
-    const HARD_CAP = 1900;
-    let maxTokens = 1500; // Default
+    const HARD_CAP = isQwenModel ? 4000 : 3000;
+    let maxTokens = isQwenModel ? 2500 : 1500; // Default
     
     if (researchMode) {
       maxTokens = HARD_CAP;
     } else if (detailLevel >= 70) {
       maxTokens = HARD_CAP; // Comprehensive
     } else if (detailLevel <= 30) {
-      maxTokens = 600; // Brief
+      maxTokens = 800; // Brief
     } else {
-      maxTokens = 1500; // Balanced
+      maxTokens = isQwenModel ? 2500 : 1500; // Balanced
     }
 
     // Get the user's hobbies/interests for making analogies
@@ -229,13 +229,29 @@ export async function POST(request: Request) {
     const analogyInstructions =
       analogyIntensity === 0
         ? `ANALOGY MODE: OFF\nUse no analogies. Explain directly, factually, and clearly. Do not reference hobbies or comparisons.`
-        : `1. ANALOGY-OPTIONAL: Use an analogy only when it genuinely helps clarify. Don't force it if a direct explanation works better.
+        : analogyIntensity >= 4
+        ? `ANALOGY MODE: EXTENDED — Analogies are your primary teaching method.
     
-    GUIDANCE:
-    - Use analogies to make abstract concepts concrete, but skip if the concept is already clear
-    - Choose ONE interest to anchor to, but acknowledge if a direct explanation is better
-    - If forcing the analogy feels awkward, explain directly instead
-    - Natural paragraphs only — no "Step 1:" structures`;
+HOW TO WEAVE ANALOGIES:
+1. Pick ONE relatable scenario (from "${analogyAnchor}" or everyday life) that parallels the concept.
+2. As you explain each part of the concept, map it to a corresponding part of the analogy. For example, if explaining a function using a recipe: "The inputs are your ingredients, the function body is the cooking process — you mix, heat, transform — and the output is the finished dish."
+3. Keep returning to the analogy throughout your response. When you introduce a new sub-concept, show how it fits into the analogy you've already established.
+4. The analogy should feel like a parallel story running alongside the technical explanation, with clear connections drawn between the two.
+5. NEVER just say "Think of it like X" and then drop the analogy. Extend it, develop it, and use it to illuminate each piece of the concept.`
+        : analogyIntensity >= 3
+        ? `ANALOGY MODE: FREQUENT — Use analogies regularly and weave them into your explanations.
+    
+HOW TO WEAVE ANALOGIES:
+1. Choose a familiar scenario from "${analogyAnchor}" that parallels the concept.
+2. As you explain each part of the concept, map it to a corresponding part of the analogy.
+3. Return to the analogy as you cover different aspects. Let it run alongside your technical explanation.
+4. The goal is for the student to see how each piece of the concept corresponds to something they already understand.`
+        : `ANALOGY MODE: OPTIONAL — Use an analogy only when it genuinely helps clarify.
+    
+GUIDANCE:
+- Use analogies to make abstract concepts concrete, but skip if the concept is already clear
+- When you do use an analogy, weave it in — map parts of the concept to parts of the analogy
+- Natural paragraphs only — no "Step 1:" structures`;
 
     // Core teaching philosophy
     const teachingApproach =
@@ -325,30 +341,35 @@ DEPTH VS BREVITY:
 STRUCTURED EXPLANATION - ${isConcise ? "CONCISE" : isComprehensive ? "COMPREHENSIVE" : "BALANCED"}
 ================================================================================
 ${isConcise ? `Keep it SHORT and snappy:
-- Hook: 1 sentence max
+- Opening: 1 sentence max
 - Intuition: 1-2 sentences  
 - Core Idea: Under 15 words
 - Example: Simple, just the basics` : isComprehensive ? `Go deeper:
-- Hook: 1-2 sentences with rich detail
+- Opening: 1-2 sentences with rich detail
 - Intuition: 3-5 sentences, build understanding
 - Core Idea: Under 30 words, memorable
 - Example: Show reasoning, edge cases` : `Balance:
-- Hook: 1-2 sentences
+- Opening: 1-2 sentences
 - Intuition: 2-3 sentences
 - Core Idea: Under 20 words
 - Example: Show key steps`}
 
-1. HOOK (must start your response!)
-   - Use the Analogy Anchor: "${analogyAnchor}"
-   - NEVER: "${currentConcept} is defined as..." or "The definition of..."
-   - ALWAYS: "Think of ${currentConcept} like [analogy from ${analogyAnchor}]"
+1. OPENING — Start with an engaging hook using "${analogyAnchor}".
+   NEVER: "${currentConcept} is defined as..." or "The definition of..."
+   Instead, draw the reader in with a relatable scenario or question.
 
-2. INTUITION - What's actually happening, not just what it is
-3. CORE IDEA - ONE sentence to remember
-4. EXAMPLE - ${isConcise ? "just the answer" : "one worked example"}
+2. INTUITION — What's actually happening, not just what it is.
+   ${analogyIntensity >= 3 ? 'WEAVE YOUR ANALOGY HERE: As you explain the intuition, map parts of the concept to parts of your analogy. Show how the pieces correspond.' : ''}
+
+3. CORE IDEA — ONE sentence to remember.
+
+4. EXAMPLE — ${isConcise ? "just the answer" : "one worked example"}
+   ${analogyIntensity >= 3 ? 'Return to your analogy: Show how the example plays out in both the concept and the analogy, reinforcing the connection.' : ''}
+
 5. ${isComprehensive ? "QUICK CHECK - 1 question" : ""}
 
-QUALITY: Hook first, no definitions, clarity over cleverness
+QUALITY: Engaging opening, no dry definitions, clarity over cleverness
+${analogyIntensity >= 3 ? `\nANALOGY WEAVING: Don't just state an analogy and abandon it. Thread it through your entire explanation — map concept elements to analogy elements at each step, and keep returning to the comparison so the student sees how the pieces fit together.` : ''}
 ================================================================================
 `
       : "";
@@ -437,7 +458,7 @@ Response Guidelines:
 - Use markdown headings (## for sections, ### for subsections)
 - Format key points as bullet lists; steps as numbered lists
 - Use \`code\` for technical terms, \`\`\`language for code blocks
-- Format math with LaTeX: $inline$ and $$display$$
+- LATEX FOR ALL MATHEMATICAL CONTENT: Use LaTeX ($...$ for inline, $$...$$ for display) for ALL mathematical expressions, equations, formulas, numbers used in calculations, mathematical operations, symbols, and scientific notation. This applies to EVERY subject — maths, physics, chemistry, biology, economics, engineering, and any other subject where numbers, formulas, or mathematical symbols appear. Examples: write $25$ not 25 when it's a value in a calculation, $x = 5$ not x = 5, $\\frac{1}{2}$ not 1/2, $\\times$ for multiplication, $\\div$ for division, $\\pm$, $\\approx$, $\\leq$, $\\geq$, $\\degree$C, $\\text{pH} = 7$, $E = mc^2$, $n = 3$ moles, $v = 30\\,\\text{m/s}$. ANY number that is part of a formula, equation, measurement, calculation, or mathematical relationship MUST be wrapped in $...$. Chemical equations, physics formulas, statistical values, percentages, ratios — all use LaTeX.
 - Be comprehensive - explain thoroughly with examples
 - Never give one-sentence answers to complex topics
 
@@ -446,7 +467,8 @@ ${analogyIntensity === 0 ? "" : `\n${analogyInstructions}`}
 
 Math Requirements:
 - Show all steps with explanations
-- Use proper notation ($x$, $\\frac{dy}{dx}$, etc.)
+- Use proper LaTeX notation for ALL math: $x$, $\\frac{dy}{dx}$, $\\int$, $\\sum$, etc.
+- ALL numbers in equations, formulas, and calculations must be in LaTeX: $x = 5$, not x = 5
 - Verify solutions by plugging back in
 
 ${formulaSheetContext ? `\nFormulas: ${formulaSheetContext}` : ""}
@@ -454,30 +476,43 @@ ${researchBlock}
 
 Visualisations — you have THREE tools to make concepts visual and memorable:
 
-1. DESMOS GRAPHS (for math functions):
-   Use a code block with language "desmos" to render interactive graphs.
-   Format: \`\`\`desmos
-   y = x^2
-   y = 2x + 1
-   \`\`\`
-   Use for: any math function, equation, inequality, parametric curve.
+ 1. DESMOS GRAPHS (for math functions):
+    When the user asks to graph, plot, or visualise ANY equation, function, or inequality, you MUST output a code block with language "desmos" containing the raw equation(s).
+    Format: \`\`\`desmos
+    y = x^2 - 4*x + 3
+    \`\`\`
+    Rules:
+    - Put ONLY the equation(s) inside the code block — one per line.
+    - Use * for multiplication (e.g. 2*x not 2x, 4*x^2 not 4x^2).
+    - NEVER output a desmos.com URL. NEVER say "copy this link". NEVER describe the graph instead of showing it.
+    - After the code block, you may briefly describe key features (vertex, intercepts, etc.).
+    Use for: any math function, equation, inequality, parametric curve.
 
-2. RECHARTS (for data & statistics):
-   When presenting numerical data, comparisons, trends, distributions, statistics, or percentages, ALWAYS generate a chart using a JSON code block with language "recharts".
-   Supported types: "bar" (comparisons), "line" (trends over time), "pie" (part-to-whole), "area" (cumulative trends).
-   Format:
-   \`\`\`recharts
-   {
-     "type": "bar",
-     "title": "Chart Title",
-     "xKey": "name",
-     "categories": ["value1", "value2"],
-     "data": [
-       {"name": "Label 1", "value1": 10, "value2": 20},
-       {"name": "Label 2", "value1": 15, "value2": 25}
-     ]
-   }
-   \`\`\`
+ 2. RECHARTS (for data & statistics):
+     When the user asks for a chart, graph, or visualisation of NUMERICAL DATA or STATISTICS, you MUST output a code block with language "recharts" containing a JSON object.
+     Format: \`\`\`recharts
+     {
+       "type": "line",
+       "title": "World Population (billions)",
+       "xKey": "name",
+       "categories": ["population"],
+       "data": [
+         {"name": "1950", "population": 2.5},
+         {"name": "1975", "population": 4.0},
+         {"name": "2000", "population": 6.1},
+         {"name": "2020", "population": 7.8}
+       ]
+     }
+     \`\`\`
+     Rules:
+     - The block MUST be valid JSON only — NO imports, NO React components, NO JSX, NO chart.js, NO function definitions.
+     - "type" must be one of: "line", "bar", "pie", "area".
+     - "xKey" is the data key for the x-axis (e.g. "name", "year", "label").
+     - "categories" is an array of data keys for the y-axis values to plot.
+     - "data" is an array of objects where each object has the xKey field and one field per category.
+     - NEVER output JavaScript, React code, or chart.js code. The frontend expects ONLY JSON.
+     Types: "bar" for comparisons, "line" for trends over time, "pie" for parts of a whole, "area" for cumulative trends.
+     Use for: any numerical data, comparisons, trends, distributions, statistics, or percentages.
 
 3. THREE.JS 3D SCENES (for concepts & structures):
    When explaining abstract concepts, structures, systems, or relationships, generate a 3D scene using a JSON code block with language "three".

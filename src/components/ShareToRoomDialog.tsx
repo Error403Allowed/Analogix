@@ -41,10 +41,11 @@ export function ShareToRoomDialog({
       setLoading(true);
       try {
         const response = await fetch("/api/rooms", { cache: "no-store" });
-        const payload = await response.json();
         if (!response.ok) {
-          throw new Error(payload.error || "Failed to load rooms");
+          const payload = await response.json().catch(() => null);
+          throw new Error(payload?.error || "Failed to load rooms");
         }
+        const payload = await response.json();
         if (!cancelled) {
           setRooms(Array.isArray(payload.memberRooms) ? payload.memberRooms : []);
         }
@@ -76,10 +77,11 @@ export function ShareToRoomDialog({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ documentId }),
       });
-      const payload = await response.json();
       if (!response.ok) {
-        throw new Error(payload.error || "Failed to share document");
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error || "Failed to share document");
       }
+      const payload = await response.json();
       toast.success(`Shared "${documentTitle}" to the room.`);
       setOpen(false);
     } catch (error) {

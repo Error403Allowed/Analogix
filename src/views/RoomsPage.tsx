@@ -53,8 +53,11 @@ export default function RoomsPage() {
     setLoading(true);
     try {
       const response = await fetch("/api/rooms", { cache: "no-store" });
+      if (!response.ok) {
+        const nextPayload = await response.json().catch(() => null);
+        throw new Error(nextPayload?.error || "Failed to load rooms");
+      }
       const nextPayload = await response.json();
-      if (!response.ok) throw new Error(nextPayload.error || "Failed to load rooms");
       setPayload(nextPayload as RoomsPayload);
     } catch (error) {
       console.error("[RoomsPage] load failed:", error);
@@ -85,8 +88,11 @@ export default function RoomsPage() {
           visibility: createVisibility,
         }),
       });
+      if (!response.ok) {
+        const result = await response.json().catch(() => null);
+        throw new Error(result?.error || "Failed to create room");
+      }
       const result = await response.json();
-      if (!response.ok) throw new Error(result.error || "Failed to create room");
       toast.success("Room created.");
       setCreateOpen(false);
       setCreateTitle("");
@@ -108,8 +114,11 @@ export default function RoomsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(roomId ? { roomId } : { joinCode: code }),
       });
+      if (!response.ok) {
+        const result = await response.json().catch(() => null);
+        throw new Error(result?.error || "Failed to join room");
+      }
       const result = await response.json();
-      if (!response.ok) throw new Error(result.error || "Failed to join room");
       toast.success("Joined room.");
       router.push(`/rooms/${result.room.id}`);
     } catch (error) {

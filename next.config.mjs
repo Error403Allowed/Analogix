@@ -7,6 +7,9 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const nextConfig = {
   reactStrictMode: true,
   compress: true,
+  typescript: {
+    tsconfigPath: './tsconfig.typecheck.json',
+  },
   // Never bundle these on the server — they rely on native bindings or
   // load files from disk at require-time which breaks under Next.js bundling.
   serverExternalPackages: ['pdf-parse', 'pdfjs-dist'],

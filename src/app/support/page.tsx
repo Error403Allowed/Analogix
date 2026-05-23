@@ -134,7 +134,10 @@ export default function SupportPage() {
           transition={{ duration: 0.4, delay: 0.08 }}
           className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-16"
         >
-          {quickLinks.map((link, i) => (
+          {quickLinks.map((link, i) => {
+            const Icon = link.icon;
+
+            return (
             <motion.a
               key={link.title}
               href={link.href}
@@ -146,12 +149,13 @@ export default function SupportPage() {
               className={`group p-6 rounded-2xl border border-border bg-card hover:border-primary/30 transition-all ${link.color}`}
             >
               <div className="w-9 h-9 rounded-xl bg-background/50 border border-border/50 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                <link.icon className="w-4 h-4" />
+                <Icon className="w-4 h-4" />
               </div>
               <p className="font-semibold mb-1 text-foreground">{link.title}</p>
               <p className="text-sm text-muted-foreground leading-relaxed">{link.description}</p>
             </motion.a>
-          ))}
+            );
+          })}
         </motion.div>
 
         {/* FAQ */}
@@ -169,7 +173,10 @@ export default function SupportPage() {
           </div>
 
           <div className="space-y-3">
-            {faqs.map((faq, i) => (
+            {faqs.map((faq, i) => {
+              const Icon = faq.icon;
+
+              return (
               <motion.div
                 key={i}
                 initial={{ opacity: 0, y: 10 }}
@@ -182,7 +189,7 @@ export default function SupportPage() {
                   className="w-full flex items-center gap-4 px-5 py-[1.125rem] text-left hover:border-primary/30 border border-transparent rounded-2xl transition-all"
                 >
                   <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${faq.color}`}>
-                    <faq.icon className="w-4 h-4" />
+                    <Icon className="w-4 h-4" />
                   </div>
                   <span className="flex-1 text-sm font-semibold leading-tight">{faq.question}</span>
                   <motion.div
@@ -209,7 +216,8 @@ export default function SupportPage() {
                   )}
                 </AnimatePresence>
               </motion.div>
-            ))}
+              );
+            })}
           </div>
         </motion.div>
 

@@ -11,6 +11,7 @@ node_modules
 dist
 dist-ssr
 .next
+.next 2/
 .next 4/
 *.local
 
@@ -27,6 +28,7 @@ dist-ssr
 .env
 .env.local
 .bun.lock
+bun.lock
 
 # Supabase CLI
 supabase/supabase/.temp/

@@ -219,7 +219,23 @@ export default function SubjectDetail() {
     setShowHomeworkForm(false);
   };
 
-  if (!subject) return null;
+  if (!subject) {
+    return (
+      <div className="notion-ui min-h-screen bg-background text-foreground fade-in flex items-center justify-center">
+        <div className="text-center">
+          <BookOpen className="mx-auto h-12 w-12 text-muted-foreground/20 mb-4" />
+          <h1 className="text-2xl font-bold mb-2">Subject not found</h1>
+          <p className="text-sm text-muted-foreground/60 mb-6">
+            This subject may have been removed or doesn't exist.
+          </p>
+          <Button onClick={() => router.push("/subjects")} variant="outline">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Subjects
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="notion-ui min-h-screen bg-background text-foreground fade-in">

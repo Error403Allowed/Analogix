@@ -1,108 +1,120 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
-import { callGroqChat } from "../_utils";
-import { buildFullCurriculumPrompt } from "@/lib/curriculum";
+import { callGroqChat, formatError } from "../_utils";
+import type { QuizData } from "@/types/quiz";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     const body = await request.json();
-    const { content, fileName, subject, count = 15, grade = "7" } = body;
+    const input: string = body.input || "";
+    const userContext = body.userContext || {};
+    const numberOfQuestions: number = body.numberOfQuestions || 5;
+    const options = body.options || {};
 
-    // Build curriculum context for question alignment
+    const topic = input || userContext?.subject || "general";
+    const grade = userContext?.grade || "7";
+    const subject = userContext?.subject || "";
+    const difficulty = userContext?.difficulty || "intermediate";
+    const hobbies: string[] = userContext?.hobbies || [];
+    const avoidQuestions: string[] = options?.avoidQuestions || [];
+
     const gradeNum = parseInt(grade, 10) || 7;
-    const curriculumPrompt = subject && gradeNum >= 7 && gradeNum <= 10
-      ? buildFullCurriculumPrompt(subject, gradeNum)
+
+    const difficultyDesc: Record<string, string> = {
+      foundational: "Basic recall and understanding questions",
+      intermediate: "Standard curriculum-level questions requiring application",
+      advanced: "Complex analysis and synthesis questions",
+    };
+
+    const hobbiesStr = hobbies.length > 0
+      ? `\n\nStudent interests: ${hobbies.join(", ")}. Use these to create relatable examples where appropriate.`
       : "";
-    const curriculumSection = curriculumPrompt
-      ? `\n\nYou have deep knowledge of the ACARA Australian Curriculum for ${subject} Year ${gradeNum}. Use this to ensure questions align with curriculum standards and the appropriate difficulty level.\n\n${curriculumPrompt}`
+
+    const avoidStr = avoidQuestions.length > 0
+      ? `\n\nAVOID these questions (already seen): ${avoidQuestions.slice(-20).join(" | ")}`
       : "";
 
-    if (!content?.trim()) {
-      return NextResponse.json({ error: "Content is required" }, { status: 400 });
-    }
+    const systemPrompt = `You are an expert quiz creator for Australian secondary students.
 
-    const prompt = `You are an expert educational content creator for Australian secondary students.${curriculumSection}
+Generate exactly ${numberOfQuestions} multiple-choice quiz questions about "${topic}" at Year ${gradeNum} level.
 
-Generate ${count} multiple-choice quiz questions from the study content.
+Difficulty: ${difficultyDesc[difficulty] || difficultyDesc.intermediate}${hobbiesStr}${avoidStr}
 
 For each question:
-- 4 options (A, B, C, D), one clearly correct
-- Make wrong answers plausible traps
-- Include explanation for correct answer
-- Match exam style/level
+- 4 options (A, B, C, D) with exactly one correct
+- Make wrong answers plausible (common misconceptions)
+- Include a clear explanation for the correct answer
+- Use Australian English spelling
+- Include an "analogy" field: a short, relatable analogy that helps students connect the concept to everyday experiences (use student hobbies/interests when available)
+- Include a "hint" field: a brief hint to guide students toward the answer without giving it away
 
-OUTPUT (strict JSON):
-{"questions": [{"question": "Q", "options": ["A", "B", "C", "D"], "correctIndex": 0-3, "explanation": "why correct"}]}`;
+Return ONLY valid JSON — no markdown, no preamble:
+{
+  "quiz": {
+    "title": "Quiz on ${topic}",
+    "subject": "${subject || topic}",
+    "questions": [
+      {
+        "id": 1,
+        "question": "Question text?",
+        "analogy": "Think of it like...",
+        "hint": "Consider what happens when...",
+        "options": [
+          { "id": "A", "text": "Option A", "isCorrect": false },
+          { "id": "B", "text": "Option B", "isCorrect": true },
+          { "id": "C", "text": "Option C", "isCorrect": false },
+          { "id": "D", "text": "Option D", "isCorrect": false }
+        ],
+        "reasoning": "Explanation of why the correct answer is right"
+      }
+    ]
+  }
+}`;
 
-    const response = await callGroqChat(
+    console.log(`[quiz] Generating ${numberOfQuestions} questions about "${topic}" for Year ${gradeNum}`);
+
+    const content = await callGroqChat(
       {
         messages: [
-          { role: "system", content: prompt },
-          { role: "user", content: `Content:\n${content.slice(0, 10000)}\n\nGenerate ${count} quiz questions.` },
+          { role: "system", content: systemPrompt },
+          { role: "user", content: `Generate a ${numberOfQuestions}-question quiz about "${topic}" for Year ${gradeNum}.` },
         ],
-        max_tokens: 10000,
-        temperature: 0.4,
+        max_tokens: 4096,
+        temperature: 0.7,
       },
       "default"
     );
 
-    const responseStr = typeof response === "string" ? response : String(response);
-    
-    // Parse JSON
-    let questions: Array<{ question: string; options: string[]; correctIndex: number; explanation: string }> = [];
+    console.log(`[quiz] Got response, length: ${content.length}`);
+
+    let quiz: QuizData | null = null;
     try {
-      const clean = responseStr.replace(/```json|```/g, "").trim();
+      const clean = content.replace(/```json|```/g, "").trim();
       const parsed = JSON.parse(clean);
-      questions = parsed.questions || [];
+      quiz = parsed.quiz || parsed || null;
     } catch {
-      const match = responseStr.match(/\[[\s\S]*\]/);
+      const match = content.match(/\{[\s\S]*\}/);
       if (match) {
         try {
-          questions = JSON.parse(match[0]);
+          const parsed = JSON.parse(match[0]);
+          quiz = parsed.quiz || parsed || null;
         } catch {
-          // Failed
+          console.warn("[quiz] Failed to parse JSON from response");
         }
       }
     }
 
-    // Save to Supabase
-    const now = new Date().toISOString();
-    const { data, error } = await supabase
-      .from("documents")
-      .insert({
-        id: `quiz_${Date.now()}`,
-        owner_user_id: user.id,
-        subject_id: subject || "general",
-        title: fileName ? `${fileName} - Quiz` : "Quiz",
-        content: JSON.stringify(questions),
-        role: "quiz",
-        created_at: now,
-        updated_at: now,
-        last_edited_by: user.id,
-      })
-      .select()
-      .single();
-
-    if (error && !error.message.includes("duplicate")) {
-      console.warn("Quiz save error:", error);
+    if (!quiz?.questions?.length) {
+      console.error("[quiz] No questions generated. Response:", content.slice(0, 500));
+      return NextResponse.json({ error: "Failed to generate quiz questions" }, { status: 500 });
     }
 
-    return NextResponse.json({
-      questions,
-      quizId: data?.id,
-      count: questions.length,
-    });
-
+    console.log(`[quiz] Generated ${quiz.questions.length} questions`);
+    return NextResponse.json({ quiz });
   } catch (error) {
-    console.error("[/api/groq/quiz] Error:", error);
-    return NextResponse.json({ error: "Failed to generate quiz" }, { status: 500 });
+    const message = formatError(error);
+    console.error("[/api/groq/quiz] Error:", message);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

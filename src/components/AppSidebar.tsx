@@ -225,6 +225,7 @@ export function AppSidebar() {
                   {group.items.map(item => {
                     const activeTab = tabs.find(t => t.id === activeTabId);
                     const isActive = activeTab?.path === item.url || pathname === item.url;
+                    const Icon = item.icon;
                     return (
                       <SidebarMenuItem key={item.title}>
                         <motion.div whileTap={{ scale: 0.98 }} data-tutorial={item.tutorial}>
@@ -242,7 +243,7 @@ export function AppSidebar() {
                                 : "bg-transparent hover:bg-sidebar-accent/20 hover:text-sidebar-foreground"
                             )}
                           >
-                            <item.icon
+                            <Icon
                               className={cn(
                                 "w-5 h-5 shrink-0 transition-colors",
                                 isActive ? "text-sidebar-accent-foreground" : "text-sidebar-foreground/70"

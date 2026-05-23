@@ -281,9 +281,12 @@ export default function SubjectDocument() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ documentId: docId, action: "status" }),
     })
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) return;
+        return res.json();
+      })
       .then((data) => {
-        setCanRevert(data.canRevert === true);
+        if (data) setCanRevert(data.canRevert === true);
       })
       .catch(() => {});
 
@@ -316,6 +319,11 @@ export default function SubjectDocument() {
         body: JSON.stringify({ documentId: docId, action: "revert" }),
       });
       
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        toast.error(data?.error || "Failed to revert");
+        return;
+      }
       const data = await res.json();
       if (data.success) {
         toast.success("Document reverted to previous version");
@@ -676,7 +684,10 @@ export default function SubjectDocument() {
                       { id: "quiz", label: "Quiz Me", desc: "Practice questions", icon: Target, shortcut: "Q" },
                       { id: "explain", label: "Explain", desc: "Simple explanation", icon: Lightbulb, shortcut: "E" },
                       { id: "fill-gaps", label: "Find Gaps", desc: "What's missing", icon: AlertCircle, shortcut: "G" },
-                    ].map((action) => (
+                    ].map((action) => {
+                      const Icon = action.icon;
+
+                      return (
                       <button
                         key={action.id}
                         disabled={sidebarBusy !== null}
@@ -684,13 +695,14 @@ export default function SubjectDocument() {
                         className="flex flex-col items-start p-3 rounded-lg border border-border/50 bg-background/50 hover:bg-muted/50 hover:border-primary/20 transition-all text-left group disabled:opacity-50"
                       >
                         <div className="flex items-center justify-between w-full">
-                          <action.icon className="h-4 w-4 text-primary/70 group-hover:text-primary transition-colors" />
+                          <Icon className="h-4 w-4 text-primary/70 group-hover:text-primary transition-colors" />
                           <kbd className="text-[9px] px-1.5 py-0.5 rounded bg-muted/50 text-muted-foreground/50 font-mono">{action.shortcut}</kbd>
                         </div>
                         <span className="text-xs font-medium mt-2">{action.label}</span>
                         <span className="text-[10px] text-muted-foreground/60">{action.desc}</span>
                       </button>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -703,21 +715,25 @@ export default function SubjectDocument() {
                       { id: "expand", label: "Expand", desc: "More details", icon: AlignLeft },
                       { id: "shorten", label: "Shorten", desc: "More concise", icon: Trash2 },
                       { id: "rewrite", label: "Rewrite", desc: "Better flow", icon: PenTool },
-                    ].map((action) => (
+                    ].map((action) => {
+                      const Icon = action.icon;
+
+                      return (
                       <button
                         key={action.id}
                         disabled={sidebarBusy !== null}
                         onClick={() => runSidebarAction(action.id, action.label)}
                         className="flex items-center gap-3 w-full p-2.5 rounded-lg text-sm font-medium text-foreground/70 hover:bg-muted transition-colors text-left disabled:opacity-50"
                       >
-                        <action.icon className="h-4 w-4 text-muted-foreground" />
+                        <Icon className="h-4 w-4 text-muted-foreground" />
                         <div className="flex flex-col items-start">
                           <span>{action.label}</span>
                           <span className="text-[10px] text-muted-foreground/50">{action.desc}</span>
                         </div>
                         {sidebarBusy === action.id && <Loader2 className="ml-auto h-3.5 w-3.5 animate-spin" />}
                       </button>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -730,21 +746,25 @@ export default function SubjectDocument() {
                       { id: "key-terms", label: "Key Terms", desc: "Glossary of important terms", icon: BookMarked },
                       { id: "practice-problems", label: "Practice Problems", desc: "Worked solutions", icon: Puzzle },
                       { id: "add-examples", label: "Add Examples", desc: "Concrete examples", icon: GraduationCap },
-                    ].map((action) => (
+                    ].map((action) => {
+                      const Icon = action.icon;
+
+                      return (
                       <button
                         key={action.id}
                         disabled={sidebarBusy !== null}
                         onClick={() => runSidebarAction(action.id, action.label)}
                         className="flex items-center gap-3 w-full p-2.5 rounded-lg text-sm font-medium text-foreground/70 hover:bg-muted transition-colors text-left disabled:opacity-50"
                       >
-                        <action.icon className="h-4 w-4 text-muted-foreground" />
+                        <Icon className="h-4 w-4 text-muted-foreground" />
                         <div className="flex flex-col items-start">
                           <span>{action.label}</span>
                           <span className="text-[10px] text-muted-foreground/50">{action.desc}</span>
                         </div>
                         {sidebarBusy === action.id && <Loader2 className="ml-auto h-3.5 w-3.5 animate-spin" />}
                       </button>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
 

@@ -45,8 +45,11 @@ export async function extractFileText(file: File): Promise<string> {
     const form = new FormData();
     form.append("file", file);
     const res = await fetch("/api/groq/extract-text", { method: "POST", body: form });
+    if (!res.ok) {
+      const json = await res.json().catch(() => null);
+      throw new Error(json?.error || "Extraction failed.");
+    }
     const json = await res.json();
-    if (!res.ok) throw new Error(json.error || "Extraction failed.");
     if (!json.text?.trim()) throw new Error("Couldn't extract text from this file. Try a .txt or .pdf.");
     return json.text;
   }
@@ -56,8 +59,11 @@ export async function extractFileText(file: File): Promise<string> {
     const form = new FormData();
     form.append("file", file);
     const res = await fetch("/api/groq/extract-text", { method: "POST", body: form });
+    if (!res.ok) {
+      const json = await res.json().catch(() => null);
+      throw new Error(json?.error || "Image reading failed.");
+    }
     const json = await res.json();
-    if (!res.ok) throw new Error(json.error || "Image reading failed.");
     return json.text || `[Image: ${file.name}]`;
   }
 

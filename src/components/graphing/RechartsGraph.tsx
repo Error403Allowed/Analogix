@@ -21,8 +21,8 @@ import {
 import { cn } from "@/lib/utils";
 
 export interface ChartDataPoint {
-  name: string;
-  [key: string]: string | number;
+  name?: string;
+  [key: string]: string | number | undefined;
 }
 
 export interface ChartSpec {
@@ -200,6 +200,10 @@ interface RechartsGraphProps {
 
 export default function RechartsGraph({ spec, className }: RechartsGraphProps) {
   const chart = useMemo(() => {
+    if (!spec.data || spec.data.length === 0) {
+      return null;
+    }
+
     switch (spec.type) {
       case "bar":
         return <BarChartView spec={spec} />;
@@ -213,6 +217,14 @@ export default function RechartsGraph({ spec, className }: RechartsGraphProps) {
         return <BarChartView spec={spec} />;
     }
   }, [spec]);
+
+  if (!spec.data || spec.data.length === 0) {
+    return (
+      <div className={cn("my-4 rounded-2xl overflow-hidden border border-border/30 bg-muted/20 p-6 flex items-center justify-center", className)}>
+        <p className="text-sm text-muted-foreground">No chart data available</p>
+      </div>
+    );
+  }
 
   return (
     <div className={cn("my-4 rounded-2xl overflow-hidden border border-border/30 bg-muted/20 p-4", className)}>

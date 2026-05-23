@@ -3,7 +3,7 @@
 export const TIPTAP_CONTENT_FORMAT = "tiptap-json-v1";
 export const BLOCKNOTE_CONTENT_FORMAT = "blocknote-json-v1";
 
-export type DocumentRole = "notes" | "flashcard" | "quiz";
+export type DocumentRole = "notes" | "flashcard" | "quiz" | "study-guide";
 
 export interface DocumentContentLike {
   content?: string | null;
@@ -167,6 +167,11 @@ export const getDocumentPlainText = (document: DocumentContentLike | null | unde
   }
 
   return "";
+};
+
+export const isStudyGuideDocument = (document: DocumentContentLike | null | undefined) => {
+  if (!document?.role) return false;
+  return document.role.trim().toLowerCase() === "study-guide";
 };
 
 export const getDocumentPreviewText = (

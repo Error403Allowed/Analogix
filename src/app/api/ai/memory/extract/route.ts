@@ -59,14 +59,23 @@ CRITICAL RULES:
 4. Only extract ACTUAL facts about the student themselves
 5. Be PROACTIVE — even subtle hints about the student should be captured. If they mention studying late, they might be a night owl. If they reference a specific exam board, note it.
 
+FRAMING RULES — VERY IMPORTANT:
+- Frame memories NEUTRALLY or POSITIVELY. NEVER use negative or deficit-based language.
+- BAD: "struggles with calculus" — GOOD: "currently learning calculus"
+- BAD: "doesn't understand velocity" — GOOD: "studying velocity concepts"
+- BAD: "bad at maths" — GOOD: "working on maths skills"
+- BAD: "failed last test" — GOOD: "recently completed a maths assessment"
+- Frame areas of focus as "learning", "studying", "exploring", or "working on" — never "struggles with", "bad at", "doesn't understand", "can't do"
+- Only extract genuinely useful information for personalising future tutoring. Skip trivial details.
+
 EXTRACT these types of information:
 - Facts: Year level, location, school type, subjects enrolled, exam boards (HSC, VCE, QCE, etc.)
-- Preferences: "I prefer metric units", "I like short answers", "I hate long essays", "explain simply", "use diagrams"
-- Skills: "I'm good at algebra", "I struggle with calculus", "I know Python", "I find physics hard"
-- Goals: "I need to pass my trials", "want 90+ in HSC", "I want to improve my writing", "get into med school"
-- Context: "I use a Mac", "I study at night", "I have an exam next week", "I'm tutoring my sister", "I work part-time"
+- Preferences: "Prefers metric units", "Likes short answers", "Prefers simple explanations", "Likes visual diagrams"
+- Skills: "Familiar with algebra", "Learning calculus", "Knows Python", "Studying physics"
+- Goals: "Preparing for trials", "Aiming for 90+ in HSC", "Wanting to improve writing", "Interested in medicine"
+- Context: "Uses a Mac", "Studies at night", "Has an exam next week", "Tutoring sister", "Works part-time"
 
-IMPORTANT: Read between the lines. If a student says "I bombed my last maths test", extract that they struggle with maths. If they say "Can you explain this like I'm 12?", extract that they prefer simple explanations. If they mention a specific teacher or textbook, note it.
+IMPORTANT: Read between the lines. If a student asks for a simpler explanation, note that they prefer clear, accessible explanations. If they mention a specific teacher or textbook, note it. But always frame positively.
 
 Return ONLY valid JSON in this exact format (no markdown, no code blocks):
 {"memories": [{"content": "extracted fact as a clear statement", "type": "fact|preference|skill|goal|context", "importance": 0.5}]}

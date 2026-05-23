@@ -298,7 +298,7 @@ export const getGroqCompletion = async (
     return await fetchJson<{ role: "assistant"; content: string }>(
       "/api/groq/chat",
       { messages: budgetedMessages, userContext },
-      30000,
+      60000,
     );
   } catch (error) {
     const fallback: ChatMessage = {
@@ -510,7 +510,7 @@ export const generateQuiz = async (
     const data = await fetchJson<{ quiz: QuizData | null }>(
       "/api/groq/quiz",
       { input, userContext, numberOfQuestions, options },
-      30000,
+      60000,
     );
     return data.quiz || null;
   } catch {

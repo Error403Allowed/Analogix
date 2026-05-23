@@ -81,10 +81,16 @@ const LazyAchievementsPage = dynamic(() => import("@/app/achievements/page"), {
   loading: () => <PageLoader message="Loading achievements..." />,
 });
 
+const LazyStudyRoomWorkspace = dynamic(() => import("@/views/StudyRoomWorkspace"), {
+  ssr: false,
+  loading: () => <PageLoader message="Loading room..." />,
+});
+
 function getPageForPath(path: string) {
   if (path === "/dashboard") return LazyDashboardPage;
   if (path === "/chat") return LazyChatPage;
-  if (path === "/rooms" || path.startsWith("/rooms/")) return LazyRoomsPage;
+  if (path === "/rooms") return LazyRoomsPage;
+  if (path.startsWith("/rooms/")) return LazyStudyRoomWorkspace;
   if (path === "/flashcards") return LazyFlashcardsPage;
   if (path === "/quiz") return LazyQuizPage;
   if (path === "/formulas") return LazyFormulasPage;

@@ -207,13 +207,13 @@ interface ThreeSceneProps {
 
 export default function ThreeScene({ spec, className }: ThreeSceneProps) {
   const [isSpinning, setIsSpinning] = useState(false);
-  const viewBox = { w: 500, h: 350 };
+  const viewBox = useMemo(() => ({ w: 500, h: 350 }), []);
 
   const svgContent = useMemo(() => {
     const objects = spec.objects.map(obj => renderObjectSVG(obj, viewBox));
     const conns = renderConnections(spec.objects, spec.connections, viewBox);
     return { objects, conns };
-  }, [spec.objects, spec.connections]);
+  }, [spec.objects, spec.connections, viewBox]);
 
   return (
     <div className={cn("my-4 rounded-2xl overflow-hidden border border-border/30 bg-muted/10", className)}>
