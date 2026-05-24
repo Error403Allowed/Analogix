@@ -100,22 +100,17 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  // Always render children to ensure proper hydration and tab caching
-  // Use overlay for loading/redirect states instead of replacing content
   const isRedirecting = (!user && !loading) || (user && isChecking);
   
   if (isRedirecting) {
     return (
-      <>
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        </div>
-        {children}
-      </>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
     );
   }
 
-  // Loading auth - show overlay but render children
+  // Loading auth - show overlay but render children for hydration
   if (loading) {
     return (
       <>

@@ -333,7 +333,7 @@ const Landing = () => {
     }
     
     if (!user) {
-      router.push("/login");
+      router.push("/onboarding");
       return;
     }
     

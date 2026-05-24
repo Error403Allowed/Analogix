@@ -32,7 +32,7 @@ const FirstVisitOverlay = () => {
       prefs.landingVisited = true;
       localStorage.setItem("userPreferences", JSON.stringify(prefs));
       setIsOpen(false);
-      router.push("/");
+      router.push("/onboarding");
     }, 800);
   }, [router]);
 
