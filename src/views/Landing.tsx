@@ -8,7 +8,7 @@ import {
   Calculator, FlaskConical, Check, ChevronRight, Rocket, Shield,
   Lightbulb, Zap, Target, Clock, FileText, GraduationCap,
   Calendar, Layers, Star, TrendingUp, BookMarked, PenTool, Cpu,
-  BookOpenText, Github, ExternalLink, Users
+  BookOpenText, Github, ExternalLink, Users, Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -332,13 +332,19 @@ const Landing = () => {
       return;
     }
     
-    // If not signed in, redirect to login
-    // If signed in, go to dashboard
     if (!user) {
       router.push("/login");
-    } else {
-      router.push(path || "/dashboard");
+      return;
     }
+    
+    // If user is authenticated but hasn't completed onboarding,
+    // redirect to onboarding (unless they explicitly navigated to a different page)
+    if (path === "/dashboard" && !hasCompletedOnboarding) {
+      router.push("/onboarding");
+      return;
+    }
+    
+    router.push(path || "/dashboard");
   };
 
   // Split features: first two large cards, then rest
@@ -424,11 +430,15 @@ const Landing = () => {
               <Github className="w-4 h-4" />
             </a>
 
-            <Button size="sm" className="rounded-full px-5 font-bold shadow-md shadow-primary/15"
-              onClick={() => handleNav("/dashboard")}>
-              {user ? "Dashboard" : "Get Started"}
-              <ChevronRight className="w-3.5 h-3.5 ml-1" />
-            </Button>
+            {loading || !isMounted ? (
+              <div className="h-9 w-28 rounded-full bg-muted animate-pulse" />
+            ) : (
+              <Button size="sm" className="rounded-full px-5 font-bold shadow-md shadow-primary/15"
+                onClick={() => handleNav("/dashboard")}>
+                {user && hasCompletedOnboarding ? "Dashboard" : user && !hasCompletedOnboarding ? "Continue Setup" : "Get Started"}
+                <ChevronRight className="w-3.5 h-3.5 ml-1" />
+              </Button>
+            )}
           </div>
         </div>
       </nav>
