@@ -1,4 +1,4 @@
-import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import { createBrowserClient } from "@supabase/ssr";
 
 const browserSupabaseUrl =
   process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL;
@@ -15,11 +15,11 @@ if (!browserSupabaseUrl || !browserSupabaseAnonKey) {
 
 // Singleton pattern — one Supabase client per tab to avoid multiple GoTrueClient instances
 // which can cause undefined behavior with auth state and token refresh
-let cachedClient: ReturnType<typeof createSupabaseClient> | null = null;
+let cachedClient: ReturnType<typeof createBrowserClient> | null = null;
 
 export const createClient = (): any => {
   if (!cachedClient) {
-    cachedClient = createSupabaseClient(browserSupabaseUrl, browserSupabaseAnonKey);
+    cachedClient = createBrowserClient(browserSupabaseUrl, browserSupabaseAnonKey);
   }
   return cachedClient;
 };

@@ -24,6 +24,7 @@ import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { useTabs } from "@/context/TabsContext";
 import { subjectStore } from "@/utils/subjectStore";
+import { flashcardStore } from "@/utils/flashcardStore";
 import { SUBJECT_CATALOG } from "@/constants/subjects";
 import { loadTimerState, saveTimerState, getDefaultTimerState } from "@/lib/timerStore";
 import type { TimerPhase } from "@/lib/timerStore";
@@ -351,6 +352,91 @@ function DocScrollRow() {
           </div>
         </button>
       ))}
+    </div>
+  );
+}
+
+// ── FlashcardWidget — live flashcard summary ──────────────────────────────────
+function FlashcardWidget() {
+  const router = useRouter();
+  const [total, setTotal] = useState(0);
+  const [due, setDue] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [all, dueCards] = await Promise.all([
+        flashcardStore.getAll(),
+        flashcardStore.getDue(),
+      ]);
+      setTotal(all.length);
+      setDue(dueCards.length);
+    } catch {
+      /* ignore */
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+    const handler = () => load();
+    window.addEventListener("storage", handler);
+    return () => window.removeEventListener("storage", handler);
+  }, [load]);
+
+  if (loading) return (
+    <div className="flex gap-2">
+      <div className="flex-1 h-16 rounded-xl bg-muted/30 animate-pulse" />
+      <div className="flex-1 h-16 rounded-xl bg-muted/30 animate-pulse" />
+    </div>
+  );
+
+  if (total === 0) return (
+    <div className="flex flex-col gap-3">
+      <p className="text-xs text-muted-foreground/65 leading-relaxed">
+        No flashcards yet. Create your first set to get started.
+      </p>
+      <a href="/flashcards"
+        className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 transition-opacity">
+        <Layers className="w-3.5 h-3.5" /> Create Flashcards
+      </a>
+    </div>
+  );
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex gap-2">
+        <div className="flex-1 rounded-xl bg-muted/20 border border-border/25 p-3">
+          <p className="text-[9px] font-black uppercase tracking-[0.18em] text-muted-foreground/50">Total</p>
+          <p className="text-xl font-black text-foreground tracking-tight">{total}</p>
+        </div>
+        <div className={cn(
+          "flex-1 rounded-xl p-3 border",
+          due > 0
+            ? "bg-amber-500/10 border-amber-500/25"
+            : "bg-emerald-500/10 border-emerald-500/25"
+        )}>
+          <p className="text-[9px] font-black uppercase tracking-[0.18em] text-muted-foreground/50">Due now</p>
+          <p className={cn(
+            "text-xl font-black tracking-tight",
+            due > 0 ? "text-amber-500" : "text-emerald-500"
+          )}>{due}</p>
+        </div>
+      </div>
+      <div className="flex gap-2">
+        <a href="/flashcards"
+          className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 transition-opacity">
+          <Layers className="w-3.5 h-3.5" /> Browse
+        </a>
+        {due > 0 && (
+          <button onClick={() => router.push("/flashcards")}
+            className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-amber-500/15 text-amber-500 text-xs font-semibold hover:bg-amber-500/25 transition-colors border border-amber-500/20">
+            Review {due} due
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -695,16 +781,10 @@ export default function Dashboard() {
                 </div>
               )}
               {on("flashcards") && (
-                <div className={cn("dashboard-panel p-5 flex flex-col gap-3 border border-primary/10 bg-accent/10",
+                <div className={cn("dashboard-panel p-5 flex flex-col gap-3",
                   on("quicklinks") ? "col-span-12 lg:col-span-4" : "col-span-12")}>
                   <p className="text-[9px] font-black uppercase tracking-[0.22em] text-muted-foreground/50">🃏 Flashcards</p>
-                  <p className="text-xs text-muted-foreground/65 leading-relaxed flex-1">
-                    Reinforce what you've been studying with a quick quiz session.
-                  </p>
-                  <a href="/flashcards"
-                    className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 transition-opacity">
-                    <Layers className="w-3.5 h-3.5" /> Open Flashcards
-                  </a>
+                  <FlashcardWidget />
                 </div>
               )}
             </div>

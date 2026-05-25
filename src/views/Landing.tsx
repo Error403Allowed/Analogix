@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { motion, useScroll, useTransform, AnimatePresence, useSpring, useMotionValue, useInView } from "framer-motion";
 import {
@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { useRouter, useSearchParams } from "next/navigation";
 import CursorParticles from "@/components/CursorParticles";
 import { useAuth } from "@/context/AuthContext";
+import { createClient } from "@/lib/supabase/client";
 
 function cn(...inputs: (string | boolean | undefined | null)[]) {
   return inputs.filter(Boolean).join(" ");
@@ -309,6 +310,28 @@ const Landing = () => {
       setIsMounted(true);
     }
   }, []);
+
+  const syncOnboardingFromDb = useCallback(async () => {
+    if (!user || hasCompletedOnboarding) return;
+    try {
+      const supabase = createClient();
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("onboarding_complete, name, grade, state, subjects, hobbies, hobby_ids, hobby_details")
+        .eq("id", user.id)
+        .maybeSingle();
+      if (profile?.onboarding_complete) {
+        setHasCompletedOnboarding(true);
+        const existing = JSON.parse(localStorage.getItem("userPreferences") || "{}");
+        localStorage.setItem("userPreferences", JSON.stringify({ ...existing, ...profile, onboardingComplete: true }));
+        window.dispatchEvent(new Event("userPreferencesUpdated"));
+      }
+    } catch {}
+  }, [user, hasCompletedOnboarding]);
+
+  useEffect(() => {
+    syncOnboardingFromDb();
+  }, [syncOnboardingFromDb]);
 
   const forceLanding =
     searchParams?.get("force") === "true" || searchParams?.get("force") === "1";
