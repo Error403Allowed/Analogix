@@ -1,0 +1,49 @@
+{
+  "name": "@analogix/shared",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Shared types, curriculum, formula sheets, achievements, and Zod schemas for Analogix web, BFF, and mobile",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.js"
+    },
+    "./curriculum": {
+      "types": "./dist/curriculum/index.d.ts",
+      "import": "./dist/curriculum/index.js"
+    },
+    "./formulas": {
+      "types": "./dist/formulas/index.d.ts",
+      "import": "./dist/formulas/index.js"
+    },
+    "./achievements": {
+      "types": "./dist/achievements/index.d.ts",
+      "import": "./dist/achievements/index.js"
+    },
+    "./types": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/types/index.js"
+    },
+    "./schemas": {
+      "types": "./dist/schemas/index.d.ts",
+      "import": "./dist/schemas/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "watch": "tsc -p tsconfig.json --watch",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist",
+    "lint": "echo 'no linter configured'"
+  },
+  "dependencies": {
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3"
+  }
+}

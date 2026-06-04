@@ -1,0 +1,41 @@
+{
+  "name": "analogix-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Analogix monorepo — web, GraphQL BFF, and mobile",
+  "workspaces": [
+    "packages/*",
+    "AnalogixWeb",
+    "AnalogixGraphQL",
+    "AnalogixMobile"
+  ],
+  "scripts": {
+    "dev": "turbo run dev",
+    "dev:api": "npm run dev --workspace=AnalogixGraphQL",
+    "dev:web": "npm run dev --workspace=AnalogixWeb",
+    "dev:mobile": "npm run start --workspace=AnalogixMobile",
+    "dev:shared": "npm run watch --workspace=packages/analogix-shared",
+    "build": "turbo run build",
+    "build:api": "npm run build --workspace=AnalogixGraphQL",
+    "build:web": "npm run build --workspace=AnalogixWeb",
+    "build:shared": "npm run build --workspace=packages/analogix-shared",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "clean": "turbo run clean",
+    "android": "expo run:android",
+    "ios": "expo run:ios"
+  },
+  "engines": {
+    "node": ">=22 <27"
+  },
+  "dependencies": {
+    "expo": "~54.0.35",
+    "pg": "^8.21.0",
+    "react": "19.1.0",
+    "react-native": "0.81.5",
+    "react-native-mmkv": "^4.3.1"
+  },
+  "devDependencies": {
+    "turbo": "^2.9.16"
+  }
+}

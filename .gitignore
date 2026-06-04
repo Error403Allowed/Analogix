@@ -1,0 +1,35 @@
+# dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# build outputs
+dist/
+build/
+.next/
+.expo/
+.expo-shared/
+
+# env
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# editor / OS
+.DS_Store
+.vscode/
+.idea/
+*.swp
+
+# typescript
+*.tsbuildinfo
+
+# generated GraphQL
+src/graphql/generated/
