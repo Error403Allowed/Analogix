@@ -33,3 +33,6 @@ yarn-error.log*
 
 # generated GraphQL
 src/graphql/generated/
+
+# supabase local
+supabase/.temp/
