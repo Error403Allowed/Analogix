@@ -1,0 +1,16 @@
+node_modules
+.expo
+.expo-shared
+dist
+web-build
+*.tsbuildinfo
+.env
+.env.local
+ios
+android
+ios/.xcode.env.local
+android/.gradle
+android/build
+android/app/build
+*.log
+.DS_Store

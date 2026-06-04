@@ -1,0 +1,50 @@
+import { gql } from "@apollo/client";
+
+export const FORMULA_SHEETS = gql`
+  query FormulaSheets {
+    formulaSheets {
+      subjectId
+      subjectName
+      categories {
+        name
+        formulas {
+          id
+          name
+          latex
+          description
+          category
+        }
+      }
+    }
+  }
+`;
+
+export const SEARCH_FORMULAS = gql`
+  query SearchFormulas($query: String!) {
+    searchFormulas(query: $query) {
+      id
+      name
+      latex
+      description
+      subjectId
+      category
+    }
+  }
+`;
+
+export const ACHIEVEMENTS = gql`
+  query Achievements {
+    achievements {
+      id
+      title
+      description
+      icon
+      category
+    }
+    unlockedAchievements {
+      id
+      achievementId
+      unlockedAt
+    }
+  }
+`;
