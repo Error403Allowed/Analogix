@@ -1,75 +1,153 @@
-/**
- * Study home — grid of feature cards (Flashcards, Quiz, Calendar, Formulas, Resources, Timer).
- */
 import React from "react";
-import { View, StyleSheet, ScrollView, Pressable } from "react-native";
+import { View, StyleSheet, useWindowDimensions } from "react-native";
 import { Text, useTheme } from "react-native-paper";
 import { useNavigation } from "@react-navigation/native";
 import { useThemeContext } from "../../theme/ThemeContext";
 import { SHAPE } from "../../theme/tokens";
-import { useScreenSize } from "../../hooks/useResponsive";
 import Icon from "../../components/Icon";
-import Animated, { FadeInUp } from "react-native-reanimated";
+import {
+  ExpressiveHeroPanel,
+  ExpressiveRailCard,
+  ExpressiveScreen,
+  ExpressiveSection,
+  PressableScale,
+} from "../../components/expressive";
 
-const ITEMS: Array<{ key: string; title: string; description: string; icon: string; route: string; color: string }> = [
-  { key: "flashcards", title: "Flashcards", description: "Review with spaced repetition", icon: "card-multiple", route: "Flashcards", color: "#5B5FE9" },
-  { key: "quiz", title: "Quiz Hub", description: "Generate and take adaptive quizzes", icon: "clipboard-list", route: "Quiz", color: "#9D5BFF" },
-  { key: "calendar", title: "Calendar", description: "Events, deadlines, study time", icon: "calendar", route: "Calendar", color: "#00C2A8" },
-  { key: "formulas", title: "Formulas", description: "Subject-specific cheat sheets", icon: "sigma", route: "Formulas", color: "#FF6B35" },
-  { key: "resources", title: "Resources", description: "PDFs, slides, study materials", icon: "folder", route: "Resources", color: "#1F8B4C" },
-  { key: "timer", title: "Study Timer", description: "Pomodoro-style focus sessions", icon: "timer-outline", route: "Timer", color: "#D6336C" },
+// Each feature has its own accent colour so the grid has visual variety
+const FEATURES = [
+  { name: "Flashcards", icon: "cards",         screen: "Flashcards", desc: "Review and manage decks",       accent: "#5865F2" },
+  { name: "Quiz",       icon: "help-circle",   screen: "Quiz",       desc: "Test your knowledge",           accent: "#23a55a" },
+  { name: "Calendar",   icon: "calendar",      screen: "Calendar",   desc: "Schedule and events",           accent: "#f26522" },
+  { name: "Formulas",   icon: "sigma",         screen: "Formulas",   desc: "Math & science formulas",       accent: "#9b59b6" },
+  { name: "Resources",  icon: "folder",        screen: "Resources",  desc: "PDFs and study materials",      accent: "#e67e22" },
+  { name: "Timer",      icon: "timer",         screen: "Timer",      desc: "Pomodoro study sessions",       accent: "#1abc9c" },
 ];
 
 export default function StudyHomeScreen() {
   const paperTheme = useTheme();
   const { brand } = useThemeContext();
   const navigation = useNavigation<any>();
-  const size = useScreenSize();
-  const isCompact = size === "compact";
+  const { width: screenWidth } = useWindowDimensions();
+
+  // Compute an exact pixel width so percentage widths inside PressableScale
+  // don't suffer from the Animated.View-inside-Pressable sizing bug
+  const H_PADDING = 16;
+  const GRID_GAP = 12;
+  const cardWidth = Math.floor((screenWidth - H_PADDING * 2 - GRID_GAP) / 2);
+
+  const c = paperTheme.colors as any;
 
   return (
-    <ScrollView
-      style={[styles.container, { backgroundColor: paperTheme.colors.background }]}
-      contentContainerStyle={{ padding: isCompact ? 16 : 20, paddingTop: isCompact ? 40 : 56, paddingBottom: 80, gap: isCompact ? 12 : 16 }}
+    <ExpressiveScreen
+      title="Study"
+      eyebrow="Tools"
+      subtitle="Build, review, plan, and focus"
+      leadingIcon="book-open-variant"
     >
-      <View style={[styles.header, { gap: 2, marginBottom: isCompact ? 4 : 8 }]}>
-        <Text variant="bodyMedium" style={{ color: paperTheme.colors.onSurfaceVariant }}>Ready to</Text>
-        <Text variant={isCompact ? "headlineMedium" : "headlineLarge"} style={styles.title}>Study</Text>
-      </View>
-      <View style={[styles.grid, { gap: isCompact ? 8 : 12 }]}>
-        {ITEMS.map((item, i) => (
-          <Animated.View
-            key={item.key}
-            entering={FadeInUp.delay(i * 60).duration(300)}
-            style={{ width: "48%" }}
+      {/* ── Hero ─────────────────────────────────────────────────── */}
+      <ExpressiveHeroPanel accent="secondary" style={styles.hero}>
+        <View style={{ flex: 1, gap: 6 }}>
+          <Text
+            variant="headlineSmall"
+            style={{ color: paperTheme.colors.onSecondaryContainer, fontWeight: "900" }}
           >
-            <Pressable
-              onPress={() => navigation.navigate(item.route)}
-              style={({ pressed }) => [{ opacity: pressed ? 0.85 : 1 }]}
+            Pick the right mode for this session.
+          </Text>
+          <Text
+            variant="bodyMedium"
+            style={{ color: paperTheme.colors.onSecondaryContainer, opacity: 0.8 }}
+          >
+            Review cards, take a quiz, manage deadlines, or start a timer.
+          </Text>
+        </View>
+        <View style={styles.heroStats}>
+          <ExpressiveRailCard value="6" label="Tools"    icon="apps"     />
+          <ExpressiveRailCard value="∞" label="Practice" icon="creation" />
+        </View>
+      </ExpressiveHeroPanel>
+
+      {/* ── Tool grid ────────────────────────────────────────────── */}
+      <ExpressiveSection title="Study tools">
+        <View style={[styles.grid, { gap: GRID_GAP }]}>
+          {FEATURES.map((f) => (
+            <PressableScale
+              key={f.screen}
+              onPress={() => navigation.navigate(f.screen)}
+              accessibilityLabel={`${f.name}: ${f.desc}`}
+              accessibilityRole="button"
+              style={[
+                styles.toolCard,
+                {
+                  width: cardWidth,
+                  backgroundColor: c.surfaceContainer,
+                  borderColor: c.outlineVariant,
+                },
+              ]}
             >
-              <View style={[styles.card, { backgroundColor: paperTheme.colors.surface, borderRadius: SHAPE.xl }]}>
-                <View style={[styles.iconWrap, { backgroundColor: `${item.color}22` }]}>
-                  <Icon name={item.icon} size={28} color={item.color} />
-                </View>
-                <Text variant="titleMedium" style={styles.cardTitle}>{item.title}</Text>
-                <Text variant="bodySmall" style={{ color: paperTheme.colors.onSurfaceVariant }} numberOfLines={2}>
-                  {item.description}
+              {/* coloured icon badge */}
+              <View style={[styles.iconBadge, { backgroundColor: f.accent + "22" }]}>
+                <Icon name={f.icon} size={26} color={f.accent} />
+              </View>
+
+              <View style={{ gap: 2 }}>
+                <Text
+                  variant="titleSmall"
+                  style={{ fontWeight: "800", color: paperTheme.colors.onSurface }}
+                >
+                  {f.name}
+                </Text>
+                <Text
+                  variant="bodySmall"
+                  numberOfLines={2}
+                  style={{ color: paperTheme.colors.onSurfaceVariant, lineHeight: 15 }}
+                >
+                  {f.desc}
                 </Text>
               </View>
-            </Pressable>
-          </Animated.View>
-        ))}
-      </View>
-    </ScrollView>
+
+              {/* subtle accent dot in bottom-right corner */}
+              <View style={[styles.dot, { backgroundColor: f.accent + "33" }]} />
+            </PressableScale>
+          ))}
+        </View>
+      </ExpressiveSection>
+    </ExpressiveScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  header: { marginBottom: 8 },
-  title: { fontWeight: "900" },
-  grid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between" },
-  card: { padding: 16, minHeight: 130, justifyContent: "space-between" },
-  iconWrap: { width: 48, height: 48, borderRadius: 24, alignItems: "center", justifyContent: "center" },
-  cardTitle: { fontWeight: "800", marginTop: 6 },
+  hero: { gap: 20 },
+  heroStats: { flexDirection: "row", gap: 10 },
+
+  grid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+  },
+
+  toolCard: {
+    minHeight: 148,
+    borderRadius: SHAPE.xl,
+    borderWidth: StyleSheet.hairlineWidth,
+    padding: 16,
+    justifyContent: "space-between",
+    overflow: "hidden",
+  },
+
+  iconBadge: {
+    width: 52,
+    height: 52,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  // decorative circle in bottom-right corner
+  dot: {
+    position: "absolute",
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    bottom: -24,
+    right: -24,
+  },
 });

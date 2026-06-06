@@ -1,148 +1,124 @@
-/**
- * Quiz session — present questions one-by-one, collect answers, submit.
- */
-import React, { useState, useEffect } from "react";
-import { View, StyleSheet, ScrollView, Pressable } from "react-native";
-import { Text, useTheme, Button, ActivityIndicator, IconButton } from "react-native-paper";
-import { useQuery, useMutation } from "@apollo/client";
-import { QUIZZES, SUBMIT_QUIZ_ATTEMPT, GRADE_SHORT_ANSWER, QUIZ_REVIEW } from "../../graphql/queries/quiz";
+import React, { useState } from "react";
+import { View, StyleSheet, Pressable } from "react-native";
+import { Text, useTheme, Card, Button, ProgressBar, IconButton } from "react-native-paper";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useQuery } from "@apollo/client";
 import { useRoute, useNavigation } from "@react-navigation/native";
+import { QUIZZES } from "../../graphql/queries/quiz";
 import { useThemeContext } from "../../theme/ThemeContext";
 import { SHAPE } from "../../theme/tokens";
-import Icon from "../../components/Icon";
-import * as Haptics from "expo-haptics";
-import Animated, { FadeIn } from "react-native-reanimated";
 
 export default function QuizSessionScreen() {
   const paperTheme = useTheme();
+  const insets = useSafeAreaInsets();
   const { brand } = useThemeContext();
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
-  const { quizId, title } = route.params;
+  const { quizId } = route.params;
   const { data, loading } = useQuery(QUIZZES);
-  const [submitAttempt, { loading: submitting }] = useMutation(SUBMIT_QUIZ_ATTEMPT);
-  const [quizReview] = useMutation(QUIZ_REVIEW);
-
-  const quiz = (data?.quizzes ?? []).find((q: any) => q.id === quizId);
   const [idx, setIdx] = useState(0);
-  const [answers, setAnswers] = useState<Record<string, { userAnswer: string; isCorrect: boolean }>>({});
+  const [selected, setSelected] = useState<number | null>(null);
 
-  useEffect(() => {
-    if (!loading && !quiz) {
-      navigation.goBack();
-    }
-  }, [loading, quiz, navigation]);
+  const quizzes = data?.quizzes ?? [];
+  const quiz = quizzes.find((q: any) => q.id === quizId);
+  const questions = quiz?.questions ?? [];
+  const question = questions[idx];
 
-  if (loading || !quiz) {
-    return <ActivityIndicator style={{ flex: 1 }} />;
-  }
-
-  const q = quiz.questions[idx];
-  const total = quiz.questions.length;
-  const progress = (idx + 1) / total;
-  const userAnswer = answers[q.id]?.userAnswer;
-
-  const answer = (optionText: string) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    const correct = optionText === q.correctAnswer;
-    setAnswers((prev) => ({ ...prev, [q.id]: { userAnswer: optionText, isCorrect: correct } }));
+  const handleSelect = (optIdx: number) => {
+    if (selected !== null) return;
+    setSelected(optIdx);
   };
 
   const next = () => {
-    if (idx + 1 < total) {
+    if (idx < questions.length - 1) {
       setIdx(idx + 1);
+      setSelected(null);
     } else {
-      finishQuiz();
+      navigation.navigate("QuizResults", { quizId });
     }
   };
 
-  const finishQuiz = async () => {
-    const answersJson = Object.entries(answers).map(([id, a]) => ({
-      id,
-      question: quiz.questions.find((qq: any) => qq.id.toString() === id.toString())?.question ?? "",
-      correctAnswer: quiz.questions.find((qq: any) => qq.id.toString() === id.toString())?.correctAnswer ?? "",
-      userAnswer: a.userAnswer,
-      isCorrect: a.isCorrect,
-    }));
-    const { data: attempt } = await submitAttempt({
-      variables: { quizId, answers: answersJson },
-    });
-    if (attempt?.submitQuizAttempt) {
-      try {
-        await quizReview({ variables: { input: { subjectId: quiz.subjectId, answers: answersJson } } });
-      } catch (e) {
-        console.warn("Review failed", e);
-      }
-      navigation.replace("QuizResults", { quizId, attemptId: attempt.submitQuizAttempt.id });
-    }
-  };
+  if (loading || !question) {
+    return (
+      <View style={[styles.container, { backgroundColor: paperTheme.colors.background, alignItems: "center", justifyContent: "center" }]}>
+        <Text>Loading...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: paperTheme.colors.background }]}>
-      <View style={styles.header}>
-        <IconButton icon="close" onPress={() => navigation.goBack()} />
-        <View style={{ flex: 1 }}>
-          <Text variant="bodySmall" style={{ color: paperTheme.colors.onSurfaceVariant }}>{title}</Text>
-          <Text variant="titleLarge" style={{ fontWeight: "800" }}>Question {idx + 1} of {total}</Text>
-        </View>
-      </View>
-      <View style={[styles.progressBar, { backgroundColor: paperTheme.colors.surfaceVariant }]}>
-        <View style={[styles.progressFill, { width: `${progress * 100}%`, backgroundColor: brand.primary }]} />
+      <View style={[styles.topBar, { backgroundColor: paperTheme.colors.surface, paddingTop: insets.top + 4 }]}>
+        <IconButton icon="close" onPress={() => navigation.goBack()} accessibilityLabel="Close quiz" />
+        <Text variant="titleMedium" style={{ fontWeight: "700", flex: 1 }}>{quiz?.title ?? "Quiz"}</Text>
+        <Text variant="bodyMedium" style={{ color: paperTheme.colors.onSurfaceVariant }}>{idx + 1}/{questions.length}</Text>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content}>
-        <Animated.View entering={FadeIn.duration(300)} key={q.id}>
-          <Text variant="headlineSmall" style={styles.question}>{q.question}</Text>
-          {q.options?.map((opt: any) => {
-            const isSelected = userAnswer === opt.text;
+      <ProgressBar progress={(idx + 1) / questions.length} color={brand.primary} style={[styles.progress, { backgroundColor: paperTheme.colors.surfaceVariant }]} />
+
+      <View style={styles.content}>
+        <Card mode="elevated" style={styles.questionCard}>
+          <Card.Content>
+            <Text variant="bodySmall" style={{ color: paperTheme.colors.onSurfaceVariant, marginBottom: 8 }}>Question {idx + 1}</Text>
+            <Text variant="titleLarge" style={{ fontWeight: "600", color: paperTheme.colors.onSurface }}>
+              {question.question}
+            </Text>
+          </Card.Content>
+        </Card>
+
+        <View style={styles.options}>
+          {(question.options ?? []).map((opt: any, i: number) => {
+            const isSelected = selected === i;
             return (
-              <Pressable key={opt.id} onPress={() => answer(opt.text)}>
-                <View
+              <Pressable
+                key={opt.id ?? i}
+                onPress={() => handleSelect(i)}
+                disabled={selected !== null}
+                accessibilityLabel={`Option ${i + 1}: ${opt.text ?? opt}`}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: isSelected }}
+              >
+                <Card
+                  mode="outlined"
                   style={[
                     styles.option,
                     {
-                      backgroundColor: isSelected ? `${brand.primary}22` : paperTheme.colors.surface,
+                      backgroundColor: isSelected ? brand.primary + "18" : paperTheme.colors.surface,
                       borderColor: isSelected ? brand.primary : paperTheme.colors.outline,
-                      borderRadius: SHAPE.lg,
                     },
                   ]}
                 >
-                  <View style={[styles.optionDot, { borderColor: isSelected ? brand.primary : paperTheme.colors.outline }]}>
-                    {isSelected && <View style={[styles.optionDotInner, { backgroundColor: brand.primary }]} />}
-                  </View>
-                  <Text variant="bodyLarge" style={{ flex: 1 }}>{opt.text}</Text>
-                </View>
+                  <Card.Content style={styles.optionContent}>
+                    <Text variant="bodyLarge" style={{ color: paperTheme.colors.onSurface, fontWeight: isSelected ? "700" : "400" }}>
+                      {opt.text ?? opt}
+                    </Text>
+                  </Card.Content>
+                </Card>
               </Pressable>
             );
           })}
-        </Animated.View>
-      </ScrollView>
-
-      <View style={styles.footer}>
-        <Button
-          mode="contained"
-          onPress={next}
-          disabled={!userAnswer}
-          loading={submitting}
-          style={{ borderRadius: SHAPE.xl }}
-          contentStyle={{ height: 56 }}
-        >
-          {idx + 1 === total ? "Finish" : "Next"}
-        </Button>
+        </View>
       </View>
+
+      {selected !== null && (
+        <View style={[styles.footer, { paddingBottom: insets.bottom + 16 }]}>
+          <Button mode="contained" buttonColor={brand.primary} style={{ borderRadius: SHAPE.lg }} onPress={next} contentStyle={{ height: 48 }}>
+            {idx < questions.length - 1 ? "Next" : "See results"}
+          </Button>
+        </View>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { flexDirection: "row", alignItems: "center", paddingTop: 50, paddingHorizontal: 8 },
-  progressBar: { height: 6, marginHorizontal: 20, marginTop: 8, borderRadius: 3, overflow: "hidden" },
-  progressFill: { height: "100%" },
-  content: { padding: 20, gap: 12 },
-  question: { fontWeight: "800", marginBottom: 16 },
-  option: { flexDirection: "row", alignItems: "center", padding: 16, gap: 12, marginBottom: 8, borderWidth: 2 },
-  optionDot: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, alignItems: "center", justifyContent: "center" },
-  optionDotInner: { width: 12, height: 12, borderRadius: 6 },
-  footer: { padding: 20 },
+  topBar: { flexDirection: "row", alignItems: "center", paddingHorizontal: 4 },
+  progress: { height: 6, marginHorizontal: 16, borderRadius: SHAPE.xs },
+  content: { flex: 1, padding: 16, gap: 16 },
+  questionCard: { borderRadius: SHAPE.lg },
+  options: { gap: 8 },
+  option: { borderRadius: SHAPE.lg },
+  optionContent: { paddingVertical: 14 },
+  footer: { padding: 16 },
 });

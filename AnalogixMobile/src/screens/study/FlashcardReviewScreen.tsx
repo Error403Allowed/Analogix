@@ -1,172 +1,99 @@
-/**
- * Flashcard review — SM-2 grading (Again / Hard / Good / Easy).
- * Animates the card flip with Reanimated.
- */
-import React, { useState, useCallback, useRef } from "react";
+import React, { useState } from "react";
 import { View, StyleSheet, Pressable } from "react-native";
-import { Text, Button, useTheme, ActivityIndicator } from "react-native-paper";
+import { Text, useTheme, IconButton, Card, Button, ProgressBar } from "react-native-paper";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQuery, useMutation } from "@apollo/client";
-import { FLASHCARDS_DUE, GRADE_FLASHCARD } from "../../graphql/queries/flashcard";
-import { useNavigation } from "@react-navigation/native";
+import { useRoute, useNavigation } from "@react-navigation/native";
+import { FLASHCARDS, GRADE_FLASHCARD } from "../../graphql/queries/flashcard";
 import { useThemeContext } from "../../theme/ThemeContext";
-import { SHAPE, MOTION } from "../../theme/tokens";
-import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming } from "react-native-reanimated";
-import * as Haptics from "expo-haptics";
-
-const QUALITY = [
-  { label: "Again", quality: 1, color: "#FF3B5B" },
-  { label: "Hard", quality: 3, color: "#FF8A4A" },
-  { label: "Good", quality: 4, color: "#00C2A8" },
-  { label: "Easy", quality: 5, color: "#5B5FE9" },
-];
+import { SHAPE } from "../../theme/tokens";
 
 export default function FlashcardReviewScreen() {
   const paperTheme = useTheme();
+  const insets = useSafeAreaInsets();
   const { brand } = useThemeContext();
-  const navigation = useNavigation<any>();
-  const { data, loading, refetch } = useQuery(FLASHCARDS_DUE, { variables: { limit: 50 } });
-  const [grade, { loading: grading }] = useMutation(GRADE_FLASHCARD);
-
+  const route = useRoute<any>();
+  const navigation = useNavigation();
+  const { deckId } = route.params;
+  const { data, loading } = useQuery(FLASHCARDS, { variables: { setId: deckId } });
+  const [gradeFlashcard] = useMutation(GRADE_FLASHCARD);
   const [idx, setIdx] = useState(0);
   const [flipped, setFlipped] = useState(false);
-  const [completed, setCompleted] = useState(0);
-  const flip = useSharedValue(0);
 
-  const cards = data?.flashcardsDue ?? [];
+  const cards = data?.flashcards ?? [];
   const card = cards[idx];
-  const total = cards.length;
 
-  const flipAnim = useAnimatedStyle(() => ({
-    transform: [{ perspective: 1000 }, { rotateY: `${flip.value}deg` }],
-  }));
-
-  const handleFlip = useCallback(() => {
-    flip.value = withTiming(flipped ? 0 : 180, { duration: 400 });
-    setFlipped(!flipped);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-  }, [flipped, flip]);
-
-  const handleGrade = useCallback(
-    async (q: number) => {
-      if (!card) return;
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      await grade({ variables: { id: card.id, quality: q } });
-      setCompleted((c) => c + 1);
-      flip.value = withSpring(0, MOTION.entry as never);
+  const grade = async (quality: number) => {
+    if (!card) return;
+    await gradeFlashcard({ variables: { id: card.id, quality } });
+    if (idx < cards.length - 1) {
+      setIdx(idx + 1);
       setFlipped(false);
-      if (idx + 1 < total) {
-        setIdx(idx + 1);
-      } else {
-        // Refetch in case more cards became due
-        refetch();
-        setIdx(0);
-      }
-    },
-    [card, grade, idx, total, flip, refetch]
-  );
+    } else {
+      navigation.goBack();
+    }
+  };
 
-  if (loading) return <ActivityIndicator style={{ flex: 1 }} />;
-  if (!card) {
+  if (loading || !card) {
     return (
-      <View style={[styles.container, { backgroundColor: paperTheme.colors.background }]}>
-        <View style={styles.empty}>
-          <Text variant="displaySmall" style={{ fontSize: 64 }}>🎉</Text>
-          <Text variant="headlineLarge" style={{ fontWeight: "900", marginTop: 16 }}>
-            All caught up!
-          </Text>
-          <Text variant="bodyLarge" style={{ color: paperTheme.colors.onSurfaceVariant, marginTop: 8 }}>
-            You reviewed {completed} cards.
-          </Text>
-          <Button
-            mode="contained"
-            onPress={() => navigation.goBack()}
-            style={{ marginTop: 24, borderRadius: SHAPE.xl }}
-            contentStyle={{ height: 52 }}
-          >
-            Done
-          </Button>
-        </View>
+      <View style={[styles.container, { backgroundColor: paperTheme.colors.background, alignItems: "center", justifyContent: "center" }]}>
+        <Text>Loading...</Text>
       </View>
     );
   }
 
   return (
     <View style={[styles.container, { backgroundColor: paperTheme.colors.background }]}>
-      <View style={styles.header}>
-        <Text variant="labelLarge" style={{ color: paperTheme.colors.onSurfaceVariant }}>
-          Card {idx + 1} of {total}
-        </Text>
-        <Text variant="labelLarge" style={{ color: paperTheme.colors.onSurfaceVariant }}>
-          {Math.round((idx / total) * 100)}%
-        </Text>
+      <View style={[styles.topBar, { backgroundColor: paperTheme.colors.surface, paddingTop: insets.top + 4 }]}>
+        <IconButton icon="arrow-left" onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
+        <Text variant="titleMedium" style={{ fontWeight: "700", flex: 1 }}>Review</Text>
+        <Text variant="bodyMedium" style={{ color: paperTheme.colors.onSurfaceVariant }}>{idx + 1}/{cards.length}</Text>
       </View>
 
-      <View style={styles.cardArea}>
-        <Pressable onPress={handleFlip} style={{ width: "100%" }}>
-          <Animated.View style={[styles.card, { backgroundColor: paperTheme.colors.surface, borderRadius: SHAPE.xxl }, flipAnim]}>
-            {!flipped ? (
-              <View style={styles.cardContent}>
-                <Text variant="labelSmall" style={{ color: paperTheme.colors.onSurfaceVariant }}>
-                  FRONT · {card.subjectId}
-                </Text>
-                <Text variant="headlineMedium" style={styles.cardText}>
-                  {card.front}
-                </Text>
-                <Text variant="labelSmall" style={{ color: paperTheme.colors.onSurfaceVariant, marginTop: 16 }}>
-                  Tap to reveal
-                </Text>
-              </View>
-            ) : (
-              <View style={[styles.cardContent, { transform: [{ rotateY: "180deg" }] }]}>
-                <Text variant="labelSmall" style={{ color: paperTheme.colors.onSurfaceVariant }}>
-                  BACK
-                </Text>
-                <Text variant="bodyLarge" style={styles.cardText}>
-                  {card.back}
-                </Text>
-              </View>
-            )}
-          </Animated.View>
+      <ProgressBar progress={(idx + 1) / cards.length} color={brand.primary} style={[styles.progress, { backgroundColor: paperTheme.colors.surfaceVariant }]} />
+
+      <View style={styles.cardWrap}>
+        <Pressable onPress={() => setFlipped(!flipped)} style={{ flex: 1, justifyContent: "center" }} accessibilityLabel={flipped ? "Show question" : "Show answer"} accessibilityHint="Tap to flip the card">
+          <Card mode="elevated" style={styles.card}>
+            <Card.Content style={styles.cardContent}>
+              <Text variant="labelSmall" style={{ color: paperTheme.colors.onSurfaceVariant, textAlign: "center", marginBottom: 12 }}>
+                {flipped ? "Answer" : "Question"}
+              </Text>
+              <Text variant="headlineSmall" style={{ fontWeight: "600", color: paperTheme.colors.onSurface, textAlign: "center" }}>
+                {flipped ? card.back : card.front}
+              </Text>
+              <Text variant="bodySmall" style={{ color: paperTheme.colors.onSurfaceVariant, textAlign: "center", marginTop: 24 }}>
+                Tap to flip
+              </Text>
+            </Card.Content>
+          </Card>
         </Pressable>
       </View>
 
-      {flipped ? (
-        <View style={styles.gradeRow}>
-          {QUALITY.map((q) => (
-            <Button
-              key={q.label}
-              mode="contained"
-              buttonColor={q.color}
-              onPress={() => handleGrade(q.quality)}
-              loading={grading}
-              style={{ flex: 1, borderRadius: SHAPE.lg }}
-              contentStyle={{ height: 56 }}
-            >
-              {q.label}
-            </Button>
-          ))}
+      {flipped && (
+        <View style={[styles.grades, { paddingBottom: insets.bottom + 24 }]}>
+          <Button mode="outlined" style={styles.gradeBtn} textColor={paperTheme.colors.error} onPress={() => grade(1)}>
+            Again
+          </Button>
+          <Button mode="outlined" style={styles.gradeBtn} textColor={brand.primary} onPress={() => grade(2)}>
+            Good
+          </Button>
+          <Button mode="contained" buttonColor={brand.primary} style={styles.gradeBtn} onPress={() => grade(3)}>
+            Easy
+          </Button>
         </View>
-      ) : (
-        <Button
-          mode="contained"
-          onPress={handleFlip}
-          style={{ borderRadius: SHAPE.xl, marginTop: 16 }}
-          contentStyle={{ height: 56 }}
-        >
-          Show answer
-        </Button>
       )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, paddingTop: 60 },
-  header: { flexDirection: "row", justifyContent: "space-between", marginBottom: 16 },
-  cardArea: { flex: 1, justifyContent: "center" },
-  card: { aspectRatio: 3 / 4, maxHeight: 500, padding: 24, justifyContent: "space-between", backfaceVisibility: "hidden" },
-  cardContent: { flex: 1, justifyContent: "center", alignItems: "center" },
-  cardText: { fontWeight: "700", textAlign: "center", marginTop: 16 },
-  gradeRow: { flexDirection: "row", gap: 8, marginTop: 16 },
-  empty: { flex: 1, alignItems: "center", justifyContent: "center" },
+  container: { flex: 1 },
+  topBar: { flexDirection: "row", alignItems: "center", paddingHorizontal: 4 },
+  progress: { height: 6, marginHorizontal: 16, borderRadius: SHAPE.xs },
+  cardWrap: { flex: 1, padding: 20, justifyContent: "center" },
+  card: { borderRadius: SHAPE.xl, minHeight: 300, justifyContent: "center" },
+  cardContent: { paddingVertical: 32, alignItems: "center" },
+  grades: { flexDirection: "row", padding: 20, gap: 8 },
+  gradeBtn: { flex: 1, borderRadius: SHAPE.lg },
 });
