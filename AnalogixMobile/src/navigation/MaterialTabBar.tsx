@@ -1,150 +1,96 @@
-/**
- * M3 Expressive bottom tab bar.
- * - Pill-shaped active indicator with M3 primary container color
- * - Spring-based motion when switching tabs
- * - Centre FAB for quick actions
- */
 import React from "react";
 import { Pressable, StyleSheet, View } from "react-native";
-import { BottomTabBar, type BottomTabBarProps } from "@react-navigation/bottom-tabs";
+import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { Text, useTheme } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Animated, { useAnimatedStyle, useSharedValue, withSpring } from "react-native-reanimated";
+import { SHAPE } from "../theme/tokens";
 import Icon from "../components/Icon";
-import { MOTION, SHAPE } from "../theme/tokens";
-import { useThemeContext } from "../theme/ThemeContext";
 
-const TAB_ICONS: Record<string, string> = {
-  Home: "home-variant",
-  Tutor: "message-text",
-  Study: "book-open-variant",
-  Subjects: "school",
-  Rooms: "account-group",
-  Profile: "account-circle",
+const TAB_CONFIG: Record<string, { icon: string; label: string }> = {
+  Home: { icon: "home-variant", label: "Home" },
+  Tutor: { icon: "message-text", label: "Tutor" },
+  Study: { icon: "book-open-variant", label: "Study" },
+  Subjects: { icon: "school", label: "Subjects" },
+  Rooms: { icon: "account-group", label: "Rooms" },
+  Profile: { icon: "account-circle", label: "Profile" },
 };
 
 export function MaterialTabBar(props: BottomTabBarProps) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
-  const { brand } = useThemeContext();
+  const colors = theme.colors as typeof theme.colors & { surfaceContainer: string; surfaceContainerHigh: string };
+
   return (
     <View
       style={[
         styles.bar,
         {
-          paddingBottom: Math.max(insets.bottom, 8),
-          backgroundColor: theme.colors.surface,
-          borderTopColor: theme.colors.outline,
+          paddingBottom: insets.bottom + 4,
+          backgroundColor: colors.surfaceContainer ?? theme.colors.surface,
+          borderTopColor: theme.colors.outlineVariant,
         },
       ]}
     >
       {props.state.routes.map((route, index) => {
         const focused = props.state.index === index;
+        const config = TAB_CONFIG[route.name] ?? { icon: "circle", label: route.name };
         const onPress = () => {
-          const event = props.navigation.emit({ type: "tabPress", target: route.key, canPreventDefault: true });
-          if (!focused && !event.defaultPrevented) props.navigation.navigate(route.name as never);
+          const event = props.navigation.emit({
+            type: "tabPress",
+            target: route.key,
+            canPreventDefault: true,
+          });
+          if (!focused && !event.defaultPrevented) {
+            props.navigation.navigate(route.name);
+          }
         };
         return (
-          <TabItem
+          <Pressable
             key={route.key}
-            label={route.name}
-            icon={TAB_ICONS[route.name] ?? "circle"}
-            focused={focused}
             onPress={onPress}
-            activeColor={brand.primary}
-            inactiveColor={theme.colors.onSurfaceVariant}
-          />
+            style={({ pressed }) => [{ opacity: pressed ? 0.72 : 1, transform: [{ scale: pressed ? 0.97 : 1 }] }, styles.tab]}
+          >
+            <View style={[styles.activeBg, focused && { backgroundColor: theme.colors.secondaryContainer, borderRadius: SHAPE.pill }]}>
+              <Icon
+                name={config.icon}
+                size={24}
+                color={focused ? theme.colors.onSecondaryContainer : theme.colors.onSurfaceVariant}
+              />
+            </View>
+            <Text
+              variant="labelSmall"
+              style={{
+                color: focused ? theme.colors.onSurface : theme.colors.onSurfaceVariant,
+                fontWeight: focused ? "700" : "500",
+                fontSize: 12,
+                marginTop: 2,
+              }}
+            >
+              {config.label}
+            </Text>
+          </Pressable>
         );
       })}
     </View>
   );
 }
 
-function TabItem({
-  label,
-  icon,
-  focused,
-  onPress,
-  activeColor,
-  inactiveColor,
-}: {
-  label: string;
-  icon: string;
-  focused: boolean;
-  onPress: () => void;
-  activeColor: string;
-  inactiveColor: string;
-}) {
-  const scale = useSharedValue(1);
-  const animStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
-
-  const onPressIn = () => {
-    scale.value = withSpring(0.92, MOTION.tap as never);
-  };
-  const onPressOut = () => {
-    scale.value = withSpring(1, MOTION.entry as never);
-  };
-
-  return (
-    <Pressable
-      onPress={onPress}
-      onPressIn={onPressIn}
-      onPressOut={onPressOut}
-      style={styles.tab}
-      hitSlop={8}
-    >
-      <Animated.View style={[styles.tabInner, animStyle]}>
-        {focused ? (
-          <View
-            style={[
-              styles.activePill,
-              { backgroundColor: `${activeColor}22` },
-            ]}
-          >
-            <Icon name={icon} size={24} color={activeColor} />
-          </View>
-        ) : (
-          <Icon name={icon} size={24} color={inactiveColor} />
-        )}
-        <Text
-          variant="labelSmall"
-          style={[
-            styles.label,
-            { color: focused ? activeColor : inactiveColor, fontWeight: focused ? "700" : "500" },
-          ]}
-        >
-          {label}
-        </Text>
-      </Animated.View>
-    </Pressable>
-  );
-}
-
 const styles = StyleSheet.create({
   bar: {
     flexDirection: "row",
-    borderTopWidth: 0.5,
+    borderTopWidth: 1,
     paddingTop: 8,
-    paddingHorizontal: 4,
+    paddingHorizontal: 12,
   },
   tab: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
   },
-  tabInner: {
+  activeBg: {
+    width: 64,
+    height: 36,
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 6,
-  },
-  activePill: {
-    paddingHorizontal: 18,
-    paddingVertical: 6,
-    borderRadius: SHAPE.pill,
-  },
-  label: {
-    marginTop: 2,
   },
 });
