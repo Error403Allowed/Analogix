@@ -7,9 +7,18 @@
  */
 import "react-native-gesture-handler";
 import React from "react";
+import { Platform, Animated } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+
+if (Platform.OS === "web") {
+  try {
+    if (Animated?.timing) {
+      (Animated.timing as any).defaults = { useNativeDriver: false };
+    }
+  } catch { /* ignore on older RN versions */ }
+}
 import { ApolloRootProvider } from "./src/apollo/ApolloProvider";
 import { AuthProvider } from "./src/context/AuthContext";
 import { ThemeProvider } from "./src/theme/ThemeContext";

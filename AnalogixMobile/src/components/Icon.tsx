@@ -12,6 +12,6 @@ type MdiBaseProps = React.ComponentProps<typeof MaterialDesignIcons>;
 export type IconProps = Omit<MdiBaseProps, "name"> & { name: string };
 
 export default function Icon(props: IconProps): React.ReactElement {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   return <MaterialDesignIcons {...(props as any)} />;
 }

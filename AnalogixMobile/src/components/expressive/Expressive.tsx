@@ -74,7 +74,7 @@ type ExpressiveScreenProps = {
   title: string;
   eyebrow?: string;
   subtitle?: string;
-  leadingIcon?: string;
+  leadingIcon?: string | React.ReactNode;
   onBack?: () => void;
   actions?: React.ReactNode;
   scroll?: boolean;
@@ -111,7 +111,11 @@ export function ExpressiveScreen({
           )}
           {leadingIcon && (
             <View style={[styles.screenLeadingIcon, { backgroundColor: theme.colors.primaryContainer }]}>
-              <Icon name={leadingIcon} size={22} color={theme.colors.onPrimaryContainer} />
+              {typeof leadingIcon === 'string' ? (
+                <Icon name={leadingIcon} size={22} color={theme.colors.onPrimaryContainer} />
+              ) : (
+                leadingIcon
+              )}
             </View>
           )}
           <View style={styles.screenTitleGroup}>

@@ -82,7 +82,7 @@ export default function DashboardScreen() {
             <Icon name="tune-vertical" size={20} color={paperTheme.colors.onSurfaceVariant} />
           </Pressable>
           <PressableScale
-            onPress={() => navigation.navigate("Profile")}
+            onPress={() => navigation.navigate("ProfileHome")}
             style={[styles.avatar, { backgroundColor: paperTheme.colors.primary }]}
             accessibilityLabel="Open profile"
             accessibilityRole="button"

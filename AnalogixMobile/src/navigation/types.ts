@@ -61,7 +61,7 @@ export type RoomsStackParamList = {
 // Tab: Profile
 // -----------------------------------------------------------------------------
 export type ProfileStackParamList = {
-  Profile: undefined;
+  ProfileHome: undefined;
   Settings: undefined;
   ThemePicker: undefined;
   PersonalityEditor: undefined;

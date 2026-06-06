@@ -116,7 +116,7 @@ function RoomsStackNav() {
 function ProfileStackNav() {
   return (
     <ProfileStack.Navigator screenOptions={{ headerShown: false }}>
-      <ProfileStack.Screen name="Profile" component={ProfileScreen} />
+      <ProfileStack.Screen name="ProfileHome" component={ProfileScreen} />
       <ProfileStack.Screen name="Settings" component={SettingsScreen} />
       <ProfileStack.Screen name="ThemePicker" component={ThemePickerScreen} />
       <ProfileStack.Screen name="PersonalityEditor" component={PersonalityEditorScreen} />

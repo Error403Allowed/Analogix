@@ -6,19 +6,6 @@ import { useThemeContext, BRAND_THEMES as BRANDS } from "../../theme/ThemeContex
 import { DYNAMIC_SEED_COLORS } from "../../theme/WallpaperColor";
 import { SHAPE } from "../../theme/tokens";
 
-const LABELS: Record<string, string> = {
-  cosmic: "Cosmic", paper: "Paper", sunrise: "Sunrise", forest: "Forest",
-  rose: "Rose", midnight: "Midnight", coral: "Coral", candy: "Candy",
-  cyber: "Cyber", prismatic: "Prismatic",
-};
-
-const DESCRIPTIONS: Record<string, string> = {
-  cosmic: "Deep purple + cyan", paper: "Soft monochrome", sunrise: "Warm orange + gold",
-  forest: "Calming green", rose: "Soft pink + plum", midnight: "Navy + amber",
-  coral: "Warm coral blush", candy: "Vibrant pop", cyber: "Electric neon",
-  prismatic: "Multi-hue shift",
-};
-
 export default function ThemePickerScreen() {
   const paperTheme = useTheme();
   const navigation = useNavigation();
@@ -97,8 +84,7 @@ export default function ThemePickerScreen() {
                   <View style={[styles.swatch, { backgroundColor: b.tertiary }]} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text variant="bodyLarge" style={{ fontWeight: "600", color: paperTheme.colors.onSurface }}>{LABELS[b.id] ?? b.id}</Text>
-                  <Text variant="bodySmall" style={{ color: paperTheme.colors.onSurfaceVariant }}>{DESCRIPTIONS[b.id] ?? ""}</Text>
+                  <Text variant="bodyLarge" style={{ fontWeight: "600", color: paperTheme.colors.onSurface }}>{b.name}</Text>
                 </View>
                 {brand.id === b.id && (
                   <View style={[styles.check, { backgroundColor: b.primary }]}>

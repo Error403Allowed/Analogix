@@ -4,14 +4,16 @@ import reactHooks from "eslint-plugin-react-hooks";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["dist", ".next", ".next/**", ".next*", ".next*/**"] },
+  { ignores: ["dist", "node_modules", ".expo"] },
   {
-
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ["**/*.{ts,tsx}"],
     languageOptions: {
       ecmaVersion: 2020,
-      globals: globals.browser,
+      globals: {
+        ...globals.browser,
+        ...globals.es2021,
+      },
       parserOptions: {
         tsconfigRootDir: import.meta.dirname,
       },

@@ -18,9 +18,11 @@
     "build": "turbo run build",
     "build:api": "npm run build --workspace=AnalogixGraphQL",
     "build:web": "npm run build --workspace=AnalogixWeb",
+    "build:mobile": "npm run build --workspace=AnalogixMobile",
     "build:shared": "npm run build --workspace=packages/analogix-shared",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
+    "lint:mobile": "npm run lint --workspace=AnalogixMobile",
     "clean": "turbo run clean",
     "android": "expo run:android",
     "ios": "expo run:ios"
@@ -28,6 +30,7 @@
   "engines": {
     "node": ">=22 <27"
   },
+  "packageManager": "npm@11.16.0",
   "dependencies": {
     "expo": "~54.0.35",
     "pg": "^8.21.0",

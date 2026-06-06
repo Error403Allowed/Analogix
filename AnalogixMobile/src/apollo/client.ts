@@ -52,13 +52,13 @@ const errorLink = onError(({ graphQLErrors, networkError }) => {
       // Surface auth errors so the app can route to the login screen.
       if (err.extensions?.code === "UNAUTHENTICATED") {
         // The AuthContext already handles the unauth state, so this is mostly for logging.
-        // eslint-disable-next-line no-console
+         
         console.warn("[apollo] unauthenticated, redirecting to login");
       }
     }
   }
   if (networkError) {
-    // eslint-disable-next-line no-console
+     
     console.warn("[apollo] network error", networkError);
   }
 });

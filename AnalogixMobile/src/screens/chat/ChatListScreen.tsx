@@ -1,10 +1,11 @@
-import React, { useState } from "react";
-import { View, StyleSheet } from "react-native";
-import { Text, useTheme, Searchbar, FAB, Portal, Modal, Button, TextInput } from "react-native-paper";
+import React, { useState, useEffect, useRef } from "react";
+import { View, StyleSheet, Animated } from "react-native";
+import { Text, useTheme, Searchbar, FAB } from "react-native-paper";
 import { useQuery } from "@apollo/client";
 import { useNavigation } from "@react-navigation/native";
 import { CHAT_SESSIONS } from "../../graphql/queries/chat";
 import { SHAPE } from "../../theme/tokens";
+import Icon from "../../components/Icon";
 import {
   ExpressiveEmptyState,
   ExpressiveHeroPanel,
@@ -13,11 +14,33 @@ import {
   ExpressiveSection,
 } from "../../components/expressive";
 
+function BlinkingRobot() {
+  const opacity = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    const blink = () => {
+      Animated.sequence([
+        Animated.timing(opacity, { toValue: 0.2, duration: 100, useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 1, duration: 100, useNativeDriver: true }),
+      ]).start();
+    };
+    const timer = setInterval(() => {
+      blink();
+    }, 4000);
+    return () => clearInterval(timer);
+  }, [opacity]);
+
+  return (
+    <Animated.View style={{ opacity }}>
+      <Icon name="robot" size={22} color="#fff" />
+    </Animated.View>
+  );
+}
+
 export default function ChatListScreen() {
   const paperTheme = useTheme();
   const navigation = useNavigation<any>();
   const [q, setQ] = useState("");
-  const [showNew, setShowNew] = useState(false);
   const { data, loading } = useQuery(CHAT_SESSIONS);
   const sessions = data?.chatSessions ?? [];
   const filtered = q ? sessions.filter((s: any) => (s.name ?? s.subject ?? "").toLowerCase().includes(q.toLowerCase())) : sessions;
@@ -26,19 +49,11 @@ export default function ChatListScreen() {
     <ExpressiveScreen
       title="Tutor"
       subtitle={`${filtered.length} conversation${filtered.length !== 1 ? "s" : ""}`}
-      leadingIcon="robot"
+      leadingIcon={<BlinkingRobot />}
       fab={
-        <FAB icon="plus" label="New chat" color={paperTheme.colors.onPrimary} style={{ backgroundColor: paperTheme.colors.primary, borderRadius: SHAPE.lg }} onPress={() => setShowNew(true)} />
+        <FAB icon="plus" label="New chat" color={paperTheme.colors.onPrimary} style={{ backgroundColor: paperTheme.colors.primary, borderRadius: SHAPE.lg }} onPress={() => navigation.navigate("ChatSession", { sessionId: "new" })} />
       }
     >
-      <ExpressiveHeroPanel style={styles.hero}>
-        <Text variant="headlineSmall" style={{ color: paperTheme.colors.onPrimaryContainer, fontWeight: "900" }}>
-          Ask, revise, explain, repeat.
-        </Text>
-        <Text variant="bodyMedium" style={{ color: paperTheme.colors.onPrimaryContainer }}>
-          Keep each subject in its own focused thread.
-        </Text>
-      </ExpressiveHeroPanel>
       <Searchbar
         placeholder="Search conversations"
         value={q}
@@ -69,18 +84,6 @@ export default function ChatListScreen() {
         )}
         </View>
       </ExpressiveSection>
-
-      <Portal>
-        <Modal visible={showNew} onDismiss={() => setShowNew(false)} contentContainerStyle={[styles.modal, { backgroundColor: paperTheme.colors.surface }]}>
-          <Text variant="titleLarge" style={{ fontWeight: "700", color: paperTheme.colors.onSurface, marginBottom: 16 }}>
-            New conversation
-          </Text>
-          <TextInput mode="outlined" label="Subject / topic" placeholder="e.g. Calculus, Shakespeare..." style={{ marginBottom: 12 }} />
-          <Button mode="contained" buttonColor={paperTheme.colors.primary} style={{ borderRadius: SHAPE.lg }} onPress={() => { setShowNew(false); navigation.navigate("ChatSession", { sessionId: "new" }); }}>
-            Start
-          </Button>
-        </Modal>
-      </Portal>
     </ExpressiveScreen>
   );
 }
@@ -89,5 +92,4 @@ const styles = StyleSheet.create({
   hero: { minHeight: 150, gap: 8, justifyContent: "center" },
   search: { borderRadius: SHAPE.pill },
   list: { gap: 8 },
-  modal: { margin: 20, padding: 24, borderRadius: SHAPE.xl },
 });
