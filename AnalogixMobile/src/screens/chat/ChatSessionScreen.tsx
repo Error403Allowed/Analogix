@@ -45,8 +45,6 @@ export default function ChatSessionScreen() {
     >
       <ExpressiveScreen
         title="Chat"
-        eyebrow="Tutor"
-        subtitle="Session"
         onBack={() => navigation.goBack()}
         scroll={false}
         contentStyle={styles.sessionContent}

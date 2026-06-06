@@ -31,13 +31,17 @@ export default function SubjectsListScreen() {
   const enrolledNames = (meData?.me?.subjects as string[] | undefined) ?? [];
   const studyMap = subjectsData?.studyMap ?? [];
 
-  const subjects = enrolledNames.map((name) => {
-    const entry = CURRICULUM_DATA.find(
-      (c) => c.name.toLowerCase() === name.toLowerCase() || c.id.toLowerCase() === name.toLowerCase()
-    );
-    if (entry) return { id: entry.id, name: entry.name, icon: entry.icon, color: entry.color };
-    return { id: name.toLowerCase().replace(/\s+/g, "-"), name, icon: ICONS[name] ?? "book", color: brand.primary };
-  });
+  const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+  const subjects = enrolledNames
+    .map((name) => {
+      const entry = CURRICULUM_DATA.find(
+        (c) => c.name.toLowerCase() === name.toLowerCase() || c.id.toLowerCase() === name.toLowerCase()
+      );
+      if (entry) return { id: entry.id, name: entry.name, icon: entry.icon, color: entry.color };
+      return { id: name.toLowerCase().replace(/\s+/g, "-"), name: capitalize(name), icon: ICONS[name] ?? "book", color: brand.primary };
+    })
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   if (meLoading || subjectsLoading) {
     return (
@@ -50,7 +54,6 @@ export default function SubjectsListScreen() {
   return (
     <ExpressiveScreen
       title="Subjects"
-      eyebrow="Study map"
       subtitle={`${subjects.length} subject${subjects.length === 1 ? "" : "s"}`}
       leadingIcon="school"
     >

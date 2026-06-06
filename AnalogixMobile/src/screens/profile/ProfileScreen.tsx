@@ -41,7 +41,7 @@ export default function ProfileScreen() {
   );
 
   return (
-    <ExpressiveScreen title="Profile" eyebrow="Account" subtitle={me?.email ?? "Your study profile"} leadingIcon="account-circle">
+    <ExpressiveScreen title="Profile" subtitle={me?.email ?? "Your profile"} leadingIcon="account-circle">
         <ExpressiveHeroPanel style={styles.heroCard}>
             <View style={styles.heroRow}>
               <View style={[styles.avatar, { backgroundColor: paperTheme.colors.primary }]}>

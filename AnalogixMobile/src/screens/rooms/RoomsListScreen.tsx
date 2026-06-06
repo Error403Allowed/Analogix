@@ -20,7 +20,9 @@ export default function RoomsListScreen() {
   const rooms = data?.rooms ?? [];
 
   return (
-    <ExpressiveScreen title="Rooms" eyebrow="Live study" subtitle="Study together in real time" leadingIcon="account-group">
+    <ExpressiveScreen title="Rooms" subtitle="Study together in real time" leadingIcon="account-group" fab={
+      <FAB icon="plus" label="New room" color={paperTheme.colors.onPrimary} style={{ backgroundColor: paperTheme.colors.primary, borderRadius: SHAPE.lg }} onPress={() => {}} />
+    }>
       <ExpressiveHeroPanel accent="secondary" style={styles.hero}>
         <Text variant="headlineSmall" style={{ color: paperTheme.colors.onSecondaryContainer, fontWeight: "900" }}>
           Shared focus, shared notes.
@@ -49,7 +51,6 @@ export default function RoomsListScreen() {
         </View>
       </ExpressiveSection>
 
-      <FAB icon="plus" label="New room" color={paperTheme.colors.onPrimary} style={[styles.fab, { backgroundColor: paperTheme.colors.primary }]} onPress={() => {}} />
     </ExpressiveScreen>
   );
 }
@@ -58,5 +59,4 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   hero: { minHeight: 170, gap: 8, justifyContent: "center" },
   list: { gap: 8 },
-  fab: { position: "absolute", right: 16, bottom: 100, borderRadius: SHAPE.lg },
 });

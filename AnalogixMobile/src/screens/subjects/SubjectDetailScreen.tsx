@@ -26,7 +26,7 @@ export default function SubjectDetailScreen() {
   const subject = data?.subject;
 
   return (
-    <ExpressiveScreen title={name ?? "Subject"} eyebrow="Subject" subtitle="Detailed study view" onBack={() => navigation.goBack()}>
+    <ExpressiveScreen title={name ?? "Subject"} onBack={() => navigation.goBack()}>
         {loading ? (
           <ActivityIndicator style={{ marginTop: 40 }} />
         ) : !subject ? (

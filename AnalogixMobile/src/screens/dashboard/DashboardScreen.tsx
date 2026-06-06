@@ -1,12 +1,13 @@
-import React from "react";
-import { View, StyleSheet, useWindowDimensions } from "react-native";
-import { Text, useTheme, ProgressBar } from "react-native-paper";
+import React, { useState } from "react";
+import { View, StyleSheet, useWindowDimensions, Pressable } from "react-native";
+import { Text, useTheme, ProgressBar, Switch, Portal, Modal, Button } from "react-native-paper";
 import { useQuery } from "@apollo/client";
 import { useNavigation } from "@react-navigation/native";
 import { ME, USER_STATS } from "../../graphql/queries/user";
 import { SUBJECTS } from "../../graphql/queries/subject";
 import { useThemeContext } from "../../theme/ThemeContext";
 import { SHAPE } from "../../theme/tokens";
+import { CURRICULUM_DATA } from "../../shared/curriculum/data";
 import {
   ExpressiveCard,
   ExpressiveHeroPanel,
@@ -17,6 +18,15 @@ import {
   PressableScale,
 } from "../../components/expressive";
 import Icon from "../../components/Icon";
+
+type WidgetKey = "hero" | "actions" | "progress" | "stats";
+
+const WIDGETS: { key: WidgetKey; label: string }[] = [
+  { key: "hero",     label: "Level & XP" },
+  { key: "actions",  label: "Quick actions" },
+  { key: "progress", label: "In progress" },
+  { key: "stats",    label: "Quick stats" },
+];
 
 // Quick-action definitions with individual accent colours for variety
 const ACTIONS = [
@@ -31,6 +41,10 @@ export default function DashboardScreen() {
   const { brand } = useThemeContext();
   const navigation = useNavigation<any>();
   const { width: screenWidth } = useWindowDimensions();
+  const [showSettings, setShowSettings] = useState(false);
+  const [visible, setVisible] = useState<Record<WidgetKey, boolean>>({
+    hero: true, actions: true, progress: true, stats: true,
+  });
 
   const { data: meData }      = useQuery(ME);
   const { data: statsData }   = useQuery(USER_STATS);
@@ -42,6 +56,11 @@ export default function DashboardScreen() {
   const firstName = me?.name?.split(" ")[0] ?? "there";
   const c         = paperTheme.colors as any;
 
+  const subjectLabel = (id: string, fallback: string) => {
+    const entry = CURRICULUM_DATA.find((c) => c.id === id || c.name.toLowerCase() === id.toLowerCase());
+    return entry?.name ?? fallback;
+  };
+
   // Exact card pixel width avoids Animated.View-inside-Pressable % bug
   const H_PAD    = 16;
   const GRID_GAP = 10;
@@ -50,24 +69,33 @@ export default function DashboardScreen() {
   return (
     <ExpressiveScreen
       title={`Hi, ${firstName}`}
-      eyebrow="Analogix"
       subtitle={`${stats?.currentStreak ?? 0}-day streak 🔥`}
       leadingIcon="school"
       actions={
-        <PressableScale
-          onPress={() => navigation.navigate("Profile")}
-          style={[styles.avatar, { backgroundColor: paperTheme.colors.primary }]}
-          accessibilityLabel="Open profile"
-          accessibilityRole="button"
-        >
-          <Text style={[styles.avatarLetter, { color: paperTheme.colors.onPrimary }]}>
-            {(me?.name ?? "U").charAt(0)}
-          </Text>
-        </PressableScale>
+        <View style={{ flexDirection: "row", gap: 6 }}>
+          <Pressable
+            onPress={() => setShowSettings(true)}
+            style={[styles.iconBtn, { backgroundColor: paperTheme.colors.surfaceVariant }]}
+            accessibilityLabel="Customize dashboard"
+            accessibilityRole="button"
+          >
+            <Icon name="tune-vertical" size={20} color={paperTheme.colors.onSurfaceVariant} />
+          </Pressable>
+          <PressableScale
+            onPress={() => navigation.navigate("Profile")}
+            style={[styles.avatar, { backgroundColor: paperTheme.colors.primary }]}
+            accessibilityLabel="Open profile"
+            accessibilityRole="button"
+          >
+            <Text style={[styles.avatarLetter, { color: paperTheme.colors.onPrimary }]}>
+              {(me?.name ?? "U").charAt(0)}
+            </Text>
+          </PressableScale>
+        </View>
       }
     >
       {/* ── Level hero ───────────────────────────────────────────── */}
-      <ExpressiveHeroPanel>
+      {visible.hero && <ExpressiveHeroPanel>
         <View style={styles.heroTop}>
           <View style={{ flex: 1, gap: 4 }}>
             <Text variant="labelLarge" style={{ color: paperTheme.colors.onPrimaryContainer, fontWeight: "800" }}>
@@ -116,10 +144,10 @@ export default function DashboardScreen() {
             </Text>
           </PressableScale>
         </View>
-      </ExpressiveHeroPanel>
+      </ExpressiveHeroPanel>}
 
       {/* ── Quick actions ────────────────────────────────────────── */}
-      <ExpressiveSection title="Quick actions">
+      {visible.actions && <ExpressiveSection title="Quick actions">
         <View style={[styles.quickGrid, { gap: GRID_GAP }]}>
           {ACTIONS.map((a) => (
             <PressableScale
@@ -150,10 +178,10 @@ export default function DashboardScreen() {
             </PressableScale>
           ))}
         </View>
-      </ExpressiveSection>
+      </ExpressiveSection>}
 
       {/* ── In progress ──────────────────────────────────────────── */}
-      {studyMap.length > 0 ? (
+      {visible.progress && studyMap.length > 0 ? (
         <ExpressiveSection
           title="In progress"
           actionLabel="Open map"
@@ -163,7 +191,7 @@ export default function DashboardScreen() {
             {studyMap.slice(0, 3).map((s: any) => (
               <ExpressiveListRow
                 key={s.subjectId}
-                title={s.subjectName ?? s.subjectId}
+                title={subjectLabel(s.subjectId, s.subjectName ?? s.subjectId)}
                 subtitle={`${Math.round(s.progressPercent ?? 0)}% complete`}
                 icon="school"
                 onPress={() =>
@@ -184,13 +212,34 @@ export default function DashboardScreen() {
       ) : null}
 
       {/* ── Quick stats ──────────────────────────────────────────── */}
-      <ExpressiveSection title="Quick stats">
+      {visible.stats && <ExpressiveSection title="Quick stats">
         <View style={styles.statsRow}>
           <ExpressiveRailCard value={stats?.quizzesCompleted ?? 0} label="Quizzes" icon="clipboard-check" />
           <ExpressiveRailCard value={stats?.cardsReviewed ?? 0}    label="Cards"   icon="cards"           />
           <ExpressiveRailCard value={Math.round((stats?.minutesStudied ?? 0) / 60)} label="Hours" icon="clock-outline" />
         </View>
-      </ExpressiveSection>
+      </ExpressiveSection>}
+
+      <Portal>
+        <Modal visible={showSettings} onDismiss={() => setShowSettings(false)} contentContainerStyle={[styles.modal, { backgroundColor: paperTheme.colors.surface }]}>
+          <Text variant="titleLarge" style={{ fontWeight: "700", color: paperTheme.colors.onSurface, marginBottom: 20 }}>
+            Dashboard widgets
+          </Text>
+          {WIDGETS.map((w) => (
+            <PressableScale key={w.key} onPress={() => setVisible((prev) => ({ ...prev, [w.key]: !prev[w.key] }))} style={[styles.widgetRow, { backgroundColor: visible[w.key] ? paperTheme.colors.primaryContainer : paperTheme.colors.surfaceVariant }]}>
+              <Text variant="bodyLarge" style={{ color: visible[w.key] ? paperTheme.colors.onPrimaryContainer : paperTheme.colors.onSurfaceVariant, flex: 1, fontWeight: "600" }}>{w.label}</Text>
+              <Switch
+                value={visible[w.key]}
+                onValueChange={(v) => setVisible((prev) => ({ ...prev, [w.key]: v }))}
+                color={paperTheme.colors.primary}
+              />
+            </PressableScale>
+          ))}
+          <Button mode="contained" buttonColor={paperTheme.colors.primary} style={{ borderRadius: SHAPE.lg, marginTop: 20 }} onPress={() => setShowSettings(false)}>
+            Done
+          </Button>
+        </Modal>
+      </Portal>
     </ExpressiveScreen>
   );
 }
@@ -204,6 +253,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   avatarLetter: { fontWeight: "800", fontSize: 16 },
+  iconBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: SHAPE.pill,
+    alignItems: "center",
+    justifyContent: "center",
+  },
 
   heroTop: { flexDirection: "row", alignItems: "flex-start", gap: 14 },
   heroBadge: { width: 72, height: 72, borderRadius: 24, alignItems: "center", justifyContent: "center" },
@@ -248,4 +304,13 @@ const styles = StyleSheet.create({
 
   listGroup: { gap: 8 },
   statsRow: { flexDirection: "row", gap: 8 },
+  modal: { margin: 20, padding: 24, borderRadius: SHAPE.xl },
+  widgetRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: SHAPE.pill,
+    marginBottom: 8,
+  },
 });

@@ -16,7 +16,7 @@ function read(key: string, fallback: string): string {
 
 export const config = {
   supabase: {
-    url: read("EXPO_PUBLIC_SUPABASE_URL", "https://placeholder.supabase.co"),
+    url: read("EXPO_PUBLIC_SUPABASE_URL", "https://ffezpchxhxmxlkzkahha.supabase.co"),
     anonKey: read("EXPO_PUBLIC_SUPABASE_ANON_KEY", "placeholder-anon"),
   },
   graphql: {

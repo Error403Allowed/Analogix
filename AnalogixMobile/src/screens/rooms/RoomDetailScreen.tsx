@@ -49,7 +49,6 @@ export default function RoomDetailScreen() {
     >
       <ExpressiveScreen
         title={name ?? "Room"}
-        eyebrow="Room"
         subtitle={`${members.length} members · ${docs.length} docs`}
         onBack={() => navigation.goBack()}
         scroll={false}

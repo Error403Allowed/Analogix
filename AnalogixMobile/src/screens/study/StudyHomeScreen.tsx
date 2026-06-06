@@ -40,7 +40,6 @@ export default function StudyHomeScreen() {
   return (
     <ExpressiveScreen
       title="Study"
-      eyebrow="Tools"
       subtitle="Build, review, plan, and focus"
       leadingIcon="book-open-variant"
     >

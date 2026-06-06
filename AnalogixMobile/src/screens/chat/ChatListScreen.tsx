@@ -25,9 +25,11 @@ export default function ChatListScreen() {
   return (
     <ExpressiveScreen
       title="Tutor"
-      eyebrow="AI"
       subtitle={`${filtered.length} conversation${filtered.length !== 1 ? "s" : ""}`}
       leadingIcon="robot"
+      fab={
+        <FAB icon="plus" label="New chat" color={paperTheme.colors.onPrimary} style={{ backgroundColor: paperTheme.colors.primary, borderRadius: SHAPE.lg }} onPress={() => setShowNew(true)} />
+      }
     >
       <ExpressiveHeroPanel style={styles.hero}>
         <Text variant="headlineSmall" style={{ color: paperTheme.colors.onPrimaryContainer, fontWeight: "900" }}>
@@ -68,8 +70,6 @@ export default function ChatListScreen() {
         </View>
       </ExpressiveSection>
 
-      <FAB icon="plus" label="New chat" color={paperTheme.colors.onPrimary} style={[styles.fab, { backgroundColor: paperTheme.colors.primary }]} onPress={() => setShowNew(true)} />
-
       <Portal>
         <Modal visible={showNew} onDismiss={() => setShowNew(false)} contentContainerStyle={[styles.modal, { backgroundColor: paperTheme.colors.surface }]}>
           <Text variant="titleLarge" style={{ fontWeight: "700", color: paperTheme.colors.onSurface, marginBottom: 16 }}>
@@ -89,6 +89,5 @@ const styles = StyleSheet.create({
   hero: { minHeight: 150, gap: 8, justifyContent: "center" },
   search: { borderRadius: SHAPE.pill },
   list: { gap: 8 },
-  fab: { position: "absolute", right: 16, bottom: 100, borderRadius: SHAPE.lg },
   modal: { margin: 20, padding: 24, borderRadius: SHAPE.xl },
 });
