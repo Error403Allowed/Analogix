@@ -120,7 +120,7 @@ interface MarkdownRendererProps {
 }
 
 // Strip background colors from selected text for clean copy/paste in dark mode
-const useCleanCopy = (ref: React.RefObject<HTMLDivElement>) => {
+const useCleanCopy = (ref: React.RefObject<HTMLDivElement | null>) => {
   useEffect(() => {
     const element = ref.current;
     if (!element) return;
@@ -273,10 +273,10 @@ const MarkdownRenderer = ({ content, className, streaming = false }: MarkdownRen
           ),
           // pre wraps block code — intercept plotly/graph blocks
           pre: ({ children }) => {
-            // Dig out the <code> child to check language
-            const codeEl = (children as React.ReactElement);
-            const lang = codeEl?.props?.className as string | undefined;
-            const rawBlock = extractText(codeEl?.props?.children).replace(/\n$/, "");
+              // Dig out the <code> child to check language
+              const codeEl = (children as React.ReactElement<any>);
+              const lang = codeEl?.props?.className as string | undefined;
+              const rawBlock = extractText(codeEl?.props?.children).replace(/\n$/, "");
 
             const streamingPlaceholder = (
               <div className="my-4 rounded-2xl overflow-hidden border border-border/30 bg-muted/20 p-6 flex items-center justify-center gap-2">

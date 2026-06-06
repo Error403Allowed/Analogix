@@ -1,4 +1,14 @@
 {
   "extends": "./tsconfig.base.json",
-  "compilerOptions": {}
+  "compilerOptions": {},
+  "files": [],
+  "exclude": [
+    "**/*.config.ts",
+    "**/*.config.tsx",
+    "**/*.config.js",
+    "node_modules",
+    "dist",
+    "AnalogixWeb/tailwind.config.ts",
+    "AnalogixWeb/eslint.config.ts"
+  ]
 }
