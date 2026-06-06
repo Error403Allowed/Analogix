@@ -8,9 +8,19 @@ import type { MD3Theme } from "react-native-paper";
 
 export interface DynamicColorScheme {
   source: string;
-  light: MD3Theme["colors"];
-  dark: MD3Theme["colors"];
+  light: ExpressiveColors;
+  dark: ExpressiveColors;
 }
+
+export type ExpressiveColors = MD3Theme["colors"] & {
+  surfaceDim: string;
+  surfaceBright: string;
+  surfaceContainerLowest: string;
+  surfaceContainerLow: string;
+  surfaceContainer: string;
+  surfaceContainerHigh: string;
+  surfaceContainerHighest: string;
+};
 
 type PaletteKey = "primary" | "secondary" | "tertiary" | "neutral" | "neutralVariant" | "error";
 
@@ -88,6 +98,8 @@ const TONES: Record<string, number> = {
   surfaceContainerHighest: 90,
 };
 
+// Dark tones: surface containers bumped up significantly so cards are
+// visibly elevated against the background (tone 6) — was 12/17/22, now 16/24/30.
 const DARK_TONES: Record<string, number> = {
   primary: 80,
   onPrimary: 20,
@@ -117,12 +129,12 @@ const DARK_TONES: Record<string, number> = {
   inverseOnSurface: 20,
   inversePrimary: 40,
   surfaceDim: 6,
-  surfaceBright: 24,
+  surfaceBright: 32,
   surfaceContainerLowest: 4,
   surfaceContainerLow: 10,
-  surfaceContainer: 12,
-  surfaceContainerHigh: 17,
-  surfaceContainerHighest: 22,
+  surfaceContainer: 16,
+  surfaceContainerHigh: 24,
+  surfaceContainerHighest: 30,
 };
 
 function tone(
@@ -150,7 +162,7 @@ function darkTone(
 function buildColors(
   palettes: Record<PaletteKey, TonalPalette>,
   isDark: boolean,
-): MD3Theme["colors"] {
+): ExpressiveColors {
   const fn = isDark
     ? (r: string) => hexFromArgb(darkTone(palettes, r))
     : (r: string) => hexFromArgb(tone(palettes, r));
@@ -185,6 +197,13 @@ function buildColors(
     inverseSurface: fn("inverseSurface"),
     inverseOnSurface: fn("inverseOnSurface"),
     inversePrimary: fn("inversePrimary"),
+    surfaceDim: fn("surfaceDim"),
+    surfaceBright: fn("surfaceBright"),
+    surfaceContainerLowest: fn("surfaceContainerLowest"),
+    surfaceContainerLow: fn("surfaceContainerLow"),
+    surfaceContainer: fn("surfaceContainer"),
+    surfaceContainerHigh: fn("surfaceContainerHigh"),
+    surfaceContainerHighest: fn("surfaceContainerHighest"),
     surfaceDisabled: fn("surfaceVariant"),
     onSurfaceDisabled: fn("outline"),
     backdrop: fn("surfaceDim"),
@@ -193,12 +212,12 @@ function buildColors(
     elevation: {
       level0: "transparent",
       level1: n(isDark ? 10 : 96),
-      level2: n(isDark ? 12 : 94),
-      level3: n(isDark ? 14 : 92),
-      level4: n(isDark ? 16 : 90),
-      level5: n(isDark ? 18 : 88),
+      level2: n(isDark ? 14 : 94),
+      level3: n(isDark ? 18 : 92),
+      level4: n(isDark ? 22 : 90),
+      level5: n(isDark ? 26 : 88),
     },
-  };
+  } as ExpressiveColors;
 }
 
 export function generateDynamicScheme(seedHex: string): DynamicColorScheme {

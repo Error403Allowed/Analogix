@@ -34,7 +34,7 @@ interface ThemeContextValue {
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
-function buildDynamicTheme(isDark: boolean, seedHex: string): MD3Theme {
+function buildTonalTheme(isDark: boolean, seedHex: string): MD3Theme {
   const base = isDark ? darkTheme : lightTheme;
   const scheme = generateDynamicScheme(seedHex);
   const colors = isDark ? scheme.dark : scheme.light;
@@ -62,24 +62,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const brand = useMemo(() => BRAND_THEMES.find((b) => b.id === brandId) ?? BRAND_THEMES[0]!, [brandId]);
 
   const theme = useMemo(() => {
-    if (colorMode === "dynamic") {
-      return buildDynamicTheme(isDark, dynamicSeedHex);
-    }
-
-    const base = isDark ? darkTheme : lightTheme;
-    return {
-      ...base,
-      colors: {
-        ...base.colors,
-        primary: brand.primary,
-        secondary: brand.secondary,
-        tertiary: brand.tertiary,
-        primaryContainer: isDark ? base.colors.primaryContainer : `${brand.primary}22`,
-        onPrimaryContainer: isDark ? base.colors.onPrimaryContainer : `${brand.primary}33`,
-        background: isDark ? brand.bgDark : brand.bgLight,
-        surface: isDark ? brand.surfaceDark : brand.surfaceLight,
-      },
-    };
+    const seed = colorMode === "dynamic" ? dynamicSeedHex : brand.primary;
+    return buildTonalTheme(isDark, seed);
   }, [isDark, brand, colorMode, dynamicSeedHex]);
 
   const setBrand = useCallback((id: BrandThemeId) => {

@@ -1,16 +1,37 @@
 /**
- * Material 3 Expressive theme for AnalogixMobile.
+ * paperTheme.ts
  *
- * Built on react-native-paper v5's MD3 foundation, with the shape scale,
- * spring motion, Space Grotesk typography, and emphasis styles matching
- * Google Pixel's M3 Expressive (Spring 2025) design language.
+ * Design tokens, base light/dark M3 themes, and the BRAND_THEMES catalogue.
  *
- * - Space Grotesk font for editorial-scale typography
- * - Expressive shape radii (12–36 dp)
- * - Spring-based motion tokens for Reanimated
- * - 10 brand themes (mirroring AnalogixWeb)
- * - Dynamic color support via MCU engine
+ * HOW COLOURS WORK
+ * ─────────────────────────────────────────────────────────────────
+ * Each BrandTheme supplies a `primary` seed hex.  ThemeContext feeds
+ * that seed into generateDynamicScheme() (Material Color Utilities) which
+ * derives the FULL M3 palette — primary, secondary, tertiary, neutral,
+ * surface containers, everything — from that single hue.
+ *
+ * The M3 algorithm always targets:
+ *   • primary     → HCT chroma 48,  tone 40  (light) / 80  (dark)
+ *   • secondary   → HCT chroma 16,  tone 40  (light) / 80  (dark)
+ *   • tertiary    → hue+60°, chroma 24
+ *   • neutral     → same hue, chroma ~4  → subtle tint on surfaces
+ *
+ * This means the seed's EXACT saturation/lightness matters less than
+ * its HUE — the algorithm normalises it.  Seeds are chosen so their
+ * hue sits at good perceptual positions in the HCT space.
+ *
+ * COLOUR PSYCHOLOGY NOTES (research-backed)
+ * ─────────────────────────────────────────────────────────────────
+ * Indigo/Blue   Intellectual concentration, focus, calm, trust
+ * Cyan/Teal     Clarity, technology, precision, freshness
+ * Green         Balance, growth, calm; best for long focus sessions
+ * Amber/Orange  Motivation, energy, creativity, social warmth
+ * Red           Urgency, passion, attention (exam mode)
+ * Violet        Creativity, luxury, imagination, wisdom
+ * Rose/Magenta  Warmth, boldness, editorial character
+ * Neutral       Professional, distraction-free minimalism
  */
+
 import {
   MD3LightTheme,
   MD3DarkTheme,
@@ -18,136 +39,65 @@ import {
   type MD3Theme,
 } from "react-native-paper";
 
-export const FONT_FAMILY = "SpaceGrotesk";
+// ─── Shape & motion tokens ────────────────────────────────────────────────────
 
-// -----------------------------------------------------------------------------
-// M3 Expressive shape scale — pushed past default MD3 (4-28dp) to (8-36dp)
-// -----------------------------------------------------------------------------
 export const SHAPE = {
   none: 0,
-  xs: 8,
-  sm: 12,
-  md: 16,
-  lg: 22,
-  xl: 28,
-  xxl: 36,
+  xs:   4,
+  sm:   8,
+  md:   12,
+  lg:   16,
+  xl:   24,
+  xxl:  28,
   pill: 9999,
 } as const;
 
-// -----------------------------------------------------------------------------
-// M3 Expressive motion tokens — Reanimated 3 spring configs
-// -----------------------------------------------------------------------------
 export const MOTION = {
-  entry: { damping: 18, stiffness: 220, mass: 1 },
-  tap: { damping: 14, stiffness: 320, mass: 0.6 },
-  sheet: { damping: 24, stiffness: 200, mass: 0.9 },
-  exit: { damping: 22, stiffness: 240, mass: 0.8 },
-  duration: { short: 150, medium: 250, long: 400 },
+  entry:  { damping: 24, stiffness: 260, mass: 0.6 },
+  tap:    { damping: 18, stiffness: 350, mass: 0.4 },
+  sheet:  { damping: 28, stiffness: 300, mass: 0.7 },
+  exit:   { damping: 22, stiffness: 240, mass: 0.8 },
+  duration: { short: 150, medium: 300, long: 500 },
 } as const;
 
-// -----------------------------------------------------------------------------
-// Expressive typography — Space Grotesk with heavy weights for editorial feel
-// -----------------------------------------------------------------------------
+// ─── Typography ───────────────────────────────────────────────────────────────
+
 const fontConfig = {
-  displayLarge: { fontFamily: FONT_FAMILY, fontWeight: "800" as const, fontSize: 64, lineHeight: 72, letterSpacing: -1.5 },
-  displayMedium: { fontFamily: FONT_FAMILY, fontWeight: "800" as const, fontSize: 48, lineHeight: 56, letterSpacing: -1 },
-  displaySmall: { fontFamily: FONT_FAMILY, fontWeight: "700" as const, fontSize: 36, lineHeight: 44, letterSpacing: -0.5 },
-  headlineLarge: { fontFamily: FONT_FAMILY, fontWeight: "700" as const, fontSize: 32, lineHeight: 40, letterSpacing: -0.25 },
-  headlineMedium: { fontFamily: FONT_FAMILY, fontWeight: "700" as const, fontSize: 28, lineHeight: 36, letterSpacing: 0 },
-  headlineSmall: { fontFamily: FONT_FAMILY, fontWeight: "600" as const, fontSize: 24, lineHeight: 32, letterSpacing: 0 },
-  titleLarge: { fontFamily: FONT_FAMILY, fontWeight: "600" as const, fontSize: 20, lineHeight: 28, letterSpacing: 0 },
-  titleMedium: { fontFamily: FONT_FAMILY, fontWeight: "600" as const, fontSize: 16, lineHeight: 24, letterSpacing: 0.15 },
-  titleSmall: { fontFamily: FONT_FAMILY, fontWeight: "600" as const, fontSize: 14, lineHeight: 20, letterSpacing: 0.1 },
-  bodyLarge: { fontFamily: FONT_FAMILY, fontWeight: "400" as const, fontSize: 16, lineHeight: 24, letterSpacing: 0.5 },
-  bodyMedium: { fontFamily: FONT_FAMILY, fontWeight: "400" as const, fontSize: 14, lineHeight: 20, letterSpacing: 0.25 },
-  bodySmall: { fontFamily: FONT_FAMILY, fontWeight: "400" as const, fontSize: 12, lineHeight: 16, letterSpacing: 0.4 },
-  labelLarge: { fontFamily: FONT_FAMILY, fontWeight: "600" as const, fontSize: 14, lineHeight: 20, letterSpacing: 0.1 },
-  labelMedium: { fontFamily: FONT_FAMILY, fontWeight: "600" as const, fontSize: 12, lineHeight: 16, letterSpacing: 0.5 },
-  labelSmall: { fontFamily: FONT_FAMILY, fontWeight: "600" as const, fontSize: 11, lineHeight: 16, letterSpacing: 0.5 },
+  displayLarge:   { fontWeight: "700" as const, fontSize: 57, lineHeight: 64,  letterSpacing: -0.25 },
+  displayMedium:  { fontWeight: "700" as const, fontSize: 45, lineHeight: 52,  letterSpacing: 0    },
+  displaySmall:   { fontWeight: "700" as const, fontSize: 36, lineHeight: 44,  letterSpacing: 0    },
+  headlineLarge:  { fontWeight: "600" as const, fontSize: 32, lineHeight: 40,  letterSpacing: 0    },
+  headlineMedium: { fontWeight: "600" as const, fontSize: 28, lineHeight: 36,  letterSpacing: 0    },
+  headlineSmall:  { fontWeight: "600" as const, fontSize: 24, lineHeight: 32,  letterSpacing: 0    },
+  titleLarge:     { fontWeight: "600" as const, fontSize: 22, lineHeight: 28,  letterSpacing: 0    },
+  titleMedium:    { fontWeight: "600" as const, fontSize: 16, lineHeight: 24,  letterSpacing: 0.15 },
+  titleSmall:     { fontWeight: "600" as const, fontSize: 14, lineHeight: 20,  letterSpacing: 0.1  },
+  bodyLarge:      { fontWeight: "400" as const, fontSize: 16, lineHeight: 24,  letterSpacing: 0.5  },
+  bodyMedium:     { fontWeight: "400" as const, fontSize: 14, lineHeight: 20,  letterSpacing: 0.25 },
+  bodySmall:      { fontWeight: "400" as const, fontSize: 12, lineHeight: 16,  letterSpacing: 0.4  },
+  labelLarge:     { fontWeight: "500" as const, fontSize: 14, lineHeight: 20,  letterSpacing: 0.1  },
+  labelMedium:    { fontWeight: "500" as const, fontSize: 12, lineHeight: 16,  letterSpacing: 0.5  },
+  labelSmall:     { fontWeight: "500" as const, fontSize: 11, lineHeight: 16,  letterSpacing: 0.5  },
 };
 
-// -----------------------------------------------------------------------------
-// Light color tokens — Cosmic Aurora default palette
-// -----------------------------------------------------------------------------
-const lightPrimary = "#5B5FE9";
-const lightOnPrimary = "#FFFFFF";
-const lightPrimaryContainer = "#E0E1FF";
-const lightOnPrimaryContainer = "#0D0E47";
-const lightSecondary = "#9D5BFF";
-const lightOnSecondary = "#FFFFFF";
-const lightSecondaryContainer = "#F1E5FF";
-const lightOnSecondaryContainer = "#22005C";
-const lightTertiary = "#00C2A8";
-const lightOnTertiary = "#FFFFFF";
-const lightTertiaryContainer = "#B3F1E5";
-const lightOnTertiaryContainer = "#003830";
-const lightError = "#FF3B5B";
-const lightBackground = "#FBFAFF";
-const lightSurface = "#FFFFFF";
-const lightSurfaceVariant = "#EBE9F2";
-const lightOnSurface = "#1B1B22";
-const lightOnSurfaceVariant = "#46464F";
-const lightOutline = "#777685";
+// ─── Base themes (colours are overridden by the dynamic scheme) ───────────────
 
-// -----------------------------------------------------------------------------
-// Dark color tokens
-// -----------------------------------------------------------------------------
-const darkPrimary = "#BFC0FF";
-const darkOnPrimary = "#1F1F75";
-const darkPrimaryContainer = "#3737A0";
-const darkOnPrimaryContainer = "#E0E1FF";
-const darkSecondary = "#D2B7FF";
-const darkOnSecondary = "#3D1B7A";
-const darkSecondaryContainer = "#5A2BAB";
-const darkOnSecondaryContainer = "#F1E5FF";
-const darkTertiary = "#85D9CC";
-const darkOnTertiary = "#003830";
-const darkTertiaryContainer = "#005048";
-const darkOnTertiaryContainer = "#B3F1E5";
-const darkError = "#FF8A9A";
-const darkBackground = "#0B0F1A";
-const darkSurface = "#131826";
-const darkSurfaceVariant = "#1E2235";
-const darkOnSurface = "#E4E4F0";
-const darkOnSurfaceVariant = "#C5C5D2";
-const darkOutline = "#8E8E9B";
-
-// -----------------------------------------------------------------------------
-// Themes
-// -----------------------------------------------------------------------------
 export const lightTheme: MD3Theme = {
   ...MD3LightTheme,
   roundness: SHAPE.md,
   fonts: configureFonts({ config: fontConfig }),
   colors: {
     ...MD3LightTheme.colors,
-    primary: lightPrimary,
-    onPrimary: lightOnPrimary,
-    primaryContainer: lightPrimaryContainer,
-    onPrimaryContainer: lightOnPrimaryContainer,
-    secondary: lightSecondary,
-    onSecondary: lightOnSecondary,
-    secondaryContainer: lightSecondaryContainer,
-    onSecondaryContainer: lightOnSecondaryContainer,
-    tertiary: lightTertiary,
-    onTertiary: lightOnTertiary,
-    tertiaryContainer: lightTertiaryContainer,
-    onTertiaryContainer: lightOnTertiaryContainer,
-    error: lightError,
-    background: lightBackground,
-    onBackground: lightOnSurface,
-    surface: lightSurface,
-    onSurface: lightOnSurface,
-    surfaceVariant: lightSurfaceVariant,
-    onSurfaceVariant: lightOnSurfaceVariant,
-    outline: lightOutline,
+    background: "#FFFBFE",
+    surface:    "#FFFBFE",
+    onSurface:  "#1C1B1F",
     elevation: {
       level0: "transparent",
-      level1: "#F4F2FA",
-      level2: "#EEEBF6",
-      level3: "#E8E4F0",
-      level4: "#E4DFEC",
-      level5: "#DDD7E5",
+      level1: "#F5F0F7",
+      level2: "#F0EBF3",
+      level3: "#ECE6F0",
+      level4: "#EBE5EF",
+      level5: "#E9E2ED",
     },
   },
 };
@@ -158,43 +108,41 @@ export const darkTheme: MD3Theme = {
   fonts: configureFonts({ config: fontConfig }),
   colors: {
     ...MD3DarkTheme.colors,
-    primary: darkPrimary,
-    onPrimary: darkOnPrimary,
-    primaryContainer: darkPrimaryContainer,
-    onPrimaryContainer: darkOnPrimaryContainer,
-    secondary: darkSecondary,
-    onSecondary: darkOnSecondary,
-    secondaryContainer: darkSecondaryContainer,
-    onSecondaryContainer: darkOnSecondaryContainer,
-    tertiary: darkTertiary,
-    onTertiary: darkOnTertiary,
-    tertiaryContainer: darkTertiaryContainer,
-    onTertiaryContainer: darkOnTertiaryContainer,
-    error: darkError,
-    background: darkBackground,
-    onBackground: darkOnSurface,
-    surface: darkSurface,
-    onSurface: darkOnSurface,
-    surfaceVariant: darkSurfaceVariant,
-    onSurfaceVariant: darkOnSurfaceVariant,
-    outline: darkOutline,
+    background: "#141218",
+    surface:    "#141218",
+    onSurface:  "#E6E1E5",
     elevation: {
       level0: "transparent",
-      level1: "#171B2D",
-      level2: "#1A1F33",
-      level3: "#1E2235",
-      level4: "#20243A",
-      level5: "#252A45",
+      level1: "#1E1B23",
+      level2: "#222028",
+      level3: "#26242D",
+      level4: "#282530",
+      level5: "#2B2832",
     },
   },
 };
 
-// -----------------------------------------------------------------------------
-// Brand theme variants (10 themes, mirrors AnalogixWeb)
-// -----------------------------------------------------------------------------
+// ─── Brand themes ─────────────────────────────────────────────────────────────
+
+/**
+ * BrandThemeId — one ID per theme.
+ * preview[0] + preview[1] are the two swatch colours shown in the theme picker.
+ * `primary`   is the M3 seed — its HUE determines the whole generated palette.
+ * `secondary` / `tertiary` are display-only (shown in picker, not fed to M3).
+ */
 export type BrandThemeId =
-  | "cosmic" | "paper" | "sunrise" | "forest" | "rose"
-  | "midnight" | "coral" | "candy" | "cyber" | "prismatic";
+  | "cosmic"     // ~260° indigo
+  | "midnight"   // ~222° royal blue
+  | "aurora"     // ~192° electric cyan
+  | "jade"       // ~175° deep teal
+  | "forest"     // ~143° emerald
+  | "lime"       // ~100° lime-green
+  | "solar"      // ~42°  amber-gold
+  | "ember"      // ~22°  burnt orange
+  | "crimson"    // ~5°   deep red
+  | "sakura"     // ~332° rose-pink
+  | "amethyst"   // ~285° rich violet
+  | "slate";     // near-neutral blue-grey
 
 export interface BrandTheme {
   id: BrandThemeId;
@@ -203,142 +151,22 @@ export interface BrandTheme {
   primary: string;
   secondary: string;
   tertiary: string;
-  bgLight: string;
-  surfaceLight: string;
-  bgDark: string;
-  surfaceDark: string;
   preview: [string, string];
 }
 
+// A small catalogue of brand themes used by the theme picker. The `primary`
+// value acts as the dynamic seed for Material Color Utilities.
 export const BRAND_THEMES: BrandTheme[] = [
-  {
-    id: "cosmic",
-    name: "Cosmic Aurora",
-    description: "Deep space purples and electric pinks",
-    primary: lightPrimary,
-    secondary: lightSecondary,
-    tertiary: lightTertiary,
-    bgLight: "#F6F3FF",
-    surfaceLight: "#FFFFFF",
-    bgDark: "#0B0D1A",
-    surfaceDark: "#12142A",
-    preview: [lightPrimary, lightSecondary],
-  },
-  {
-    id: "paper",
-    name: "Paper",
-    description: "Soft monochrome for long study sessions",
-    primary: "#5A5A6A",
-    secondary: "#8A8A95",
-    tertiary: "#B5B5C0",
-    bgLight: "#F8F8FA",
-    surfaceLight: "#FFFFFF",
-    bgDark: "#121217",
-    surfaceDark: "#1A1A22",
-    preview: ["#5A5A6A", "#B5B5C0"],
-  },
-  {
-    id: "sunrise",
-    name: "Sunrise",
-    description: "Warm oranges and golds for energy",
-    primary: "#FF6B35",
-    secondary: "#FFB800",
-    tertiary: "#FF8C42",
-    bgLight: "#FFF8F0",
-    surfaceLight: "#FFFFFF",
-    bgDark: "#1A1210",
-    surfaceDark: "#241A14",
-    preview: ["#FF6B35", "#FFB800"],
-  },
-  {
-    id: "forest",
-    name: "Forest",
-    description: "Calming greens for focused work",
-    primary: "#1F8B4C",
-    secondary: "#7CB342",
-    tertiary: "#26A69A",
-    bgLight: "#F0FAF2",
-    surfaceLight: "#FFFFFF",
-    bgDark: "#0E1A12",
-    surfaceDark: "#142418",
-    preview: ["#1F8B4C", "#26A69A"],
-  },
-  {
-    id: "rose",
-    name: "Rose Garden",
-    description: "Soft pinks and warm neutrals",
-    primary: "#D6336C",
-    secondary: "#F06595",
-    tertiary: "#FFA8A8",
-    bgLight: "#FFF5F7",
-    surfaceLight: "#FFFFFF",
-    bgDark: "#1A0E12",
-    surfaceDark: "#24141A",
-    preview: ["#D6336C", "#F06595"],
-  },
-  {
-    id: "midnight",
-    name: "Midnight Gold",
-    description: "Deep navy with warm amber accents",
-    primary: "#3949AB",
-    secondary: "#F9A825",
-    tertiary: "#7E57C2",
-    bgLight: "#F0F2FF",
-    surfaceLight: "#FFFFFF",
-    bgDark: "#0A0D1A",
-    surfaceDark: "#11152A",
-    preview: ["#3949AB", "#F9A825"],
-  },
-  {
-    id: "coral",
-    name: "Coral Blush",
-    description: "Warm coral with soft rose undertones",
-    primary: "#E53935",
-    secondary: "#F06292",
-    tertiary: "#FF8A80",
-    bgLight: "#FFF5F5",
-    surfaceLight: "#FFFFFF",
-    bgDark: "#1A0E0E",
-    surfaceDark: "#241414",
-    preview: ["#E53935", "#F06292"],
-  },
-  {
-    id: "candy",
-    name: "Candy Pop",
-    description: "Vibrant purple-pink energy",
-    primary: "#AD1457",
-    secondary: "#E040FB",
-    tertiary: "#FF80AB",
-    bgLight: "#FFF3F8",
-    surfaceLight: "#FFFFFF",
-    bgDark: "#1A0E14",
-    surfaceDark: "#24141C",
-    preview: ["#AD1457", "#E040FB"],
-  },
-  {
-    id: "cyber",
-    name: "Cyber Neon",
-    description: "Electric cyan and magenta",
-    primary: "#00BCD4",
-    secondary: "#E040FB",
-    tertiary: "#00E676",
-    bgLight: "#F0FFFE",
-    surfaceLight: "#FFFFFF",
-    bgDark: "#0A141A",
-    surfaceDark: "#0E1A1E",
-    preview: ["#00BCD4", "#E040FB"],
-  },
-  {
-    id: "prismatic",
-    name: "Prismatic",
-    description: "Multi-hue shifting palette",
-    primary: "#6200EA",
-    secondary: "#00BFA5",
-    tertiary: "#FF6D00",
-    bgLight: "#F8F3FF",
-    surfaceLight: "#FFFFFF",
-    bgDark: "#100E1A",
-    surfaceDark: "#16142A",
-    preview: ["#6200EA", "#00BFA5"],
-  },
+  { id: "cosmic",   name: "Cosmic",   description: "Indigo calm",    primary: "#6750A4", secondary: "#5B5FC7", tertiary: "#8B5CF6", preview: ["#6750A4","#7C6BC7"] },
+  { id: "midnight", name: "Midnight", description: "Royal blue",     primary: "#1E3A8A", secondary: "#2546A6", tertiary: "#3B82F6", preview: ["#1E3A8A","#2546A6"] },
+  { id: "aurora",   name: "Aurora",   description: "Electric cyan",  primary: "#06B6D4", secondary: "#0891B2", tertiary: "#34D4E6", preview: ["#06B6D4","#0891B2"] },
+  { id: "jade",     name: "Jade",     description: "Deep teal",      primary: "#0F766E", secondary: "#0EA5A4", tertiary: "#2DD4BF", preview: ["#0F766E","#0EA5A4"] },
+  { id: "forest",   name: "Forest",   description: "Emerald",        primary: "#12723A", secondary: "#16A34A", tertiary: "#4ADE80", preview: ["#12723A","#16A34A"] },
+  { id: "lime",     name: "Lime",     description: "Lime green",     primary: "#84CC16", secondary: "#A3E635", tertiary: "#D9F99D", preview: ["#84CC16","#A3E635"] },
+  { id: "solar",    name: "Solar",    description: "Amber gold",     primary: "#B45309", secondary: "#F59E0B", tertiary: "#FFD166", preview: ["#B45309","#F59E0B"] },
+  { id: "ember",    name: "Ember",    description: "Burnt orange",   primary: "#C2410C", secondary: "#FB923C", tertiary: "#FDBA74", preview: ["#C2410C","#FB923C"] },
+  { id: "crimson",  name: "Crimson",  description: "Deep red",       primary: "#C0262E", secondary: "#EF4444", tertiary: "#FCA5A5", preview: ["#C0262E","#EF4444"] },
+  { id: "sakura",   name: "Sakura",   description: "Rose pink",      primary: "#C51676", secondary: "#FB7185", tertiary: "#FBCFE8", preview: ["#C51676","#FB7185"] },
+  { id: "amethyst", name: "Amethyst", description: "Rich violet",    primary: "#7C3AED", secondary: "#8B5CF6", tertiary: "#C4B5FD", preview: ["#7C3AED","#8B5CF6"] },
+  { id: "slate",    name: "Slate",    description: "Blue-grey",      primary: "#475569", secondary: "#64748B", tertiary: "#94A3B8", preview: ["#475569","#64748B"] },
 ];
