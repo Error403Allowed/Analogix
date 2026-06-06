@@ -4,3 +4,9 @@ dist
 .env.local
 .DS_Store
 *.log
+
+# TS compile artifacts
+*.js
+*.d.ts
+*.js.map
+*.d.ts.map
