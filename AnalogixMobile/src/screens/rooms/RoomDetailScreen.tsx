@@ -1,19 +1,16 @@
-/**
- * Room detail — chat + canvas + documents, with subscription for live messages.
- */
 import React, { useState } from "react";
-import { View, StyleSheet, ScrollView, TextInput, KeyboardAvoidingView, Platform, FlatList } from "react-native";
-import { Text, useTheme, IconButton, ActivityIndicator } from "react-native-paper";
+import { View, StyleSheet, FlatList, KeyboardAvoidingView, Platform } from "react-native";
+import { Text, useTheme, ActivityIndicator, TextInput } from "react-native-paper";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQuery, useMutation, useSubscription } from "@apollo/client";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import { ROOM_DETAIL, ROOM_MESSAGES_SUB, SEND_ROOM_MESSAGE } from "../../graphql/queries/room";
-import { useThemeContext } from "../../theme/ThemeContext";
 import { SHAPE } from "../../theme/tokens";
-import Icon from "../../components/Icon";
+import { ExpressiveCard, ExpressiveEmptyState, ExpressiveScreen } from "../../components/expressive";
 
 export default function RoomDetailScreen() {
   const paperTheme = useTheme();
-  const { brand } = useThemeContext();
+  const insets = useSafeAreaInsets();
   const route = useRoute<any>();
   const navigation = useNavigation();
   const { roomId, name } = route.params;
@@ -21,18 +18,7 @@ export default function RoomDetailScreen() {
   const [sendMessage, { loading: sending }] = useMutation(SEND_ROOM_MESSAGE);
   const [text, setText] = useState("");
 
-  // Subscribe to new messages in this room
-  useSubscription(ROOM_MESSAGES_SUB, {
-    variables: { roomId },
-    onData: () => refetch(),
-  });
-
-  if (loading) return <ActivityIndicator style={{ marginTop: 60 }} />;
-
-  const room = data?.room;
-  const messages = room?.messages ?? [];
-  const members = room?.members ?? [];
-  const docs = room?.documents ?? [];
+  useSubscription(ROOM_MESSAGES_SUB, { variables: { roomId }, onData: () => refetch() });
 
   const handleSend = async () => {
     const content = text.trim();
@@ -40,95 +26,130 @@ export default function RoomDetailScreen() {
     setText("");
     try {
       await sendMessage({ variables: { roomId, content } });
-    } catch (e) {
-      // restore text on error
+    } catch {
       setText(content);
     }
   };
 
+  if (loading) return (
+    <View style={[styles.container, { backgroundColor: paperTheme.colors.background, alignItems: "center", justifyContent: "center" }]}>
+      <ActivityIndicator />
+    </View>
+  );
+
+  const room = data?.room;
+  const messages = [...(room?.messages ?? [])].reverse();
+  const members = room?.members ?? [];
+  const docs = room?.documents ?? [];
+
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
       style={[styles.container, { backgroundColor: paperTheme.colors.background }]}
     >
-      <View style={styles.header}>
-        <IconButton icon="arrow-left" onPress={() => navigation.goBack()} />
-        <View style={{ flex: 1 }}>
-          <Text variant="bodyMedium" style={{ color: paperTheme.colors.onSurfaceVariant }}>Room</Text>
-          <Text variant="titleLarge" style={{ fontWeight: "800" }}>{name}</Text>
-        </View>
-        <View style={styles.avatarRow}>
-          {members.slice(0, 3).map((m: any) => (
-            <View key={m.id} style={[styles.avatar, { backgroundColor: brand.tertiary }]}>
-              <Text style={{ color: "#fff", fontWeight: "800" }}>{(m.user?.name ?? "?").charAt(0).toUpperCase()}</Text>
-            </View>
-          ))}
-        </View>
-      </View>
-
-      <FlatList
-        data={messages}
-        keyExtractor={(m) => m.id}
-        contentContainerStyle={styles.chat}
-        ListEmptyComponent={
-          <View style={styles.empty}>
-            <Icon name="message-text-outline" size={48} color={paperTheme.colors.onSurfaceVariant} />
-            <Text variant="bodyMedium" style={{ color: paperTheme.colors.onSurfaceVariant, marginTop: 12 }}>
-              Say hi to start the conversation.
-            </Text>
+      <ExpressiveScreen
+        title={name ?? "Room"}
+        eyebrow="Room"
+        subtitle={`${members.length} members · ${docs.length} docs`}
+        onBack={() => navigation.goBack()}
+        scroll={false}
+        contentStyle={styles.sessionContent}
+        actions={
+          <View style={styles.avatarRow}>
+            {members.slice(0, 3).map((m: any) => (
+              <View key={m.id} style={[styles.avatar, { backgroundColor: paperTheme.colors.primary, borderColor: paperTheme.colors.surface }]}>
+                <Text style={{ color: paperTheme.colors.onPrimary, fontWeight: "900", fontSize: 11 }}>
+                  {(m.user?.name ?? "?").charAt(0)}
+                </Text>
+              </View>
+            ))}
           </View>
         }
-        renderItem={({ item }) => (
-          <View style={[styles.bubble, { backgroundColor: paperTheme.colors.surface, borderRadius: SHAPE.lg }]}>
-            <Text variant="labelSmall" style={{ color: brand.primary, fontWeight: "800" }}>
-              {item.user?.name ?? "User"}
-            </Text>
-            <Text variant="bodyMedium" style={{ marginTop: 2 }}>{item.text ?? item.content}</Text>
-          </View>
+      >
+        <FlatList
+          data={messages}
+          keyExtractor={(m) => m.id}
+          inverted
+          contentContainerStyle={styles.chat}
+          ListEmptyComponent={
+            <View style={{ transform: [{ scaleY: -1 }] }}>
+              <ExpressiveEmptyState icon="message-text-outline" title="Say hi" subtitle="Start the room conversation." />
+            </View>
+          }
+          renderItem={({ item }) => (
+            <View style={[styles.msgRow, item.user?.id === "me" && styles.msgRowUser]}>
+              <View
+                style={[
+                  styles.bubble,
+                  {
+                    backgroundColor: item.user?.id === "me" ? paperTheme.colors.primary : paperTheme.colors.surfaceVariant,
+                    borderBottomRightRadius: item.user?.id === "me" ? 6 : 22,
+                    borderBottomLeftRadius: item.user?.id === "me" ? 22 : 6,
+                  },
+                ]}
+              >
+                <Text style={{ color: item.user?.id === "me" ? paperTheme.colors.onPrimary : paperTheme.colors.onSurface, lineHeight: 20 }}>
+                  {item.text ?? item.content}
+                </Text>
+              </View>
+            </View>
+          )}
+        />
+
+        {docs.length > 0 && (
+          <ExpressiveCard style={styles.docsCard} tone="low">
+            <Text variant="labelMedium" style={{ fontWeight: "700", color: paperTheme.colors.onSurface, marginBottom: 4 }}>Shared docs</Text>
+            {docs.map((d: any) => (
+              <Text key={d.id} variant="bodySmall" style={{ color: paperTheme.colors.onSurfaceVariant }}>· {d.title}</Text>
+            ))}
+          </ExpressiveCard>
         )}
-      />
 
-      {docs.length > 0 && (
-        <View style={[styles.docs, { backgroundColor: paperTheme.colors.surface }]}>
-          <Text variant="labelMedium" style={{ fontWeight: "800", marginBottom: 4 }}>Shared docs</Text>
-          {docs.map((d: any) => (
-            <Text key={d.id} variant="bodySmall" style={{ color: paperTheme.colors.onSurfaceVariant }}>
-              · {d.title}
-            </Text>
-          ))}
+        <View
+          style={[
+            styles.composer,
+            {
+              backgroundColor: paperTheme.colors.surface,
+              paddingBottom: insets.bottom + 8,
+              borderTopColor: paperTheme.colors.outlineVariant,
+            },
+          ]}
+        >
+          <TextInput
+            mode="outlined"
+            value={text}
+            onChangeText={setText}
+            placeholder="Message…"
+            style={[styles.input, { backgroundColor: paperTheme.colors.surfaceVariant }]}
+            outlineStyle={{ borderRadius: SHAPE.pill }}
+            returnKeyType="send"
+            onSubmitEditing={handleSend}
+            blurOnSubmit={false}
+            right={
+              <TextInput.Icon
+                icon={sending ? "loading" : "send"}
+                color={text.trim() && !sending ? paperTheme.colors.primary : paperTheme.colors.onSurfaceVariant}
+                onPress={handleSend}
+                disabled={sending || !text.trim()}
+              />
+            }
+          />
         </View>
-      )}
-
-      <View style={[styles.composer, { backgroundColor: paperTheme.colors.surface }]}>
-        <TextInput
-          value={text}
-          onChangeText={setText}
-          placeholder="Message…"
-          placeholderTextColor={paperTheme.colors.onSurfaceVariant}
-          style={[styles.input, { color: paperTheme.colors.onSurface, borderRadius: SHAPE.xl }]}
-        />
-        <IconButton
-          icon="send"
-          iconColor="#fff"
-          containerColor={brand.primary}
-          size={20}
-          onPress={handleSend}
-          disabled={sending}
-        />
-      </View>
+      </ExpressiveScreen>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { flexDirection: "row", alignItems: "center", paddingTop: 50, paddingHorizontal: 8, gap: 8 },
+  sessionContent: { flex: 1, paddingHorizontal: 0, paddingBottom: 0 },
   avatarRow: { flexDirection: "row" },
-  avatar: { width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center", marginLeft: -8, borderWidth: 2, borderColor: "#fff" },
-  chat: { padding: 20, paddingBottom: 12, gap: 8 },
-  empty: { alignItems: "center", paddingTop: 60 },
-  bubble: { padding: 12, maxWidth: "85%", alignSelf: "flex-start" },
-  docs: { padding: 12, marginHorizontal: 16, borderRadius: 12, marginBottom: 8 },
-  composer: { flexDirection: "row", alignItems: "center", padding: 8, gap: 8, paddingBottom: 100 },
-  input: { flex: 1, backgroundColor: "rgba(0,0,0,0.05)", paddingHorizontal: 16, paddingVertical: 10, fontSize: 16 },
+  avatar: { width: 30, height: 30, borderRadius: 15, alignItems: "center", justifyContent: "center", marginLeft: -6, borderWidth: 2 },
+  chat: { paddingHorizontal: 16, paddingTop: 12, gap: 6 },
+  msgRow: { flexDirection: "row" },
+  msgRowUser: { justifyContent: "flex-end" },
+  bubble: { maxWidth: "82%", paddingHorizontal: 14, paddingVertical: 10, borderRadius: 22 },
+  docsCard: { marginHorizontal: 12, marginBottom: 8 },
+  composer: { paddingTop: 10, paddingHorizontal: 12, borderTopWidth: StyleSheet.hairlineWidth, gap: 8 },
+  input: { borderRadius: SHAPE.pill },
 });
