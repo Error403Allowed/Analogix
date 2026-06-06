@@ -1,20 +1,13 @@
-/**
- * Document editor — markdown-style text area (BlockNote on web, plain TextInput v1).
- * Saves to the BFF via updateDocument mutation.
- */
 import React, { useState } from "react";
-import { View, StyleSheet, TextInput, ScrollView, Alert } from "react-native";
+import { View, StyleSheet, TextInput, Alert } from "react-native";
 import { Text, useTheme, IconButton, Button, ActivityIndicator } from "react-native-paper";
 import { useQuery, useMutation } from "@apollo/client";
 import { useRoute, useNavigation } from "@react-navigation/native";
-import { DOCUMENT } from "../../graphql/queries/subject";
-import { UPDATE_DOCUMENT } from "../../graphql/queries/subject";
-import { useThemeContext } from "../../theme/ThemeContext";
+import { DOCUMENT, UPDATE_DOCUMENT } from "../../graphql/queries/subject";
 import { SHAPE } from "../../theme/tokens";
 
 export default function DocumentEditorScreen() {
   const paperTheme = useTheme();
-  const { brand } = useThemeContext();
   const route = useRoute<any>();
   const navigation = useNavigation();
   const { documentId } = route.params;
@@ -31,13 +24,7 @@ export default function DocumentEditorScreen() {
   const save = async () => {
     try {
       await updateDocument({
-        variables: {
-          input: {
-            documentId,
-            subjectId: data?.document?.subjectId ?? "",
-            content,
-          },
-        },
+        variables: { input: { documentId, subjectId: data?.document?.subjectId ?? "", content } },
       });
       Alert.alert("Saved", "Your changes are live.");
     } catch (e: any) {
@@ -45,54 +32,41 @@ export default function DocumentEditorScreen() {
     }
   };
 
-  if (loading) return <ActivityIndicator style={{ marginTop: 60 }} />;
+  if (loading) return (
+    <View style={[styles.container, { backgroundColor: paperTheme.colors.background, alignItems: "center", justifyContent: "center" }]}>
+      <ActivityIndicator />
+    </View>
+  );
 
   return (
     <View style={[styles.container, { backgroundColor: paperTheme.colors.background }]}>
-      <View style={styles.header}>
+      <View style={[styles.topBar, { backgroundColor: paperTheme.colors.surface }]}>
         <IconButton icon="arrow-left" onPress={() => navigation.goBack()} />
-        <Text variant="titleLarge" style={{ flex: 1, fontWeight: "800" }}>
+        <Text variant="titleMedium" style={{ fontWeight: "700", flex: 1 }}>
           {data?.document?.title ?? "Document"}
         </Text>
-        <Button
-          mode="contained"
-          buttonColor={brand.primary}
-          onPress={save}
-          loading={saving}
-          compact
-        >
+        <Button mode="contained" compact onPress={save} loading={saving} style={{ borderRadius: SHAPE.lg, marginRight: 8 }}>
           Save
         </Button>
       </View>
-      <TextInput
-        multiline
-        value={content}
-        onChangeText={setContent}
-        placeholder="Start writing…"
-        placeholderTextColor={paperTheme.colors.onSurfaceVariant}
-        style={[
-          styles.editor,
-          {
-            backgroundColor: paperTheme.colors.surface,
-            color: paperTheme.colors.onSurface,
-            borderRadius: SHAPE.lg,
-          },
-        ]}
-        textAlignVertical="top"
-      />
+      <View style={[styles.editorWrap, { backgroundColor: paperTheme.colors.surface, borderColor: paperTheme.colors.outline }]}>
+        <TextInput
+          multiline
+          value={content}
+          onChangeText={setContent}
+          placeholder="Start writing..."
+          placeholderTextColor={paperTheme.colors.onSurfaceVariant}
+          style={[styles.editor, { color: paperTheme.colors.onSurface }]}
+          textAlignVertical="top"
+        />
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { flexDirection: "row", alignItems: "center", paddingTop: 50, paddingHorizontal: 8 },
-  editor: {
-    flex: 1,
-    margin: 16,
-    marginBottom: 80,
-    padding: 16,
-    fontSize: 16,
-    lineHeight: 24,
-  },
+  topBar: { flexDirection: "row", alignItems: "center", paddingTop: 50, paddingHorizontal: 4 },
+  editorWrap: { flex: 1, margin: 16, borderRadius: SHAPE.lg, borderWidth: 1, overflow: "hidden" },
+  editor: { flex: 1, padding: 16, fontSize: 16, lineHeight: 24 },
 });

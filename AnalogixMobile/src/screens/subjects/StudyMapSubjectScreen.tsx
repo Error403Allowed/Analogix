@@ -1,15 +1,11 @@
-/**
- * Study map — visual node graph for a subject. v1 renders as a vertical timeline of topics.
- */
 import React from "react";
 import { View, StyleSheet, ScrollView } from "react-native";
-import { Text, useTheme, IconButton, ActivityIndicator } from "react-native-paper";
+import { Text, useTheme, Card, IconButton, ActivityIndicator, Chip } from "react-native-paper";
 import { useQuery } from "@apollo/client";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import { SUBJECT_DETAIL } from "../../graphql/queries/subject";
 import { useThemeContext } from "../../theme/ThemeContext";
 import { SHAPE } from "../../theme/tokens";
-import Icon from "../../components/Icon";
 
 export default function StudyMapSubjectScreen() {
   const paperTheme = useTheme();
@@ -22,13 +18,14 @@ export default function StudyMapSubjectScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: paperTheme.colors.background }]}>
-      <View style={styles.header}>
+      <View style={[styles.topBar, { backgroundColor: paperTheme.colors.surface }]}>
         <IconButton icon="arrow-left" onPress={() => navigation.goBack()} />
-        <View>
-          <Text variant="bodyMedium" style={{ color: paperTheme.colors.onSurfaceVariant }}>Study Map</Text>
-          <Text variant="headlineLarge" style={styles.title}>{name}</Text>
+        <View style={{ flex: 1 }}>
+          <Text variant="bodySmall" style={{ color: paperTheme.colors.onSurfaceVariant }}>Study Map</Text>
+          <Text variant="titleLarge" style={{ fontWeight: "700" }}>{name}</Text>
         </View>
       </View>
+
       <ScrollView contentContainerStyle={styles.list}>
         {loading ? (
           <ActivityIndicator style={{ marginTop: 40 }} />
@@ -38,23 +35,23 @@ export default function StudyMapSubjectScreen() {
               <View key={c.id} style={styles.nodeRow}>
                 <View style={styles.lineCol}>
                   <View style={[styles.node, { backgroundColor: brand.primary }]}>
-                    <Text style={{ color: "#fff", fontWeight: "900" }}>{i + 1}</Text>
+                    <Text style={{ color: "#fff", fontWeight: "700", fontSize: 12 }}>{i + 1}</Text>
                   </View>
-                  {i < chapters.length - 1 && <View style={[styles.connector, { backgroundColor: paperTheme.colors.outline }]} />}
+                  {i < chapters.length - 1 && <View style={[styles.connector, { backgroundColor: paperTheme.colors.outlineVariant }]} />}
                 </View>
-                <View style={[styles.card, { backgroundColor: paperTheme.colors.surface, borderRadius: SHAPE.lg }]}>
-                  <Text variant="titleMedium" style={{ fontWeight: "800" }}>{c.name}</Text>
-                  <Text variant="bodySmall" style={{ color: paperTheme.colors.onSurfaceVariant, marginTop: 4 }}>
-                    {c.topics?.length ?? 0} topics
-                  </Text>
-                  <View style={styles.topicChips}>
-                    {c.topics?.slice(0, 4).map((t: any) => (
-                      <View key={t.id} style={[styles.chip, { backgroundColor: `${brand.primary}22`, borderRadius: SHAPE.pill }]}>
-                        <Text variant="labelSmall" style={{ color: brand.primary }}>{t.name}</Text>
-                      </View>
-                    ))}
-                  </View>
-                </View>
+                <Card mode="outlined" style={styles.card}>
+                  <Card.Content>
+                    <Text variant="bodyLarge" style={{ fontWeight: "600", color: paperTheme.colors.onSurface }}>{c.name}</Text>
+                    <Text variant="bodySmall" style={{ color: paperTheme.colors.onSurfaceVariant, marginTop: 4 }}>
+                      {c.topics?.length ?? 0} topics
+                    </Text>
+                    <View style={styles.chipRow}>
+                      {c.topics?.slice(0, 4).map((t: any) => (
+                        <Chip key={t.id} mode="outlined" style={styles.chip} textStyle={{ fontSize: 11 }}>{t.name}</Chip>
+                      ))}
+                    </View>
+                  </Card.Content>
+                </Card>
               </View>
             ))}
           </View>
@@ -66,15 +63,14 @@ export default function StudyMapSubjectScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { flexDirection: "row", alignItems: "center", paddingTop: 50, paddingHorizontal: 8 },
-  title: { fontWeight: "900" },
-  list: { padding: 20, paddingBottom: 100 },
+  topBar: { flexDirection: "row", alignItems: "center", paddingTop: 50, paddingHorizontal: 4 },
+  list: { padding: 16, paddingBottom: 100 },
   timeline: {},
-  nodeRow: { flexDirection: "row", gap: 12, marginBottom: 8 },
-  lineCol: { alignItems: "center" },
-  node: { width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center" },
+  nodeRow: { flexDirection: "row", gap: 12, marginBottom: 12 },
+  lineCol: { alignItems: "center", width: 32 },
+  node: { width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center" },
   connector: { width: 2, flex: 1, marginTop: 4 },
-  card: { flex: 1, padding: 16, marginBottom: 8 },
-  topicChips: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 8 },
-  chip: { paddingHorizontal: 10, paddingVertical: 4 },
+  card: { flex: 1, borderRadius: SHAPE.lg },
+  chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 4, marginTop: 8 },
+  chip: { height: 28, borderRadius: SHAPE.xs },
 });
