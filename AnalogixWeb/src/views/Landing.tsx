@@ -326,7 +326,7 @@ const Landing = () => {
         localStorage.setItem("userPreferences", JSON.stringify({ ...existing, ...profile, onboardingComplete: true }));
         window.dispatchEvent(new Event("userPreferencesUpdated"));
       }
-    } catch {}
+    } catch { /* Silently skip — pre-fetch is best-effort */ }
   }, [user, hasCompletedOnboarding]);
 
   useEffect(() => {
