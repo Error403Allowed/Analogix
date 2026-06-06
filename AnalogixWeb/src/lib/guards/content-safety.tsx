@@ -9,8 +9,8 @@ const BLOCKED_CONTENT = [
     'grecaptcha.render',
 ];
 export function validateContentSafety(content) {
-    const errors = [];
-    const warnings = [];
+    const errors: { code: string; message: string }[] = [];
+    const warnings: { code: string; message: string }[] = [];
     if (!content || typeof content !== 'string') {
         return { allowed: true, errors: [], warnings: [] };
     }
@@ -43,7 +43,7 @@ export function validateContentSafety(content) {
     };
 }
 export function validatePermissions(userId, operation, entityOwnerId) {
-    const errors = [];
+    const errors: { code: string; message: string }[] = [];
     if (userId !== entityOwnerId) {
         errors.push({
             code: 'PERMISSION_DENIED',

@@ -1,8 +1,8 @@
 export class GuardValidator {
     operations = new Map();
     validate(operation) {
-        const errors = [];
-        const warnings = [];
+        const errors: { code: string; message: string }[] = [];
+        const warnings: { code: string; message: string }[] = [];
         errors.push(...this.validateStructure(operation));
         errors.push(...this.validatePayload(operation));
         warnings.push(...this.validateSafety(operation));
@@ -15,7 +15,7 @@ export class GuardValidator {
         };
     }
     validateStructure(operation) {
-        const errors = [];
+        const errors: { code: string; message: string }[] = [];
         if (!operation.type) {
             errors.push({ code: 'MISSING_TYPE', message: 'Operation type is required' });
         }
@@ -28,7 +28,7 @@ export class GuardValidator {
         return errors;
     }
     validatePayload(operation) {
-        const errors = [];
+        const errors: { code: string; message: string }[] = [];
         const payload = operation.payload || {};
         const p = payload;
         switch (operation.type) {
@@ -86,7 +86,7 @@ export class GuardValidator {
         return errors;
     }
     validateSafety(operation) {
-        const warnings = [];
+        const warnings: { code: string; message: string }[] = [];
         const payload = operation.payload || {};
         if (operation.type === 'create_document' && payload.content) {
             if (typeof payload.content === 'string' && payload.content.length > 50000) {
@@ -116,7 +116,7 @@ export class GuardValidator {
         return false;
     }
     async checkConflicts(operation, concurrent) {
-        const conflicts = [];
+        const conflicts: string[] = [];
         for (const other of concurrent) {
             if (other.id === operation.id)
                 continue;

@@ -178,7 +178,7 @@ export default function StudyRoomWorkspace() {
     roomId,
     surfaceType: "document",
     surfaceId: activeDocumentId || "room-doc-placeholder",
-  });
+  } as any);
 
   useEffect(() => {
     flushDocumentRef.current = documentCollab.flush;

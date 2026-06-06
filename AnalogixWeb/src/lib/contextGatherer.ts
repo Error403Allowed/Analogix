@@ -58,8 +58,8 @@ export async function gatherAppContext(path?: string, options: ContextOptions = 
       // Gather recent documents from all subjects
       const allSubjects = await subjectStore.getAll();
       const recentDocs: AppContext["recentDocuments"] = [];
-      Object.entries(allSubjects).forEach(([subjectId, data]) => {
-        (data.notes.documents || []).slice(0, 3).forEach(doc => {
+      Object.entries(allSubjects).forEach(([subjectId, data]: [string, any]) => {
+        (data.notes.documents || []).slice(0, 3).forEach((doc: any) => {
           recentDocs.push({
             title: doc.title || "Untitled",
             subject: subjectId,

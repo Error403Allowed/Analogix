@@ -103,9 +103,9 @@ export async function buildCalendarContext(supabase, userId) {
         return d >= todayStart && d < todayEnd;
     });
     // Build the context string
-    const lines = [];
+    const lines: string[] = [];
     // === RIGHT NOW SECTION (conversational, not robotic) ===
-    const rightNowLines = [];
+    const rightNowLines: string[] = [];
     if (currentEvent) {
         const eventEnd = new Date(currentEvent.date.getTime() + 60 * 60 * 1000);
         const minsUntilEnd = Math.round((eventEnd.getTime() - now.getTime()) / 60000);

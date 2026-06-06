@@ -9,10 +9,10 @@ class RequestThrottle {
     baseDelay;
     maxDelay;
     activeRequests = 0;
-    requestQueue = [];
+    requestQueue: Array<{ resolve: () => void; reject: (reason: any) => void; timestamp: number }> = [];
     lastRequestTime = 0;
     debug = process.env.NODE_ENV === "development";
-    constructor(options = {}) {
+    constructor(options: any = {}) {
         this.maxConcurrent = options.maxConcurrent ?? 2;
         this.minDelay = options.minDelay ?? 500;
         this.maxRetries = options.maxRetries ?? 3;
@@ -22,8 +22,8 @@ class RequestThrottle {
     /**
      * Execute a request with throttling and automatic retry on rate limit errors.
      */
-    async execute(requestFn, signal) {
-        let lastError = null;
+    async execute(requestFn, signal?) {
+        let lastError: Error | null = null;
         let attempt = 0;
         while (attempt <= this.maxRetries) {
             try {
@@ -67,7 +67,7 @@ class RequestThrottle {
      * Acquire a lock to execute a request, waiting in queue if necessary.
      */
     acquireLock(signal) {
-        return new Promise((resolve, reject) => {
+        return new Promise<void>((resolve, reject) => {
             const checkAbort = () => {
                 if (signal?.aborted) {
                     reject(new Error("Request aborted"));
@@ -142,7 +142,7 @@ class RequestThrottle {
      * Wait with exponential backoff, checking for abort signal.
      */
     waitWithBackoff(delay, signal) {
-        return new Promise((resolve, reject) => {
+        return new Promise<void>((resolve, reject) => {
             const timeout = setTimeout(resolve, delay);
             const handleAbort = () => {
                 clearTimeout(timeout);

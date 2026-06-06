@@ -108,9 +108,9 @@ const stripHtml = (html) => {
     return decodeEntities(stripped).replace(/\s+/g, " ").trim();
 };
 const extractPdfLinks = (html, baseUrl) => {
-    const links = [];
+    const links: string[] = [];
     const regex = /href=["']([^"']+\.pdf[^"']*)["']/gi;
-    let match = null;
+    let match: RegExpExecArray | null = null;
     while ((match = regex.exec(html)) !== null) {
         try {
             const url = new URL(match[1], baseUrl).toString();
@@ -136,7 +136,7 @@ const extractSnippets = (text, limit) => {
         .map((s) => s.trim())
         .filter((s) => s.length >= 40 && s.length <= 220);
     const pool = [...questionLines, ...sentenceCandidates];
-    const unique = [];
+    const unique: string[] = [];
     for (const item of pool) {
         const normalized = item.toLowerCase();
         if (unique.some((u) => u.toLowerCase() === normalized))
@@ -194,7 +194,7 @@ const fetchText = async (url, type) => {
 };
 const resolveSources = (state, grade, subject) => {
     const gradeBand = getGradeBand(grade);
-    return SOURCE_LIST.filter((source) => {
+    return SOURCE_LIST.filter((source: any) => {
         const stateOk = source.states === "ALL" ||
             (state ? source.states.includes(state) : false);
         const gradeOk = !source.grades ||
@@ -220,7 +220,7 @@ export const getPastPaperSnippets = async (params) => {
     if (!state)
         return [];
     const sources = resolveSources(state, grade, subject);
-    const snippets = [];
+    const snippets: { sourceId: string; sourceLabel: string; url: string; text: string }[] = [];
     for (const source of sources) {
         if (snippets.length >= limit)
             break;

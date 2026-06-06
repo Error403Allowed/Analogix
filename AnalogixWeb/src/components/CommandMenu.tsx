@@ -172,7 +172,7 @@ export function CommandMenu({
       if (cancelled) return;
       const docs: { doc: SubjectDocumentItem; subjectId: string }[] = [];
       for (const [subjectId, data] of Object.entries(all)) {
-        const subjectDocs = data.notes.documents || [];
+        const subjectDocs = (data as any).notes.documents || [];
         for (const doc of subjectDocs) {
           // Use document's stored subjectId if available, otherwise use loop variable
           const docSubjectId = doc.subjectId || subjectId;
@@ -180,7 +180,7 @@ export function CommandMenu({
         }
       }
       // Sort by lastUpdated descending
-      docs.sort((a, b) => b.doc.lastUpdated.localeCompare(a.doc.lastUpdated));
+      docs.sort((a, b) => (b.doc.lastUpdated ?? "").localeCompare(a.doc.lastUpdated ?? ""));
       setDocuments(docs);
       setLoading(false);
     });

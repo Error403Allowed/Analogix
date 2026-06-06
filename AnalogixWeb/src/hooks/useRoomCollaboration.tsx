@@ -36,13 +36,13 @@ const pickColor = (seed) => {
     return USER_COLORS[hash % USER_COLORS.length];
 };
 export function useRoomCollaboration({ roomId, surfaceType, surfaceId, displayName, }) {
-    const [provider, setProvider] = useState(null);
+    const [provider, setProvider] = useState<any>(null);
     const [fragment, setFragment] = useState(() => new Y.Doc().getXmlFragment("blocknote"));
     const [status, setStatus] = useState("connecting");
     const [peerCount, setPeerCount] = useState(0);
-    const managerRef = useRef(null);
-    const providerRef = useRef(null);
-    const awarenessRef = useRef(null);
+    const managerRef = useRef<any>(null);
+    const providerRef = useRef<any>(null);
+    const awarenessRef = useRef<any>(null);
     const user = useMemo(() => {
         const name = resolveDisplayName(displayName);
         return {

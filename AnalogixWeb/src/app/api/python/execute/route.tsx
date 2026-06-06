@@ -18,14 +18,14 @@ const safeMath = {
     pow: Math.pow,
 };
 function createSafeContext() {
-    const context = { ...safeMath };
+    const context: any = { ...safeMath };
     context.array = (...args) => args;
     context.linspace = (start, end, num = 50) => {
         const step = (end - start) / (num - 1);
         return Array.from({ length: num }, (_, i) => start + i * step);
     };
     context.arange = (start, end, step = 1) => {
-        const result = [];
+        const result: number[] = [];
         for (let i = start; i < end; i += step) {
             result.push(i);
         }
@@ -36,8 +36,8 @@ function createSafeContext() {
     context.min = (arr) => Math.min(...arr);
     context.max = (arr) => Math.max(...arr);
     context.len = (arr) => arr.length;
-    context.listcomp = (fn, start, end) => {
-        const result = [];
+    context.listcomp = (fn: (i: number) => any, start: number, end: number) => {
+        const result: any[] = [];
         for (let i = start; i < end; i++) {
             result.push(fn(i));
         }

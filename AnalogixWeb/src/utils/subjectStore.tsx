@@ -4,6 +4,63 @@ import { EMPTY_TIPTAP_DOC, TIPTAP_CONTENT_FORMAT, } from "@/lib/document-content
 import { getAuthUser } from "./authCache";
 // Alias so existing code in this file needs no changes
 const getUser = getAuthUser;
+
+// ── Shared Types ──────────────────────────────────────────────────────────────
+export interface SubjectHomework {
+    id: string;
+    title: string;
+    dueDate?: string;
+    completed: boolean;
+    createdAt: string;
+}
+
+export interface SubjectLink {
+    id: string;
+    title: string;
+    url: string;
+}
+
+export interface SubjectDocumentItem {
+    id: string;
+    title: string;
+    content: string;
+    subjectId?: string;
+    icon?: string | null;
+    cover?: string | null;
+    contentJson?: string;
+    contentText?: string;
+    contentFormat?: string;
+    role?: string;
+    createdAt?: string;
+    lastUpdated?: string;
+}
+
+export interface SubjectData {
+    id: string;
+    marks: any[];
+    notes: {
+        content: string;
+        lastUpdated: string;
+        homework: SubjectHomework[];
+        links: SubjectLink[];
+        documents: SubjectDocumentItem[];
+    };
+}
+
+export interface CustomSubject {
+    id?: string;
+    user_id?: string;
+    subject_id: string;
+    custom_title?: string | null;
+    custom_icon?: string | null;
+    custom_color?: string | null;
+    custom_cover?: string | null;
+    created_at?: string;
+    updated_at?: string;
+}
+
+export type DocumentRole = "document" | "notes" | "study-guide" | "summary" | "flashcards" | "homework" | "revision";
+
 // ── Subject data in-memory cache ─────────────────────────────────────────────
 // Keyed by subjectId. Invalidated on every write so data is always fresh after
 // a mutation, but repeat reads within a session are instant (no Supabase RTT).
@@ -89,7 +146,7 @@ const serialiseNotesForStorage = (notes) => ({
     documents: [],
     assessments: Array.isArray(notes?.assessments) ? notes.assessments : [],
 });
-async function fetchDocumentsForUser(userId, subjectId) {
+async function fetchDocumentsForUser(userId, subjectId?) {
     const supabase = createClient();
     let query = supabase
         .from("documents")
@@ -192,7 +249,7 @@ export const subjectStore = {
         return fetch;
     },
     // Save directly without a read round-trip — caller provides full data
-    saveSubject: async (subjectId, data, currentData) => {
+    saveSubject: async (subjectId, data, currentData?) => {
         const user = await getUser();
         if (!user)
             return;
@@ -274,7 +331,7 @@ export const subjectStore = {
             return;
         const supabase = createClient();
         const now = new Date().toISOString();
-        const payload = {
+        const payload: Record<string, any> = {
             updated_at: now,
             last_edited_by: user.id,
         };

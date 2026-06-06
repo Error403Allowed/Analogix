@@ -36,7 +36,7 @@ export async function POST(request) {
         const allowedInterests = interestList.length > 0 ? interestList.join(", ") : "General";
         const findExplicitInterest = (text, interests) => {
             const lower = text.toLowerCase();
-            let best = null;
+            let best: { interest: string; index: number } | null = null;
             for (const interest of interests) {
                 const idx = lower.indexOf(interest.toLowerCase());
                 if (idx >= 0 && (!best || idx < best.index))
@@ -111,7 +111,7 @@ ${formulaSheetContext ? `\n--- FORMULA REFERENCE ---\n${formulaSheetContext}\n--
                     max_tokens: maxTokens,
                     temperature: 0.55,
                 }, taskType);
-                const reader = stream.getReader();
+                const reader = stream!.getReader();
                 while (true) {
                     const { done, value } = await reader.read();
                     if (done)

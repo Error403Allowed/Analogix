@@ -29,7 +29,7 @@ import {
   getMathSlashMenuItems,
   MathFormattingToolbar,
 } from "@/components/blocknote/math";
-import type { RoomCollaborationRuntime } from "@/hooks/useRoomCollaboration";
+type RoomCollaborationRuntime = { fragment: any; user: any; provider: any };
 
 const editorStyles = `
   .document-editor-wrapper .bn-container {

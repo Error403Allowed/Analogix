@@ -47,7 +47,7 @@ export function htmlToPlainBlocks(html) {
 const looksLikeHtml = (raw) => /<\/?[a-z][\s\S]*>/i.test(raw);
 // Convert LaTeX to BlockNote math blocks
 function preprocessLatexToBlocks(raw) {
-    const blocks = [];
+    const blocks: any[] = [];
     const remaining = raw;
     // Match display math $$...$$ and inline $...$
     const mathRegex = /\$\$([\s\S]*?)\$\$|\$([^\n]+?)\$/g;

@@ -362,7 +362,7 @@ const Onboarding = () => {
     if (!file.name.endsWith(".ics")) { setIcsError("Please upload a .ics file"); return; }
     setIcsError(null); setIcsImporting(true);
     try {
-      const evts = await parseICS(file);
+      const evts: any = await parseICS(file);
       if (!evts.length) { setIcsError("No events found in that file"); return; }
       eventStore.addMultiple(evts); setIcsCount(evts.length); setIcsImported(true);
     } catch { setIcsError("Couldn't parse that file. Try exporting it again."); }

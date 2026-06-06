@@ -3,6 +3,7 @@ import { callGroqChat, formatError, classifyTaskType } from "../_utils";
 import { getFormulaSheetContext } from "@/data/formulaSheets";
 import { createClient } from "@/lib/supabase/server";
 import { getUserAIPersonality, getRelevantMemories, buildMemoryContext, buildPersonalityInstructions } from "@/lib/aiMemory";
+import type { AIPersonality } from "@/types/ai-personality";
 import { buildFullCurriculumPrompt, findCurriculumForQuery } from "@/lib/curriculum";
 import { buildMappingSection, buildToneInstructions } from "@/lib/explanation";
 export const runtime = "nodejs";
@@ -13,14 +14,14 @@ export async function POST(request) {
         // ========================================================================
         const supabase = await createClient();
         const { data: { user } } = await supabase.auth.getUser();
-        let aiPersonality = null;
+        let aiPersonality: AIPersonality | null = null;
         let memoryContext = "";
         // Client-side x-client-data is always sent by the chat UI and contains localStorage
         // personality/memories. Merge it so UI toggles are reflected immediately even when
         // a user is authenticated.
         const clientData = request.headers.get("x-client-data");
-        let clientPersonality = null;
-        let clientMemories = null;
+        let clientPersonality: any = null;
+        let clientMemories: any = null;
         if (clientData) {
             try {
                 const parsed = JSON.parse(clientData);
@@ -36,7 +37,7 @@ export async function POST(request) {
             aiPersonality = await getUserAIPersonality(user.id);
             // Merge client personality over DB personality (client wins)
             if (clientPersonality) {
-                aiPersonality = { ...aiPersonality, ...clientPersonality };
+                aiPersonality = { ...(aiPersonality ?? {}), ...clientPersonality };
             }
         }
         else {
@@ -168,7 +169,7 @@ export async function POST(request) {
             : "the student's everyday life, school experiences, or general interests (ask about theirs if unclear)";
         const findExplicitInterest = (text, interests) => {
             const lower = text.toLowerCase();
-            let best = null;
+            let best: { interest: string; index: number } | null = null;
             for (const interest of interests) {
                 const idx = lower.indexOf(interest.toLowerCase());
                 if (idx >= 0 && (!best || idx < best.index)) {

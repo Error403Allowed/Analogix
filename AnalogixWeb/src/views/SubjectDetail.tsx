@@ -339,7 +339,7 @@ export default function SubjectDetail() {
                           {doc.title || "Untitled"}
                         </p>
                         <p className="text-[10px] text-muted-foreground/50 font-medium uppercase tracking-widest">
-                          {new Date(doc.lastUpdated).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                          {new Date(doc.lastUpdated!).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                         </p>
                       </div>
                       <DropdownMenu>

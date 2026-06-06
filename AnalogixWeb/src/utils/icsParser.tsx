@@ -4,8 +4,8 @@ export const parseICS = async (file) => {
         const reader = new FileReader();
         reader.onload = (e) => {
             try {
-                const content = e.target?.result;
-                const jcalData = ICAL.parse(content);
+    const content = e.target?.result?.toString() ?? "";
+    const jcalData = ICAL.parse(content);
                 const comp = new ICAL.Component(jcalData);
                 const vevents = comp.getAllSubcomponents("vevent");
                 const academicKeywords = ["exam", "assessment", "quiz", "test", "midterm", "final"];
@@ -18,7 +18,7 @@ export const parseICS = async (file) => {
                 rangeEndJs.setDate(rangeEndJs.getDate() + 365);
                 const rangeStart = ICAL.Time.fromJSDate(rangeStartJs, false);
                 const rangeEnd = ICAL.Time.fromJSDate(rangeEndJs, false);
-                const events = [];
+                const events: any[] = [];
                 const pushEvent = (event, startTime, endTime, title, description) => {
                     const combined = (title + " " + description).toLowerCase();
                     const isExam = academicKeywords.some((kw) => combined.includes(kw));

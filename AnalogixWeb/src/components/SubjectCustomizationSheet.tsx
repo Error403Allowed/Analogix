@@ -287,7 +287,7 @@ export function SubjectCustomizationSheet({
       <ColorPicker
         open={colorPickerOpen}
         onOpenChange={setColorPickerOpen}
-        selectedColor={customData?.custom_color || "default"}
+        selectedColor={(customData?.custom_color || "default") as any}
         onSelect={(colorId) => {
           setCustomData((prev) => prev ? { ...prev, custom_color: colorId } : null);
         }}

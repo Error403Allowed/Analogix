@@ -9,9 +9,9 @@
  * - Detailed error messages
  * - Network error detection
  */
-export async function fetchWithRetry(url, options = {}) {
+export async function fetchWithRetry(url, options: any = {}) {
     const { method = 'POST', headers = {}, body, timeoutMs = 30000, maxRetries = 2, retryDelay = 1000, } = options;
-    let lastError = null;
+    let lastError: Error | null = null;
     let isNetworkError = false;
     let isTimeoutError = false;
     const debug = process.env.NODE_ENV === "development";
@@ -30,7 +30,7 @@ export async function fetchWithRetry(url, options = {}) {
             });
             clearTimeout(timeout);
             // Parse response
-            let data = null;
+            let data: any = null;
             const text = await response.text();
             if (text) {
                 try {
@@ -110,7 +110,7 @@ export async function fetchWithRetry(url, options = {}) {
 /**
  * Wrapper for fetchWithRetry that throws on error (for backward compatibility).
  */
-export async function fetchJsonWithRetry(url, options = {}) {
+export async function fetchJsonWithRetry<T = any>(url, options = {}) {
     const result = await fetchWithRetry(url, options);
     if (!result.ok) {
         const errorDetails = [

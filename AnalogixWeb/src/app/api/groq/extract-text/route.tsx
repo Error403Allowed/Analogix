@@ -70,8 +70,8 @@ export async function POST(request) {
             ].filter((key) => Boolean(key));
             if (apiKeys.length === 0)
                 throw new Error("Missing GROQ_API_KEY");
-            let lastError = null;
-            let response = null;
+            let lastError: Error | null = null;
+            let response: Response | null = null;
             for (let i = 0; i < apiKeys.length; i++) {
                 try {
                     response = await fetch("https://api.groq.com/openai/v1/chat/completions", {

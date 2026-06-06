@@ -60,6 +60,9 @@ const broadcastChange = () => {
     }
     catch { /* ignore */ }
 };
+export type Flashcard = ReturnType<typeof toCard>;
+export type FlashcardSet = ReturnType<typeof toSet>;
+export type FlashcardRating = number;
 // ── Store ─────────────────────────────────────────────────────────────────────
 export const flashcardStore = {
     // ── Sets ──────────────────────────────────────────────────────────────────
@@ -227,7 +230,7 @@ export const flashcardStore = {
         const supabase = createClient();
         const all = await flashcardStore.getAll();
         const seen = new Map();
-        const duplicates = [];
+        const duplicates: any[] = [];
         // Sort by createdAt ascending so we keep the oldest
         all.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
         for (const card of all) {

@@ -1,14 +1,14 @@
 import { format } from "date-fns";
 import { getEventDurationMinutes } from "@/views/calendar/timeGridUtils";
 function layoutSingleDayEvents(items) {
-    const result = [];
-    const groups = [];
+    const result: any[] = [];
+    const groups: any[] = [];
     const sortedItems = [...items].sort((a, b) => {
         if (a.startMin !== b.startMin)
             return a.startMin - b.startMin;
         return b.endMin - a.endMin;
     });
-    let currentGroup = [];
+    let currentGroup: any[] = [];
     let currentGroupEnd = -1;
     for (const item of sortedItems) {
         if (currentGroup.length === 0 || item.startMin < currentGroupEnd) {
@@ -23,7 +23,7 @@ function layoutSingleDayEvents(items) {
     if (currentGroup.length > 0)
         groups.push(currentGroup);
     for (const group of groups) {
-        const columns = [];
+        const columns: any[] = [];
         const itemColumns = new Map();
         for (const item of group) {
             let columnIndex = columns.findIndex((column) => {

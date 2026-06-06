@@ -3,7 +3,7 @@ import { callGroqChat, formatError } from "../_utils";
 export const runtime = "nodejs";
 // Chunk text into smaller pieces for processing
 const chunkText = (text, maxChunkSize) => {
-    const chunks = [];
+    const chunks: string[] = [];
     let start = 0;
     while (start < text.length) {
         let end = Math.min(start + maxChunkSize, text.length);
@@ -70,7 +70,7 @@ Return ONLY valid JSON — no markdown, no preamble:
 }`;
         // For large documents, use chunking strategy
         const MAX_CHUNK_SIZE = 12000; // Conservative chunk size
-        const allQuestions = [];
+        const allQuestions: any[] = [];
         if (documentContent.length > MAX_CHUNK_SIZE) {
             // Split document into chunks and generate quiz for each
             const chunks = chunkText(documentContent, MAX_CHUNK_SIZE);
@@ -86,7 +86,7 @@ Return ONLY valid JSON — no markdown, no preamble:
                         max_tokens: 2048,
                         temperature: 0.6,
                     }, "reasoning");
-                    let chunkQuiz = null;
+                    let chunkQuiz: { questions: any[] } | null = null;
                     try {
                         const clean = chunkContent.replace(/```json|```/g, "").trim();
                         const parsed = JSON.parse(clean);

@@ -2,7 +2,23 @@
  * Formula sheets for Australian high school subjects.
  * Each sheet contains 100+ formulas relevant to the given subject.
  */
-const MATH_FORMULAS = [
+export type Formula = {
+    topic: string;
+    name: string;
+    latex: string;
+    description: string;
+    states?: string[];
+    tags?: string[];
+    grades?: string[];
+};
+type FormulaEntry = Formula;
+export type FormulaSheet = {
+    subjectId: string;
+    label: string;
+    formulas: Formula[];
+};
+
+const MATH_FORMULAS: FormulaEntry[] = [
     // Algebra
     { topic: "Algebra", name: "Quadratic Formula", latex: "x = \\dfrac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}", description: "Solves ax² + bx + c = 0" },
     { topic: "Algebra", name: "Difference of Two Squares", latex: "a^2 - b^2 = (a+b)(a-b)", description: "Factorising shortcut" },
@@ -241,7 +257,7 @@ const MATH_FORMULAS = [
     { topic: "Number Theory", name: "Modular Arithmetic", latex: "a \\equiv b \\pmod{m} \\iff m\\mid(a-b)", description: "a and b have same remainder mod m" },
     { topic: "Number Theory", name: "Mathematical Induction", latex: "P(1)\\text{ true, }P(k)\\Rightarrow P(k+1) \\Rightarrow P(n)\\text{ for all }n\\in\\mathbb{N}", description: "Proof technique for integer statements" },
 ];
-const PHYSICS_FORMULAS = [
+const PHYSICS_FORMULAS: FormulaEntry[] = [
     // Kinematics
     { topic: "Kinematics", name: "v = u + at", latex: "v = u + at", description: "Final velocity with constant acceleration" },
     { topic: "Kinematics", name: "s = ut + ½at²", latex: "s = ut + \\tfrac{1}{2}at^2", description: "Displacement with constant acceleration" },
@@ -313,7 +329,7 @@ const PHYSICS_FORMULAS = [
     { topic: "Nuclear", name: "Photon Energy", latex: "E = hf = \\dfrac{hc}{\\lambda}", description: "Energy of a photon, h = Planck's constant" },
     { topic: "Nuclear", name: "de Broglie Wavelength", latex: "\\lambda = \\dfrac{h}{mv}", description: "Matter wavelength of a particle" },
 ];
-const CHEMISTRY_FORMULAS = [
+const CHEMISTRY_FORMULAS: FormulaEntry[] = [
     // Stoichiometry
     { topic: "Stoichiometry", name: "Moles from Mass", latex: "n = \\dfrac{m}{M}", description: "n = moles, m = mass (g), M = molar mass (g/mol)" },
     { topic: "Stoichiometry", name: "Concentration", latex: "c = \\dfrac{n}{V}", description: "mol/L, V in litres" },
@@ -371,7 +387,7 @@ const CHEMISTRY_FORMULAS = [
     { topic: "Atomic Structure", name: "Rydberg Formula", latex: "\\dfrac{1}{\\lambda} = R_H\\!\\left(\\dfrac{1}{n_1^2}-\\dfrac{1}{n_2^2}\\right)", description: "Spectral lines of hydrogen" },
     { topic: "Atomic Structure", name: "Ionisation Energy", latex: "\\text{IE} = -E_n = \\dfrac{13.6\\,\\text{eV}}{n^2}", description: "Energy to remove electron from level n (hydrogen)" },
 ];
-const BIOLOGY_FORMULAS = [
+const BIOLOGY_FORMULAS: FormulaEntry[] = [
     // Genetics
     { topic: "Genetics", name: "Hardy-Weinberg (genotypes)", latex: "p^2 + 2pq + q^2 = 1", description: "Genotype frequencies in equilibrium population" },
     { topic: "Genetics", name: "Hardy-Weinberg (alleles)", latex: "p + q = 1", description: "Allele frequency sum" },
@@ -427,7 +443,7 @@ const BIOLOGY_FORMULAS = [
     { topic: "Physiology", name: "Lung Volumes", latex: "VC = TV + IRV + ERV", description: "Vital capacity = tidal + inspiratory reserve + expiratory reserve" },
     { topic: "Physiology", name: "Haemoglobin O₂ Saturation", latex: "SO_2 = \\dfrac{HbO_2}{Hb_{\\text{total}}}\\times 100\\%", description: "Percentage of haemoglobin carrying oxygen" },
 ];
-const ECONOMICS_FORMULAS = [
+const ECONOMICS_FORMULAS: FormulaEntry[] = [
     // Macroeconomics
     { topic: "Macroeconomics", name: "GDP (Expenditure)", latex: "GDP = C + I + G + (X - M)", description: "C=consumption, I=investment, G=government, X-M=net exports" },
     { topic: "Macroeconomics", name: "GDP (Income)", latex: "GDP = W + P + R + I", description: "Wages + Profits + Rent + Interest" },
@@ -516,7 +532,7 @@ export const getFormulaSheetContext = (subjectId) => {
     if (!sheet)
         return "";
     const lines = sheet.formulas.map(f => {
-        const parts = [];
+        const parts: string[] = [];
         if (f.grades)
             parts.push(`grades: ${f.grades.join(",")}`);
         if (f.states)

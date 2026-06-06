@@ -45,7 +45,7 @@ export class RoomRealtimeProvider {
     ydoc;
     awareness;
     sessionId;
-    channel = null;
+    channel: any = null;
     destroyed = false;
     constructor(roomName, ydoc, awareness, sessionId) {
         this.roomName = roomName;

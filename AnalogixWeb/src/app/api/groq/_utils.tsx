@@ -33,7 +33,7 @@ const CODING_MODEL = "llama-3.3-70b-versatile"; // 70B for coding tasks
 const LARGE_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"; // Large context tasks
 const LAST_RESORT_MODEL = "llama-3.1-8b-instant"; // Fallback
 // User-selected model (from client) — if provided, use this instead of auto-selection
-let userSelectedModel = null;
+let userSelectedModel: string | null = null;
 /**
  * Set the user-selected model
  * @param model The model string to use (e.g., "llama-3.3-70b-versatile"), or null to use auto-selection
@@ -501,8 +501,8 @@ const callFastChat = async (payload) => {
         throw new Error("Request too large for fast path");
     }
     console.log(`[Groq] FAST PATH: ${model} with key #${keyIndex + 1}`);
-    let controller = null;
-    let timeoutId = null;
+    let controller: AbortController | null = null;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
     try {
         controller = new AbortController();
         timeoutId = setTimeout(() => controller?.abort(), 8000); // 8s timeout for fast path
@@ -541,7 +541,7 @@ const callFastChat = async (payload) => {
 // ============================================================================
 // MAIN API CALL
 // ============================================================================
-export const callGroqChat = async (payload, taskType = "default", userSelectedModel) => {
+export const callGroqChat = async (payload, taskType = "default", userSelectedModel?) => {
     assertApiKeys();
     // FAST PATH: Simple messages like "hi" skip the queue and use lightweight model only
     if (isSimpleMessage(payload.messages)) {
@@ -560,7 +560,7 @@ export const callGroqChat = async (payload, taskType = "default", userSelectedMo
     const taskModels = getModelsForTaskType(taskType, userSelectedModel, estimatedTokens);
     const modelsToTry = [...new Set([...taskModels, DEFAULT_MODEL])];
     console.log(`[Groq] Task: "${taskType}" → Models: ${modelsToTry.join(" → ")} | API Keys: ${apiKeys.length} | Est. tokens: ${estimatedTokens}`);
-    let lastError = null;
+    let lastError: Error | null = null;
     const startingKeyIndex = getNextApiKeyIndex();
     // Wait in queue to prevent overwhelming the API
     await enqueueRequest();
@@ -586,15 +586,15 @@ export const callGroqChat = async (payload, taskType = "default", userSelectedMo
                 const safeMaxTokens = getSafeMaxTokens(model, payload.max_tokens, estimatedInputTokens);
                 const requestTokens = estimatedInputTokens + safeMaxTokens;
                 await waitForToken(keyIndex, requestTokens);
-                let controller = null;
-                let timeoutId = null;
+                let controller: AbortController | null = null;
+                let timeoutId: ReturnType<typeof setTimeout> | null = null;
                 try {
                     console.log(`[Groq] Trying: ${model} with key #${keyIndex + 1}${retryRound > 0 ? ` (retry ${retryRound + 1})` : ""}`);
                     // Set up timeout for the request (120 seconds)
                     controller = new AbortController();
                     timeoutId = setTimeout(() => {
                         console.warn(`[Groq] Request timeout for ${model} after 120s`);
-                        controller.abort();
+                        controller!.abort();
                     }, 120000);
                     const response = await fetch(GROQ_CHAT_URL, {
                         method: "POST",
@@ -690,7 +690,7 @@ export const callGroqChat = async (payload, taskType = "default", userSelectedMo
 // ============================================================================
 // MAIN API CALL - STREAMING VERSION
 // ============================================================================
-export const callGroqChatStream = async (payload, taskType = "default", userSelectedModel) => {
+export const callGroqChatStream = async (payload, taskType = "default", userSelectedModel?) => {
     assertApiKeys();
     // Estimate tokens BEFORE model selection
     const messageText = payload.messages.map(m => m.content).join(" ");
@@ -699,7 +699,7 @@ export const callGroqChatStream = async (payload, taskType = "default", userSele
     const taskModels = getModelsForTaskType(taskType, userSelectedModel, estimatedTokens);
     const modelsToTry = [...new Set([...taskModels, DEFAULT_MODEL])];
     console.log(`[Groq] Task: "${taskType}" → Models: ${modelsToTry.join(" → ")} | API Keys: ${apiKeys.length} | Est. tokens: ${estimatedTokens}`);
-    let lastError = null;
+    let lastError: Error | null = null;
     const startingKeyIndex = getNextApiKeyIndex();
     // Wait in queue to prevent overwhelming the API
     await enqueueRequest();
@@ -724,15 +724,15 @@ export const callGroqChatStream = async (payload, taskType = "default", userSele
                 const safeMaxTokens = getSafeMaxTokens(model, payload.max_tokens, estimatedInputTokens);
                 const requestTokens = estimatedInputTokens + safeMaxTokens;
                 await waitForToken(keyIndex, requestTokens);
-                let controller = null;
-                let timeoutId = null;
+                let controller: AbortController | null = null;
+                let timeoutId: ReturnType<typeof setTimeout> | null = null;
                 try {
                     console.log(`[Groq] Trying: ${model} with key #${keyIndex + 1} (streaming${retryRound > 0 ? ` retry ${retryRound + 1}` : ""})`);
                     // Set up timeout for the request (90 seconds for streaming)
                     controller = new AbortController();
                     timeoutId = setTimeout(() => {
                         console.warn(`[Groq] Streaming request timeout for ${model} after 90s`);
-                        controller.abort();
+                        controller!.abort();
                     }, 90000);
                     const response = await fetch(GROQ_CHAT_URL, {
                         method: "POST",

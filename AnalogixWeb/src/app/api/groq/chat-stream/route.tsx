@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { buildCalendarContext } from "../_calendarContext";
 import { listUserDocuments } from "@/lib/server/documents";
 import { getUserAIPersonality, getRelevantMemories, buildMemoryContext, buildPersonalityInstructions } from "@/lib/aiMemory";
+import type { AIPersonality } from "@/types/ai-personality";
 export const runtime = "nodejs";
 // Token estimation: ~4 chars per token for English text
 const estimateTokens = (text) => Math.ceil(text.length / 4);
@@ -13,7 +14,7 @@ const truncateWorkspaceDocs = (allDocs, maxTokens) => {
     if (totalTokens <= maxTokens) {
         return { docs: allDocs, truncated: false };
     }
-    const result = [];
+    const result: any[] = [];
     let runningTokens = 0;
     let truncated = false;
     for (const doc of allDocs) {
@@ -54,7 +55,7 @@ const studyGuideToContext = (raw) => {
     try {
         const json = raw.slice(STUDY_GUIDE_PREFIX.length);
         const guide = JSON.parse(json);
-        const parts = [];
+        const parts: string[] = [];
         if (guide.title)
             parts.push(`Title: ${guide.title}`);
         if (guide.overview)
@@ -95,8 +96,8 @@ const compressToSummary = (msgs) => {
         return "";
     // Extract key info from user messages: topics, goals, blockers
     const userMsgs = msgs.filter(m => m.role === "user");
-    const topics = [];
-    const goals = [];
+    const topics: string[] = [];
+    const goals: string[] = [];
     userMsgs.forEach(m => {
         const content = m.content;
         // Extract short topic markers
@@ -111,7 +112,7 @@ const compressToSummary = (msgs) => {
         }
     });
     // Compress to summary
-    const summaryParts = [];
+    const summaryParts: string[] = [];
     // Topic/direction
     if (topics.length > 0) {
         const uniqueTopics = [...new Set(topics)].slice(0, 3);
@@ -140,7 +141,7 @@ function buildSystemPrompt(userContext, messages, workspaceContext, calendarCont
     const allowedInterests = interestList.length > 0 ? interestList.join(", ") : "General";
     const findExplicitInterest = (text, interests) => {
         const lower = text.toLowerCase();
-        let best = null;
+        let best: { interest: string; index: number } | null = null;
         for (const interest of interests) {
             const idx = lower.indexOf(interest.toLowerCase());
             if (idx >= 0 && (!best || idx < best.index))
@@ -341,14 +342,14 @@ export async function POST(request) {
         // Get personality and memory from database or localStorage
         const supabase = await createClient();
         const { data: { user } } = await supabase.auth.getUser();
-        let aiPersonality = null;
+        let aiPersonality: AIPersonality | null = null;
         let memoryContext = "";
         // Client-side "x-client-data" is always sent by the chat UI (it contains localStorage
         // personality/memories). Even if the user is authenticated, merging these values ensures
         // the next response reflects the latest UI toggles immediately.
         const clientData = request.headers.get("x-client-data");
-        let clientPersonality = null;
-        let clientMemories = null;
+        let clientPersonality: any = null;
+        let clientMemories: any[] | null = null;
         if (clientData) {
             try {
                 const parsed = JSON.parse(clientData);
@@ -369,7 +370,7 @@ export async function POST(request) {
             console.log("[chat-stream] Personality fetched:", aiPersonality ? "YES" : "NO");
             // Merge client personality over DB personality (client wins)
             if (clientPersonality) {
-                aiPersonality = { ...aiPersonality, ...clientPersonality };
+                aiPersonality = { ...(aiPersonality ?? {}), ...clientPersonality };
                 console.log("[chat-stream] Personality merged from client overrides");
             }
             // Semantic relevance: only fetch memories relevant to current message
@@ -419,7 +420,7 @@ export async function POST(request) {
                     if (calendarResult)
                         calendarCtx = calendarResult;
                     if (documents.length > 0) {
-                        const allDocs = [];
+                        const allDocs: any[] = [];
                         for (const doc of documents) {
                             const isGuide = doc.content?.startsWith(STUDY_GUIDE_PREFIX);
                             if (isGuide) {
@@ -489,7 +490,7 @@ export async function POST(request) {
             ? compressToSummary(olderMsgs)
             : "";
         // Build context blocks to inject at the top of the system prompt
-        const contextBlocks = [];
+        const contextBlocks: string[] = [];
         if (memoryContext)
             contextBlocks.push(memoryContext);
         if (conversationSummary)

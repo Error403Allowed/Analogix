@@ -10,11 +10,11 @@ export const generateBlockId = () => {
 };
 /** Convert HTML to structured blocks (basic implementation) */
 export const htmlToBlocks = (html, title) => {
-    const blocks = [];
+    const blocks: any[] = [];
     // Simple HTML parsing - in production, use a proper parser
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, "text/html");
-    const processNode = (node, parentBlock) => {
+    const processNode = (node, parentBlock?) => {
         if (node.nodeType === Node.TEXT_NODE) {
             const text = node.textContent?.trim();
             if (text && parentBlock) {
@@ -55,7 +55,7 @@ export const htmlToBlocks = (html, title) => {
                 });
                 break;
             case "ul": {
-                const bulletItems = [];
+                const bulletItems: string[] = [];
                 el.querySelectorAll("li").forEach(li => {
                     bulletItems.push(li.textContent?.trim() || "");
                 });
@@ -70,7 +70,7 @@ export const htmlToBlocks = (html, title) => {
                 break;
             }
             case "ol": {
-                const numberedItems = [];
+                const numberedItems: string[] = [];
                 el.querySelectorAll("li").forEach(li => {
                     numberedItems.push(li.textContent?.trim() || "");
                 });

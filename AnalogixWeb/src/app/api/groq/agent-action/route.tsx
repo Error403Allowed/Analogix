@@ -28,7 +28,7 @@ export async function POST(request) {
         const resolvedDefault = VALID_SUBJECT_IDS.has(defaultSubjectId) && userSubjectSet.has(defaultSubjectId)
             ? defaultSubjectId
             : userSubjects[0] || "math";
-        const results = [];
+        const results: any[] = [];
         for (const action of actions) {
             if (action.type === "add_flashcards") {
                 const result = await handleAddFlashcards(supabase, user.id, action, resolvedDefault, userSubjectSet);

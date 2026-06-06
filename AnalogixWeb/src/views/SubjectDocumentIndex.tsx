@@ -114,7 +114,7 @@ export default function SubjectDocumentIndex() {
               >
                 <p className="text-sm font-bold text-foreground truncate">{doc.title || "Untitled"}</p>
                 <p className="text-[10px] uppercase tracking-widest text-muted-foreground/70 mt-1.5">
-                  Updated {new Date(doc.lastUpdated).toLocaleDateString()}
+                  Updated {new Date(doc.lastUpdated!).toLocaleDateString()}
                 </p>
               </button>
             ))

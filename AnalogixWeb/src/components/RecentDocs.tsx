@@ -29,7 +29,7 @@ export default function RecentDocs() {
         const all = await subjectStore.getAll();
         const entries: DocEntry[] = [];
         Object.entries(all).forEach(([loopSubjectId, data]) => {
-          (data.notes.documents || []).forEach(doc => {
+          ((data as any).notes.documents || []).forEach(doc => {
             if (!doc.title && !doc.content) return;
             // Use document's stored subjectId if available, fallback to loop variable
             const docSubjectId = doc.subjectId || loopSubjectId;

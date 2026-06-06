@@ -1263,7 +1263,7 @@ function TimeGrid({ days, events, allTypes, now, onDelete, onSelect, onCreateSel
 
         {days.map((day, di) => {
           const dayEvents = displayEvents.filter(e => isSameDay(new Date(e.date), day));
-          const laid = layoutEvents(dayEvents, HOUR_H);
+          const laid: any = layoutEvents(dayEvents, HOUR_H);
           const createPreview = interaction?.kind === "create" && interaction.dayIndex === di
             ? {
                 startMin: interaction.didDrag

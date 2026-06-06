@@ -286,7 +286,7 @@ function DocScrollRow() {
         const entries: DocEntry[] = [];
         Object.entries(all).forEach(([subjectId, data]) => {
           const subjectLabel = SUBJECT_CATALOG.find(s => s.id === subjectId)?.label || subjectId;
-          (data.notes.documents || []).forEach((doc: any) => {
+          ((data as any).notes.documents || []).forEach((doc: any) => {
             if (!doc.title && !doc.content) return;
             entries.push({ docId: doc.id, subjectId, subjectLabel, title: doc.title || "Untitled", lastUpdated: doc.lastUpdated, isGuide: doc.content.startsWith(STUDY_GUIDE_PREFIX) });
           });

@@ -71,10 +71,8 @@ import {
 import {
   type BlockNoteEditorBlock,
 } from "@/components/blocknote/schema";
-import {
-  getDocumentPlainText,
-  type DocumentRole,
-} from "@/lib/document-content";
+import { getDocumentPlainText } from "@/lib/document-content";
+import type { DocumentRole } from "@/utils/subjectStore";
 import { EmojiPicker } from "@/components/EmojiPicker";
 import { ShareToRoomDialog } from "@/components/ShareToRoomDialog";
 import { statsStore } from "@/utils/statsStore";
