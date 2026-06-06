@@ -1,16 +1,20 @@
 import React, { useState } from "react";
-import { View, StyleSheet, KeyboardAvoidingView, Platform } from "react-native";
-import { Button, Text, useTheme } from "react-native-paper";
+import { View, StyleSheet, Platform } from "react-native";
+import { Text, useTheme, Button } from "react-native-paper";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import * as WebBrowser from "expo-web-browser";
+import { makeRedirectUri } from "expo-auth-session";
 import { useAuth } from "../../context/AuthContext";
 import { getSupabase } from "../../supabase";
 import { SHAPE } from "../../theme/tokens";
-import { useThemeContext } from "../../theme/ThemeContext";
-import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
-import * as Haptics from "expo-haptics";
+import { ExpressiveHeroPanel } from "../../components/expressive";
+import Icon from "../../components/Icon";
+
+WebBrowser.maybeCompleteAuthSession();
 
 export default function LoginScreen() {
   const paperTheme = useTheme();
-  const { brand } = useThemeContext();
+  const insets = useSafeAreaInsets();
   const { signInWithGoogleIdToken } = useAuth();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -19,19 +23,28 @@ export default function LoginScreen() {
     try {
       setBusy(true);
       setError(null);
-      if (Platform.OS !== "web") {
-        throw new Error("Web sign-in only");
-      }
       const supabase = getSupabase();
-      const { data, error: oauthErr } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: window.location.origin,
-        },
-      });
-      if (oauthErr) throw oauthErr;
-      if (data?.url) {
-        window.location.href = data.url;
+
+      if (Platform.OS !== "web") {
+        // Native: use expo-web-browser for the OAuth redirect flow
+        const redirectTo = makeRedirectUri({ scheme: "analogix", path: "auth/callback" });
+        const { data, error: oauthErr } = await supabase.auth.signInWithOAuth({
+          provider: "google",
+          options: { redirectTo, skipBrowserRedirect: true },
+        });
+        if (oauthErr) throw oauthErr;
+        if (data?.url) {
+          const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+          if (result.type !== "success") setBusy(false);
+        }
+      } else {
+        // Web fallback
+        const { data, error: oauthErr } = await supabase.auth.signInWithOAuth({
+          provider: "google",
+          options: { redirectTo: window.location.origin },
+        });
+        if (oauthErr) throw oauthErr;
+        if (data?.url) window.location.href = data.url;
       }
     } catch (e) {
       setBusy(false);
@@ -41,43 +54,49 @@ export default function LoginScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: paperTheme.colors.background }]}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        style={styles.inner}
+      <View
+        style={[
+          styles.inner,
+          { paddingTop: insets.top + 24, paddingBottom: Math.max(insets.bottom, 16) + 16 },
+        ]}
       >
-        <Animated.View entering={FadeInUp.duration(500)} style={styles.hero}>
-          <View style={[styles.logo, { backgroundColor: brand.primary }]}>
-            <Text variant="displayMedium" style={styles.logoText}>
-              A
-            </Text>
+        <ExpressiveHeroPanel style={styles.hero}>
+          <View style={[styles.logo, { backgroundColor: paperTheme.colors.surface }]}>
+            <Text style={[styles.logoText, { color: paperTheme.colors.primary }]}>A</Text>
           </View>
-          <Text variant="displaySmall" style={[styles.title, { color: paperTheme.colors.onBackground }]}>
+          <View style={styles.heroArt}>
+            <Icon name="triangle-rounded" size={54} color={paperTheme.colors.onPrimaryContainer} />
+            <Icon name="shape" size={54} color={paperTheme.colors.onPrimaryContainer} />
+            <Icon name="square-rounded" size={54} color={paperTheme.colors.onPrimaryContainer} />
+          </View>
+          <Text variant="displaySmall" style={[styles.title, { color: paperTheme.colors.onPrimaryContainer }]}>
             Analogix
           </Text>
-          <Text variant="bodyLarge" style={[styles.subtitle, { color: paperTheme.colors.onSurfaceVariant }]}>
+          <Text variant="bodyLarge" style={[styles.subtitle, { color: paperTheme.colors.onPrimaryContainer }]}>
             Your AI study buddy, on the go.
           </Text>
-        </Animated.View>
+        </ExpressiveHeroPanel>
 
-        <Animated.View entering={FadeInDown.delay(200).duration(500)} style={styles.actions}>
+        <View style={styles.actions}>
           <Button
             mode="contained"
             icon="google"
             onPress={handleSignIn}
             loading={busy}
-            style={[styles.googleButton, { borderRadius: SHAPE.xl, backgroundColor: brand.primary }]}
-            labelStyle={styles.buttonLabel}
+            style={{ borderRadius: SHAPE.lg }}
+            contentStyle={{ height: 52 }}
+            accessibilityLabel="Sign in with Google"
           >
             Continue with Google
           </Button>
-          {error ? (
-            <Text style={[styles.error, { color: paperTheme.colors.error }]}>{error}</Text>
-          ) : null}
+          {error && (
+            <Text variant="bodySmall" style={{ color: paperTheme.colors.error, textAlign: "center" }}>{error}</Text>
+          )}
           <Text variant="bodySmall" style={[styles.legalese, { color: paperTheme.colors.onSurfaceVariant }]}>
             By continuing you agree to our Terms and Privacy Policy.
           </Text>
-        </Animated.View>
-      </KeyboardAvoidingView>
+        </View>
+      </View>
     </View>
   );
 }
@@ -88,24 +107,20 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 24,
     justifyContent: "space-between",
-    paddingTop: 80,
-    paddingBottom: 32,
   },
-  hero: { alignItems: "center", gap: 16 },
+  hero: { alignItems: "center", gap: 16, minHeight: 360, justifyContent: "center" },
+  heroArt: { flexDirection: "row", gap: 2, opacity: 0.26, marginVertical: 6 },
   logo: {
-    width: 96,
-    height: 96,
-    borderRadius: SHAPE.xxl,
+    width: 88,
+    height: 88,
+    borderRadius: SHAPE.xl,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 16,
   },
-  logoText: { color: "#fff", fontWeight: "900" },
-  title: { fontWeight: "900" },
+  logoText: { color: "#fff", fontWeight: "900", fontSize: 40 },
+  title: { fontWeight: "700" },
   subtitle: { textAlign: "center" },
   actions: { gap: 16 },
-  googleButton: { marginTop: 8 },
-  buttonLabel: { fontSize: 16, fontWeight: "700" },
-  error: { textAlign: "center" },
   legalese: { textAlign: "center" },
 });

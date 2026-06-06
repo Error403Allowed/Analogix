@@ -1,27 +1,22 @@
 import React, { useState } from "react";
-import { View, StyleSheet, ScrollView, Platform } from "react-native";
-import { Button, Text, TextInput, useTheme, Chip, ProgressBar } from "react-native-paper";
+import { View, StyleSheet, ScrollView, Pressable, TextInput } from "react-native";
+import { Text, useTheme, Button, ProgressBar, Card, TextInput as PaperInput } from "react-native-paper";
 import { useMutation, useQuery } from "@apollo/client";
 import * as DocumentPicker from "expo-document-picker";
-import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 import { useAuth } from "../../context/AuthContext";
 import { ME, UPDATE_PROFILE } from "../../graphql/queries/user";
 import { AUSTRALIAN_STATES, GRADES, type AustralianState, type Grade } from "../../shared/curriculum";
 import InterestPicker from "../../components/InterestPicker";
 import { buildHobbyDetails } from "../../utils/interests";
 import { SHAPE } from "../../theme/tokens";
-import { useThemeContext } from "../../theme/ThemeContext";
-import Icon from "../../components/Icon";
 
 const SUBJECTS = ["Mathematics", "English", "Biology", "Chemistry", "Physics", "History", "Geography", "Economics", "Software Engineering", "Visual Art", "Music", "PDHPE"];
 
 type StepKey = "name" | "grade" | "state" | "subjects" | "interests" | "ics" | "done";
-
 const STEPS: StepKey[] = ["name", "grade", "state", "subjects", "interests", "ics", "done"];
 
 export default function OnboardingScreen() {
   const paperTheme = useTheme();
-  const { brand } = useThemeContext();
   const { user } = useAuth();
   const { data: meData } = useQuery(ME, { fetchPolicy: "cache-only" });
   const [stepIdx, setStepIdx] = useState(0);
@@ -37,17 +32,14 @@ export default function OnboardingScreen() {
   const [updateProfile] = useMutation(UPDATE_PROFILE);
 
   const totalSteps = STEPS.length;
+  const currentStep = STEPS[stepIdx];
 
-  const canProceed = (): boolean => {
-    const step = STEPS[stepIdx];
-    if (step === "name") return name.trim().length > 0;
-    if (step === "grade") return Boolean(grade);
-    if (step === "state") return Boolean(state);
-    if (step === "subjects") return subjects.length > 0;
-    if (step === "interests") return true;
-    if (step === "ics") return true;
-    if (step === "done") return true;
-    return false;
+  const canProceed = () => {
+    if (currentStep === "name") return name.trim().length > 0;
+    if (currentStep === "grade") return Boolean(grade);
+    if (currentStep === "state") return Boolean(state);
+    if (currentStep === "subjects") return subjects.length > 0;
+    return true;
   };
 
   const next = async () => {
@@ -60,10 +52,7 @@ export default function OnboardingScreen() {
         await updateProfile({
           variables: {
             input: {
-              name: name.trim(),
-              grade,
-              state,
-              subjects,
+              name: name.trim(), grade, state, subjects,
               hobbies: hobbyData.hobbies,
               hobby_ids: hobbyData.hobbyIds,
               hobby_details: hobbyData.hobbyDetails,
@@ -84,11 +73,7 @@ export default function OnboardingScreen() {
   const toggleHobby = (id: string) => {
     setHobbyIds((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
     setSubtopics((p) => {
-      if (p[id]) {
-        const next = { ...p };
-        delete next[id];
-        return next;
-      }
+      if (p[id]) { const next = { ...p }; delete next[id]; return next; }
       return p;
     });
   };
@@ -109,28 +94,10 @@ export default function OnboardingScreen() {
     });
   };
 
-  const pickIcs = async () => {
-    try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: "text/calendar",
-        copyToCacheDirectory: true,
-      });
-      if (!result.canceled) setIcsFile(result);
-    } catch {
-      // user cancelled
-    }
-  };
-
-  const currentStep = STEPS[stepIdx];
-
   return (
     <View style={[styles.container, { backgroundColor: paperTheme.colors.background }]}>
       <View style={styles.progressBar}>
-        <ProgressBar
-          progress={(stepIdx + 1) / totalSteps}
-          color={brand.primary}
-          style={styles.progress}
-        />
+        <ProgressBar progress={(stepIdx + 1) / totalSteps} color={paperTheme.colors.primary} style={styles.progress} />
         <Text variant="labelSmall" style={[styles.stepLabel, { color: paperTheme.colors.onSurfaceVariant }]}>
           Step {stepIdx + 1} of {totalSteps}
         </Text>
@@ -138,81 +105,73 @@ export default function OnboardingScreen() {
 
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         {currentStep === "name" && (
-          <Animated.View entering={FadeIn} exiting={FadeOut} key="name">
-            <Text variant="headlineLarge" style={styles.heading}>What should we call you?</Text>
-            <TextInput
+          <View key="name">
+            <Text variant="headlineMedium" style={styles.heading}>What should we call you?</Text>
+            <PaperInput
+              mode="outlined"
               label="Your name"
               value={name}
               onChangeText={setName}
-              mode="outlined"
-              style={styles.input}
               autoCapitalize="words"
+              outlineStyle={{ borderRadius: SHAPE.lg }}
             />
-          </Animated.View>
+          </View>
         )}
 
         {currentStep === "grade" && (
-          <Animated.View entering={FadeIn} exiting={FadeOut} key="grade">
-            <Text variant="headlineLarge" style={styles.heading}>What grade are you in?</Text>
+          <View key="grade">
+            <Text variant="headlineMedium" style={styles.heading}>What grade are you in?</Text>
             <View style={styles.chips}>
               {GRADES.map((g) => (
-                <Chip
+                <Pressable
                   key={g}
-                  selected={grade === g}
                   onPress={() => setGrade(g)}
-                  style={[styles.chip, { borderRadius: SHAPE.lg }]}
-                  mode="outlined"
+                  style={[styles.chip, { backgroundColor: grade === g ? paperTheme.colors.primary : paperTheme.colors.surfaceVariant, borderRadius: SHAPE.pill }]}
                 >
-                  Year {g}
-                </Chip>
+                  <Text style={{ color: grade === g ? paperTheme.colors.onPrimary : paperTheme.colors.onSurface, fontWeight: "700" }}>Year {g}</Text>
+                </Pressable>
               ))}
             </View>
-          </Animated.View>
+          </View>
         )}
 
         {currentStep === "state" && (
-          <Animated.View entering={FadeIn} exiting={FadeOut} key="state">
-            <Text variant="headlineLarge" style={styles.heading}>Which state are you in?</Text>
+          <View key="state">
+            <Text variant="headlineMedium" style={styles.heading}>Which state are you in?</Text>
             <View style={styles.chips}>
               {AUSTRALIAN_STATES.map((s) => (
-                <Chip
+                <Pressable
                   key={s}
-                  selected={state === s}
                   onPress={() => setState(s)}
-                  style={[styles.chip, { borderRadius: SHAPE.lg }]}
-                  mode="outlined"
+                  style={[styles.chip, { backgroundColor: state === s ? paperTheme.colors.primary : paperTheme.colors.surfaceVariant, borderRadius: SHAPE.pill }]}
                 >
-                  {s}
-                </Chip>
+                  <Text style={{ color: state === s ? paperTheme.colors.onPrimary : paperTheme.colors.onSurface, fontWeight: "700" }}>{s}</Text>
+                </Pressable>
               ))}
             </View>
-          </Animated.View>
+          </View>
         )}
 
         {currentStep === "subjects" && (
-          <Animated.View entering={FadeIn} exiting={FadeOut} key="subjects">
-            <Text variant="headlineLarge" style={styles.heading}>Your subjects</Text>
-            <Text variant="bodyLarge" style={styles.subheading}>
-              Pick the subjects you're studying this year.
-            </Text>
+          <View key="subjects">
+            <Text variant="headlineMedium" style={styles.heading}>Your subjects</Text>
+            <Text variant="bodyLarge" style={styles.subheading}>Pick the subjects you're studying this year.</Text>
             <View style={styles.chips}>
               {SUBJECTS.map((s) => (
-                <Chip
+                <Pressable
                   key={s}
-                  selected={subjects.includes(s)}
                   onPress={() => toggleSubject(s)}
-                  style={[styles.chip, { borderRadius: SHAPE.lg }]}
-                  mode="outlined"
+                  style={[styles.chip, { backgroundColor: subjects.includes(s) ? paperTheme.colors.primary : paperTheme.colors.surfaceVariant, borderRadius: SHAPE.pill }]}
                 >
-                  {s}
-                </Chip>
+                  <Text style={{ color: subjects.includes(s) ? paperTheme.colors.onPrimary : paperTheme.colors.onSurface, fontWeight: "700" }}>{s}</Text>
+                </Pressable>
               ))}
             </View>
-          </Animated.View>
+          </View>
         )}
 
         {currentStep === "interests" && (
-          <Animated.View entering={FadeIn} exiting={FadeOut} key="interests">
+          <View key="interests">
             <InterestPicker
               selectedIds={hobbyIds}
               subtopics={subtopics}
@@ -220,80 +179,66 @@ export default function OnboardingScreen() {
               onToggleSubtopic={toggleSubtopic}
               onAddCustom={addCustomSubtopic}
             />
-          </Animated.View>
+          </View>
         )}
 
         {currentStep === "ics" && (
-          <Animated.View entering={FadeIn} exiting={FadeOut} key="ics">
-            <Text variant="headlineLarge" style={styles.heading}>Import your calendar</Text>
+          <View key="ics">
+            <Text variant="headlineMedium" style={styles.heading}>Import your calendar</Text>
             <Text variant="bodyLarge" style={styles.subheading}>
-              Import your school timetable, assessment dates, or extracurricular schedule from an ICS file.
-              You can always do this later from the calendar.
+              Import your school timetable or assessment dates from an ICS file. You can always do this later.
             </Text>
             <View style={styles.icsActions}>
               <Button
                 mode="outlined"
                 icon="calendar-import"
-                onPress={pickIcs}
-                style={[styles.icsButton, { borderRadius: SHAPE.xl }]}
+                onPress={async () => {
+                  const result = await DocumentPicker.getDocumentAsync({ type: "text/calendar", copyToCacheDirectory: true });
+                  if (!result.canceled) setIcsFile(result);
+                }}
+                style={{ borderRadius: SHAPE.lg }}
               >
                 {icsFile && !icsFile.canceled
-                  ? (icsFile as DocumentPicker.DocumentPickerSuccessResult).assets?.[0]?.name ?? "Change file"
+                  ? (icsFile as any).assets?.[0]?.name ?? "Change file"
                   : "Pick an ICS file"}
               </Button>
               {icsFile && !icsFile.canceled && (
-                <View style={[styles.icsPreview, { backgroundColor: paperTheme.colors.surfaceVariant, borderRadius: SHAPE.lg }]}>
-                  <Icon name="file-document-outline" size={24} color={paperTheme.colors.primary} />
-                  <Text variant="bodyMedium" style={{ flex: 1 }}>
-                    {(icsFile as DocumentPicker.DocumentPickerSuccessResult).assets?.[0]?.name ?? "File selected"}
-                  </Text>
-                  <Button compact mode="text" onPress={() => setIcsFile(null)}>Remove</Button>
-                </View>
-              )}
-              {!icsFile && (
-                <Button
-                  mode="text"
-                  icon="close"
-                  onPress={() => {}}
-                  style={{ marginTop: 8 }}
-                >
-                  Skip for now
-                </Button>
+                <Card mode="outlined" style={styles.icsPreview}>
+                  <Card.Content style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                    <Text variant="bodyMedium" style={{ flex: 1 }}>File selected</Text>
+                    <Button compact textColor={paperTheme.colors.error} onPress={() => setIcsFile(null)}>Remove</Button>
+                  </Card.Content>
+                </Card>
               )}
             </View>
-          </Animated.View>
+          </View>
         )}
 
         {currentStep === "done" && (
-          <Animated.View entering={FadeIn} exiting={FadeOut} key="done" style={styles.doneContainer}>
-            <View style={[styles.doneIcon, { backgroundColor: brand.primary }]}>
-              <Icon name="check" size={48} color="#fff" />
+          <View key="done" style={styles.doneContainer}>
+            <View style={[styles.doneIcon, { backgroundColor: paperTheme.colors.primary }]}>
+              <Text style={{ color: paperTheme.colors.onPrimary, fontWeight: "900", fontSize: 40 }}>{'\u2713'}</Text>
             </View>
-            <Text variant="headlineLarge" style={[styles.heading, { textAlign: "center" }]}>
-              You're all set!
-            </Text>
+            <Text variant="headlineMedium" style={[styles.heading, { textAlign: "center" }]}>You're all set!</Text>
             <Text variant="bodyLarge" style={[styles.subheading, { textAlign: "center" }]}>
               Your AI tutor is ready to help you learn, {name.split(" ")[0]}. Let's go!
             </Text>
-          </Animated.View>
+          </View>
         )}
       </ScrollView>
 
       <View style={styles.footer}>
-        <Button
-          mode="text"
-          onPress={() => setStepIdx(Math.max(0, stepIdx - 1))}
-          disabled={stepIdx === 0}
-        >
+        <Button mode="text" onPress={() => setStepIdx(Math.max(0, stepIdx - 1))} disabled={stepIdx === 0}>
           Back
         </Button>
         <Button
           mode="contained"
+          buttonColor={paperTheme.colors.primary}
           onPress={next}
           loading={saving}
           disabled={!canProceed()}
-          contentStyle={{ height: 52 }}
-          style={{ borderRadius: SHAPE.xl, backgroundColor: brand.primary, minWidth: 120 }}
+          contentStyle={{ height: 48 }}
+          style={{ borderRadius: SHAPE.pill, minWidth: 120 }}
         >
           {currentStep === "done" ? "Finish" : "Next"}
         </Button>
@@ -305,18 +250,16 @@ export default function OnboardingScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   progressBar: { paddingTop: 60, paddingHorizontal: 24 },
-  progress: { height: 6, borderRadius: 3 },
+  progress: { height: 6, borderRadius: SHAPE.xs },
   stepLabel: { marginTop: 6, textAlign: "right" },
   content: { padding: 24, paddingBottom: 80 },
-  heading: { fontWeight: "800", marginBottom: 12 },
+  heading: { fontWeight: "700", marginBottom: 16 },
   subheading: { marginBottom: 24, opacity: 0.7 },
-  input: { marginBottom: 16 },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  chip: { marginBottom: 4 },
+  chip: { paddingHorizontal: 18, paddingVertical: 12 },
   icsActions: { gap: 12 },
-  icsButton: { marginTop: 8 },
-  icsPreview: { flexDirection: "row", alignItems: "center", padding: 12, gap: 8 },
+  icsPreview: { borderRadius: SHAPE.lg },
   doneContainer: { alignItems: "center", paddingTop: 40 },
-  doneIcon: { width: 96, height: 96, borderRadius: 48, alignItems: "center", justifyContent: "center", marginBottom: 24 },
+  doneIcon: { width: 88, height: 88, borderRadius: SHAPE.xl, alignItems: "center", justifyContent: "center", marginBottom: 24 },
   footer: { flexDirection: "row", justifyContent: "space-between", padding: 16, paddingBottom: 32, gap: 8 },
 });
