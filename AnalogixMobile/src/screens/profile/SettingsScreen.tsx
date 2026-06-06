@@ -1,6 +1,7 @@
 import React, { useState } from "react";
-import { View, StyleSheet, ScrollView } from "react-native";
-import { Text, useTheme, IconButton, List, Switch, Button, Dialog, Portal } from "react-native-paper";
+import { View, StyleSheet, ScrollView, Pressable } from "react-native";
+import { Text, useTheme, Card, IconButton, Switch, Button, Dialog, Portal } from "react-native-paper";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { useMutation } from "@apollo/client";
 import { DELETE_ACCOUNT } from "../../graphql/queries/user";
@@ -9,6 +10,7 @@ import { SHAPE } from "../../theme/tokens";
 
 export default function SettingsScreen() {
   const paperTheme = useTheme();
+  const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const { signOut } = useAuth();
   const [deleteAccount] = useMutation(DELETE_ACCOUNT);
@@ -29,65 +31,41 @@ export default function SettingsScreen() {
     } catch (e) {
       setDeleting(false);
       setShowDialog(false);
-      setError(e instanceof Error ? e.message : "Could not delete account. Try again later.");
+      setError(e instanceof Error ? e.message : "Could not delete account.");
     }
   };
 
   return (
     <View style={[styles.container, { backgroundColor: paperTheme.colors.background }]}>
-      <View style={styles.header}>
-        <IconButton icon="arrow-left" onPress={() => navigation.goBack()} />
-        <Text variant="headlineLarge" style={styles.title}>Settings</Text>
+      <View style={[styles.topBar, { backgroundColor: paperTheme.colors.surface, paddingTop: insets.top + 4 }]}>
+        <IconButton icon="arrow-left" onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
+        <Text variant="titleLarge" style={{ fontWeight: "700", flex: 1 }}>Settings</Text>
       </View>
-      <ScrollView contentContainerStyle={styles.list}>
-        <List.Section>
-          <List.Subheader style={{ paddingLeft: 0 }}>Notifications</List.Subheader>
-          <List.Item
-            title="Daily reminders"
-            description="When to study"
-            style={{ paddingLeft: 0 }}
-            right={() => <Switch value={notif} onValueChange={setNotif} />}
-          />
-          <List.Item
-            title="Streak warnings"
-            description="Don't break the chain"
-            style={{ paddingLeft: 0 }}
-            right={() => <Switch value={streak} onValueChange={setStreak} />}
-          />
-          <List.Item
-            title="Review reminders"
-            description="Flashcards due today"
-            style={{ paddingLeft: 0 }}
-            right={() => <Switch value={review} onValueChange={setReview} />}
-          />
-        </List.Section>
 
-        <List.Section>
-          <List.Subheader style={{ paddingLeft: 0 }}>Sync</List.Subheader>
-          <List.Item
-            title="Auto-sync"
-            description="Background sync across devices"
-            style={{ paddingLeft: 0 }}
-            right={() => <Switch value={autoSync} onValueChange={setAutoSync} />}
-          />
-        </List.Section>
+      <ScrollView contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 32 }]}>
+        <Text variant="titleSmall" style={[styles.sectionTitle, { color: paperTheme.colors.onSurfaceVariant }]}>NOTIFICATIONS</Text>
+        <Card mode="outlined" style={styles.card}>
+          <SettingSwitch label="Daily reminders" desc="When to study" value={notif} onToggle={setNotif} />
+          <View style={[styles.divider, { backgroundColor: paperTheme.colors.outlineVariant }]} />
+          <SettingSwitch label="Streak warnings" desc="Don't break the chain" value={streak} onToggle={setStreak} />
+          <View style={[styles.divider, { backgroundColor: paperTheme.colors.outlineVariant }]} />
+          <SettingSwitch label="Review reminders" desc="Flashcards due today" value={review} onToggle={setReview} />
+        </Card>
 
-        <List.Section>
-          <List.Subheader style={{ paddingLeft: 0 }}>Account</List.Subheader>
-          <List.Item
-            title="Delete account"
-            titleStyle={{ color: paperTheme.colors.error }}
-            left={() => <List.Icon icon="delete" color={paperTheme.colors.error} />}
-            right={() => <List.Icon icon="chevron-right" color={paperTheme.colors.error} />}
-            onPress={() => setShowDialog(true)}
-          />
-        </List.Section>
+        <Text variant="titleSmall" style={[styles.sectionTitle, { color: paperTheme.colors.onSurfaceVariant }]}>SYNC</Text>
+        <Card mode="outlined" style={styles.card}>
+          <SettingSwitch label="Auto-sync" desc="Background sync across devices" value={autoSync} onToggle={setAutoSync} />
+        </Card>
 
-        {error && (
-          <Text variant="bodySmall" style={{ color: paperTheme.colors.error, textAlign: "center", marginTop: 8 }}>
-            {error}
-          </Text>
-        )}
+        <Text variant="titleSmall" style={[styles.sectionTitle, { color: paperTheme.colors.onSurfaceVariant }]}>ACCOUNT</Text>
+        <Card mode="outlined" style={styles.card}>
+          <Pressable onPress={() => setShowDialog(true)} style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }, styles.deleteRow]}>
+            <Text style={{ color: paperTheme.colors.error, fontWeight: "600" }}>Delete account</Text>
+            <Text variant="bodySmall" style={{ color: paperTheme.colors.onSurfaceVariant }}>Permanently remove all data</Text>
+          </Pressable>
+        </Card>
+
+        {error && <Text variant="bodySmall" style={{ color: paperTheme.colors.error, textAlign: "center", marginTop: 8 }}>{error}</Text>}
       </ScrollView>
 
       <Portal>
@@ -100,16 +78,9 @@ export default function SettingsScreen() {
             </Text>
           </Dialog.Content>
           <Dialog.Actions style={{ justifyContent: "center", gap: 8 }}>
-            <Button onPress={() => setShowDialog(false)} disabled={deleting}>
-              Cancel
-            </Button>
-            <Button
-              textColor={paperTheme.colors.error}
-              loading={deleting}
-              disabled={deleting}
-              onPress={handleConfirmDelete}
-            >
-              {deleting ? "Deleting…" : "Delete"}
+            <Button onPress={() => setShowDialog(false)} disabled={deleting}>Cancel</Button>
+            <Button textColor={paperTheme.colors.error} loading={deleting} disabled={deleting} onPress={handleConfirmDelete}>
+              {deleting ? "Deleting\u2026" : "Delete"}
             </Button>
           </Dialog.Actions>
         </Dialog>
@@ -118,10 +89,26 @@ export default function SettingsScreen() {
   );
 }
 
+function SettingSwitch({ label, desc, value, onToggle }: { label: string; desc: string; value: boolean; onToggle: (v: boolean) => void }) {
+  const paperTheme = useTheme();
+  return (
+    <View style={styles.settingRow}>
+      <View style={{ flex: 1 }}>
+        <Text variant="bodyLarge" style={{ fontWeight: "600", color: paperTheme.colors.onSurface }}>{label}</Text>
+        <Text variant="bodySmall" style={{ color: paperTheme.colors.onSurfaceVariant }}>{desc}</Text>
+      </View>
+      <Switch value={value} onValueChange={onToggle} accessibilityLabel={label} />
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { flexDirection: "row", alignItems: "center", paddingTop: 50, paddingHorizontal: 8 },
-  title: { fontWeight: "900" },
-  list: { padding: 20, paddingBottom: 100 },
-  version: { textAlign: "center", marginTop: 24 },
+  topBar: { flexDirection: "row", alignItems: "center", paddingHorizontal: 4 },
+  list: { padding: 16 },
+  sectionTitle: { fontWeight: "700", letterSpacing: 1, marginTop: 12, marginBottom: 8 },
+  card: { borderRadius: SHAPE.lg, overflow: "hidden" },
+  divider: { height: 1, marginHorizontal: 16 },
+  settingRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 14, paddingHorizontal: 16, gap: 12 },
+  deleteRow: { paddingVertical: 14, paddingHorizontal: 16, gap: 2 },
 });

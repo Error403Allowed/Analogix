@@ -1,9 +1,6 @@
-/**
- * Privacy — policy summary + toggles.
- */
 import React, { useState } from "react";
 import { View, StyleSheet, ScrollView } from "react-native";
-import { Text, useTheme, IconButton, List, Switch } from "react-native-paper";
+import { Text, useTheme, Card, IconButton, Switch } from "react-native-paper";
 import { useNavigation } from "@react-navigation/native";
 import { SHAPE } from "../../theme/tokens";
 
@@ -16,44 +13,45 @@ export default function PrivacyScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: paperTheme.colors.background }]}>
-      <View style={styles.header}>
+      <View style={[styles.topBar, { backgroundColor: paperTheme.colors.surface }]}>
         <IconButton icon="arrow-left" onPress={() => navigation.goBack()} />
-        <Text variant="headlineLarge" style={styles.title}>Privacy</Text>
+        <Text variant="titleLarge" style={{ fontWeight: "700", flex: 1 }}>Privacy</Text>
       </View>
+
       <ScrollView contentContainerStyle={styles.list}>
         <Text variant="bodyMedium" style={{ color: paperTheme.colors.onSurfaceVariant, marginBottom: 16 }}>
           Your data is yours. We never sell it. Adjust what you share below.
         </Text>
-        <List.Section>
-          <List.Item
-            title="Analytics"
-            description="Help us improve Analogix"
-            right={() => <Switch value={analytics} onValueChange={setAnalytics} />}
-          />
-          <List.Item
-            title="Personalization"
-            description="Use your study data to tailor the AI"
-            right={() => <Switch value={personalization} onValueChange={setPersonalization} />}
-          />
-          <List.Item
-            title="Crash reports"
-            description="Auto-send crash info on next launch"
-            right={() => <Switch value={crash} onValueChange={setCrash} />}
-          />
-        </List.Section>
-        <List.Item
-          title="Read full privacy policy"
-          left={() => <List.Icon icon="file-document" />}
-          right={() => <List.Icon icon="chevron-right" />}
-        />
+        <Card mode="outlined" style={styles.card}>
+          <PrivacySwitch label="Analytics" desc="Help us improve Analogix" value={analytics} onToggle={setAnalytics} />
+          <View style={[styles.divider, { backgroundColor: paperTheme.colors.outlineVariant }]} />
+          <PrivacySwitch label="Personalization" desc="Use your study data to tailor the AI" value={personalization} onToggle={setPersonalization} />
+          <View style={[styles.divider, { backgroundColor: paperTheme.colors.outlineVariant }]} />
+          <PrivacySwitch label="Crash reports" desc="Auto-send crash info on next launch" value={crash} onToggle={setCrash} />
+        </Card>
       </ScrollView>
+    </View>
+  );
+}
+
+function PrivacySwitch({ label, desc, value, onToggle }: { label: string; desc: string; value: boolean; onToggle: (v: boolean) => void }) {
+  const paperTheme = useTheme();
+  return (
+    <View style={styles.switchRow}>
+      <View style={{ flex: 1 }}>
+        <Text variant="bodyLarge" style={{ fontWeight: "600", color: paperTheme.colors.onSurface }}>{label}</Text>
+        <Text variant="bodySmall" style={{ color: paperTheme.colors.onSurfaceVariant }}>{desc}</Text>
+      </View>
+      <Switch value={value} onValueChange={onToggle} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { flexDirection: "row", alignItems: "center", paddingTop: 50, paddingHorizontal: 8 },
-  title: { fontWeight: "900" },
-  list: { padding: 20, paddingBottom: 100 },
+  topBar: { flexDirection: "row", alignItems: "center", paddingTop: 50, paddingHorizontal: 4 },
+  list: { padding: 16, paddingBottom: 100 },
+  card: { borderRadius: SHAPE.lg, overflow: "hidden" },
+  divider: { height: 1, marginHorizontal: 16 },
+  switchRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 14, paddingHorizontal: 16, gap: 12 },
 });
