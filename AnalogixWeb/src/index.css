@@ -256,6 +256,193 @@
   .notion-btn-minimal {
     @apply h-8 px-2 rounded-md hover:bg-muted transition-colors text-sm font-medium text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5;
   }
+
+  /* Material 3 Expressive Dashboard Panel */
+  .dashboard-panel {
+    @apply rounded-3xl p-5 transition-all duration-200;
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    box-shadow: 0 1px 3px 1px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.03);
+  }
+
+  .dark .dashboard-panel {
+    box-shadow: 0 1px 3px 1px rgba(0, 0, 0, 0.2), 0 1px 2px rgba(0, 0, 0, 0.12);
+  }
+
+  /* M3 Expressive Stat Rail Card */
+  .m3-rail-card {
+    @apply flex flex-col items-center gap-1 p-3 rounded-2xl transition-all duration-200;
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+  }
+
+  .m3-rail-card:hover {
+    @apply scale-[1.02];
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  }
+
+  /* M3 Expressive Icon Container */
+  .m3-icon-container {
+    @apply w-10 h-10 rounded-xl flex items-center justify-center;
+    background: hsl(var(--primary) / 0.1);
+  }
+
+  .dark .m3-icon-container {
+    background: hsl(var(--primary) / 0.15);
+  }
+
+  /* M3 Expressive List Row */
+  .m3-list-row {
+    @apply flex items-center gap-3 p-3.5 rounded-2xl transition-all duration-200;
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+  }
+
+  .m3-list-row:hover {
+    @apply scale-[1.01];
+    background: hsl(var(--muted));
+  }
+
+  /* M3 Expressive Action Button */
+  .m3-action-btn {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-3 rounded-full text-sm font-semibold transition-all duration-200;
+    background: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+  }
+
+  .m3-action-btn:hover {
+    @apply scale-[1.02] opacity-90;
+    box-shadow: 0 4px 12px hsl(var(--primary) / 0.3);
+  }
+
+  .m3-action-btn:active {
+    @apply scale-[0.98];
+  }
+
+  /* M3 Expressive Secondary Button */
+  .m3-secondary-btn {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-3 rounded-full text-sm font-semibold transition-all duration-200;
+    background: hsl(var(--secondary));
+    color: hsl(var(--secondary-foreground));
+  }
+
+  .m3-secondary-btn:hover {
+    @apply scale-[1.02] opacity-90;
+  }
+
+  /* M3 Expressive Outlined Button */
+  .m3-outlined-btn {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-3 rounded-full text-sm font-semibold transition-all duration-200;
+    background: transparent;
+    color: hsl(var(--primary));
+    border: 1px solid hsl(var(--border));
+  }
+
+  .m3-outlined-btn:hover {
+    @apply scale-[1.02];
+    background: hsl(var(--primary) / 0.05);
+  }
+
+  /* M3 Expressive Section Header */
+  .m3-section-header {
+    @apply flex items-center justify-between mb-3;
+  }
+
+  .m3-section-title {
+    @apply text-xs font-black uppercase tracking-[0.18em];
+    color: hsl(var(--muted-foreground));
+  }
+
+  .m3-section-action {
+    @apply text-xs font-semibold transition-colors;
+    color: hsl(var(--primary));
+  }
+
+  .m3-section-action:hover {
+    @apply opacity-80;
+  }
+
+  /* M3 Expressive Hero Panel */
+  .m3-hero-panel {
+    @apply rounded-3xl p-5 overflow-hidden;
+    background: hsl(var(--primary) / 0.1);
+  }
+
+  .dark .m3-hero-panel {
+    background: hsl(var(--primary) / 0.15);
+  }
+
+  /* M3 Expressive Card with Tonal Surface */
+  .m3-tonal-card {
+    @apply rounded-3xl p-4 transition-all duration-200;
+    background: hsl(var(--muted));
+    border: 1px solid hsl(var(--border));
+  }
+
+  .m3-tonal-card:hover {
+    @apply scale-[1.01];
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  }
+
+  /* M3 Expressive Progress Bar */
+  .m3-progress-track {
+    @apply h-2.5 rounded-full overflow-hidden;
+    background: hsl(var(--primary) / 0.1);
+  }
+
+  .m3-progress-fill {
+    @apply h-full rounded-full transition-all duration-500;
+    background: hsl(var(--primary));
+  }
+
+  /* M3 Expressive Badge */
+  .m3-badge {
+    @apply inline-flex items-center justify-center px-2.5 py-1 rounded-full text-xs font-bold;
+    background: hsl(var(--primary) / 0.1);
+    color: hsl(var(--primary));
+  }
+
+  .dark .m3-badge {
+    background: hsl(var(--primary) / 0.2);
+  }
+
+  /* M3 Expressive Toggle */
+  .m3-toggle {
+    @apply relative w-11 h-6 rounded-full transition-all duration-200 cursor-pointer;
+    background: hsl(var(--muted));
+    border: 2px solid hsl(var(--border));
+  }
+
+  .m3-toggle.active {
+    background: hsl(var(--primary));
+    border-color: hsl(var(--primary));
+  }
+
+  .m3-toggle-knob {
+    @apply absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-all duration-200;
+  }
+
+  .m3-toggle.active .m3-toggle-knob {
+    transform: translateX(20px);
+  }
+
+  /* M3 Expressive Input Field */
+  .m3-input {
+    @apply w-full px-4 py-3 rounded-2xl text-sm outline-none transition-all duration-200;
+    background: hsl(var(--muted));
+    border: 1px solid hsl(var(--border));
+    color: hsl(var(--foreground));
+  }
+
+  .m3-input:focus {
+    @apply ring-2;
+    border-color: hsl(var(--primary));
+    box-shadow: 0 0 0 4px hsl(var(--primary) / 0.1);
+  }
+
+  .m3-input::placeholder {
+    color: hsl(var(--muted-foreground) / 0.5);
+  }
 }
 
 /* BlockNote Customization to match Notion */

@@ -183,3 +183,90 @@ export const UPDATE_NOTES = gql`
     }
   }
 `;
+
+export const DELETE_DOCUMENT = gql`
+  mutation DeleteDocument($documentId: ID!, $subjectId: String!) {
+    deleteDocument(documentId: $documentId, subjectId: $subjectId) {
+      success
+    }
+  }
+`;
+
+export const DUPLICATE_DOCUMENT = gql`
+  mutation DuplicateDocument($documentId: ID!, $subjectId: String!) {
+    duplicateDocument(documentId: $documentId, subjectId: $subjectId) {
+      id
+      subjectId
+      title
+      content
+      contentFormat
+      role
+      icon
+      cover
+      createdAt
+    }
+  }
+`;
+
+export const SAVE_SUBJECT_NOTES = gql`
+  mutation SaveSubjectNotes($subjectId: String!, $notes: JSON!) {
+    saveSubjectNotes(subjectId: $subjectId, notes: $notes) {
+      id
+      marks {
+        id
+        title
+        score
+        total
+        date
+      }
+      notes {
+        content
+        lastUpdated
+        title
+        homework {
+          id
+          title
+          dueDate
+          completed
+        }
+        links {
+          id
+          title
+          url
+        }
+        assessments {
+          id
+          title
+          dueDate
+          subject
+        }
+      }
+    }
+  }
+`;
+
+export const CUSTOM_SUBJECTS = gql`
+  query CustomSubjects {
+    customSubjects {
+      id
+      subjectId
+      customIcon
+      customColor
+      customCover
+      customTitle
+    }
+  }
+`;
+
+export const SAVE_CUSTOM_SUBJECT = gql`
+  mutation SaveCustomSubject($subjectId: String!, $input: JSON!) {
+    saveCustomSubject(subjectId: $subjectId, input: $input) {
+      id
+      subjectId
+      customIcon
+      customColor
+      customCover
+      customTitle
+    }
+  }
+`;

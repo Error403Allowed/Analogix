@@ -16,10 +16,11 @@ export default function DashLayout({ children }: { children: React.ReactNode }) 
   const isLanding          = pathname === "/" || !pathname;
   const isOnboarding       = pathname === "/onboarding";
   const isTimerFullscreen  = pathname === "/timer";
+  const isAuthPage         = pathname === "/login" || pathname === "/auth/callback";
   const isPublicPage       = pathname === "/support" || pathname === "/privacy";
   const isChatLike         = pathname === "/chat" || pathname === "/calendar";
 
-  if (isLanding || isOnboarding || isTimerFullscreen || isPublicPage) {
+  if (isLanding || isOnboarding || isTimerFullscreen || isAuthPage || isPublicPage) {
     return <>{children}</>;
   }
 

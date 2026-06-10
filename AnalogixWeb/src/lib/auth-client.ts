@@ -9,10 +9,6 @@ export async function signInWithGoogle(next = "/dashboard") {
     provider: "google",
     options: {
       redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
-      queryParams: {
-        access_type: "offline",
-        prompt: "consent",
-      },
     },
   });
 

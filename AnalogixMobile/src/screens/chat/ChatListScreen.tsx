@@ -1,39 +1,37 @@
-import React, { useState, useEffect, useRef } from "react";
-import { View, StyleSheet, Animated } from "react-native";
-import { Text, useTheme, Searchbar, FAB } from "react-native-paper";
-import { useQuery } from "@apollo/client";
+import React, { useState, useCallback } from "react";
+import { View, StyleSheet, Animated as RNAnimated, Alert } from "react-native";
+import { Text, useTheme, Searchbar, FAB, Portal, Modal, TextInput, Button } from "react-native-paper";
+import { useQuery, useMutation } from "@apollo/client";
 import { useNavigation } from "@react-navigation/native";
-import { CHAT_SESSIONS } from "../../graphql/queries/chat";
+import Animated, { FadeInDown } from "react-native-reanimated";
+import { CHAT_SESSIONS, DELETE_CHAT_SESSION, UPDATE_CHAT_SESSION } from "../../graphql/queries/chat";
 import { SHAPE } from "../../theme/tokens";
 import Icon from "../../components/Icon";
 import {
   ExpressiveEmptyState,
-  ExpressiveHeroPanel,
   ExpressiveListRow,
   ExpressiveScreen,
   ExpressiveSection,
 } from "../../components/expressive";
 
 function BlinkingRobot() {
-  const opacity = useRef(new Animated.Value(1)).current;
+  const opacity = React.useRef(new RNAnimated.Value(1)).current;
 
-  useEffect(() => {
+  React.useEffect(() => {
     const blink = () => {
-      Animated.sequence([
-        Animated.timing(opacity, { toValue: 0.2, duration: 100, useNativeDriver: true }),
-        Animated.timing(opacity, { toValue: 1, duration: 100, useNativeDriver: true }),
+      RNAnimated.sequence([
+        RNAnimated.timing(opacity, { toValue: 0.2, duration: 100, useNativeDriver: false }),
+        RNAnimated.timing(opacity, { toValue: 1, duration: 100, useNativeDriver: false }),
       ]).start();
     };
-    const timer = setInterval(() => {
-      blink();
-    }, 4000);
+    const timer = setInterval(() => blink(), 4000);
     return () => clearInterval(timer);
   }, [opacity]);
 
   return (
-    <Animated.View style={{ opacity }}>
+    <RNAnimated.View style={{ opacity }}>
       <Icon name="robot" size={22} color="#fff" />
-    </Animated.View>
+    </RNAnimated.View>
   );
 }
 
@@ -41,9 +39,53 @@ export default function ChatListScreen() {
   const paperTheme = useTheme();
   const navigation = useNavigation<any>();
   const [q, setQ] = useState("");
-  const { data, loading } = useQuery(CHAT_SESSIONS);
+  const { data, refetch } = useQuery(CHAT_SESSIONS);
+  const [deleteSession] = useMutation(DELETE_CHAT_SESSION);
+  const [updateSession] = useMutation(UPDATE_CHAT_SESSION);
+  const [renameTarget, setRenameTarget] = useState<{ id: string; title: string } | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+
   const sessions = data?.chatSessions ?? [];
-  const filtered = q ? sessions.filter((s: any) => (s.name ?? s.subject ?? "").toLowerCase().includes(q.toLowerCase())) : sessions;
+  const filtered = q
+    ? sessions.filter((s: any) => (s.title ?? s.lastMessage ?? "").toLowerCase().includes(q.toLowerCase()))
+    : sessions;
+
+  const handleSessionPress = useCallback((s: any) => {
+    navigation.navigate("ChatSession", {
+      sessionId: s.id,
+      subjectId: s.subjectId ?? "general",
+      title: s.title,
+    });
+  }, [navigation]);
+
+  const handleSessionLongPress = useCallback((s: any) => {
+    Alert.alert(s.title ?? "Chat", "Choose an action", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Rename",
+        onPress: () => {
+          setRenameTarget({ id: s.id, title: s.title ?? "" });
+          setRenameValue(s.title ?? "");
+        },
+      },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
+          await deleteSession({ variables: { id: s.id } });
+          refetch();
+        },
+      },
+    ]);
+  }, [deleteSession, refetch]);
+
+  const handleRename = useCallback(async () => {
+    if (!renameTarget || !renameValue.trim()) return;
+    await updateSession({ variables: { id: renameTarget.id, title: renameValue.trim() } });
+    setRenameTarget(null);
+    setRenameValue("");
+    refetch();
+  }, [renameTarget, renameValue, updateSession, refetch]);
 
   return (
     <ExpressiveScreen
@@ -51,7 +93,13 @@ export default function ChatListScreen() {
       subtitle={`${filtered.length} conversation${filtered.length !== 1 ? "s" : ""}`}
       leadingIcon={<BlinkingRobot />}
       fab={
-        <FAB icon="plus" label="New chat" color={paperTheme.colors.onPrimary} style={{ backgroundColor: paperTheme.colors.primary, borderRadius: SHAPE.lg }} onPress={() => navigation.navigate("ChatSession", { sessionId: "new" })} />
+        <FAB
+          icon="plus"
+          label="New chat"
+          color={paperTheme.colors.onPrimary}
+          style={{ backgroundColor: paperTheme.colors.primary, borderRadius: SHAPE.lg }}
+          onPress={() => navigation.navigate("ChatSession", { sessionId: "new", subjectId: "general" })}
+        />
       }
     >
       <Searchbar
@@ -64,32 +112,47 @@ export default function ChatListScreen() {
 
       <ExpressiveSection title="Conversations">
         <View style={styles.list}>
-        {filtered.length === 0 ? (
-          <ExpressiveEmptyState icon="message-text-outline" title="No conversations yet" subtitle="Tap New chat to start studying with AI." />
-        ) : (
-          filtered.map((s: any) => (
-            <ExpressiveListRow
-              key={s.id}
-              title={s.name ?? s.subject ?? "Chat"}
-              subtitle={s.lastMessage ?? "No messages yet"}
-              icon="robot"
-              onPress={() => navigation.navigate("ChatSession", { sessionId: s.id })}
-              trailing={
-                <Text variant="labelSmall" style={{ color: paperTheme.colors.onSurfaceVariant, maxWidth: 72 }} numberOfLines={1}>
-                  {s.updatedAt ? new Date(s.updatedAt).toLocaleDateString() : ""}
-                </Text>
-              }
-            />
-          ))
-        )}
+          {filtered.length === 0 ? (
+            <ExpressiveEmptyState icon="message-text-outline" title="No conversations yet" subtitle="Tap New chat to start studying with AI." />
+          ) : (
+            filtered.map((s: any, index: number) => (
+              <Animated.View
+                key={s.id}
+                entering={FadeInDown.duration(300).delay(index * 50).springify().damping(24)}
+              >
+                <ExpressiveListRow
+                  title={s.title ?? "Chat"}
+                  subtitle={s.lastMessage ?? "No messages yet"}
+                  icon="robot"
+                  onPress={() => handleSessionPress(s)}
+                  onLongPress={() => handleSessionLongPress(s)}
+                  trailing={
+                    <Text variant="labelSmall" style={{ color: paperTheme.colors.onSurfaceVariant, maxWidth: 72 }} numberOfLines={1}>
+                      {s.updatedAt ? new Date(s.updatedAt).toLocaleDateString() : ""}
+                    </Text>
+                  }
+                />
+              </Animated.View>
+            ))
+          )}
         </View>
       </ExpressiveSection>
+
+      <Portal>
+        <Modal visible={Boolean(renameTarget)} onDismiss={() => setRenameTarget(null)} contentContainerStyle={[styles.modal, { backgroundColor: paperTheme.colors.surface }]}>
+          <Text variant="titleLarge" style={{ fontWeight: "700", marginBottom: 16 }}>Rename chat</Text>
+          <TextInput mode="outlined" label="Title" value={renameValue} onChangeText={setRenameValue} style={{ marginBottom: 16 }} />
+          <Button mode="contained" onPress={handleRename} disabled={!renameValue.trim()}>
+            Save
+          </Button>
+        </Modal>
+      </Portal>
     </ExpressiveScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  hero: { minHeight: 150, gap: 8, justifyContent: "center" },
   search: { borderRadius: SHAPE.pill },
   list: { gap: 8 },
+  modal: { margin: 20, padding: 24, borderRadius: SHAPE.xl },
 });

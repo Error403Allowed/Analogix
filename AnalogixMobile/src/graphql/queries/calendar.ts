@@ -65,3 +65,36 @@ export const DELETE_DEADLINE = gql`
     }
   }
 `;
+
+export const UPDATE_EVENT = gql`
+  mutation UpdateEvent($id: ID!, $input: JSON!) {
+    updateEvent(id: $id, input: $input) {
+      id
+      title
+      date
+      endDate
+      type
+      subject
+      location
+      description
+    }
+  }
+`;
+
+export const IMPORT_ICS = gql`
+  mutation ImportIcs($ics: String!) {
+    importIcs(ics: $ics)
+  }
+`;
+
+export const UPDATE_DEADLINE = gql`
+  mutation UpdateDeadline($id: ID!, $input: JSON!) {
+    updateDeadline(id: $id, input: $input) {
+      id
+      title
+      dueDate
+      subject
+      priority
+    }
+  }
+`;

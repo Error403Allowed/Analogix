@@ -2,7 +2,9 @@ import {
   argbFromHex,
   hexFromArgb,
   themeFromSourceColor,
-  type TonalPalette,
+  TonalPalette,
+  Hct,
+  type TonalPalette as TonalPaletteType,
 } from "@material/material-color-utilities";
 import type { MD3Theme } from "react-native-paper";
 
@@ -61,6 +63,7 @@ const ROLE_TO_PALETTE: Record<string, PaletteKey> = {
   outlineVariant: "neutralVariant",
 };
 
+// Light tones — standard M3 spec
 const TONES: Record<string, number> = {
   primary: 40,
   onPrimary: 100,
@@ -98,29 +101,29 @@ const TONES: Record<string, number> = {
   surfaceContainerHighest: 90,
 };
 
-// Dark tones: surface containers bumped up significantly so cards are
-// visibly elevated against the background (tone 6) — was 12/17/22, now 16/24/30.
+// Dark tones — surfaces pushed higher so cards stand out; primaries
+// bumped to tone 75–78 so they look vibrant rather than washed-out pastel.
 const DARK_TONES: Record<string, number> = {
-  primary: 80,
-  onPrimary: 20,
-  primaryContainer: 30,
-  onPrimaryContainer: 90,
-  secondary: 80,
-  onSecondary: 20,
-  secondaryContainer: 30,
-  onSecondaryContainer: 90,
-  tertiary: 80,
-  onTertiary: 20,
-  tertiaryContainer: 30,
-  onTertiaryContainer: 90,
+  primary: 78,
+  onPrimary: 18,
+  primaryContainer: 28,
+  onPrimaryContainer: 92,
+  secondary: 76,
+  onSecondary: 18,
+  secondaryContainer: 28,
+  onSecondaryContainer: 92,
+  tertiary: 78,
+  onTertiary: 18,
+  tertiaryContainer: 28,
+  onTertiaryContainer: 92,
   error: 80,
   onError: 20,
   errorContainer: 30,
   onErrorContainer: 80,
   background: 6,
-  onBackground: 90,
+  onBackground: 92,
   surface: 6,
-  onSurface: 90,
+  onSurface: 92,
   surfaceVariant: 30,
   onSurfaceVariant: 80,
   outline: 60,
@@ -137,35 +140,26 @@ const DARK_TONES: Record<string, number> = {
   surfaceContainerHighest: 30,
 };
 
-function tone(
-  palettes: Record<PaletteKey, TonalPalette>,
+function getTone(
+  palettes: Record<PaletteKey, TonalPaletteType>,
   role: string,
+  dark: boolean,
 ): number {
-  const paletteKey = ROLE_TO_PALETTE[role];
-  if (!paletteKey) return 0;
-  const palette = palettes[paletteKey];
-  if (!palette) return 0;
-  return palette.tone(TONES[role] ?? 0);
-}
-
-function darkTone(
-  palettes: Record<PaletteKey, TonalPalette>,
-  role: string,
-): number {
-  const paletteKey = ROLE_TO_PALETTE[role];
-  if (!paletteKey) return 0;
-  const palette = palettes[paletteKey];
-  if (!palette) return 0;
-  return palette.tone(DARK_TONES[role] ?? 0);
+  const tones = dark ? DARK_TONES : TONES;
+  return tones[role] ?? 0;
 }
 
 function buildColors(
-  palettes: Record<PaletteKey, TonalPalette>,
+  palettes: Record<PaletteKey, TonalPaletteType>,
   isDark: boolean,
 ): ExpressiveColors {
-  const fn = isDark
-    ? (r: string) => hexFromArgb(darkTone(palettes, r))
-    : (r: string) => hexFromArgb(tone(palettes, r));
+  const fn = (role: string) => {
+    const paletteKey = ROLE_TO_PALETTE[role];
+    if (!paletteKey) return "#000000";
+    const palette = palettes[paletteKey];
+    if (!palette) return "#000000";
+    return hexFromArgb(palette.tone(getTone(palettes, role, isDark)));
+  };
 
   const n = (t: number) => hexFromArgb(palettes.neutral.tone(t));
 
@@ -224,12 +218,30 @@ export function generateDynamicScheme(seedHex: string): DynamicColorScheme {
   const source = argbFromHex(seedHex);
   const theme = themeFromSourceColor(source);
 
-  const palettes: Record<PaletteKey, TonalPalette> = {
+  // Extract the seed hue + chroma so we can build a custom neutral palette.
+  // M3's default neutral has chroma ~4 — barely any colour, making all
+  // surfaces look grey regardless of theme. We use chroma 18 to give
+  // surfaces a clear, tasteful tint of the brand colour.
+  // For true monochrome themes (Slate / Notion-like), the seed has near-zero
+  // chroma, so we keep chroma 0 to preserve a pure black-and-white feel.
+  const seedHct = Hct.fromInt(source);
+  const seedHue = seedHct.hue;
+  const seedChroma = seedHct.chroma;
+  const isMonochrome = seedChroma < 10;
+  const neutralChroma = isMonochrome ? 0 : 18;
+  const variantChroma = isMonochrome ? 0 : 22;
+  const tintedNeutral = TonalPalette.fromHueAndChroma(seedHue, neutralChroma);
+  // Boost neutralVariant chroma too so onSurfaceVariant (inactive icons/text)
+  // carries a real colour tint instead of landing as pure grey.
+  const tintedNeutralVariant = TonalPalette.fromHueAndChroma(seedHue + 8, variantChroma);
+
+  const palettes: Record<PaletteKey, TonalPaletteType> = {
     primary: theme.palettes.primary,
     secondary: theme.palettes.secondary,
     tertiary: theme.palettes.tertiary,
-    neutral: theme.palettes.neutral,
-    neutralVariant: theme.palettes.neutralVariant,
+    // Replace the auto-derived grey neutral with our colour-tinted one
+    neutral: tintedNeutral,
+    neutralVariant: tintedNeutralVariant,
     error: theme.palettes.error,
   };
 

@@ -84,3 +84,30 @@ export const DELETE_FLASHCARD = gql`
     }
   }
 `;
+
+export const UPDATE_FLASHCARD = gql`
+  mutation UpdateFlashcard($input: JSON!) {
+    updateFlashcard(input: $input) {
+      id
+      subjectId
+      front
+      back
+      nextReview
+      intervalDays
+      easeFactor
+      repetitions
+      setId
+    }
+  }
+`;
+
+export const CREATE_FLASHCARD_SET = gql`
+  mutation CreateFlashcardSet($input: JSON!) {
+    createFlashcardSet(input: $input) {
+      id
+      subjectId
+      name
+      cardCount
+    }
+  }
+`;

@@ -1,8 +1,16 @@
-import React, { useRef } from "react";
-import { View, StyleSheet, Animated as RNAnimated, useWindowDimensions } from "react-native";
+import React, { useCallback } from "react";
+import { View, StyleSheet, useWindowDimensions } from "react-native";
 import { useTheme } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { SHAPE } from "../../theme/tokens";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  useDerivedValue,
+  withSpring,
+  interpolate,
+  Extrapolation,
+} from "react-native-reanimated";
+import { SHAPE, MOTION } from "../../theme/tokens";
 
 interface SheetLayoutProps {
   heroColor: string;
@@ -16,40 +24,57 @@ export function SheetLayout({ heroColor, heroContent, heroMinHeight = 240, child
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { height: screenH } = useWindowDimensions();
-  const scrollY = useRef(new RNAnimated.Value(0)).current;
+  const scrollY = useSharedValue(0);
+  const collapsedH = 60;
 
-  const heroHeight = scrollY.interpolate({
-    inputRange: [0, heroMinHeight - 60],
-    outputRange: [heroMinHeight, 60],
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
+  const heroHeight = useDerivedValue(() =>
+    interpolate(
+      scrollY.value,
+      [0, heroMinHeight - collapsedH],
+      [heroMinHeight, collapsedH],
+      Extrapolation.CLAMP,
+    )
+  );
 
-  const heroOpacity = scrollY.interpolate({
-    inputRange: [0, heroMinHeight - 80],
-    outputRange: [1, 0],
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
+  const heroOpacity = useDerivedValue(() =>
+    interpolate(
+      scrollY.value,
+      [0, heroMinHeight - 80],
+      [1, 0],
+      Extrapolation.CLAMP,
+    )
+  );
+
+  const heroAnimStyle = useAnimatedStyle(() => ({
+    height: heroHeight.value,
+  }));
+
+  const contentAnimStyle = useAnimatedStyle(() => ({
+    opacity: heroOpacity.value,
+  }));
+
+  const onScroll = useCallback((event: any) => {
+    scrollY.value = event.nativeEvent.contentOffset.y;
+  }, [scrollY]);
 
   return (
     <View style={[styles.root, { backgroundColor: heroColor }]}>
-      <RNAnimated.View
+      <Animated.View
         style={[
           styles.hero,
+          heroAnimStyle,
           {
-            height: heroHeight,
             backgroundColor: heroColor,
             paddingTop: insets.top + 12,
           },
         ]}
       >
-        <RNAnimated.View style={{ opacity: heroOpacity, flex: 1 }}>
+        <Animated.View style={[contentAnimStyle, { flex: 1 }]}>
           {heroContent}
-        </RNAnimated.View>
-      </RNAnimated.View>
+        </Animated.View>
+      </Animated.View>
 
-      <RNAnimated.ScrollView
+      <Animated.ScrollView
         style={styles.sheet}
         contentContainerStyle={[
           styles.sheetContent,
@@ -58,10 +83,7 @@ export function SheetLayout({ heroColor, heroContent, heroMinHeight = 240, child
         showsVerticalScrollIndicator={false}
         scrollEventThrottle={16}
         refreshControl={refreshControl as any}
-        onScroll={RNAnimated.event(
-          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-          { useNativeDriver: false }
-        )}
+        onScroll={onScroll}
       >
         <View
           style={[
@@ -76,7 +98,7 @@ export function SheetLayout({ heroColor, heroContent, heroMinHeight = 240, child
         >
           {children}
         </View>
-      </RNAnimated.ScrollView>
+      </Animated.ScrollView>
     </View>
   );
 }

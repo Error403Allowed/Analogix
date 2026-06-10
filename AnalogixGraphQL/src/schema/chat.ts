@@ -26,6 +26,7 @@ export const chatTypeDefs = /* GraphQL */ `
     token: String!
     done: Boolean!
     fullText: String
+    model: String
   }
 
   extend type Query {

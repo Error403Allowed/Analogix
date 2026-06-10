@@ -1,8 +1,14 @@
-import React, { useEffect, useRef } from "react";
-import { Animated, Pressable, StyleSheet, View } from "react-native";
+import React, { useEffect, useCallback, useRef } from "react";
+import { Pressable, StyleSheet, View, LayoutChangeEvent, Platform } from "react-native";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { Text, useTheme } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from "react-native-reanimated";
 import { SHAPE } from "../theme/tokens";
 import Icon from "../components/Icon";
 
@@ -20,6 +26,29 @@ export function MaterialTabBar(props: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const colors = theme.colors as typeof theme.colors & { surfaceContainer: string; surfaceContainerHigh: string };
 
+  const indicatorX = useSharedValue(0);
+  const tabPositions = useRef<number[]>([]);
+
+  const onTabLayout = useCallback((index: number, event: LayoutChangeEvent) => {
+    const x = event.nativeEvent.layout.x;
+    tabPositions.current[index] = x;
+    if (index === props.state.index) {
+      indicatorX.value = x;
+    }
+  }, [props.state.index, indicatorX]);
+
+  useEffect(() => {
+    const positions = tabPositions.current;
+    if (positions.length > props.state.index) {
+      const targetX = positions[props.state.index] ?? 0;
+      indicatorX.value = withSpring(targetX, { damping: 22, stiffness: 260, mass: 0.6 });
+    }
+  }, [props.state.index, indicatorX]);
+
+  const indicatorStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: indicatorX.value }],
+  }));
+
   return (
     <View
       style={[
@@ -33,7 +62,7 @@ export function MaterialTabBar(props: BottomTabBarProps) {
     >
       {props.state.routes.map((route, index) => {
         const focused = props.state.index === index;
-        const config = TAB_CONFIG[route.name] ?? { icon: "circle", label: route.name };
+        const config = TAB_CONFIG[route.name] ?? { icon: "circle", iconOutline: "circle", label: route.name };
         const onPress = () => {
           const event = props.navigation.emit({
             type: "tabPress",
@@ -42,6 +71,13 @@ export function MaterialTabBar(props: BottomTabBarProps) {
           });
           if (!focused && !event.defaultPrevented) {
             props.navigation.navigate(route.name);
+            if (Platform.OS === "ios") {
+              try {
+                // eslint-disable-next-line @typescript-eslint/no-require-imports
+                const haptics = require("expo-haptics");
+                haptics.impactAsync(haptics.ImpactFeedbackStyle.Light);
+              } catch { /* haptics unavailable */ }
+            }
           }
         };
         return (
@@ -51,6 +87,7 @@ export function MaterialTabBar(props: BottomTabBarProps) {
             config={config}
             theme={theme}
             onPress={onPress}
+            onLayout={(e) => onTabLayout(index, e)}
           />
         );
       })}
@@ -58,41 +95,58 @@ export function MaterialTabBar(props: BottomTabBarProps) {
   );
 }
 
-function TabItem({ focused, config, theme, onPress }: { focused: boolean; config: { icon: string; iconOutline: string; label: string }; theme: any; onPress: () => void }) {
-  const scale = useRef(new Animated.Value(1)).current;
+function TabItem({
+  focused, config, theme, onPress, onLayout,
+}: {
+  focused: boolean;
+  config: { icon: string; iconOutline: string; label: string };
+  theme: any;
+  onPress: () => void;
+  onLayout: (e: any) => void;
+}) {
+  const iconScale = useSharedValue(1);
+  const labelOpacity = useSharedValue(focused ? 1 : 0.8);
 
   useEffect(() => {
-    if (focused) {
-      scale.setValue(1.08);
-      Animated.spring(scale, {
-        toValue: 1,
-        friction: 8,
-        tension: 100,
-        useNativeDriver: true,
-      }).start();
-    }
-  }, [focused, scale]);
+    iconScale.value = withSpring(focused ? 1.1 : 1, { damping: 14, stiffness: 180 });
+    labelOpacity.value = withTiming(focused ? 1 : 0.8, { duration: 150 });
+  }, [focused, iconScale, labelOpacity]);
+
+  const iconAnimStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: iconScale.value }],
+  }));
+  const labelAnimStyle = useAnimatedStyle(() => ({
+    opacity: labelOpacity.value,
+  }));
 
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [{ opacity: pressed ? 0.72 : 1 }, styles.tab]}>
-      <Animated.View style={[styles.activeBg, focused && { backgroundColor: theme.colors.secondaryContainer, borderRadius: SHAPE.pill }, { transform: [{ scale }] }]}>
-        <Icon
-          name={focused ? config.icon : config.iconOutline}
-          size={24}
-          color={focused ? theme.colors.onSecondaryContainer : theme.colors.onSurfaceVariant}
-        />
+    <Pressable
+      onPress={onPress}
+      onLayout={onLayout}
+      style={({ pressed }) => [{ opacity: pressed ? 0.72 : 1 }, styles.tab]}
+    >
+      <View style={[styles.activeBg, focused && { backgroundColor: theme.colors.primary + "22", borderRadius: SHAPE.pill }]}>
+        <Animated.View style={iconAnimStyle}>
+          <Icon
+            name={focused ? config.icon : config.iconOutline}
+            size={24}
+            color={focused ? theme.colors.primary : theme.colors.onSurfaceVariant}
+          />
+        </Animated.View>
+      </View>
+      <Animated.View style={labelAnimStyle}>
+        <Text
+          variant="labelSmall"
+          style={{
+            color: focused ? theme.colors.primary : theme.colors.onSurfaceVariant,
+            fontWeight: focused ? "700" : "500",
+            fontSize: 11,
+            marginTop: 1,
+          }}
+        >
+          {config.label}
+        </Text>
       </Animated.View>
-      <Text
-        variant="labelSmall"
-        style={{
-          color: focused ? theme.colors.onSurface : theme.colors.onSurfaceVariant,
-          fontWeight: focused ? "700" : "500",
-          fontSize: 12,
-          marginTop: 2,
-        }}
-      >
-        {config.label}
-      </Text>
     </Pressable>
   );
 }
@@ -108,9 +162,10 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
+    paddingVertical: 4,
   },
   activeBg: {
-    width: 64,
+    width: 56,
     height: 36,
     alignItems: "center",
     justifyContent: "center",

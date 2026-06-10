@@ -19,7 +19,11 @@ let cachedClient: ReturnType<typeof createBrowserClient> | null = null;
 
 export const createClient = (): any => {
   if (!cachedClient) {
-    cachedClient = createBrowserClient(browserSupabaseUrl, browserSupabaseAnonKey);
+    cachedClient = createBrowserClient(browserSupabaseUrl, browserSupabaseAnonKey, {
+      auth: {
+        detectSessionInUrl: false,
+      },
+    });
   }
   return cachedClient;
 };

@@ -1,9 +1,10 @@
 import React, { useState } from "react";
-import { View, StyleSheet, ScrollView, Pressable } from "react-native";
+import { View, StyleSheet, ScrollView, Pressable, Alert } from "react-native";
 import { Text, useTheme, Card, IconButton, Switch, Button, Dialog, Portal } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { useMutation } from "@apollo/client";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { DELETE_ACCOUNT } from "../../graphql/queries/user";
 import { useAuth } from "../../context/AuthContext";
 import { SHAPE } from "../../theme/tokens";
@@ -15,7 +16,9 @@ export default function SettingsScreen() {
   const { signOut } = useAuth();
   const [deleteAccount] = useMutation(DELETE_ACCOUNT);
   const [showDialog, setShowDialog] = useState(false);
+  const [showResetDialog, setShowResetDialog] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [resetting, setResetting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notif, setNotif] = useState(true);
   const [streak, setStreak] = useState(true);
@@ -32,6 +35,22 @@ export default function SettingsScreen() {
       setDeleting(false);
       setShowDialog(false);
       setError(e instanceof Error ? e.message : "Could not delete account.");
+    }
+  };
+
+  const handleResetData = async () => {
+    setResetting(true);
+    try {
+      const keys = await AsyncStorage.getAllKeys();
+      const localKeys = keys.filter((k) => k.startsWith("analogix_") || k.startsWith("onboarding_") || k.startsWith("custom_event_types"));
+      await AsyncStorage.multiRemove(localKeys);
+      setShowResetDialog(false);
+      Alert.alert("Data reset", "Local data has been cleared. Please restart the app.", [{ text: "OK" }]);
+    } catch {
+      setShowResetDialog(false);
+      Alert.alert("Error", "Failed to reset data.");
+    } finally {
+      setResetting(false);
     }
   };
 
@@ -65,6 +84,14 @@ export default function SettingsScreen() {
           </Pressable>
         </Card>
 
+        <Text variant="titleSmall" style={[styles.sectionTitle, { color: paperTheme.colors.onSurfaceVariant }]}>DATA</Text>
+        <Card mode="outlined" style={styles.card}>
+          <Pressable onPress={() => setShowResetDialog(true)} style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }, styles.deleteRow]}>
+            <Text style={{ color: paperTheme.colors.error, fontWeight: "600" }}>Reset all data</Text>
+            <Text variant="bodySmall" style={{ color: paperTheme.colors.onSurfaceVariant }}>Clear local cache, settings, and onboarding</Text>
+          </Pressable>
+        </Card>
+
         {error && <Text variant="bodySmall" style={{ color: paperTheme.colors.error, textAlign: "center", marginTop: 8 }}>{error}</Text>}
       </ScrollView>
 
@@ -81,6 +108,21 @@ export default function SettingsScreen() {
             <Button onPress={() => setShowDialog(false)} disabled={deleting}>Cancel</Button>
             <Button textColor={paperTheme.colors.error} loading={deleting} disabled={deleting} onPress={handleConfirmDelete}>
               {deleting ? "Deleting\u2026" : "Delete"}
+            </Button>
+          </Dialog.Actions>
+        </Dialog>
+        <Dialog visible={showResetDialog} onDismiss={() => setShowResetDialog(false)}>
+          <Dialog.Icon icon="restart" />
+          <Dialog.Title style={{ textAlign: "center" }}>Reset all local data?</Dialog.Title>
+          <Dialog.Content>
+            <Text variant="bodyMedium" style={{ textAlign: "center", color: paperTheme.colors.onSurfaceVariant }}>
+              This will clear your local cache, dashboard customisations, timer state, and onboarding progress. Your account and cloud data will remain intact.
+            </Text>
+          </Dialog.Content>
+          <Dialog.Actions style={{ justifyContent: "center", gap: 8 }}>
+            <Button onPress={() => setShowResetDialog(false)} disabled={resetting}>Cancel</Button>
+            <Button textColor={paperTheme.colors.error} loading={resetting} disabled={resetting} onPress={handleResetData}>
+              {resetting ? "Resetting\u2026" : "Reset"}
             </Button>
           </Dialog.Actions>
         </Dialog>

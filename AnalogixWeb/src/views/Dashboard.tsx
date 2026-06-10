@@ -190,6 +190,21 @@ function AiChatWidget() {
 
   return (
     <div className="flex flex-col gap-3">
+      {/* Header */}
+      <div className="m3-section-header">
+        <div className="flex items-center gap-2">
+          <div className="m3-icon-container">
+            <MessageSquare className="w-4 h-4 text-primary" />
+          </div>
+          <div>
+            <h3 className="text-sm font-black text-foreground">AI Tutor</h3>
+            <p className="text-[11px] text-muted-foreground/60">Quick chat with your AI</p>
+          </div>
+        </div>
+        <button onClick={() => router.push("/chat")} className="m3-section-action">
+          Open
+        </button>
+      </div>
 
       {/* Response bubble — animates in after first message */}
       <AnimatePresence>
@@ -199,7 +214,7 @@ function AiChatWidget() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 6 }}
             transition={{ duration: 0.18 }}
-            className="rounded-2xl bg-muted/30 border border-border/25 px-4 py-3"
+            className="m3-tonal-card"
           >
             {busy ? (
               <div className="flex gap-1.5 items-center h-5">
@@ -222,13 +237,8 @@ function AiChatWidget() {
         )}
       </AnimatePresence>
 
-      {/* Input — focus glow effect */}
-      <div className={cn(
-        "relative rounded-2xl border bg-muted/15 transition-all duration-200",
-        focused
-          ? "border-primary/50 shadow-[0_0_0_3px_hsl(var(--primary)/0.08)]"
-          : "border-border/40 hover:border-border/60"
-      )}>
+      {/* Input — M3 Expressive styling */}
+      <div className="flex gap-2">
         <textarea
           ref={textareaRef}
           value={input}
@@ -236,29 +246,26 @@ function AiChatWidget() {
           onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
-          placeholder="Ask me anything…"
+          placeholder="Ask anything..."
           rows={2}
-          className="w-full resize-none bg-transparent px-4 pt-3.5 pb-2 text-sm outline-none placeholder:text-muted-foreground/30 text-foreground leading-relaxed"
+          className={cn(
+            "m3-input flex-1 resize-none",
+            focused && "ring-2 ring-primary/20"
+          )}
         />
-        <div className="flex items-center justify-between px-3 pb-3 pt-1">
-          <div className="flex gap-1.5 flex-wrap">
-          </div>
-          <div className="flex items-center gap-2 shrink-0 ml-2">
-            <button onClick={() => router.push("/chat")}
-              className="text-[11px] font-medium text-muted-foreground/45 hover:text-primary transition-colors">
-              Full chat →
-            </button>
-            <button onClick={() => send()} disabled={busy || !input.trim()}
-              className={cn(
-                "w-8 h-8 rounded-full flex items-center justify-center transition-all",
-                input.trim() && !busy
-                  ? "bg-primary text-primary-foreground shadow-md shadow-primary/25 hover:opacity-90"
-                  : "bg-muted/50 text-muted-foreground/30 cursor-not-allowed"
-              )}>
-              <Send className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        </div>
+        <button onClick={() => send()} disabled={busy || !input.trim()}
+          className={cn(
+            "w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 shrink-0",
+            input.trim() && !busy
+              ? "m3-action-btn !px-0 !py-0 !w-10 !h-10"
+              : "bg-muted text-muted-foreground/30 cursor-not-allowed"
+          )}>
+          {busy ? (
+            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+          ) : (
+            <Send className="w-4 h-4" />
+          )}
+        </button>
       </div>
     </div>
   );
@@ -724,9 +731,9 @@ export default function Dashboard() {
               ]).map(card => {
                 const c = colourMap[card.colour]; const Icon = card.icon;
                 return (
-<div key={card.label} className="dashboard-panel p-4">
-                    <div className={`w-7 h-7 rounded-xl bg-muted/20 flex items-center justify-center mb-2`}>
-                      <Icon className={`w-3.5 h-3.5 text-muted-foreground`} />
+                  <div key={card.label} className="dashboard-panel p-4">
+                    <div className="w-7 h-7 rounded-xl bg-muted/20 flex items-center justify-center mb-2">
+                      <Icon className="w-3.5 h-3.5 text-muted-foreground" />
                     </div>
                     <p className="text-2xl font-display font-black text-foreground tracking-tighter leading-none">
                       {card.value}{card.suffix && <span className="text-base text-muted-foreground">{card.suffix}</span>}

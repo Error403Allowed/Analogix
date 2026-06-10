@@ -1,21 +1,45 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { View, StyleSheet, ScrollView, Pressable } from "react-native";
-import { Text, useTheme, Card, Searchbar, IconButton, ActivityIndicator } from "react-native-paper";
+import { Text, useTheme, Card, Searchbar, IconButton, ActivityIndicator, SegmentedButtons } from "react-native-paper";
 import { useQuery } from "@apollo/client";
 import { FORMULA_SHEETS } from "../../graphql/queries/misc";
+import { ME } from "../../graphql/queries/user";
 import { useNavigation } from "@react-navigation/native";
 import { useThemeContext } from "../../theme/ThemeContext";
 import { SHAPE } from "../../theme/tokens";
 import Icon from "../../components/Icon";
+import { SkeletonList } from "../../components/SkeletonLoader";
 
 export default function FormulasScreen() {
   const paperTheme = useTheme();
   const { brand } = useThemeContext();
   const navigation = useNavigation<any>();
   const [q, setQ] = useState("");
+  const [activeSubject, setActiveSubject] = useState<string | null>(null);
   const { data, loading } = useQuery(FORMULA_SHEETS);
-  const sheets = data?.formulaSheets ?? [];
-  const filtered = q ? sheets.filter((s: any) => s.subjectName.toLowerCase().includes(q.toLowerCase())) : sheets;
+  const { data: meData } = useQuery(ME);
+  const sheets = useMemo(() => data?.formulaSheets ?? [], [data]);
+  const userState = meData?.me?.state;
+  const subjectNames = useMemo(() => sheets.map((s: any) => s.subjectName), [sheets]);
+
+  const filtered = useMemo(() => {
+    let result = sheets;
+    if (activeSubject) {
+      result = result.filter((s: any) => s.subjectName === activeSubject);
+    }
+    if (q.trim()) {
+      const query = q.trim().toLowerCase();
+      result = result.filter((s: any) =>
+        s.subjectName.toLowerCase().includes(query) ||
+        s.categories?.some((c: any) =>
+          c.formulas.some((f: any) =>
+            f.name?.toLowerCase().includes(query) || f.description?.toLowerCase().includes(query)
+          )
+        )
+      );
+    }
+    return result;
+  }, [sheets, q, activeSubject]);
 
   return (
     <View style={[styles.container, { backgroundColor: paperTheme.colors.background }]}>
@@ -25,16 +49,45 @@ export default function FormulasScreen() {
       </View>
 
       <Searchbar
-        placeholder="Search formulas"
+        placeholder="Search formulas or subjects"
         value={q}
         onChangeText={setQ}
         style={[styles.search, { backgroundColor: paperTheme.colors.surfaceVariant }]}
         inputStyle={{ fontSize: 14 }}
       />
 
+      {subjectNames.length > 1 && (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
+          <Pressable
+            onPress={() => setActiveSubject(null)}
+            style={[styles.filterChip, { backgroundColor: !activeSubject ? brand.primary : paperTheme.colors.surfaceVariant }]}
+          >
+            <Text variant="labelSmall" style={{ color: !activeSubject ? "#fff" : paperTheme.colors.onSurface, fontWeight: "600" }}>All</Text>
+          </Pressable>
+          {subjectNames.map((name: string) => (
+            <Pressable
+              key={name}
+              onPress={() => setActiveSubject(activeSubject === name ? null : name)}
+              style={[styles.filterChip, { backgroundColor: activeSubject === name ? brand.primary : paperTheme.colors.surfaceVariant }]}
+            >
+              <Text variant="labelSmall" style={{ color: activeSubject === name ? "#fff" : paperTheme.colors.onSurface, fontWeight: "600" }}>{name}</Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+      )}
+
+      {userState && (
+        <View style={styles.stateBanner}>
+          <Icon name="map-marker" size={14} color={brand.primary} />
+          <Text variant="labelSmall" style={{ color: paperTheme.colors.onSurfaceVariant, marginLeft: 4 }}>
+            Showing content for {userState}
+          </Text>
+        </View>
+      )}
+
       <ScrollView contentContainerStyle={styles.list}>
         {loading ? (
-          <ActivityIndicator style={{ marginTop: 32 }} />
+          <SkeletonList count={3} style={{ marginTop: 16 }} />
         ) : filtered.length === 0 ? (
           <View style={styles.empty}>
             <Icon name="sigma" size={64} color={paperTheme.colors.onSurfaceVariant} />
@@ -69,6 +122,9 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   topBar: { flexDirection: "row", alignItems: "center", paddingTop: 50, paddingHorizontal: 4 },
   search: { marginHorizontal: 16, marginBottom: 8, borderRadius: SHAPE.lg },
+  chipRow: { paddingHorizontal: 16, paddingBottom: 8, gap: 8 },
+  filterChip: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: SHAPE.xl },
+  stateBanner: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingBottom: 8 },
   list: { padding: 16, paddingBottom: 100, gap: 8 },
   empty: { alignItems: "center", paddingTop: 80, paddingHorizontal: 32 },
   sheetCard: { borderRadius: SHAPE.lg },

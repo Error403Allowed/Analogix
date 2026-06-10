@@ -25,6 +25,36 @@ import { useAuth } from "@/context/AuthContext";
 import { signInWithGoogle } from "@/lib/auth-client";
 import OnboardingBackdrop from "@/components/OnboardingBackdrop";
 
+// ── Friendly auth error mapper ───────────────────────────────────────────────
+// Translates Supabase / OAuth error codes into actionable messages a real
+// user can fix (e.g. "open Supabase dashboard and enable Google provider").
+function describeAuthError(code: string | null, raw: string | null): string {
+  const c = (code || "").toLowerCase();
+  const r = (raw || "").toLowerCase();
+
+  // The infamous `4/0A` GoTrue response — Supabase rejected the OAuth code
+  // because the Google provider is disabled / mis-configured.
+  if (
+    r.includes("unable to exchange external code") ||
+    r.includes("4/0a") ||
+    r.includes("unexpected_failure") ||
+    c === "unexpected_failure"
+  ) {
+    return "Google sign-in isn't fully wired up on the server yet. The Supabase project's Google provider needs the same Client ID and Secret that are in AnalogixWeb/.env. See AUTH_FIX_NOTES.md for the 5-minute fix, then try again.";
+  }
+  if (c.includes("redirect_uri_mismatch") || r.includes("redirect_uri_mismatch")) {
+    return "The redirect URL isn't whitelisted. Add http://localhost:3000/auth/callback to Supabase → Authentication → URL Configuration → Redirect URLs.";
+  }
+  if (c.includes("access_denied") || r.includes("access_denied")) {
+    return "Google sign-in was cancelled. Tap Continue with Google to try again.";
+  }
+  if (c.includes("exchange_failed") || c === "missing_code") {
+    return "We couldn't finish signing you in. The auth code was missing or expired — please try again.";
+  }
+  if (r) return `Sign-in failed (${code || "auth_failed"}): ${raw}`;
+  return "Authentication failed. Please try again.";
+}
+
 // ── Typewriter ────────────────────────────────────────────────────────────────
 const TypewriterText = ({ text, delay = 0 }: { text: string; delay?: number }) => {
   const [displayed, setDisplayed] = useState("");
@@ -200,9 +230,15 @@ const Onboarding = () => {
   // Get pre-filled name from URL (passed from auth callback)
   const urlNameParam = searchParams?.get("name") || "";
 
-  const [authError] = useState<string | null>(
-    searchParams?.get("error") === "auth_failed" ? "Authentication failed. Please try again." : null
-  );
+  // Translate the error code/description from the auth callback into a
+  // user-friendly message. See describeAuthError above.
+  const [authError] = useState<string | null>(() => {
+    if (searchParams?.get("error") !== "auth_failed") return null;
+    return describeAuthError(
+      searchParams?.get("error_code") ?? null,
+      searchParams?.get("error_description") ?? null,
+    );
+  });
 
   // Always start on step 1 — the gate below moves us forward once auth resolves.
   // This prevents ?step=2 in the URL from skipping auth for unauthenticated users.

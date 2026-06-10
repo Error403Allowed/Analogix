@@ -19,7 +19,6 @@ export interface AuthUser {
 export interface AuthContextValue {
   user: AuthUser | null;
   isReady: boolean;
-  signInWithGoogleIdToken: (idToken: string, nonce?: string) => Promise<void>;
   signOut: () => Promise<void>;
   getAccessToken: () => Promise<string | null>;
 }
@@ -64,17 +63,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => sub.subscription.unsubscribe();
   }, []);
 
-  const signInWithGoogleIdToken = useCallback(async (idToken: string, nonce?: string) => {
-    const supabase = getSupabase();
-    const { data, error } = await supabase.auth.signInWithIdToken({
-      provider: "google",
-      token: idToken,
-      nonce,
-    });
-    if (error) throw error;
-    // Supabase automatically persists the session — no manual MMKV write needed
-  }, []);
-
   const signOut = useCallback(async () => {
     const supabase = getSupabase();
     await supabase.auth.signOut();
@@ -89,7 +77,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, isReady, signInWithGoogleIdToken, signOut, getAccessToken }}>
+    <AuthContext.Provider value={{ user, isReady, signOut, getAccessToken }}>
       {children}
     </AuthContext.Provider>
   );

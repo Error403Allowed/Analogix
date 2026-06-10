@@ -131,6 +131,7 @@ export const darkTheme: MD3Theme = {
  * `secondary` / `tertiary` are display-only (shown in picker, not fed to M3).
  */
 export type BrandThemeId =
+  | "Analogix"
   | "Cosmic"
   | "Midnight"
   | "Aurora"
@@ -156,16 +157,17 @@ export interface BrandTheme {
 // A small catalogue of brand themes used by the theme picker. The `primary`
 // value acts as the dynamic seed for Material Color Utilities.
 export const BRAND_THEMES: BrandTheme[] = [
-  { id: "Cosmic",   name: "Cosmic",   primary: "#6750A4", secondary: "#5B5FC7", tertiary: "#8B5CF6", preview: ["#6750A4","#7C6BC7"] },
-  { id: "Midnight", name: "Midnight", primary: "#1E3A8A", secondary: "#2546A6", tertiary: "#3B82F6", preview: ["#1E3A8A","#2546A6"] },
-  { id: "Aurora",   name: "Aurora",   primary: "#06B6D4", secondary: "#0891B2", tertiary: "#34D4E6", preview: ["#06B6D4","#0891B2"] },
-  { id: "Jade",     name: "Jade",     primary: "#0F766E", secondary: "#0EA5A4", tertiary: "#2DD4BF", preview: ["#0F766E","#0EA5A4"] },
-  { id: "Forest",   name: "Forest",   primary: "#12723A", secondary: "#16A34A", tertiary: "#4ADE80", preview: ["#12723A","#16A34A"] },
-  { id: "Lime",     name: "Lime",     primary: "#84CC16", secondary: "#A3E635", tertiary: "#D9F99D", preview: ["#84CC16","#A3E635"] },
-  { id: "Solar",    name: "Solar",    primary: "#B45309", secondary: "#F59E0B", tertiary: "#FFD166", preview: ["#B45309","#F59E0B"] },
-  { id: "Ember",    name: "Ember",    primary: "#C2410C", secondary: "#FB923C", tertiary: "#FDBA74", preview: ["#C2410C","#FB923C"] },
-  { id: "Crimson",  name: "Crimson",  primary: "#C0262E", secondary: "#EF4444", tertiary: "#FCA5A5", preview: ["#C0262E","#EF4444"] },
-  { id: "Sakura",   name: "Sakura",   primary: "#C51676", secondary: "#FB7185", tertiary: "#FBCFE8", preview: ["#C51676","#FB7185"] },
+  { id: "Analogix", name: "Analogix", primary: "#38BDF8", secondary: "#22C55E", tertiary: "#10B981", preview: ["#38BDF8","#22C55E"] },
+  { id: "Cosmic",   name: "Cosmic",   primary: "#5B4CF5", secondary: "#7C6BC7", tertiary: "#9D74F5", preview: ["#5B4CF5","#7C6BC7"] },
+  { id: "Midnight", name: "Midnight", primary: "#2563EB", secondary: "#3B82F6", tertiary: "#60A5FA", preview: ["#2563EB","#3B82F6"] },
+  { id: "Aurora",   name: "Aurora",   primary: "#0891B2", secondary: "#06B6D4", tertiary: "#22D3EE", preview: ["#0891B2","#06B6D4"] },
+  { id: "Jade",     name: "Jade",     primary: "#0D9488", secondary: "#14B8A6", tertiary: "#2DD4BF", preview: ["#0D9488","#14B8A6"] },
+  { id: "Forest",   name: "Forest",   primary: "#16A34A", secondary: "#22C55E", tertiary: "#4ADE80", preview: ["#16A34A","#22C55E"] },
+  { id: "Lime",     name: "Lime",     primary: "#65A30D", secondary: "#84CC16", tertiary: "#A3E635", preview: ["#65A30D","#84CC16"] },
+  { id: "Solar",    name: "Solar",    primary: "#D97706", secondary: "#F59E0B", tertiary: "#FCD34D", preview: ["#D97706","#F59E0B"] },
+  { id: "Ember",    name: "Ember",    primary: "#EA580C", secondary: "#F97316", tertiary: "#FB923C", preview: ["#EA580C","#F97316"] },
+  { id: "Crimson",  name: "Crimson",  primary: "#DC2626", secondary: "#EF4444", tertiary: "#FCA5A5", preview: ["#DC2626","#EF4444"] },
+  { id: "Sakura",   name: "Sakura",   primary: "#DB2777", secondary: "#EC4899", tertiary: "#F9A8D4", preview: ["#DB2777","#EC4899"] },
   { id: "Amethyst", name: "Amethyst", primary: "#7C3AED", secondary: "#8B5CF6", tertiary: "#C4B5FD", preview: ["#7C3AED","#8B5CF6"] },
   { id: "Slate",    name: "Slate",    primary: "#475569", secondary: "#64748B", tertiary: "#94A3B8", preview: ["#475569","#64748B"] },
 ];

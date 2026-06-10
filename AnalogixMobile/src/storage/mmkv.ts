@@ -1,3 +1,5 @@
+import { Platform } from "react-native";
+
 interface StorageInterface {
   getString(key: string): string | undefined;
   set(key: string, value: string | boolean | number): void;
@@ -7,15 +9,40 @@ interface StorageInterface {
   clearAll(): void;
 }
 
-const instances = new Map<string, Map<string, string>>();
+let createNativeMMKV: ((config: { id: string }) => StorageInterface) | null = null;
 
+try {
+  if (Platform.OS !== "web") {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const mmkv = require("react-native-mmkv");
+    createNativeMMKV = (config: { id: string }) => {
+      const instance = mmkv.createMMKV(config);
+      return {
+        getString: (k: string) => instance.getString(k),
+        set: (k: string, v: string | boolean | number) => instance.set(k, v),
+        delete: (k: string) => instance.delete(k),
+        contains: (k: string) => instance.contains(k),
+        getAllKeys: () => instance.getAllKeys(),
+        clearAll: () => instance.clearAll(),
+      };
+    };
+  }
+} catch { /* noop */ }
+
+const instances = new Map<string, Map<string, string>>();
 const PREFIX = "analogix.mmkv.";
 
 export class MMKV implements StorageInterface {
+  private native: StorageInterface | null = null;
   private id: string;
 
   constructor(config: { id: string }) {
     this.id = PREFIX + config.id;
+    if (createNativeMMKV) {
+      try {
+        this.native = createNativeMMKV(config);
+      } catch { /* noop */ }
+    }
     if (!instances.has(this.id)) {
       instances.set(this.id, new Map());
     }
@@ -26,6 +53,9 @@ export class MMKV implements StorageInterface {
   }
 
   getString(key: string): string | undefined {
+    if (this.native) {
+      try { return this.native.getString(key); } catch { /* noop */ }
+    }
     try {
       return localStorage.getItem(this.id + ":" + key) ?? undefined;
     } catch {
@@ -34,6 +64,9 @@ export class MMKV implements StorageInterface {
   }
 
   set(key: string, value: string | boolean | number): void {
+    if (this.native) {
+      try { this.native.set(key, value); return; } catch { /* noop */ }
+    }
     const str = String(value);
     try {
       localStorage.setItem(this.id + ":" + key, str);
@@ -43,6 +76,9 @@ export class MMKV implements StorageInterface {
   }
 
   delete(key: string): void {
+    if (this.native) {
+      try { this.native.delete(key); return; } catch { /* noop */ }
+    }
     try {
       localStorage.removeItem(this.id + ":" + key);
     } catch {
@@ -51,6 +87,9 @@ export class MMKV implements StorageInterface {
   }
 
   contains(key: string): boolean {
+    if (this.native) {
+      try { return this.native.contains(key); } catch { /* noop */ }
+    }
     try {
       return localStorage.getItem(this.id + ":" + key) !== null;
     } catch {
@@ -59,6 +98,9 @@ export class MMKV implements StorageInterface {
   }
 
   getAllKeys(): string[] {
+    if (this.native) {
+      try { return this.native.getAllKeys(); } catch { /* noop */ }
+    }
     try {
       const keys: string[] = [];
       for (let i = 0; i < localStorage.length; i++) {
@@ -74,6 +116,9 @@ export class MMKV implements StorageInterface {
   }
 
   clearAll(): void {
+    if (this.native) {
+      try { this.native.clearAll(); return; } catch { /* noop */ }
+    }
     try {
       const toRemove: string[] = [];
       for (let i = 0; i < localStorage.length; i++) {

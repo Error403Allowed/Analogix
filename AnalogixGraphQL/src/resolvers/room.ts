@@ -255,6 +255,39 @@ export const roomResolvers = {
       await ctx.pubsub.publish(`room.${args.roomId}.messages`, { roomMessageSent: msg });
       return msg;
     },
+    updateRoomMemberRole: async (_: unknown, args: { roomId: string; userId: string; role: string }, ctx: GraphQLContext) => {
+      const user = requireUser(ctx);
+      const { data: room } = await ctx.supabase!
+        .from("study_rooms")
+        .select("owner_user_id")
+        .eq("id", args.roomId)
+        .single();
+      if (!room || room.owner_user_id !== user.id) {
+        throw new GraphQLError("Only the room host can change roles");
+      }
+      if (!["member", "cohost"].includes(args.role)) {
+        throw new GraphQLError("Invalid role. Must be 'member' or 'cohost'");
+      }
+      const { data, error } = await ctx.supabase!
+        .from("study_room_members")
+        .update({ role: args.role })
+        .eq("room_id", args.roomId)
+        .eq("user_id", args.userId)
+        .select()
+        .single();
+      if (error) throw new GraphQLError(error.message);
+      return {
+        id: data.id,
+        roomId: data.room_id,
+        userId: data.user_id,
+        role: data.role,
+        name: data.name ?? "",
+        avatarUrl: data.avatar_url,
+        isOnline: data.is_online ?? false,
+        lastSeen: data.last_seen,
+        user: null,
+      };
+    },
   },
 
   Subscription: {

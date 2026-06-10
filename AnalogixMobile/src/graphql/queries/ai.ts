@@ -63,3 +63,23 @@ export const GENERATE_ASSESSMENT_GUIDE = gql`
     }
   }
 `;
+
+export const EXTRACT_TEXT = gql`
+  mutation ExtractText($input: JSON!) {
+    extractText(input: $input) {
+      text
+      format
+    }
+  }
+`;
+
+export const EXECUTE_PYTHON = gql`
+  mutation ExecutePython($input: JSON!) {
+    executePython(input: $input) {
+      stdout
+      stderr
+      error
+      durationMs
+    }
+  }
+`;

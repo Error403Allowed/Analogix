@@ -191,13 +191,25 @@ export const subjectResolvers = {
     },
     updateNotes: async (_: unknown, args: { subjectId: string; content: string; title?: string }, ctx: GraphQLContext) => {
       const user = requireUser(ctx);
+      const { data: existing, error: fetchError } = await ctx.supabase!
+        .from("subject_data")
+        .select("notes")
+        .eq("user_id", user.id)
+        .eq("subject_id", args.subjectId)
+        .maybeSingle();
+      const existingNotes = existing?.notes ?? {};
       const { data, error } = await ctx.supabase!
         .from("subject_data")
         .upsert(
           {
             user_id: user.id,
             subject_id: args.subjectId,
-            notes: { content: args.content, title: args.title, lastUpdated: new Date().toISOString() },
+            notes: {
+              ...existingNotes,
+              content: args.content,
+              title: args.title ?? existingNotes.title,
+              lastUpdated: new Date().toISOString(),
+            },
             updated_at: new Date().toISOString(),
           },
           { onConflict: "user_id,subject_id" }
@@ -230,7 +242,28 @@ export const subjectResolvers = {
         p_assessment_id: args.assessmentId,
       });
       if (error) throw new GraphQLError(error.message);
-      return data;
+      return { id: data?.subject_id ?? args.subjectId, marks: data?.marks ?? [], notes: normalizeNotes(data?.notes, args.subjectId) };
+    },
+    saveSubjectNotes: async (_: unknown, args: { subjectId: string; notes: Record<string, unknown> }, ctx: GraphQLContext) => {
+      const user = requireUser(ctx);
+      const { data: existing, error: fetchError } = await ctx.supabase!
+        .from("subject_data")
+        .select("notes")
+        .eq("user_id", user.id)
+        .eq("subject_id", args.subjectId)
+        .maybeSingle();
+      const existingNotes = existing?.notes ?? {};
+      const merged = { ...existingNotes, ...args.notes, lastUpdated: new Date().toISOString() };
+      const { data, error } = await ctx.supabase!
+        .from("subject_data")
+        .upsert(
+          { user_id: user.id, subject_id: args.subjectId, notes: merged, updated_at: new Date().toISOString() },
+          { onConflict: "user_id,subject_id" }
+        )
+        .select("subject_id, marks, notes")
+        .single();
+      if (error) throw new GraphQLError(error.message);
+      return { id: data.subject_id, marks: data.marks ?? [], notes: normalizeNotes(data.notes, data.subject_id) };
     },
   },
 

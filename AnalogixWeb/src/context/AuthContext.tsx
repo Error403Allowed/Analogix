@@ -22,23 +22,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Hydrate immediately from the existing session cookie
+    let cancelled = false;
+    const timeout = setTimeout(() => {
+      if (!cancelled) setLoading(false);
+    }, 8000);
+
     supabase.auth.getSession().then(({ data: { session } }) => {
+      if (cancelled) return;
+      clearTimeout(timeout);
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
-    }).catch(() => {
+    }).catch((err) => {
+      if (cancelled) return;
+      clearTimeout(timeout);
+      console.error("AuthContext: getSession error", err);
       setLoading(false);
     });
 
-    // Keep state in sync with any auth events (sign-in, sign-out, token refresh)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (cancelled) return;
+      clearTimeout(timeout);
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
     });
 
     return () => {
+      cancelled = true;
+      clearTimeout(timeout);
       subscription.unsubscribe();
     };
   }, [supabase]);

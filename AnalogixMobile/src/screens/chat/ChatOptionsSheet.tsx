@@ -12,7 +12,10 @@ interface ChatOptionsSheetProps {
   onSelectModel: (id: GroqModelId) => void;
   researchMode: boolean;
   onToggleResearch: (v: boolean) => void;
+  analogyMode: boolean;
+  onToggleAnalogy: (v: boolean) => void;
   onUploadFile: () => void;
+  onOpenFormulas?: () => void;
 }
 
 export default function ChatOptionsSheet({
@@ -22,7 +25,10 @@ export default function ChatOptionsSheet({
   onSelectModel,
   researchMode,
   onToggleResearch,
+  analogyMode,
+  onToggleAnalogy,
   onUploadFile,
+  onOpenFormulas,
 }: ChatOptionsSheetProps) {
   const theme = useTheme();
   const c = theme.colors as any;
@@ -69,25 +75,15 @@ export default function ChatOptionsSheet({
                   )}
                 </View>
                 <View style={styles.pillText}>
-                  <Text
-                    variant="bodyMedium"
-                    style={{ color: theme.colors.onSurface, fontWeight: "600" }}
-                  >
+                  <Text variant="bodyMedium" style={{ color: theme.colors.onSurface, fontWeight: "600" }}>
                     {m.name}
                   </Text>
-                  <Text
-                    variant="bodySmall"
-                    style={{ color: theme.colors.onSurfaceVariant }}
-                  >
+                  <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
                     {m.description}
                   </Text>
                 </View>
                 {active && (
-                  <Icon
-                    name="check"
-                    size={18}
-                    color={c.onPrimaryContainer ?? theme.colors.primary}
-                  />
+                  <Icon name="check" size={18} color={c.onPrimaryContainer ?? theme.colors.primary} />
                 )}
               </Pressable>
             );
@@ -98,6 +94,24 @@ export default function ChatOptionsSheet({
           <Text variant="titleSmall" style={[styles.sectionLabel, { color: theme.colors.onSurfaceVariant }]}>
             OPTIONS
           </Text>
+
+          <View style={[styles.pill, { backgroundColor: c.surfaceContainerLow ?? theme.colors.surfaceVariant }]}>
+            <View style={styles.pillLeft}>
+              <Icon
+                name="abacus"
+                size={20}
+                color={analogyMode ? theme.colors.primary : theme.colors.onSurfaceVariant}
+              />
+              <Text variant="bodyMedium" style={{ color: theme.colors.onSurface }}>
+                Analogies
+              </Text>
+            </View>
+            <Switch
+              value={analogyMode}
+              onValueChange={onToggleAnalogy}
+              color={theme.colors.primary}
+            />
+          </View>
 
           <View style={[styles.pill, { backgroundColor: c.surfaceContainerLow ?? theme.colors.surfaceVariant }]}>
             <View style={styles.pillLeft}>
@@ -129,6 +143,21 @@ export default function ChatOptionsSheet({
             </View>
             <Icon name="chevron-right" size={20} color={theme.colors.onSurfaceVariant} />
           </Pressable>
+
+          {onOpenFormulas && (
+            <Pressable
+              style={[styles.pill, { backgroundColor: c.surfaceContainerLow ?? theme.colors.surfaceVariant }]}
+              onPress={onOpenFormulas}
+            >
+              <View style={styles.pillLeft}>
+                <Icon name="sigma" size={20} color={theme.colors.onSurfaceVariant} />
+                <Text variant="bodyMedium" style={{ color: theme.colors.onSurface }}>
+                  Formula sheet
+                </Text>
+              </View>
+              <Icon name="chevron-right" size={20} color={theme.colors.onSurfaceVariant} />
+            </Pressable>
+          )}
         </ScrollView>
       </View>
     </Modal>

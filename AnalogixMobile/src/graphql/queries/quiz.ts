@@ -12,11 +12,15 @@ export const QUIZZES = gql`
         id
         type
         question
+        analogy
         options {
           id
           text
           isCorrect
         }
+        correctAnswer
+        explanation
+        hint
       }
     }
   }
@@ -33,9 +37,11 @@ export const GENERATE_QUIZ = gql`
         id
         type
         question
+        analogy
         options {
           id
           text
+          isCorrect
         }
         correctAnswer
         explanation
@@ -74,6 +80,46 @@ export const SUBMIT_QUIZ_ATTEMPT = gql`
       score
       total
       accuracy
+      createdAt
+    }
+  }
+`;
+
+export const QUIZ = gql`
+  query Quiz($id: ID!) {
+    quiz(id: $id) {
+      id
+      subjectId
+      title
+      difficulty
+      createdAt
+      questions {
+        id
+        type
+        question
+        analogy
+        options {
+          id
+          text
+          isCorrect
+        }
+        correctAnswer
+        explanation
+        hint
+      }
+    }
+  }
+`;
+
+export const ATTEMPTS = gql`
+  query Attempts($quizId: ID) {
+    attempts(quizId: $quizId) {
+      id
+      quizId
+      score
+      total
+      accuracy
+      answers
       createdAt
     }
   }

@@ -70,3 +70,22 @@ export const CHAT_STREAM = gql`
     }
   }
 `;
+
+export const UPDATE_CHAT_SESSION = gql`
+  mutation UpdateChatSession($id: ID!, $title: String!) {
+    updateChatSession(id: $id, title: $title) {
+      id
+      subjectId
+      title
+      updatedAt
+    }
+  }
+`;
+
+export const DELETE_CHAT_SESSION = gql`
+  mutation DeleteChatSession($id: ID!) {
+    deleteChatSession(id: $id) {
+      success
+    }
+  }
+`;

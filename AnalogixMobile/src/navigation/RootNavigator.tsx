@@ -1,5 +1,4 @@
 import React from "react";
-import { View } from "react-native";
 import { useTheme } from "react-native-paper";
 import { NavigationContainer, DarkTheme as NavDarkTheme, DefaultTheme as NavLightTheme } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
@@ -13,18 +12,19 @@ import type { RootStackParamList, TabParamList, HomeStackParamList, TutorStackPa
 
 import LoginScreen from "../screens/auth/LoginScreen";
 import OnboardingScreen from "../screens/auth/OnboardingScreen";
+import TermsScreen from "../screens/auth/TermsScreen";
+import PrivacyPolicyScreen from "../screens/auth/PrivacyPolicyScreen";
 
 import DashboardScreen from "../screens/dashboard/DashboardScreen";
-import SubjectDetailScreen from "../screens/subjects/SubjectDetailScreen";
-import DocumentEditorScreen from "../screens/subjects/DocumentEditorScreen";
 import AchievementsScreen from "../screens/dashboard/AchievementsScreen";
 
 import ChatListScreen from "../screens/chat/ChatListScreen";
 import ChatSessionScreen from "../screens/chat/ChatSessionScreen";
 
-import StudyHomeScreen from "../screens/study/StudyHomeScreen";
+import StudyHubScreen from "../screens/study/StudyHubScreen";
 import FlashcardsScreen from "../screens/study/FlashcardsScreen";
 import FlashcardReviewScreen from "../screens/study/FlashcardReviewScreen";
+import FlashcardSetScreen from "../screens/study/FlashcardSetScreen";
 import QuizScreen from "../screens/study/QuizScreen";
 import QuizSessionScreen from "../screens/study/QuizSessionScreen";
 import QuizResultsScreen from "../screens/study/QuizResultsScreen";
@@ -32,11 +32,13 @@ import CalendarScreen from "../screens/study/CalendarScreen";
 import EventDetailScreen from "../screens/study/EventDetailScreen";
 import FormulasScreen from "../screens/study/FormulasScreen";
 import FormulasSubjectScreen from "../screens/study/FormulasSubjectScreen";
-import ResourcesScreen from "../screens/study/ResourcesScreen";
 import TimerScreen from "../screens/study/TimerScreen";
+import StudyScheduleScreen from "../screens/study/StudyScheduleScreen";
+import AssessmentGuideScreen from "../screens/study/AssessmentGuideScreen";
 
 import SubjectsListScreen from "../screens/subjects/SubjectsListScreen";
-import StudyMapSubjectScreen from "../screens/subjects/StudyMapSubjectScreen";
+import SubjectDetailScreen from "../screens/subjects/SubjectDetailScreen";
+import DocumentEditorScreen from "../screens/subjects/DocumentEditorScreen";
 
 import RoomsListScreen from "../screens/rooms/RoomsListScreen";
 import RoomDetailScreen from "../screens/rooms/RoomDetailScreen";
@@ -48,6 +50,7 @@ import PersonalityEditorScreen from "../screens/profile/PersonalityEditorScreen"
 import MemoryManagerScreen from "../screens/profile/MemoryManagerScreen";
 import SupportScreen from "../screens/profile/SupportScreen";
 import PrivacyScreen from "../screens/profile/PrivacyScreen";
+import { TourAutoTrigger } from "../components/TourAutoTrigger";
 
 const RootStack = createNativeStackNavigator<RootStackParamList>();
 const Tabs = createBottomTabNavigator<TabParamList>();
@@ -63,8 +66,6 @@ function HomeStackNav() {
   return (
     <HomeStack.Navigator screenOptions={{ headerShown: false }}>
       <HomeStack.Screen name="Dashboard" component={DashboardScreen} />
-      <HomeStack.Screen name="SubjectDetail" component={SubjectDetailScreen} />
-      <HomeStack.Screen name="DocumentEditor" component={DocumentEditorScreen} />
       <HomeStack.Screen name="Achievements" component={AchievementsScreen} />
     </HomeStack.Navigator>
   );
@@ -80,8 +81,9 @@ function TutorStackNav() {
 function StudyStackNav() {
   return (
     <StudyStack.Navigator screenOptions={{ headerShown: false }}>
-      <StudyStack.Screen name="StudyHome" component={StudyHomeScreen} />
+      <StudyStack.Screen name="StudyHub" component={StudyHubScreen} />
       <StudyStack.Screen name="Flashcards" component={FlashcardsScreen} />
+      <StudyStack.Screen name="FlashcardSet" component={FlashcardSetScreen} />
       <StudyStack.Screen name="FlashcardReview" component={FlashcardReviewScreen} />
       <StudyStack.Screen name="Quiz" component={QuizScreen} />
       <StudyStack.Screen name="QuizSession" component={QuizSessionScreen} />
@@ -90,8 +92,9 @@ function StudyStackNav() {
       <StudyStack.Screen name="EventDetail" component={EventDetailScreen} />
       <StudyStack.Screen name="Formulas" component={FormulasScreen} />
       <StudyStack.Screen name="FormulasSubject" component={FormulasSubjectScreen} />
-      <StudyStack.Screen name="Resources" component={ResourcesScreen} />
       <StudyStack.Screen name="Timer" component={TimerScreen} />
+      <StudyStack.Screen name="StudySchedule" component={StudyScheduleScreen} />
+      <StudyStack.Screen name="AssessmentGuide" component={AssessmentGuideScreen} />
     </StudyStack.Navigator>
   );
 }
@@ -101,7 +104,6 @@ function SubjectsStackNav() {
       <SubjectsStack.Screen name="SubjectsList" component={SubjectsListScreen} />
       <SubjectsStack.Screen name="SubjectDetail" component={SubjectDetailScreen} />
       <SubjectsStack.Screen name="DocumentEditor" component={DocumentEditorScreen} />
-      <SubjectsStack.Screen name="StudyMapSubject" component={StudyMapSubjectScreen} />
     </SubjectsStack.Navigator>
   );
 }
@@ -143,6 +145,15 @@ function MainTabs() {
   );
 }
 
+function TabsWithAutoTrigger() {
+  return (
+    <>
+      <TourAutoTrigger />
+      <MainTabs />
+    </>
+  );
+}
+
 function AuthGate({ children }: { children: React.ReactNode }) {
   const { data, loading } = useQuery(ME, { fetchPolicy: "cache-and-network" });
   if (loading) return null;
@@ -153,7 +164,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 function TabsWithGate() {
   return (
     <AuthGate>
-      <MainTabs />
+      <TabsWithAutoTrigger />
     </AuthGate>
   );
 }
@@ -198,6 +209,8 @@ export function RootNavigator() {
           <>
             <RootStack.Screen name="Login" component={LoginScreen} />
             <RootStack.Screen name="Onboarding" component={OnboardingScreen} />
+            <RootStack.Screen name="Terms" component={TermsScreen} />
+            <RootStack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
           </>
         )}
       </RootStack.Navigator>

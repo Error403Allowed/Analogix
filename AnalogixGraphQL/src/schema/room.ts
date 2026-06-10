@@ -92,6 +92,7 @@ export const roomTypeDefs = /* GraphQL */ `
     updateRoomTimer(roomId: ID!, state: String!, durationSeconds: Int, elapsedSeconds: Int): StudyRoom!
     shareDocumentToRoom(roomId: ID!, documentId: ID!, subjectId: String!): RoomSharedDocument!
     sendRoomMessage(roomId: ID!, content: String!, messageType: String = "chat"): StudyRoomMessage!
+    updateRoomMemberRole(roomId: ID!, userId: ID!, role: String!): StudyRoomMember!
   }
 
   extend type Subscription {

@@ -37,3 +37,4 @@ src/graphql/generated/
 
 # supabase local
 supabase/.temp/
+AUTH_FIX_NOTES.md

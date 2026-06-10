@@ -14,8 +14,8 @@ export default function FlashcardReviewScreen() {
   const { brand } = useThemeContext();
   const route = useRoute<any>();
   const navigation = useNavigation();
-  const { deckId } = route.params;
-  const { data, loading } = useQuery(FLASHCARDS, { variables: { setId: deckId } });
+  const { setId } = route.params;
+  const { data, loading } = useQuery(FLASHCARDS, { variables: { setId } });
   const [gradeFlashcard] = useMutation(GRADE_FLASHCARD);
   const [idx, setIdx] = useState(0);
   const [flipped, setFlipped] = useState(false);

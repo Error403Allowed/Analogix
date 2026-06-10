@@ -1,7 +1,7 @@
 import { GraphQLError } from "graphql";
 import { requireUser } from "./_helpers.js";
 import type { GraphQLContext } from "../context.js";
-import { streamGroqChat, type GroqChatMessage } from "../ai/groq.js";
+import { streamGroqChat, classifyTaskType, type GroqChatMessage } from "../ai/groq.js";
 import { logger } from "../logger.js";
 import { z } from "zod";
 
@@ -173,12 +173,12 @@ export const chatResolvers = {
         content: m.content,
       }));
       // Inject personality-driven system prompt if none exists yet.
+      const { data: profile } = await ctx.supabase!
+        .from("profiles")
+        .select("ai_personality, subjects")
+        .eq("id", user.id)
+        .maybeSingle();
       if (!groqMessages.some((m) => m.role === "system")) {
-        const { data: profile } = await ctx.supabase!
-          .from("profiles")
-          .select("ai_personality")
-          .eq("id", user.id)
-          .maybeSingle();
         const personality = (profile?.ai_personality ?? {}) as {
           tone?: string;
           focus?: string;
@@ -227,14 +227,23 @@ export const chatResolvers = {
         groqMessages.unshift({ role: "system", content: systemContent });
       }
 
-      // 3. Kick off streaming in the background; do not await.
+      // 3. Classify the task and select the model.
+      const taskType = classifyTaskType(groqMessages, profile?.subjects?.[0] as string | undefined);
+      const modelMap: Record<string, string> = {
+        coding: "qwen-2.5-coder-32b",
+        reasoning: "deepseek-r1-distill-llama-70b",
+        general: "llama-3.3-70b-versatile",
+      };
+      const selectedModel = args.model ?? modelMap[taskType] ?? modelMap.general;
+
+      // 4. Kick off streaming in the background; do not await.
       void triggerChatStream({
         sessionId: parsed.sessionId,
         messages: groqMessages,
         pubsub: ctx.pubsub,
         supabase: ctx.supabase!,
         userId: user.id,
-        model: args.model,
+        model: selectedModel,
       });
 
       return {
@@ -303,8 +312,8 @@ export async function triggerChatStream({
       fullText += token;
       await pubsub.publish(channel, { token, done: false, fullText });
     }
-    await pubsub.publish(channel, { token: "", done: true, fullText });
-    // Persist the final assistant message
+    // Persist the final assistant message BEFORE signalling done so the
+    // client's refetch() finds the message in the database.
     if (fullText) {
       const now = new Date().toISOString();
       await supabase.from("chat_messages").insert({
@@ -317,6 +326,7 @@ export async function triggerChatStream({
       });
       await supabase.from("chat_sessions").update({ updated_at: now }).eq("id", sessionId);
     }
+    await pubsub.publish(channel, { token: "", done: true, fullText });
   } catch (err) {
     logger.error({ err, sessionId }, "[chat] chat stream failed");
     await pubsub.publish(channel, { token: "", done: true, fullText: "Sorry, the AI service is unavailable right now." });

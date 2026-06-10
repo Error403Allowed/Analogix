@@ -48,3 +48,32 @@ export const ACHIEVEMENTS = gql`
     }
   }
 `;
+
+export const UNLOCK_ACHIEVEMENT = gql`
+  mutation UnlockAchievement($achievementId: String!) {
+    unlockAchievement(achievementId: $achievementId) {
+      id
+      achievementId
+      unlockedAt
+    }
+  }
+`;
+
+export const FORMULA_SHEET = gql`
+  query FormulaSheet($subjectId: String!) {
+    formulaSheet(subjectId: $subjectId) {
+      subjectId
+      subjectName
+      categories {
+        name
+        formulas {
+          id
+          name
+          latex
+          description
+          category
+        }
+      }
+    }
+  }
+`;

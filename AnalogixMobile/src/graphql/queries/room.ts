@@ -126,3 +126,67 @@ export const LEAVE_ROOM = gql`
     }
   }
 `;
+
+export const UPDATE_ROOM_TIMER = gql`
+  mutation UpdateRoomTimer($roomId: ID!, $state: String!, $durationSeconds: Int, $elapsedSeconds: Int) {
+    updateRoomTimer(roomId: $roomId, state: $state, durationSeconds: $durationSeconds, elapsedSeconds: $elapsedSeconds) {
+      id
+      timerState
+      timerDurationSeconds
+      timerElapsedSeconds
+      timerStartedAt
+    }
+  }
+`;
+
+export const SHARE_DOCUMENT_TO_ROOM = gql`
+  mutation ShareDocumentToRoom($roomId: ID!, $documentId: ID!, $subjectId: String!) {
+    shareDocumentToRoom(roomId: $roomId, documentId: $documentId, subjectId: $subjectId) {
+      id
+      roomId
+      documentId
+      title
+      role
+      sharedBy
+    }
+  }
+`;
+
+export const ROOM_PRESENCE_STREAM = gql`
+  subscription RoomPresenceStream($roomId: ID!) {
+    roomPresenceStream(roomId: $roomId) {
+      id
+      userId
+      role
+      isOnline
+      lastSeen
+      user {
+        id
+        name
+        avatarUrl
+      }
+    }
+  }
+`;
+
+export const ROOM_TIMER_STREAM = gql`
+  subscription RoomTimerStream($roomId: ID!) {
+    roomTimerStream(roomId: $roomId) {
+      id
+      timerState
+      timerDurationSeconds
+      timerElapsedSeconds
+      timerStartedAt
+    }
+  }
+`;
+
+export const UPDATE_ROOM_MEMBER_ROLE = gql`
+  mutation UpdateRoomMemberRole($roomId: ID!, $userId: ID!, $role: String!) {
+    updateRoomMemberRole(roomId: $roomId, userId: $userId, role: $role) {
+      id
+      role
+      isOnline
+    }
+  }
+`;

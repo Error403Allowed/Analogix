@@ -8,8 +8,6 @@ import type { NavigatorScreenParams } from "@react-navigation/native";
 // -----------------------------------------------------------------------------
 export type HomeStackParamList = {
   Dashboard: undefined;
-  SubjectDetail: { subjectId: string; name?: string };
-  DocumentEditor: { subjectId: string; documentId: string };
   Achievements: undefined;
 };
 
@@ -25,9 +23,10 @@ export type TutorStackParamList = {
 // Tab: Study (multiple sub-stacks via nested navigation)
 // -----------------------------------------------------------------------------
 export type StudyStackParamList = {
-  StudyHome: undefined;
+  StudyHub: undefined;
   Flashcards: { subjectId?: string } | undefined;
-  FlashcardReview: undefined;
+  FlashcardSet: { setId: string; name?: string; subjectId?: string };
+  FlashcardReview: { setId: string };
   Quiz: { subjectId?: string } | undefined;
   QuizSession: { quizId: string; title: string };
   QuizResults: { quizId: string };
@@ -35,8 +34,9 @@ export type StudyStackParamList = {
   EventDetail: { eventId: string };
   Formulas: undefined;
   FormulasSubject: { subjectId: string };
-  Resources: undefined;
   Timer: undefined;
+  StudySchedule: { subjectId?: string } | undefined;
+  AssessmentGuide: { text?: string; subjectId?: string } | undefined;
 };
 
 // -----------------------------------------------------------------------------
@@ -46,7 +46,6 @@ export type SubjectsStackParamList = {
   SubjectsList: undefined;
   SubjectDetail: { subjectId: string; name?: string };
   DocumentEditor: { subjectId: string; documentId: string };
-  StudyMapSubject: { subjectId: string; name?: string };
 };
 
 // -----------------------------------------------------------------------------
@@ -54,7 +53,7 @@ export type SubjectsStackParamList = {
 // -----------------------------------------------------------------------------
 export type RoomsStackParamList = {
   RoomsList: undefined;
-  RoomDetail: { roomId: string };
+  RoomDetail: { roomId: string; name?: string };
 };
 
 // -----------------------------------------------------------------------------
@@ -77,6 +76,8 @@ export type RootStackParamList = {
   Tabs: NavigatorScreenParams<TabParamList>;
   Login: undefined;
   Onboarding: undefined;
+  Terms: undefined;
+  PrivacyPolicy: undefined;
   Modal: undefined;
 };
 

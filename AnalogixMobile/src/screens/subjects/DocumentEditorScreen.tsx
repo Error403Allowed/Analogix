@@ -1,18 +1,20 @@
 import React, { useState } from "react";
 import { View, StyleSheet, TextInput, Alert } from "react-native";
-import { Text, useTheme, IconButton, Button, ActivityIndicator } from "react-native-paper";
+import { Text, useTheme, IconButton, Button, ActivityIndicator, Menu } from "react-native-paper";
 import { useQuery, useMutation } from "@apollo/client";
 import { useRoute, useNavigation } from "@react-navigation/native";
-import { DOCUMENT, UPDATE_DOCUMENT } from "../../graphql/queries/subject";
+import { DOCUMENT, UPDATE_DOCUMENT, DELETE_DOCUMENT } from "../../graphql/queries/subject";
 import { SHAPE } from "../../theme/tokens";
 
 export default function DocumentEditorScreen() {
   const paperTheme = useTheme();
   const route = useRoute<any>();
   const navigation = useNavigation();
-  const { documentId } = route.params;
+  const { documentId, subjectId: routeSubjectId } = route.params;
   const { data, loading } = useQuery(DOCUMENT, { variables: { id: documentId } });
   const [updateDocument, { loading: saving }] = useMutation(UPDATE_DOCUMENT);
+  const [deleteDocument] = useMutation(DELETE_DOCUMENT);
+  const [menuVisible, setMenuVisible] = useState(false);
   const [content, setContent] = useState("");
 
   React.useEffect(() => {
@@ -20,6 +22,21 @@ export default function DocumentEditorScreen() {
       setContent(data.document.content);
     }
   }, [data, content]);
+
+  const handleDelete = () => {
+    Alert.alert("Delete document", "This cannot be undone.", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
+          const subjectId = data?.document?.subjectId ?? routeSubjectId;
+          await deleteDocument({ variables: { documentId, subjectId } });
+          navigation.goBack();
+        },
+      },
+    ]);
+  };
 
   const save = async () => {
     try {
@@ -45,6 +62,13 @@ export default function DocumentEditorScreen() {
         <Text variant="titleMedium" style={{ fontWeight: "700", flex: 1 }}>
           {data?.document?.title ?? "Document"}
         </Text>
+        <Menu
+          visible={menuVisible}
+          onDismiss={() => setMenuVisible(false)}
+          anchor={<IconButton icon="dots-vertical" onPress={() => setMenuVisible(true)} accessibilityLabel="Document options" />}
+        >
+          <Menu.Item onPress={() => { setMenuVisible(false); handleDelete(); }} title="Delete" leadingIcon="delete" />
+        </Menu>
         <Button mode="contained" compact onPress={save} loading={saving} style={{ borderRadius: SHAPE.lg, marginRight: 8 }}>
           Save
         </Button>

@@ -28,7 +28,7 @@ export default function ThemePickerScreen() {
           buttons={[
             { value: "light", label: "Light", icon: "white-balance-sunny" },
             { value: "dark", label: "Dark", icon: "weather-night" },
-            { value: "system", label: "Auto", icon: "theme-light-dark" },
+            { value: "system", label: "System", icon: "theme-light-dark" },
             { value: "dynamic", label: "Dynamic", icon: "palette-swatch" },
           ]}
           style={{ marginBottom: 20 }}

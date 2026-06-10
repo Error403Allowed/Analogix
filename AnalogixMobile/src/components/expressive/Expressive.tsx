@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback } from "react";
 import {
   Pressable,
   ScrollView,
@@ -6,6 +6,7 @@ import {
   View,
   type ViewStyle,
   type StyleProp,
+  Platform,
 } from "react-native";
 import { Text, useTheme, type MD3Theme } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -13,9 +14,18 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring,
+  withDelay,
+  useDerivedValue,
+  FadeInDown,
+  interpolate,
 } from "react-native-reanimated";
 import Icon from "../Icon";
 import { MOTION, SHAPE } from "../../theme/tokens";
+
+const M3_TOUCH = 48;
+const M3_ICON_PRIMARY = 24;
+const M3_ICON_SECONDARY = 20;
+const M3_ICON_TERTIARY = 16;
 
 type ExpressiveColorRole =
   | "surfaceContainerLowest"
@@ -54,16 +64,31 @@ export function PressableScale({
     transform: [{ scale: scale.value }],
   }));
 
+  const handlePressIn = useCallback(() => {
+    scale.value = withSpring(0.97, MOTION.tap);
+    if (Platform.OS === "ios") {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const haptics = require("expo-haptics");
+        haptics.impactAsync(haptics.ImpactFeedbackStyle.Light);
+      } catch { /* haptics unavailable */ }
+    }
+  }, [scale]);
+
+  const handlePressOut = useCallback(() => {
+    scale.value = withSpring(1, MOTION.tap);
+  }, [scale]);
+
   return (
     <Animated.View style={[animatedStyle, style]}>
       <Pressable
-        style={StyleSheet.absoluteFillObject}
+        style={[StyleSheet.absoluteFill, { zIndex: 1 }]}
         disabled={disabled || !onPress}
         onPress={onPress}
         accessibilityLabel={accessibilityLabel}
         accessibilityRole={accessibilityRole ?? (onPress ? "button" : "none")}
-        onPressIn={() => { scale.value = withSpring(0.975, MOTION.tap); }}
-        onPressOut={() => { scale.value = withSpring(1, MOTION.tap); }}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
       />
       {children}
     </Animated.View>
@@ -106,19 +131,24 @@ export function ExpressiveScreen({
         <View style={styles.screenHeaderLeft}>
           {onBack && (
             <Pressable onPress={onBack} style={styles.screenBack} accessibilityLabel="Go back" accessibilityRole="button">
-              <Icon name="arrow-left" size={24} color={theme.colors.onSurface} />
+              <Icon name="arrow-left" size={M3_ICON_SECONDARY} color={theme.colors.primary} />
             </Pressable>
           )}
           {leadingIcon && (
             <View style={[styles.screenLeadingIcon, { backgroundColor: theme.colors.primaryContainer }]}>
               {typeof leadingIcon === 'string' ? (
-                <Icon name={leadingIcon} size={22} color={theme.colors.onPrimaryContainer} />
+                <Icon name={leadingIcon} size={M3_ICON_SECONDARY} color={theme.colors.onPrimaryContainer} />
               ) : (
                 leadingIcon
               )}
             </View>
           )}
           <View style={styles.screenTitleGroup}>
+            {eyebrow ? (
+              <Text variant="labelSmall" style={{ color: theme.colors.primary, fontWeight: "700", letterSpacing: 0.5, marginBottom: -1 }}>
+                {eyebrow}
+              </Text>
+            ) : null}
             <Text variant="titleLarge" numberOfLines={1} style={{ color: theme.colors.onSurface, fontWeight: "900" }}>
               {title}
             </Text>
@@ -180,21 +210,41 @@ export function ExpressiveCard({ tone = "low", onPress, style, children }: Expre
   const theme = useTheme();
   const c = colors(theme);
 
+  const elevation = useSharedValue(0);
+  const animatedCardStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: interpolate(elevation.value, [0, 1], [0, -2]) }],
+  }));
+
+  const handlePressIn = useCallback(() => {
+    elevation.value = withSpring(1, MOTION.tap);
+  }, [elevation]);
+
+  const handlePressOut = useCallback(() => {
+    elevation.value = withSpring(0, { ...MOTION.tap, stiffness: 200 });
+  }, [elevation]);
+
   const cardStyle = [
     styles.card,
     {
       backgroundColor: tone === "high" ? c.surfaceContainerLow : theme.colors.surface,
       borderColor: c.outlineVariant,
-      ...(tone === "high" ? shadows.sm : {}),
     },
     style,
   ];
 
   if (onPress) {
     return (
-      <Pressable onPress={onPress} style={cardStyle} accessibilityRole="button">
-        {children}
-      </Pressable>
+      <Animated.View style={animatedCardStyle}>
+        <Pressable
+          onPress={onPress}
+          onPressIn={handlePressIn}
+          onPressOut={handlePressOut}
+          style={cardStyle}
+          accessibilityRole="button"
+        >
+          {children}
+        </Pressable>
+      </Animated.View>
     );
   }
 
@@ -218,14 +268,16 @@ export function ExpressiveSection({ title, actionLabel, onAction, children }: Ex
           {title}
         </Text>
         {actionLabel && onAction && (
-          <Pressable onPress={onAction} accessibilityRole="button" accessibilityLabel={actionLabel}>
+          <PressableScale onPress={onAction}>
             <Text variant="labelLarge" style={{ color: theme.colors.primary, fontWeight: "800" }}>
               {actionLabel}
             </Text>
-          </Pressable>
+          </PressableScale>
         )}
       </View>
-      {children}
+      <Animated.View entering={FadeInDown.duration(300).springify().damping(24).stiffness(260)}>
+        {children}
+      </Animated.View>
     </View>
   );
 }
@@ -238,7 +290,6 @@ type ExpressiveHeroPanelProps = {
 
 export function ExpressiveHeroPanel({ accent = "primary", style, children }: ExpressiveHeroPanelProps) {
   const theme = useTheme();
-  const c = colors(theme);
 
   const bgColorKey = (accent === "primary" ? "primaryContainer" :
     accent === "secondary" ? "secondaryContainer" :
@@ -246,9 +297,12 @@ export function ExpressiveHeroPanel({ accent = "primary", style, children }: Exp
   const bgColor = theme.colors[bgColorKey] as string;
 
   return (
-    <View style={[styles.heroPanel, { backgroundColor: bgColor }, style]}>
+    <Animated.View
+      entering={FadeInDown.duration(400).springify().damping(22).stiffness(200)}
+      style={[styles.heroPanel, { backgroundColor: bgColor }, style]}
+    >
       {children}
-    </View>
+    </Animated.View>
   );
 }
 
@@ -257,39 +311,57 @@ type ExpressiveListRowProps = {
   subtitle?: string;
   icon: string;
   onPress: () => void;
+  onLongPress?: () => void;
   trailing?: React.ReactNode;
   style?: StyleProp<ViewStyle>;
 };
 
-export function ExpressiveListRow({ title, subtitle, icon: iconName, onPress, trailing, style }: ExpressiveListRowProps) {
+export function ExpressiveListRow({ title, subtitle, icon: iconName, onPress, onLongPress, trailing, style }: ExpressiveListRowProps) {
   const theme = useTheme();
   const c = colors(theme);
 
+  const scale = useSharedValue(1);
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  const handlePressIn = useCallback(() => {
+    scale.value = withSpring(0.985, MOTION.tap);
+  }, [scale]);
+
+  const handlePressOut = useCallback(() => {
+    scale.value = withSpring(1, MOTION.tap);
+  }, [scale]);
+
   return (
-    <Pressable
-      onPress={onPress}
-      style={[styles.listRow, { backgroundColor: c.surfaceContainerLow, borderColor: c.outlineVariant }, style]}
-      accessibilityRole="button"
-    >
-      <View style={[styles.listRowIconWrap, { backgroundColor: theme.colors.secondaryContainer }]}>
-        <Icon name={iconName} size={20} color={theme.colors.onSecondaryContainer} />
-      </View>
-      <View style={styles.listRowTextGroup}>
-        <Text variant="bodyLarge" numberOfLines={1} style={{ color: theme.colors.onSurface, fontWeight: "700" }}>
-          {title}
-        </Text>
-        {subtitle && (
-          <Text variant="bodySmall" numberOfLines={1} style={{ color: theme.colors.onSurfaceVariant }}>
-            {subtitle}
-          </Text>
-        )}
-      </View>
-      {trailing && (
-        <View style={styles.listRowTrailing}>
-          {trailing}
+    <Animated.View style={animStyle}>
+      <Pressable
+        onPress={onPress}
+        onLongPress={onLongPress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        style={[styles.listRow, { backgroundColor: c.surfaceContainerLow, borderColor: c.outlineVariant }, style]}
+      >
+        <View style={[styles.listRowIconWrap, { backgroundColor: theme.colors.primary + "1A" }]}>
+          <Icon name={iconName} size={M3_ICON_SECONDARY} color={theme.colors.primary} />
         </View>
-      )}
-    </Pressable>
+        <View style={styles.listRowTextGroup}>
+          <Text variant="bodyLarge" numberOfLines={1} style={{ color: theme.colors.onSurface, fontWeight: "700" }}>
+            {title}
+          </Text>
+          {subtitle && (
+            <Text variant="bodySmall" numberOfLines={1} style={{ color: theme.colors.onSurfaceVariant }}>
+              {subtitle}
+            </Text>
+          )}
+        </View>
+        {trailing && (
+          <View style={styles.listRowTrailing}>
+            {trailing}
+          </View>
+        )}
+      </Pressable>
+    </Animated.View>
   );
 }
 
@@ -306,8 +378,8 @@ export function ExpressiveRailCard({ value, label, icon: iconName, style }: Expr
 
   return (
     <View style={[styles.railCard, { backgroundColor: theme.colors.surface, borderColor: c.outlineVariant }, style]}>
-      <View style={[styles.railIconWrap, { backgroundColor: theme.colors.secondaryContainer }]}>
-        <Icon name={iconName} size={18} color={theme.colors.onSecondaryContainer} />
+      <View style={[styles.railIconWrap, { backgroundColor: theme.colors.primary + "1A" }]}>
+        <Icon name={iconName} size={M3_ICON_TERTIARY} color={theme.colors.primary} />
       </View>
       <Text variant="titleMedium" style={{ color: theme.colors.onSurface, fontWeight: "900" }}>
         {value}
@@ -329,18 +401,35 @@ type ExpressiveActionPillProps = {
 export function ExpressiveActionPill({ label, icon: iconName, onPress, style }: ExpressiveActionPillProps) {
   const theme = useTheme();
 
+  const scale = useSharedValue(1);
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  const handlePressIn = useCallback(() => {
+    scale.value = withSpring(0.96, MOTION.tap);
+  }, [scale]);
+
+  const handlePressOut = useCallback(() => {
+    scale.value = withSpring(1, MOTION.tap);
+  }, [scale]);
+
   return (
-    <Pressable
-      onPress={onPress}
-      style={[styles.actionPill, { backgroundColor: theme.colors.primary }, style]}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-    >
-      <Icon name={iconName} size={16} color={theme.colors.onPrimary} />
-      <Text variant="labelLarge" style={{ color: theme.colors.onPrimary, fontWeight: "800" }}>
-        {label}
-      </Text>
-    </Pressable>
+    <Animated.View style={[animStyle, style]}>
+      <Pressable
+        onPress={onPress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        accessibilityRole="button"
+        accessibilityLabel={label}
+        style={[styles.actionPill, { backgroundColor: theme.colors.primary }]}
+      >
+        <Icon name={iconName} size={M3_ICON_TERTIARY} color={theme.colors.onPrimary} />
+        <Text variant="labelLarge" style={{ color: theme.colors.onPrimary, fontWeight: "800" }}>
+          {label}
+        </Text>
+      </Pressable>
+    </Animated.View>
   );
 }
 
@@ -355,9 +444,12 @@ export function ExpressiveEmptyState({ icon: iconName, title, subtitle, style }:
   const theme = useTheme();
 
   return (
-    <View style={[styles.emptyState, style]}>
-      <View style={[styles.emptyIconWrap, { backgroundColor: theme.colors.surfaceVariant }]}>
-        <Icon name={iconName} size={36} color={theme.colors.onSurfaceVariant} />
+    <Animated.View
+      entering={FadeInDown.duration(400).springify().damping(20)}
+      style={[styles.emptyState, style]}
+    >
+      <View style={[styles.emptyIconWrap, { backgroundColor: theme.colors.primary + "1A" }]}>
+        <Icon name={iconName} size={36} color={theme.colors.primary} />
       </View>
       <Text variant="titleMedium" style={{ color: theme.colors.onSurface, fontWeight: "900", textAlign: "center" }}>
         {title}
@@ -365,15 +457,9 @@ export function ExpressiveEmptyState({ icon: iconName, title, subtitle, style }:
       <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant, textAlign: "center" }}>
         {subtitle}
       </Text>
-    </View>
+    </Animated.View>
   );
 }
-
-const shadows = StyleSheet.create({
-  sm: {
-    boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
-  } as ViewStyle,
-});
 
 const styles = StyleSheet.create({
   screenContainer: {
@@ -396,16 +482,16 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   screenBack: {
-    width: 36,
-    height: 36,
+    width: M3_TOUCH,
+    height: M3_TOUCH,
     borderRadius: SHAPE.pill,
     alignItems: "center",
     justifyContent: "center",
     marginTop: 2,
   },
   screenLeadingIcon: {
-    width: 44,
-    height: 44,
+    width: M3_TOUCH,
+    height: M3_TOUCH,
     borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
@@ -421,7 +507,7 @@ const styles = StyleSheet.create({
   },
   screenContent: {
     padding: 16,
-    gap: 20,
+    gap: 24,
   },
   screenScroll: {
     flex: 1,
@@ -453,14 +539,16 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    padding: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
     borderRadius: SHAPE.lg,
     borderWidth: StyleSheet.hairlineWidth,
+    minHeight: 72,
   },
   listRowIconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    width: M3_TOUCH,
+    height: M3_TOUCH,
+    borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -479,11 +567,12 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: SHAPE.lg,
     borderWidth: StyleSheet.hairlineWidth,
+    minHeight: 80,
   },
   railIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 4,
@@ -497,6 +586,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: SHAPE.pill,
     alignSelf: "flex-start",
+    minHeight: M3_TOUCH,
   },
 
   fabContainer: {
@@ -512,9 +602,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   emptyIconWrap: {
-    width: 64,
-    height: 64,
-    borderRadius: 20,
+    width: 72,
+    height: 72,
+    borderRadius: 22,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 8,

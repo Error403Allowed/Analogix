@@ -93,7 +93,9 @@ export const ACTIVITY_LOG = gql`
 
 export const INCREMENT_ACTIVITY = gql`
   mutation IncrementActivity($date: String!) {
-    incrementActivity(date: $date)
+    incrementActivity(date: $date) {
+      success
+    }
   }
 `;
 
@@ -109,6 +111,26 @@ export const DELETE_ACCOUNT = gql`
   mutation DeleteAccount {
     deleteAccount {
       success
+    }
+  }
+`;
+
+export const MY_PREFERENCES = gql`
+  query MyPreferences {
+    myPreferences {
+      userId
+      mood
+      theme
+    }
+  }
+`;
+
+export const UPDATE_PREFERENCES = gql`
+  mutation UpdatePreferences($input: JSON!) {
+    updatePreferences(input: $input) {
+      userId
+      mood
+      theme
     }
   }
 `;

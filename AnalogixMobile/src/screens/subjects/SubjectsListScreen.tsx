@@ -1,14 +1,15 @@
-import React from "react";
-import { View, StyleSheet } from "react-native";
-import { Text, useTheme, ActivityIndicator, ProgressBar } from "react-native-paper";
+import React, { useState, useMemo } from "react";
+import { View, StyleSheet, Pressable } from "react-native";
+import { Text, useTheme, ActivityIndicator, ProgressBar, Searchbar, SegmentedButtons } from "react-native-paper";
 import { useQuery } from "@apollo/client";
 import { useNavigation } from "@react-navigation/native";
 import { ME } from "../../graphql/queries/user";
-import { SUBJECTS } from "../../graphql/queries/subject";
+import { SUBJECTS, CUSTOM_SUBJECTS } from "../../graphql/queries/subject";
 import { CURRICULUM_DATA } from "../../shared/curriculum/data";
 import { useThemeContext } from "../../theme/ThemeContext";
 import { ExpressiveCard, ExpressiveEmptyState, ExpressiveScreen, ExpressiveSection } from "../../components/expressive";
 import Icon from "../../components/Icon";
+import SubjectCustomizationSheet from "../../components/SubjectCustomizationSheet";
 
 const ICONS: Record<string, string> = {
   Mathematics: "math-integral",
@@ -28,12 +29,21 @@ export default function SubjectsListScreen() {
   const navigation = useNavigation<any>();
   const { data: meData, loading: meLoading } = useQuery(ME);
   const { data: subjectsData, loading: subjectsLoading } = useQuery(SUBJECTS);
+  const { data: customData } = useQuery(CUSTOM_SUBJECTS);
   const enrolledNames = (meData?.me?.subjects as string[] | undefined) ?? [];
   const studyMap = subjectsData?.studyMap ?? [];
+  const [customizing, setCustomizing] = useState<{ id: string; name: string } | null>(null);
+  const [search, setSearch] = useState("");
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
   const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
-  const subjects = enrolledNames
+  const customLookup = (id: string) => {
+    const entry = (customData?.customSubjects ?? []).find((c: any) => c.subjectId === id);
+    return entry ? { icon: entry.customIcon, color: entry.customColor, title: entry.customTitle } : {};
+  };
+
+  const allSubjects = enrolledNames
     .map((name) => {
       const entry = CURRICULUM_DATA.find(
         (c) => c.name.toLowerCase() === name.toLowerCase() || c.id.toLowerCase() === name.toLowerCase()
@@ -42,6 +52,11 @@ export default function SubjectsListScreen() {
       return { id: name.toLowerCase().replace(/\s+/g, "-"), name: capitalize(name), icon: ICONS[name] ?? "book", color: brand.primary };
     })
     .sort((a, b) => a.name.localeCompare(b.name));
+
+  const subjects = useMemo(
+    () => (search.trim() ? allSubjects.filter((s) => s.name.toLowerCase().includes(search.trim().toLowerCase())) : allSubjects),
+    [allSubjects, search]
+  );
 
   if (meLoading || subjectsLoading) {
     return (
@@ -57,38 +72,101 @@ export default function SubjectsListScreen() {
       subtitle={`${subjects.length} subject${subjects.length === 1 ? "" : "s"}`}
       leadingIcon="school"
     >
+      {subjects.length > 0 && (
+        <>
+          <Searchbar placeholder="Search subjects" value={search} onChangeText={setSearch} style={{ marginHorizontal: 12, marginBottom: 8 }} />
+          <SegmentedButtons
+            value={viewMode}
+            onValueChange={(v) => setViewMode(v as "grid" | "list")}
+            buttons={[
+              { value: "grid", icon: "view-grid" },
+              { value: "list", icon: "view-list" },
+            ]}
+            style={{ marginHorizontal: 12, marginBottom: 8 }}
+          />
+        </>
+      )}
+
       <ExpressiveSection title="Your subjects">
-        <View style={styles.grid}>
-        {subjects.length === 0 ? (
-          <ExpressiveEmptyState icon="school-outline" title="No subjects yet" subtitle="Set your subjects in onboarding to see them here." />
+        {viewMode === "grid" ? (
+          <View style={styles.grid}>
+            {subjects.length === 0 ? (
+              <ExpressiveEmptyState icon="school-outline" title="No subjects yet" subtitle={search ? "No subjects match your search." : "Set your subjects in onboarding to see them here."} />
+            ) : (
+              subjects.map((s) => {
+                const progress = studyMap.find((m: any) => m.subjectId === s.id)?.progressPercent ?? 0;
+                const custom = customLookup(s.id);
+                const displayName = custom.title || s.name;
+                const displayIcon = custom.icon || ICONS[s.name] || "book-open-variant";
+                const displayColor = custom.color || paperTheme.colors.secondaryContainer;
+                return (
+                  <Pressable key={s.id} onLongPress={() => setCustomizing({ id: s.id, name: s.name })}>
+                    <ExpressiveCard
+                      onPress={() => navigation.navigate("SubjectDetail", { subjectId: s.id, name: displayName })}
+                      style={styles.card}
+                      tone="high"
+                    >
+                      <View style={styles.cardTop}>
+                        <View style={[styles.iconWrap, { backgroundColor: displayColor }]}>
+                          <Icon name={displayIcon} size={24} color={paperTheme.colors.onSecondaryContainer} />
+                        </View>
+                        <Text variant="labelLarge" style={{ color: paperTheme.colors.primary, fontWeight: "900" }}>
+                          {Math.round(progress)}%
+                        </Text>
+                      </View>
+                      <Text variant="titleMedium" numberOfLines={2} style={{ fontWeight: "900", color: paperTheme.colors.onSurface, marginTop: 14 }}>
+                        {displayName}
+                      </Text>
+                      <ProgressBar progress={progress / 100} color={paperTheme.colors.primary} style={[styles.progressBar, { backgroundColor: paperTheme.colors.surfaceVariant }]} />
+                    </ExpressiveCard>
+                  </Pressable>
+                );
+              })
+            )}
+          </View>
         ) : (
-          subjects.map((s) => {
-            const progress = studyMap.find((m: any) => m.subjectId === s.id)?.progressPercent ?? 0;
-            return (
-              <ExpressiveCard
-                key={s.id}
-                onPress={() => navigation.navigate("SubjectDetail", { subjectId: s.id, name: s.name })}
-                style={styles.card}
-                tone="high"
-              >
-                <View style={styles.cardTop}>
-                  <View style={[styles.iconWrap, { backgroundColor: paperTheme.colors.secondaryContainer }]}>
-                    <Icon name={ICONS[s.name] ?? "book-open-variant"} size={24} color={paperTheme.colors.onSecondaryContainer} />
-                  </View>
-                  <Text variant="labelLarge" style={{ color: paperTheme.colors.primary, fontWeight: "900" }}>
-                    {Math.round(progress)}%
-                  </Text>
-                </View>
-                <Text variant="titleMedium" numberOfLines={2} style={{ fontWeight: "900", color: paperTheme.colors.onSurface, marginTop: 14 }}>
-                  {s.name}
-                </Text>
-                <ProgressBar progress={progress / 100} color={paperTheme.colors.primary} style={[styles.progressBar, { backgroundColor: paperTheme.colors.surfaceVariant }]} />
-              </ExpressiveCard>
-            );
-          })
+          <View style={{ gap: 8 }}>
+            {subjects.length === 0 ? (
+              <ExpressiveEmptyState icon="school-outline" title="No subjects yet" subtitle={search ? "No subjects match your search." : "Set your subjects in onboarding to see them here."} />
+            ) : (
+              subjects.map((s) => {
+                const progress = studyMap.find((m: any) => m.subjectId === s.id)?.progressPercent ?? 0;
+                const custom = customLookup(s.id);
+                const displayName = custom.title || s.name;
+                const displayIcon = custom.icon || ICONS[s.name] || "book-open-variant";
+                const displayColor = custom.color || paperTheme.colors.secondaryContainer;
+                return (
+                  <Pressable key={s.id} onLongPress={() => setCustomizing({ id: s.id, name: s.name })}>
+                    <ExpressiveCard
+                      onPress={() => navigation.navigate("SubjectDetail", { subjectId: s.id, name: displayName })}
+                      tone="high"
+                    >
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                        <View style={[styles.iconWrap, { backgroundColor: displayColor }]}>
+                          <Icon name={displayIcon} size={22} color={paperTheme.colors.onSecondaryContainer} />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text variant="titleSmall" numberOfLines={1} style={{ fontWeight: "700", color: paperTheme.colors.onSurface }}>{displayName}</Text>
+                          <ProgressBar progress={progress / 100} color={paperTheme.colors.primary} style={[styles.progressBar, { backgroundColor: paperTheme.colors.surfaceVariant, marginTop: 4 }]} />
+                        </View>
+                        <Text variant="labelMedium" style={{ color: paperTheme.colors.primary, fontWeight: "700" }}>{Math.round(progress)}%</Text>
+                      </View>
+                    </ExpressiveCard>
+                  </Pressable>
+                );
+              })
+            )}
+          </View>
         )}
-        </View>
       </ExpressiveSection>
+      {customizing && (
+        <SubjectCustomizationSheet
+          visible={!!customizing}
+          subjectId={customizing.id}
+          subjectName={customizing.name}
+          onDismiss={() => setCustomizing(null)}
+        />
+      )}
     </ExpressiveScreen>
   );
 }

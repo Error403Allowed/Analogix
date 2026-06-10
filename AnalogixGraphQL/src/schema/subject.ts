@@ -106,5 +106,6 @@ export const subjectTypeDefs = /* GraphQL */ `
     updateNotes(subjectId: String!, content: String!, title: String): Subject!
     addAssessment(subjectId: String!, input: JSON!): Subject!
     removeAssessment(subjectId: String!, assessmentId: ID!): Subject!
+    saveSubjectNotes(subjectId: String!, notes: JSON!): Subject!
   }
 `;

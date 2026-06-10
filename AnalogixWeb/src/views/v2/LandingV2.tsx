@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowRight, Brain, BookOpen, ClipboardList, SquareStack } from "lucide-react";
+import { ArrowRight, Brain, ClipboardList, SquareStack, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 
@@ -12,11 +12,6 @@ const pillars = [
     icon: Brain,
   },
   {
-    title: "Study Map",
-    copy: "Workflow-first subject navigation that surfaces what matters next.",
-    icon: BookOpen,
-  },
-  {
     title: "Assessment Loops",
     copy: "Quiz diagnostics that route immediately into targeted practice.",
     icon: ClipboardList,
@@ -25,6 +20,11 @@ const pillars = [
     title: "Memory System",
     copy: "Flashcard sessions designed for speed, retention, and consistency.",
     icon: SquareStack,
+  },
+  {
+    title: "Collaboration",
+    copy: "Study rooms with real-time editing, shared flashcards, and group AI tutoring.",
+    icon: Users,
   },
 ];
 
@@ -60,7 +60,7 @@ export default function LandingV2() {
         >
           <p className="text-sm font-medium text-muted-foreground">Learning Loop</p>
           <ol className="mt-5 space-y-4">
-            {["Understand with Tutor", "Practice with Quizzes", "Retain with Flashcards", "Prioritize in Study Map"].map((item, index) => (
+            {["Understand with Tutor", "Practice with Quizzes", "Retain with Flashcards", "Collaborate in Rooms"].map((item, index) => (
               <li key={item} className="flex items-center gap-3 rounded-md border border-border/60 bg-background px-4 py-3 text-sm">
                 <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-primary">{index + 1}</span>
                 {item}
