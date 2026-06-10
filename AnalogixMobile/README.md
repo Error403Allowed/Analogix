@@ -1,157 +1,244 @@
 # AnalogixMobile
 
-React Native + Expo + Material 3 Expressive client for Analogix.
+> React Native + Expo + Material 3 Expressive mobile client for Analogix.
 
-- **Expo SDK 54** (managed workflow, New Architecture enabled)
-- **React Native 0.81**
-- **React 19.1**
-- **react-native-paper v5** with custom M3 Expressive theme overrides (larger shape scale, spring motion, expressive typography)
-- **Apollo Client** with HTTP + `graphql-ws` subscriptions
-- **Supabase JS** for auth (Google sign-in via `expo-auth-session` + PKCE — no native Firebase needed)
-- **react-native-mmkv** for offline cache + secure token storage
-- **react-native-reanimated 4** + **react-native-worklets** for spring animations
-- **react-native-math-view** for LaTeX (formulas)
-- **react-native-svg** for vector illustrations + progress rings
-- **react-native-vector-icons** (Material Design Icons, per-family package)
+![Expo SDK](https://img.shields.io/badge/Expo%20SDK-54-000020)
+![RN](https://img.shields.io/badge/React%20Native-0.81-61DAFB)
+![Paper](https://img.shields.io/badge/react--native--paper-5-6750A4)
 
-## Setup
+---
 
-```bash
-# from the monorepo root
-npm install
-npm run build:shared
-cp AnalogixMobile/.env.example AnalogixMobile/.env
-# …fill in real values…
-npm run dev:mobile
+## Screenshots
+
+| Home Dashboard | AI Chat | Study Hub |
+|:---:|:---:|:---:|
+| `screenshots/mobile-dashboard.png` | `screenshots/mobile-chat.png` | `screenshots/mobile-studyhub.png` |
+| Streak & Timer widget, quick actions | ChatGPT-inspired streaming chat | 7 tool cards |
+| | | |
+| **Flashcards** | **Quiz** | **Calendar** |
+| `screenshots/mobile-flashcards.png` | `screenshots/mobile-quiz.png` | `screenshots/mobile-calendar.png` |
+| Spaced repetition + AI generation | Timed/mixed/essay modes | Month/week/day views |
+| | | |
+| **Timer** | **Subjects** | **Profile** |
+| `screenshots/mobile-timer.png` | `screenshots/mobile-subjects.png` | `screenshots/mobile-profile.png` |
+| Pomodoro with session tracking | Syllabus, marks, homework, docs | Settings, themes, achievements |
+
+---
+
+## Features
+
+### AI Tutor
+- Streaming chat via Groq (real-time token-by-token responses)
+- ChatGPT-inspired UI with Gemini-style model selector, right-aligned user bubbles, full-width assistant messages
+- Subject-aware conversations (pick a subject to scope the AI)
+- Research mode (auto-fetches sources from OpenAlex + Crossref)
+- Analogy mode (anchors explanations to your hobbies)
+- Re-explain with different anchor points
+- Code execution (Python via Pyodide in WebView)
+- Markdown rendering with LaTeX, syntax highlighting, and code blocks
+- File uploads (PDF, DOCX, images with text extraction)
+
+### Flashcards
+- Spaced repetition with SM-2 algorithm
+- AI-generated from any text, chat conversation, or uploaded file
+- Flashcard sets organized by subject
+- Star/flag for difficult cards
+
+### Quizzes
+- Multiple choice, essay, and mixed question types
+- Timed and untimed modes
+- AI-generated from your study materials or files
+- Detailed results with review
+
+### Calendar
+- Month, week, day, and schedule views
+- Term dates auto-calculated per Australian state
+- ICS file import
+- Events + homework deadlines
+- Custom event types with color coding
+
+### Timer (Pomodoro)
+- Customizable focus / break / long break durations
+- Session tracking with streak counter
+- Phase-aware color transitions (focus → brand, break → green)
+- Auto-advance through sessions
+
+### Study Hub
+- Landing page with 7 tool cards: Flashcards, Quiz, Calendar, Formulas, Timer, Study Schedule, Assessment Guide
+- Quick access to every study tool from one place
+
+### Study Schedule
+- AI-generated weekly study plan based on your subjects and upcoming assessments
+- Adjustable schedule
+
+### Formulas
+- LaTeX-rendered formula sheets by subject
+- Full-text search across all subjects
+- Categorized by topic
+
+### Subjects
+- Subject management with syllabus tracking
+- Marks and grade calculations
+- Homework assignments
+- Document editor with file attachments
+- Study map for progress tracking
+
+### Rooms
+- Real-time collaborative study rooms
+- Live chat with `graphql-ws` subscriptions
+- Shared document workspace
+- Synchronized Pomodoro timer
+- Presence indicators (who's online)
+
+### Achievements
+- 30+ unlockable achievements across starter, streak, mastery, and social categories
+- XP and leveling system
+- Progress tracking per category
+
+### Theme
+- 5 brand color schemes: Cosmic (default), Paper, Sunrise, Forest, Rose
+- Dynamic Material 3 color generation from seed colors
+- Slate monochrome theme (Notion-like greyscale)
+- Light + dark mode with system follow
+- Custom shape scale (xl 28dp, xxl 36dp, pill 9999)
+- Reanimated spring motion tokens
+
+---
+
+## Tech Stack
+
+| Category | Libraries |
+|----------|-----------|
+| **Framework** | Expo SDK 54, React Native 0.81, React 19.1, New Architecture enabled |
+| **UI** | react-native-paper v5, Reanimated 4, Material Design Icons |
+| **GraphQL** | Apollo Client (HTTP + graphql-ws subscriptions) |
+| **Auth** | Supabase JS + expo-auth-session (PKCE Google OAuth) |
+| **Storage** | react-native-mmkv (cache + secure token storage) |
+| **Animations** | react-native-reanimated 4, react-native-worklets |
+| **Math** | react-native-math-view (LaTeX rendering) |
+| **Vector** | react-native-svg, react-native-vector-icons (per-family) |
+| **Maps** | react-native-maps |
+| **Audio** | expo-av (TTS read-aloud) |
+
+---
+
+## Screens & Navigation
+
+6 bottom tabs: **Home**, **Tutor**, **Study**, **Subjects**, **Rooms**, **Profile**
+
+- Custom `MaterialTabBar` with spring-scaled pill indicator (M3 Expressive)
+- Auth gate: when unauthenticated, only `Login` + `Onboarding` are mounted
+- Native stack transitions (`slide_from_right`)
+- Root-level modal routes: `Login`, `Onboarding`, `Terms`, `PrivacyPolicy`
+
+Full route param list in `src/navigation/types.ts`.
+
+---
+
+## GraphQL Backend
+
+All data flows through `AnalogixGraphQL` at `http://localhost:4000/graphql`:
+
+- **Queries** — `me`, `subjects`, `chatSessions`, `chatMessages`, `flashcards`, `quizzes`, `events`, `deadlines`, `rooms`, `formulaSheets`, `achievements`, `userStats`, `documents`, `resources`
+- **Mutations** — `streamChatMessage` (triggers AI stream), `createChatSession`, `createFlashcardSet`, `generateFlashcards`, `generateQuiz`, `createEvent`, `addDeadline`, `createRoom`, etc.
+- **Subscriptions** — `chatStream` (real-time AI tokens), `roomMessagesStream`, `roomPresenceStream`, `roomTimerStream`
+
+See [`AnalogixGraphQL/README.md`](../AnalogixGraphQL/README.md) for the full schema.
+
+---
+
+## Theme System
+
+```
+ThemeContext
+├── brand scheme (Cosmic / Paper / Sunrise / Forest / Rose)
+├── dynamic M3 colors (material-color-utilities)
+├── light/dark mode
+├── shape tokens (sm → pill)
+├── motion tokens (Entry, Tap, Exit springs)
+└── persisted to MMKV (analogix.theme)
 ```
 
-This starts Expo Dev Client on port `8081`. Scan the QR code with Expo Go
-(iOS/Android) or press `i` / `a` for the simulator.
+Each brand has a seed color that generates a full M3 palette. The Slate theme detects low-chroma seeds (chroma < 10) and produces pure monochrome surfaces.
 
-> The root `npm run dev:mobile` is a thin alias for
-> `npm run start --workspace=AnalogixMobile`, which in turn runs `expo start`.
+---
 
-## Environment variables
+## Auth Flow (PKCE Google OAuth)
 
-All variables are read from `process.env` via `src/config.ts` and must be
-prefixed with `EXPO_PUBLIC_` so Expo inlines them into the bundle at build
-time.
+1. User taps "Continue with Google"
+2. `supabase.auth.signInWithOAuth()` returns a Google authorization URL
+3. URL opens in `WebBrowser.openAuthSessionAsync()` (system browser)
+4. Google redirects to `analogix://auth/callback` with an auth code
+5. Code is extracted and exchanged via `supabase.auth.exchangeCodeForSession()`
+6. Supabase returns session tokens → stored in MMKV via Supabase JS
 
-| Var | Description |
-| --- | --- |
-| `EXPO_PUBLIC_SUPABASE_URL` | `https://YOUR-PROJECT.supabase.co` |
-| `EXPO_PUBLIC_SUPABASE_ANON_KEY` | From Supabase dashboard (anon/public key) |
-| `EXPO_PUBLIC_GRAPHQL_HTTP_URL` | `http://localhost:4000/graphql` (dev) — use `10.0.2.2` from the Android emulator |
-| `EXPO_PUBLIC_GRAPHQL_WS_URL` | `ws://localhost:4000/graphql` (dev) |
-| `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID` | iOS OAuth client ID (from Google Cloud Console) |
-| `EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID` | Android OAuth client ID |
-| `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` | Web OAuth client ID (for Expo Go) |
-| `EXPO_PUBLIC_GOOGLE_REDIRECT_SCHEME` | Defaults to `analogix` (matches `app.json` scheme + `makeRedirectUri` in `LoginScreen`) |
-| `EXPO_TOKEN` | EAS access token (for `eas build` / `eas submit` on CI) |
+On web fallback: redirect-based implicit flow (no `expo-web-browser`).
 
-Every value is centralized in `src/config.ts` — never read `process.env`
-directly in feature code, import from there. `config.ts` also falls back to
-`expo-constants` `extra` values for EAS-build scenarios.
+---
 
-## Google sign-in setup (PKCE)
+## Streaming AI Chat
 
-Uses `expo-auth-session` (browser-based OAuth, not native Firebase). **No
-`GoogleService-Info.plist` or `google-services.json` files are needed.**
+```
+User types message
+  → STREAM_CHAT_MESSAGE mutation (Apollo HTTP)
+  → GraphQL server calls Groq API with streaming
+  → Groq tokens published via Redis PubSub (channel: chatStream.${sessionId})
+  → Mobile receives tokens via CHAT_STREAM subscription (graphql-ws)
+  → Real-time display in MarkdownRenderer
+  → On done: token, message persisted to DB, UI updates with refetch
+```
 
-1. In the [Google Cloud Console](https://console.cloud.google.com), create an
-   OAuth 2.0 Client ID for **each** platform you want to support:
-   - **iOS** — bundle ID = `com.analogix.app` (from `app.json`)
-   - **Android** — package = `com.analogix.app`, SHA-1 from `npx expo credentials:manager`
-   - **Web** — redirect URI = `https://auth.expo.io/@YOUR-EXPO-USERNAME/analogix-mobile`
-2. Copy the three client IDs into `AnalogixMobile/.env`.
-3. In the Supabase dashboard → **Authentication → Providers → Google**, paste
-   the Web client ID and secret.
-4. `LoginScreen` calls
-   `supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo, skipBrowserRedirect: true } })`,
-   opens the URL in `expo-web-browser` via `WebBrowser.openAuthSessionAsync`,
-   then exchanges the returned `code` with `supabase.auth.exchangeCodeForSession()`
-   (PKCE flow). On web, it falls back to a redirect-based implicit flow.
+---
 
-## Project layout
+## Project Layout
 
 ```
 AnalogixMobile/
-├── app.json                    # Expo config (iOS + Android + plugins)
-├── eas.json                    # EAS build profiles (development / preview / production)
-├── index.ts                    # Expo entry → registerRootComponent(Main)
-├── Main.tsx                    # root: providers + RootNavigator
-├── package.json
-├── tsconfig.json
-├── eslint.config.ts            # ESLint v10 flat config
-├── assets/                     # icon, splash, adaptive-icon
+├── app.json                    # Expo config
+├── eas.json                    # EAS build profiles
+├── index.ts                    # Entry → registerRootComponent(Main)
+├── Main.tsx                    # Root: providers + navigation
+├── assets/                     # Icon, splash, adaptive-icon
 └── src/
-    ├── config.ts               # reads EXPO_PUBLIC_* env (single source of truth)
-    ├── supabase.ts             # Supabase JS client singleton (MMKV-backed session storage)
-    ├── apollo/                 # Apollo client + provider (HTTP + WS)
-    ├── context/                # AuthContext (Supabase + MMKV), TourContext, ThemeContext
-    ├── graphql/queries/        # all GraphQL operations
-    ├── hooks/                  # Reanimated motion helpers, usePythonExecution, useResponsive, …
-    ├── navigation/             # RootNavigator + MaterialTabBar + screen types
-    ├── components/             # Icon, FormulaRenderer, ChatQuickActions, … (see file list)
+    ├── config.ts               # EXPO_PUBLIC_* env (single source of truth)
+    ├── supabase.ts             # Supabase JS client (MMKV-backed session)
+    ├── apollo/                 # Apollo Client (HTTP + WS + auth)
+    ├── context/                # AuthContext, TourContext, ThemeContext
+    ├── graphql/queries/        # All GraphQL operations
+    ├── hooks/                  # usePythonExecution, useTextToSpeech, useAchievementChecker, …
+    ├── navigation/             # RootNavigator + MaterialTabBar + types
+    ├── components/             # Icon, MarkdownRenderer, ThinkingBlock, ChatQuickActions, …
     ├── screens/
     │   ├── auth/               # Login, Onboarding, Terms, PrivacyPolicy
     │   ├── dashboard/          # Dashboard, Achievements
-    │   ├── chat/               # ChatList, ChatSession (streaming)
-    │   ├── study/              # Flashcards, Quiz, Calendar, Formulas, Timer, StudySchedule, AssessmentGuide
+    │   ├── chat/               # ChatList, ChatSession (ChatGPT-style)
+    │   ├── study/              # StudyHub, Flashcards, Quiz, Calendar, Formulas, Timer, Schedule, AssessmentGuide
     │   ├── subjects/           # SubjectsList, SubjectDetail, DocumentEditor
     │   ├── rooms/              # RoomsList, RoomDetail
     │   └── profile/            # Profile, Settings, ThemePicker, PersonalityEditor, MemoryManager, Support, Privacy
     ├── theme/                  # M3 Expressive theme + tokens
     ├── shared/                 # Cross-screen utilities
     ├── storage/                # MMKV helpers
-    ├── types/                  # App-level TS types
-    └── utils/                  # Misc helpers
+    ├── types/                  # App-level TypeScript types
+    └── utils/                  # parseThinkingBlock, termData, …
 ```
 
-## Navigation
+---
 
-6 tab stacks: **Home**, **Tutor**, **Study**, **Subjects**, **Rooms**, **Profile**
+## Setup
 
-- Custom `MaterialTabBar` with a spring-scaled pill indicator (M3 Expressive)
-- Auth gate: when `useAuth().user` is null, only `Login` + `Onboarding` are mounted
-- Native stack transitions (`slide_from_right`)
-- Root-level modal routes: `Login`, `Onboarding`, `Terms`, `PrivacyPolicy`, `Modal`
+```bash
+# From the monorepo root
+npm install
+npm run build:shared
+cp AnalogixMobile/.env.example AnalogixMobile/.env
+# Fill in real values
+npm run dev:mobile
+```
 
-See `src/navigation/types.ts` for the full route param list.
+Starts Expo Dev Client on port `8081`. Scan the QR code with the dev build app, or press `i` for iOS simulator.
 
-## Theme
-
-- Light + dark MD3 base
-- 5 brand color schemes: **Cosmic** (default), **Paper**, **Sunrise**, **Forest**, **Rose**
-- Persisted to MMKV under `analogix.theme`
-- Shape scale extended past MD3 defaults: `xl 28dp`, `xxl 36dp`, `pill 9999`
-- Motion tokens (`MOTION.entry`, `MOTION.tap`, etc.) for Reanimated springs
-- Expressive typography scale
-
-## Streaming chat
-
-`ChatSessionScreen` calls the `STREAM_CHAT_MESSAGE` mutation to kick off a
-stream and subscribes to `CHAT_STREAM` (`chatStream.${sessionId}`) to receive
-AI tokens in real time. The BFF's `streamChatMessage` resolver opens a Groq
-stream and publishes tokens via `graphql-redis-subscriptions`
-(channel: `chatStream.${sessionId}`).
-
-## Scripts
-
-| Command | What it does |
-| --- | --- |
-| `npm run start` | Start Expo Dev Client (alias for `expo start`) |
-| `npm run android` | `expo run:android` (build + launch native app) |
-| `npm run ios` | `expo run:ios` |
-| `npm run web` | Start as a web app (`expo start --web`) — useful for visual testing |
-| `npm run build` | `expo export` (web export bundle) |
-| `npm run build:android` | `eas build -p android` |
-| `npm run build:ios` | `eas build -p ios` |
-| `npm run submit:android` | `eas submit -p android` |
-| `npm run submit:ios` | `eas submit -p ios` |
-| `npm run typecheck` | `tsc --noEmit` |
-| `npm run lint` | `eslint .` (ESLint v10 flat config) |
-| `npm run codegen` | `graphql-codegen --config codegen.ts` |
+---
 
 ## EAS Build
 
@@ -159,26 +246,41 @@ stream and publishes tokens via `graphql-redis-subscriptions`
 npm install -g eas-cli
 eas login
 eas build:configure
+
+# Development build (dev client)
+eas build --profile development --platform ios
+eas build --profile development --platform android
+
+# Production build
 eas build --profile production --platform ios
 eas build --profile production --platform android
 ```
 
-Build profiles (from `eas.json`): `development` (dev client), `preview`
-(internal), `production` (auto-incrementing), `production-apk` (APK variant).
+Build profiles (from `eas.json`): `development` (dev client), `preview` (internal), `production` (auto-incrementing).
+
+---
+
+## Scripts
+
+| Command | What it does |
+|---------|-------------|
+| `npm run start` | Start Expo Dev Client |
+| `npm run android` | `expo run:android` |
+| `npm run ios` | `expo run:ios` |
+| `npm run web` | `expo start --web` (visual testing) |
+| `npm run build` | `expo export` |
+| `npm run build:android` | `eas build -p android` |
+| `npm run build:ios` | `eas build -p ios` |
+| `npm run typecheck` | `tsc --noEmit` |
+| `npm run lint` | `eslint .` (ESLint v10 flat config) |
+| `npm run codegen` | `graphql-codegen` |
+
+---
 
 ## Troubleshooting
 
-- **"Network request failed"** — The GraphQL URL is unreachable. Verify
-  `EXPO_PUBLIC_GRAPHQL_HTTP_URL` and the BFF is running. On the Android
-  emulator, replace `localhost` with `10.0.2.2`.
-- **"Invalid login credentials"** — Google sign-in returned a token Supabase
-  didn't accept. Check that the Web client ID matches between Google Cloud
-  and Supabase.
-- **Subscription never fires** — Make sure `EXPO_PUBLIC_GRAPHQL_WS_URL` is
-  `wss://` in production, and the BFF's `CORS_ORIGINS` allows your origin.
-- **Stale data** — Apollo cache is persisted to MMKV; clear app data to
-  reset.
-- **`Unable to resolve "../../App" from "node_modules/expo/AppEntry.js"`** —
-  npm workspaces symlink `node_modules/@analogix/mobile` to the package
-  dir, and Metro's `AppEntry.js` resolves relative to its own location.
-  Fixed by `metro.config.js` + `index.ts` shim.
+- **"Network request failed"** — GraphQL URL unreachable. Verify `EXPO_PUBLIC_GRAPHQL_HTTP_URL` and the BFF is running. On Android emulator, use `10.0.2.2` instead of `localhost`.
+- **"Invalid login credentials"** — Web client ID mismatch between Google Cloud and Supabase.
+- **Subscription never fires** — Ensure `EXPO_PUBLIC_GRAPHQL_WS_URL` is `wss://` in production, and CORS origins allow your client.
+- **Stale data** — Apollo cache is persisted to MMKV; clear app data to reset.
+- **Dev build can't load bundle** — Run `npx expo start --dev-client --tunnel --clear` (requires `@expo/ngrok`). Metro may not be reachable over LAN.
