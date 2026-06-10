@@ -6,6 +6,7 @@ import { WebSocketServer } from "ws";
 import { useServer } from "graphql-ws/lib/use/ws";
 import { makeExecutableSchema } from "@graphql-tools/schema";
 import { ApolloServer } from "@apollo/server";
+import { ApolloServerPluginLandingPageLocalDefault } from "@apollo/server/plugin/landingPage/default";
 import { expressMiddleware } from "@as-integrations/express5";
 import { typeDefs } from "./schema/index.js";
 import { resolvers } from "./resolvers/index.js";
@@ -61,6 +62,9 @@ async function main() {
     schema,
     introspection: !isProd,
     plugins: [
+      isProd
+        ? undefined
+        : ApolloServerPluginLandingPageLocalDefault({ embed: true }),
       {
         async serverWillStart() {
           return {
@@ -70,7 +74,7 @@ async function main() {
           };
         },
       },
-    ],
+    ].filter(Boolean),
   });
   await apollo.start();
 
