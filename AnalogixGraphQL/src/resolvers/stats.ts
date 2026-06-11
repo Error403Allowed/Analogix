@@ -48,6 +48,28 @@ export const statsResolvers = {
         p_date: args.date,
       });
       if (error) throw new GraphQLError(error.message);
+      // Recompute streak from activity_log
+      const { data: activity } = await ctx.supabase!
+        .from("activity_log")
+        .select("date, count")
+        .eq("user_id", user.id)
+        .order("date", { ascending: false })
+        .limit(365);
+      const activeDates = new Set((activity ?? []).filter((r: any) => r.count > 0).map((r: any) => r.date));
+      let streak = 0;
+      const d = new Date();
+      const localToday = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+      const cursor = new Date(localToday);
+      while (true) {
+        const iso = cursor.toISOString().slice(0, 10);
+        if (activeDates.has(iso)) { streak++; cursor.setDate(cursor.getDate() - 1); }
+        else break;
+      }
+      streak = Math.max(streak, 1);
+      await ctx.supabase!.from("user_stats").upsert(
+        { user_id: user.id, current_streak: streak, updated_at: new Date().toISOString() },
+        { onConflict: "user_id" }
+      );
       return { success: true };
     },
     upsertUserStats: async (_: unknown, args: { input: Record<string, unknown> }, ctx: GraphQLContext) => {

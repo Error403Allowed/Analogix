@@ -471,7 +471,20 @@ export default function ChatSessionScreen() {
           </Text>
           <Icon name="chevron-down" size={11} color={paperTheme.colors.primary} />
         </Pressable>
-        <View style={{ flex: 1 }} />
+        <Pressable
+          onPress={() => navigation.navigate("Profile", { screen: "PersonalityEditor" })}
+          style={styles.headerSide}
+          accessibilityLabel="AI Personality"
+        >
+          <Icon name="robot" size={18} color={paperTheme.colors.onSurfaceVariant} />
+        </Pressable>
+        <Pressable
+          onPress={() => navigation.navigate("Profile", { screen: "MemoryManager" })}
+          style={styles.headerSide}
+          accessibilityLabel="Memory"
+        >
+          <Icon name="brain" size={18} color={paperTheme.colors.onSurfaceVariant} />
+        </Pressable>
         <Pressable
           onPress={() => navigation.replace("ChatSession", { sessionId: "new" })}
           style={styles.headerSide}
