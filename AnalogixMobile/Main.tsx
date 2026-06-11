@@ -23,10 +23,6 @@ import { ApolloRootProvider } from "./src/apollo/ApolloProvider";
 import { AuthProvider } from "./src/context/AuthContext";
 import { ThemeProvider } from "./src/theme/ThemeContext";
 import { ErrorBoundary } from "./src/components/ErrorBoundary";
-import { TourProvider } from "./src/context/TourContext";
-import { TourOverlay } from "./src/components/TourOverlay";
-import { TourAutoTrigger } from "./src/components/TourAutoTrigger";
-import TutorialOverlay from "./src/components/TutorialOverlay";
 import { RootNavigator } from "./src/navigation/RootNavigator";
 
 export default function App() {
@@ -37,12 +33,8 @@ export default function App() {
         <ApolloRootProvider>
           <ThemeProvider>
             <AuthProvider>
-              <TourProvider>
-                <StatusBar style="auto" />
-                <RootNavigator />
-                <TourOverlay />
-                <TutorialOverlay />
-              </TourProvider>
+              <StatusBar style="auto" />
+              <RootNavigator />
             </AuthProvider>
           </ThemeProvider>
         </ApolloRootProvider>

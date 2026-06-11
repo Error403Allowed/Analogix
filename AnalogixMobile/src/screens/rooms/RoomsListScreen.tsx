@@ -44,7 +44,7 @@ export default function RoomsListScreen() {
       setTopic("");
       refetch();
       if (room?.id) {
-        navigation.navigate("RoomDetail", { roomId: room.id, name: room.title });
+        navigation.navigate("RoomDetail", { roomId: room.id, name: room.title, initialData: room });
       }
     } catch (e: any) {
       Alert.alert("Error", e.message ?? "Could not create room.");
@@ -60,7 +60,7 @@ export default function RoomsListScreen() {
       setJoinCode("");
       refetch();
       if (room?.id) {
-        navigation.navigate("RoomDetail", { roomId: room.id, name: room.title });
+        navigation.navigate("RoomDetail", { roomId: room.id, name: room.title, initialData: room });
       }
     } catch (e: any) {
       Alert.alert("Error", e.message ?? "Could not join room.");

@@ -66,6 +66,21 @@ export const statsResolvers = {
       if (error) throw new GraphQLError(error.message);
       return { success: true };
     },
+    rememberMemory: async (_: unknown, args: { input: Record<string, unknown> }, ctx: GraphQLContext) => {
+      const user = requireUser(ctx);
+      const key = String(args.input.key ?? "");
+      const value = String(args.input.value ?? "");
+      if (!key.trim() || !value.trim()) throw new GraphQLError("Key and value are required");
+      const id = crypto.randomUUID?.() ?? `${Date.now()}`;
+      const now = new Date().toISOString();
+      const { data, error } = await ctx.supabase!
+        .from("user_memories")
+        .insert({ id, user_id: user.id, key, value, created_at: now, last_used_at: now })
+        .select()
+        .single();
+      if (error) throw new GraphQLError(error.message);
+      return { id: data.id, key: data.key, value: data.value, createdAt: data.created_at, lastUsedAt: data.last_used_at };
+    },
   },
 
   UserStats: {

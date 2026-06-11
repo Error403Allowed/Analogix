@@ -35,6 +35,7 @@ export function TimerWidget({ compact = false }: { compact?: boolean }) {
   const settingsRef = useRef(settings);
   const sessionsTargetRef = useRef(sessionsTarget);
   const hasRecordedActivityRef = useRef(false);
+  const timerStartedRef = useRef(false);
   phaseRef.current = phase;
   settingsRef.current = settings;
   sessionsTargetRef.current = sessionsTarget;
@@ -91,6 +92,7 @@ export function TimerWidget({ compact = false }: { compact?: boolean }) {
   }, []);
 
   useEffect(() => {
+    if (isActive) timerStartedRef.current = true;
     if (isActive && timeLeft > 0) {
       timerRef.current = setInterval(() => setTimeLeft(t => t - 1), 1000);
     } else if (isActive && timeLeft === 0) {
@@ -147,7 +149,8 @@ export function TimerWidget({ compact = false }: { compact?: boolean }) {
   const dashOffset = CIRCUMFERENCE * (1 - progress);
   const color = phase === "study" ? "hsl(var(--primary))" : "#22c55e";
   const cycleCount = sessionsTarget > 0 ? sessionsCompleted % sessionsTarget : 0;
-  const filledDots = cycleCount === 0 && sessionsCompleted > 0 ? sessionsTarget : cycleCount;
+  const effectiveCompleted = timerStartedRef.current ? sessionsCompleted : 0;
+  const filledDots = cycleCount === 0 && effectiveCompleted > 0 ? sessionsTarget : cycleCount;
 
   // ── Compact variant: two-row strip ──────────────────────────────────────
   if (compact) {

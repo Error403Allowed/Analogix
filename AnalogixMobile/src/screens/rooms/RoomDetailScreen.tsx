@@ -9,6 +9,7 @@ import {
   ROOM_MESSAGES_SUB,
   SEND_ROOM_MESSAGE,
   LEAVE_ROOM,
+  DELETE_ROOM,
   UPDATE_ROOM_TIMER,
   SHARE_DOCUMENT_TO_ROOM,
   ROOM_PRESENCE_STREAM,
@@ -30,11 +31,23 @@ export default function RoomDetailScreen() {
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
   const { user } = useAuth();
-  const { roomId, name } = route.params;
+  const { roomId, name, initialData } = route.params || {};
   const { data: meData } = useQuery(ME);
-  const { data, loading, refetch } = useQuery(ROOM_DETAIL, { variables: { id: roomId } });
+  const { data, loading, error, refetch } = useQuery(ROOM_DETAIL, {
+    variables: { id: roomId },
+    skip: !roomId,
+  });
+  // Retry once if room query returns null
+  const [didRetry, setDidRetry] = useState(false);
+  useEffect(() => {
+    if (!loading && !data?.room && !error && !didRetry && roomId) {
+      const t = setTimeout(() => { refetch(); setDidRetry(true); }, 1500);
+      return () => clearTimeout(t);
+    }
+  }, [loading, data, error, didRetry, roomId, refetch]);
   const [sendMessage, { loading: sending }] = useMutation(SEND_ROOM_MESSAGE);
   const [leaveRoom] = useMutation(LEAVE_ROOM);
+  const [deleteRoom] = useMutation(DELETE_ROOM);
   const [updateTimer] = useMutation(UPDATE_ROOM_TIMER);
   const [shareDoc] = useMutation(SHARE_DOCUMENT_TO_ROOM);
   const [updateRole] = useMutation(UPDATE_ROOM_MEMBER_ROLE);
@@ -57,10 +70,12 @@ export default function RoomDetailScreen() {
   const { data: docsData } = useQuery(DOCUMENTS);
   const allDocs = docsData?.documents ?? [];
 
-  useSubscription(ROOM_MESSAGES_SUB, { variables: { roomId }, onData: () => refetch() });
-  useSubscription(ROOM_PRESENCE_STREAM, { variables: { roomId }, onData: () => refetch() });
+  const skipSub = !roomId;
+  useSubscription(ROOM_MESSAGES_SUB, { variables: { roomId }, skip: skipSub, onData: () => refetch() });
+  useSubscription(ROOM_PRESENCE_STREAM, { variables: { roomId }, skip: skipSub, onData: () => refetch() });
   useSubscription(ROOM_TIMER_STREAM, {
     variables: { roomId },
+    skip: skipSub,
     onData: ({ data: result }) => {
       const t = result?.data?.roomTimerStream;
       if (!t) return;
@@ -166,6 +181,24 @@ export default function RoomDetailScreen() {
     ]);
   };
 
+  const handleDeleteRoom = () => {
+    Alert.alert("Delete room", "This will permanently delete the room for everyone. Are you sure?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await deleteRoom({ variables: { roomId } });
+            navigation.goBack();
+          } catch (e: any) {
+            Alert.alert("Error", e.message ?? "Could not delete room.");
+          }
+        },
+      },
+    ]);
+  };
+
   const syncTimer = async (state: string, elapsedSeconds?: number) => {
     await updateTimer({
       variables: {
@@ -177,7 +210,8 @@ export default function RoomDetailScreen() {
     });
   };
 
-  if (loading) {
+  const room = data?.room ?? initialData ?? null;
+  if (loading && !room) {
     return (
       <View style={[styles.container, { backgroundColor: paperTheme.colors.background, alignItems: "center", justifyContent: "center" }]}>
         <ActivityIndicator />
@@ -185,7 +219,13 @@ export default function RoomDetailScreen() {
     );
   }
 
-  const room = data?.room;
+  if (!room) {
+    return (
+      <View style={[styles.container, { backgroundColor: paperTheme.colors.background, alignItems: "center", justifyContent: "center", padding: 24 }]}>
+        <ExpressiveEmptyState icon="door-open" title="Room not found" subtitle="This room may have been deleted or you don't have access." />
+      </View>
+    );
+  }
   const messages = [...(room?.messages ?? [])].reverse();
   const members = room?.members ?? [];
   const docs = room?.documents ?? [];
@@ -206,7 +246,11 @@ export default function RoomDetailScreen() {
         contentStyle={styles.sessionContent}
         actions={
           <View style={{ flexDirection: "row", alignItems: "center" }}>
-            <IconButton icon="exit-to-app" iconColor={paperTheme.colors.error} onPress={handleLeave} accessibilityLabel="Leave room" />
+            {room?.isOwner ? (
+              <IconButton icon="delete" iconColor={paperTheme.colors.error} onPress={handleDeleteRoom} accessibilityLabel="Delete room" />
+            ) : (
+              <IconButton icon="exit-to-app" iconColor={paperTheme.colors.error} onPress={handleLeave} accessibilityLabel="Leave room" />
+            )}
           </View>
         }
       >
@@ -322,7 +366,7 @@ export default function RoomDetailScreen() {
           </ExpressiveCard>
         )}
 
-        {room.isOwner && (
+        {room?.isOwner && (
           <View style={{ flexDirection: "row", gap: 8, marginHorizontal: 12, marginBottom: 8 }}>
             <Button compact mode="outlined" icon="file-document-plus" onPress={() => setShowShareDoc(true)}>
               Share doc
@@ -338,7 +382,7 @@ export default function RoomDetailScreen() {
             <Text variant="labelMedium" style={{ fontWeight: "700", color: paperTheme.colors.onSurface, marginBottom: 8 }}>Members</Text>
             {members.map((m: any) => {
               const isMe = m.userId === myUserId;
-              const canManage = room.isOwner && !isMe;
+              const canManage = room?.isOwner && !isMe;
               return (
                 <View key={m.id} style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4 }}>
                   <View style={[styles.statusDot, { backgroundColor: m.isOnline ? "#22C55E" : paperTheme.colors.outlineVariant }]} />

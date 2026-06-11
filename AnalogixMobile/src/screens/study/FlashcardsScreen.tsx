@@ -1,17 +1,24 @@
 import React, { useState } from "react";
-import { View, StyleSheet, ScrollView } from "react-native";
-import { Text, useTheme, Card, IconButton, ProgressBar, FAB, Portal, Modal, TextInput, Button } from "react-native-paper";
+import { View, StyleSheet, ScrollView, Pressable } from "react-native";
+import { Text, useTheme, FAB, Portal, Modal, TextInput, Button } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQuery, useMutation } from "@apollo/client";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { FLASHCARD_SETS, FLASHCARDS_DUE, CREATE_FLASHCARD_SET } from "../../graphql/queries/flashcard";
 import { useThemeContext } from "../../theme/ThemeContext";
 import { SHAPE } from "../../theme/tokens";
+import {
+  ExpressiveCard,
+  ExpressiveEmptyState,
+  ExpressiveRailCard,
+  ExpressiveScreen,
+  ExpressiveSection,
+  PressableScale,
+} from "../../components/expressive";
 import Icon from "../../components/Icon";
 
 export default function FlashcardsScreen() {
   const paperTheme = useTheme();
-  const insets = useSafeAreaInsets();
   const { brand } = useThemeContext();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
@@ -52,60 +59,64 @@ export default function FlashcardsScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: paperTheme.colors.background }]}>
-      <View style={[styles.topBar, { backgroundColor: paperTheme.colors.surface, paddingTop: insets.top + 4 }]}>
-        <IconButton icon="arrow-left" onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
-        <Text variant="titleLarge" style={{ fontWeight: "700", flex: 1 }}>Flashcards</Text>
+    <ExpressiveScreen
+      title="Flashcards"
+      subtitle={`${sets.length} set${sets.length !== 1 ? "s" : ""}`}
+      leadingIcon="cards"
+      onBack={() => navigation.goBack()}
+    >
+      <View style={styles.overview}>
+        <ExpressiveRailCard value={sets.reduce((s: number, d: any) => s + (d.cardCount ?? 0), 0)} label="Total cards" icon="cards" />
+        <ExpressiveRailCard value={dueCount} label="Due for review" icon="clock-outline" />
       </View>
 
-      <View style={styles.dueCard}>
-        <Card mode="elevated" style={styles.dueInner}>
-          <Card.Content style={styles.dueContent}>
-            <View>
-              <Text variant="titleMedium" style={{ fontWeight: "700", color: paperTheme.colors.onSurface }}>Due for review</Text>
-              <Text variant="bodySmall" style={{ color: dueCount > 0 ? brand.primary : paperTheme.colors.onSurfaceVariant }}>
-                {dueCount} card{dueCount !== 1 ? "s" : ""} due today
-              </Text>
-            </View>
-            <Icon name="cards" size={32} color={brand.primary} />
-          </Card.Content>
-        </Card>
-      </View>
-
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.list}>
-        {sets.length === 0 ? (
-          <View style={styles.empty}>
-            <Icon name="cards-outline" size={64} color={paperTheme.colors.onSurfaceVariant} />
-            <Text variant="bodyLarge" style={{ color: paperTheme.colors.onSurfaceVariant, marginTop: 16, textAlign: "center" }}>
-              No flashcard sets yet. Tap + to create one.
+      {dueCount > 0 && (
+        <PressableScale onPress={() => {
+          const firstSet = sets[0];
+          if (firstSet) navigation.navigate("FlashcardReview", { setId: firstSet.id });
+        }}>
+          <View style={[styles.reviewBanner, { backgroundColor: brand.primary }]}>
+            <Icon name="cards" size={20} color="#fff" />
+            <Text variant="labelLarge" style={{ color: "#fff", fontWeight: "800" }}>
+              Review {dueCount} card{dueCount !== 1 ? "s" : ""}
             </Text>
           </View>
+        </PressableScale>
+      )}
+
+      <ExpressiveSection title="Your sets">
+        {sets.length === 0 ? (
+          <ExpressiveEmptyState icon="cards-outline" title="No flashcard sets" subtitle='Tap + to create your first set.' />
         ) : (
-          sets.map((d: any) => (
-            <Card
-              key={d.id}
-              mode="outlined"
-              style={styles.deckCard}
-              onPress={() => navigation.navigate("FlashcardSet", { setId: d.id, name: d.name, subjectId: d.subjectId })}
-            >
-              <Card.Content>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-                  <View style={[styles.deckIcon, { backgroundColor: brand.primary + "18" }]}>
+          <View style={{ gap: 8 }}>
+            {sets.map((d: any) => (
+              <ExpressiveCard
+                key={d.id}
+                tone="low"
+                onPress={() => navigation.navigate("FlashcardSet", { setId: d.id, name: d.name, subjectId: d.subjectId })}
+              >
+                <View style={styles.setRow}>
+                  <View style={[styles.setIcon, { backgroundColor: brand.primary + "18" }]}>
                     <Icon name="cards" size={22} color={brand.primary} />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text variant="bodyLarge" style={{ fontWeight: "600", color: paperTheme.colors.onSurface }}>{d.name}</Text>
-                    <Text variant="bodySmall" style={{ color: paperTheme.colors.onSurfaceVariant }}>{d.cardCount ?? 0} cards</Text>
+                    <Text variant="bodyLarge" style={{ fontWeight: "700", color: paperTheme.colors.onSurface }}>{d.name}</Text>
+                    <Text variant="bodySmall" style={{ color: paperTheme.colors.onSurfaceVariant, marginTop: 2 }}>{d.cardCount ?? 0} cards</Text>
                   </View>
-                  <ProgressBar progress={Math.min((d.cardCount ?? 0) / 20, 1)} color={brand.primary} style={[styles.masteryBar, { backgroundColor: paperTheme.colors.surfaceVariant }]} />
+                  <Icon name="chevron-right" size={20} color={paperTheme.colors.onSurfaceVariant} />
                 </View>
-              </Card.Content>
-            </Card>
-          ))
+              </ExpressiveCard>
+            ))}
+          </View>
         )}
-      </ScrollView>
+      </ExpressiveSection>
 
-      <FAB icon="plus" color="#fff" style={[styles.fab, { backgroundColor: brand.primary }]} onPress={() => setShowCreate(true)} />
+      <FAB
+        icon="plus"
+        color="#fff"
+        style={[styles.fab, { backgroundColor: brand.primary }]}
+        onPress={() => setShowCreate(true)}
+      />
 
       <Portal>
         <Modal visible={showCreate} onDismiss={() => setShowCreate(false)} contentContainerStyle={[styles.modal, { backgroundColor: paperTheme.colors.surface }]}>
@@ -116,21 +127,23 @@ export default function FlashcardsScreen() {
           </Button>
         </Modal>
       </Portal>
-    </View>
+    </ExpressiveScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  topBar: { flexDirection: "row", alignItems: "center", paddingHorizontal: 4 },
-  dueCard: { paddingHorizontal: 16, marginBottom: 8 },
-  dueInner: { borderRadius: SHAPE.lg },
-  dueContent: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  list: { padding: 16, paddingBottom: 120, gap: 8 },
-  deckCard: { borderRadius: SHAPE.lg },
-  deckIcon: { width: 42, height: 42, borderRadius: SHAPE.md, alignItems: "center", justifyContent: "center" },
-  masteryBar: { height: 6, borderRadius: SHAPE.xs, width: 60 },
-  fab: { position: "absolute", right: 16, bottom: 100, borderRadius: SHAPE.lg },
-  empty: { alignItems: "center", paddingTop: 80, paddingHorizontal: 32 },
+  overview: { flexDirection: "row", gap: 8, marginBottom: 8 },
+  reviewBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: SHAPE.lg,
+    marginBottom: 8,
+  },
+  setRow: { flexDirection: "row", alignItems: "center", gap: 12 },
+  setIcon: { width: 44, height: 44, borderRadius: SHAPE.md, alignItems: "center", justifyContent: "center" },
+  fab: { position: "absolute", right: 16, bottom: 16, borderRadius: SHAPE.lg },
   modal: { margin: 20, padding: 24, borderRadius: SHAPE.xl },
 });

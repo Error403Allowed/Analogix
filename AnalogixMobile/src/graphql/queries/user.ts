@@ -107,6 +107,16 @@ export const FORGET_MEMORY = gql`
   }
 `;
 
+export const REMEMBER_MEMORY = gql`
+  mutation RememberMemory($input: JSON!) {
+    rememberMemory(input: $input) {
+      id
+      key
+      value
+    }
+  }
+`;
+
 export const DELETE_ACCOUNT = gql`
   mutation DeleteAccount {
     deleteAccount {

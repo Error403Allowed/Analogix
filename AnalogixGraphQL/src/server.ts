@@ -74,7 +74,7 @@ async function main() {
           };
         },
       },
-    ].filter(Boolean),
+    ].filter((p): p is NonNullable<typeof p> => p != null),
   });
   await apollo.start();
 

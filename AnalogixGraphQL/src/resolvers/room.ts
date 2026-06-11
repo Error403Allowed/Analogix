@@ -102,6 +102,15 @@ export const roomResolvers = {
   },
 
   Mutation: {
+    deleteRoom: async (_: unknown, args: { roomId: string }, ctx: GraphQLContext) => {
+      const user = requireUser(ctx);
+      const { data: room } = await ctx.supabase!.from("study_rooms").select("owner_user_id").eq("id", args.roomId).maybeSingle();
+      if (!room) throw new GraphQLError("Room not found");
+      if (room.owner_user_id !== user.id) throw new GraphQLError("Only the room owner can delete this room");
+      const { error } = await ctx.supabase!.from("study_rooms").delete().eq("id", args.roomId);
+      if (error) throw new GraphQLError(error.message);
+      return { success: true };
+    },
     createRoom: async (_: unknown, args: { input: Record<string, unknown> }, ctx: GraphQLContext) => {
       const user = requireUser(ctx);
       const title = typeof args.input.title === "string" && args.input.title.trim() ? args.input.title : "Study room";

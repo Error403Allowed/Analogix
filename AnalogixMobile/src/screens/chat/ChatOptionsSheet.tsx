@@ -16,6 +16,8 @@ interface ChatOptionsSheetProps {
   onToggleAnalogy: (v: boolean) => void;
   onUploadFile: () => void;
   onOpenFormulas?: () => void;
+  onOpenPersonality?: () => void;
+  onOpenMemory?: () => void;
 }
 
 export default function ChatOptionsSheet({
@@ -29,6 +31,8 @@ export default function ChatOptionsSheet({
   onToggleAnalogy,
   onUploadFile,
   onOpenFormulas,
+  onOpenPersonality,
+  onOpenMemory,
 }: ChatOptionsSheetProps) {
   const theme = useTheme();
   const c = theme.colors as any;
@@ -153,6 +157,36 @@ export default function ChatOptionsSheet({
                 <Icon name="sigma" size={20} color={theme.colors.onSurfaceVariant} />
                 <Text variant="bodyMedium" style={{ color: theme.colors.onSurface }}>
                   Formula sheet
+                </Text>
+              </View>
+              <Icon name="chevron-right" size={20} color={theme.colors.onSurfaceVariant} />
+            </Pressable>
+          )}
+
+          {onOpenPersonality && (
+            <Pressable
+              style={[styles.pill, { backgroundColor: c.surfaceContainerLow ?? theme.colors.surfaceVariant }]}
+              onPress={onOpenPersonality}
+            >
+              <View style={styles.pillLeft}>
+                <Icon name="robot" size={20} color={theme.colors.onSurfaceVariant} />
+                <Text variant="bodyMedium" style={{ color: theme.colors.onSurface }}>
+                  AI Personality
+                </Text>
+              </View>
+              <Icon name="chevron-right" size={20} color={theme.colors.onSurfaceVariant} />
+            </Pressable>
+          )}
+
+          {onOpenMemory && (
+            <Pressable
+              style={[styles.pill, { backgroundColor: c.surfaceContainerLow ?? theme.colors.surfaceVariant }]}
+              onPress={onOpenMemory}
+            >
+              <View style={styles.pillLeft}>
+                <Icon name="brain" size={20} color={theme.colors.onSurfaceVariant} />
+                <Text variant="bodyMedium" style={{ color: theme.colors.onSurface }}>
+                  Memory
                 </Text>
               </View>
               <Icon name="chevron-right" size={20} color={theme.colors.onSurfaceVariant} />

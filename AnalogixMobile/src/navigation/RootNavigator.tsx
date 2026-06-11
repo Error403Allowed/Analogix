@@ -50,8 +50,6 @@ import PersonalityEditorScreen from "../screens/profile/PersonalityEditorScreen"
 import MemoryManagerScreen from "../screens/profile/MemoryManagerScreen";
 import SupportScreen from "../screens/profile/SupportScreen";
 import PrivacyScreen from "../screens/profile/PrivacyScreen";
-import { TourAutoTrigger } from "../components/TourAutoTrigger";
-
 const RootStack = createNativeStackNavigator<RootStackParamList>();
 const Tabs = createBottomTabNavigator<TabParamList>();
 
@@ -145,15 +143,6 @@ function MainTabs() {
   );
 }
 
-function TabsWithAutoTrigger() {
-  return (
-    <>
-      <TourAutoTrigger />
-      <MainTabs />
-    </>
-  );
-}
-
 function AuthGate({ children }: { children: React.ReactNode }) {
   const { data, loading } = useQuery(ME, { fetchPolicy: "cache-and-network" });
   if (loading) return null;
@@ -164,7 +153,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 function TabsWithGate() {
   return (
     <AuthGate>
-      <TabsWithAutoTrigger />
+      <MainTabs />
     </AuthGate>
   );
 }

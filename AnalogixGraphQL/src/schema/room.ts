@@ -93,6 +93,7 @@ export const roomTypeDefs = /* GraphQL */ `
     shareDocumentToRoom(roomId: ID!, documentId: ID!, subjectId: String!): RoomSharedDocument!
     sendRoomMessage(roomId: ID!, content: String!, messageType: String = "chat"): StudyRoomMessage!
     updateRoomMemberRole(roomId: ID!, userId: ID!, role: String!): StudyRoomMember!
+    deleteRoom(roomId: ID!): DeleteResult!
   }
 
   extend type Subscription {

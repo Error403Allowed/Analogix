@@ -92,13 +92,13 @@ const TypewriterText = ({ text, delay = 0 }: { text: string; delay?: number }) =
 };
 
 // ── Auth Step ─────────────────────────────────────────────────────────────────
-function AuthStep({ onAuthed, externalError }: { onAuthed: () => void; externalError?: string | null }) {
+function AuthStep({ externalError }: { externalError?: string | null }) {
   const { user, loading } = useAuth();
   const [googleLoading, setGoogleLoading] = useState(false);
 
-  useEffect(() => {
-    if (!loading && user) onAuthed();
-  }, [user, loading, onAuthed]);
+  // Auto-advance REMOVED — parent's useEffect controls the step after
+  // checking the DB for existing user profile data. This prevents a race
+  // where onAuthed() fires before the parent can redirect existing users.
 
   const handleGoogle = async () => {
     setGoogleLoading(true);
@@ -317,6 +317,11 @@ const Onboarding = () => {
           
           const urlStep = parseInt(searchParams?.get("step") ?? "2", 10);
           setStep(isNaN(urlStep) || urlStep <= 1 ? 2 : urlStep);
+        })
+        .catch(() => {
+          // DB check failed — let user retry through onboarding
+          const urlStep = parseInt(searchParams?.get("step") ?? "2", 10);
+          setStep(isNaN(urlStep) || urlStep <= 1 ? 2 : urlStep);
         });
       return;
     }
@@ -448,7 +453,12 @@ const Onboarding = () => {
               )}
 
               {/* Step 1 — Auth */}
-              {step === 1 && <AuthStep onAuthed={() => setStep(2)} externalError={authError} />}
+              {step === 1 && authLoading && (
+                <div className="flex items-center justify-center py-16">
+                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                </div>
+              )}
+              {step === 1 && !authLoading && <AuthStep externalError={authError} />}
 
               {/* Step 2 — Name */}
               {step === 2 && (

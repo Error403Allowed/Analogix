@@ -8,16 +8,25 @@ type Stats = {
   quizzesCompleted?: number;
   cardsReviewed?: number;
   conversationsCount?: number;
+  accuracy?: number;
 };
 
 const RULES: { id: string; check: (stats: Stats) => boolean }[] = [
-  { id: "first-chat", check: (s) => (s.conversationsCount ?? 0) >= 1 },
-  { id: "quiz-novice", check: (s) => (s.quizzesCompleted ?? 0) >= 1 },
-  { id: "flashcard-debut", check: (s) => (s.cardsReviewed ?? 0) >= 1 },
-  { id: "streak-3", check: (s) => (s.currentStreak ?? 0) >= 3 },
-  { id: "streak-7", check: (s) => (s.currentStreak ?? 0) >= 7 },
-  { id: "streak-30", check: (s) => (s.currentStreak ?? 0) >= 30 },
-  { id: "quiz-10", check: (s) => (s.quizzesCompleted ?? 0) >= 10 },
+  { id: "streak_1", check: (s) => (s.currentStreak ?? 0) >= 1 },
+  { id: "streak_3", check: (s) => (s.currentStreak ?? 0) >= 3 },
+  { id: "streak_5", check: (s) => (s.currentStreak ?? 0) >= 5 },
+  { id: "streak_7", check: (s) => (s.currentStreak ?? 0) >= 7 },
+  { id: "streak_14", check: (s) => (s.currentStreak ?? 0) >= 14 },
+  { id: "streak_21", check: (s) => (s.currentStreak ?? 0) >= 21 },
+  { id: "streak_30", check: (s) => (s.currentStreak ?? 0) >= 30 },
+  { id: "quiz_1", check: (s) => (s.quizzesCompleted ?? 0) >= 1 },
+  { id: "quiz_5", check: (s) => (s.quizzesCompleted ?? 0) >= 5 },
+  { id: "quiz_10", check: (s) => (s.quizzesCompleted ?? 0) >= 10 },
+  { id: "chat_1", check: (s) => (s.conversationsCount ?? 0) >= 1 },
+  { id: "chat_5", check: (s) => (s.conversationsCount ?? 0) >= 5 },
+  { id: "chat_10", check: (s) => (s.conversationsCount ?? 0) >= 10 },
+  { id: "flash_1", check: (s) => (s.cardsReviewed ?? 0) >= 1 },
+  { id: "flash_10", check: (s) => (s.cardsReviewed ?? 0) >= 10 },
 ];
 
 export function useAchievementChecker() {

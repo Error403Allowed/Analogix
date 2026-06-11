@@ -21,7 +21,7 @@
 
 ## What is Analogix?
 
-Analogix replaces scattered study tools (Google Docs, paper flashcards, Quizlet, Pomodoro timers) with **one unified platform** that includes:
+Analogix replaces scattered study tools (ChatGPT, Google Docs, Quizlet, Pomodoro timers) with **one unified platform** that includes:
 
 - **AI Tutor** — Chat with Groq-powered AI that explains concepts, generates quizzes/flashcards, and adapts explanations to your interests.
 - **Flashcards** — Spaced repetition (SM-2) with AI-generated sets from any text or chat conversation.

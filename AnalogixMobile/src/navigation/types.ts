@@ -23,7 +23,7 @@ export type TutorStackParamList = {
 // Tab: Study (multiple sub-stacks via nested navigation)
 // -----------------------------------------------------------------------------
 export type StudyStackParamList = {
-  StudyHub: undefined;
+  StudyHub: { subjectId?: string } | undefined;
   Flashcards: { subjectId?: string } | undefined;
   FlashcardSet: { setId: string; name?: string; subjectId?: string };
   FlashcardReview: { setId: string };

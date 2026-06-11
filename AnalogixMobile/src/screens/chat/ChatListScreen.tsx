@@ -1,8 +1,8 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { View, StyleSheet, Animated as RNAnimated, Alert } from "react-native";
 import { Text, useTheme, Searchbar, FAB, Portal, Modal, TextInput, Button } from "react-native-paper";
 import { useQuery, useMutation } from "@apollo/client";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useRoute } from "@react-navigation/native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { CHAT_SESSIONS, DELETE_CHAT_SESSION, UPDATE_CHAT_SESSION } from "../../graphql/queries/chat";
 import { SHAPE } from "../../theme/tokens";
@@ -38,8 +38,17 @@ function BlinkingRobot() {
 export default function ChatListScreen() {
   const paperTheme = useTheme();
   const navigation = useNavigation<any>();
+  const route = useRoute<any>();
   const [q, setQ] = useState("");
   const { data, refetch } = useQuery(CHAT_SESSIONS);
+
+  // Auto-navigate to a new chat when subjectId is passed from a subject detail
+  useEffect(() => {
+    const subjectId = route.params?.subjectId;
+    if (subjectId) {
+      navigation.navigate("ChatSession", { sessionId: "new", subjectId });
+    }
+  }, [route.params?.subjectId, navigation]);
   const [deleteSession] = useMutation(DELETE_CHAT_SESSION);
   const [updateSession] = useMutation(UPDATE_CHAT_SESSION);
   const [renameTarget, setRenameTarget] = useState<{ id: string; title: string } | null>(null);

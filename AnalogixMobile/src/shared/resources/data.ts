@@ -117,7 +117,7 @@ export const RESOURCES: SubjectResources[] = [
   {
     subjectId: "biology",
     pastPapers: [
-      { title: "NSW HSC Biology – NESA Exam Papers", url: "https://www.nsw.gov.au/education-and-training/nesa/curriculum/hsc-exam-papers?category=Biology", free: true, states: ["NSW"] },
+      { title: "NSW HSC Biology – NESA Exam Papers", url: "https://educationstandards.nsw.edu.au/wps/portal/nesa/11-12/stage-6-learning-areas/science/biology-2017/past-exams", description: "Direct link to NESA Biology past exam papers", free: true, states: ["NSW"] },
       { title: "VCE Biology – Past Exams (VCAA)", url: "https://www.vcaa.vic.edu.au/assessment/vce/examination-specifications-past-examinations-and-examination-reports/biology", free: true, states: ["VIC"] },
       { title: "QCAA Biology – Past SEE Papers", url: "https://www.qcaa.qld.edu.au/senior/see/subject-resources/biology", free: true, states: ["QLD"] },
       { title: "WA ATAR Biology – Past Exams (SCSA)", url: "https://senior-secondary.scsa.wa.edu.au/further-resources/past-atar-course-exams/biology-past-atar-course-exams", free: true, states: ["WA"] },

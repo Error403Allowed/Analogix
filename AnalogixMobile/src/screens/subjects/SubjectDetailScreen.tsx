@@ -17,6 +17,7 @@ import {
   ExpressiveSection,
 } from "../../components/expressive";
 import Icon from "../../components/Icon";
+import { SUBJECT_CATALOG } from "../../shared/subjects/catalog";
 import { SkeletonList } from "../../components/SkeletonLoader";
 import SubjectCustomizationSheet from "../../components/SubjectCustomizationSheet";
 
@@ -91,6 +92,9 @@ export default function SubjectDetailScreen() {
   const visibleTextbooks = subjectResource?.textbooks ?? [];
   const pendingCount = homework.filter((h: any) => !h.completed).length;
   const topicsCount = chapters.reduce((a: number, c: any) => a + (c.topics?.length ?? 0), 0);
+  const subjectDescription = SUBJECT_CATALOG.find(
+    (s) => s.id === subjectId || s.label.toLowerCase() === subjectId?.toLowerCase()
+  )?.description;
 
   const handleCreateDocument = async () => {
     if (!docTitle.trim()) return;
@@ -151,6 +155,7 @@ export default function SubjectDetailScreen() {
               <View style={{ flex: 1 }}>
                 <Text variant="labelSmall" style={{ color: paperTheme.colors.onTertiaryContainer, opacity: 0.85, fontWeight: "800", letterSpacing: 1 }}>{chapters.length} CHAPTERS</Text>
                 <Text variant="headlineSmall" style={{ color: paperTheme.colors.onTertiaryContainer, fontWeight: "900", marginTop: 4 }}>{name}</Text>
+                {subjectDescription ? <Text variant="bodySmall" style={{ color: paperTheme.colors.onTertiaryContainer, opacity: 0.7, marginTop: 2 }}>{subjectDescription}</Text> : null}
                 <Text variant="bodySmall" style={{ color: paperTheme.colors.onTertiaryContainer, opacity: 0.75, marginTop: 4 }}>{pendingCount} pending tasks</Text>
               </View>
               <View style={[styles.heroIcon, { backgroundColor: paperTheme.colors.surface }]}><Icon name="book-open-page-variant" size={30} color={paperTheme.colors.tertiary} /></View>
@@ -208,34 +213,42 @@ export default function SubjectDetailScreen() {
           </ExpressiveSection>
           <ExpressiveSection title="Resources" actionLabel={activeResourceTab === "pastPapers" ? "Textbooks" : "Past Papers"} onAction={() => setActiveResourceTab(activeResourceTab === "pastPapers" ? "textbooks" : "pastPapers")}>
             {!subjectResource ? <Text variant="bodyMedium" style={{ color: paperTheme.colors.onSurfaceVariant, marginBottom: 8 }}>No resources for this subject yet.</Text> : activeResourceTab === "pastPapers" ? (
-              visiblePapers.length === 0 ? <Text variant="bodyMedium" style={{ color: paperTheme.colors.onSurfaceVariant, marginBottom: 8 }}>No past papers available for your state yet.</Text> : visiblePapers.map((link, i) => (
-                <Pressable key={"p-" + i} onPress={() => Linking.openURL(link.url)}>
-                  <ExpressiveCard tone="low">
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-                      <Icon name="file-document-outline" size={20} color={paperTheme.colors.primary} />
-                      <View style={{ flex: 1 }}>
-                        <Text variant="bodyLarge" numberOfLines={2} style={{ fontWeight: "700", color: paperTheme.colors.onSurface }}>{link.title}</Text>
-                        {link.description ? <Text variant="bodySmall" numberOfLines={2} style={{ color: paperTheme.colors.onSurfaceVariant, marginTop: 2 }}>{link.description}</Text> : null}
+              visiblePapers.length === 0 ? <Text variant="bodyMedium" style={{ color: paperTheme.colors.onSurfaceVariant, marginBottom: 8 }}>No past papers available for your state yet.</Text> : (
+                <View style={{ gap: 10 }}>
+                  {visiblePapers.map((link, i) => (
+                    <Pressable key={"p-" + i} onPress={() => Linking.openURL(link.url)}>
+                      <ExpressiveCard tone="low">
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                          <Icon name="file-document-outline" size={20} color={paperTheme.colors.primary} />
+                          <View style={{ flex: 1 }}>
+                            <Text variant="bodyLarge" numberOfLines={2} style={{ fontWeight: "700", color: paperTheme.colors.onSurface }}>{link.title}</Text>
+                            {link.description ? <Text variant="bodySmall" numberOfLines={2} style={{ color: paperTheme.colors.onSurfaceVariant, marginTop: 2 }}>{link.description}</Text> : null}
+                          </View>
+                          <Icon name="open-in-new" size={16} color={paperTheme.colors.onSurfaceVariant} />
+                        </View>
+                      </ExpressiveCard>
+                    </Pressable>
+                  ))}
+                </View>
+              )
+            ) : visibleTextbooks.length === 0 ? <Text variant="bodyMedium" style={{ color: paperTheme.colors.onSurfaceVariant, marginBottom: 8 }}>No textbooks available yet.</Text> : (
+              <View style={{ gap: 10 }}>
+                {visibleTextbooks.map((link, i) => (
+                  <Pressable key={"b-" + i} onPress={() => Linking.openURL(link.url)}>
+                    <ExpressiveCard tone="low">
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                        <Icon name="book-open-variant" size={20} color={paperTheme.colors.primary} />
+                        <View style={{ flex: 1 }}>
+                          <Text variant="bodyLarge" numberOfLines={2} style={{ fontWeight: "700", color: paperTheme.colors.onSurface }}>{link.title}</Text>
+                          {link.description ? <Text variant="bodySmall" numberOfLines={2} style={{ color: paperTheme.colors.onSurfaceVariant, marginTop: 2 }}>{link.description}</Text> : null}
+                        </View>
+                        <Icon name="open-in-new" size={16} color={paperTheme.colors.onSurfaceVariant} />
                       </View>
-                      <Icon name="open-in-new" size={16} color={paperTheme.colors.onSurfaceVariant} />
-                    </View>
-                  </ExpressiveCard>
-                </Pressable>
-              ))
-            ) : visibleTextbooks.length === 0 ? <Text variant="bodyMedium" style={{ color: paperTheme.colors.onSurfaceVariant, marginBottom: 8 }}>No textbooks available yet.</Text> : visibleTextbooks.map((link, i) => (
-              <Pressable key={"b-" + i} onPress={() => Linking.openURL(link.url)}>
-                <ExpressiveCard tone="low">
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-                    <Icon name="book-open-variant" size={20} color={paperTheme.colors.primary} />
-                    <View style={{ flex: 1 }}>
-                      <Text variant="bodyLarge" numberOfLines={2} style={{ fontWeight: "700", color: paperTheme.colors.onSurface }}>{link.title}</Text>
-                      {link.description ? <Text variant="bodySmall" numberOfLines={2} style={{ color: paperTheme.colors.onSurfaceVariant, marginTop: 2 }}>{link.description}</Text> : null}
-                    </View>
-                    <Icon name="open-in-new" size={16} color={paperTheme.colors.onSurfaceVariant} />
-                  </View>
-                </ExpressiveCard>
-              </Pressable>
-            ))}
+                    </ExpressiveCard>
+                  </Pressable>
+                ))}
+              </View>
+            )}
           </ExpressiveSection>
 
           {links.length > 0 && (
@@ -260,17 +273,22 @@ export default function SubjectDetailScreen() {
             <ExpressiveSection title="Syllabus">
               {chapters.map((c: any, idx: number) => (
                 <ExpressiveCard key={c.id} tone="low">
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-                    <View style={{ width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center", backgroundColor: paperTheme.colors.primary }}>
-                      <Text style={{ color: paperTheme.colors.onPrimary, fontWeight: "900", fontSize: 12 }}>{idx + 1}</Text>
+                  <Pressable onPress={() => navigation.navigate("Study", { screen: "StudyHub", params: { subjectId } })}>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                      <View style={{ width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center", backgroundColor: paperTheme.colors.primary }}>
+                        <Text style={{ color: paperTheme.colors.onPrimary, fontWeight: "900", fontSize: 12 }}>{idx + 1}</Text>
+                      </View>
+                      <Text variant="titleSmall" style={{ fontWeight: "700", color: paperTheme.colors.onSurface, flex: 1 }}>{c.name}</Text>
+                      <Icon name="chevron-right" size={20} color={paperTheme.colors.onSurfaceVariant} />
                     </View>
-                    <Text variant="titleSmall" style={{ fontWeight: "700", color: paperTheme.colors.onSurface, flex: 1 }}>{c.name}</Text>
-                  </View>
+                  </Pressable>
                   {c.topics?.map((t: any) => (
-                    <View key={t.id} style={{ flexDirection: "row", alignItems: "flex-start", gap: 4, paddingLeft: 38, paddingVertical: 2 }}>
-                      <Icon name="circle-small" size={18} color={paperTheme.colors.onSurfaceVariant} />
-                      <Text variant="bodySmall" style={{ color: paperTheme.colors.onSurfaceVariant, flex: 1 }}>{t.name}</Text>
-                    </View>
+                    <Pressable key={t.id} onPress={() => navigation.navigate("Study", { screen: "Flashcards", params: { subjectId } })}>
+                      <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 4, paddingLeft: 38, paddingVertical: 4 }}>
+                        <Icon name="circle-small" size={18} color={paperTheme.colors.onSurfaceVariant} />
+                        <Text variant="bodySmall" style={{ color: paperTheme.colors.onSurfaceVariant, flex: 1 }}>{t.name}</Text>
+                      </View>
+                    </Pressable>
                   ))}
                 </ExpressiveCard>
               ))}

@@ -190,3 +190,11 @@ export const UPDATE_ROOM_MEMBER_ROLE = gql`
     }
   }
 `;
+
+export const DELETE_ROOM = gql`
+  mutation DeleteRoom($roomId: ID!) {
+    deleteRoom(roomId: $roomId) {
+      success
+    }
+  }
+`;

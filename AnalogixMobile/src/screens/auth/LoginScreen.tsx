@@ -183,8 +183,10 @@ export default function LoginScreen() {
         ]}
       >
         <View style={styles.logoContainer}>
-          <View style={[styles.logoBg, { backgroundColor: brand.primary + "14" }]}>
-            <Image source={LOGO} style={styles.logoImage} resizeMode="cover" />
+          <View style={[styles.logoOuter, { borderColor: brand.primary + "20" }]}>
+            <View style={[styles.logoBg, { backgroundColor: brand.primary + "14" }]}>
+              <Image source={LOGO} style={styles.logoImage} resizeMode="contain" />
+            </View>
           </View>
         </View>
 
@@ -258,16 +260,24 @@ const styles = StyleSheet.create({
   logoContainer: {
     marginBottom: 4,
   },
+  logoOuter: {
+    width: 96,
+    height: 96,
+    borderRadius: 28,
+    borderWidth: 2,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   logoBg: {
-    width: 72,
-    height: 72,
-    borderRadius: 20,
+    width: 80,
+    height: 80,
+    borderRadius: 24,
     alignItems: "center",
     justifyContent: "center",
   },
   logoImage: {
-    width: 48,
-    height: 48,
+    width: 56,
+    height: 56,
   },
   textGroup: {
     gap: 6,

@@ -59,18 +59,29 @@ export default function SubjectsOverview() {
   const [customSubjects, setCustomSubjects] = useState<Record<string, CustomSubject>>({});
   const [customizeSubjectId, setCustomizeSubjectId] = useState<SubjectId | null>(null);
 
-  useEffect(() => {
-    const saved = localStorage.getItem("subjectsLayout") as "list" | "grid" | null;
-    if (saved) setLayout(saved);
-    
+  const [synced, setSynced] = useState(false);
+
+  const loadPrefs = useCallback(() => {
     const prefs = JSON.parse(localStorage.getItem("userPreferences") || "{}");
     setUserPrefs(prefs);
     const preferenceSubjects = Array.isArray(prefs.subjects) ? prefs.subjects : [];
     setUserSubjects(preferenceSubjects);
+    setSynced(true);
+  }, []);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("subjectsLayout") as "list" | "grid" | null;
+    if (saved) setLayout(saved);
+    
+    loadPrefs();
 
     statsStore.get().then(setStatsData);
     subjectStore.getAllCustomSubjects().then(setCustomSubjects);
-  }, []);
+
+    const onUpdate = () => loadPrefs();
+    window.addEventListener("userPreferencesUpdated", onUpdate);
+    return () => window.removeEventListener("userPreferencesUpdated", onUpdate);
+  }, [loadPrefs]);
 
   const getSubjectAppearance = useCallback((subject: any) => {
     const custom = customSubjects[subject.id];
@@ -162,13 +173,13 @@ export default function SubjectsOverview() {
         {filteredSubjects.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border/60 bg-muted/10 py-20 text-center">
             <BookOpen className="mx-auto mb-4 h-10 w-10 text-muted-foreground/20" />
-            <h3 className="text-lg font-bold">No subjects yet</h3>
+            <h3 className="text-lg font-bold">{synced ? "No subjects yet" : "Loading your subjects..."}</h3>
             <p className="mt-1 text-sm text-muted-foreground/60">
-              Add subjects in your profile to start building your workspace.
+              {synced ? "Add subjects in your profile to start building your workspace." : "Syncing your preferences from your profile."}
             </p>
           </div>
         ) : layout === "grid" ? (
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {filteredSubjects.map((subject) => {
               const appearance = getSubjectAppearance(subject);
               const activity = getActivityCount(subject);
@@ -177,21 +188,21 @@ export default function SubjectsOverview() {
                   layout
                   key={subject.id}
                   onClick={() => router.push(`/subjects/${subject.id}`)}
-                  className="group relative cursor-pointer overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-all hover:border-border/80 hover:shadow-md"
+                  className="group relative cursor-pointer overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-all hover:border-border/80 hover:shadow-md flex flex-col"
                 >
-                  <div className={cn("h-24 w-full", appearance.cover ? SUBJECT_COVER_STYLES[appearance.cover] : "bg-muted/30")} />
-                  <div className="p-6">
-                    <div className="absolute top-16 left-6 flex h-12 w-12 items-center justify-center rounded-xl border border-border bg-background text-2xl shadow-md transition-transform group-hover:scale-105">
+                  <div className={cn("h-20 w-full shrink-0", appearance.cover ? SUBJECT_COVER_STYLES[appearance.cover] : "bg-muted/30")} />
+                  <div className="p-5 flex flex-col flex-1">
+                    <div className="-mt-10 mb-3 flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-background text-xl shadow-md transition-transform group-hover:scale-105">
                       <DynamicIcon name={appearance.icon} />
                     </div>
-                    <div className="mt-6">
-                      <h3 className="text-lg font-bold group-hover:text-primary transition-colors">{appearance.title}</h3>
-                      <p className="mt-1 line-clamp-2 text-xs text-muted-foreground/60">
+                    <div className="flex-1">
+                      <h3 className="text-base font-bold group-hover:text-primary transition-colors leading-snug">{appearance.title}</h3>
+                      <p className="mt-1.5 line-clamp-2 text-xs text-muted-foreground/60 leading-relaxed">
                         {getSubjectDescription(subject.id, userPrefs.grade)}
                       </p>
                     </div>
-                    <div className="mt-6 flex items-center justify-between border-t border-border/50 pt-4">
-                      <ArrowRight className="h-4 w-4 text-muted-foreground/20 transition-transform group-hover:translate-x-1 group-hover:text-primary" />
+                    <div className="mt-4 flex items-center justify-between border-t border-border/50 pt-3">
+                      <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/20 transition-transform group-hover:translate-x-1 group-hover:text-primary" />
                     </div>
                   </div>
                 </motion.div>

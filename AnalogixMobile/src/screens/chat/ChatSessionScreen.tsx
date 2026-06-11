@@ -742,6 +742,8 @@ export default function ChatSessionScreen() {
         onToggleAnalogy={setAnalogyModeEnabled}
         onUploadFile={handleUploadFile}
         onOpenFormulas={currentFormulaSheet ? () => { setShowOptions(false); setShowFormulaPanel(true); } : undefined}
+        onOpenPersonality={() => { setShowOptions(false); navigation.navigate("Profile", { screen: "PersonalityEditor" }); }}
+        onOpenMemory={() => { setShowOptions(false); navigation.navigate("Profile", { screen: "MemoryManager" }); }}
       />
 
       {/* Subject Picker */}

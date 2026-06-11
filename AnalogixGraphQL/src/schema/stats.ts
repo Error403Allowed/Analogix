@@ -43,5 +43,6 @@ export const statsTypeDefs = /* GraphQL */ `
     incrementActivity(date: String!): DeleteResult!
     upsertUserStats(input: JSON!): UserStats!
     forgetMemory(id: ID!): DeleteResult!
+    rememberMemory(input: JSON!): UserMemory!
   }
 `;

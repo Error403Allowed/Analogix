@@ -256,7 +256,9 @@ const Chat = () => {
 
   // CURRENT TOPIC: Detected or manually selected subject.
   // Starts null — detected automatically from first message, or set by user via badge.
-  const [selectedSubject, setSelectedSubject] = useState<SubjectId | null>(null);
+  const [selectedSubject, setSelectedSubject] = useState<SubjectId | null>(
+    (searchParams?.get("subject") as SubjectId) || null
+  );
   const [subjectDetecting, setSubjectDetecting] = useState(false);
   const [showSubjectPicker, setShowSubjectPicker] = useState(false);
   const subjectPickerRef = useRef<HTMLDivElement>(null);

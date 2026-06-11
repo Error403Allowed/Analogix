@@ -10,6 +10,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useMutation } from "@apollo/client";
 import { INCREMENT_ACTIVITY } from "../../graphql/queries/user";
 import { useNavigation } from "@react-navigation/native";
+import Icon from "../../components/Icon";
 
 type Phase = "focus" | "break";
 
@@ -65,9 +66,15 @@ async function loadState(): Promise<TimerState> {
       state.timeLeft = Math.max(0, state.timeLeft - elapsed);
       if (state.timeLeft <= 0) {
         state.running = false;
-        state.timeLeft = state.phase === "focus" ? state.breakDuration : state.focusDuration;
-        state.phase = state.phase === "focus" ? "break" : "focus";
         state.sessionsCompleted += 1;
+        const nextPhase = state.phase === "focus" ? "break" : "focus";
+        state.phase = nextPhase;
+        state.timeLeft = nextPhase === "focus" ? state.focusDuration : state.breakDuration;
+        if (state.sessionsCompleted % state.sessionTarget === 0 && state.phase === "break") {
+          state.phase = "focus";
+          state.timeLeft = state.focusDuration;
+          state.sessionsCompleted = 0;
+        }
       }
     }
     return state;
@@ -84,7 +91,7 @@ export default function TimerScreen() {
   const paperTheme = useTheme();
   const insets = useSafeAreaInsets();
   const { brand } = useThemeContext();
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
   const [timer, setTimer] = useState<TimerState>(defaultState());
   const [loaded, setLoaded] = useState(false);
   const interval = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -93,6 +100,7 @@ export default function TimerScreen() {
   const [editFocus, setEditFocus] = useState("25");
   const [editBreak, setEditBreak] = useState("5");
   const [editTarget, setEditTarget] = useState("4");
+  const [startedOnce, setStartedOnce] = useState(false);
 
   useEffect(() => {
     loadState().then((s) => {
@@ -118,6 +126,7 @@ export default function TimerScreen() {
 
   useEffect(() => {
     if (timer.running) {
+      setStartedOnce(true);
       interval.current = setInterval(() => {
         setTimer((t) => {
           const next = { ...t, timeLeft: t.timeLeft - 1 };
@@ -157,6 +166,7 @@ export default function TimerScreen() {
   const reset = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setTimer((t) => ({ ...t, running: false, phase: "focus", timeLeft: t.focusDuration, sessionsCompleted: 0 }));
+    setStartedOnce(false);
   };
 
   const skip = () => {
@@ -201,67 +211,150 @@ export default function TimerScreen() {
   const minutes = Math.floor(timer.timeLeft / 60);
   const secs = timer.timeLeft % 60;
   const timerLabel = `${String(minutes).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+  const isFocus = timer.phase === "focus";
+  const phaseColor = isFocus ? brand.primary : "#22c55e";
+  const phaseIcon = isFocus ? "timer" : "coffee";
+  const phaseLabel = isFocus ? "Focus" : "Break";
+  const bgGradient = isFocus ? brand.primary + "08" : "#22c55e08";
 
   return (
-    <View style={[styles.container, { backgroundColor: paperTheme.colors.background }]}>
-      <View style={[styles.topBar, { backgroundColor: paperTheme.colors.surface, paddingTop: insets.top + 4 }]}>
-        <IconButton icon="arrow-left" onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
+    <View style={[styles.container, { backgroundColor: bgGradient }]}>
+      <View style={[styles.topBar, { backgroundColor: paperTheme.colors.surface, paddingTop: insets.top + 4, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: paperTheme.colors.outlineVariant }]}>
+        <IconButton icon="arrow-left" onPress={() => navigation.goBack()} />
         <Text variant="titleLarge" style={{ fontWeight: "700", flex: 1 }}>Timer</Text>
-        <IconButton icon="cog" onPress={openSettings} accessibilityLabel="Timer settings" />
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+          {timer.sessionsCompleted > 0 && (
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: paperTheme.colors.surfaceVariant, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999 }}>
+              <Icon name="timer" size={14} color={paperTheme.colors.onSurfaceVariant} />
+              <Text variant="labelSmall" style={{ color: paperTheme.colors.onSurfaceVariant, fontWeight: "700" }}>{timer.sessionsCompleted}</Text>
+            </View>
+          )}
+          <IconButton icon="cog" onPress={openSettings} />
+        </View>
       </View>
 
-      <View style={styles.modeRow}>
-        <Pressable
-          onPress={() => { setTimer((t) => ({ ...t, phase: "focus", timeLeft: t.focusDuration, running: false })); }}
-          style={[styles.modeChip, { backgroundColor: timer.phase === "focus" ? brand.primary : paperTheme.colors.surfaceVariant, borderRadius: SHAPE.lg }]}
-        >
-          <Text style={{ color: timer.phase === "focus" ? "#fff" : paperTheme.colors.onSurface, fontWeight: "600", fontSize: 13 }}>Focus</Text>
-        </Pressable>
-        <Pressable
-          onPress={() => { setTimer((t) => ({ ...t, phase: "break", timeLeft: t.breakDuration, running: false })); }}
-          style={[styles.modeChip, { backgroundColor: timer.phase === "break" ? brand.primary : paperTheme.colors.surfaceVariant, borderRadius: SHAPE.lg }]}
-        >
-          <Text style={{ color: timer.phase === "break" ? "#fff" : paperTheme.colors.onSurface, fontWeight: "600", fontSize: 13 }}>Break</Text>
-        </Pressable>
+      <View style={styles.phaseBadge}>
+        <View style={[styles.phasePill, { backgroundColor: phaseColor + "18" }]}>
+          <Icon name={phaseIcon} size={16} color={phaseColor} />
+          <Text variant="labelSmall" style={{ color: phaseColor, fontWeight: "800", letterSpacing: 1 }}>{phaseLabel}</Text>
+        </View>
       </View>
 
-      <View style={styles.sessionRow}>
-        <Text variant="bodySmall" style={{ color: paperTheme.colors.onSurfaceVariant }}>
-          Sessions: {timer.sessionsCompleted}/{timer.sessionTarget}
-        </Text>
-        <Text variant="bodySmall" style={{ color: paperTheme.colors.onSurfaceVariant }}>
-          {Math.round(timer.focusDuration / 60)}m / {Math.round(timer.breakDuration / 60)}m
-        </Text>
-      </View>
-
-      <View style={styles.ringWrap}>
+      <View style={[styles.ringContainer, { backgroundColor: paperTheme.colors.surface, borderColor: paperTheme.colors.outlineVariant, shadowColor: phaseColor }]}>
         <Svg width={SIZE} height={SIZE}>
           <Circle cx={CX} cy={CY} r={R} stroke={paperTheme.colors.surfaceVariant} strokeWidth={STROKE} fill="none" />
           <Circle
-            cx={CX} cy={CY} r={R} stroke={brand.primary} strokeWidth={STROKE} fill="none"
+            cx={CX} cy={CY} r={R} stroke={phaseColor} strokeWidth={STROKE} fill="none"
             strokeDasharray={`${CIRC} ${CIRC}`} strokeDashoffset={dashOffset}
             strokeLinecap="round" transform={`rotate(-90 ${CX} ${CY})`}
           />
         </Svg>
         <View style={styles.timeOverlay}>
-          <Text style={[styles.timeText, { color: paperTheme.colors.onSurface }]}>{timerLabel}</Text>
+          <Pressable onPress={openSettings}>
+            <Text style={[styles.timeText, { color: paperTheme.colors.onSurface }]}>{timerLabel}</Text>
+          </Pressable>
+          {!timer.running && (
+            <View style={[styles.editHint, { backgroundColor: paperTheme.colors.surfaceVariant }]}>
+              <Text variant="labelSmall" style={{ color: paperTheme.colors.onSurfaceVariant, fontWeight: "700", letterSpacing: 0.5 }}>
+                TAP TO EDIT
+              </Text>
+            </View>
+          )}
+        </View>
+      </View>
+
+      <View style={styles.sessionDots}>
+        <View style={{ flexDirection: "row", gap: 8, alignItems: "center" }}>
+          {Array.from({ length: timer.sessionTarget }, (_, i) => {
+            const effectiveCompleted = startedOnce ? timer.sessionsCompleted : 0;
+            const filled = i < effectiveCompleted % timer.sessionTarget;
+            return (
+              <View
+                key={i}
+                style={[
+                  styles.dot,
+                  {
+                    backgroundColor: filled ? phaseColor : paperTheme.colors.surfaceVariant,
+                    borderColor: filled ? phaseColor : "transparent",
+                  },
+                ]}
+              />
+            );
+          })}
+          <Pressable onPress={openSettings} style={{ marginLeft: 8 }}>
+            <Text variant="labelSmall" style={{ color: paperTheme.colors.onSurfaceVariant, fontWeight: "600", letterSpacing: 1 }}>
+              {timer.sessionTarget} SESSIONS
+            </Text>
+          </Pressable>
         </View>
       </View>
 
       <View style={[styles.controls, { paddingBottom: insets.bottom + 24 }]}>
-        <Pressable onPress={reset} style={({ pressed }) => [styles.ctrlBtn, pressed && { opacity: 0.7 }]}>
-          <Text style={{ color: paperTheme.colors.onSurfaceVariant, fontSize: 12, fontWeight: "600" }}>Reset</Text>
+        <Pressable
+          onPress={reset}
+          style={({ pressed }) => [
+            styles.ctrlBtn,
+            {
+              backgroundColor: paperTheme.colors.surfaceVariant,
+              borderRadius: SHAPE.lg,
+              opacity: pressed ? 0.7 : 1,
+            },
+          ]}
+        >
+          <Icon name="restart" size={20} color={paperTheme.colors.onSurfaceVariant} />
         </Pressable>
         <Pressable
           onPress={toggle}
-          style={({ pressed }) => [styles.startBtn, { backgroundColor: brand.primary, borderRadius: SHAPE.lg }, pressed && { opacity: 0.8 }]}
+          style={({ pressed }) => [
+            styles.startBtn,
+            {
+              backgroundColor: phaseColor,
+              borderRadius: SHAPE.xl,
+              shadowColor: phaseColor,
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.3,
+              shadowRadius: 8,
+              elevation: 6,
+              opacity: pressed ? 0.9 : 1,
+            },
+          ]}
         >
-          <Text style={{ color: "#fff", fontWeight: "700", fontSize: 16 }}>{timer.running ? "Pause" : "Start"}</Text>
+          <Icon name={timer.running ? "pause" : "play"} size={22} color="#fff" />
+          <Text style={{ color: "#fff", fontWeight: "800", fontSize: 14, letterSpacing: 1, marginLeft: 8 }}>
+            {timer.running ? "PAUSE" : "START"}
+          </Text>
         </Pressable>
-        <Pressable onPress={skip} style={({ pressed }) => [styles.ctrlBtn, pressed && { opacity: 0.7 }]}>
-          <Text style={{ color: paperTheme.colors.onSurfaceVariant, fontSize: 12, fontWeight: "600" }}>Skip</Text>
+        <Pressable
+          onPress={skip}
+          style={({ pressed }) => [
+            styles.ctrlBtn,
+            {
+              backgroundColor: paperTheme.colors.surfaceVariant,
+              borderRadius: SHAPE.lg,
+              opacity: pressed ? 0.7 : 1,
+            },
+          ]}
+        >
+          <Icon name="skip-next" size={20} color={paperTheme.colors.onSurfaceVariant} />
         </Pressable>
       </View>
+
+      {!timer.running && (
+        <View style={styles.durationRow}>
+          <Pressable onPress={() => { setEditFocus(String(Math.round(timer.focusDuration / 60))); setEditBreak(String(Math.round(timer.breakDuration / 60))); setShowSettings(true); }}>
+            <View style={[styles.durationPill, { backgroundColor: paperTheme.colors.surface }]}>
+              <Text variant="labelSmall" style={{ color: paperTheme.colors.onSurfaceVariant, fontWeight: "600" }}>FOCUS</Text>
+              <Text variant="labelSmall" style={{ color: paperTheme.colors.onSurface, fontWeight: "800" }}>{Math.round(timer.focusDuration / 60)}m</Text>
+            </View>
+          </Pressable>
+          <Pressable onPress={() => { setEditFocus(String(Math.round(timer.focusDuration / 60))); setEditBreak(String(Math.round(timer.breakDuration / 60))); setShowSettings(true); }}>
+            <View style={[styles.durationPill, { backgroundColor: paperTheme.colors.surface }]}>
+              <Text variant="labelSmall" style={{ color: paperTheme.colors.onSurfaceVariant, fontWeight: "600" }}>BREAK</Text>
+              <Text variant="labelSmall" style={{ color: paperTheme.colors.onSurface, fontWeight: "800" }}>{Math.round(timer.breakDuration / 60)}m</Text>
+            </View>
+          </Pressable>
+        </View>
+      )}
 
       <Portal>
         <Modal visible={showSettings} onDismiss={() => setShowSettings(false)} contentContainerStyle={[styles.modal, { backgroundColor: paperTheme.colors.surface }]}>
@@ -279,14 +372,39 @@ export default function TimerScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, alignItems: "center" },
   topBar: { flexDirection: "row", alignItems: "center", paddingHorizontal: 4, alignSelf: "stretch" },
-  modeRow: { flexDirection: "row", gap: 8, marginTop: 20, marginBottom: 8 },
-  modeChip: { paddingHorizontal: 24, paddingVertical: 10 },
-  sessionRow: { flexDirection: "row", justifyContent: "center", gap: 16, marginBottom: 16 },
-  ringWrap: { alignItems: "center", justifyContent: "center", marginVertical: 20, width: SIZE, height: SIZE },
+  phaseBadge: { marginTop: 28, marginBottom: 8 },
+  phasePill: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 999 },
+  ringContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    marginVertical: 16,
+    width: SIZE + 40,
+    height: SIZE + 40,
+    borderRadius: (SIZE + 40) / 2,
+    borderWidth: StyleSheet.hairlineWidth,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
+  },
   timeOverlay: { position: "absolute", alignItems: "center", justifyContent: "center" },
-  timeText: { fontSize: 48, fontWeight: "800", fontVariant: ["tabular-nums"] },
-  controls: { flexDirection: "row", alignItems: "center", gap: 24, marginTop: 24 },
-  ctrlBtn: { width: 48, height: 48, borderRadius: SHAPE.lg, alignItems: "center", justifyContent: "center" },
-  startBtn: { width: 140, paddingVertical: 14, alignItems: "center", justifyContent: "center" },
+  timeText: { fontSize: 52, fontWeight: "800", fontVariant: ["tabular-nums"], letterSpacing: 2 },
+  editHint: { marginTop: 6, paddingHorizontal: 10, paddingVertical: 3, borderRadius: 4 },
+  sessionDots: { marginBottom: 8 },
+  dot: { width: 10, height: 10, borderRadius: 5, borderWidth: 2 },
+  controls: { flexDirection: "row", alignItems: "center", gap: 20, marginTop: 16 },
+  ctrlBtn: { width: 52, height: 52, alignItems: "center", justifyContent: "center" },
+  startBtn: { flexDirection: "row", paddingHorizontal: 36, paddingVertical: 18, alignItems: "center", justifyContent: "center" },
+  durationRow: { flexDirection: "row", gap: 12, marginTop: 12, alignItems: "center" },
+  durationPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(128,128,128,0.15)",
+  },
   modal: { margin: 20, padding: 24, borderRadius: 26 },
 });

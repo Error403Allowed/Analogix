@@ -95,7 +95,13 @@ export default function ProfileScreen() {
               onPress={() => setShowSubjects(true)}
             />
           {MENU_ITEMS.map((item) => (
-            <ExpressiveListRow key={item.screen} title={item.title} icon={item.icon} onPress={() => navigation.navigate(item.screen)} />
+            <ExpressiveListRow key={item.screen} title={item.title} icon={item.icon} onPress={() => {
+              if (item.screen === "Achievements") {
+                navigation.navigate("Home", { screen: "Achievements" });
+              } else {
+                navigation.navigate(item.screen);
+              }
+            }} />
           ))}
           </View>
         </ExpressiveSection>

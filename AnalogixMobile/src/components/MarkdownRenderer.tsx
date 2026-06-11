@@ -336,7 +336,7 @@ function WebMarkdown({ html, width }: { html: string; width: number }) {
     if (!el) return;
     el.innerHTML = html;
     const scripts = el.querySelectorAll("script");
-    scripts.forEach((old) => {
+    scripts.forEach((old: HTMLScriptElement) => {
       const s = document.createElement("script");
       s.textContent = old.textContent;
       old.parentNode?.replaceChild(s, old);

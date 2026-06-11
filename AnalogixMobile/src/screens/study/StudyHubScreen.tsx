@@ -27,7 +27,6 @@ const TOOLS: StudyTool[] = [
   { key: "calendar", name: "Calendar", icon: "calendar", description: "Upcoming events and deadlines", screen: "Calendar", color: "#f59e0b" },
   { key: "formulas", name: "Formulas", icon: "function", description: "Formula sheets and references", screen: "Formulas", color: "#10b981" },
   { key: "timer", name: "Timer", icon: "timer", description: "Focus and break time tracking", screen: "Timer", color: "#ef4444" },
-  { key: "schedule", name: "Calendar", icon: "calendar-clock", description: "Plan your study sessions", screen: "StudySchedule", color: "#ec4899" },
 ];
 
 export default function StudyHubScreen() {
@@ -36,7 +35,10 @@ export default function StudyHubScreen() {
   const navigation = useNavigation<any>();
 
   return (
-    <ExpressiveScreen title="Study" leadingIcon="book-open-variant">
+    <ExpressiveScreen 
+    title="Study"
+    subtitle="Everything you need, in one place"
+    leadingIcon="book-open-variant">
       <ExpressiveSection title="Tools">
         <View style={{ gap: 8 }}>
           {TOOLS.map((tool) => (

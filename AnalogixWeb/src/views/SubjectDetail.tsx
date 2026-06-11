@@ -50,6 +50,8 @@ import { useTabs } from "@/context/TabsContext";
 import { SUBJECT_COLORS } from "@/components/ColorPicker";
 import { DynamicIcon } from "@/components/IconPicker";
 import { SubjectCustomizationSheet } from "@/components/SubjectCustomizationSheet";
+import RESOURCES, { type SubjectResources } from "@/data/resources";
+import { ACARA_CURRICULUM } from "@/data/curriculum";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -260,7 +262,7 @@ export default function SubjectDetail() {
                 <Palette className="mr-2 h-4 w-4" />
                 Customise
               </Button>
-              <Button size="sm" onClick={() => router.push("/chat")} className="rounded-lg h-9">
+              <Button size="sm" onClick={() => router.push(`/chat?subject=${subjectId}`)} className="rounded-lg h-9">
                 <Sparkles className="mr-2 h-4 w-4" />
                 AI Tutor
               </Button>
@@ -363,12 +365,88 @@ export default function SubjectDetail() {
               )}
             </section>
 
-            {/* Links/Resources Section */}
+            {/* Curated Resources Section */}
+            {(() => {
+              const subjectResources = RESOURCES.find(r => r.subjectId === subjectId);
+              const visiblePapers = subjectResources?.pastPapers.filter(l => {
+                if (!userPrefs.state || !l.states || l.states.length === 0) return true;
+                return l.states.includes(userPrefs.state) || l.states.includes("ALL");
+              }) ?? [];
+              const visibleTextbooks = subjectResources?.textbooks ?? [];
+              if (!subjectResources) return null;
+              return (
+                <section>
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-xl font-bold flex items-center gap-2">
+                      <GraduationCap className="h-5 w-5 text-primary/60" />
+                      Past Papers & Textbooks
+                    </h2>
+                  </div>
+                  <div className="space-y-6">
+                    {visiblePapers.length > 0 && (
+                      <div>
+                        <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground/50 mb-3">Past Papers</h3>
+                        <div className="space-y-1.5">
+                          {visiblePapers.map((paper, i) => (
+                            <a key={i} href={paper.url} target="_blank" rel="noreferrer"
+                              className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-muted/40 transition-all border border-transparent hover:border-border/40 group">
+                              <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                                <FileText className="h-3.5 w-3.5 text-primary" />
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-xs font-medium truncate group-hover:text-primary transition-colors">{paper.title}</p>
+                                {paper.description && <p className="text-[10px] text-muted-foreground/50 truncate mt-0.5">{paper.description}</p>}
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                {paper.states && paper.states.length > 0 && !paper.states.includes("ALL") && (
+                                  <span className="text-[9px] font-bold text-muted-foreground/40 uppercase tracking-wider">{paper.states.join(", ")}</span>
+                                )}
+                                {paper.free === false && (
+                                  <span className="text-[9px] font-bold text-amber-500/70 uppercase tracking-wider">Paid</span>
+                                )}
+                                <ExternalLink className="h-3 w-3 text-muted-foreground/30 shrink-0" />
+                              </div>
+                            </a>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {visibleTextbooks.length > 0 && (
+                      <div>
+                        <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground/50 mb-3">Textbooks</h3>
+                        <div className="space-y-1.5">
+                          {visibleTextbooks.map((book, i) => (
+                            <a key={i} href={book.url} target="_blank" rel="noreferrer"
+                              className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-muted/40 transition-all border border-transparent hover:border-border/40 group">
+                              <div className="h-8 w-8 rounded-lg bg-emerald-500/10 flex items-center justify-center shrink-0">
+                                <BookOpen className="h-3.5 w-3.5 text-emerald-500" />
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-xs font-medium truncate group-hover:text-emerald-500 transition-colors">{book.title}</p>
+                                {book.description && <p className="text-[10px] text-muted-foreground/50 truncate mt-0.5">{book.description}</p>}
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                {book.free === false && (
+                                  <span className="text-[9px] font-bold text-amber-500/70 uppercase tracking-wider">Paid</span>
+                                )}
+                                <ExternalLink className="h-3 w-3 text-muted-foreground/30 shrink-0" />
+                              </div>
+                            </a>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </section>
+              );
+            })()}
+
+            {/* Custom Links/Resources Section */}
             <section>
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-xl font-bold flex items-center gap-2">
                   <LinkIcon className="h-5 w-5 text-primary/60" />
-                  Resources
+                  My Links
                 </h2>
                 <button onClick={() => setShowLinkForm(!showLinkForm)} className="p-1.5 hover:bg-muted rounded-md transition-colors">
                   <Plus className="h-4 w-4" />
@@ -377,7 +455,7 @@ export default function SubjectDetail() {
               
               <div className="space-y-2">
                 {links.length === 0 && !showLinkForm && (
-                  <p className="text-sm text-muted-foreground/60 italic">No resources saved for this subject.</p>
+                  <p className="text-sm text-muted-foreground/60 italic">No custom links saved for this subject.</p>
                 )}
                 {links.map(link => (
                   <div key={link.id} className="group flex items-center gap-3 p-2 rounded-lg hover:bg-muted/40 transition-all border border-transparent hover:border-border/40">
@@ -396,8 +474,46 @@ export default function SubjectDetail() {
             </section>
           </div>
 
-          {/* Sidebar (Tasks & Pulse) */}
+          {/* Sidebar (Syllabus & Tasks) */}
           <div className="space-y-12">
+            {/* Syllabus Section */}
+            {(() => {
+              const subjectName = SUBJECT_CATALOG.find(s => s.id === subjectId)?.label;
+              const curriculum = subjectName ? ACARA_CURRICULUM[subjectName] : undefined;
+              if (!curriculum) return null;
+              const grade = userPrefs.grade || "7";
+              const yearData = curriculum.yearLevels[grade];
+              if (!yearData) return null;
+              const strandEntries = Object.entries(yearData.strands).slice(0, 6);
+              return (
+                <section className="rounded-2xl border border-border bg-muted/5 p-6">
+                  <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground/60 flex items-center gap-2 mb-5">
+                    <BookOpen className="h-4 w-4" />
+                    Year {grade} Syllabus
+                  </h2>
+                  <div className="space-y-4">
+                    {strandEntries.map(([strandName, topics]) => (
+                      <div key={strandName}>
+                        <h3 className="text-xs font-bold text-foreground/80 mb-2">{strandName}</h3>
+                        <div className="space-y-1.5">
+                          {(topics as any[]).slice(0, 4).map((topic: any) => (
+                            <div key={topic.id} className="flex items-start gap-2">
+                              <div className="w-1.5 h-1.5 rounded-full bg-primary/40 mt-1.5 shrink-0" />
+                              <p className="text-[11px] text-muted-foreground/70 leading-relaxed">{topic.topic}</p>
+                            </div>
+                          ))}
+                          {(topics as any[]).length > 4 && (
+                            <p className="text-[10px] text-muted-foreground/40 pl-3">+{(topics as any[]).length - 4} more topics</p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              );
+            })()}
+
+            {/* Tasks Section */}
             <section className="rounded-2xl border border-border bg-muted/5 p-6">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground/60 flex items-center gap-2">
