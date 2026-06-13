@@ -92,13 +92,13 @@ const TypewriterText = ({ text, delay = 0 }: { text: string; delay?: number }) =
 };
 
 // ── Auth Step ─────────────────────────────────────────────────────────────────
-function AuthStep({ externalError }: { externalError?: string | null }) {
+function AuthStep({ onAuthed, externalError }: { onAuthed: () => void; externalError?: string | null }) {
   const { user, loading } = useAuth();
   const [googleLoading, setGoogleLoading] = useState(false);
 
-  // Auto-advance REMOVED — parent's useEffect controls the step after
-  // checking the DB for existing user profile data. This prevents a race
-  // where onAuthed() fires before the parent can redirect existing users.
+  useEffect(() => {
+    if (!loading && user) onAuthed();
+  }, [user, loading, onAuthed]);
 
   const handleGoogle = async () => {
     setGoogleLoading(true);
@@ -317,11 +317,6 @@ const Onboarding = () => {
           
           const urlStep = parseInt(searchParams?.get("step") ?? "2", 10);
           setStep(isNaN(urlStep) || urlStep <= 1 ? 2 : urlStep);
-        })
-        .catch(() => {
-          // DB check failed — let user retry through onboarding
-          const urlStep = parseInt(searchParams?.get("step") ?? "2", 10);
-          setStep(isNaN(urlStep) || urlStep <= 1 ? 2 : urlStep);
         });
       return;
     }
@@ -428,7 +423,7 @@ const Onboarding = () => {
       setStep(7); return;
     }
     setIsComplete(true);
-    setTimeout(() => router.push("/dashboard"), 2500);
+    setTimeout(() => { window.location.href = "/dashboard"; }, 800);
   };
 
   const cv = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.05 } } };
@@ -453,12 +448,7 @@ const Onboarding = () => {
               )}
 
               {/* Step 1 — Auth */}
-              {step === 1 && authLoading && (
-                <div className="flex items-center justify-center py-16">
-                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                </div>
-              )}
-              {step === 1 && !authLoading && <AuthStep externalError={authError} />}
+              {step === 1 && <AuthStep onAuthed={() => setStep(2)} externalError={authError} />}
 
               {/* Step 2 — Name */}
               {step === 2 && (
@@ -646,9 +636,12 @@ const Onboarding = () => {
             <motion.div key="complete" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
               className="glass-card p-16 text-center relative overflow-hidden shadow-2xl">
               <Confetti />
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="mt-8 space-y-4">
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="mt-8 space-y-6">
                 <h1 className="text-4xl font-black text-foreground tracking-tight">You're all set, {name}.</h1>
                 <p className="text-muted-foreground text-xl max-w-md mx-auto">I'm ready to help you master your subjects with custom analogies!</p>
+                <button onClick={() => window.location.href = "/dashboard"} className="mt-4 px-8 py-3 bg-primary text-primary-foreground rounded-xl font-bold shadow-lg">
+                  Go to Dashboard
+                </button>
               </motion.div>
             </motion.div>
           )}

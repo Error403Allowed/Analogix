@@ -318,7 +318,7 @@ const Onboarding = () => {
     if (step === 4) {
       await savePreferences(selectedHobbies);
       setIsComplete(true);
-      setTimeout(() => router.push("/dashboard"), 1500);
+      setTimeout(() => { window.location.href = "/dashboard"; }, 800);
       return;
     }
   };
@@ -524,6 +524,9 @@ const Onboarding = () => {
               </div>
               <h1 className="text-3xl font-black text-foreground mb-2">You're all set!</h1>
               <p className="text-muted-foreground">Heading to your dashboard...</p>
+              <button onClick={() => window.location.href = "/dashboard"} className="mt-6 px-8 py-3 bg-primary text-primary-foreground rounded-xl font-bold shadow-lg">
+                Go to Dashboard
+              </button>
             </motion.div>
           )}
         </AnimatePresence>

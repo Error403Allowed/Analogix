@@ -360,14 +360,14 @@ const Landing = () => {
       return;
     }
     
-    // Existing user with completed onboarding — go to dashboard
-    if (hasCompletedOnboarding) {
-      router.push("/dashboard");
+    // If user is authenticated but hasn't completed onboarding,
+    // redirect to onboarding (unless they explicitly navigated to a different page)
+    if (path === "/dashboard" && !hasCompletedOnboarding) {
+      router.push("/onboarding");
       return;
     }
     
-    // Authenticated but hasn't completed onboarding — continue setup
-    router.push("/onboarding");
+    router.push(path || "/dashboard");
   };
 
   // Split features: first two large cards, then rest

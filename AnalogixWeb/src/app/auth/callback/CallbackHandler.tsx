@@ -79,36 +79,7 @@ export default function CallbackHandler() {
         return;
       }
 
-      const meta = user.user_metadata || {};
-      const firstName = meta.first_name || meta.given_name;
-      const lastName = meta.last_name || meta.family_name;
-      const fullName = meta.full_name || meta.name;
-      const googleName = [firstName, lastName].filter(Boolean).join(" ").trim() || fullName || "";
-
-      supabase
-        .from("profiles")
-        .select("onboarding_complete, name, grade, state, subjects, hobbies, hobby_ids, hobby_details")
-        .eq("id", user.id)
-        .maybeSingle()
-        .then(({ data: profile }) => {
-          const hasProfileData = profile?.onboarding_complete
-            || profile?.name
-            || profile?.grade
-            || profile?.state
-            || (Array.isArray(profile?.subjects) && profile.subjects.length > 0)
-            || (Array.isArray(profile?.hobbies) && profile.hobbies.length > 0)
-            || (Array.isArray(profile?.hobby_ids) && profile.hobby_ids.length > 0)
-            || (profile?.hobby_details && Object.keys(profile.hobby_details).length > 0);
-
-          if (hasProfileData) {
-            router.replace(`${origin}${next}`);
-          } else {
-            const onboardingUrl = googleName
-              ? `${origin}/onboarding?step=2&name=${encodeURIComponent(googleName)}`
-              : `${origin}/onboarding?step=2`;
-            router.replace(onboardingUrl);
-          }
-        });
+      router.replace(next);
     }).catch((err) => {
       console.error("Auth callback: unexpected error", err);
       router.replace(redirectWithError(origin, "unexpected", err?.message ?? null));
