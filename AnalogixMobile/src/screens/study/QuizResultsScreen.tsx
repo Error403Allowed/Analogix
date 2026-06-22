@@ -16,7 +16,7 @@ export default function QuizResultsScreen() {
   const { brand } = useThemeContext();
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
-  const { quizId, answersSummary, questions: routeQuestions, subjectId: routeSubjectId } = route.params;
+  const { quizId, answersSummary, questions: routeQuestions, subjectId: paramSubjectId } = route.params;
   const { data } = useQuery(QUIZ, { variables: { id: quizId }, skip: !quizId });
   const [quizReview] = useMutation(QUIZ_REVIEW);
   const [unlockAchievement] = useMutation(UNLOCK_ACHIEVEMENT);
@@ -45,7 +45,7 @@ export default function QuizResultsScreen() {
   }, [accuracy]);
 
   const fetchReview = useCallback(async () => {
-    const subjectId = routeSubjectId ?? quiz?.subjectId;
+    const subjectId = paramSubjectId ?? quiz?.subjectId;
     if (!answersSummary || !subjectId) return;
     setReviewLoading(true);
     setReviewError(false);
@@ -71,7 +71,7 @@ export default function QuizResultsScreen() {
     } finally {
       setReviewLoading(false);
     }
-  }, [answersSummary, quiz?.subjectId, quizReview, routeSubjectId]);
+  }, [answersSummary, quiz?.subjectId, quizReview, paramSubjectId]);
 
   useEffect(() => {
     if (!review && !reviewLoading && !reviewError) fetchReview();

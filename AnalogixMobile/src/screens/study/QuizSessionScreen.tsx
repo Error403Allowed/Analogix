@@ -84,8 +84,9 @@ export default function QuizSessionScreen() {
   const [confirmed, setConfirmed] = useState(false);
   const [answers, setAnswers] = useState<any[]>([]);
 
-  const question = questions[idx];
-  const current = idx + 1;
+  const safeIdx = Math.min(idx, Math.max(0, questions.length - 1));
+  const question = questions[safeIdx];
+  const current = safeIdx + 1;
   const total = questions.length;
 
   useEffect(() => {

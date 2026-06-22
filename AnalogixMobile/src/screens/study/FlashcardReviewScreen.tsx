@@ -97,7 +97,8 @@ export default function FlashcardReviewScreen() {
   const [flipped, setFlipped] = useState(false);
 
   const cards = data?.flashcards ?? [];
-  const card = cards[idx];
+  const safeIdx = Math.min(idx, Math.max(0, cards.length - 1));
+  const card = cards[safeIdx];
 
   useEffect(() => {
     setIdx(0);

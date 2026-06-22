@@ -25,17 +25,24 @@
 - Fixed BFF `generateFlashcards` resolver: passes `set_id` into DB insert
 - Fixed `FlashcardSetScreen.tsx`: passes `setId` directly to `generateFlashcards`; added card editing modal (pencil, editFront/editBack, save)
 - Fixed `navigation/types.ts`: broadened `QuizSession`/`QuizResults` params
-- Fixed `navigation/types.ts`: broadened `QuizSession`/`QuizResults` params
 - Fixed `FormulasScreen.tsx`: duplicate subject names in filter chips — wrapped `subjectNames` with `as string[]` to fix TS `unknown[]` type
 - Fixed `EventDetailScreen.tsx`: `isValidDate()` guard, `ActivityIndicator` import, endDate/location fields
-- Fixed `CalendarScreen.tsx`: dots 4→6px, term bar cleaned up, `contentStyle={{ padding: 0, gap: 0 }}`, improved month cell styling (softer background, better spacing, smaller dots)
-- Fixed `QuizSessionScreen.tsx` layout: added `contentStyle={{ padding: 0, gap: 0 }}` to all branches, removed outer wrapping View, flat children layout (ProgressBar, ScrollView, footer) — prevents layout collapse from ExpressiveScreen's default 24px gap
-- Fixed `FlashcardReviewScreen.tsx` layout: same `contentStyle={{ padding: 0, gap: 0 }}` fix, adjusted margins
+- Fixed `CalendarScreen.tsx`: dots 4→6px, term bar cleaned up, `${contentStyle={{ padding: 0, gap: 0 }}}`, improved month cell styling (softer background, better spacing, smaller dots)
+- Fixed `QuizSessionScreen.tsx` layout: added `${contentStyle={{ padding: 0, gap: 0 }}}` to all branches, removed outer wrapping View, flat children layout (ProgressBar, ScrollView, footer) — prevents layout collapse from ExpressiveScreen's default 24px gap
+- Fixed `FlashcardReviewScreen.tsx` layout: same `${contentStyle={{ padding: 0, gap: 0 }}}` fix, adjusted margins
 - Fixed `termData.ts`: `TERM_DATA` replaced with `getTermData(year)` function — no longer stale across year boundary
 - Rewrote `FormulaRenderer.tsx`: MutationObserver for height changes instead of fragile 100ms timeout, explicit `javaScriptEnabled`/`domStorageEnabled`, `onError`/`onHttpError` fallback, preconnect to CDN, ResizeObserver fallback, loading state
 - Rebuilt shared package so BFF picks up `setId` in `GenerateFlashcardsInput`
 - BFF `leaveRoom` now publishes `roomPresenceStream` with `isOnline: false`
 - Cleaned 2 typecheck errors: missing `ActivityIndicator` import, `unknown[]` vs `string[]` map callback
+- **Switched KaTeX from CDN to local npm package**: `FormulaRenderer` and `BatchFormulaRenderer` now pre-render formulas via `katex.renderToString()` on the JS thread, embed KaTeX CSS as static string — zero network dependency, no inline KaTeX scripts in WebView, fallback to plain text on error
+- Added `src/utils/katexUtils.ts` and `src/utils/katexCss.ts` with `renderLatex()`, `stripDelimiters()`, `KATEX_CSS` for shared local KaTeX rendering
+- Fixed `FormulasScreen.tsx`: list `ScrollView` now has `style={{ flex: 1 }}` to prevent collapse inside `scroll={false}` ExpressiveScreen
+- Fixed `FormulasSubjectScreen.tsx`: same `flex: 1` fix on content `ScrollView`
+- Fixed `FlashcardReviewScreen.tsx`: added `safeIdx` bounds clamp to prevent `card` being `undefined` when `idx` exceeds array length
+- Fixed `QuizSessionScreen.tsx`: added `safeIdx` bounds clamp to prevent `question` crash when `idx` out of range
+- Fixed `QuizResultsScreen.tsx`: resolved `subjectId` variable shadowing bug with `paramSubjectId` — typecheck now passes cleanly
+- Typecheck confirms zero errors across all 7 rewritten screens
 
 ### In Progress
 - (none — waiting on user direction)
@@ -50,12 +57,13 @@
 - `FormulaRenderer` uses dynamic WebView height (injected `postMessage`) instead of fixed 64px — prevents clipping tall formulas
 - All `scroll={false}` screens MUST pass `contentStyle={{ padding: 0, gap: 0 }}` to ExpressiveScreen — otherwise the default `padding: 16, gap: 24` breaks nested flex layouts by consuming space and adding gaps between children
 - `termData.ts` switched from module-level `const YEAR` to `getTermData(year: number)` — term dates computed from the actual date passed to `getTermInfo`, not module load time
+- KaTeX rendering switched from CDN WebView script to local npm `katex` package using `katex.renderToString()` on the JS thread — eliminates CDN dependency and WebView script execution, formulas pre-rendered as static HTML with embedded CSS
 
 ## Next Steps
-1. Typecheck confirms zero errors in both Mobile and BFF
+1. Typecheck confirms zero errors in Mobile
 2. Restart Metro bundler with `npx expo start --clear` to flush old cache before testing
 3. Build/test on device or simulator to verify all fixes visually
-4. Consider checking remaining study screens: QuizResultsScreen, PomodoroScreen, FocusScreen, WhiteboardScreen
+4. Consider checking remaining study screens: PomodoroScreen, FocusScreen, WhiteboardScreen
 5. TTS placeholder can be wired when a server-side TTS service (ElevenLabs, Google Cloud TTS) is integrated
 
 ## Relevant Files

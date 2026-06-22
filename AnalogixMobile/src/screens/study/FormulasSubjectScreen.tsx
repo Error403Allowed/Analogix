@@ -79,7 +79,7 @@ export default function FormulasSubjectScreen() {
             </ScrollView>
           )}
 
-          <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
             <BatchFormulaRenderer categories={filteredCategories} />
           </ScrollView>
         </>

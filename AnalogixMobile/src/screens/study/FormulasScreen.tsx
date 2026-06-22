@@ -102,7 +102,7 @@ export default function FormulasScreen() {
         </ScrollView>
       )}
 
-      <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
         {loading || searchLoading ? (
           <SkeletonList count={3} style={{ marginTop: 16 }} />
         ) : isSearching && searchResults.length === 0 ? (

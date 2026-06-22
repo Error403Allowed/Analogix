@@ -1,6 +1,7 @@
-import React, { useRef, useState, useCallback } from "react";
+import React, { useRef, useState, useCallback, useMemo } from "react";
 import { StyleSheet, View, Text, Platform } from "react-native";
 import { WebView } from "react-native-webview";
+import { renderLatex, stripDelimiters, KATEX_CSS } from "../utils/katexUtils";
 
 interface FormulaItem {
   id: string;
@@ -19,16 +20,6 @@ interface Props {
   minHeight?: number;
 }
 
-const KATEX_VER = "0.16.28";
-
-function stripDelimiters(s: string): string {
-  return s
-    .replace(/^\\\(|\\\)$/g, "")
-    .replace(/^\\\[|\\\]$/g, "")
-    .replace(/^\$\$|\$\$$/g, "")
-    .replace(/^\$|\$$/g, "");
-}
-
 export default function BatchFormulaRenderer({ categories, minHeight = 48 }: Props) {
   const [webViewHeight, setWebViewHeight] = useState(Math.max(minHeight, 200));
   const [webViewError, setWebViewError] = useState(false);
@@ -41,6 +32,54 @@ export default function BatchFormulaRenderer({ categories, minHeight = 48 }: Pro
     } catch { /* ignore */ }
   }, []);
 
+  const html = useMemo(() => {
+    if (categories.length === 0) return "";
+
+    const sectionsHtml = categories.map(cat => {
+      const formulasHtml = cat.formulas.map(f => {
+        const latex = stripDelimiters(f.latex);
+        const formulaHtml = renderLatex(latex);
+        const nameHtml = `<div class="formula-name">${escapeHtml(f.name)}</div>`;
+        const descHtml = f.description
+          ? `<div class="formula-desc">${escapeHtml(f.description)}</div>`
+          : "";
+        return `<div class="formula-card">${nameHtml}<div class="katex-container">${formulaHtml}</div>${descHtml}</div>`;
+      }).join("");
+
+      return `<div class="category-section"><div class="cat-header"><span class="cat-name">${escapeHtml(cat.name)}</span><span class="cat-count">${cat.formulas.length} formulas</span></div><div class="formulas-grid">${formulasHtml}</div></div>`;
+    }).join("");
+
+    return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<style>${KATEX_CSS}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;min-height:100%}
+body{padding:8px;font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:transparent}
+.category-section{margin-bottom:20px}
+.cat-header{display:flex;align-items:center;justify-content:space-between;padding:0 4px;margin-bottom:8px}
+.cat-name{font-size:16px;font-weight:800;color:#111827}
+.cat-count{font-size:11px;color:#6b7280}
+.formulas-grid{display:flex;flex-direction:column;gap:10px}
+.formula-card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:16px}
+.formula-name{font-size:14px;font-weight:700;color:#111827;margin-bottom:8px}
+.katex-container{width:100%;overflow-x:auto;text-align:center;padding:4px 0;min-height:48px;-webkit-overflow-scrolling:touch}
+.katex{font-size:1.12em;line-height:1.4}
+.katex-display{margin:4px 0;text-align:center}
+.formula-desc{background:#f0f4ff;margin-top:8px;padding:6px 10px;border-radius:6px;font-size:13px;color:#4b5563;line-height:18px}
+.katex-fallback{font-family:Menlo,monospace;font-size:12px;color:#6b7280;white-space:pre-wrap;text-align:center;padding:8px;background:#f9fafb;border-radius:6px;word-break:break-word}
+</style>
+</head>
+<body>${sectionsHtml}
+<script>
+(function(){function r(){var h=document.body.scrollHeight;if(h>0){window.ReactNativeWebView.postMessage(String(h))}}r();if(window.MutationObserver){new MutationObserver(function(){r()}).observe(document.body,{childList:true,subtree:true,characterData:true})}if(window.ResizeObserver){new ResizeObserver(function(){r()}).observe(document.body)}})();
+</script>
+</body>
+</html>`;
+  }, [categories]);
+
   if (Platform.OS === "web" || categories.length === 0) return null;
 
   if (webViewError) {
@@ -52,100 +91,6 @@ export default function BatchFormulaRenderer({ categories, minHeight = 48 }: Pro
       </View>
     );
   }
-
-  const sectionsHtml = categories.map(cat => {
-    const formulasHtml = cat.formulas.map(f => {
-      const latex = stripDelimiters(f.latex);
-      const latexJson = JSON.stringify(latex);
-      const nameHtml = `<div class="formula-name">${escapeHtml(f.name)}</div>`;
-      const descHtml = f.description
-        ? `<div class="formula-desc">${escapeHtml(f.description)}</div>`
-        : "";
-      return `
-        <div class="formula-card" data-id="${escapeHtml(f.id)}">
-          ${nameHtml}
-          <div class="katex-container" data-latex='${latexJson}'></div>
-          ${descHtml}
-        </div>
-      `;
-    }).join("");
-
-    return `
-      <div class="category-section">
-        <div class="cat-header">
-          <span class="cat-name">${escapeHtml(cat.name)}</span>
-          <span class="cat-count">${cat.formulas.length} formulas</span>
-        </div>
-        <div class="formulas-grid">
-          ${formulasHtml}
-        </div>
-      </div>
-    `;
-  }).join("");
-
-  const html = `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
-  <link rel="preconnect" href="https://cdn.jsdelivr.net">
-  <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@${KATEX_VER}/dist/katex.min.css">
-  <script src="https://cdn.jsdelivr.net/npm/katex@${KATEX_VER}/dist/katex.min.js"></script>
-  <style>
-    *{margin:0;padding:0;box-sizing:border-box}
-    html,body{width:100%;min-height:100%}
-    body{padding:8px;font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:transparent}
-    .category-section{margin-bottom:20px}
-    .cat-header{display:flex;align-items:center;justify-content:space-between;padding:0 4px;margin-bottom:8px}
-    .cat-name{font-size:16px;font-weight:800;color:#111827}
-    .cat-count{font-size:11px;color:#6b7280}
-    .formulas-grid{display:flex;flex-direction:column;gap:10px}
-    .formula-card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:16px}
-    .formula-name{font-size:14px;font-weight:700;color:#111827;margin-bottom:8px}
-    .katex-container{width:100%;overflow-x:auto;text-align:center;padding:4px 0;min-height:48px;-webkit-overflow-scrolling:touch}
-    .katex{font-size:1.12em;line-height:1.4}
-    .katex-display{margin:4px 0;text-align:center}
-    .formula-desc{background:#f0f4ff;margin-top:8px;padding:6px 10px;border-radius:6px;font-size:13px;color:#4b5563;line-height:18px}
-    .error-text{font-family:Menlo,monospace;font-size:12px;color:#6b7280;white-space:pre-wrap;text-align:center;padding:8px;background:#f9fafb;border-radius:6px;word-break:break-word}
-    .loading-text{font-family:Menlo,monospace;font-size:12px;color:#9ca3af;text-align:center;padding:16px}
-  </style>
-</head>
-<body>
-  ${sectionsHtml}
-  <script>
-    (function() {
-      var containers = document.querySelectorAll(".katex-container");
-      containers.forEach(function(el) {
-        try {
-          var latex = JSON.parse(el.getAttribute("data-latex") || '""');
-          if (typeof katex !== "undefined" && katex && katex.render) {
-            katex.render(latex, el, { displayMode: true, throwOnError: false, strict: "ignore" });
-          } else {
-            el.className = "error-text";
-            el.textContent = latex;
-          }
-        } catch(err) {
-          el.className = "error-text";
-        }
-      });
-      function reportHeight() {
-        var h = document.body.scrollHeight;
-        if (h > 0) { window.ReactNativeWebView.postMessage(String(h)); }
-      }
-      reportHeight();
-      if (window.MutationObserver) {
-        var mo = new MutationObserver(function() { reportHeight(); });
-        mo.observe(document.body, { childList: true, subtree: true, characterData: true });
-      }
-      if (window.ResizeObserver) {
-        var ro = new ResizeObserver(function() { reportHeight(); });
-        ro.observe(document.body);
-      }
-    })();
-  </script>
-</body>
-</html>`;
 
   return (
     <View style={styles.container}>
