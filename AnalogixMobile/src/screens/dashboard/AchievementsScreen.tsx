@@ -255,6 +255,14 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 999,
   },
+  badge: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    gap: 2,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: SHAPE.pill,
+  },
   chip: {
     flexDirection: "row",
     alignItems: "center",

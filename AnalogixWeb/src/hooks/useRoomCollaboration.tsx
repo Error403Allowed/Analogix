@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as Y from "yjs";
 import { Awareness } from "y-protocols/awareness";
+import { createClient } from "@/lib/supabase/client";
 import { loadRoomSurfaceYDoc, RoomCollabPersistenceManager } from "@/lib/rooms/collab-persistence";
 import { RoomRealtimeProvider } from "@/lib/rooms/realtime-provider";
 const USER_COLORS = [
@@ -38,7 +39,7 @@ const pickColor = (seed) => {
 export function useRoomCollaboration({ roomId, surfaceType, surfaceId, displayName, }) {
     const [provider, setProvider] = useState<any>(null);
     const [fragment, setFragment] = useState(() => new Y.Doc().getXmlFragment("blocknote"));
-    const [status, setStatus] = useState("connecting");
+    const [status, setStatus] = useState("idle");
     const [peerCount, setPeerCount] = useState(0);
     const managerRef = useRef<any>(null);
     const providerRef = useRef<any>(null);
@@ -50,11 +51,20 @@ export function useRoomCollaboration({ roomId, surfaceType, surfaceId, displayNa
             color: pickColor(name),
         };
     }, [displayName]);
+    const enabled = Boolean(roomId && surfaceType && surfaceId && surfaceId !== "room-doc-placeholder");
     useEffect(() => {
+        if (!enabled)
+            return;
         let cancelled = false;
         const init = async () => {
             setStatus("connecting");
             try {
+                const supabase = createClient();
+                const { data: { session } } = await supabase.auth.getSession();
+                const userId = session?.user?.id;
+                if (!userId) {
+                    throw new Error("Not authenticated");
+                }
                 const { ydoc, latestSeq } = await loadRoomSurfaceYDoc(roomId, surfaceType, surfaceId);
                 if (cancelled)
                     return;
@@ -63,7 +73,7 @@ export function useRoomCollaboration({ roomId, surfaceType, surfaceId, displayNa
                 awareness.setLocalStateField("user", user);
                 const nextProvider = new RoomRealtimeProvider(`analogix-room-${roomId}-${surfaceType}-${surfaceId}`, ydoc, awareness, crypto.randomUUID());
                 providerRef.current = nextProvider;
-                const manager = new RoomCollabPersistenceManager(roomId, surfaceType, surfaceId, ydoc, latestSeq);
+                const manager = new RoomCollabPersistenceManager(roomId, surfaceType, surfaceId, userId, ydoc, latestSeq);
                 managerRef.current = manager;
                 const handleDocUpdate = (update, origin) => {
                     if (origin === nextProvider || origin === "room-collab-bootstrap")
@@ -107,14 +117,15 @@ export function useRoomCollaboration({ roomId, surfaceType, surfaceId, displayNa
             setProvider(null);
             setPeerCount(0);
         };
-    }, [roomId, surfaceId, surfaceType, user]);
+    }, [roomId, surfaceId, surfaceType, user, enabled]);
     return {
         fragment,
         user,
         provider,
         status,
         peerCount,
-        ready: status === "ready",
+        ready: enabled ? status === "ready" : true,
+        enabled,
         flush: async () => {
             await managerRef.current?.flush();
         },

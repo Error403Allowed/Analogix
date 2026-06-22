@@ -73,6 +73,18 @@ const LazySubjectsPage = dynamic(() => import("@/app/subjects/page"), {
   ssr: false,
   loading: () => <PageLoader message="Loading subjects..." />,
 });
+const LazySubjectDetail = dynamic(() => import("@/views/SubjectDetail"), {
+  ssr: false,
+  loading: () => <PageLoader message="Loading subject..." />,
+});
+const LazySubjectDocumentIndex = dynamic(() => import("@/views/SubjectDocumentIndex"), {
+  ssr: false,
+  loading: () => <PageLoader message="Loading documents..." />,
+});
+const LazySubjectDocument = dynamic(() => import("@/views/SubjectDocument"), {
+  ssr: false,
+  loading: () => <PageLoader message="Loading document..." />,
+});
 const LazyCalendarPage = dynamic(() => import("@/app/calendar/page"), {
   ssr: false,
   loading: () => <PageLoader message="Loading calendar..." />,
@@ -96,7 +108,10 @@ function getPageForPath(path: string) {
   if (path === "/quiz") return LazyQuizPage;
   if (path === "/formulas") return LazyFormulasPage;
   if (path === "/resources") return LazyResourcesPage;
-  if (path === "/subjects" || path.startsWith("/subjects/") || path.startsWith("/study-guides")) return LazySubjectsPage;
+  if (path === "/subjects") return LazySubjectsPage;
+  if (/^\/subjects\/[^/]+\/document\/[^/]+$/.test(path)) return LazySubjectDocument;
+  if (/^\/subjects\/[^/]+\/document$/.test(path)) return LazySubjectDocumentIndex;
+  if (/^\/subjects\/[^/]+$/.test(path)) return LazySubjectDetail;
   if (path === "/calendar") return LazyCalendarPage;
   if (path === "/achievements") return LazyAchievementsPage;
   return LazyDashboardPage;

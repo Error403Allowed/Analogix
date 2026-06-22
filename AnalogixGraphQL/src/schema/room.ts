@@ -22,7 +22,7 @@ export const roomTypeDefs = /* GraphQL */ `
     name: String
     subject: String
     members: [StudyRoomMember!]!
-    messages: [StudyRoomMessage!]!
+    messages(limit: Int = 50): [StudyRoomMessage!]!
     documents: [RoomSharedDocument!]!
   }
 
@@ -93,6 +93,7 @@ export const roomTypeDefs = /* GraphQL */ `
     shareDocumentToRoom(roomId: ID!, documentId: ID!, subjectId: String!): RoomSharedDocument!
     sendRoomMessage(roomId: ID!, content: String!, messageType: String = "chat"): StudyRoomMessage!
     updateRoomMemberRole(roomId: ID!, userId: ID!, role: String!): StudyRoomMember!
+    updateRoomCanvas(roomId: ID!, input: JSON!): StudyRoomCanvas!
     deleteRoom(roomId: ID!): DeleteResult!
   }
 

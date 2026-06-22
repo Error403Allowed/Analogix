@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { View, StyleSheet, Alert, ScrollView, Pressable } from "react-native";
-import { Text, useTheme, Card, IconButton, Button, Portal, Modal, TextInput } from "react-native-paper";
+import { Text, useTheme, Card, IconButton, Button, Portal, Modal, TextInput, ActivityIndicator } from "react-native-paper";
 import { useQuery, useMutation } from "@apollo/client";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import { EVENTS, DELETE_EVENT, UPDATE_EVENT } from "../../graphql/queries/calendar";
@@ -27,16 +27,23 @@ export default function EventDetailScreen() {
   const [showEdit, setShowEdit] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [editDate, setEditDate] = useState("");
+  const [editEndDate, setEditEndDate] = useState("");
   const [editType, setEditType] = useState("event");
   const [editDescription, setEditDescription] = useState("");
+  const [editLocation, setEditLocation] = useState("");
+  const [dateError, setDateError] = useState("");
 
   const events = data?.events ?? [];
   const event = events.find((e: any) => e.id === eventId);
+
+  const isValidDate = (d: string) => /^\d{4}-\d{2}-\d{2}$/.test(d) && !isNaN(Date.parse(d));
 
   const openEdit = () => {
     if (!event) return;
     setEditTitle(event.title ?? "");
     setEditDate(event.date?.split("T")[0] ?? "");
+    setEditEndDate(event.endDate?.split("T")[0] ?? "");
+    setEditLocation(event.location ?? "");
     setEditType(event.type ?? "event");
     setEditDescription(event.description ?? "");
     setShowEdit(true);
@@ -44,14 +51,25 @@ export default function EventDetailScreen() {
 
   const handleSave = async () => {
     if (!editTitle.trim()) return;
+    if (editDate && !isValidDate(editDate)) {
+      setDateError("Use YYYY-MM-DD format");
+      return;
+    }
+    if (editEndDate && !isValidDate(editEndDate)) {
+      setDateError("End date: use YYYY-MM-DD format");
+      return;
+    }
+    setDateError("");
     try {
       await updateEvent({
         variables: {
           id: eventId,
           input: {
             title: editTitle.trim(),
-            date: editDate,
+            date: editDate || undefined,
+            endDate: editEndDate || undefined,
             type: editType,
+            location: editLocation.trim() || undefined,
             description: editDescription.trim() || undefined,
           },
         },
@@ -83,7 +101,7 @@ export default function EventDetailScreen() {
   if (loading) {
     return (
       <View style={[styles.container, { backgroundColor: paperTheme.colors.background, alignItems: "center", justifyContent: "center" }]}>
-        <Text>Loading...</Text>
+        <ActivityIndicator color={brand.primary} size="large" />
       </View>
     );
   }
@@ -160,7 +178,10 @@ export default function EventDetailScreen() {
         <Modal visible={showEdit} onDismiss={() => setShowEdit(false)} contentContainerStyle={[styles.modal, { backgroundColor: paperTheme.colors.surface }]}>
           <Text variant="titleLarge" style={{ fontWeight: "700", marginBottom: 16 }}>Edit event</Text>
           <TextInput mode="outlined" label="Title" value={editTitle} onChangeText={setEditTitle} style={{ marginBottom: 12 }} />
-          <TextInput mode="outlined" label="Date" value={editDate} onChangeText={setEditDate} style={{ marginBottom: 12 }} />
+          <TextInput mode="outlined" label="Date (YYYY-MM-DD)" value={editDate} onChangeText={(t) => { setEditDate(t); setDateError(""); }} placeholder="2025-03-15" style={{ marginBottom: 4 }} />
+          {dateError ? <Text style={{ color: paperTheme.colors.error, fontSize: 11, marginBottom: 8, marginLeft: 4 }}>{dateError}</Text> : null}
+          <TextInput mode="outlined" label="End date (YYYY-MM-DD)" value={editEndDate} onChangeText={setEditEndDate} placeholder="2025-03-16" style={{ marginBottom: 12 }} />
+          <TextInput mode="outlined" label="Location" value={editLocation} onChangeText={setEditLocation} style={{ marginBottom: 12 }} />
           <TextInput mode="outlined" label="Description" value={editDescription} onChangeText={setEditDescription} multiline style={{ marginBottom: 12 }} />
           <Text variant="bodySmall" style={{ color: paperTheme.colors.onSurfaceVariant, marginBottom: 8 }}>Type</Text>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 16 }}>

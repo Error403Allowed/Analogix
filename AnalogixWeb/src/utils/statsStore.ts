@@ -121,19 +121,17 @@ export const statsStore = {
 
     const activeDates = new Set(data.filter((r: any) => r.count > 0).map((r: any) => r.date as string));
 
-    let streak = 0;
-    
-    // Use local timezone for correct date calculation
     const now = new Date();
     const localToday = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
-    const d = new Date(localToday);
-    
-    // Walk backwards from today — include today immediately (counts as day 1)
+    const [y, m, d_] = localToday.split("-").map(Number);
+    const cursor = new Date(y, m - 1, d_); // local midnight
+
+    let streak = 0;
     while (true) {
-      const iso = d.toISOString().slice(0, 10);
+      const iso = new Date(cursor.getTime() - cursor.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
       if (activeDates.has(iso)) {
         streak++;
-        d.setDate(d.getDate() - 1);
+        cursor.setDate(cursor.getDate() - 1);
       } else {
         break;
       }

@@ -40,7 +40,7 @@ export const quizResolvers = {
   Mutation: {
     generateQuiz: async (_: unknown, args: { input: Record<string, unknown> }, ctx: GraphQLContext) => {
       const user = requireUser(ctx);
-      const parsed = GenerateQuizInput.parse(args.input);
+      const parsed = GenerateQuizInput.parse(normalizeGenerateQuizInput(args.input));
       const prompt = buildQuizPrompt(parsed);
       const response = await callGroqChat({
         messages: [
@@ -63,9 +63,9 @@ export const quizResolvers = {
           id: crypto.randomUUID(),
           user_id: user.id,
           subject_id: parsed.subjectId ?? "general",
-          title: parsed.topic,
+          title: buildQuizTitle(parsed),
           difficulty: parsed.difficulty,
-          questions: parsedQuiz.questions,
+          questions: parsedQuiz.questions.map(normalizeQuizQuestion).filter((q) => q.question),
           created_at: now,
         })
         .select()
@@ -163,7 +163,9 @@ function mapQuiz(row: Record<string, unknown>) {
     subjectId: String(row.subject_id ?? "general"),
     title: String(row.title ?? "Untitled quiz"),
     difficulty: String(row.difficulty ?? "medium"),
-    questions: Array.isArray(row.questions) ? row.questions : [],
+    questions: Array.isArray(row.questions)
+      ? row.questions.map(normalizeQuizQuestion).filter((q) => q.question)
+      : [],
     createdAt: String(row.created_at),
   };
 }
@@ -190,6 +192,81 @@ function buildQuizPrompt(input: z.infer<typeof GenerateQuizInput>): string {
     `Each multiple-choice question should have 4 options and one correct answer. ` +
     `Each short-answer question should have a clear correctAnswer and a model explanation. ` +
     `Return JSON: { questions: [{ id, type, question, options?, correctAnswer?, explanation, hint? }] }`;
+}
+
+function normalizeGenerateQuizInput(input: Record<string, unknown>): Record<string, unknown> {
+  const questionCount = Number(input.questionCount ?? input.count ?? input.numQuestions ?? 5);
+  const questionType = typeof input.questionType === "string" ? input.questionType : undefined;
+  const types = Array.isArray(input.types)
+    ? input.types
+    : questionType && questionType !== "mixed"
+      ? [questionType]
+      : ["multiple_choice", "short_answer"];
+  const contextText =
+    typeof input.contextText === "string"
+      ? input.contextText
+      : typeof input.text === "string"
+        ? input.text
+        : undefined;
+  const topic =
+    typeof input.topic === "string" && input.topic.trim()
+      ? input.topic.trim()
+      : typeof input.subject === "string" && input.subject.trim()
+        ? input.subject.trim()
+        : contextText
+          ? "Imported content"
+          : "General revision";
+
+  return {
+    ...input,
+    topic,
+    numQuestions: Number.isFinite(questionCount) ? questionCount : 5,
+    types,
+    contextText,
+    subjectId: typeof input.subjectId === "string" && input.subjectId.trim()
+      ? input.subjectId
+      : typeof input.subject === "string" && input.subject.trim()
+        ? input.subject
+        : undefined,
+  };
+}
+
+function buildQuizTitle(input: z.infer<typeof GenerateQuizInput>): string {
+  return input.topic === "Imported content" ? "Imported quiz" : input.topic;
+}
+
+function normalizeQuizQuestion(raw: Record<string, unknown>, index = 0) {
+  const rawOptions = Array.isArray(raw.options)
+    ? raw.options
+    : Array.isArray(raw.choices)
+      ? raw.choices
+      : Array.isArray(raw.answers)
+        ? raw.answers
+        : [];
+  const correctAnswer = String(raw.correctAnswer ?? raw.answer ?? "");
+  const options = rawOptions.map((option, optionIndex) => {
+    const objectOption = typeof option === "object" && option !== null ? option as Record<string, unknown> : null;
+    const text = String(objectOption?.text ?? objectOption?.label ?? objectOption?.answer ?? option ?? "");
+    return {
+      id: String(objectOption?.id ?? `${raw.id ?? index}-option-${optionIndex}`),
+      text,
+      isCorrect: Boolean(objectOption?.isCorrect ?? objectOption?.correct ?? (correctAnswer && text === correctAnswer)),
+    };
+  }).filter((option) => option.text);
+
+  return {
+    id: String(raw.id ?? `question-${index + 1}`),
+    type: String(raw.type ?? (options.length > 0 ? "multiple_choice" : "short_answer")),
+    question: String(raw.question ?? raw.prompt ?? raw.text ?? ""),
+    analogy: typeof raw.analogy === "string" ? raw.analogy : null,
+    options,
+    correctAnswer: correctAnswer || options.find((option) => option.isCorrect)?.text || null,
+    explanation: typeof raw.explanation === "string" ? raw.explanation : null,
+    hint: typeof raw.hint === "string" ? raw.hint : null,
+    pythonSolution: typeof raw.pythonSolution === "string" ? raw.pythonSolution : null,
+    reasoning: typeof raw.reasoning === "string" ? raw.reasoning : null,
+    desmos: raw.desmos ?? null,
+  };
 }
 
 function safeParseQuiz(raw: string): { questions: Array<Record<string, unknown>> } | null {

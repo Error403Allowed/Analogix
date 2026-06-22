@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect } from "react";
-import { View, StyleSheet, ScrollView, Pressable, Alert } from "react-native";
-import { Text, useTheme, Card, FAB, Portal, Modal, Button, TextInput, SegmentedButtons, ActivityIndicator } from "react-native-paper";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { View, StyleSheet, Pressable, Alert } from "react-native";
+import Animated, { FadeInDown } from "react-native-reanimated";
+import { Text, useTheme, FAB, Portal, Modal, Button, TextInput, SegmentedButtons, ActivityIndicator } from "react-native-paper";
 import { useQuery, useMutation } from "@apollo/client";
 import { useNavigation } from "@react-navigation/native";
 import { QUIZZES, GENERATE_QUIZ, ATTEMPTS } from "../../graphql/queries/quiz";
@@ -10,6 +10,7 @@ import { ME } from "../../graphql/queries/user";
 import { useThemeContext } from "../../theme/ThemeContext";
 import { SHAPE } from "../../theme/tokens";
 import Icon from "../../components/Icon";
+import { ExpressiveScreen, ExpressiveEmptyState, ExpressiveCard } from "../../components/expressive";
 import * as DocumentPicker from "expo-document-picker";
 import { readAsStringAsync } from "expo-file-system/legacy";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -44,7 +45,6 @@ export default function QuizScreen() {
   const paperTheme = useTheme();
   const { brand } = useThemeContext();
   const c = paperTheme.colors as any;
-  const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
 
   const [showGenerate, setShowGenerate] = useState(false);
@@ -59,7 +59,7 @@ export default function QuizScreen() {
   const [showStats, setShowStats] = useState<string | null>(null);
   const [recentQuestions, setRecentQuestions] = useState<string[]>([]);
 
-  const { data, loading } = useQuery(QUIZZES);
+  const { data, loading, error, refetch } = useQuery(QUIZZES);
   const { data: attemptsData } = useQuery(ATTEMPTS, {
     variables: showStats ? { quizId: showStats } : {},
     skip: !showStats,
@@ -100,7 +100,6 @@ export default function QuizScreen() {
       setSubject("");
       setTopic("");
       if (result?.generateQuiz) {
-        // Track generated questions for dedup
         const newQs = (result.generateQuiz.questions ?? []).map((q: any) => q.question).filter(Boolean);
         const updated = [...recentQuestions, ...newQs].slice(-100);
         setRecentQuestions(updated);
@@ -190,31 +189,37 @@ export default function QuizScreen() {
     : 0;
 
   return (
-    <View style={[styles.container, { backgroundColor: c.surface ?? paperTheme.colors.background }]}>
-      <View style={[styles.topBar, { backgroundColor: c.surfaceContainer ?? paperTheme.colors.surface, paddingTop: insets.top + 4 }]}>
-        <Pressable onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Icon name="arrow-left" size={22} color={paperTheme.colors.onSurfaceVariant} />
-        </Pressable>
-        <Text variant="titleMedium" style={{ fontWeight: "700", flex: 1, color: paperTheme.colors.onSurface }}>Quizzes</Text>
+    <ExpressiveScreen
+      title="Quizzes"
+      subtitle={`${quizzes.length} quiz${quizzes.length !== 1 ? "zes" : ""}`}
+      leadingIcon="help-circle"
+      onBack={() => navigation.goBack()}
+      actions={
         <Pressable onPress={() => setShowImport(true)} style={styles.iconBtn}>
           <Icon name="file-upload" size={20} color={paperTheme.colors.onSurfaceVariant} />
         </Pressable>
-      </View>
-
-      <ScrollView contentContainerStyle={styles.list}>
-        {loading ? (
-          <ActivityIndicator style={{ marginTop: 40 }} />
-        ) : quizzes.length === 0 ? (
-          <View style={styles.empty}>
-            <Icon name="help-circle" size={64} color={paperTheme.colors.onSurfaceVariant} />
-            <Text variant="bodyLarge" style={{ color: paperTheme.colors.onSurfaceVariant, marginTop: 16, textAlign: "center" }}>
-              No quizzes yet. Tap + to generate one.
-            </Text>
-          </View>
-        ) : quizzes.map((q: any) => (
-          <Pressable key={q.id} onPress={() => navigation.navigate("QuizSession", { quizId: q.id, questions: q.questions, quizTitle: q.title, subjectId: q.subjectId })}>
-            <Card mode="outlined" style={styles.quizCard}>
-              <Card.Content style={styles.quizRow}>
+      }
+      fab={
+        <FAB icon="plus" label="Generate" color="#fff" style={{ backgroundColor: brand.primary, borderRadius: SHAPE.lg }} onPress={() => setShowGenerate(true)} />
+      }
+    >
+      {loading ? (
+        <ActivityIndicator style={{ marginTop: 40 }} />
+      ) : error ? (
+        <View style={styles.centerState}>
+          <ExpressiveEmptyState icon="alert-circle" title="Could not load quizzes" subtitle="Check your connection and try again." />
+          <Button mode="contained" buttonColor={brand.primary} onPress={() => refetch()} style={{ borderRadius: SHAPE.lg }}>
+            Retry
+          </Button>
+        </View>
+      ) : quizzes.length === 0 ? (
+        <ExpressiveEmptyState icon="help-circle" title="No quizzes yet" subtitle="Tap Generate to create your first quiz." />
+      ) : (
+        <View style={{ gap: 8 }}>
+          {quizzes.map((q: any, i: number) => (
+            <Animated.View key={q.id} entering={FadeInDown.duration(300).delay(i * 80).springify()}>
+            <ExpressiveCard tone="low" onPress={() => navigation.navigate("QuizSession", { quizId: q.id, questions: q.questions, quizTitle: q.title, subjectId: q.subjectId })}>
+              <View style={styles.quizRow}>
                 <View style={[styles.iconWrap, { backgroundColor: brand.primary + "18" }]}>
                   <Icon name="help-circle" size={22} color={brand.primary} />
                 </View>
@@ -232,30 +237,25 @@ export default function QuizScreen() {
                 <Pressable onPress={() => setShowStats(showStats === q.id ? null : q.id)} hitSlop={8}>
                   <Icon name="chart-bar" size={20} color={showStats === q.id ? brand.primary : paperTheme.colors.onSurfaceVariant} />
                 </Pressable>
-              </Card.Content>
+              </View>
               {showStats === q.id && (
-                <Card.Content style={{ paddingTop: 0 }}>
-                  <View style={[styles.statsRow, { borderTopColor: c.outlineVariant, borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 12 }]}>
-                    <Text variant="bodySmall" style={{ color: paperTheme.colors.onSurfaceVariant }}>
-                      {attempts.length > 0 ? `${Math.round(averageAccuracy)}% avg accuracy · ${attempts.length} attempts` : "No attempts yet"}
-                    </Text>
-                  </View>
-                </Card.Content>
+                <View style={[styles.statsRow, { borderTopColor: c.outlineVariant, borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 12, marginTop: 8 }]}>
+                  <Text variant="bodySmall" style={{ color: paperTheme.colors.onSurfaceVariant }}>
+                    {attempts.length > 0 ? `${Math.round(averageAccuracy)}% avg accuracy · ${attempts.length} attempts` : "No attempts yet"}
+                  </Text>
+                </View>
               )}
-            </Card>
-          </Pressable>
-        ))}
-      </ScrollView>
+            </ExpressiveCard>
+            </Animated.View>
+          ))}
+        </View>
+      )}
 
-      <FAB icon="plus" label="Generate" color="#fff" style={[styles.fab, { backgroundColor: brand.primary }]} onPress={() => setShowGenerate(true)} />
-
-      {/* ── Generate Modal ──────────────────────────────────────────────── */}
       <Portal>
         <Modal visible={showGenerate} onDismiss={() => setShowGenerate(false)} contentContainerStyle={[styles.modal, { backgroundColor: c.surface ?? paperTheme.colors.surface }]}>
           <Text variant="titleLarge" style={{ fontWeight: "700", color: paperTheme.colors.onSurface, marginBottom: 16 }}>Generate quiz</Text>
           <TextInput mode="outlined" label="Subject" placeholder="e.g. Biology" value={subject} onChangeText={setSubject} style={{ marginBottom: 12 }} />
           <TextInput mode="outlined" label="Topic" placeholder="e.g. Cell division" value={topic} onChangeText={setTopic} style={{ marginBottom: 12 }} />
-
           <Text variant="bodySmall" style={{ color: paperTheme.colors.onSurfaceVariant, marginBottom: 6 }}>Difficulty</Text>
           <SegmentedButtons
             value={difficulty}
@@ -264,7 +264,6 @@ export default function QuizScreen() {
             style={{ marginBottom: 12 }}
             density="small"
           />
-
           <Text variant="bodySmall" style={{ color: paperTheme.colors.onSurfaceVariant, marginBottom: 6 }}>Question type</Text>
           <SegmentedButtons
             value={questionType}
@@ -277,9 +276,7 @@ export default function QuizScreen() {
             style={{ marginBottom: 12 }}
             density="small"
           />
-
           <TextInput mode="outlined" label="Question count" value={count} onChangeText={setCount} keyboardType="number-pad" style={{ marginBottom: 12 }} />
-
           <Text variant="bodySmall" style={{ color: paperTheme.colors.onSurfaceVariant, marginBottom: 6 }}>Timer</Text>
           <SegmentedButtons
             value={String(timed)}
@@ -293,14 +290,12 @@ export default function QuizScreen() {
             style={{ marginBottom: 16 }}
             density="small"
           />
-
           <Button mode="contained" buttonColor={brand.primary} style={{ borderRadius: SHAPE.lg }} onPress={handleGenerate} loading={generating} disabled={generating}>
             Generate
           </Button>
         </Modal>
       </Portal>
 
-      {/* ── Import Modal ────────────────────────────────────────────────── */}
       <Portal>
         <Modal visible={showImport} onDismiss={() => setShowImport(false)} contentContainerStyle={[styles.modal, { backgroundColor: c.surface ?? paperTheme.colors.surface }]}>
           <Text variant="titleLarge" style={{ fontWeight: "700", color: paperTheme.colors.onSurface, marginBottom: 16 }}>Import content</Text>
@@ -309,7 +304,6 @@ export default function QuizScreen() {
           </Button>
           <Text variant="bodySmall" style={{ color: paperTheme.colors.onSurfaceVariant, textAlign: "center", marginBottom: 8 }}>or paste text below</Text>
           <TextInput mode="outlined" label="Paste content" value={pasteText} onChangeText={setPasteText} multiline style={{ minHeight: 120, marginBottom: 12 }} />
-
           <Text variant="bodySmall" style={{ color: paperTheme.colors.onSurfaceVariant, marginBottom: 6 }}>Difficulty</Text>
           <SegmentedButtons
             value={difficulty}
@@ -318,27 +312,20 @@ export default function QuizScreen() {
             style={{ marginBottom: 12 }}
             density="small"
           />
-
           <Button mode="contained" buttonColor={brand.primary} loading={generating} onPress={handleImportFromText} disabled={pasteText.trim().length < 50}>
             Generate Quiz
           </Button>
         </Modal>
       </Portal>
-    </View>
+    </ExpressiveScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  topBar: { flexDirection: "row", alignItems: "center", paddingHorizontal: 4 },
-  backBtn: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
   iconBtn: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
-  list: { padding: 16, paddingBottom: 120, gap: 8 },
-  empty: { alignItems: "center", paddingTop: 80, paddingHorizontal: 32 },
-  quizCard: { borderRadius: SHAPE.lg },
   quizRow: { flexDirection: "row", alignItems: "center", gap: 12 },
   iconWrap: { width: 42, height: 42, borderRadius: SHAPE.md, alignItems: "center", justifyContent: "center" },
   statsRow: { marginTop: 4 },
-  fab: { position: "absolute", right: 16, bottom: 100, borderRadius: SHAPE.lg },
+  centerState: { minHeight: 260, alignItems: "center", justifyContent: "center", gap: 12 },
   modal: { margin: 20, padding: 24, borderRadius: SHAPE.xl },
 });

@@ -1,8 +1,9 @@
 import React, { useState } from "react";
-import { View, StyleSheet, Pressable } from "react-native";
+import { View, StyleSheet, Pressable, Image, Alert } from "react-native";
 import { Text, useTheme, ActivityIndicator, Button, Portal, Modal, Searchbar } from "react-native-paper";
 import { useQuery, useMutation } from "@apollo/client";
 import { useNavigation } from "@react-navigation/native";
+import * as ImagePicker from "expo-image-picker";
 import { ME, USER_STATS, UPDATE_PROFILE } from "../../graphql/queries/user";
 import { SHAPE } from "../../theme/tokens";
 import { useAuth } from "../../context/AuthContext";
@@ -39,6 +40,29 @@ export default function ProfileScreen() {
   const [showSubjects, setShowSubjects] = useState(false);
   const [subjectSearch, setSubjectSearch] = useState("");
 
+  const handlePickAvatar = async () => {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert("Permission needed", "Allow access to your photo library to set a profile picture.");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+      base64: true,
+    });
+    if (result.canceled || !result.assets?.[0]) return;
+    const asset = result.assets[0];
+    const dataUrl = asset.base64 ? `data:${asset.mimeType ?? "image/jpeg"};base64,${asset.base64}` : asset.uri;
+    try {
+      await updateProfile({ variables: { input: { avatarUrl: dataUrl } } });
+    } catch {
+      Alert.alert("Error", "Could not update profile picture.");
+    }
+  };
+
   const toggleSubject = async (label: string) => {
     const updated = enrolledNames.includes(label)
       ? enrolledNames.filter((s) => s !== label)
@@ -64,9 +88,18 @@ export default function ProfileScreen() {
     <ExpressiveScreen title="Profile" subtitle={me?.email ?? "Your profile"} leadingIcon="account-circle">
         <ExpressiveHeroPanel style={styles.heroCard}>
             <View style={styles.heroRow}>
-              <View style={[styles.avatar, { backgroundColor: paperTheme.colors.primary }]}>
-                <Text style={[styles.avatarLetter, { color: paperTheme.colors.onPrimary }]}>{(me?.name ?? "?").charAt(0)}</Text>
-              </View>
+              <Pressable onPress={handlePickAvatar} style={styles.avatarWrap}>
+                {me?.avatarUrl ? (
+                  <Image source={{ uri: me.avatarUrl }} style={styles.avatarImage} />
+                ) : (
+                  <View style={[styles.avatar, { backgroundColor: paperTheme.colors.primary }]}>
+                    <Text style={[styles.avatarLetter, { color: paperTheme.colors.onPrimary }]}>{(me?.name ?? "?").charAt(0)}</Text>
+                  </View>
+                )}
+                <View style={[styles.avatarOverlay, { backgroundColor: "rgba(0,0,0,0.35)" }]}>
+                  <Icon name="camera" size={18} color="#fff" />
+                </View>
+              </Pressable>
               <View style={{ flex: 1 }}>
                 <Text variant="headlineSmall" style={{ fontWeight: "900", color: paperTheme.colors.onPrimaryContainer }}>{me?.name ?? "You"}</Text>
                 {me?.email && <Text variant="bodySmall" style={{ color: paperTheme.colors.onPrimaryContainer }}>{me.email}</Text>}
@@ -158,7 +191,13 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   heroCard: { gap: 14 },
   heroRow: { flexDirection: "row", alignItems: "center", gap: 14, marginBottom: 12 },
+  avatarWrap: { position: "relative" },
   avatar: { width: 72, height: 72, borderRadius: 26, alignItems: "center", justifyContent: "center" },
+  avatarImage: { width: 72, height: 72, borderRadius: 26 },
+  avatarOverlay: {
+    position: "absolute", inset: 0, borderRadius: 26,
+    alignItems: "center", justifyContent: "center",
+  },
   avatarLetter: { color: "#fff", fontWeight: "700", fontSize: 22 },
   levelRow: { flexDirection: "row", gap: 8, marginBottom: 12 },
   chip: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: SHAPE.xs },

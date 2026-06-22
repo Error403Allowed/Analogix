@@ -8,6 +8,7 @@ import { CHAT_MESSAGES, CREATE_CHAT_SESSION, STREAM_CHAT_MESSAGE, CHAT_STREAM } 
 import { SEARCH_RESEARCH, EXTRACT_TEXT, REEXPLAIN } from "../../graphql/queries/ai";
 import { GENERATE_FLASHCARDS } from "../../graphql/queries/flashcard";
 import { GENERATE_QUIZ } from "../../graphql/queries/quiz";
+import FormulaRenderer from "../../components/FormulaRenderer";
 import { SUBJECTS } from "../../graphql/queries/subject";
 import Icon from "../../components/Icon";
 import { ReadAloudButton } from "../../components/ReadAloudButton";
@@ -874,9 +875,7 @@ export default function ChatSessionScreen() {
                   )}
                   <Text variant="bodyMedium" style={{ fontWeight: "600", marginTop: 2 }}>{formula.name}</Text>
                   {formula.latex && (
-                    <Text variant="bodySmall" style={{ color: paperTheme.colors.primary, marginTop: 4, fontFamily: "monospace" }}>
-                      {formula.latex}
-                    </Text>
+                    <FormulaRenderer math={formula.latex} minHeight={32} style={{ marginTop: 4 }} />
                   )}
                   {formula.description && (
                     <Text variant="bodySmall" style={{ color: paperTheme.colors.onSurfaceVariant, marginTop: 4 }}>

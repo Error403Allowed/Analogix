@@ -82,22 +82,34 @@ export const roomResolvers = {
     roomDocuments: async (_: unknown, args: { roomId: string }, ctx: GraphQLContext) => {
       const user = requireUser(ctx);
       await requireRoomMember(ctx, args.roomId, user.id);
-      const { data, error } = await ctx.supabase!.from("room_shared_documents").select("*").eq("room_id", args.roomId);
+      const { data: shareRows, error } = await ctx.supabase!
+        .from("study_room_shared_documents")
+        .select("*")
+        .eq("room_id", args.roomId)
+        .order("shared_at", { ascending: false });
       if (error) throw new GraphQLError(error.message);
-      return (data ?? []).map((d) => ({
-        id: d.id,
-        roomId: d.room_id,
-        documentId: d.document_id,
-        subjectId: d.subject_id,
-        title: d.title,
-        role: d.role,
-        icon: d.icon,
-        cover: d.cover,
-        sharedBy: d.shared_by,
-        sharedAt: d.shared_at,
-        ownerUserId: d.owner_user_id,
-        updatedAt: d.updated_at,
-      }));
+      const documentIds = [...new Set((shareRows ?? []).map((d: any) => String(d.document_id)))];
+      const { data: documents } = documentIds.length === 0
+        ? { data: [] }
+        : await ctx.supabase!.from("documents").select("*").in("id", documentIds);
+      const documentMap = new Map((documents ?? []).map((d: any) => [String(d.id), d]));
+      return (shareRows ?? []).map((d: any) => {
+        const doc = documentMap.get(String(d.document_id));
+        return {
+          id: String(d.id),
+          roomId: String(d.room_id),
+          documentId: String(d.document_id),
+          subjectId: String(doc?.subject_id ?? ""),
+          title: String(doc?.title ?? "Untitled"),
+          role: doc?.role === "study-guide" ? "study-guide" : "notes",
+          icon: typeof doc?.icon === "string" ? doc.icon : null,
+          cover: typeof doc?.cover === "string" ? doc.cover : null,
+          sharedBy: String(d.shared_by),
+          sharedAt: String(d.shared_at),
+          ownerUserId: String(doc?.owner_user_id ?? ""),
+          updatedAt: String(doc?.updated_at ?? new Date().toISOString()),
+        };
+      });
     },
   },
 
@@ -116,6 +128,7 @@ export const roomResolvers = {
       const title = typeof args.input.title === "string" && args.input.title.trim() ? args.input.title : "Study room";
       const visibility = args.input.visibility === "private" ? "private" : "public";
       const joinCode = generateJoinCode();
+      const now = new Date().toISOString();
       const { data, error } = await ctx.supabase!
         .from("study_rooms")
         .insert({
@@ -125,17 +138,31 @@ export const roomResolvers = {
           visibility,
           join_code: joinCode,
           owner_user_id: user.id,
-          member_count: 1,
           timer_state: "idle",
           timer_duration_seconds: 1500,
           timer_elapsed_seconds: 0,
           timer_started_at: null,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
+          created_at: now,
+          updated_at: now,
         })
         .select()
         .single();
       if (error) throw new GraphQLError(error.message);
+
+      await ctx.supabase!.from("study_room_members").insert({
+        room_id: data.id,
+        user_id: user.id,
+        role: "host",
+        is_online: true,
+      });
+
+      await ctx.supabase!.from("study_room_canvas").insert({
+        room_id: data.id,
+        title: `${title} canvas`,
+        content: "<p></p>",
+        last_edited_by: user.id,
+      });
+
       return mapRoom(data, user.id);
     },
     joinRoom: async (_: unknown, args: { joinCode: string }, ctx: GraphQLContext) => {
@@ -155,14 +182,37 @@ export const roomResolvers = {
         },
         { onConflict: "room_id,user_id" }
       );
-      await ctx.supabase!.rpc("increment_room_member_count", { p_room_id: room.id });
-      return mapRoom(room, user.id);
+      const { data: updatedRoom } = await ctx.supabase!.from("study_rooms").select("*").eq("id", room.id).single();
+      const presenceMember = {
+        id: crypto.randomUUID(),
+        roomId: room.id,
+        userId: user.id,
+        role: "member",
+        name: "",
+        avatarUrl: null,
+        isOnline: true,
+        lastSeen: new Date().toISOString(),
+        user: null,
+      };
+      await ctx.pubsub.publish(`room.${room.id}.presence`, { roomPresenceStream: presenceMember });
+      return mapRoom(updatedRoom ?? room, user.id);
     },
     leaveRoom: async (_: unknown, args: { roomId: string }, ctx: GraphQLContext) => {
       const user = requireUser(ctx);
       const { error } = await ctx.supabase!.from("study_room_members").delete().eq("room_id", args.roomId).eq("user_id", user.id);
       if (error) throw new GraphQLError(error.message);
-      await ctx.supabase!.rpc("decrement_room_member_count", { p_room_id: args.roomId });
+      const leaveEvent = {
+        id: crypto.randomUUID(),
+        roomId: args.roomId,
+        userId: user.id,
+        role: "",
+        name: "",
+        avatarUrl: null,
+        isOnline: false,
+        lastSeen: new Date().toISOString(),
+        user: null,
+      };
+      await ctx.pubsub.publish(`room.${args.roomId}.presence`, { roomPresenceStream: leaveEvent }).catch(() => {});
       return { success: true };
     },
     updateRoomTimer: async (
@@ -186,7 +236,7 @@ export const roomResolvers = {
         .single();
       if (error) throw new GraphQLError(error.message);
       const room = mapRoom(data, user.id);
-      await ctx.pubsub.publish(`room.${args.roomId}.timer`, { roomTimerUpdated: room });
+      await ctx.pubsub.publish(`room.${args.roomId}.timer`, { roomTimerStream: room });
       return room;
     },
     shareDocumentToRoom: async (_: unknown, args: { roomId: string; documentId: string; subjectId: string }, ctx: GraphQLContext) => {
@@ -201,20 +251,13 @@ export const roomResolvers = {
       if (docError || !doc) throw new GraphQLError("Document not found");
       const now = new Date().toISOString();
       const { data, error } = await ctx.supabase!
-        .from("room_shared_documents")
+        .from("study_room_shared_documents")
         .insert({
           id: crypto.randomUUID(),
           room_id: args.roomId,
           document_id: args.documentId,
-          subject_id: args.subjectId,
-          title: doc.title,
-          role: doc.role ?? "notes",
-          icon: doc.icon,
-          cover: doc.cover,
           shared_by: user.id,
           shared_at: now,
-          owner_user_id: user.id,
-          updated_at: now,
         })
         .select()
         .single();
@@ -223,15 +266,15 @@ export const roomResolvers = {
         id: data.id,
         roomId: data.room_id,
         documentId: data.document_id,
-        subjectId: data.subject_id,
-        title: data.title,
-        role: data.role,
-        icon: data.icon,
-        cover: data.cover,
+        subjectId: args.subjectId,
+        title: doc.title ?? "Untitled",
+        role: doc.role ?? "notes",
+        icon: doc.icon,
+        cover: doc.cover,
         sharedBy: data.shared_by,
         sharedAt: data.shared_at,
-        ownerUserId: data.owner_user_id,
-        updatedAt: data.updated_at,
+        ownerUserId: user.id,
+        updatedAt: now,
       };
     },
     sendRoomMessage: async (_: unknown, args: { roomId: string; content: string; messageType?: string }, ctx: GraphQLContext) => {
@@ -251,17 +294,21 @@ export const roomResolvers = {
         .select()
         .single();
       if (error) throw new GraphQLError(error.message);
+      const { data: profile } = await ctx.serviceClient.from("profiles").select("id, name, avatar_url").eq("id", user.id).maybeSingle();
       const msg = {
         id: data.id,
         roomId: data.room_id,
         userId: data.user_id,
         messageType: data.message_type,
         content: data.content,
-        name: "",
-        avatarUrl: null,
+        name: profile?.name ?? "",
+        avatarUrl: profile?.avatar_url ?? null,
         createdAt: data.created_at,
+        user: profile
+          ? { id: profile.id, name: profile.name, avatarUrl: profile.avatar_url }
+          : { id: user.id, name: null, avatarUrl: null },
       };
-      await ctx.pubsub.publish(`room.${args.roomId}.messages`, { roomMessageSent: msg });
+      await ctx.pubsub.publish(`room.${args.roomId}.messages`, { roomMessagesStream: msg });
       return msg;
     },
     updateRoomMemberRole: async (_: unknown, args: { roomId: string; userId: string; role: string }, ctx: GraphQLContext) => {
@@ -285,7 +332,7 @@ export const roomResolvers = {
         .select()
         .single();
       if (error) throw new GraphQLError(error.message);
-      return {
+      const member = {
         id: data.id,
         roomId: data.room_id,
         userId: data.user_id,
@@ -295,6 +342,32 @@ export const roomResolvers = {
         isOnline: data.is_online ?? false,
         lastSeen: data.last_seen,
         user: null,
+      };
+      await ctx.pubsub.publish(`room.${args.roomId}.presence`, { roomPresenceStream: member });
+      return member;
+    },
+
+    updateRoomCanvas: async (_: unknown, args: { roomId: string; input: Record<string, unknown> }, ctx: GraphQLContext) => {
+      const user = requireUser(ctx);
+      await requireRoomMember(ctx, args.roomId, user.id);
+      const updates: Record<string, unknown> = { updated_at: new Date().toISOString(), last_edited_by: user.id };
+      if (typeof args.input.title === "string") updates.title = args.input.title;
+      if (typeof args.input.content === "string") updates.content = args.input.content;
+      if (typeof args.input.contentJson === "string") updates.content_json = args.input.contentJson;
+      const { data, error } = await ctx.supabase!
+        .from("study_room_canvas")
+        .update(updates)
+        .eq("room_id", args.roomId)
+        .select()
+        .single();
+      if (error) throw new GraphQLError(error.message);
+      return {
+        roomId: data.room_id,
+        title: data.title,
+        content: data.content,
+        contentJson: data.content_json,
+        updatedAt: data.updated_at,
+        lastEditedBy: data.last_edited_by,
       };
     },
   },
@@ -319,78 +392,94 @@ export const roomResolvers = {
     members: async (parent: { id: string }, _: unknown, ctx: GraphQLContext) => {
       const { data, error } = await ctx.supabase!.from("study_room_members").select("*").eq("room_id", parent.id);
       if (error) throw new GraphQLError(error.message);
-      return (data ?? []).map((m) => ({
-        id: m.id,
-        roomId: m.room_id,
-        userId: m.user_id,
-        role: m.role,
-        name: "",
-        avatarUrl: null,
-        isOnline: Boolean(m.is_online),
-        lastSeen: m.last_seen,
-        _userId: m.user_id,
-      }));
+      const userIds = [...new Set((data ?? []).map((m: any) => m.user_id).filter(Boolean))];
+      const { data: profiles } = userIds.length
+        ? await ctx.serviceClient.from("profiles").select("id, name, avatar_url").in("id", userIds)
+        : { data: [] };
+      const profileMap = new Map((profiles ?? []).map((p: any) => [p.id, p]));
+      return (data ?? []).map((m: any) => {
+        const profile = profileMap.get(m.user_id);
+        return {
+          id: m.id,
+          roomId: m.room_id,
+          userId: m.user_id,
+          role: m.role,
+          name: profile?.name ?? "",
+          avatarUrl: profile?.avatar_url ?? null,
+          isOnline: Boolean(m.is_online),
+          lastSeen: m.last_seen,
+          user: profile
+            ? { id: profile.id, name: profile.name, avatarUrl: profile.avatar_url }
+            : { id: m.user_id, name: null, avatarUrl: null },
+        };
+      });
     },
-    messages: async (parent: { id: string }, _: unknown, ctx: GraphQLContext) => {
+    messages: async (parent: { id: string }, args: { limit?: number }, ctx: GraphQLContext) => {
+      const limit = Math.min(args.limit ?? 50, 200);
       const { data, error } = await ctx.supabase!
         .from("study_room_messages")
         .select("*")
         .eq("room_id", parent.id)
         .order("created_at", { ascending: true })
-        .limit(100);
+        .limit(limit);
       if (error) throw new GraphQLError(error.message);
-      return (data ?? []).map((m) => ({
-        id: m.id,
-        roomId: m.room_id,
-        userId: m.user_id,
-        messageType: m.message_type,
-        content: m.content,
-        name: "",
-        avatarUrl: null,
-        createdAt: m.created_at,
-        text: m.content,
-        _userId: m.user_id,
-      }));
+      const userIds = [...new Set((data ?? []).map((m: any) => m.user_id).filter(Boolean))];
+      const { data: profiles } = userIds.length
+        ? await ctx.serviceClient.from("profiles").select("id, name, avatar_url").in("id", userIds)
+        : { data: [] };
+      const profileMap = new Map((profiles ?? []).map((p: any) => [p.id, p]));
+      return (data ?? []).map((m: any) => {
+        const profile = profileMap.get(m.user_id);
+        return {
+          id: m.id,
+          roomId: m.room_id,
+          userId: m.user_id,
+          messageType: m.message_type,
+          content: m.content,
+          name: profile?.name ?? "",
+          avatarUrl: profile?.avatar_url ?? null,
+          createdAt: m.created_at,
+          text: m.content,
+          user: profile
+            ? { id: profile.id, name: profile.name, avatarUrl: profile.avatar_url }
+            : m.user_id ? { id: m.user_id, name: null, avatarUrl: null } : null,
+        };
+      });
     },
     documents: async (parent: { id: string }, _: unknown, ctx: GraphQLContext) => {
-      const { data, error } = await ctx.supabase!.from("room_shared_documents").select("*").eq("room_id", parent.id);
+      const { data: shareRows, error } = await ctx.supabase!.from("study_room_shared_documents").select("*").eq("room_id", parent.id);
       if (error) throw new GraphQLError(error.message);
-      return (data ?? []).map((d) => ({
-        id: d.id,
-        roomId: d.room_id,
-        documentId: d.document_id,
-        subjectId: d.subject_id,
-        title: d.title,
-        role: d.role,
-        icon: d.icon,
-        cover: d.cover,
-        sharedBy: d.shared_by,
-        sharedAt: d.shared_at,
-        ownerUserId: d.owner_user_id,
-        updatedAt: d.updated_at,
-      }));
+      const documentIds = [...new Set((shareRows ?? []).map((d: any) => String(d.document_id)))];
+      const { data: documents } = documentIds.length === 0
+        ? { data: [] }
+        : await ctx.supabase!.from("documents").select("*").in("id", documentIds);
+      const documentMap = new Map((documents ?? []).map((d: any) => [String(d.id), d]));
+      return (shareRows ?? []).map((d: any) => {
+        const doc = documentMap.get(String(d.document_id));
+        return {
+          id: String(d.id),
+          roomId: String(d.room_id),
+          documentId: String(d.document_id),
+          subjectId: String(doc?.subject_id ?? ""),
+          title: String(doc?.title ?? "Untitled"),
+          role: doc?.role === "study-guide" ? "study-guide" : "notes",
+          icon: typeof doc?.icon === "string" ? doc.icon : null,
+          cover: typeof doc?.cover === "string" ? doc.cover : null,
+          sharedBy: String(d.shared_by),
+          sharedAt: String(d.shared_at),
+          ownerUserId: String(doc?.owner_user_id ?? ""),
+          updatedAt: String(doc?.updated_at ?? new Date().toISOString()),
+        };
+      });
     },
   },
 
   StudyRoomMember: {
-    user: async (parent: { _userId?: string; userId: string }, _: unknown, ctx: GraphQLContext) => {
-      const userId = parent._userId ?? parent.userId;
-      const { data } = await ctx.supabase!.from("profiles").select("id, name, avatar_url").eq("id", userId).maybeSingle();
-      return data
-        ? { id: data.id, name: data.name, avatarUrl: data.avatar_url }
-        : { id: userId, name: null, avatarUrl: null };
-    },
+    user: (parent: { user?: { id: string; name: string | null; avatarUrl: string | null } | null }) => parent.user ?? null,
   },
 
   StudyRoomMessage: {
-    user: async (parent: { _userId?: string; userId: string | null }, _: unknown, ctx: GraphQLContext) => {
-      const userId = parent._userId ?? parent.userId;
-      if (!userId) return null;
-      const { data } = await ctx.supabase!.from("profiles").select("id, name, avatar_url").eq("id", userId).maybeSingle();
-      return data
-        ? { id: data.id, name: data.name, avatarUrl: data.avatar_url }
-        : { id: userId, name: null, avatarUrl: null };
-    },
+    user: (parent: { user?: { id: string; name: string | null; avatarUrl: string | null } | null }) => parent.user ?? null,
   },
 };
 

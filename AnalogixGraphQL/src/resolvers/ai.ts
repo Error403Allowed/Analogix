@@ -14,6 +14,33 @@ import {
   SpeakInput,
 } from "@analogix/shared/schemas";
 
+const safeMath: Record<string, (...args: number[]) => number> = {
+  sin: Math.sin, cos: Math.cos, tan: Math.tan,
+  asin: Math.asin, acos: Math.acos, atan: Math.atan,
+  sqrt: Math.sqrt, log: Math.log, log10: Math.log10,
+  exp: Math.exp, abs: Math.abs, floor: Math.floor,
+  ceil: Math.ceil, round: Math.round, pow: Math.pow,
+};
+
+function createSafeContext() {
+  const ctx: Record<string, unknown> = { ...safeMath };
+  ctx.linspace = (start: number, end: number, num = 50) => {
+    const step = num > 1 ? (end - start) / (num - 1) : 0;
+    return Array.from({ length: num }, (_, i) => start + i * step);
+  };
+  ctx.arange = (start: number, end: number, step = 1) => {
+    const result: number[] = [];
+    for (let i = start; i < end; i += step) result.push(i);
+    return result;
+  };
+  ctx.sum = (arr: number[]) => arr.reduce((a, b) => a + b, 0);
+  ctx.mean = (arr: number[]) => arr.reduce((a, b) => a + b, 0) / arr.length;
+  ctx.min = (arr: number[]) => Math.min(...arr);
+  ctx.max = (arr: number[]) => Math.max(...arr);
+  ctx.len = (arr: unknown[]) => arr.length;
+  return ctx;
+}
+
 export const aiResolvers = {
   Mutation: {
     generateStudySchedule: async (_: unknown, args: { input: Record<string, unknown> }, ctx: GraphQLContext) => {
@@ -86,10 +113,12 @@ export const aiResolvers = {
         mimeType: parsed.mimeType,
         fileName: parsed.fileName,
       });
+      const mimeType = parsed.mimeType ?? "text/plain";
       return {
         text,
         fileName: parsed.fileName ?? null,
-        mimeType: parsed.mimeType,
+        mimeType,
+        format: mimeType,
       };
     },
 
@@ -128,12 +157,123 @@ export const aiResolvers = {
     speak: async (_: unknown, args: { input: Record<string, unknown> }, ctx: GraphQLContext) => {
       requireUser(ctx);
       const parsed = SpeakInput.parse(args.input);
-      // The mobile app uses expo-speech directly for TTS. The BFF exposes
-      // this mutation for parity with the web app's /api/tts/speak.
-      // For v1 we delegate to a simple TTS service (or return a data: URL
-      // if no service is configured). Implementation TBD per requirements.
       logger.warn("[tts] speak mutation called — TTS service not yet wired");
       return { audioUrl: "", duration: 0 };
+    },
+
+    executePython: async (_: unknown, args: { input: Record<string, unknown> }, ctx: GraphQLContext) => {
+      requireUser(ctx);
+      const code = String(args.input?.code ?? "");
+      if (!code) throw new GraphQLError("No code provided");
+      const dangerousPatterns = [
+        /\bimport\b/, /\b__\w+__\b/, /\beval\s*\(/, /\bexec\s*\(/, /\bopen\s*\(/,
+        /\bfile\s*\(/, /\bcompile\s*\(/, /\bgetattr\s*\(/, /\bsetattr\s*\(/,
+        /\bdelattr\s*\(/, /\bos\./, /\bsys\./, /\bsubprocess\./,
+      ];
+      for (const pattern of dangerousPatterns) {
+        if (pattern.test(code)) {
+          return { stdout: "", stderr: "", error: "Code contains unsafe operations", durationMs: 0 };
+        }
+      }
+      const start = Date.now();
+      try {
+        const ctx = createSafeContext();
+        const wrappedCode = `
+          "use strict";
+          const __result = (function(sin, cos, tan, asin, acos, atan, sqrt, log, log10, exp, abs, floor, ceil, round, pow, array, linspace, arange, sum, mean, min, max, len) {
+            ${code}
+          })(ctx.sin, ctx.cos, ctx.tan, ctx.asin, ctx.acos, ctx.atan, ctx.sqrt, ctx.log, ctx.log10, ctx.exp, ctx.abs, ctx.floor, ctx.ceil, ctx.round, ctx.pow, ctx.array, ctx.linspace, ctx.arange, ctx.sum, ctx.mean, ctx.min, ctx.max, ctx.len);
+          return __result;
+        `;
+        const executeCode = new Function("ctx", wrappedCode);
+        const result = executeCode(ctx);
+        const durationMs = Date.now() - start;
+        let stdout: string;
+        if (typeof result === "number") {
+          stdout = String(Math.round(result * 1e10) / 1e10);
+        } else if (Array.isArray(result)) {
+          stdout = `[${result.join(", ")}]`;
+        } else if (typeof result === "object" && result !== null) {
+          stdout = JSON.stringify(result);
+        } else {
+          stdout = String(result);
+        }
+        return { stdout, stderr: "", error: null, durationMs };
+      } catch (err) {
+        const durationMs = Date.now() - start;
+        return { stdout: "", stderr: "", error: `Execution failed: ${err instanceof Error ? err.message : "Unknown error"}`, durationMs };
+      }
+    },
+
+    generateBanner: async (_: unknown, args: { input: Record<string, unknown> }, ctx: GraphQLContext) => {
+      requireUser(ctx);
+      const userName = String(args.input?.userName ?? args.input?.name ?? "Student");
+      const subjects = Array.isArray(args.input?.subjects) ? args.input.subjects : [];
+      const response = await callGroqChat({
+        messages: [
+          {
+            role: "system",
+            content: "You generate EXACTLY 3 lines for a banner. CRITICAL: Output must be exactly 3 lines, no more, no less. Each line 4-7 words, each ending with a period. No extra text, labels, quotes, or preface. Output ONLY the 3 lines separated by newlines. Be motivating and concise.",
+          },
+          {
+            role: "user",
+            content: `Student: ${userName}, Studying: ${subjects.join(", ")}.`,
+          },
+        ],
+        maxTokens: 50,
+        temperature: 1.0,
+      });
+      return { text: response || "" };
+    },
+
+    generateGreeting: async (_: unknown, args: { input: Record<string, unknown> }, ctx: GraphQLContext) => {
+      requireUser(ctx);
+      const userName = String(args.input?.userName ?? args.input?.name ?? "Student");
+      const streak = Number(args.input?.streak ?? 0);
+      const hour = new Date().getHours();
+      const timeOfDay = hour < 12 ? "morning" : hour < 18 ? "afternoon" : "evening";
+      const styles = ["friendly and energetic", "casual and relaxed", "warm and encouraging", "cheerful and upbeat"];
+      const style = styles[Math.floor(Math.random() * styles.length)];
+      const response = await callGroqChat({
+        messages: [
+          {
+            role: "system",
+            content: `You are Analogix AI, a concise tutor. Generate a short, one-sentence greeting for a student. Keep it under 8 words. Do not use emojis. Be ${style}. Reference the time of day if appropriate.`,
+          },
+          {
+            role: "user",
+            content: `Student name: ${userName}, Streak: ${streak} days, Time: ${timeOfDay}. Give a varied greeting different from your last one.`,
+          },
+        ],
+        maxTokens: 30,
+        temperature: 0.7,
+      });
+      return { text: response || `Welcome back, ${userName}.` };
+    },
+
+    generateTitle: async (_: unknown, args: { input: Record<string, unknown> }, ctx: GraphQLContext) => {
+      requireUser(ctx);
+      const conversation = String(args.input?.conversation ?? "");
+      const latestMessage = String(args.input?.latestMessage ?? "");
+      const systemPrompt = "You are naming a study chat session. Write a short 3-6 word title capturing the SPECIFIC topic being studied. Be concrete — not \"Math Help\" but \"Quadratic Formula Confusion\", \"WW2 Causes Breakdown\", \"Python List Indexing\". No quotes, no punctuation, just the title.";
+      let response = await callGroqChat({
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: `Conversation:\n${conversation}\n\nLatest: ${latestMessage}\n\nTitle:` },
+        ],
+        maxTokens: 30,
+        temperature: 0.5,
+      });
+      let title = response.trim();
+      title = title.replace(/^["'`]|["'`]$/g, "").trim();
+      title = title.replace(/^(Title:|Here'?s?( a title)?:|The title is:?)/i, "").trim();
+      title = title.replace(/[.!?]$/, "").trim();
+      title = title.slice(0, 50);
+      if (!title || title.length < 2) {
+        const words = latestMessage.trim().split(/\s+/).slice(0, 4).join(" ");
+        title = words || "New chat";
+      }
+      return { title };
     },
   },
 };

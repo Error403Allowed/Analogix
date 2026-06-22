@@ -25,6 +25,26 @@ export const aiTypeDefs = /* GraphQL */ `
     text: String!
     fileName: String
     mimeType: String!
+    format: String!
+  }
+
+  type ExecutePythonResult {
+    stdout: String!
+    stderr: String!
+    error: String
+    durationMs: Float!
+  }
+
+  type BannerResult {
+    text: String!
+  }
+
+  type GreetingResult {
+    text: String!
+  }
+
+  type TitleResult {
+    title: String!
   }
 
   type TutorResponse {
@@ -65,5 +85,9 @@ export const aiTypeDefs = /* GraphQL */ `
     tutor(input: JSON!): TutorResponse!
     searchResearch(input: JSON!): ResearchSearchResult!
     speak(input: JSON!): TtsResult!
+    executePython(input: JSON!): ExecutePythonResult!
+    generateBanner(input: JSON!): BannerResult!
+    generateGreeting(input: JSON!): GreetingResult!
+    generateTitle(input: JSON!): TitleResult!
   }
 `;

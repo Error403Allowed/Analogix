@@ -25,6 +25,7 @@ export const FLASHCARDS_DUE = gql`
       front
       back
       nextReview
+      setId
     }
   }
 `;

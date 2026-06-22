@@ -28,8 +28,8 @@ export type StudyStackParamList = {
   FlashcardSet: { setId: string; name?: string; subjectId?: string };
   FlashcardReview: { setId: string };
   Quiz: { subjectId?: string } | undefined;
-  QuizSession: { quizId: string; title: string };
-  QuizResults: { quizId: string };
+  QuizSession: { quizId: string; quizTitle?: string; questions?: any[]; subjectId?: string; timedDuration?: number };
+  QuizResults: { quizId: string; answersSummary?: any[]; questions?: any[]; subjectId?: string };
   Calendar: undefined;
   EventDetail: { eventId: string };
   Formulas: undefined;

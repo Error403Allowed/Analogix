@@ -34,7 +34,6 @@ export default function TimerPage() {
   const settingsRef = useRef(settings);
   const sessionsTargetRef = useRef(sessionsTarget);
   const hasRecordedActivityRef = useRef(false);
-  const timerStartedRef = useRef(false);
   phaseRef.current = phase;
   settingsRef.current = settings;
   sessionsTargetRef.current = sessionsTarget;
@@ -87,7 +86,6 @@ export default function TimerPage() {
   }, []);
 
   useEffect(() => {
-    if (isActive) timerStartedRef.current = true;
     if (isActive && timeLeft > 0) {
       timerRef.current = setInterval(() => setTimeLeft(t => t - 1), 1000);
     } else if (isActive && timeLeft === 0) {
@@ -144,8 +142,7 @@ export default function TimerPage() {
   const color = phase === "study" ? "hsl(var(--primary))" : "#22c55e";
   const label = phase === "study" ? "Focus" : "Break";
   const cycleCount = sessionsTarget > 0 ? sessionsCompleted % sessionsTarget : 0;
-  const effectiveCompleted = timerStartedRef.current ? sessionsCompleted : 0;
-  const filledDots = cycleCount === 0 && effectiveCompleted > 0 ? sessionsTarget : cycleCount;
+  const filledDots = cycleCount === 0 && sessionsCompleted > 0 ? sessionsTarget : cycleCount;
 
   return (
     <div className={cn(

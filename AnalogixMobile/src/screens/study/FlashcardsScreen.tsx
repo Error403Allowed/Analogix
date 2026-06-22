@@ -1,7 +1,6 @@
 import React, { useState } from "react";
-import { View, StyleSheet, ScrollView, Pressable } from "react-native";
-import { Text, useTheme, FAB, Portal, Modal, TextInput, Button } from "react-native-paper";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { View, StyleSheet } from "react-native";
+import { Text, useTheme, FAB, Portal, Modal, TextInput, Button, ActivityIndicator } from "react-native-paper";
 import { useQuery, useMutation } from "@apollo/client";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { FLASHCARD_SETS, FLASHCARDS_DUE, CREATE_FLASHCARD_SET } from "../../graphql/queries/flashcard";
@@ -23,13 +22,14 @@ export default function FlashcardsScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const subjectId = route.params?.subjectId as string | undefined;
-  const { data: setsData, refetch } = useQuery(FLASHCARD_SETS, { variables: { subjectId } });
+  const { data: setsData, loading: setsLoading, error: setsError, refetch } = useQuery(FLASHCARD_SETS, { variables: { subjectId } });
   const { data: dueData } = useQuery(FLASHCARDS_DUE, { variables: { limit: 100, subjectId } });
   const [createSet, { loading: creating }] = useMutation(CREATE_FLASHCARD_SET);
   const [showCreate, setShowCreate] = useState(false);
   const [setName, setSetName] = useState("");
   const sets = setsData?.flashcardSets ?? [];
-  const dueCount = dueData?.flashcardsDue?.length ?? 0;
+  const dueCards = dueData?.flashcardsDue ?? [];
+  const dueCount = dueCards.length;
 
   const handleCreateSet = async () => {
     if (!setName.trim()) return;
@@ -72,8 +72,9 @@ export default function FlashcardsScreen() {
 
       {dueCount > 0 && (
         <PressableScale onPress={() => {
-          const firstSet = sets[0];
-          if (firstSet) navigation.navigate("FlashcardReview", { setId: firstSet.id });
+          const dueSetId = dueCards.find((card: any) => card.setId)?.setId;
+          const fallbackSet = sets[0];
+          if (dueSetId || fallbackSet?.id) navigation.navigate("FlashcardReview", { setId: dueSetId ?? fallbackSet.id });
         }}>
           <View style={[styles.reviewBanner, { backgroundColor: brand.primary }]}>
             <Icon name="cards" size={20} color="#fff" />
@@ -85,7 +86,19 @@ export default function FlashcardsScreen() {
       )}
 
       <ExpressiveSection title="Your sets">
-        {sets.length === 0 ? (
+        {setsLoading ? (
+          <View style={styles.centerState}>
+            <ActivityIndicator color={brand.primary} />
+            <Text style={{ color: paperTheme.colors.onSurfaceVariant }}>Loading flashcard sets...</Text>
+          </View>
+        ) : setsError ? (
+          <View style={styles.centerState}>
+            <ExpressiveEmptyState icon="alert-circle" title="Could not load sets" subtitle="Check your connection and try again." />
+            <Button mode="contained" buttonColor={brand.primary} onPress={() => refetch()} style={{ borderRadius: SHAPE.lg }}>
+              Retry
+            </Button>
+          </View>
+        ) : sets.length === 0 ? (
           <ExpressiveEmptyState icon="cards-outline" title="No flashcard sets" subtitle='Tap + to create your first set.' />
         ) : (
           <View style={{ gap: 8 }}>
@@ -144,6 +157,7 @@ const styles = StyleSheet.create({
   },
   setRow: { flexDirection: "row", alignItems: "center", gap: 12 },
   setIcon: { width: 44, height: 44, borderRadius: SHAPE.md, alignItems: "center", justifyContent: "center" },
+  centerState: { minHeight: 220, alignItems: "center", justifyContent: "center", gap: 12 },
   fab: { position: "absolute", right: 16, bottom: 16, borderRadius: SHAPE.lg },
   modal: { margin: 20, padding: 24, borderRadius: SHAPE.xl },
 });

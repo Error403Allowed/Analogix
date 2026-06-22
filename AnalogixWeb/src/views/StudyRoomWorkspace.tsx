@@ -14,6 +14,7 @@ import {
   Loader2,
   Pause,
   Play,
+  Plus,
   RefreshCw,
   RotateCcw,
   Send,
@@ -32,6 +33,13 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { useTabs } from "@/context/TabsContext";
 import { useRoomCollaboration } from "@/hooks/useRoomCollaboration";
 import { subjectStore } from "@/utils/subjectStore";
@@ -51,10 +59,17 @@ const BlockNoteEditor = dynamic<BlockNoteEditorProps>(
   { ssr: false },
 ) as BlockNoteEditorComponent;
 
+interface RoomCanvasData {
+  title: string;
+  content: string;
+  contentJson: string | null;
+}
+
 interface RoomStateResponse {
   room: StudyRoom;
   members: StudyRoomMember[];
   messages: StudyRoomMessage[];
+  canvas: RoomCanvasData | null;
   sharedDocuments: RoomSharedDocument[];
 }
 
@@ -168,17 +183,34 @@ export default function StudyRoomWorkspace() {
   const [timerMinutes, setTimerMinutes] = useState("25");
   const [tick, setTick] = useState(Date.now());
   const [showTimerControls, setShowTimerControls] = useState(false);
+  const [canvasContent, setCanvasContent] = useState("<p></p>");
+  const [showNewDoc, setShowNewDoc] = useState(false);
+  const [newDocTitle, setNewDocTitle] = useState("");
+  const [newDocContent, setNewDocContent] = useState("");
   const [inRoom, setInRoom] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const loadedDocumentIdRef = useRef<string | null>(null);
   const documentSaveTimerRef = useRef<number | null>(null);
   const flushDocumentRef = useRef<() => Promise<void>>(async () => {});
 
+  const canvasInitialContent = useMemo(
+    () => state?.canvas?.contentJson || state?.canvas?.content || "<p></p>",
+    [state?.canvas?.contentJson, state?.canvas?.content],
+  );
+
   const documentCollab = useRoomCollaboration({
     roomId,
     surfaceType: "document",
-    surfaceId: activeDocumentId || "room-doc-placeholder",
-  } as any);
+    surfaceId: activeDocumentId || null,
+    displayName: undefined,
+  });
+
+  const canvasCollab = useRoomCollaboration({
+    roomId,
+    surfaceType: "canvas",
+    surfaceId: "room-canvas",
+    displayName: documentCollab.user.name,
+  });
 
   useEffect(() => {
     flushDocumentRef.current = documentCollab.flush;
@@ -535,6 +567,45 @@ export default function StudyRoomWorkspace() {
     } catch (error) {
       console.error("[StudyRoomWorkspace] copyCurrentDocument failed:", error);
       toast.error(error instanceof Error ? error.message : "Failed to copy document");
+    }
+  };
+
+  const handleSaveCanvas = async () => {
+    try {
+      const subject = state?.room?.topic || "general";
+      const title = `${state?.room?.title || "Room"} canvas notes`;
+      const created = await subjectStore.createDocument(subject, title);
+      await subjectStore.updateDocument(subject, created.id, {
+        title,
+        content: canvasContent,
+      });
+      toast.success("Canvas saved to your documents.");
+    } catch (error) {
+      console.error("[StudyRoomWorkspace] handleSaveCanvas failed:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to save canvas");
+    }
+  };
+
+  const handleCreateDocument = async () => {
+    const title = newDocTitle.trim() || "Untitled";
+    const content = newDocContent.trim() || "";
+    try {
+      const subject = state?.room?.topic || "general";
+      const created = await subjectStore.createDocument(subject, title);
+      if (content) {
+        await subjectStore.updateDocument(subject, created.id, {
+          title,
+          content: `<p>${content.replace(/\n/g, "<br/>")}</p>`,
+        });
+      }
+      setShowNewDoc(false);
+      setNewDocTitle("");
+      setNewDocContent("");
+      router.push(`/documents/${subject}/${created.id}`);
+      toast.success("Document created.");
+    } catch (error) {
+      console.error("[StudyRoomWorkspace] handleCreateDocument failed:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to create document");
     }
   };
 
@@ -999,14 +1070,19 @@ export default function StudyRoomWorkspace() {
                       className="text-sm font-semibold h-7 bg-transparent border-0 focus-visible:ring-0 px-0"
                     />
                   ) : (
-                    <span className="text-sm font-semibold text-muted-foreground">Select a document</span>
+                    <span className="text-sm font-semibold">Room Canvas</span>
                   )}
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  {activeDocumentId && (
+                  {activeDocumentId ? (
                     <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => void copyCurrentDocument()}>
                       <Copy className="mr-1 h-3 w-3" />
                       Copy
+                    </Button>
+                  ) : (
+                    <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => void handleSaveCanvas()}>
+                      <Copy className="mr-1 h-3 w-3" />
+                      Save as my doc
                     </Button>
                   )}
                 </div>
@@ -1032,14 +1108,22 @@ export default function StudyRoomWorkspace() {
                   <div className="flex h-full items-center justify-center rounded-xl border border-border/30">
                     <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                   </div>
+                ) : canvasCollab.ready ? (
+                  <div className="h-full rounded-xl border border-border/30 bg-background dark:border-border/60 overflow-hidden">
+                    <BlockNoteEditor
+                      key={`canvas-${roomId}-${canvasCollab.ready}`}
+                      initialContent={canvasInitialContent}
+                      onChange={(raw) => {
+                        setCanvasContent(raw);
+                      }}
+                      collaboration={canvasCollab}
+                      documentTitle="Room canvas"
+                      subjectLabel={state.room.title}
+                    />
+                  </div>
                 ) : (
-                  <div className="flex h-full flex-col items-center justify-center gap-3 text-muted-foreground">
-                    <FileText className="h-8 w-8" />
-                    <p className="text-sm">Select a document from the sidebar to start editing</p>
-                    <Button size="sm" variant="outline" onClick={() => setSidebarOpen(true)}>
-                      <ChevronRight className="mr-1 h-3.5 w-3.5" />
-                      Open sidebar
-                    </Button>
+                  <div className="flex h-full items-center justify-center rounded-xl border border-border/30">
+                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                   </div>
                 )}
               </div>
@@ -1058,8 +1142,12 @@ export default function StudyRoomWorkspace() {
                 {/* Document list */}
                 <div className="w-64 shrink-0 border-r border-border/30 overflow-y-auto dark:border-border/60">
                   {state.sharedDocuments.length === 0 ? (
-                    <div className="flex h-full items-center justify-center p-4 text-center">
+                    <div className="flex h-full items-center justify-center p-4 text-center flex-col gap-3">
                       <p className="text-xs text-muted-foreground">No documents shared yet</p>
+                      <Button size="sm" variant="outline" onClick={() => setShowNewDoc(true)}>
+                        <Plus className="mr-1 h-3 w-3" />
+                        New document
+                      </Button>
                     </div>
                   ) : (
                     <div className="p-2 space-y-1">
@@ -1077,6 +1165,12 @@ export default function StudyRoomWorkspace() {
                           <p className="text-xs text-muted-foreground mt-0.5">{doc.role === "study-guide" ? "Study guide" : "Notes"}</p>
                         </button>
                       ))}
+                      <div className="pt-2">
+                        <Button size="sm" variant="outline" className="w-full" onClick={() => setShowNewDoc(true)}>
+                          <Plus className="mr-1 h-3 w-3" />
+                          New
+                        </Button>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -1131,6 +1225,39 @@ export default function StudyRoomWorkspace() {
           )}
         </div>
       </div>
+
+      <Dialog open={showNewDoc} onOpenChange={setShowNewDoc}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>New document</DialogTitle>
+            <DialogDescription>
+              Create a personal document. It will be saved to your subject documents.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <Input
+              placeholder="Document title"
+              value={newDocTitle}
+              onChange={(e) => setNewDocTitle(e.target.value)}
+            />
+            <Textarea
+              placeholder="Start writing..."
+              value={newDocContent}
+              onChange={(e) => setNewDocContent(e.target.value)}
+              rows={6}
+              className="resize-none"
+            />
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowNewDoc(false)}>
+                Cancel
+              </Button>
+              <Button onClick={() => void handleCreateDocument()}>
+                Create
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

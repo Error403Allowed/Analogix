@@ -10,8 +10,8 @@ import { createClient } from "@/lib/supabase/client";
 type CalendarEvent = {
   id: string;
   title: string;
-  start_at: string;
-  end_at: string;
+  date: string;
+  end_date: string | null;
 };
 
 const label = (date: Date) => {
@@ -35,10 +35,10 @@ export default function UpcomingEvents() {
       const limit = addDays(new Date(), 30).toISOString();
       const { data } = await supabase
         .from("events")
-        .select("id, title, start_at, end_at")
-        .gte("start_at", now)
-        .lte("start_at", limit)
-        .order("start_at", { ascending: true })
+        .select("id, title, date, end_date")
+        .gte("date", now)
+        .lte("date", limit)
+        .order("date", { ascending: true })
         .limit(6);
       setEvents(data || []);
     };
@@ -84,10 +84,10 @@ export default function UpcomingEvents() {
               {/* Date badge */}
               <div className="shrink-0 text-right w-[3.8rem]">
                 <p className="text-[8px] font-black uppercase text-muted-foreground/50 leading-none tracking-wider">
-                  {label(new Date(e.start_at))}
+                  {label(new Date(e.date))}
                 </p>
                 <p className="text-[9px] font-bold text-muted-foreground/60 tabular-nums leading-tight">
-                  {format(new Date(e.start_at), "h:mma").toLowerCase()}
+                  {format(new Date(e.date), "h:mma").toLowerCase()}
                 </p>
               </div>
 
@@ -97,9 +97,11 @@ export default function UpcomingEvents() {
               {/* Title */}
               <div className="flex-1 min-w-0">
                 <p className="text-[11px] font-bold text-foreground truncate leading-tight">{e.title}</p>
-                <p className="text-[9px] text-muted-foreground/50 truncate">
-                  Ends {format(new Date(e.end_at), "h:mma").toLowerCase()}
-                </p>
+                {e.end_date && (
+                  <p className="text-[9px] text-muted-foreground/50 truncate">
+                    Ends {format(new Date(e.end_date), "h:mma").toLowerCase()}
+                  </p>
+                )}
               </div>
             </div>
           ))

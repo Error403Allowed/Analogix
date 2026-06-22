@@ -48,18 +48,18 @@ export const statsResolvers = {
         p_date: args.date,
       });
       if (error) throw new GraphQLError(error.message);
-      // Recompute streak from activity_log
+      // Recompute streak from activity_log.
+      // Use the client-provided date as "today" so the streak walk matches
+      // the timezone the client stores dates in (local, not UTC).
       const { data: activity } = await ctx.supabase!
         .from("activity_log")
         .select("date, count")
         .eq("user_id", user.id)
         .order("date", { ascending: false })
         .limit(365);
-      const activeDates = new Set((activity ?? []).filter((r: any) => r.count > 0).map((r: any) => r.date));
+      const activeDates = new Set((activity ?? []).filter((r: any) => r.count > 0).map((r: any) => String(r.date).slice(0, 10)));
       let streak = 0;
-      const d = new Date();
-      const localToday = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
-      const cursor = new Date(localToday);
+      const cursor = new Date(args.date + "T12:00:00Z");
       while (true) {
         const iso = cursor.toISOString().slice(0, 10);
         if (activeDates.has(iso)) { streak++; cursor.setDate(cursor.getDate() - 1); }

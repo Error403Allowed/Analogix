@@ -162,9 +162,12 @@ function buildHtml(markdown: string): { html: string; codes: string[] } {
       if (window.renderMathInElement) {
         renderMathInElement(document.body, {
           delimiters: [
-            {left: "\\\\\\\\[", right: "\\\\\\\\]", display: true},
-            {left: "\\\\\\\\( ", right: "\\\\\\\\)", display: false},
-          ]
+            {left: "$$", right: "$$", display: true},
+            {left: "$", right: "$", display: false},
+            {left: "\\\\[", right: "\\\\]", display: true},
+            {left: "\\\\(", right: "\\\\)", display: false},
+          ],
+          throwOnError: false,
         });
       }
     });

@@ -8,7 +8,7 @@ export const calendarResolvers = {
       const user = requireUser(ctx);
       let query = ctx.supabase!.from("events").select("*").eq("user_id", user.id).order("date", { ascending: true });
       if (args.from) query = query.gte("date", args.from);
-      if (args.to) query = query.lte("date", args.to);
+      if (args.to) query = query.lt("date", args.to);
       const { data, error } = await query;
       if (error) throw new GraphQLError(error.message);
       return (data ?? []).map(mapEvent);

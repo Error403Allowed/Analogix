@@ -29,10 +29,14 @@ export const userResolvers = {
   Mutation: {
     updateProfile: async (_: unknown, args: { input: Record<string, unknown> }, ctx: GraphQLContext) => {
       const user = requireUser(ctx);
-      const payload = { ...args.input, updated_at: new Date().toISOString() };
+      const snakePayload: Record<string, unknown> = { updated_at: new Date().toISOString() };
+      for (const [key, val] of Object.entries(args.input)) {
+        const snake = key.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`);
+        snakePayload[snake] = val;
+      }
       const { data, error } = await ctx.supabase!
         .from("profiles")
-        .upsert({ id: user.id, ...payload }, { onConflict: "id" })
+        .upsert({ id: user.id, ...snakePayload }, { onConflict: "id" })
         .select()
         .single();
       if (error) throw new GraphQLError(error.message);

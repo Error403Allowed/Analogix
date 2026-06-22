@@ -46,7 +46,7 @@ export const flashcardResolvers = {
         id: s.id,
         subjectId: s.subject_id,
         name: s.name,
-        cardCount: Array.isArray(s.flashcards) ? s.flashcards.length : 0,
+        cardCount: Array.isArray(s.flashcards) ? (s.flashcards[0]?.count ?? s.flashcards.length) : (s.flashcards?.count ?? 0),
         createdAt: s.created_at,
         updatedAt: s.updated_at,
       }));
@@ -166,7 +166,7 @@ export const flashcardResolvers = {
     },
     generateFlashcards: async (_: unknown, args: { input: Record<string, unknown> }, ctx: GraphQLContext) => {
       const user = requireUser(ctx);
-      const parsed = GenerateFlashcardsInput.parse(args.input);
+      const parsed = GenerateFlashcardsInput.parse(normalizeGenerateFlashcardsInput(args.input));
       const prompt = buildFlashcardPrompt(parsed);
       const response = await callGroqChat({
         messages: [
@@ -190,8 +190,9 @@ export const flashcardResolvers = {
         id: crypto.randomUUID(),
         user_id: user.id,
         subject_id: parsed.subjectId ?? "general",
-        front: c.front,
-        back: c.back,
+        set_id: parsed.setId ?? null,
+        front: c.front.trim(),
+        back: c.back.trim(),
         next_review: now,
         interval_days: 1,
         ease_factor: 2.5,
@@ -266,13 +267,44 @@ function buildFlashcardPrompt(input: z.infer<typeof GenerateFlashcardsInput>): s
     `Return JSON: { cards: [{ front, back }] }`;
 }
 
+function normalizeGenerateFlashcardsInput(input: Record<string, unknown>): Record<string, unknown> {
+  const contextText =
+    typeof input.contextText === "string"
+      ? input.contextText
+      : typeof input.text === "string"
+        ? input.text
+        : undefined;
+  const topic =
+    typeof input.topic === "string" && input.topic.trim()
+      ? input.topic.trim()
+      : contextText
+        ? "the provided material"
+        : "general revision";
+  const count = Number(input.count ?? input.cardCount ?? 8);
+
+  return {
+    ...input,
+    topic,
+    setId: typeof input.setId === "string" && input.setId.trim() ? input.setId.trim() : undefined,
+    count: Number.isFinite(count) ? count : 8,
+    contextText,
+  };
+}
+
 function safeParseCards(raw: string): { cards: Array<{ front: string; back: string }> } | null {
   const match = raw.match(/\{[\s\S]*"cards"[\s\S]*\}/);
   if (!match) return null;
   try {
     const json = JSON.parse(match[0]);
     if (!Array.isArray(json.cards)) return null;
-    return json;
+    return {
+      cards: json.cards
+        .map((card: Record<string, unknown>) => ({
+          front: String(card.front ?? card.term ?? card.question ?? ""),
+          back: String(card.back ?? card.definition ?? card.answer ?? ""),
+        }))
+        .filter((card: { front: string; back: string }) => card.front.trim() && card.back.trim()),
+    };
   } catch {
     return null;
   }

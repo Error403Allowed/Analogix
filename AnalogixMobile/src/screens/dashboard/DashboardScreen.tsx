@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { View, StyleSheet, ScrollView, TextInput as RNTextInput } from "react-native";
 import { Text, useTheme, Portal, Modal, Switch, ActivityIndicator } from "react-native-paper";
-import { useQuery, useMutation } from "@apollo/client";
+import { useQuery, useMutation, useSubscription } from "@apollo/client";
 import { useNavigation } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ME, USER_STATS, ACTIVITY_LOG, INCREMENT_ACTIVITY } from "../../graphql/queries/user";
 import { DOCUMENTS } from "../../graphql/queries/subject";
 import { EVENTS } from "../../graphql/queries/calendar";
 import { FLASHCARD_SETS, FLASHCARDS_DUE } from "../../graphql/queries/flashcard";
-import { CREATE_CHAT_SESSION, STREAM_CHAT_MESSAGE } from "../../graphql/queries/chat";
+import { CREATE_CHAT_SESSION, STREAM_CHAT_MESSAGE, CHAT_STREAM } from "../../graphql/queries/chat";
 import { useThemeContext } from "../../theme/ThemeContext";
 import { SHAPE } from "../../theme/tokens";
 import {
@@ -25,9 +25,9 @@ import { useAchievementChecker } from "../../hooks/useAchievementChecker";
 
 function greeting(name: string): string {
   const h = new Date().getHours();
-  if (h < 12) return `Hey ${name} ✦`;
-  if (h < 17) return `Hey ${name} ✦`;
-  return `Hey ${name} ✦`;
+  if (h < 12) return `Good morning, ${name} ☀`;
+  if (h < 17) return `Good afternoon, ${name} ✦`;
+  return `Good evening, ${name} 🌙`;
 }
 
 function formatDate(): string {
@@ -63,8 +63,10 @@ function useEnabledWidgets() {
   return { enabled, save };
 }
 
-const DAYS_SH = ["S", "M", "T", "W", "T", "F", "S"];
-const dayLabel = (d: string) => { if (!d) return ""; return DAYS_SH[new Date(d).getDay()] ?? ""; };
+const DAYS_SH = ["M", "T", "W", "T", "F", "S", "S"];
+/** Convert JS getDay() (0=Sun) to Mon-based index (0=Mon) */
+const mondayIndex = (jsDay: number) => (jsDay + 6) % 7;
+const dayLabel = (d: string) => { if (!d) return ""; return DAYS_SH[mondayIndex(new Date(d).getDay())] ?? ""; };
 
 /* ── Stats Widget ──────────────────────────────────────── */
 const STREAK_MSGS = ["Start your streak today!", "Nice, keep it going!", "You're on fire!", "Unstoppable!", "Legendary!"];
@@ -77,20 +79,44 @@ function streakMsg(days: number): string {
   return STREAK_MSGS[4];
 }
 
+function getLocalDateStr(date: Date): string {
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+}
+
+/** Build an array of 7 {date, count} objects for the Mon–Sun week containing today. */
+function buildWeek(activityMap: Map<string, number>): { date: string; count: number }[] {
+  const now = new Date();
+  const todayStr = getLocalDateStr(now);
+  const todayDate = new Date(todayStr);
+  const todayDow = todayDate.getDay(); // 0=Sun, 1=Mon, ...
+  const mondayOffset = (todayDow + 6) % 7; // days since Monday
+  const monday = new Date(todayDate);
+  monday.setDate(todayDate.getDate() - mondayOffset);
+
+  const week: { date: string; count: number }[] = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    const dateStr = getLocalDateStr(d);
+    week.push({ date: dateStr, count: activityMap.get(dateStr) ?? 0 });
+  }
+  return week;
+}
+
 function StreakBars({ week, brandPrimary, mutedColor }: { week: { date: string; count: number }[]; brandPrimary: string; mutedColor: string }) {
   const maxC = Math.max(1, ...week.map((d) => d.count));
-  const todayIdx = new Date().getDay();
+  const todayStr = getLocalDateStr(new Date());
   return (
     <View style={{ flexDirection: "row", gap: 4, height: 36, alignItems: "flex-end" }}>
       {Array.from({ length: 7 }, (_, i) => {
         const day = week[i] ?? { date: "", count: 0 };
         const h = day.count > 0 ? Math.max(4, Math.min(32, 4 + (day.count / maxC) * 28)) : 4;
-        const isToday = todayIdx === new Date(day.date).getDay();
+        const isToday = day.date === todayStr;
         return (
           <View key={i} style={{ flex: 1, alignItems: "center", gap: 2 }}>
             <View style={{ width: "80%", height: h, borderRadius: 4, backgroundColor: isToday ? brandPrimary : day.count > 0 ? brandPrimary : brandPrimary + "18" }} />
             <Text style={{ fontSize: 9, fontWeight: "700", color: isToday ? brandPrimary : mutedColor }}>
-              {week[i] ? dayLabel(week[i].date) : DAYS_SH[i]}
+              {DAYS_SH[i]}
             </Text>
             {isToday && <View style={{ width: 3, height: 3, borderRadius: 1.5, backgroundColor: brandPrimary }} />}
           </View>
@@ -100,14 +126,39 @@ function StreakBars({ week, brandPrimary, mutedColor }: { week: { date: string; 
   );
 }
 
+function computeStreak(log: { date: string; count: number }[]): number {
+  const activeDates = new Set(log.filter((r) => r.count > 0).map((r) => r.date));
+  if (activeDates.size === 0) return 0;
+
+  const todayStr = getLocalDateStr(new Date());
+  // Parse "YYYY-MM-DD" without timezone ambiguity
+  const [y, m, d_] = todayStr.split("-").map(Number);
+  const cursor = new Date(y, m - 1, d_); // local midnight
+
+  let streak = 0;
+  while (true) {
+    const dateStr = getLocalDateStr(cursor);
+    if (activeDates.has(dateStr)) {
+      streak++;
+      cursor.setDate(cursor.getDate() - 1);
+    } else {
+      break;
+    }
+  }
+  return streak;
+}
+
 function StatsWidget() {
   const paperTheme = useTheme();
   const { brand } = useThemeContext();
   const { data: statsData } = useQuery(USER_STATS);
-  const { data: activityData } = useQuery(ACTIVITY_LOG, { variables: { days: 7 } });
+  const { data: activityData } = useQuery(ACTIVITY_LOG, { variables: { days: 90 } });
   const s = statsData?.userStats;
-  const week = (activityData?.activityLog ?? []) as { date: string; count: number }[];
-  const streak = s?.currentStreak ?? 0;
+  const allActivity = (activityData?.activityLog ?? []) as { date: string; count: number }[];
+  const streak = computeStreak(allActivity);
+  // Build a Map for O(1) lookups and build the actual Mon–Sun week
+  const activityMap = new Map(allActivity.map((a) => [a.date, a.count]));
+  const week = buildWeek(activityMap);
 
   return (
     <View style={{ gap: 12 }}>
@@ -149,9 +200,28 @@ function ChatWidget() {
   const navigation = useNavigation<any>();
   const [q, setQ] = useState("");
   const [resp, setResp] = useState<string | null>(null);
+  const [streamingText, setStreamingText] = useState("");
   const [loading, setLoading] = useState(false);
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [createSession] = useMutation(CREATE_CHAT_SESSION);
   const [sendMessage] = useMutation(STREAM_CHAT_MESSAGE);
+
+  useSubscription(CHAT_STREAM, {
+    variables: { sessionId: activeSessionId },
+    skip: !activeSessionId,
+    onData: ({ data }) => {
+      const d = data?.data?.chatStream;
+      if (!d) return;
+      if (d.done) {
+        setResp(d.fullText ?? "");
+        setStreamingText("");
+        setActiveSessionId(null);
+        setLoading(false);
+      } else {
+        setStreamingText(d.fullText ?? "");
+      }
+    },
+  });
 
   const send = async () => {
     const t = q.trim();
@@ -159,15 +229,23 @@ function ChatWidget() {
     setQ("");
     setLoading(true);
     setResp(null);
+    setStreamingText("");
     try {
       const { data: sd } = await createSession({ variables: { subjectId: "general", title: "Quick chat" } });
       const sid = sd?.createChatSession?.id;
       if (sid) {
-        const { data: md } = await sendMessage({ variables: { sessionId: sid, content: t } });
-        setResp(md?.streamChatMessage?.content ?? null);
+        setActiveSessionId(sid);
+        await sendMessage({ variables: { sessionId: sid, content: t } });
+      } else {
+        setLoading(false);
       }
-    } catch { setResp(null); } finally { setLoading(false); }
+    } catch {
+      setResp(null);
+      setLoading(false);
+    }
   };
+
+  const displayText = streamingText || resp;
 
   return (
     <View style={{ borderRadius: SHAPE.xl, backgroundColor: paperTheme.colors.surface, padding: 16, gap: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}>
@@ -189,9 +267,9 @@ function ChatWidget() {
           {loading ? <ActivityIndicator size={14} color="#fff" /> : <Icon name="send" size={14} color="#fff" />}
         </PressableScale>
       </View>
-      {resp && (
+      {displayText && (
         <View style={{ backgroundColor: brand.primary + "10", borderRadius: SHAPE.md, padding: 10 }}>
-          <Text variant="bodySmall" style={{ color: paperTheme.colors.onSurface }}>{resp}</Text>
+          <Text variant="bodySmall" style={{ color: paperTheme.colors.onSurface }}>{displayText}</Text>
         </View>
       )}
     </View>
@@ -253,11 +331,34 @@ function EventsWidget() {
   const { brand } = useThemeContext();
   const navigation = useNavigation<any>();
   const now = new Date();
-  const to = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
-  const { data } = useQuery(EVENTS, { variables: { from: now.toISOString(), to: to.toISOString() } });
-  const events = (data?.events ?? []).slice(0, 5);
+  const todayStr = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+  const [y, m, d_] = todayStr.split("-").map(Number);
+  const startOfToday = new Date(y, m - 1, d_);
+  const to = new Date(startOfToday);
+  to.setDate(to.getDate() + 30);
+  const { data } = useQuery(EVENTS, { variables: { from: startOfToday.toISOString(), to: to.toISOString() } });
 
-  if (events.length === 0) return (
+  // Merge events and deadlines into a single list, sorted by date ascending
+  const rawEvents = (data?.events ?? []).map((ev: any) => ({
+    id: ev.id,
+    title: ev.title,
+    date: ev.date,
+    color: ev.color ?? brand.primary,
+    type: "event" as const,
+  }));
+  const rawDeadlines = (data?.deadlines ?? []).map((dl: any) => ({
+    id: dl.id,
+    title: dl.title,
+    date: dl.dueDate,
+    color: dl.priority === "high" ? "#ef4444" : dl.priority === "medium" ? "#f59e0b" : brand.primary,
+    type: "deadline" as const,
+  }));
+  const allItems = [...rawEvents, ...rawDeadlines]
+    .filter((item) => item.date)
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    .slice(0, 5);
+
+  if (allItems.length === 0) return (
     <View style={{ paddingVertical: 16, alignItems: "center", gap: 8 }}>
       <Icon name="calendar" size={32} color={paperTheme.colors.onSurfaceVariant} />
       <Text variant="bodyMedium" style={{ color: paperTheme.colors.onSurfaceVariant }}>No upcoming events</Text>
@@ -271,18 +372,19 @@ function EventsWidget() {
 
   return (
     <View style={{ gap: 4 }}>
-      {events.map((ev: any) => {
-        const d = new Date(ev.date);
+      {allItems.map((item) => {
+        const d = new Date(item.date);
         const today = new Date();
         const dayStr = d.toDateString() === today.toDateString() ? "Today" : d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+        const icon = item.type === "deadline" ? "alert-circle" : "calendar";
         return (
           <ExpressiveListRow
-            key={ev.id}
-            title={ev.title}
+            key={item.id}
+            title={item.title}
             subtitle={dayStr}
-            icon="calendar"
-            onPress={() => navigation.navigate("Study", { screen: "EventDetail", params: { eventId: ev.id } })}
-            trailing={<View style={{ width: 3, height: 24, borderRadius: 2, backgroundColor: ev.color ?? brand.primary }} />}
+            icon={icon}
+            onPress={() => navigation.navigate("Study", { screen: "EventDetail", params: { eventId: item.id } })}
+            trailing={<View style={{ width: 3, height: 24, borderRadius: 2, backgroundColor: item.color }} />}
           />
         );
       })}
@@ -293,23 +395,55 @@ function EventsWidget() {
 /* ── Timer Widget ───────────────────────────────────────── */
 const TIMER_KEY = "analogix_timer_state";
 type TimerPhase = "focus" | "break";
-interface TimerState { phase: TimerPhase; secondsLeft: number; running: boolean; focusDuration: number; breakDuration: number; sessionsCompleted: number; }
+interface TimerState { phase: TimerPhase; secondsLeft: number; running: boolean; focusDuration: number; breakDuration: number; sessionsCompleted: number; sessionTarget: number; lastTick: number; }
 
 function useTimerState(): [TimerState, React.Dispatch<React.SetStateAction<TimerState>>] {
-  const [state, setState] = useState<TimerState>({ phase: "focus", secondsLeft: 25 * 60, running: false, focusDuration: 25 * 60, breakDuration: 5 * 60, sessionsCompleted: 0 });
+  const [state, setState] = useState<TimerState>({ phase: "focus", secondsLeft: 25 * 60, running: false, focusDuration: 25 * 60, breakDuration: 5 * 60, sessionsCompleted: 0, sessionTarget: 4, lastTick: Date.now() });
   useEffect(() => {
     AsyncStorage.getItem(TIMER_KEY).then((v) => {
       if (v) {
         try {
           const parsed = JSON.parse(v);
-          setState({ ...parsed, running: false, secondsLeft: parsed.phase === "focus" ? parsed.focusDuration : parsed.breakDuration });
+          // Unified schema: TimerScreen stores `timeLeft`, dashboard uses `secondsLeft`
+          const timeLeft = typeof parsed.timeLeft === "number" ? parsed.timeLeft : (typeof parsed.secondsLeft === "number" ? parsed.secondsLeft : undefined);
+          const focusDuration = typeof parsed.focusDuration === "number" ? parsed.focusDuration : 25 * 60;
+          const breakDuration = typeof parsed.breakDuration === "number" ? parsed.breakDuration : 5 * 60;
+          const sessionsCompleted = typeof parsed.sessionsCompleted === "number" ? parsed.sessionsCompleted : 0;
+          const sessionTarget = typeof parsed.sessionTarget === "number" ? parsed.sessionTarget : 4;
+          const lastTick = typeof parsed.lastTick === "number" ? parsed.lastTick : Date.now();
+
+          // If the timer was running when the app was closed, account for elapsed time
+          let effectiveTimeLeft = typeof timeLeft === "number" ? timeLeft : focusDuration;
+          if (parsed.running && lastTick) {
+            const elapsed = Math.floor((Date.now() - lastTick) / 1000);
+            effectiveTimeLeft = Math.max(0, effectiveTimeLeft - elapsed);
+          }
+
+          setState({
+            phase: parsed.phase === "break" ? "break" : "focus",
+            secondsLeft: effectiveTimeLeft,
+            running: false, // Always start paused on dashboard load
+            focusDuration,
+            breakDuration,
+            sessionsCompleted,
+            sessionTarget,
+            lastTick,
+          });
         } catch { /* noop */ }
       }
     });
   }, []);
   const save = useCallback((s: TimerState | ((p: TimerState) => TimerState)) => {
-    if (typeof s === "function") { setState((p) => { const n = s(p); AsyncStorage.setItem(TIMER_KEY, JSON.stringify(n)); return n; }); }
-    else { setState(s); AsyncStorage.setItem(TIMER_KEY, JSON.stringify(s)); }
+    const persist = (next: TimerState) => {
+      // Write using the `timeLeft` field so TimerScreen can read it, plus our own `secondsLeft`
+      AsyncStorage.setItem(TIMER_KEY, JSON.stringify({
+        ...next,
+        timeLeft: next.secondsLeft,
+        lastTick: Date.now(),
+      }));
+    };
+    if (typeof s === "function") { setState((p) => { const n = s(p); persist(n); return n; }); }
+    else { setState(s); persist(s); }
   }, []);
   return [state, save];
 }
@@ -320,7 +454,7 @@ function TimerWidget() {
   const navigation = useNavigation<any>();
   const [timer, setTimer] = useTimerState();
   const intRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const SESSION_GOAL = 4;
+  const SESSION_GOAL = timer.sessionTarget || 4;
 
   useEffect(() => {
     if (timer.running) {
@@ -328,7 +462,8 @@ function TimerWidget() {
         setTimer((prev) => {
           if (prev.secondsLeft <= 1) {
             const nextPhase = prev.phase === "focus" ? "break" : "focus";
-            return { ...prev, phase: nextPhase, secondsLeft: nextPhase === "focus" ? prev.focusDuration : prev.breakDuration, running: false, sessionsCompleted: prev.phase === "focus" ? prev.sessionsCompleted + 1 : prev.sessionsCompleted };
+            const newSessions = prev.phase === "focus" ? prev.sessionsCompleted + 1 : prev.sessionsCompleted;
+            return { ...prev, phase: nextPhase, secondsLeft: nextPhase === "focus" ? prev.focusDuration : prev.breakDuration, running: false, sessionsCompleted: newSessions };
           }
           return { ...prev, secondsLeft: prev.secondsLeft - 1 };
         });
@@ -575,7 +710,8 @@ export default function DashboardScreen() {
   const on = (k: WidgetId) => enabled.includes(k);
 
   useEffect(() => {
-    const today = new Date().toISOString().split("T")[0];
+    const d = new Date();
+    const today = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
     incrementActivity({ variables: { date: today } }).catch(() => {});
   }, [incrementActivity]);
   useAchievementChecker();

@@ -1,10 +1,13 @@
 import { fileURLToPath } from 'url';
-import { dirname } from 'path';
+import { dirname, resolve } from 'path';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  turbopack: {
+    root: resolve(__dirname, '..'),
+  },
   reactStrictMode: true,
   compress: true,
   typescript: {

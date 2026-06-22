@@ -4,6 +4,8 @@ import { Palette, Check, Settings2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Switch } from "@/components/ui/switch";
+import { createClient } from "@/lib/supabase/client";
+import { getAuthUser } from "@/utils/authCache";
 
 type HSL = { h: string; s: string; l: string };
 type Theme = {
@@ -300,6 +302,17 @@ export const applyThemeByName = (themeName: string) => {
 
   // Set data-theme attribute for theme-specific CSS
   document.documentElement.setAttribute("data-theme", themeName.toLowerCase().replace(/\s+/g, "-"));
+
+  // Persist theme to database for logged-in users
+  getAuthUser().then(user => {
+    if (!user) return;
+    createClient().from("user_preferences").upsert(
+      { user_id: user.id, theme: themeName, updated_at: new Date().toISOString() },
+      { onConflict: "user_id" }
+    ).then(({ error }) => {
+      if (error) console.error("[theme] Failed to persist theme:", error);
+    });
+  });
 };
 
 const ThemeSelector = () => {

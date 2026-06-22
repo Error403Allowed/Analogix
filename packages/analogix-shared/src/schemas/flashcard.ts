@@ -28,6 +28,7 @@ export const CreateFlashcardSetInput = z.object({
 export const GenerateFlashcardsInput = z.object({
   topic: z.string().min(1).max(500),
   subjectId: z.string().min(1).optional(),
+  setId: z.string().uuid().optional(),
   count: z.number().int().min(1).max(50).default(8),
   documentId: z.string().optional(),
   contextText: z.string().max(50_000).optional(),

@@ -41,8 +41,9 @@ const readJson = <T,>(key: string, fallback: T): T => {
 };
 const toInt = (v: unknown) => { const n = Number(v); return Number.isFinite(n) && n >= 0 ? Math.floor(n) : 0; };
 const toPct = (v: unknown) => { const n = Number(v); return Number.isFinite(n) ? Math.min(100, Math.max(0, Math.round(n))) : 0; };
-const DAY_SH = ["S", "M", "T", "W", "T", "F", "S"];
-const dayLabel = (iso: string) => DAY_SH[new Date(`${iso}T12:00:00`).getDay()] || "";
+const DAY_SH = ["M", "T", "W", "T", "F", "S", "S"];
+const mondayIndex = (jsDay: number) => (jsDay + 6) % 7;
+const dayLabel = (iso: string) => iso ? DAY_SH[mondayIndex(new Date(`${iso}T12:00:00`).getDay())] || "" : "";
 const fmt = (n: number) => String(n).padStart(2, "0");
 
 function greeting() {
@@ -459,6 +460,14 @@ function MiniTimer() {
   const [sessionsTarget, setSessionsTarget] = useState(initialState.sessionsTarget);
   const [settings, setSettings] = useState(initialState.settings);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const phaseRef = useRef(phase);
+  const settingsRef = useRef(settings);
+  const sessionsCompletedRef = useRef(sessionsCompleted);
+  const sessionsTargetRef = useRef(sessionsTarget);
+  phaseRef.current = phase;
+  settingsRef.current = settings;
+  sessionsCompletedRef.current = sessionsCompleted;
+  sessionsTargetRef.current = sessionsTarget;
 
   const mins = Math.floor(timeLeft / 60);
   const secs = timeLeft % 60;
@@ -484,17 +493,21 @@ function MiniTimer() {
     if (isActive) {
       intervalRef.current = setInterval(() => {
         setTimeLeft(t => {
+          const latestPhase = phaseRef.current;
+          const latestSettings = settingsRef.current;
+          const latestSessions = sessionsCompletedRef.current;
+          const latestTarget = sessionsTargetRef.current;
           if (t <= 1) {
             setIsActive(false);
-            const next: TimerPhase = phase === "study" ? "break" : "study";
+            const next: TimerPhase = latestPhase === "study" ? "break" : "study";
             setPhase(next);
-            const nextTime = next === "study" ? settings.study : settings.break;
-            const newCompleted = phase === "study" ? sessionsCompleted + 1 : sessionsCompleted;
+            const nextTime = next === "study" ? latestSettings.study : latestSettings.break;
+            const newCompleted = latestPhase === "study" ? latestSessions + 1 : latestSessions;
             setSessionsCompleted(newCompleted);
-            saveTimerState({ ...initialState, phase: next, timeLeft: nextTime, sessionsCompleted: newCompleted, settings });
+            saveTimerState({ phase: next, timeLeft: nextTime, isActive: false, sessionsCompleted: newCompleted, sessionsTarget: latestTarget, settings: latestSettings, lastTick: Date.now() });
             return nextTime;
           }
-          saveTimerState({ ...initialState, phase, timeLeft: t - 1, sessionsCompleted, settings });
+          saveTimerState({ phase: latestPhase, timeLeft: t - 1, isActive: false, sessionsCompleted: latestSessions, sessionsTarget: latestTarget, settings: latestSettings, lastTick: Date.now() });
           return t - 1;
         });
       }, 1000);
@@ -502,7 +515,7 @@ function MiniTimer() {
       if (intervalRef.current) clearInterval(intervalRef.current);
     }
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [isActive, phase, sessionsCompleted, settings]);
+  }, [isActive]);
 
   const reset = () => {
     setIsActive(false);
@@ -622,7 +635,7 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
-    applyThemeByName(localStorage.getItem("app-theme") || "Cosmic Aurora");
+    applyThemeByName(localStorage.getItem("app-theme") || "Classic Blue");
   }, []);
 
   useEffect(() => {

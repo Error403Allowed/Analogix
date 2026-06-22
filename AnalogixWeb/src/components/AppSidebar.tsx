@@ -65,9 +65,9 @@ export function AppSidebar() {
   const { setTheme: setMode, resolvedTheme } = useTheme();
   const { openTab, tabs, activeTabId } = useTabs();
   const [userData,         setUserData]         = useState<any>(null);
-  const [activeThemeName,  setActiveThemeName]  = useState("Cosmic Aurora");
+  const [activeThemeName,  setActiveThemeName]  = useState("Classic Blue");
   const [paperMode,        setPaperMode]        = useState(false);
-  const lastColorRef = useRef<string>("Cosmic Aurora");
+  const lastColorRef = useRef<string>("Classic Blue");
   const [mounted,          setMounted]          = useState(false);
   const [themeOpen,        setThemeOpen]        = useState(false);
   const [profileOpen,      setProfileOpen]      = useState(false);
@@ -85,7 +85,7 @@ export function AppSidebar() {
         const stats = JSON.parse(localStorage.getItem("analogix_user_stats_v1") || "{}");
         setStreak(Number(stats.currentStreak) || 0);
       } catch { /* ignore localStorage errors */ }
-      const saved = localStorage.getItem("app-theme") || "Cosmic Aurora";
+      const saved = localStorage.getItem("app-theme") || "Classic Blue";
       const isPaper = localStorage.getItem("paper-mode") === "true";
       setPaperMode(isPaper);
       if (isPaper) {
@@ -97,7 +97,7 @@ export function AppSidebar() {
     };
     load();
     const onTheme = () => {
-      const saved = localStorage.getItem("app-theme") || "Cosmic Aurora";
+      const saved = localStorage.getItem("app-theme") || "Classic Blue";
       const isPaper = localStorage.getItem("paper-mode") === "true";
       setPaperMode(isPaper);
       setActiveThemeName(isPaper ? "Paper" : saved);
@@ -133,7 +133,7 @@ export function AppSidebar() {
       applyThemeByName("Paper");
       setActiveThemeName("Paper");
     } else {
-      const prev = lastColorRef.current || "Cosmic Aurora";
+      const prev = lastColorRef.current || "Classic Blue";
       applyThemeByName(prev);
       setActiveThemeName(prev);
     }

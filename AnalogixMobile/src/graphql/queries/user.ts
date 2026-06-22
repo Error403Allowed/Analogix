@@ -51,6 +51,7 @@ export const UPDATE_PROFILE = gql`
       hobbyIds
       hobbyDetails
       onboardingComplete
+      avatarUrl
     }
   }
 `;

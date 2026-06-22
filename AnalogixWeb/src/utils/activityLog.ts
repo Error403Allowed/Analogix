@@ -8,7 +8,8 @@ export interface DayActivity {
 }
 
 function today(): string {
-  return new Date().toISOString().slice(0, 10);
+  const d = new Date();
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 }
 
 export const activityLog = {
@@ -47,13 +48,21 @@ export const activityLog = {
 
   async getLast7(): Promise<DayActivity[]> {
     const user = await getAuthUser();
-    const result: DayActivity[] = [];
     const supabase = createClient();
+
+    const now = new Date();
+    const todayStr = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+    const [y, m, d_] = todayStr.split("-").map(Number);
+    const todayDate = new Date(y, m - 1, d_);
+    const todayDow = todayDate.getDay();
+    const mondayOffset = (todayDow + 6) % 7;
+    const monday = new Date(y, m - 1, d_ - mondayOffset);
+
     const dates: string[] = [];
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      dates.push(d.toISOString().slice(0, 10));
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(monday);
+      d.setDate(monday.getDate() + i);
+      dates.push(new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10));
     }
 
     if (!user) return dates.map(date => ({ date, count: 0 }));
@@ -65,9 +74,6 @@ export const activityLog = {
       .in("date", dates);
 
     const map = new Map((data ?? []).map((r: any) => [r.date, r.count]));
-    for (const date of dates) {
-      result.push({ date, count: (map.get(date) as number) ?? 0 });
-    }
-    return result;
+    return dates.map(date => ({ date, count: (map.get(date) as number) ?? 0 }));
   },
 };

@@ -86,7 +86,16 @@ const splitLink = split(
 export function createApolloClient(): ApolloClient<NormalizedCacheObject> {
   return new ApolloClient({
     link: splitLink,
-    cache: new InMemoryCache(),
+    cache: new InMemoryCache({
+      typePolicies: {
+        SubjectNotes: { keyFields: false },
+        Subject: {
+          fields: {
+            notes: { merge: false },
+          },
+        },
+      },
+    }),
     defaultOptions: {
       watchQuery: { fetchPolicy: "cache-and-network", errorPolicy: "all" },
       query: { fetchPolicy: "network-only", errorPolicy: "all" },

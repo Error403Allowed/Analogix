@@ -172,7 +172,7 @@ export function ExpressiveScreen({
     return (
       <View style={[styles.screenContainer, { backgroundColor: bg }]}>
         {header}
-        <View style={[styles.screenContent, contentStyle]}>
+        <View style={[styles.screenContent, contentStyle, { flex: 1 }]}>
           {children}
         </View>
         {fab}

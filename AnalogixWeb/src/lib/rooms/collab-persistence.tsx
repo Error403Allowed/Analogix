@@ -75,7 +75,7 @@ export async function loadRoomSurfaceYDoc(roomId, surfaceType, surfaceId) {
     }
     return { ydoc, latestSeq };
 }
-export async function appendRoomSurfaceUpdate(roomId, surfaceType, surfaceId, update) {
+export async function appendRoomSurfaceUpdate(roomId, surfaceType, surfaceId, userId, update) {
     const supabase = createClient();
     const { data: seqData, error: seqError } = await supabase.rpc("next_study_room_collab_seq", {
         p_room_id: roomId,
@@ -89,6 +89,7 @@ export async function appendRoomSurfaceUpdate(roomId, surfaceType, surfaceId, up
         room_id: roomId,
         surface_type: surfaceType,
         surface_id: surfaceId,
+        user_id: userId,
         seq: seqData,
         update: uint8ArrayToBase64(update),
     });
@@ -97,13 +98,14 @@ export async function appendRoomSurfaceUpdate(roomId, surfaceType, surfaceId, up
     }
     return seqData;
 }
-export async function compactRoomSurfaceYDoc(roomId, surfaceType, surfaceId, ydoc, latestSeq) {
+export async function compactRoomSurfaceYDoc(roomId, surfaceType, surfaceId, userId, ydoc, latestSeq) {
     const supabase = createClient();
     const snapshot = uint8ArrayToBase64(Y.encodeStateAsUpdate(ydoc));
     const { error } = await supabase.from("study_room_collab_snapshots").upsert({
         room_id: roomId,
         surface_type: surfaceType,
         surface_id: surfaceId,
+        user_id: userId,
         snapshot_seq: latestSeq,
         snapshot,
     }, { onConflict: "room_id,surface_type,surface_id" });
@@ -122,27 +124,29 @@ export class RoomCollabPersistenceManager {
     roomId;
     surfaceType;
     surfaceId;
+    userId;
     ydoc;
     latestSeq = 0;
     updateCount = 0;
-    constructor(roomId, surfaceType, surfaceId, ydoc, initialSeq) {
+    constructor(roomId, surfaceType, surfaceId, userId, ydoc, initialSeq) {
         this.roomId = roomId;
         this.surfaceType = surfaceType;
         this.surfaceId = surfaceId;
+        this.userId = userId;
         this.ydoc = ydoc;
         this.latestSeq = initialSeq;
     }
     async onUpdate(update) {
-        const nextSeq = await appendRoomSurfaceUpdate(this.roomId, this.surfaceType, this.surfaceId, update);
+        const nextSeq = await appendRoomSurfaceUpdate(this.roomId, this.surfaceType, this.surfaceId, this.userId, update);
         this.latestSeq = Math.max(this.latestSeq, nextSeq);
         this.updateCount += 1;
         if (this.updateCount >= COMPACT_AFTER) {
             this.updateCount = 0;
-            compactRoomSurfaceYDoc(this.roomId, this.surfaceType, this.surfaceId, this.ydoc, this.latestSeq).catch(console.warn);
+            compactRoomSurfaceYDoc(this.roomId, this.surfaceType, this.surfaceId, this.userId, this.ydoc, this.latestSeq).catch(console.warn);
         }
     }
     async flush() {
-        await compactRoomSurfaceYDoc(this.roomId, this.surfaceType, this.surfaceId, this.ydoc, this.latestSeq);
+        await compactRoomSurfaceYDoc(this.roomId, this.surfaceType, this.surfaceId, this.userId, this.ydoc, this.latestSeq);
     }
 }
 //# sourceMappingURL=collab-persistence.js.map
