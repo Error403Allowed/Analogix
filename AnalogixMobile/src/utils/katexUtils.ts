@@ -23,7 +23,7 @@ export function stripDelimiters(s: string): string {
     .replace(/^\$|\$$/g, "");
 }
 
-function escapeHtml(s: string): string {
+export function escapeHtml(s: string): string {
   return s
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")

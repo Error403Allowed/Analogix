@@ -1,7 +1,7 @@
 import React, { useRef, useState, useCallback, useMemo } from "react";
 import { StyleSheet, View, Text, Platform } from "react-native";
 import { WebView } from "react-native-webview";
-import { renderLatex, stripDelimiters, KATEX_CSS } from "../utils/katexUtils";
+import { renderLatex, stripDelimiters, KATEX_CSS, escapeHtml } from "../utils/katexUtils";
 
 interface FormulaItem {
   id: string;
@@ -112,15 +112,6 @@ body{padding:8px;font-family:-apple-system,BlinkMacSystemFont,sans-serif;backgro
       />
     </View>
   );
-}
-
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
 }
 
 const styles = StyleSheet.create({
