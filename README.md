@@ -1,6 +1,6 @@
 # Analogix
 
-> AI-powered study platform for Australian secondary students (Years 7–12).
+> One platform instead of 5 different tabs. Groq AI tutor, spaced-repetition flashcards, Pomodoro timer, calendar, collaborative study rooms — all talking to the same API, all sharing your data.
 
 ![Platform](https://img.shields.io/badge/platform-web%20%7C%20mobile%20%7C%20api-6366f1)
 ![Node](https://img.shields.io/badge/node-%3E%3D22%20%3C27-339933)
@@ -22,19 +22,21 @@
 
 ## What is Analogix?
 
-Analogix replaces scattered study tools (ChatGPT, Google Docs, Quizlet, Pomodoro timers) with **one unified platform** that includes:
+We had too many tabs open. ChatGPT for explaining things, Quizlet for flashcards, a Pomodoro timer, Google Docs for notes, a separate calendar for deadlines — none of it talked to each other. Analogix is the result of getting annoyed enough to build a monorepo.
 
-- **AI Tutor** — Chat with Groq-powered AI that explains concepts, generates quizzes/flashcards, and adapts explanations to your interests.
-- **Flashcards** — Spaced repetition (SM-2) with AI-generated sets from any text or chat conversation.
-- **Quizzes** — Timed/untimed, multiple-choice/essay/mixed, AI-generated from your study materials.
-- **Calendar** — Month/week/day view with term dates, deadlines, ICS import, and event management.
-- **Timer** — Pomodoro with custom durations, session tracking, and streak counting.
-- **Study Schedule** — Automatic weekly study plan generated from your subjects and upcoming assessments.
-- **Subjects** — Syllabus tracking, marks, homework, and document editor per subject.
-- **Rooms** — Real-time collaborative study rooms with chat, documents, and a shared timer.
-- **Formulas** — LaTeX-rendered formula sheets organized by subject.
-- **Achievements** — Gamified XP, levels, and unlockable achievements.
-- **Assessment Guide** — Step-by-step guide for tackling different assessment types with AI assistance.
+It covers the main stuff a high school student (or honestly anyone studying) needs:
+
+- **AI Tutor** — Groq-powered. Explains concepts, generates quizzes and flashcards, adapts to your interests. Also works great for last-minute exam panic.
+- **Flashcards** — Spaced repetition (SM-2). The AI generates sets from chat conversations or uploaded files, or you can make your own.
+- **Quizzes** — Timed or untimed, multiple choice or essay or mixed. AI generates them from whatever you're studying.
+- **Calendar** — Month/week/day views. Auto-calculates term dates per Australian state. Imports ICS files from school portals.
+- **Timer** — Pomodoro. Configurable focus/break durations. Tracks sessions and streaks.
+- **Study Schedule** — AI generates a weekly plan from your subjects and upcoming deadlines. You can tweak it.
+- **Subjects** — Per-subject syllabus tracking, marks, homework assignments, and a document editor.
+- **Rooms** — Real-time study rooms for group work. Shared chat, collaborative documents, synced Pomodoro timer.
+- **Formulas** — LaTeX-rendered formula sheets organized by subject with full-text search.
+- **Achievements** — XP, levels, and unlockable badges to gamify the grind.
+- **Assessment Guide** — Upload an assessment notification PDF and get an AI-generated study plan.
 
 ---
 
@@ -61,22 +63,23 @@ Analogix replaces scattered study tools (ChatGPT, Google Docs, Quizlet, Pomodoro
                     └───────────────────────┘
 ```
 
-**Key points:**
-- Web and mobile both call the same GraphQL API
-- The GraphQL server authenticates via Supabase JWTs
-- Redis handles real-time subscription fan-out (chat streaming, room sync)
-- All three apps share `@analogix/shared` (types, Zod schemas, curriculum data)
+A few notes on how this fits together:
+
+- Web and mobile hit the same GraphQL API. No duplicate endpoints.
+- The GraphQL server verifies Supabase JWTs — no custom auth.
+- Redis handles real-time subscriptions (chat streaming, room state sync). Falls back to in-process PubSub in dev.
+- All three apps share types and schemas through `@analogix/shared`. Change a Zod schema there and both clients pick it up.
 
 ---
 
 ## Apps
 
-| Package | Description | Tech |
-|---------|-------------|------|
+| Package | What it is | Stack |
+|---------|-----------|-------|
 | `AnalogixWeb` | Web client | Next.js 16, Turbopack, TypeScript |
 | `AnalogixMobile` | Mobile app | Expo SDK 54, React Native 0.81, react-native-paper, Reanimated 4 |
-| `AnalogixGraphQL` | BFF API | Apollo Server v5, Express 5, graphql-ws, Redis |
-| `@analogix/shared` | Shared package | TypeScript, Zod, JSON manifests |
+| `AnalogixGraphQL` | BFF / GraphQL gateway | Apollo Server v5, Express 5, graphql-ws, Redis |
+| `@analogix/shared` | Shared types and schemas | TypeScript, Zod, JSON manifests |
 
 ---
 
@@ -105,10 +108,10 @@ npm run dev:mobile   # Expo dev server
 
 ---
 
-## Where secrets live
+## Environment variables by app
 
-| App | File | What goes there |
-|-----|------|----------------|
+| App | File | The env vars it needs |
+|-----|------|----------------------|
 | `AnalogixGraphQL/.env` | Server runtime | `PORT`, `NODE_ENV`, `CORS_ORIGINS`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `GROQ_API_KEY`, `GROQ_API_KEY_2`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `DESMOS_API_KEY`, `REDIS_URL`, `LOG_LEVEL` |
 | `AnalogixMobile/.env` | Bundled into client | `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY`, `EXPO_PUBLIC_GRAPHQL_HTTP_URL`, `EXPO_PUBLIC_GRAPHQL_WS_URL`, `EXPO_PUBLIC_GOOGLE_*_CLIENT_ID`, `EXPO_PUBLIC_GOOGLE_REDIRECT_SCHEME` |
 | `AnalogixWeb/.env.local` | Next.js (web) | `GROQ_API_KEY`, `GROQ_API_KEY_2`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `NEXT_PUBLIC_SITE_URL`, `DESMOS_API_KEY`, `ALLOW_DEV_API` |
@@ -117,8 +120,8 @@ npm run dev:mobile   # Expo dev server
 
 ## Root scripts
 
-| Script | What it does |
-|--------|-------------|
+| Script | Does what |
+|--------|----------|
 | `npm run dev` | Run `dev` across all workspaces via Turbo |
 | `npm run dev:api` | Start the GraphQL BFF |
 | `npm run dev:web` | Start Next.js dev server |
@@ -132,8 +135,10 @@ npm run dev:mobile   # Expo dev server
 
 ---
 
-## See also
+## More docs
 
-- [`AnalogixMobile/README.md`](./AnalogixMobile/README.md) — Full mobile app docs, screenshots, theming, auth, EAS builds
-- [`AnalogixGraphQL/README.md`](./AnalogixGraphQL/README.md) — API schema, resolvers, auth flow, deployment
-- [`AnalogixWeb/README.md`](./AnalogixWeb/README.md) — Web client setup, Vercel deployment
+Each sub-package has its own README with more detail:
+
+- [`AnalogixMobile/README.md`](./AnalogixMobile/README.md) — Mobile app screenshots, theming system, auth flow, EAS builds
+- [`AnalogixGraphQL/README.md`](./AnalogixGraphQL/README.md) — Full schema, resolver structure, auth, deployment notes
+- [`AnalogixWeb/README.md`](./AnalogixWeb/README.md) — Web client setup, pages, API endpoints, troubleshooting

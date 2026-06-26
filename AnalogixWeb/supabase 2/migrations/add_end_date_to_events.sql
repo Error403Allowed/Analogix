@@ -1,2 +1,0 @@
-ALTER TABLE public.events
-ADD COLUMN IF NOT EXISTS end_date TIMESTAMPTZ;
