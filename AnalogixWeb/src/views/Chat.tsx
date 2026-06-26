@@ -50,6 +50,8 @@ import type { ResearchSource } from "@/types/research";
 import AISettingsSheet from "@/components/AISettingsSheet";
 import ModelSelectorSheet from "@/components/ModelSelectorSheet";
 import { GROQ_MODELS, type GroqModelId } from "@/types/groq-models";
+import { ToolProposalCard } from "@/components/chat/ToolProposalCard";
+import type { ToolProposal, ToolCall } from "@analogix/shared/types";
 
 // Caching
 const nextConfig: NextConfig = {
@@ -353,6 +355,50 @@ const Chat = () => {
   const [generatingFlashcards, setGeneratingFlashcards] = useState(false);
   const [flashcardsGenerated, setFlashcardsGenerated] = useState(false);
 
+  // TOOL PROPOSALS
+  const [pendingProposal, setPendingProposal] = useState<ToolProposal | null>(null);
+  const [pendingProposalMessageId, setPendingProposalMessageId] = useState<string | null>(null);
+
+  // Read personality settings for auto-approve logic
+  const getToolAutoApproval = useCallback(() => {
+    if (typeof window === "undefined") return { autoApproveAll: false, autoApproveRead: false, autoApproveSubjects: [] as string[] };
+    try {
+      const stored = localStorage.getItem("ai_personality");
+      if (!stored) return { autoApproveAll: false, autoApproveRead: false, autoApproveSubjects: [] as string[] };
+      const p = JSON.parse(stored);
+      return {
+        autoApproveAll: p.auto_approve_tools === true,
+        autoApproveRead: p.auto_approve_read_tools === true,
+        autoApproveSubjects: Array.isArray(p.auto_approve_write_subjects) ? p.auto_approve_write_subjects : [],
+      };
+    } catch {
+      return { autoApproveAll: false, autoApproveRead: false, autoApproveSubjects: [] as string[] };
+    }
+  }, []);
+
+  // Check if a set of tool calls should be auto-approved
+  const shouldAutoApprove = useCallback((tools: ToolCall[]): boolean => {
+    const { autoApproveAll, autoApproveRead, autoApproveSubjects } = getToolAutoApproval();
+    if (autoApproveAll) return true;
+
+    const readTools = new Set(["list_subjects", "get_subject", "list_documents", "get_document", "list_flashcard_sets", "list_flashcards", "list_quizzes", "get_quiz", "get_quiz_attempts", "list_events", "list_deadlines"]);
+    const writeTools = new Set(["create_flashcard_set", "create_flashcards", "update_flashcard", "create_event", "update_event", "delete_event", "create_deadline", "create_document", "update_document", "create_quiz", "update_subject_notes"]);
+
+    if (autoApproveRead && tools.every(t => readTools.has(t.name))) return true;
+
+    if (autoApproveSubjects.length > 0) {
+      return tools.every(t => {
+        if (readTools.has(t.name)) return true;
+        if (!writeTools.has(t.name)) return false;
+        const subject = (t.args.subjectId || t.args.subject || "") as string;
+        if (!subject) return false;
+        return autoApproveSubjects.some(s => subject.toLowerCase().includes(s.toLowerCase()));
+      });
+    }
+
+    return false;
+  }, [getToolAutoApproval]);
+
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const copyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
@@ -416,6 +462,62 @@ const Chat = () => {
     const matched = userHobbies.find((interest) => lower.includes(interest.toLowerCase()));
     return matched || null;
   }, [userHobbies]);
+
+  // Generate a chat title after the first real exchange so we have enough context.
+  // Must be called from all response paths (tool proposal, typewriter, streaming).
+  const generateChatTitleIfNeeded = useCallback(async (
+    newHistory: { role: string; content: string }[],
+    allMessages: { id: string; role: string; content: string; isWelcome?: boolean }[],
+    userInput: string,
+    sessionId: string,
+    contextBuilder: (anchor?: string | null) => any,
+  ) => {
+    const realUserMessages = newHistory.filter(m => m.role === "user");
+    const previousUserMessages = realUserMessages.length;
+    const shouldTitle = previousUserMessages === 1 || previousUserMessages === 2;
+    if (!shouldTitle) return;
+
+    try {
+      // Strip TOOL_CALLS blocks from content before sending to title gen
+      const stripToolCalls = (text: string) => text.replace(/TOOL_CALLS:\s*\[[\s\S]*?\]/g, "").trim();
+      const realExchanges = allMessages
+        .filter(m => !m.isWelcome)
+        .slice(0, 6)
+        .map(m => `${m.role === "user" ? "Student" : "Tutor"}: ${stripToolCalls(m.content).slice(0, 250)}`)
+        .join("\n");
+      const currentUserMsg = userInput.slice(0, 400);
+      const titlePrompt = [{ role: "user" as const, content: `You are naming a study chat session. Read the conversation so far and the latest student message, then write a short 3–6 word title capturing the SPECIFIC topic being studied. Be concrete — not "Math Help" or "Question Asked", but things like "Quadratic Formula Confusion", "WW2 Causes Breakdown", "Python List Indexing Bug", "Mitosis vs Meiosis". No quotes, no punctuation at the end, just the title.
+
+Conversation so far:
+${realExchanges}
+Student (latest): ${currentUserMsg}
+
+Title:` }];
+      const titleResponse = await getGroqCompletion(titlePrompt, contextBuilder(null));
+      let chatTitle = (titleResponse.content || "")
+        .replace(/^<think>[\s\S]*?<\/think>\s*/i, "")
+        .replace(/^<think>[\s\S]*$/i, "")
+        .trim();
+      chatTitle = chatTitle.replace(/^["'`]|["'`]$/g, "").trim();
+      chatTitle = chatTitle.replace(/^(Title:|Here'?s?( a title)?:|The title is:?)/i, "").trim();
+      chatTitle = chatTitle.replace(/[.!?]$/, "").trim();
+      if (!chatTitle || chatTitle.length < 2) {
+        const words = userInput.trim().split(/\s+/).slice(0, 4).join(" ");
+        chatTitle = words || "New chat";
+      }
+      chatTitle = chatTitle.slice(0, 50);
+      await chatStore.updateSessionTitle(sessionId, chatTitle);
+      setAllSessions(prev => prev.map(s => s.id === sessionId ? { ...s, title: chatTitle } : s));
+    } catch (err) {
+      console.warn("[Chat] Failed to generate title:", err);
+      const words = userInput.trim().split(/\s+/).slice(0, 4).join(" ");
+      if (words) {
+        const fallbackTitle = words.slice(0, 50);
+        await chatStore.updateSessionTitle(sessionId, fallbackTitle);
+        setAllSessions(prev => prev.map(s => s.id === sessionId ? { ...s, title: fallbackTitle } : s));
+      }
+    }
+  }, [setAllSessions]);
 
   const updateScrollButton = useCallback(() => {
     const el = scrollContainerRef.current;
@@ -973,6 +1075,184 @@ const Chat = () => {
     }
   }, [selectedSubject, attachedFiles, generatingFlashcards, userPrefs.grade, router]);
 
+  // ── TOOL RESULT FORMATTING ────────────────────────────────────────────
+  function formatToolResult(r: { toolName: string; success: boolean; data?: unknown; error?: string }): string {
+    if (!r.success) return r.error ? `❌ ${r.toolName}: ${r.error}` : `❌ ${r.toolName}: Failed`;
+    if (!r.data) return "";
+
+    const d = r.data as any;
+    switch (r.toolName) {
+      case "list_events": {
+        const events = Array.isArray(d) ? d : [];
+        if (events.length === 0) return "📅 No events found.";
+        return `📅 **Events** (${events.length}):\n${events.map((e: any) =>
+          `- **${e.title}** — ${new Date(e.date).toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}${e.type ? ` (${e.type})` : ""}`
+        ).join("\n")}`;
+      }
+      case "list_deadlines": {
+        const deadlines = Array.isArray(d) ? d : [];
+        if (deadlines.length === 0) return "📋 No deadlines found.";
+        return `📋 **Deadlines** (${deadlines.length}):\n${deadlines.map((e: any) =>
+          `- **${e.title}** — due ${new Date(e.due_date).toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short" })}${e.priority ? ` (${e.priority})` : ""}`
+        ).join("\n")}`;
+      }
+      case "list_documents": {
+        const docs = Array.isArray(d) ? d : [];
+        if (docs.length === 0) return "📄 No documents found.";
+        return `📄 **Documents** (${docs.length}):\n${docs.map((e: any) =>
+          `- **${e.title}**${e.subject_id ? ` (${e.subject_id})` : ""}`
+        ).join("\n")}`;
+      }
+      case "get_document":
+        return `📄 **${d.title || "Document"}**:\n\n${d.content || "(no content)"}`;
+      case "list_flashcard_sets": {
+        const sets = Array.isArray(d) ? d : [];
+        if (sets.length === 0) return "📇 No flashcard sets found.";
+        return `📇 **Flashcard Sets** (${sets.length}):\n${sets.map((e: any) =>
+          `- **${e.name}**${e.subject_id ? ` (${e.subject_id})` : ""}${e.card_count ? ` — ${e.card_count} cards` : ""}`
+        ).join("\n")}`;
+      }
+      case "list_flashcards": {
+        const cards = Array.isArray(d) ? d : [];
+        if (cards.length === 0) return "📇 No flashcards found.";
+        return `📇 **Flashcards** (${cards.length}):\n${cards.map((e: any) =>
+          `- **Q:** ${e.front}\n  **A:** ${e.back}`
+        ).join("\n")}`;
+      }
+      case "list_quizzes": {
+        const quizzes = Array.isArray(d) ? d : [];
+        if (quizzes.length === 0) return "❓ No quizzes found.";
+        return `❓ **Quizzes** (${quizzes.length}):\n${quizzes.map((e: any) =>
+          `- **${e.title}**${e.subject_id ? ` (${e.subject_id})` : ""}${e.questionCount ? ` — ${e.questionCount} questions` : ""}`
+        ).join("\n")}`;
+      }
+      case "get_quiz":
+        return `❓ **${d.title || "Quiz"}** (${d.subject_id || ""}): ${Array.isArray(d.questions) ? d.questions.length : 0} questions`;
+      case "list_subjects": {
+        const subjects = Array.isArray(d) ? d : [];
+        if (subjects.length === 0) return "📚 No subjects found.";
+        return `📚 **Subjects** (${subjects.length}):\n${subjects.map((e: any) =>
+          `- **${e.name || e.id}**${e.notes ? ` — ${e.notes.slice(0, 80)}` : ""}`
+        ).join("\n")}`;
+      }
+      case "get_subject":
+        return `📚 **${d.name || d.id || "Subject"}**: ${d.notes || "(no notes)"}`;
+      case "create_event":
+        return `✅ **Event created**: ${d.title || ""} on ${d.date ? new Date(d.date).toLocaleDateString("en-AU") : ""}`;
+      case "update_event":
+        return `✅ **Event updated**: ${d.title || ""}`;
+      case "delete_event":
+        return `✅ **Event deleted**`;
+      case "create_flashcard_set":
+        return `✅ **Flashcard set created**: ${d.name || ""}`;
+      case "create_flashcards":
+        return `✅ **Flashcards added**`;
+      case "update_flashcard":
+        return `✅ **Flashcard updated**`;
+      case "create_document":
+        return `✅ **Document created**: ${d.title || ""}`;
+      case "update_document":
+        return `✅ **Document updated**: ${d.title || ""}`;
+      case "update_subject_notes":
+        return `✅ **Notes saved**`;
+      case "create_quiz":
+        return `✅ **Quiz created**: ${d.title || ""}`;
+      case "get_quiz_attempts": {
+        const attempts = Array.isArray(d) ? d : [];
+        if (attempts.length === 0) return "📊 No quiz attempts found.";
+        return `📊 **Quiz Attempts** (${attempts.length}):\n${attempts.map((e: any) =>
+          `- ${new Date(e.created_at).toLocaleDateString("en-AU")} — ${e.score ?? "?"}/${e.total ?? "?"} (${e.percentage ?? "?"}%)`
+        ).join("\n")}`;
+      }
+      default:
+        return "";
+    }
+  }
+
+  // ── TOOL PROPOSAL HANDLERS ────────────────────────────────────────────
+  const handleAllowTools = useCallback(async (tools: ToolCall[]) => {
+    if (!pendingProposal || !pendingProposalMessageId) return;
+    let error: Error | null = null;
+    // Preserve the original AI response text before execution
+    const originalText = messages.find(m => m.id === pendingProposalMessageId)?.content || pendingProposal.summary;
+    try {
+      const res = await fetch("/api/groq/tools/execute", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tools }),
+      });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || "Execution failed");
+
+      const successCount = result.results?.filter((r: any) => r.success).length ?? 0;
+      const failCount = result.results?.filter((r: any) => !r.success).length ?? 0;
+
+      // Show the original AI response text followed by tool results
+      const resultText = result.results?.map(formatToolResult).filter(Boolean).join("\n\n") || "";
+      const combinedContent = failCount > 0
+        ? `${originalText}\n\n⚠️ ${failCount} operation(s) failed — ${pendingProposal.summary}${resultText ? `\n\n${resultText}` : ""}`
+        : `${originalText}\n\n✅ ${pendingProposal.summary}${resultText ? `\n\n${resultText}` : ""}`;
+
+      setMessages(prev => prev.map(m =>
+        m.id === pendingProposalMessageId
+          ? { ...m, content: combinedContent }
+          : m
+      ));
+
+      // Save updated message with tool results to Supabase
+      if (chatSessionId && pendingProposalMessageId) {
+        chatStore.updateMessageContent(chatSessionId, pendingProposalMessageId, combinedContent).catch(e => console.error("[Chat] updateMessageContent:", e));
+      }
+
+      // Redirect for quiz creation — store in sessionStorage first
+      if (successCount > 0 && failCount === 0) {
+        const toolResult = result.results?.[0];
+        const toolName = toolResult?.toolName;
+        if (toolName === "create_quiz" && toolResult?.data) {
+          const quizData = toolResult.data;
+          const raw = typeof quizData.questions === "string"
+            ? JSON.parse(quizData.questions)
+            : (quizData.questions ?? []);
+          const questions = (Array.isArray(raw) ? raw : []).map((q: any) => ({
+            ...q,
+            type: q.type === "multiple-choice" || q.type === "multiple_choice" ? "multiple_choice"
+              : q.type === "true-false" ? "multiple_choice"
+              : q.type === "short-answer" || q.type === "short_answer" ? "short_answer"
+              : "multiple_choice",
+            options: Array.isArray(q.options) ? q.options.map((opt: any, i: number) =>
+              typeof opt === "string" ? { id: `opt-${i}`, text: opt, isCorrect: q.correctAnswer === opt }
+                : opt
+            ) : [],
+            correctAnswer: q.correctAnswer || "",
+          }));
+          sessionStorage.setItem("pendingQuiz", JSON.stringify({
+            questions,
+            subjectId: quizData.subject_id,
+            title: quizData.title,
+          }));
+          router.push("/quiz");
+        }
+      }
+    } catch (err) {
+      error = err instanceof Error ? err : new Error(String(err));
+    } finally {
+      setPendingProposal(null);
+      setPendingProposalMessageId(null);
+      if (error) throw error;
+    }
+  }, [pendingProposal, pendingProposalMessageId, router, messages]);
+
+  const handleDenyTools = useCallback(() => {
+    if (!pendingProposal || !pendingProposalMessageId) return;
+    setMessages(prev => prev.map(m =>
+      m.id === pendingProposalMessageId
+        ? { ...m, content: `✕ Cancelled — let me know if you need something else.` }
+        : m
+    ));
+    setPendingProposal(null);
+    setPendingProposalMessageId(null);
+  }, [pendingProposal, pendingProposalMessageId]);
+
   const handleSend = () => {
     if ((!input.trim() && attachedFiles.length === 0) || isInputLocked) return;
 
@@ -1127,7 +1407,188 @@ const Chat = () => {
 
       const localStorageData = getLocalStorageData();
 
-      // Normal streaming
+      // ── AI-CLASSIFIED INTENT CHECK ──
+      // Always call non-streaming first — the AI decides whether a tool call is needed
+      const result = await getGroqCompletion(newHistory, context);
+      setIsTyping(false);
+
+      if (result.proposal) {
+        const proposalId = (Date.now() + 1).toString();
+        const proposalContent = result.content || "";
+        setMessages(prev => [...prev, {
+          id: proposalId,
+          role: "assistant",
+          content: proposalContent,
+          isStreaming: true,
+        }]);
+
+        // Save assistant message to Supabase
+        if (activeSessionId) {
+          chatStore.addMessage(activeSessionId, "assistant", proposalContent).catch(e => console.error("[Chat] addMessage assistant:", e));
+        }
+
+        // Check auto-approve settings
+        const proposalTools = result.proposal.tools;
+        if (shouldAutoApprove(proposalTools)) {
+          // Execute tools directly without showing proposal card
+          setPendingProposal(result.proposal);
+          setPendingProposalMessageId(proposalId);
+          // The message gets the full AI text, then we execute tools
+          setTimeout(async () => {
+            try {
+              const res = await fetch("/api/groq/tools/execute", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ tools: proposalTools }),
+              });
+              const execResult = await res.json();
+              const successCount = execResult.results?.filter((r: any) => r.success).length ?? 0;
+              const failCount = execResult.results?.filter((r: any) => !r.success).length ?? 0;
+
+              // Preserve AI text and append result details
+              const resultText = execResult.results?.map(formatToolResult).filter(Boolean).join("\n\n") || "";
+              const combinedContent = proposalContent + (resultText ? `\n\n${resultText}` : "");
+              setMessages(prev => prev.map(m =>
+                m.id === proposalId
+                  ? { ...m, content: combinedContent, isStreaming: false }
+                  : m
+              ));
+
+              // Save updated assistant message with tool results
+              if (activeSessionId) {
+                chatStore.updateMessageContent(activeSessionId, proposalId, combinedContent).catch(e => console.error("[Chat] updateMessageContent:", e));
+              }
+
+              // Handle quiz redirect
+              if (successCount > 0 && failCount === 0) {
+                const toolResult = execResult.results?.[0];
+                const toolName = toolResult?.toolName;
+                if (toolName === "create_quiz" && toolResult?.data) {
+                  const quizData = toolResult.data;
+                  const raw = typeof quizData.questions === "string" ? JSON.parse(quizData.questions) : (quizData.questions ?? []);
+                  const questions = (Array.isArray(raw) ? raw : []).map((q: any) => ({
+                    ...q,
+                    type: q.type === "multiple-choice" || q.type === "multiple_choice" ? "multiple_choice"
+                      : q.type === "true-false" ? "multiple_choice"
+                      : q.type === "short-answer" || q.type === "short_answer" ? "short_answer"
+                      : "multiple_choice",
+                    options: Array.isArray(q.options) ? q.options.map((opt: any, i: number) =>
+                      typeof opt === "string" ? { id: `opt-${i}`, text: opt, isCorrect: q.correctAnswer === opt } : opt
+                    ) : [],
+                    correctAnswer: q.correctAnswer || "",
+                  }));
+                  sessionStorage.setItem("pendingQuiz", JSON.stringify({ questions, subjectId: quizData.subject_id, title: quizData.title }));
+                  router.push("/quiz");
+                }
+              }
+            } catch (err) {
+              console.warn("[Chat] Auto-execute failed:", err);
+              setMessages(prev => prev.map(m =>
+                m.id === proposalId ? { ...m, content: proposalContent + "\n\n⚠️ Auto-execution failed. Please try again.", isStreaming: false } : m
+              ));
+            } finally {
+              setPendingProposal(null);
+              setPendingProposalMessageId(null);
+            }
+          }, 100);
+          // Generate chat title after the first real exchange
+          if (activeSessionId) {
+            generateChatTitleIfNeeded(newHistory, messages, input, activeSessionId, buildContext);
+          }
+          return;
+        }
+
+        setPendingProposal(result.proposal);
+        setPendingProposalMessageId(proposalId);
+
+        // Typewriter animation for the short acknowledgment
+        if (proposalContent) {
+          setStreamingId(proposalId);
+          setStreamingContent("");
+          const totalLen = proposalContent.length;
+          const DURATION_MS = Math.min(2500, Math.max(600, totalLen * 15));
+          const startTime = performance.now();
+          const reveal = () => {
+            const elapsed = performance.now() - startTime;
+            const progress = Math.min(elapsed / DURATION_MS, 1);
+            const chars = Math.min(Math.floor(progress * totalLen), totalLen);
+            if (chars > 0) setStreamingContent(proposalContent.slice(0, chars));
+            if (chars < totalLen) {
+              requestAnimationFrame(reveal);
+            } else {
+              setMessages(prev => prev.map(m =>
+                m.id === proposalId ? { ...m, isStreaming: false } : m
+              ));
+              setStreamingId(null);
+              setStreamingContent("");
+            }
+          };
+          requestAnimationFrame(reveal);
+        }
+        // Generate chat title after the first real exchange
+        if (activeSessionId) {
+          generateChatTitleIfNeeded(newHistory, messages, input, activeSessionId, buildContext);
+        }
+        return;
+      }
+
+      // ── Normal response: animate with typewriter effect ──
+      // The non-streaming getGroqCompletion returned the full response;
+      // we reveal it character by character for the visual streaming feel.
+      const typewriterText = result.content || "";
+      if (typewriterText) {
+        const responseId = (Date.now() + 1).toString();
+        setMessages(prev => [...prev, {
+          id: responseId,
+          role: "assistant",
+          content: typewriterText,
+          isStreaming: true,
+          sources: researchSources,
+          researchQuery: researchQuery || undefined,
+        }]);
+        // Save assistant message to Supabase immediately (content is already complete)
+        if (activeSessionId) {
+          chatStore.addMessage(activeSessionId, "assistant", typewriterText).catch(e => console.error("[Chat] addMessage assistant:", e));
+        }
+        setIsTyping(false);
+        setStreamingId(responseId);
+        setStreamingContent("");
+        lockedToBottomRef.current = false;
+
+        // Reveal at a steady rate, completing in ~1-2 seconds
+        const totalLen = typewriterText.length;
+        const DURATION_MS = Math.min(2500, Math.max(600, totalLen * 15));
+        // For very short text, animate at chunk-level for visibility
+        const CHUNK = totalLen < 20 ? Math.max(1, Math.floor(totalLen / 4)) : 1;
+        const startTime = performance.now();
+        let animCancelled = false;
+        abortRef.current = { abort: () => { animCancelled = true; } } as unknown as AbortController;
+        const reveal = () => {
+          if (animCancelled) return;
+          const elapsed = performance.now() - startTime;
+          const progress = Math.min(elapsed / DURATION_MS, 1);
+          const chars = Math.min(Math.floor(progress * totalLen), totalLen);
+          if (chars > 0) setStreamingContent(typewriterText.slice(0, chars));
+          if (chars < totalLen) {
+            requestAnimationFrame(reveal);
+          } else {
+            setMessages(prev => prev.map(m =>
+              m.id === responseId ? { ...m, isStreaming: false } : m
+            ));
+            setStreamingId(null);
+            setStreamingContent("");
+            abortRef.current = null;
+          }
+        };
+        requestAnimationFrame(reveal);
+        // Generate chat title after the first real exchange
+        if (activeSessionId) {
+          generateChatTitleIfNeeded(newHistory, messages, input, activeSessionId, buildContext);
+        }
+        return;
+      }
+
+      // Fallback streaming (only if getGroqCompletion returned empty or no text)
       try {
         // Create a placeholder message that we'll fill with streaming tokens
         const responseId = (Date.now() + 1).toString();
@@ -1156,6 +1617,8 @@ const Chat = () => {
             .replace(/<\|[\w_]+\|>/g, "")
             .replace(/<internal\s*>[\s\S]*?<\/internal\s*>/gi, "")
             .replace(/<internal\s*>[\s\S]*/gi, "")
+            // DEPRECATED: <internal> blocks are no longer emitted by the AI
+            // but the strip is kept as a safety net for legacy/edge cases
             .replace(/\n\s*Actions\s*$/gi, "")
             .replace(/\n\s*\n\s*$/g, "\n")
             .trim();
@@ -1166,154 +1629,6 @@ const Chat = () => {
           if (abort.signal.aborted) break;
           accumulated += token;
           setStreamingContent(cleanForDisplay(accumulated));
-        }
-
-        // ── Parse and execute any <internal> block from the response ──────────
-        const actionsMatch = accumulated.match(/<internal\s*>([\s\S]*?)<\/internal\s*>/i);
-        if (actionsMatch) {
-          try {
-                const cleaned = actionsMatch[1]
-              .trim();
-            if (!cleaned) return;
-
-            // Try parsing as array first, then as single object, then try to extract JSON
-            let actions: Array<Record<string, unknown>> = [];
-            try {
-              const parsed = JSON.parse(cleaned);
-              actions = Array.isArray(parsed) ? parsed : [parsed];
-            } catch {
-              // Try extracting JSON objects/arrays from the text
-              // Use a balanced-bracket finder instead of greedy regex
-              const findJsonArray = (text: string): string | null => {
-                let depth = 0;
-                let start = -1;
-                let inString = false;
-                let escapeNext = false;
-                for (let i = 0; i < text.length; i++) {
-                  const ch = text[i];
-                  if (escapeNext) { escapeNext = false; continue; }
-                  if (ch === '\\' && inString) { escapeNext = true; continue; }
-                  if (ch === '"') { inString = !inString; continue; }
-                  if (inString) continue;
-                  if (ch === '[') {
-                    if (depth === 0) start = i;
-                    depth++;
-                  } else if (ch === ']') {
-                    depth--;
-                    if (depth === 0 && start !== -1) {
-                      return text.slice(start, i + 1);
-                    }
-                  }
-                }
-                return null;
-              };
-
-              const findJsonObject = (text: string): string | null => {
-                let depth = 0;
-                let start = -1;
-                let inString = false;
-                let escapeNext = false;
-                for (let i = 0; i < text.length; i++) {
-                  const ch = text[i];
-                  if (escapeNext) { escapeNext = false; continue; }
-                  if (ch === '\\' && inString) { escapeNext = true; continue; }
-                  if (ch === '"') { inString = !inString; continue; }
-                  if (inString) continue;
-                  if (ch === '{') {
-                    if (depth === 0) start = i;
-                    depth++;
-                  } else if (ch === '}') {
-                    depth--;
-                    if (depth === 0 && start !== -1) {
-                      return text.slice(start, i + 1);
-                    }
-                  }
-                }
-                return null;
-              };
-
-              const arrayStr = findJsonArray(cleaned);
-              if (arrayStr) {
-                try {
-                  const parsed = JSON.parse(arrayStr);
-                  actions = Array.isArray(parsed) ? parsed : [parsed];
-                } catch { /* fall through */ }
-              }
-
-              if (actions.length === 0) {
-                const objStr = findJsonObject(cleaned);
-                if (objStr) {
-                  try {
-                    const parsed = JSON.parse(objStr);
-                    actions = [parsed];
-                  } catch { /* give up */ }
-                }
-              }
-            }
-
-            if (actions.length === 0) {
-              console.warn("[Chat] Failed to parse internal block. Raw content:", cleaned.slice(0, 500));
-              return;
-            }
-            console.log("[Chat] dispatching", actions.length, "action(s)");
-
-            // Handle start_quiz client-side (navigate to quiz hub with params)
-            const quizAction = actions.find((a: Record<string, unknown>) => a.type === "start_quiz");
-            if (quizAction) {
-              try {
-                sessionStorage.setItem("analogix.pending-agent-quiz", JSON.stringify({
-                  subjectId: quizAction.subjectId || selectedSubject,
-                  topic: quizAction.topic || "",
-                  difficulty: quizAction.difficulty || "intermediate",
-                  numberOfQuestions: Number(quizAction.numberOfQuestions) || 5,
-                  timeLimitMinutes: Number(quizAction.timeLimitMinutes) || 0,
-                }));
-                router.push("/quiz");
-              } catch { /* ignore */ }
-            }
-
-            // Send all non-quiz actions to agent-action (with source=chat for full permissions)
-            const serverActions = actions.filter((a: Record<string, unknown>) => a.type !== "start_quiz");
-            if (serverActions.length > 0) {
-              const effectiveSubject = selectedSubject || userSubjects[0] || "math";
-              fetch("/api/groq/agent-action", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ actions: serverActions, defaultSubjectId: effectiveSubject, source: "chat" }),
-              })
-                .then(r => {
-                  if (!r.ok) return null;
-                  return r.json();
-                })
-                .then(data => {
-                  if (!data) return;
-                  console.log("[Chat] agent-action results:", data.results);
-                  if (data.results?.length) {
-                    window.dispatchEvent(new CustomEvent("subjectDataUpdated", { detail: { results: data.results } }));
-                    
-                    // Add system message for successful flashcard creation
-                    const flashcardResults = data.results.filter((r: any) => r.type === "add_flashcards" && r.status === "success");
-                    if (flashcardResults.length > 0) {
-                      window.dispatchEvent(new CustomEvent("flashcardsUpdated"));
-                      const messages = flashcardResults.map((r: any) => 
-                        `✓ Saved "${r.setName}" (${r.cardCount} cards) to Flashcard Library`
-                      ).join("\n");
-                      
-                      setMessages(prev => [...prev, {
-                        id: `system_${Date.now()}`,
-                        role: "assistant",
-                        content: messages,
-                        createdAt: new Date().toISOString(),
-                        isSystemNotification: true,
-                      } as any]);
-                    }
-                  }
-                })
-                .catch(err => console.error("[Chat] agent-action error:", err));
-            }
-          } catch (e) {
-            console.warn("[Chat] Failed to parse internal block:", e);
-          }
         }
 
         // Final update — merge streaming content into messages and mark streaming as done
@@ -1364,55 +1679,8 @@ const Chat = () => {
           [...prev.map(s => s.id === activeSessionId ? { ...s, updatedAt: new Date().toISOString() } : s)]
             .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
         );
-        // Generate chat title after the first real exchange so we have enough context.
-        const realUserMessages = newHistory.filter(m => m.role === "user");
-        const previousUserMessages = realUserMessages.length;
-        const shouldTitle = previousUserMessages === 1 || previousUserMessages === 2;
-        if (shouldTitle) {
-          try {
-            // Grab up to the first 3 real user messages + their AI replies for context
-            const realExchanges = messages
-              .filter(m => !m.isWelcome)
-              .slice(0, 6) // first 3 pairs at most
-              .map(m => `${m.role === "user" ? "Student" : "Tutor"}: ${m.content.slice(0, 250)}`)
-              .join("\n");
-            const currentUserMsg = input.slice(0, 400);
-            const titlePrompt = [{ role: "user" as const, content: `You are naming a study chat session. Read the conversation so far and the latest student message, then write a short 3–6 word title capturing the SPECIFIC topic being studied. Be concrete — not "Math Help" or "Question Asked", but things like "Quadratic Formula Confusion", "WW2 Causes Breakdown", "Python List Indexing Bug", "Mitosis vs Meiosis". No quotes, no punctuation at the end, just the title.
-
-Conversation so far:
-${realExchanges}
-Student (latest): ${currentUserMsg}
-
-Title:` }];
-            const titleResponse = await getGroqCompletion(titlePrompt, buildContext(null));
-            // Clean up the title — strip any <think>...</think> blocks first
-            let chatTitle = (titleResponse.content || "")
-              .replace(/^<think>[\s\S]*?<\/think>\s*/i, "")
-              .replace(/^<think>[\s\S]*$/i, "")
-              .trim();
-            chatTitle = chatTitle.replace(/^["'`]|["'`]$/g, "").trim();
-            chatTitle = chatTitle.replace(/^(Title:|Here'?s?( a title)?:|The title is:?)/i, "").trim();
-            chatTitle = chatTitle.replace(/[.!?]$/, "").trim();
-            // If AI returned garbage or nothing, use a fallback based on the input
-            if (!chatTitle || chatTitle.length < 2) {
-              const words = input.trim().split(/\s+/).slice(0, 4).join(" ");
-              chatTitle = words || "New chat";
-            }
-            // Ensure title is not too long
-            chatTitle = chatTitle.slice(0, 50);
-            await chatStore.updateSessionTitle(activeSessionId, chatTitle);
-            setAllSessions(prev => prev.map(s => s.id === activeSessionId ? { ...s, title: chatTitle } : s));
-          } catch (err) {
-            console.warn("[Chat] Failed to generate title:", err);
-            // Fallback: use first few words of user's question
-            const words = input.trim().split(/\s+/).slice(0, 4).join(" ");
-            if (words) {
-              const fallbackTitle = words.slice(0, 50);
-              await chatStore.updateSessionTitle(activeSessionId, fallbackTitle);
-              setAllSessions(prev => prev.map(s => s.id === activeSessionId ? { ...s, title: fallbackTitle } : s));
-            }
-          }
-        }
+        // Generate chat title after the first real exchange
+        await generateChatTitleIfNeeded(newHistory, messages, input, activeSessionId, buildContext);
       }
       } catch {
         setMessages(prev => [...prev, {
@@ -1538,7 +1806,7 @@ Title:` }];
       <motion.div
         animate={{ opacity: sidebarOpen ? 1 : 0 }}
         transition={{ duration: 0.2 }}
-        className="flex flex-col my-2 mr-2 rounded-2xl border border-border/60 overflow-hidden bg-card/60 backdrop-blur-sm shadow-md"
+        className="flex flex-col my-2 mr-2 rounded-2xl border-r border-border/60 overflow-hidden bg-card/60 backdrop-blur-sm shadow-sm"
         style={{ width: 256, height: 'calc(100% - 16px)', padding: 8 }}
       >
         {/* New Chat */}
@@ -1995,6 +2263,14 @@ Title:` }];
                         </div>
                       </div>
                     </motion.div>
+                  )}
+
+                  {pendingProposal && (
+                    <ToolProposalCard
+                      proposal={pendingProposal}
+                      onAllow={handleAllowTools}
+                      onDeny={handleDenyTools}
+                    />
                   )}
                   
                   <div ref={messagesEndRef} />

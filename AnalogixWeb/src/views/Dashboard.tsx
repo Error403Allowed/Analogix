@@ -3,22 +3,21 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { staggerContainer, fadeInUp } from "@/utils/animations";
 import {
-  TrendingUp, Zap, Target, Brain,
+  Zap,
   MoreHorizontal, X, Check,
   MessageSquare, FileText, Calendar, Layers,
-  Timer, Link2, Trophy, Settings2,
+  Timer, Link2, Settings2,
   Send, ArrowRight, Play, Pause, RotateCcw, SkipForward,
   BookOpen, Plus, ChevronRight,
 } from "lucide-react";
 import { DashboardPanel } from "@/components/ui/panels";
 import UpcomingEvents from "@/components/UpcomingEvents";
 import QuickLinks from "@/components/QuickLinks";
-import { statsStore } from "@/utils/statsStore";
-import type { UserStats } from "@/types/stats";
+import { useQuery } from "@apollo/client";
+import { USER_STATS, ACTIVITY_LOG } from "@/graphql/queries/user";
 import { useAchievementChecker } from "@/hooks/useAchievementChecker";
-import { applyThemeByName } from "@/components/ThemeSelector";
-import { activityLog, type DayActivity } from "@/utils/activityLog";
 import TutorialOverlay from "@/components/TutorialOverlay";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
@@ -29,7 +28,28 @@ import { SUBJECT_CATALOG } from "@/constants/subjects";
 import { loadTimerState, saveTimerState, getDefaultTimerState } from "@/lib/timerStore";
 import type { TimerPhase } from "@/lib/timerStore";
 
+import { BarChart, Bar, XAxis, ResponsiveContainer } from "recharts";
+
 // ── helpers ───────────────────────────────────────────────────────────────────
+function buildWeek(entries: { date: string; count: number }[]): { date: string; count: number }[] {
+  const now = new Date();
+  const todayStr = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+  const [y, m, d_] = todayStr.split("-").map(Number);
+  const todayDate = new Date(y, m - 1, d_);
+  const todayDow = todayDate.getDay();
+  const mondayOffset = (todayDow + 6) % 7;
+  const monday = new Date(y, m - 1, d_ - mondayOffset);
+  const map = new Map(entries.map(e => [e.date, e.count]));
+  const week: { date: string; count: number }[] = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    const dateStr = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+    week.push({ date: dateStr, count: map.get(dateStr) ?? 0 });
+  }
+  return week;
+}
+
 const readJson = <T,>(key: string, fallback: T): T => {
   if (typeof window === "undefined") return fallback;
   try {
@@ -40,21 +60,18 @@ const readJson = <T,>(key: string, fallback: T): T => {
   } catch { return fallback; }
 };
 const toInt = (v: unknown) => { const n = Number(v); return Number.isFinite(n) && n >= 0 ? Math.floor(n) : 0; };
-const toPct = (v: unknown) => { const n = Number(v); return Number.isFinite(n) ? Math.min(100, Math.max(0, Math.round(n))) : 0; };
 const DAY_SH = ["M", "T", "W", "T", "F", "S", "S"];
-const mondayIndex = (jsDay: number) => (jsDay + 6) % 7;
-const dayLabel = (iso: string) => iso ? DAY_SH[mondayIndex(new Date(`${iso}T12:00:00`).getDay())] || "" : "";
 const fmt = (n: number) => String(n).padStart(2, "0");
 
 function greeting() {
   const h = new Date().getHours();
-  if (h < 12) return "Good morning";
-  if (h < 17) return "Good afternoon";
-  return "Good evening";
+  if (h < 12) return "Morning";
+  if (h < 17) return "Afternoon";
+  return "Evening";
 }
 
 // ── Widget registry ───────────────────────────────────────────────────────────
-type WidgetId = "stats" | "chat" | "docs" | "events" | "timer" | "quicklinks" | "flashcards";
+type WidgetId = "streak" | "chat" | "docs" | "events" | "timer" | "quicklinks" | "flashcards";
 
 interface WidgetMeta {
   id: WidgetId;
@@ -65,7 +82,7 @@ interface WidgetMeta {
 }
 
 const WIDGET_REGISTRY: WidgetMeta[] = [
-  { id: "stats",      label: "Stats",           desc: "Study streak, quizzes & accuracy",   icon: Trophy,        defaultOn: true  },
+  { id: "streak",     label: "Streak",          desc: "Your study streak",                   icon: Zap,           defaultOn: true  },
   { id: "chat",       label: "AI Tutor",        desc: "Quick chat with your AI tutor",      icon: MessageSquare, defaultOn: true  },
   { id: "docs",       label: "Recent Docs",     desc: "Your latest notes & study guides",   icon: FileText,      defaultOn: true  },
   { id: "events",     label: "Upcoming Events", desc: "Deadlines and calendar events",      icon: Calendar,      defaultOn: true  },
@@ -367,19 +384,19 @@ function DocScrollRow() {
 // ── FlashcardWidget — live flashcard summary ──────────────────────────────────
 function FlashcardWidget() {
   const router = useRouter();
-  const [total, setTotal] = useState(0);
-  const [due, setDue] = useState(0);
+  const [setsCount, setSetsCount] = useState(0);
+  const [totalCards, setTotalCards] = useState(0);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [all, dueCards] = await Promise.all([
+      const [all, sets] = await Promise.all([
         flashcardStore.getAll(),
-        flashcardStore.getDue(),
+        flashcardStore.getSets(),
       ]);
-      setTotal(all.length);
-      setDue(dueCards.length);
+      setTotalCards(all.length);
+      setSetsCount(sets.length);
     } catch {
       /* ignore */
     } finally {
@@ -401,7 +418,7 @@ function FlashcardWidget() {
     </div>
   );
 
-  if (total === 0) return (
+  if (setsCount === 0) return (
     <div className="flex flex-col gap-3">
       <p className="text-xs text-muted-foreground/65 leading-relaxed">
         No flashcards yet. Create your first set to get started.
@@ -417,20 +434,12 @@ function FlashcardWidget() {
     <div className="flex flex-col gap-3">
       <div className="flex gap-2">
         <div className="flex-1 rounded-xl bg-muted/20 border border-border/25 p-3">
-          <p className="text-[9px] font-black uppercase tracking-[0.18em] text-muted-foreground/50">Total</p>
-          <p className="text-xl font-black text-foreground tracking-tight">{total}</p>
+          <p className="text-[9px] font-black uppercase tracking-[0.18em] text-muted-foreground/50">Sets</p>
+          <p className="text-xl font-black text-foreground tracking-tight">{setsCount}</p>
         </div>
-        <div className={cn(
-          "flex-1 rounded-xl p-3 border",
-          due > 0
-            ? "bg-amber-500/10 border-amber-500/25"
-            : "bg-emerald-500/10 border-emerald-500/25"
-        )}>
-          <p className="text-[9px] font-black uppercase tracking-[0.18em] text-muted-foreground/50">Due now</p>
-          <p className={cn(
-            "text-xl font-black tracking-tight",
-            due > 0 ? "text-amber-500" : "text-emerald-500"
-          )}>{due}</p>
+        <div className="flex-1 rounded-xl bg-muted/20 border border-border/25 p-3">
+          <p className="text-[9px] font-black uppercase tracking-[0.18em] text-muted-foreground/50">Cards</p>
+          <p className="text-xl font-black text-foreground tracking-tight">{totalCards}</p>
         </div>
       </div>
       <div className="flex gap-2">
@@ -438,12 +447,6 @@ function FlashcardWidget() {
           className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 transition-opacity">
           <Layers className="w-3.5 h-3.5" /> Browse
         </a>
-        {due > 0 && (
-          <button onClick={() => router.push("/flashcards")}
-            className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-amber-500/15 text-amber-500 text-xs font-semibold hover:bg-amber-500/25 transition-colors border border-amber-500/20">
-            Review {due} due
-          </button>
-        )}
       </div>
     </div>
   );
@@ -598,18 +601,18 @@ export default function Dashboard() {
 
   // Start empty so SSR and client initial render match, then hydrate in useEffect.
   const [prefs, setPrefs]                   = useState<Prefs>({});
-  const [stats, setStats]                   = useState<UserStats>({ quizzesDone: 0, currentStreak: 0, accuracy: 0, conversationsCount: 0, topSubject: "None", subjectCounts: {} });
-  const [weekActivity, setWeekActivity]     = useState<DayActivity[]>([]);
   const [showTutorial, setShowTutorial]     = useState(false);
   const [showCustomise, setShowCustomise]   = useState(false);
   const [menuOpen, setMenuOpen]             = useState(false);
   const [enabledWidgets, setEnabledWidgets] = useState<WidgetId[]>(DEFAULT_ENABLED);
   const menuRef = useRef<HTMLDivElement>(null);
 
+  const { data: statsData } = useQuery(USER_STATS);
+  const { data: activityData } = useQuery(ACTIVITY_LOG, { variables: { days: 7 } });
+
   useEffect(() => { setEnabledWidgets(loadEnabledWidgets()); }, []);
 
   useEffect(() => {
-    // Initial load + keep in sync with external updates
     setPrefs(readJson("userPreferences", {}));
     const update = () => setPrefs(readJson("userPreferences", {}));
     window.addEventListener("userPreferencesUpdated", update);
@@ -622,20 +625,6 @@ export default function Dashboard() {
       const t = setTimeout(() => setShowTutorial(true), 600);
       return () => clearTimeout(t);
     }
-  }, []);
-
-  useEffect(() => {
-    const refresh = async () => {
-      setStats(await statsStore.get());
-      setWeekActivity(await activityLog.getLast7());
-    };
-    refresh();
-    window.addEventListener("statsUpdated", refresh);
-    return () => window.removeEventListener("statsUpdated", refresh);
-  }, []);
-
-  useEffect(() => {
-    applyThemeByName(localStorage.getItem("app-theme") || "Classic Blue");
   }, []);
 
   useEffect(() => {
@@ -656,28 +645,20 @@ export default function Dashboard() {
     setShowTutorial(false);
   }, []);
 
-  const qs  = toInt(stats.quizzesDone);
-  const str = toInt(stats.currentStreak);
-  const acc = toPct(stats.accuracy);
-  const con = toInt(stats.conversationsCount);
+  const rawActivity = (activityData?.activityLog ?? []) as { date: string; count: number }[];
+  const weekActivity = buildWeek(rawActivity);
+  const str = toInt(statsData?.userStats?.currentStreak ?? 0);
   const userName = prefs.name || "Student";
   const on = (id: WidgetId) => enabledWidgets.includes(id);
-
-  const colourMap = {
-    amber:   { bg: "bg-amber-500/5 border-amber-500/15",     icon: "bg-amber-500/15",   text: "text-amber-500"   },
-    primary: { bg: "bg-primary/5 border-primary/10",         icon: "bg-primary/15",     text: "text-primary"     },
-    emerald: { bg: "bg-emerald-500/5 border-emerald-500/15", icon: "bg-emerald-500/15", text: "text-emerald-500" },
-    violet:  { bg: "bg-violet-500/5 border-violet-500/15",   icon: "bg-violet-500/15",  text: "text-violet-500"  },
-  } as const;
 
   return (
     <>
       {/* ── Sticky header bar with ··· menu ── */}
       <div className="sticky top-0 z-30 bg-background/80 backdrop-blur-md border-b border-border/30">
         <div className="px-6 py-3 flex items-center justify-between max-w-4xl mx-auto w-full">
-          <div>
-            <h1 className="text-xl font-display font-black text-foreground tracking-tight leading-none">
-              {greeting()}, {userName} 👋
+          <div className="min-w-0 flex-1">
+            <h1 className="text-xl font-display font-black text-foreground tracking-tight truncate">
+              {greeting()}, {userName.split(" ")[0]} 👋
             </h1>
             <p className="text-[11px] text-muted-foreground/50 mt-0.5">
               {new Date().toLocaleDateString("en-AU", { weekday: "long", day: "numeric", month: "long" })}
@@ -712,107 +693,105 @@ export default function Dashboard() {
 
       {/* ── Scrollable content ── */}
       <div className="overflow-y-auto h-[calc(100%-56px)]">
-        <div className="dashboard-container px-6 pt-5 pb-8 space-y-4 max-w-4xl mx-auto w-full" data-tour="dashboard-main">
+        <motion.div
+          className="dashboard-container px-6 pt-5 pb-8 space-y-4 max-w-4xl mx-auto w-full"
+          data-tour="dashboard-main"
+          variants={staggerContainer}
+          initial="hidden"
+          animate="visible"
+        >
 
-          {/* Stats strip */}
-          {on("stats") && (
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3" data-tour="stats-strip">
-              {([
-                { label: "Day streak", value: str, suffix: null, colour: "amber" as const, icon: Zap,
-                  extra: (
-                    <div className="flex gap-0.5 items-end mt-2">
-                      {(weekActivity.length > 0 ? weekActivity : Array.from({ length: 7 }, () => ({ date: "", count: 0 }))).map((d, i) => (
-                        <div key={i} className="flex-1 flex flex-col items-center gap-0.5">
-                          <div className={`w-full rounded-sm ${d.count > 0 ? "bg-amber-500" : "bg-amber-500/15"}`}
-                            style={{ height: `${d.count > 0 ? Math.max(3, Math.min(14, 3 + d.count * 2)) : 3}px` }} />
-                          <span className="text-[7px] text-muted-foreground/40 font-bold">
-                            {weekActivity[i] ? dayLabel(weekActivity[i].date) : DAY_SH[i]}
-                          </span>
-                        </div>
-                      ))}
+          {/* Streak widget */}
+          <motion.div variants={fadeInUp}>
+            {on("streak") && (
+            <div className="space-y-3" data-tour="streak-strip">
+              <div className="dashboard-panel p-5">
+                <div className="flex items-center gap-5">
+                  <div className="shrink-0">
+                    <div className="w-10 h-10 rounded-xl bg-amber-500/15 flex items-center justify-center mb-2.5">
+                      <Zap className="w-5 h-5 text-amber-500" />
                     </div>
-                  )
-                },
-                { label: "Quizzes done",  value: qs,  suffix: null, colour: "primary" as const, icon: Target,     extra: null },
-                { label: "Accuracy",      value: acc, suffix: "%",  colour: "emerald" as const, icon: TrendingUp,
-                  extra: acc > 0 ? (
-                    <div className="mt-2 h-1  bg-blue-950/15 rounded-full overflow-hidden">
-                      <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${acc}%` }} />
-                    </div>
-                  ) : null },
-                { label: "Conversations", value: con, suffix: null, colour: "violet" as const, icon: Brain, extra: null },
-              ]).map(card => {
-                const c = colourMap[card.colour]; const Icon = card.icon;
-                return (
-                  <div key={card.label} className="dashboard-panel p-4">
-                    <div className="w-7 h-7 rounded-xl bg-muted/20 flex items-center justify-center mb-2">
-                      <Icon className="w-3.5 h-3.5 text-muted-foreground" />
-                    </div>
-                    <p className="text-2xl font-display font-black text-foreground tracking-tighter leading-none">
-                      {card.value}{card.suffix && <span className="text-base text-muted-foreground">{card.suffix}</span>}
+                    <p className="text-3xl font-display font-black text-foreground tracking-tighter leading-none">
+                      {str}
                     </p>
-                    <p className={`text-[9px] font-black uppercase tracking-[0.18em] mt-0.5 ${c.text}`}>{card.label}</p>
-                    {card.extra}
+                    <p className="text-[9px] font-black uppercase tracking-[0.18em] mt-0.5 text-amber-500">
+                      Day streak
+                    </p>
                   </div>
-                );
-              })}
+                  <div className="flex-1 min-w-0 self-end">
+                    <ResponsiveContainer width="100%" height={72}>
+                      <BarChart data={(weekActivity.length > 0 ? weekActivity : Array.from({ length: 7 }, (_, i) => ({ date: "", count: 0 }))).map((d, i) => ({ ...d, day: DAY_SH[i] }))}>
+                        <Bar dataKey="count" radius={[5, 5, 0, 0]} fill="#f59e0b" />
+                        <XAxis dataKey="day" axisLine={false} tickLine={false}
+                          tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
-
+          </motion.div>
 
           {/* AI Tutor — full width */}
-{on("chat") && (
-            <div className="dashboard-panel p-5" data-tour="ai-chat-widget">
-              <AiChatWidget />
-            </div>
-          )}
+          <motion.div variants={fadeInUp}>
+            {on("chat") && (
+              <div className="dashboard-panel p-5" data-tour="ai-chat-widget">
+                <AiChatWidget />
+              </div>
+            )}
+          </motion.div>
 
           {/* Docs — full width horizontal scroll */}
-          {on("docs") && (
-            <div className="dashboard-panel p-5" data-tour="recent-docs">
-              <DocScrollRow />
-            </div>
-          )}
-
+          <motion.div variants={fadeInUp}>
+            {on("docs") && (
+              <div className="dashboard-panel p-5" data-tour="recent-docs">
+                <DocScrollRow />
+              </div>
+            )}
+          </motion.div>
 
           {/* Events — full width, timer embedded as a footer strip inside */}
-{(on("events") || on("timer")) && (
-            <div className="dashboard-panel p-5 flex flex-col" data-tour="calendar-widget">
-              {on("events") && <UpcomingEvents />}
-              {on("timer") && (
-                <div className={cn(
-                  "border-t border-border/30 pt-3 mt-3",
-                  !on("events") && "border-t-0 pt-0 mt-0"
-                )}>
-                  <MiniTimer />
-                </div>
-              )}
-            </div>
-          )}
-
+          <motion.div variants={fadeInUp}>
+            {(on("events") || on("timer")) && (
+              <div className="dashboard-panel p-5 flex flex-col" data-tour="calendar-widget">
+                {on("events") && <UpcomingEvents />}
+                {on("timer") && (
+                  <div className={cn(
+                    "border-t border-border/30 pt-3 mt-3",
+                    !on("events") && "border-t-0 pt-0 mt-0"
+                  )}>
+                    <MiniTimer />
+                  </div>
+                )}
+              </div>
+            )}
+          </motion.div>
 
           {/* Quick links + Flashcards */}
-          {(on("quicklinks") || on("flashcards")) && (
-            <div className="grid grid-cols-12 gap-4" data-tour="quick-actions">
-{on("quicklinks") && (
-                <div className={cn("dashboard-panel p-5 overflow-visible", on("flashcards") ? "col-span-12 lg:col-span-8" : "col-span-12")}>
-                  <p className="text-[9px] font-black uppercase tracking-[0.22em] text-muted-foreground/50 mb-3">🔗 Quick Links</p>
-                  <QuickLinks />
-                </div>
-              )}
-              {on("flashcards") && (
-                <div className={cn("dashboard-panel p-5 flex flex-col gap-3",
-                  on("quicklinks") ? "col-span-12 lg:col-span-4" : "col-span-12")}>
-                  <p className="text-[9px] font-black uppercase tracking-[0.22em] text-muted-foreground/50">🃏 Flashcards</p>
-                  <FlashcardWidget />
-                </div>
-              )}
-            </div>
-          )}
-
+          <motion.div variants={fadeInUp}>
+            {(on("quicklinks") || on("flashcards")) && (
+              <div className="grid grid-cols-12 gap-4" data-tour="quick-actions">
+                {on("quicklinks") && (
+                  <div className={cn("dashboard-panel p-5 overflow-visible", on("flashcards") ? "col-span-12 lg:col-span-8" : "col-span-12")}>
+                    <p className="text-[9px] font-black uppercase tracking-[0.22em] text-muted-foreground/50 mb-3">🔗 Quick Links</p>
+                    <QuickLinks />
+                  </div>
+                )}
+                {on("flashcards") && (
+                  <div className={cn("dashboard-panel p-5 flex flex-col gap-3",
+                    on("quicklinks") ? "col-span-12 lg:col-span-4" : "col-span-12")}>
+                    <p className="text-[9px] font-black uppercase tracking-[0.22em] text-muted-foreground/50">🃏 Flashcards</p>
+                    <FlashcardWidget />
+                  </div>
+                )}
+              </div>
+            )}
+          </motion.div>
 
           {/* Empty state */}
-          {!on("stats") && !on("chat") && !on("docs") && !on("events") && !on("timer") && !on("quicklinks") && !on("flashcards") && (
+          <motion.div variants={fadeInUp}>
+            {!on("streak") && !on("chat") && !on("docs") && !on("events") && !on("timer") && !on("quicklinks") && !on("flashcards") && (
             <div className="flex flex-col items-center justify-center py-32 gap-4">
               <div className="w-12 h-12 rounded-2xl bg-muted/40 flex items-center justify-center">
                 <Settings2 className="w-6 h-6 text-muted-foreground/40" />
@@ -827,7 +806,8 @@ export default function Dashboard() {
               </button>
             </div>
           )}
-        </div>
+          </motion.div>
+        </motion.div>
       </div>
 
       <CustomisePanel open={showCustomise} enabled={enabledWidgets} onSave={saveWidgets} onClose={() => setShowCustomise(false)} />

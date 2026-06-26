@@ -58,10 +58,10 @@ export const chatStore = {
     return data?.id ?? null;
   },
 
-  /** Append a message to an existing session */
-  addMessage: async (sessionId: string, role: "user" | "assistant", content: string): Promise<void> => {
+  /** Append a message to an existing session. Returns the database-assigned message ID (UUID). */
+  addMessage: async (sessionId: string, role: "user" | "assistant", content: string): Promise<string | null> => {
     const user = await getAuthUser();
-    if (!user) { console.warn("[chatStore] addMessage: no user logged in, message not saved"); return; }
+    if (!user) { console.warn("[chatStore] addMessage: no user logged in, message not saved"); return null; }
     const supabase = createClient();
 
     // Verify session exists before inserting message
@@ -73,17 +73,17 @@ export const chatStore = {
       .maybeSingle();
 
     if (!session) {
-      return;
+      return null;
     }
 
-    const { error } = await supabase.from("chat_messages").insert({
+    const { data, error } = await supabase.from("chat_messages").insert({
       session_id: sessionId,
       user_id: user.id,
       role,
       content,
-    });
+    }).select("id").single();
 
-    if (error) { console.error("[chatStore] addMessage insert error:", error.message, error.code, "session:", sessionId); return; }
+    if (error) { console.error("[chatStore] addMessage insert error:", error.message, error.code, "session:", sessionId); return null; }
 
     // Bump session updated_at
     const { error: updateError } = await supabase
@@ -91,6 +91,8 @@ export const chatStore = {
       .update({ updated_at: new Date().toISOString() })
       .eq("id", sessionId);
     if (updateError) console.warn("[chatStore] addMessage: failed to bump updated_at:", updateError.message);
+
+    return data?.id ?? null;
   },
 
   /** Fetch all sessions for the current user (no messages) */
@@ -155,5 +157,44 @@ export const chatStore = {
       .eq("id", sessionId)
       .eq("user_id", user.id);
     if (error) console.error("[chatStore] updateSessionTitle error:", error.message);
+  },
+
+  /** Update the content of an existing message.
+   *  If `messageId` is not a UUID (e.g. a client-generated timestamp), looks up the
+   *  latest assistant message in the session by position to find the real DB id. */
+  updateMessageContent: async (sessionId: string, messageId: string, content: string): Promise<void> => {
+    const user = await getAuthUser();
+    const supabase = createClient();
+    if (!user) return;
+
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(messageId);
+    let realId = isUuid ? messageId : null;
+
+    if (!realId) {
+      // Client generated a temp ID; find the actual DB row by session + ordering.
+      // We grab the most recent assistant message (the one we just added).
+      const { data } = await supabase
+        .from("chat_messages")
+        .select("id")
+        .eq("session_id", sessionId)
+        .eq("user_id", user.id)
+        .eq("role", "assistant")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (data?.id) realId = data.id;
+    }
+
+    if (!realId) {
+      console.warn("[chatStore] updateMessageContent: could not resolve message ID", messageId);
+      return;
+    }
+
+    const { error } = await supabase
+      .from("chat_messages")
+      .update({ content })
+      .eq("id", realId)
+      .eq("session_id", sessionId);
+    if (error) console.error("[chatStore] updateMessageContent error:", error.message);
   },
 };

@@ -11,7 +11,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Sparkles, Brain, Smile, BookOpen, Lightbulb, Target,
   MessageCircle, Zap, Heart, GraduationCap, Clock, Check,
-  ArrowRight, RotateCcw, Save, Wand2,
+  ArrowRight, RotateCcw, Save, Wand2, Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -108,7 +108,10 @@ export const PersonalityEditor: React.FC< PersonalityEditorProps> = ({ onClose }
       personality.analogy_frequency !== localPersonality.analogy_frequency ||
       personality.use_section_dividers !== localPersonality.use_section_dividers ||
       personality.custom_instructions !== localPersonality.custom_instructions ||
-      personality.persona_description !== localPersonality.persona_description
+      personality.persona_description !== localPersonality.persona_description ||
+      personality.auto_approve_tools !== localPersonality.auto_approve_tools ||
+      personality.auto_approve_read_tools !== localPersonality.auto_approve_read_tools ||
+      JSON.stringify(personality.auto_approve_write_subjects) !== JSON.stringify(localPersonality.auto_approve_write_subjects)
     );
   };
 
@@ -358,6 +361,46 @@ export const PersonalityEditor: React.FC< PersonalityEditorProps> = ({ onClose }
                     <span>Never</span>
                     <span>Always</span>
                   </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Tool Settings */}
+          <div className="pt-4 border-t border-border/60">
+            <h4 className="text-xs font-bold text-foreground mb-3 flex items-center gap-2">
+              <Shield className="w-3.5 h-3.5 text-primary" />
+              Tool Permissions
+            </h4>
+            <p className="text-[10px] text-muted-foreground/60 mb-3">
+              Control how the AI uses tools (flashcards, documents, quizzes, events, deadlines)
+            </p>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label className="text-xs font-semibold text-foreground">Auto-approve All Tools</Label>
+                  <p className="text-[10px] text-muted-foreground/60 mt-0.5">
+                    AI can create, edit, and delete data without asking permission
+                  </p>
+                </div>
+                <Switch
+                  checked={localPersonality.auto_approve_tools}
+                  onCheckedChange={(checked) => updateTrait("auto_approve_tools", checked)}
+                />
+              </div>
+
+              {!localPersonality.auto_approve_tools && (
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="text-xs font-semibold text-foreground">Auto-approve Read-Only</Label>
+                    <p className="text-[10px] text-muted-foreground/60 mt-0.5">
+                      AI can view your data (list, get) without asking permission
+                    </p>
+                  </div>
+                  <Switch
+                    checked={localPersonality.auto_approve_read_tools}
+                    onCheckedChange={(checked) => updateTrait("auto_approve_read_tools", checked)}
+                  />
                 </div>
               )}
             </div>

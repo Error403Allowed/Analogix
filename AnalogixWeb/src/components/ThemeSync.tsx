@@ -5,7 +5,7 @@ import { getAuthUser } from "@/utils/authCache";
 
 const ThemeSync = () => {
   useEffect(() => {
-    const savedTheme = localStorage.getItem("app-theme") || "Classic Blue";
+    const savedTheme = localStorage.getItem("app-theme") || "Analogix";
     applyThemeByName(savedTheme);
 
     // Load theme from database (takes priority over localStorage)
@@ -24,7 +24,7 @@ const ThemeSync = () => {
     });
 
     const handleThemeChange = () => {
-      const theme = localStorage.getItem("app-theme") || "Classic Blue";
+      const theme = localStorage.getItem("app-theme") || "Analogix";
       applyThemeByName(theme);
     };
 

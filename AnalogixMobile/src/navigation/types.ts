@@ -32,8 +32,7 @@ export type StudyStackParamList = {
   QuizResults: { quizId: string; answersSummary?: any[]; questions?: any[]; subjectId?: string };
   Calendar: undefined;
   EventDetail: { eventId: string };
-  Formulas: undefined;
-  FormulasSubject: { subjectId: string };
+  Formulas: { subjectId?: string } | undefined;
   Timer: undefined;
   StudySchedule: { subjectId?: string } | undefined;
   AssessmentGuide: { text?: string; subjectId?: string } | undefined;
@@ -78,6 +77,7 @@ export type RootStackParamList = {
   Onboarding: undefined;
   Terms: undefined;
   PrivacyPolicy: undefined;
+  ResetPassword: undefined;
   Modal: undefined;
 };
 

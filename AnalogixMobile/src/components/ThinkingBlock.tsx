@@ -18,7 +18,7 @@ export function ThinkingBlock({ content }: Props) {
     Animated.timing(anim, {
       toValue,
       duration: 180,
-      useNativeDriver: true,
+      useNativeDriver: false,
     }).start();
     setOpen(!open);
   };

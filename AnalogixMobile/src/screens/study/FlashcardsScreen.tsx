@@ -3,7 +3,7 @@ import { View, StyleSheet } from "react-native";
 import { Text, useTheme, FAB, Portal, Modal, TextInput, Button, ActivityIndicator } from "react-native-paper";
 import { useQuery, useMutation } from "@apollo/client";
 import { useNavigation, useRoute } from "@react-navigation/native";
-import { FLASHCARD_SETS, FLASHCARDS_DUE, CREATE_FLASHCARD_SET } from "../../graphql/queries/flashcard";
+import { FLASHCARD_SETS, CREATE_FLASHCARD_SET } from "../../graphql/queries/flashcard";
 import { useThemeContext } from "../../theme/ThemeContext";
 import { SHAPE } from "../../theme/tokens";
 import {
@@ -12,7 +12,6 @@ import {
   ExpressiveRailCard,
   ExpressiveScreen,
   ExpressiveSection,
-  PressableScale,
 } from "../../components/expressive";
 import Icon from "../../components/Icon";
 
@@ -23,13 +22,10 @@ export default function FlashcardsScreen() {
   const route = useRoute<any>();
   const subjectId = route.params?.subjectId as string | undefined;
   const { data: setsData, loading: setsLoading, error: setsError, refetch } = useQuery(FLASHCARD_SETS, { variables: { subjectId } });
-  const { data: dueData } = useQuery(FLASHCARDS_DUE, { variables: { limit: 100, subjectId } });
   const [createSet, { loading: creating }] = useMutation(CREATE_FLASHCARD_SET);
   const [showCreate, setShowCreate] = useState(false);
   const [setName, setSetName] = useState("");
   const sets = setsData?.flashcardSets ?? [];
-  const dueCards = dueData?.flashcardsDue ?? [];
-  const dueCount = dueCards.length;
 
   const handleCreateSet = async () => {
     if (!setName.trim()) return;
@@ -66,24 +62,9 @@ export default function FlashcardsScreen() {
       onBack={() => navigation.goBack()}
     >
       <View style={styles.overview}>
-        <ExpressiveRailCard value={sets.reduce((s: number, d: any) => s + (d.cardCount ?? 0), 0)} label="Total cards" icon="cards" />
-        <ExpressiveRailCard value={dueCount} label="Due for review" icon="clock-outline" />
+        <ExpressiveRailCard value={sets.length} label="Sets" icon="cards" />
+        <ExpressiveRailCard value={sets.reduce((s: number, d: any) => s + (d.cardCount ?? 0), 0)} label="Cards" icon="cards-outline" />
       </View>
-
-      {dueCount > 0 && (
-        <PressableScale onPress={() => {
-          const dueSetId = dueCards.find((card: any) => card.setId)?.setId;
-          const fallbackSet = sets[0];
-          if (dueSetId || fallbackSet?.id) navigation.navigate("FlashcardReview", { setId: dueSetId ?? fallbackSet.id });
-        }}>
-          <View style={[styles.reviewBanner, { backgroundColor: brand.primary }]}>
-            <Icon name="cards" size={20} color="#fff" />
-            <Text variant="labelLarge" style={{ color: "#fff", fontWeight: "800" }}>
-              Review {dueCount} card{dueCount !== 1 ? "s" : ""}
-            </Text>
-          </View>
-        </PressableScale>
-      )}
 
       <ExpressiveSection title="Your sets">
         {setsLoading ? (
@@ -146,15 +127,6 @@ export default function FlashcardsScreen() {
 
 const styles = StyleSheet.create({
   overview: { flexDirection: "row", gap: 8, marginBottom: 8 },
-  reviewBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    paddingVertical: 14,
-    borderRadius: SHAPE.lg,
-    marginBottom: 8,
-  },
   setRow: { flexDirection: "row", alignItems: "center", gap: 12 },
   setIcon: { width: 44, height: 44, borderRadius: SHAPE.md, alignItems: "center", justifyContent: "center" },
   centerState: { minHeight: 220, alignItems: "center", justifyContent: "center", gap: 12 },

@@ -144,33 +144,31 @@ function DashContent({ children, isChatLike, pathname }: { children: React.React
   return (
     <>
       <TabBar onNavigate={handleNavigate} />
-      <div className={`flex-1 min-h-0 ${isChatLike ? 'overflow-hidden' : 'overflow-y-auto'}`}>
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.12 }}
-          className={isChatLike ? 'h-full' : 'min-h-full'}
-        >
-          {tabs.map((tab) => {
-            const isActive = tab.path === pathname && tab.id === activeTabId;
-            const PageComponent = getPageForPath(tab.path);
+      <div className="flex-1 min-h-0 relative">
+        {tabs.map((tab) => {
+          const isActive = tab.path === pathname && tab.id === activeTabId;
+          const PageComponent = getPageForPath(tab.path);
 
-            return (
-              <div
-                key={tab.id}
-                style={{
-                  display: isActive ? "block" : "none",
-                  height: "100%",
-                  overflow: isChatLike ? "hidden" : "auto",
-                }}
-              >
-                <Suspense fallback={<PageLoader message="Loading..." />}>
-                  <PageComponent />
-                </Suspense>
-              </div>
-            );
-          })}
-        </motion.div>
+          return (
+            <motion.div
+              key={tab.id}
+              initial={false}
+              animate={isActive ? { opacity: 1, y: 0 } : { opacity: 0, y: 3 }}
+              transition={{ duration: 0.15, ease: "easeOut" }}
+              className="absolute inset-0"
+              style={{
+                height: "100%",
+                overflow: isChatLike ? "hidden" : "auto",
+                pointerEvents: isActive ? "auto" : "none",
+                zIndex: isActive ? 1 : 0,
+              }}
+            >
+              <Suspense fallback={<PageLoader message="Loading..." />}>
+                <PageComponent />
+              </Suspense>
+            </motion.div>
+          );
+        })}
       </div>
     </>
   );

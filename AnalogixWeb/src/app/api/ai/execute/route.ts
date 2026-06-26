@@ -183,11 +183,12 @@ export async function POST(request: Request) {
       },
     };
 
-    const assembled = contextAssembler.assemble(
+    const assembled = await contextAssembler.assemble(
       retrievalResult.entities,
       workspaceContext,
       { facts: [], preferences: [], strengths: [], weak_areas: [], study_patterns: [] },
-      workspaceContext.preferences
+      workspaceContext.preferences,
+      lastMessage
     );
 
     const systemMessage = `You are "Analogix AI", a friendly AI tutor for Australian students.

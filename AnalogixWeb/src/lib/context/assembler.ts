@@ -1,5 +1,6 @@
 import type { RetrievedEntity, WorkspaceContext, UserPreferences } from '@/types/workspace';
 import type { MemoryContext } from '@/types/memory';
+import { createCurriculumRetriever } from '@/lib/retrieval/curriculum';
 
 export interface ContextAssemblyConfig {
   maxSystemTokens: number;
@@ -32,16 +33,16 @@ export interface AssembledContext {
 
 const DEFAULT_CONFIG: ContextAssemblyConfig = {
   maxSystemTokens: 800,
-  maxContextTokens: 3200,
+  maxContextTokens: 4000,
   priorityOrder: [
     { section: 'system', priority: 1, maxTokens: 400 },
-    { section: 'workspace', priority: 2, maxTokens: 1500 },
-    { section: 'memory', priority: 3, maxTokens: 500 },
-    { section: 'curriculum', priority: 4, maxTokens: 400 },
+    { section: 'curriculum', priority: 2, maxTokens: 1000 },
+    { section: 'workspace', priority: 3, maxTokens: 1500 },
+    { section: 'memory', priority: 4, maxTokens: 500 },
     { section: 'calendar', priority: 5, maxTokens: 200 },
     { section: 'personality', priority: 6, maxTokens: 200 },
   ],
-  includeSections: ['system', 'workspace', 'memory', 'calendar'],
+  includeSections: ['system', 'curriculum', 'workspace', 'memory', 'calendar'],
 };
 
 const TOKEN_ESTIMATE = 4;
@@ -53,12 +54,13 @@ export class ContextAssembler {
     this.config = { ...DEFAULT_CONFIG, ...config };
   }
 
-  assemble(
+  async assemble(
     entities: RetrievedEntity[],
     workspaceContext: WorkspaceContext,
     memoryContext: MemoryContext,
-    personality?: UserPreferences
-  ): AssembledContext {
+    personality?: UserPreferences,
+    query?: string
+  ): Promise<AssembledContext> {
     const sections: ContextSection[] = [];
     let totalTokens = 0;
 
@@ -66,12 +68,13 @@ export class ContextAssembler {
       if (!this.config.includeSections.includes(priority.section)) continue;
       if (totalTokens >= this.config.maxContextTokens) break;
 
-      const sectionContent = this.buildSection(
+      const sectionContent = await this.buildSection(
         priority.section,
         entities,
         workspaceContext,
         memoryContext,
-        personality
+        personality,
+        query
       );
 
       if (!sectionContent) continue;
@@ -107,13 +110,14 @@ export class ContextAssembler {
     };
   }
 
-  private buildSection(
+  private async buildSection(
     type: ContextSectionType,
     entities: RetrievedEntity[],
     workspace: WorkspaceContext,
     memory: MemoryContext,
-    personality?: UserPreferences
-  ): string | null {
+    personality?: UserPreferences,
+    query?: string
+  ): Promise<string | null> {
     switch (type) {
       case 'system':
         return this.buildSystemSection(workspace, personality);
@@ -122,7 +126,7 @@ export class ContextAssembler {
       case 'memory':
         return this.buildMemorySection(memory);
       case 'curriculum':
-        return this.buildCurriculumSection(workspace);
+        return await this.buildCurriculumSection(workspace, query);
       case 'calendar':
         return this.buildCalendarSection(workspace);
       case 'personality':
@@ -225,18 +229,27 @@ export class ContextAssembler {
     return parts.join('\n');
   }
 
-  private buildCurriculumSection(workspace: WorkspaceContext): string {
-    if (workspace.subjects.length === 0) return '';
+  private async buildCurriculumSection(workspace: WorkspaceContext, query?: string): Promise<string> {
+    if (!query || workspace.subjects.length === 0) return '';
 
-    const parts: string[] = ['━━━ CURRICULUM ━━━'];
-    
-    const relevantSubject = workspace.subjects[0];
-    if (relevantSubject.grade) {
-      parts.push(`Year ${relevantSubject.grade} ${relevantSubject.name}`);
+    try {
+      const retriever = createCurriculumRetriever();
+      const filters: { subject?: string; grade?: string } = {};
+      const relevantSubject = workspace.subjects[0];
+      if (relevantSubject.name) {
+        filters.subject = relevantSubject.name;
+      }
+      if (workspace.preferences.grade) {
+        filters.grade = workspace.preferences.grade;
+      }
+
+      const results = await retriever.retrieve(query, filters, 5);
+      if (results.length === 0) return '';
+
+      return retriever.formatContext(results);
+    } catch {
+      return '';
     }
-
-    parts.push('━━━ END CURRICULUM ━━━');
-    return parts.join('\n');
   }
 
   private buildCalendarSection(workspace: WorkspaceContext): string {

@@ -8,7 +8,7 @@ import {
   Cpu, LineChart, Briefcase, Wallet, HeartPulse, Globe, Wrench,
   Stethoscope, Languages, Dumbbell, Gamepad2, Music, CookingPot,
   Palette, Film, Leaf, Laptop, Book, Plane, CalendarDays, Upload,
-  Loader2, Brain,
+  Loader2, Brain, Eye, EyeOff, Mail, Lock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,18 +22,17 @@ import { AustralianState, STATE_LABELS } from "@/utils/termData";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/context/AuthContext";
-import { signInWithGoogle } from "@/lib/auth-client";
+import { signInWithGoogle, signInWithEmail, signUpWithEmail, getEmailError } from "@/lib/auth-client";
 import OnboardingBackdrop from "@/components/OnboardingBackdrop";
 
 // ── Friendly auth error mapper ───────────────────────────────────────────────
-// Translates Supabase / OAuth error codes into actionable messages a real
-// user can fix (e.g. "open Supabase dashboard and enable Google provider").
+// Translates Supabase auth / OAuth error codes into actionable messages a real
+// user can fix.
 function describeAuthError(code: string | null, raw: string | null): string {
   const c = (code || "").toLowerCase();
   const r = (raw || "").toLowerCase();
 
-  // The infamous `4/0A` GoTrue response — Supabase rejected the OAuth code
-  // because the Google provider is disabled / mis-configured.
+  // OAuth-specific errors
   if (
     r.includes("unable to exchange external code") ||
     r.includes("4/0a") ||
@@ -51,6 +50,27 @@ function describeAuthError(code: string | null, raw: string | null): string {
   if (c.includes("exchange_failed") || c === "missing_code") {
     return "We couldn't finish signing you in. The auth code was missing or expired — please try again.";
   }
+
+  // Email/password errors
+  if (c === "invalid_credentials" || c === "wrong_password" || r.includes("invalid login credentials")) {
+    return "Invalid email of password. Maybe you signed in using google?.";
+  }
+  if (c === "email_not_confirmed" || r.includes("email not confirmed")) {
+    return "Please confirm your email address first — check your inbox for a confirmation link.";
+  }
+  if (c === "user_not_found" || r.includes("user not found")) {
+    return "No account found with this email.";
+  }
+  if (c === "weak_password" || r.includes("weak password") || r.includes("password should be at least 6")) {
+    return "Password must be at least 6 characters.";
+  }
+  if (c === "email_exists" || r.includes("user already registered")) {
+    return "An account with this email already exists. Try signing in.";
+  }
+  if (c === "rate_limit" || r.includes("rate limit") || r.includes("too many requests")) {
+    return "Too many attempts. Please wait a moment and try again.";
+  }
+
   if (r) return `Sign-in failed (${code || "auth_failed"}): ${raw}`;
   return "Authentication failed. Please try again.";
 }
@@ -96,6 +116,16 @@ function AuthStep({ onAuthed, externalError }: { onAuthed: () => void; externalE
   const { user, loading } = useAuth();
   const [googleLoading, setGoogleLoading] = useState(false);
 
+  const [mode, setMode] = useState<"signin" | "signup">("signup");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
   useEffect(() => {
     if (!loading && user) onAuthed();
   }, [user, loading, onAuthed]);
@@ -105,7 +135,35 @@ function AuthStep({ onAuthed, externalError }: { onAuthed: () => void; externalE
     await signInWithGoogle("/dashboard");
   };
 
-  // Show a spinner while we're checking the session from the cookie
+  const isValidEmail = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+  const emailOk = isValidEmail(email);
+  const pwOk = password.length >= 6;
+  const matchOk = mode === "signin" || password === confirmPassword;
+  const canSubmit = emailOk && pwOk && matchOk && !submitting;
+
+  const handleSubmit = async () => {
+    if (!canSubmit) return;
+    setSubmitting(true);
+    setAuthError(null);
+    try {
+      if (mode === "signin") {
+        await signInWithEmail(email, password);
+      } else {
+        const result = await signUpWithEmail(email, password);
+        if (result?.user?.identities?.length === 0) {
+          setAuthError("An account with this email already exists. Try signing in.");
+        } else {
+          setSuccessMsg("Check your email for a confirmation link! ✨");
+        }
+      }
+    } catch (e) {
+      const err = e as { code?: string; message?: string };
+      setAuthError(getEmailError(err.code ?? null, err.message ?? null));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16">
@@ -115,7 +173,7 @@ function AuthStep({ onAuthed, externalError }: { onAuthed: () => void; externalE
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div className="flex items-center gap-3">
         <div className="w-12 h-12 rounded-2xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20 flex-shrink-0">
           <Brain className="w-6 h-6 text-primary-foreground" />
@@ -126,14 +184,139 @@ function AuthStep({ onAuthed, externalError }: { onAuthed: () => void; externalE
         </div>
       </div>
 
-      {externalError && (
+      {/* Mode toggle pill */}
+      <div className="flex bg-muted/60 rounded-full p-1 max-w-[200px]">
+        <button
+          onClick={() => { setMode("signin"); setAuthError(null); setSuccessMsg(null); }}
+          className={cn(
+            "flex-1 px-4 py-2 rounded-full text-sm font-semibold transition-all duration-300",
+            mode === "signin"
+              ? "bg-primary text-primary-foreground shadow-md"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          Sign In
+        </button>
+        <button
+          onClick={() => { setMode("signup"); setAuthError(null); setSuccessMsg(null); }}
+          className={cn(
+            "flex-1 px-4 py-2 rounded-full text-sm font-semibold transition-all duration-300",
+            mode === "signup"
+              ? "bg-primary text-primary-foreground shadow-md"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          Sign Up
+        </button>
+      </div>
+
+      {/* Errors */}
+      {(authError || externalError) && (
         <div className="bg-destructive/10 border border-destructive/30 rounded-xl px-4 py-3 text-sm text-destructive font-medium">
-          {externalError}
+          {authError || externalError}
         </div>
       )}
 
-      <Button variant="outline" className="w-full h-12 gap-3 rounded-2xl font-semibold border-2 hover:border-primary/40 transition-all"
-        onClick={handleGoogle} disabled={googleLoading}>
+      {/* Success message after sign-up */}
+      {successMsg ? (
+        <div className="flex flex-col items-center gap-3 py-4">
+          <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
+            <Mail className="w-7 h-7 text-primary" />
+          </div>
+          <p className="text-sm text-muted-foreground text-center">{successMsg}</p>
+        </div>
+      ) : (
+        <>
+          {/* Email */}
+          <div className="relative">
+            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground w-5 h-5" />
+            <Input
+              type="email"
+              placeholder="name@email.com"
+              value={email}
+              onChange={e => { setEmail(e.target.value); setAuthError(null); }}
+              onKeyDown={e => e.key === "Enter" && canSubmit && handleSubmit()}
+              className="pl-12 h-14 text-base border-2 focus:border-primary transition-all rounded-2xl"
+            />
+          </div>
+
+          {/* Password */}
+          <div className="relative">
+            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground w-5 h-5" />
+            <Input
+              type={showPassword ? "text" : "password"}
+              placeholder={mode === "signin" ? "Your password" : "Create a password (min 6 chars)"}
+              value={password}
+              onChange={e => { setPassword(e.target.value); setAuthError(null); }}
+              onKeyDown={e => e.key === "Enter" && canSubmit && handleSubmit()}
+              className="pl-12 pr-12 h-14 text-base border-2 focus:border-primary transition-all rounded-2xl"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(p => !p)}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+              tabIndex={-1}
+            >
+              {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+            </button>
+          </div>
+
+          {/* Confirm password (sign-up) */}
+          {mode === "signup" && (
+            <div className="relative">
+              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground w-5 h-5" />
+              <Input
+                type={showConfirm ? "text" : "password"}
+                placeholder="Confirm your password"
+                value={confirmPassword}
+                onChange={e => { setConfirmPassword(e.target.value); setAuthError(null); }}
+                onKeyDown={e => e.key === "Enter" && canSubmit && handleSubmit()}
+                className={cn(
+                  "pl-12 pr-12 h-14 text-base border-2 focus:border-primary transition-all rounded-2xl",
+                  confirmPassword && password !== confirmPassword && "border-destructive"
+                )}
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirm(p => !p)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                tabIndex={-1}
+              >
+                {showConfirm ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              </button>
+              {confirmPassword && password !== confirmPassword && (
+                <p className="text-xs text-destructive font-medium mt-1">Passwords don&apos;t match</p>
+              )}
+            </div>
+          )}
+
+          {/* Submit */}
+          <Button
+            onClick={handleSubmit}
+            disabled={!canSubmit}
+            className="w-full h-14 gap-2 gradient-primary text-primary-foreground border-0 rounded-2xl font-bold shadow-xl hover:opacity-90 transition-opacity"
+          >
+            {submitting ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              <>{mode === "signin" ? "Sign In" : "Create Account"} <ArrowRight className="w-5 h-5" /></>
+            )}
+          </Button>
+        </>
+      )}
+
+      <div className="flex items-center gap-3">
+        <div className="flex-1 h-px bg-border/50" />
+        <span className="text-xs text-muted-foreground font-medium whitespace-nowrap">or continue with</span>
+        <div className="flex-1 h-px bg-border/50" />
+      </div>
+
+      <Button
+        variant="outline"
+        className="w-full h-12 gap-3 rounded-2xl font-semibold border-2 hover:border-primary/40 transition-all"
+        onClick={handleGoogle}
+        disabled={googleLoading || submitting}
+      >
         {googleLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
           <svg className="w-5 h-5" viewBox="0 0 24 24">
             <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
@@ -145,7 +328,7 @@ function AuthStep({ onAuthed, externalError }: { onAuthed: () => void; externalE
         Continue with Google
       </Button>
 
-      <p className="text-center text-xs text-muted-foreground pt-2">
+      <p className="text-center text-xs text-muted-foreground pt-1">
         Already have an account? Signing in will link to your existing profile.
       </p>
     </div>

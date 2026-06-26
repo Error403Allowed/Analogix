@@ -1,6 +1,7 @@
 "use client";
 
 import { ChatMessage, UserContext } from "@/types/chat";
+import type { ToolProposal } from "@analogix/shared/types";
 import { QuizAnswerInput, QuizData, QuizReview } from "@/types/quiz";
 import { fetchJsonWithRetry } from "@/lib/fetch-wrapper";
 import { aiThrottle, heavyAiThrottle } from "@/lib/requestThrottle";
@@ -274,6 +275,10 @@ const fetchJson = async <T>(
   }
 };
 
+export interface GroqCompletionResult extends ChatMessage {
+  proposal?: ToolProposal;
+}
+
 /**
  * THE MAIN FUNCTION: This is what we call when we want the AI to think.
  * It takes the chat history and some info about the user (hobbies, etc.)
@@ -285,7 +290,7 @@ export const getGroqCompletion = async (
     responseLength?: number;
     analogyAnchor?: string;
   },
-): Promise<ChatMessage> => {
+): Promise<GroqCompletionResult> => {
   // ── CLASSIFY TASK and BUDGET ──
   const userMessage = messages[messages.length - 1]?.content || "";
   const task = classifyTask(userMessage, messages.length);
@@ -295,13 +300,24 @@ export const getGroqCompletion = async (
   const { messages: budgetedMessages } = trimToBudget(messages, budget);
   
   try {
-    return await fetchJson<{ role: "assistant"; content: string }>(
+    const raw = await fetchJson<any>(
       "/api/groq/chat",
       { messages: budgetedMessages, userContext },
       60000,
     );
+    if (raw.type === "tool_proposal" && raw.proposal) {
+      return {
+        role: "assistant",
+        content: raw.content || "",
+        proposal: raw.proposal,
+      };
+    }
+    return {
+      role: "assistant",
+      content: raw.content || "",
+    };
   } catch (error) {
-    const fallback: ChatMessage = {
+    const fallback: GroqCompletionResult = {
       role: "assistant",
       content:
         `I couldn't reach the AI service. ${error instanceof Error ? error.message : ""}`.trim(),

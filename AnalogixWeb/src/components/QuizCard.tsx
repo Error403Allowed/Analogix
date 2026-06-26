@@ -275,6 +275,7 @@ const QuizCard = ({
       <AnimatePresence>
         {showHint && (
           <motion.div
+            key="hint"
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
@@ -406,6 +407,7 @@ const QuizCard = ({
       <AnimatePresence>
         {showResult && (
           <motion.div
+            key="result"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}

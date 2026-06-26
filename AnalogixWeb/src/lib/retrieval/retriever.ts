@@ -2,6 +2,8 @@ import { fullTextSearch, type FullTextSearchOptions } from './fulltext';
 import { filterByMetadata, getSubjects, type MetadataFilterOptions, type MetadataFilterResult } from './metadata';
 import { traverseGraph, getRelatedEntities, type GraphTraversalOptions } from './graph';
 import { createToolsClient } from '@/lib/supabase/tools-client';
+import { createCurriculumRetriever } from './curriculum';
+import { generateEmbedding } from '@/lib/rag/embedder';
 import type { EntityType, RelationshipType, RetrievedEntity, WorkspaceContext, DocumentContext } from '@/types/workspace';
 
 interface EntityData {
@@ -95,6 +97,8 @@ export class WorkspaceRetriever {
         return this.retrieveSubjects(maxResults);
       case 'memory':
         return this.retrieveMemory(options, maxResults);
+      case 'curriculum':
+        return this.retrieveCurriculum(options, maxResults);
       default:
         return [];
     }
@@ -102,6 +106,9 @@ export class WorkspaceRetriever {
 
   private async retrieveDocuments(options: { query?: string; subjectId?: string }, limit: number): Promise<RetrievedEntity[]> {
     if (options.query) {
+      const vectorResults = await this.vectorSearchDocuments(options.query, options.subjectId, limit);
+      if (vectorResults.length > 0) return vectorResults;
+
       const results = await fullTextSearch(this.userId, {
         query: options.query,
         subjectId: options.subjectId,
@@ -264,6 +271,52 @@ export class WorkspaceRetriever {
     }));
   }
 
+  private async retrieveCurriculum(options: { query?: string; subjectId?: string; topic?: string }, limit: number): Promise<RetrievedEntity[]> {
+    if (!options.query) return [];
+
+    try {
+      const retriever = createCurriculumRetriever();
+      const results = await retriever.retrieve(options.query, {
+        subject: options.subjectId,
+        grade: undefined,
+        state: undefined,
+      }, limit);
+
+      console.log(`[retrieveCurriculum] query="${options.query.slice(0, 50)}", subjectId=${options.subjectId}, results=${results.length}`);
+
+      return results.map(r => ({
+        entity: {
+          id: r.id,
+          entity_type: 'curriculum_node' as EntityType,
+          workspace_id: '',
+          entity_id: r.id,
+          entity_data: {
+            content: r.content,
+            subject: r.subject,
+            grade: r.grade,
+            strand: r.strand,
+            topic: r.topic,
+            acara_code: r.acaraCode,
+            state: r.state,
+            chunk_type: r.chunkType,
+          },
+          metadata: {
+            title: `${r.subject} ${r.topic ? `> ${r.topic}` : r.strand}`,
+            subject_id: r.subject.toLowerCase(),
+          },
+          relationships: [],
+          tags: [],
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        },
+        relevance_score: r.score,
+      }));
+    } catch (err) {
+      console.error('[retrieveCurriculum] Error:', err);
+      return [];
+    }
+  }
+
   private async retrieveMemory(options: { query?: string }, limit: number): Promise<RetrievedEntity[]> {
     const supabase = createToolsClient();
 
@@ -312,6 +365,57 @@ export class WorkspaceRetriever {
     }
 
     return result;
+  }
+
+  private async vectorSearchDocuments(query: string, subjectId?: string, limit = 10): Promise<RetrievedEntity[]> {
+    try {
+      const embedding = await generateEmbedding(query);
+      const supabase = createToolsClient();
+      const embeddingStr = `[${embedding.join(',')}]`;
+
+      const params: Record<string, unknown> = {
+        query_table: 'documents',
+        query_embedding: embeddingStr,
+        query_text: query,
+        match_threshold: 0.5,
+        match_count: limit,
+        vector_weight: 0.7,
+        p_owner_user_id: this.userId,
+        p_subject_id: subjectId || null,
+      };
+
+      const { data, error } = await (supabase.rpc as any)('hybrid_search', params);
+      if (error) {
+        console.error('[vectorSearchDocuments] Error:', error);
+        return [];
+      }
+
+      return ((data || []) as Array<Record<string, unknown>>).map((r) => {
+        const meta = (r.metadata as Record<string, unknown>) || {};
+        return {
+          entity: {
+            id: String(r.id),
+            entity_type: 'document' as EntityType,
+            workspace_id: this.userId,
+            entity_id: String(r.id),
+            entity_data: { title: meta.title || '', content: String(r.content || '') },
+            metadata: {
+              title: String(meta.title || ''),
+              subject_id: String(meta.subject_id || ''),
+            },
+            relationships: [],
+            tags: [],
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+          relevance_score: Number(r.score || 0),
+          highlight: String(r.content || '').slice(0, 200),
+        };
+      });
+    } catch (err) {
+      console.error('[vectorSearchDocuments] Error:', err);
+      return [];
+    }
   }
 
   async getRelatedFromDocument(documentId: string): Promise<{

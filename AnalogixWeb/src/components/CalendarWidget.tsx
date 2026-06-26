@@ -120,7 +120,7 @@ const CalendarWidget = ({ streak = 0, streakLabel = "days" }: CalendarWidgetProp
     setTab("day");
   };
 
-  const selectedDayEvents = events.filter(e => date && isSameDay(new Date(e.date), date));
+  const selectedDayEvents = events.filter(e => date && isSameDay(new Date(e.date), date)).filter(e => new Date(e.date).getTime() > Date.now());
 
   return (
     <div className="flex flex-col space-y-3">

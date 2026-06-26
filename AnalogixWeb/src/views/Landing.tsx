@@ -484,7 +484,7 @@ const Landing = () => {
 
             <motion.p initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
               className="text-lg sm:text-xl text-muted-foreground max-w-xl mx-auto leading-relaxed">
-              Every tool you need to go from confused to confident — for free. Quizzes, flashcards, study guides, a smart calendar, and an AI tutor that actually speaks your language.
+              Every tool you need to go from confused to confident, for free. Quizzes, flashcards, study guides, a smart calendar, and an AI tutor that actually speaks your language.
             </motion.p>
 
             <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.22 }}

@@ -4,8 +4,11 @@ import { getFormulaSheetContext } from "@/data/formulaSheets";
 import { createClient } from "@/lib/supabase/server";
 import { getUserAIPersonality, getRelevantMemories, buildMemoryContext, buildPersonalityInstructions } from "@/lib/aiMemory";
 import type { AIPersonality } from "@/types/ai-personality";
-import { buildFullCurriculumPrompt, findCurriculumForQuery } from "@/lib/curriculum";
+import { buildFullCurriculumPrompt, findCurriculumForQuery, buildValidSubjectsPrompt } from "@/lib/curriculum";
+import { createCurriculumRetriever } from "@/lib/retrieval/curriculum";
 import { buildMappingSection, buildToneInstructions } from "@/lib/explanation";
+import { TOOL_LIST_DESCRIPTION, parseToolCallsFromResponse, buildToolProposal, summarizeToolCall } from "@/lib/tool-descriptions";
+import type { ToolProposal } from "@analogix/shared/types";
 export const runtime = "nodejs";
 export async function POST(request) {
     try {
@@ -52,6 +55,7 @@ export async function POST(request) {
         const body = await request.json();
         const messages = body.messages || [];
         const userContext = body.userContext || {};
+
         // Fetch relevant memories with semantic relevance to current message
         if (user) {
             const latestUserMsg = [...messages].reverse().find(m => m.role === "user")?.content || "";
@@ -191,6 +195,7 @@ export async function POST(request) {
         const generalAnchors = ["everyday life", "school experiences", "sports", "gaming", "music", "movies", "friends", "family"];
         const generalAnchor = generalAnchors[Math.floor(Math.random() * generalAnchors.length)];
         const analogyAnchor = explicitFromContext || explicitFromMessage || randomInterest || generalAnchor;
+        console.log("[chat] analogy intensity:", analogyIntensity, "| interests:", allowedInterests, "| anchor:", analogyAnchor);
         // Detailed instructions on how to use analogies
         const analogyInstructions = analogyIntensity === 0
             ? `ANALOGY MODE: OFF\nUse no analogies. Explain directly, factually, and clearly. Do not reference hobbies or comparisons.`
@@ -369,7 +374,12 @@ ${buildToneInstructions()}
 ${researchSources.length > 0 ? `ACADEMIC SOURCES:\n${formatResearchSources(researchSources)}` : "ACADEMIC SOURCES: (none found)"}`
             : "";
         // Build the complete system prompt for the AI
-        const primarySubject = userContext?.subjects?.[0] || null;
+        const subjects = userContext?.subjects || [];
+        const primarySubject = subjects[0] || null;
+        const validSubjectsPrompt = buildValidSubjectsPrompt();
+        const userSubjectsContext = subjects.length > 0
+            ? `\n\n${validSubjectsPrompt}\n\nCRITICAL — USER'S ENROLLED SUBJECTS:\nThe user's subjects are: ${subjects.join(", ")}.\nYou MUST use ONLY these subject IDs when calling any tool that requires a subject_id. Never create new subjects or use subject IDs not in this list. If the user asks for something in a subject not in this list, respond conversationally and explain they need to add that subject first.`
+            : `\n\n${validSubjectsPrompt}`;
         const gradeNum = parseInt(studentGrade.replace("7-12", "7").replace("F", "0"), 10) || 7;
         // Build ACARA curriculum context - this is core knowledge the AI carries
         const curriculumPrompt = primarySubject
@@ -385,11 +395,70 @@ ${researchSources.length > 0 ? `ACADEMIC SOURCES:\n${formatResearchSources(resea
         const topicSection = curriculumTopicMatch
             ? `\n\n--- QUESTION CURRICULUM ALIGNMENT ---\n${curriculumTopicMatch}\n--- END ALIGNMENT ---`
             : "";
+        // ── Curriculum RAG (semantic search) ─────────────────────────────
+        let curriculumRagSection = "";
+        try {
+            const curriculumRetriever = createCurriculumRetriever();
+            const curriculumResults = await curriculumRetriever.retrieve(latestUserMessage, {}, 5);
+            if (curriculumResults.length > 0) {
+                const ragContext = curriculumRetriever.formatContext(curriculumResults);
+                curriculumRagSection = `\n\n━━━ RELEVANT CURRICULUM CONTENT (from semantic search) ━━━\n${ragContext}\n━━━ END CURRICULUM CONTENT ━━━`;
+            }
+        } catch (curriculumErr) {
+            console.warn("[chat] curriculum RAG failed:", curriculumErr instanceof Error ? curriculumErr.message : curriculumErr);
+        }
         const systemPrompt = `You are "Analogix AI", an expert tutor. Provide clear, thorough, well-structured explanations.
 
-Student Context: Year ${studentGrade}${stateFullName ? ` in ${stateFullName}, Australia` : ", Australia"}. Use Australian curriculum standards and terminology.
+${curriculumRagSection}
+${curriculumRagSection ? `CURRICULUM INTEGRATION (MANDATORY): The curriculum content above is the official ACARA content for this topic. You MUST weave it naturally into your explanation alongside the student's interests and analogies — do NOT add a separate "Curriculum" or "Australian Curriculum" section. Use analogies and the student's interests to teach the curriculum outcome. For example: "The ACARA curriculum (AC9M8G03) says students should apply Pythagoras' theorem — it's like finding the direct distance across a football field instead of walking around the edges." The ACARA code MUST appear in your answer, integrated naturally into the teaching, with the explanation framed through analogies and the student's interests.
+
+GRADE LEVEL: The student is in Year ${studentGrade}. However, the curriculum content above is the AUTHORITATIVE source for what to teach — if a curriculum entry exists for the topic, teach it at the level described in that entry, regardless of the general grade guidelines below. As a general guide only: Year 7-8 → foundational concepts, simple algebra, basic geometry, arithmetic. Year 9-10 → intermediate algebra, introductory trigonometry, probability, advanced geometry. Year 11-12 → advanced algebra, calculus, complex analysis, statistics.
+` : `GRADE LEVEL: The student is in Year ${studentGrade}. As a general guide: Year 7-8 → foundational concepts, simple algebra, basic geometry, arithmetic. Year 9-10 → intermediate algebra, introductory trigonometry, probability, advanced geometry. Year 11-12 → advanced algebra, calculus, complex analysis, statistics.`}
+Student Context: Year ${studentGrade}${stateFullName ? ` in ${stateFullName}, Australia` : ", Australia"}. Use Australian curriculum terminology.
 ${memoryContext ? `\nMemory: ${memoryContext}` : ""}
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CRITICAL: DATA OPERATIONS (MUST follow these before any other instructions)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+When the user asks to CREATE, EDIT, UPDATE, MODIFY, CHANGE, ADD, REMOVE, DELETE, SAVE, MAKE, GENERATE, or VIEW their data (flashcards, quizzes, events, deadlines, documents, subjects), you MUST output TOOL_CALLS: at the end of your response with the correct tool name and all required arguments.
+
+HARD RULE: NEVER generate a quiz, flashcards, or any interactive study content inside the chat. Always use the real create tool. The user wants actual data created in the app, not simulated content in the conversation.
+
+EXAMPLES of explicit requests (use TOOL_CALLS):
+- "create flashcards about logs" → TOOL_CALLS with create_flashcard_set
+- "add more cards to my mitosis set" → TOOL_CALLS with create_flashcards
+- "edit that flashcard" → TOOL_CALLS with update_flashcard
+- "remove that flashcard from biology" → TOOL_CALLS with delete_flashcard
+- "make a quiz about polynomials" → TOOL_CALLS with create_quiz
+- "quiz me on algebra" → TOOL_CALLS with create_quiz
+- "start a quiz on derivatives" → TOOL_CALLS with create_quiz
+- "test me on cell biology" → TOOL_CALLS with create_quiz
+- "create an event for tomorrow" → TOOL_CALLS with create_event
+- "show my documents" → TOOL_CALLS with list_documents
+- "update my biology notes to add a section about cells" → TOOL_CALLS with update_document
+- "save notes for biology" → TOOL_CALLS with update_subject_notes
+- "change my exam to next week" → TOOL_CALLS with update_event
+- "delete that document" → TOOL_CALLS with delete_document
+
+EXAMPLES of non-explicit requests (just respond conversationally, no TOOL_CALLS):
+- "I need to study for my exam" → give study advice
+- "I have to do homework" → ask what subject
+- "explain logarithms to me" → teach the concept
+
+NEGATIVE EXAMPLES — what you MUST NOT do:
+- User says "quiz me on algebra" → You DO NOT write quiz questions in the chat
+- User says "create flashcards about mitosis" → You DO NOT list flashcards in the chat
+- User says "make a quiz about polynomials" → You DO NOT make up questions and answers in the chat
+- In all these cases, output ONLY TOOL_CALLS and let the tool create the actual content
+
+YOUR TEXT RESPONSE: Before TOOL_CALLS, output a SHORT acknowledgment (1–8 words, no explanation or teaching). Examples: "Creating those now!" "Sure, here you go:" "Let me look that up." "Here's what I found:" Then TOOL_CALLS. Do NOT teach the concept. Do NOT explain what you're doing. Do NOT write any quiz questions, flashcard content, or study material in your response — the tool handles that.
+
+CRITICAL: Use the EXACT tool name. Wrong names fail silently.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ALL TOOLS:
+${TOOL_LIST_DESCRIPTION}
+${userSubjectsContext}
 Response Guidelines:
 - Use markdown headings (## for sections, ### for subsections)
 - Format key points as bullet lists; steps as numbered lists
@@ -412,17 +481,33 @@ ${researchBlock}
 
 Visualisations — you have THREE tools to make concepts visual and memorable:
 
- 1. DESMOS GRAPHS (for math functions):
-    When the user asks to graph, plot, or visualise ANY equation, function, or inequality, you MUST output a code block with language "desmos" containing the raw equation(s).
+  1. DESMOS GRAPHS (for any math visualisation):
+    When the user asks to graph, plot, or visualise ANY equation, function, inequality, or mathematical concept, you MUST output a code block with language "desmos". Desmos supports:
+    ─ Functions: y = x^2 - 4*x + 3, y = sin(x), y = 3*cos(2*x)
+    ─ Implicit equations: x^2 + y^2 = 25
+    ─ Inequalities: y > 2*x, x^2 + y^2 < 16, y >= x^2
+    ─ Parametric: (cos(t), sin(t))  (Desmos auto-uses variable t for parametrics)
+    ─ Points: (1, 2), (-3, 5)
+    ─ Regression: y1 ~ m*x1 + b  (use x1/y1 or x2/y2 pattern for table regression)
+    ─ Sliders: a = 3  (Defining a variable with no function creates an interactive slider)
+    ─ Tables / lists: a = [1, 2, 3, 4, 5], plot: (n, n^2) for n=[1..10]  (Use [1..10] range syntax)
+    ─ Drag points: DraggablePoint((h, k)) creates a draggable point on the graph
+    ─ For any expression you write, you can assign it to a variable and reuse it later: f(x) = x^2, g(x) = f(x) + 5
+    ─ Viewport: add [bounds: left, right, bottom, top] on its own line to zoom to a specific range
     Format: \`\`\`desmos
     y = x^2 - 4*x + 3
+    y = 2*x + 1
+    [bounds: -10, 10, -5, 15]
     \`\`\`
     Rules:
-    - Put ONLY the equation(s) inside the code block — one per line.
+    - Put ONLY the expression(s) inside the code block — one per line.
     - Use * for multiplication (e.g. 2*x not 2x, 4*x^2 not 4x^2).
+    - Use ^ for exponentiation, / for division.
+    - Math functions: sin, cos, tan, arcsin, arccos, arctan, sinh, cosh, tanh, sqrt, ln, log, abs, floor, ceil, exp, sign, nthroot.
+    - ALL expressions use Desmos syntax, NOT LaTeX. Write "1/2" not "\frac{1}{2}", "sqrt(x)" not "\sqrt{x}".
     - NEVER output a desmos.com URL. NEVER say "copy this link". NEVER describe the graph instead of showing it.
-    - After the code block, you may briefly describe key features (vertex, intercepts, etc.).
-    Use for: any math function, equation, inequality, parametric curve.
+    - After the code block, you may briefly describe key features (vertex, intercepts, domain/range, etc.).
+    Use for: any math function, equation, inequality, system of equations, transformation, parametric, conic sections, statistics plots.
 
  2. RECHARTS (for data & statistics):
      When the user asks for a chart, graph, or visualisation of NUMERICAL DATA or STATISTICS, you MUST output a code block with language "recharts" containing a JSON object.
@@ -488,27 +573,31 @@ Visualisations — you have THREE tools to make concepts visual and memorable:
    - Use meaningful, distinct colours
    - Keep labels short (2-3 words max)
 
-IMPORTANT: If the user asks for a visual, diagram, or graph — use the right tool. Math functions → Desmos. Data/statistics → Recharts. Concepts/structures → Three.js. Don't just describe it — SHOW it.`;
+IMPORTANT: If the user asks for a visual, diagram, or graph — use the right tool. Math functions → Desmos. Data/statistics → Recharts. Concepts/structures → Three.js. Don't just describe it — SHOW it.
+${userSubjectsContext}`;
         // ========================================================================
         // STEP 3: Detect what type of question this is (coding/reasoning/general)
         // ========================================================================
         // Get the primary subject if available (already defined earlier)
         const taskType = classifyTaskType(messages, primarySubject || undefined);
         console.log(`[/api/hf/chat] Classified as "${taskType}" question (Subject: ${primarySubject || "none"})`);
+        console.log("[chat] curriculum RAG section length:", curriculumRagSection.length, "| preview:", curriculumRagSection.slice(0, 200));
+        const finalSystemContent = systemPrompt +
+            (aiPersonality
+                ? `\n\n--- PERSONALITY SETTINGS (HIGH PRIORITY) ---\n${buildPersonalityInstructions(aiPersonality)}\n--- END PERSONALITY ---`
+                : "") +
+            (userContext?.pageContext
+                ? `\n\n--- PAGE CONTEXT (read before answering) ---\n${userContext.pageContext}\n--- END PAGE CONTEXT ---`
+                : "");
+        console.log("[chat] system prompt starts with:", finalSystemContent.slice(0, 800));
         // ========================================================================
         // STEP 4: Send to AI and return the response
         // ========================================================================
-        const content = await callGroqChat({
+        const rawContent = await callGroqChat({
             messages: [
                 {
                     role: "system",
-                    content: systemPrompt +
-                        (aiPersonality
-                            ? `\n\n--- PERSONALITY SETTINGS (HIGH PRIORITY) ---\n${buildPersonalityInstructions(aiPersonality)}\n--- END PERSONALITY ---`
-                            : "") +
-                        (userContext?.pageContext
-                            ? `\n\n--- PAGE CONTEXT (read before answering) ---\n${userContext.pageContext}\n--- END PAGE CONTEXT ---`
-                            : ""),
+                    content: finalSystemContent,
                 },
                 // Strip out any system messages the client may have passed — we own the system prompt
                 ...messages.filter(m => m.role !== "system"),
@@ -516,7 +605,26 @@ IMPORTANT: If the user asks for a visual, diagram, or graph — use the right to
             max_tokens: maxTokens,
             temperature: researchMode ? 0.3 : 0.7,
         }, taskType, userContext?.selectedModel || null);
-        return NextResponse.json({ role: "assistant", content });
+
+        // ── Parse for tool calls (AI-classified intents) ──
+        const { text, toolCalls } = parseToolCallsFromResponse(rawContent);
+
+        if (toolCalls && toolCalls.length > 0) {
+          const summaries = toolCalls.map(tc => summarizeToolCall(tc.name, tc.args));
+          const proposal: ToolProposal = buildToolProposal(
+            toolCalls,
+            summaries[0],
+            summaries.join("; "),
+          );
+          return NextResponse.json({
+            role: "assistant",
+            type: "tool_proposal",
+            proposal,
+            content: text,
+          });
+        }
+
+        return NextResponse.json({ role: "assistant", content: text });
     }
     catch (error) {
         // If anything goes wrong, log it and return a friendly error message

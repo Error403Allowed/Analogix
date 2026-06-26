@@ -49,6 +49,7 @@ type PressableScaleProps = {
   disabled?: boolean;
   accessibilityLabel?: string;
   accessibilityRole?: "button" | "link" | "none";
+  hitSlop?: number | { top?: number; bottom?: number; left?: number; right?: number } | undefined;
 };
 
 export function PressableScale({
@@ -58,6 +59,7 @@ export function PressableScale({
   disabled,
   accessibilityLabel,
   accessibilityRole,
+  hitSlop,
 }: PressableScaleProps) {
   const scale = useSharedValue(1);
   const animatedStyle = useAnimatedStyle(() => ({
@@ -89,6 +91,7 @@ export function PressableScale({
         accessibilityRole={accessibilityRole ?? (onPress ? "button" : "none")}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
+        hitSlop={hitSlop}
       />
       {children}
     </Animated.View>

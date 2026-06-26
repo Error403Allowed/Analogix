@@ -1,7 +1,7 @@
 import React, { useRef, useState, useCallback, useMemo } from "react";
 import { StyleSheet, View, Text, Platform } from "react-native";
 import { WebView } from "react-native-webview";
-import { renderLatex, stripDelimiters, KATEX_CSS } from "../utils/katexUtils";
+import { renderLatex, stripDelimiters } from "../utils/katexUtils";
 
 interface Props {
   math: string;
@@ -37,7 +37,8 @@ export default function FormulaRenderer({ math, style, minHeight: minH = 48 }: P
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
-<style>${KATEX_CSS}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.28/dist/katex.min.css">
+<style>
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{width:100%;min-height:100%}
 body{display:flex;align-items:center;justify-content:center;padding:6px 4px;font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:transparent;color:#111827}

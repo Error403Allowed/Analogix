@@ -18,6 +18,7 @@ import {
   SUBJECT_CATALOG,
 } from "@/constants/subjects";
 import { motion } from "framer-motion";
+import { staggerContainer, fadeInUp } from "@/utils/animations";
 import { cn } from "@/lib/utils";
 import { statsStore } from "@/utils/statsStore";
 import { SubjectCustomizationSheet } from "@/components/SubjectCustomizationSheet";
@@ -179,13 +180,19 @@ export default function SubjectsOverview() {
             </p>
           </div>
         ) : layout === "grid" ? (
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <motion.div
+            className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3"
+            variants={staggerContainer}
+            initial="hidden"
+            animate="visible"
+          >
             {filteredSubjects.map((subject) => {
               const appearance = getSubjectAppearance(subject);
               const activity = getActivityCount(subject);
               return (
                 <motion.div
                   layout
+                  variants={fadeInUp}
                   key={subject.id}
                   onClick={() => router.push(`/subjects/${subject.id}`)}
                   className="group relative cursor-pointer overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-all hover:border-border/80 hover:shadow-md flex flex-col"
@@ -208,15 +215,21 @@ export default function SubjectsOverview() {
                 </motion.div>
               );
             })}
-          </div>
+          </motion.div>
         ) : (
-          <div className="space-y-1">
+          <motion.div
+            className="space-y-1"
+            variants={staggerContainer}
+            initial="hidden"
+            animate="visible"
+          >
             {filteredSubjects.map((subject) => {
               const appearance = getSubjectAppearance(subject);
               const activity = getActivityCount(subject);
               return (
                 <motion.div
                   layout
+                  variants={fadeInUp}
                   key={subject.id}
                   onClick={() => router.push(`/subjects/${subject.id}`)}
                   className="group flex cursor-pointer items-center gap-4 rounded-xl border border-transparent p-4 transition-all hover:bg-muted/40"
@@ -240,7 +253,7 @@ export default function SubjectsOverview() {
                 </motion.div>
               );
             })}
-          </div>
+          </motion.div>
         )}
       </div>
 

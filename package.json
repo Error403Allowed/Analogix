@@ -20,12 +20,13 @@
     "build:web": "npm run build --workspace=AnalogixWeb",
     "build:mobile": "npm run build --workspace=AnalogixMobile",
     "build:shared": "npm run build --workspace=packages/analogix-shared",
+    "build:mcp": "npm run build --workspace=packages/analogix-mcp",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
     "lint:mobile": "npm run lint --workspace=AnalogixMobile",
     "clean": "turbo run clean",
-    "android": "expo run:android",
-    "ios": "expo run:ios"
+    "android": "npm run android --workspace=AnalogixMobile",
+    "ios": "npm run ios --workspace=AnalogixMobile"
   },
   "engines": {
     "node": ">=22 <27"

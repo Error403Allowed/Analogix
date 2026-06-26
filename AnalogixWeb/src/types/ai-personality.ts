@@ -29,6 +29,11 @@ export interface AIPersonality {
   analogy_frequency: number; // 0-5
   use_section_dividers: boolean; // Use horizontal dashes (⸻) to separate sections
 
+  // Tool auto-approval settings
+  auto_approve_tools: boolean; // Auto-approve ALL tool requests without asking
+  auto_approve_read_tools: boolean; // Auto-approve read-only tools (list, get)
+  auto_approve_write_subjects: string[]; // Subject IDs where write tools are auto-approved (empty = none)
+
   created_at?: string;
   updated_at?: string;
 }
@@ -83,6 +88,9 @@ export const DEFAULT_AI_PERSONALITY: AIPersonality = {
   use_analogies: true,
   analogy_frequency: 3,
   use_section_dividers: true,
+  auto_approve_tools: false,
+  auto_approve_read_tools: false,
+  auto_approve_write_subjects: [],
 };
 
 /**
@@ -106,6 +114,9 @@ export const PERSONALITY_PRESETS = {
       use_analogies: true,
       analogy_frequency: 4,
       use_section_dividers: true,
+      auto_approve_tools: false,
+      auto_approve_read_tools: true,
+      auto_approve_write_subjects: [],
     },
   },
   strict_professor: {
@@ -125,6 +136,9 @@ export const PERSONALITY_PRESETS = {
       use_analogies: false,
       analogy_frequency: 0,
       use_section_dividers: true,
+      auto_approve_tools: false,
+      auto_approve_read_tools: false,
+      auto_approve_write_subjects: [],
     },
   },
   casual_buddy: {
@@ -144,6 +158,9 @@ export const PERSONALITY_PRESETS = {
       use_analogies: true,
       analogy_frequency: 5,
       use_section_dividers: true,
+      auto_approve_tools: false,
+      auto_approve_read_tools: true,
+      auto_approve_write_subjects: [],
     },
   },
   concise_expert: {
@@ -163,6 +180,9 @@ export const PERSONALITY_PRESETS = {
       use_analogies: false,
       analogy_frequency: 0,
       use_section_dividers: true,
+      auto_approve_tools: false,
+      auto_approve_read_tools: false,
+      auto_approve_write_subjects: [],
     },
   },
 };

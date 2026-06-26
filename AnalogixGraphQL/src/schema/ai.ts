@@ -77,6 +77,22 @@ export const aiTypeDefs = /* GraphQL */ `
     duration: Float!
   }
 
+  type ToolResult {
+    toolName: String!
+    success: Boolean!
+    data: JSON
+    error: String
+  }
+
+  type ToolExecutionResult {
+    results: [ToolResult!]!
+  }
+
+  input ToolCallInput {
+    name: String!
+    args: JSON!
+  }
+
   extend type Mutation {
     generateStudySchedule(input: JSON!): StudySchedule!
     generateAssessmentGuide(input: JSON!): AssessmentGuide!
@@ -89,5 +105,6 @@ export const aiTypeDefs = /* GraphQL */ `
     generateBanner(input: JSON!): BannerResult!
     generateGreeting(input: JSON!): GreetingResult!
     generateTitle(input: JSON!): TitleResult!
+    executeTools(tools: [ToolCallInput!]!): ToolExecutionResult!
   }
 `;

@@ -117,6 +117,10 @@ const Quiz = () => {
   const currentAnswer = answerRecords[currentQuestion] || null;
 
   useEffect(() => {
+    document.title = showConfig ? "Quiz — Analogix" : `${topicValue} Quiz — Analogix`;
+  }, [showConfig, topicValue]);
+
+  useEffect(() => {
     try {
       // Check both keys: legacy "pendingQuizConfig" and agent key "analogix.pending-agent-quiz"
       const raw =

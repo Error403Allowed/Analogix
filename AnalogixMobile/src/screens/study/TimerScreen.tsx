@@ -208,7 +208,7 @@ export default function TimerScreen() {
 
   const total = timer.phase === "focus" ? timer.focusDuration : timer.breakDuration;
   const progress = 1 - timer.timeLeft / total;
-  const dashOffset = CIRC * (1 - progress);
+  const dashOffset = CIRC * progress;
   const minutes = Math.floor(timer.timeLeft / 60);
   const secs = timer.timeLeft % 60;
   const timerLabel = `${String(minutes).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;

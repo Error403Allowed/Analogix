@@ -220,19 +220,23 @@ export function generateDynamicScheme(seedHex: string): DynamicColorScheme {
 
   // Extract the seed hue + chroma so we can build a custom neutral palette.
   // M3's default neutral has chroma ~4 — barely any colour, making all
-  // surfaces look grey regardless of theme. We use chroma 18 to give
-  // surfaces a clear, tasteful tint of the brand colour.
+  // surfaces look grey regardless of theme. We use chroma 8 to give
+  // surfaces a subtle, clean tint of the brand colour — noticeable without
+  // overwhelming the background.
   // For true monochrome themes (Slate / Notion-like), the seed has near-zero
   // chroma, so we keep chroma 0 to preserve a pure black-and-white feel.
   const seedHct = Hct.fromInt(source);
   const seedHue = seedHct.hue;
   const seedChroma = seedHct.chroma;
   const isMonochrome = seedChroma < 10;
-  const neutralChroma = isMonochrome ? 0 : 18;
-  const variantChroma = isMonochrome ? 0 : 22;
+  const neutralChroma = isMonochrome ? 0 : 8;
+  // neutralVariant controls onSurfaceVariant, surfaceVariant, outline.
+  // For colour themes, keep chroma high so text contrasts well against
+  // surfaces. For monochrome themes, use a modest chroma (8) so grey
+  // text has enough warmth to read comfortably — pure chroma-0 grey
+  // washes out and feels flat.
+  const variantChroma = isMonochrome ? 8 : 18;
   const tintedNeutral = TonalPalette.fromHueAndChroma(seedHue, neutralChroma);
-  // Boost neutralVariant chroma too so onSurfaceVariant (inactive icons/text)
-  // carries a real colour tint instead of landing as pure grey.
   const tintedNeutralVariant = TonalPalette.fromHueAndChroma(seedHue + 8, variantChroma);
 
   const palettes: Record<PaletteKey, TonalPaletteType> = {

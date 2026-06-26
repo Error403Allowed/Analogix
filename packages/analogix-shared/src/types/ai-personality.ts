@@ -18,6 +18,9 @@ export interface AIPersonality {
   use_analogies: boolean;
   analogy_frequency: number;
   use_section_dividers: boolean;
+  auto_approve_tools: boolean;
+  auto_approve_read_tools: boolean;
+  auto_approve_write_subjects: string[];
   created_at?: string;
   updated_at?: string;
 }
@@ -67,6 +70,9 @@ export const DEFAULT_AI_PERSONALITY: AIPersonality = {
   use_analogies: true,
   analogy_frequency: 3,
   use_section_dividers: true,
+  auto_approve_tools: false,
+  auto_approve_read_tools: false,
+  auto_approve_write_subjects: [],
 };
 
 export const PERSONALITY_PRESETS = {
@@ -87,6 +93,9 @@ export const PERSONALITY_PRESETS = {
       use_analogies: true,
       analogy_frequency: 4,
       use_section_dividers: true,
+      auto_approve_tools: false,
+      auto_approve_read_tools: true,
+      auto_approve_write_subjects: [],
     },
   },
   strict_professor: {
@@ -106,6 +115,9 @@ export const PERSONALITY_PRESETS = {
       use_analogies: false,
       analogy_frequency: 0,
       use_section_dividers: true,
+      auto_approve_tools: false,
+      auto_approve_read_tools: false,
+      auto_approve_write_subjects: [],
     },
   },
   casual_buddy: {
@@ -125,6 +137,9 @@ export const PERSONALITY_PRESETS = {
       use_analogies: true,
       analogy_frequency: 5,
       use_section_dividers: true,
+      auto_approve_tools: false,
+      auto_approve_read_tools: true,
+      auto_approve_write_subjects: [],
     },
   },
   concise_expert: {
@@ -144,6 +159,9 @@ export const PERSONALITY_PRESETS = {
       use_analogies: false,
       analogy_frequency: 0,
       use_section_dividers: true,
+      auto_approve_tools: false,
+      auto_approve_read_tools: false,
+      auto_approve_write_subjects: [],
     },
   },
 } as const;

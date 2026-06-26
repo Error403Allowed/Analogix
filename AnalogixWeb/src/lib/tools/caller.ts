@@ -3,6 +3,7 @@ import { getDocuments, searchWorkspace, type GetDocumentsParams } from './handle
 import { getQuizPerformance, getWeakAreas, type StartQuizParams } from './handlers/quiz';
 import { getUpcomingEvents, getSubjects } from './handlers/calendar';
 import { storeMemory, retrieveRelevantMemories, type StoreMemoryParams } from './handlers/memory';
+import { createCurriculumRetriever } from '@/lib/retrieval/curriculum';
 import type { ToolName } from './registry';
 
 export interface ToolCall {
@@ -60,6 +61,9 @@ export async function executeToolCall(
 
       case 'get_formulas':
         return { success: false, error: 'Formula retrieval not implemented yet' };
+
+      case 'search_curriculum':
+        return await handleSearchCurriculum(args);
 
       default:
         return { success: false, error: `Unknown tool: ${name}` };
@@ -160,4 +164,22 @@ async function handleSearchWorkspace(userId: string, args: Record<string, unknow
 async function handleGetWeakAreas(userId: string, args: Record<string, unknown>): Promise<ToolResult> {
   const weakAreas = await getWeakAreas(userId, args.subjectId as string | undefined);
   return { success: true, data: weakAreas };
+}
+
+async function handleSearchCurriculum(args: Record<string, unknown>): Promise<ToolResult> {
+  try {
+    const retriever = createCurriculumRetriever();
+    const results = await retriever.retrieve(
+      args.query as string,
+      {
+        subject: args.subject as string | undefined,
+        grade: args.grade as string | undefined,
+        state: args.state as string | undefined,
+      },
+      10
+    );
+    return { success: true, data: results };
+  } catch (err) {
+    return { success: false, error: `Curriculum search failed: ${err}` };
+  }
 }

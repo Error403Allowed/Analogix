@@ -34,7 +34,14 @@ async function getAccessToken(): Promise<string | null> {
   return data.session?.access_token ?? null;
 }
 
-const httpLink = new HttpLink({ uri: config.graphql.httpUrl });
+const httpLink = new HttpLink({
+  uri: config.graphql.httpUrl,
+  fetch: (uri, options) => {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), 15000);
+    return fetch(uri, { ...options, signal: controller.signal }).finally(() => clearTimeout(id));
+  },
+});
 
 const authLink = setContext(async (_, { headers }) => {
   const token = await getAccessToken();
@@ -92,6 +99,18 @@ export function createApolloClient(): ApolloClient<NormalizedCacheObject> {
         Subject: {
           fields: {
             notes: { merge: false },
+          },
+        },
+        Query: {
+          fields: {
+            chatSessions: {
+              merge(existing, incoming) {
+                if (!existing) return incoming;
+                const map = new Map(existing.map((s: { id: string }) => [s.id, s]));
+                for (const s of incoming) map.set(s.id, s);
+                return [...map.values()];
+              },
+            },
           },
         },
       },

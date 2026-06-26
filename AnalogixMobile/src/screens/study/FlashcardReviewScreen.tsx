@@ -1,83 +1,148 @@
-import React, { useState, useEffect, useRef } from "react";
-import { View, StyleSheet, Pressable, useWindowDimensions, Alert } from "react-native";
-import { Text, useTheme, Card, Button, ProgressBar, ActivityIndicator } from "react-native-paper";
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import { View, StyleSheet, Pressable, useWindowDimensions, Alert as RNAlert } from "react-native";
+import { Text, useTheme, Button, ActivityIndicator, ProgressBar } from "react-native-paper";
 import { useQuery, useMutation } from "@apollo/client";
 import { useRoute, useNavigation } from "@react-navigation/native";
-import Animated, { useAnimatedStyle, withTiming } from "react-native-reanimated";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  Easing,
+  SlideInRight,
+  SlideOutLeft,
+  FadeInUp,
+  ZoomIn,
+} from "react-native-reanimated";
 import { FLASHCARDS, GRADE_FLASHCARD } from "../../graphql/queries/flashcard";
 import { useThemeContext } from "../../theme/ThemeContext";
 import { SHAPE } from "../../theme/tokens";
 import { ExpressiveScreen } from "../../components/expressive";
 
-const CARD_H = 320;
+const FLIP_DURATION = 450;
+const FLIP_EASING = Easing.bezier(0.23, 1, 0.32, 1);
 
-function FlipCard({ front, back, flipped, onFlip, cardKey }: {
-  front: string; back: string; flipped: boolean; onFlip: () => void; cardKey: string;
+function adaptiveFontSize(text: string): number {
+  const len = text.length;
+  if (len < 80) return 26;
+  if (len < 200) return 20;
+  if (len < 400) return 17;
+  return 15;
+}
+
+function FlipCard({
+  front,
+  back,
+  flipped,
+  onFlip,
+  themeCardBg,
+  themeBorderColor,
+  brandPrimary,
+}: {
+  front: string;
+  back: string;
+  flipped: boolean;
+  onFlip: () => void;
+  themeCardBg: string;
+  themeBorderColor: string;
+  brandPrimary: string;
 }) {
   const { width } = useWindowDimensions();
   const cardWidth = Math.min(width - 40, 420);
-  const r = useAnimatedStyle(() => ({
-    transform: [
-      { perspective: 1400 },
-      { rotateY: withTiming(flipped ? "180deg" : "0deg", { duration: 400 }) },
-    ],
-  }));
+  const flipProgress = useSharedValue(flipped ? 1 : 0);
 
-  const frontStyle = useAnimatedStyle(() => ({
-    backfaceVisibility: "hidden" as const,
-    position: "absolute" as const,
-    width: "100%",
-    height: "100%",
-  }));
+  useEffect(() => {
+    flipProgress.value = withTiming(flipped ? 1 : 0, {
+      duration: FLIP_DURATION,
+      easing: FLIP_EASING,
+    });
+  }, [flipped, flipProgress]);
 
-  const backStyle = useAnimatedStyle(() => ({
-    backfaceVisibility: "hidden" as const,
-    position: "absolute" as const,
-    width: "100%",
-    height: "100%",
-    transform: [{ rotateY: "180deg" }],
-  }));
+  const frontStyle = useAnimatedStyle(() => {
+    const rotate = flipProgress.value * 180;
+    return {
+      transform: [{ perspective: 1400 }, { rotateY: `${rotate}deg` }],
+      backfaceVisibility: "hidden",
+      position: "absolute" as const,
+      top: 0,
+      left: 0,
+      right: 0,
+    };
+  });
+
+  const backStyle = useAnimatedStyle(() => {
+    const rotate = 180 - flipProgress.value * 180;
+    return {
+      transform: [{ perspective: 1400 }, { rotateY: `${rotate}deg` }],
+      backfaceVisibility: "hidden",
+      position: "absolute" as const,
+      top: 0,
+      left: 0,
+      right: 0,
+    };
+  });
+
+  const frontFont = adaptiveFontSize(front);
+  const backFont = adaptiveFontSize(back);
 
   return (
     <Pressable
-      key={cardKey}
       onPress={onFlip}
-      style={styles.flipPressable}
       accessibilityRole="button"
-      accessibilityLabel={flipped ? "Show flashcard front" : "Show flashcard back"}
+      accessibilityLabel={flipped ? "Show front" : "Show back"}
+      style={{ width: cardWidth }}
     >
-      <Animated.View style={[styles.flipFrame, { width: cardWidth, height: CARD_H }, r]}>
-        <Animated.View style={frontStyle}>
-          <Card mode="elevated" style={styles.flipCard}>
-            <Card.Content style={styles.flipCardContent}>
-              <Text variant="labelSmall" style={{ color: "#6366f1", textAlign: "center", marginBottom: 12, fontWeight: "700", letterSpacing: 1 }}>
-                TERM
-              </Text>
-              <Text variant="headlineSmall" style={{ fontWeight: "700", color: "#1a1a2e", textAlign: "center", lineHeight: 30 }}>
-                {front}
-              </Text>
-              <Text variant="bodySmall" style={{ color: "#94a3b8", textAlign: "center", marginTop: 24, fontSize: 11 }}>
-                Tap to flip
-              </Text>
-            </Card.Content>
-          </Card>
+      <View style={{ minHeight: 300, position: "relative" }}>
+        <Animated.View
+          style={[
+            styles.card,
+            { backgroundColor: themeCardBg, borderColor: brandPrimary + "44" },
+            frontStyle,
+          ]}
+        >
+          <View style={styles.cardInner}>
+            <Text style={[styles.sideLabel, { color: brandPrimary }]}>TERM</Text>
+            <Text style={[styles.mainText, { fontSize: frontFont }]}>{front}</Text>
+            <Text style={[styles.tapHint, { color: brandPrimary + "99" }]}>Tap to flip</Text>
+          </View>
         </Animated.View>
-        <Animated.View style={backStyle}>
-          <Card mode="elevated" style={[styles.flipCard, { borderColor: "#10b98144" }]}>
-            <Card.Content style={styles.flipCardContent}>
-              <Text variant="labelSmall" style={{ color: "#10b981", textAlign: "center", marginBottom: 12, fontWeight: "700", letterSpacing: 1 }}>
-                DEFINITION
-              </Text>
-              <Text variant="bodyLarge" style={{ fontWeight: "500", color: "#1a1a2e", textAlign: "center", lineHeight: 24 }}>
-                {back}
-              </Text>
-              <Text variant="bodySmall" style={{ color: "#94a3b8", textAlign: "center", marginTop: 24, fontSize: 11 }}>
-                Tap to flip back
-              </Text>
-            </Card.Content>
-          </Card>
+        <Animated.View
+          style={[
+            styles.card,
+            styles.cardBack,
+            { backgroundColor: themeCardBg, borderColor: brandPrimary + "44" },
+            backStyle,
+          ]}
+        >
+          <View style={styles.cardInner}>
+            <Text style={[styles.sideLabel, { color: "#10b981" }]}>DEFINITION</Text>
+            <Text style={[styles.mainText, { fontSize: backFont }]}>{back}</Text>
+            <Text style={[styles.tapHint, { color: brandPrimary + "99" }]}>Tap to flip back</Text>
+          </View>
         </Animated.View>
-      </Animated.View>
+      </View>
+    </Pressable>
+  );
+}
+
+const RATINGS = [
+  { label: "Again", quality: 0, color: "#ef4444", icon: "↺" },
+  { label: "Hard", quality: 2, color: "#f97316", icon: "★" },
+  { label: "Good", quality: 3, color: "#6366f1", icon: "★★" },
+  { label: "Easy", quality: 5, color: "#10b981", icon: "★★★" },
+] as const;
+
+function RatingButton({ item, onPress }: { item: (typeof RATINGS)[number]; onPress: () => void }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.ratingBtn,
+        { backgroundColor: item.color + (pressed ? "30" : "12"), borderColor: item.color + "40" },
+        pressed && { transform: [{ scale: 0.96 }] },
+      ]}
+    >
+      <Text style={styles.ratingIcon}>{item.icon}</Text>
+      <Text style={[styles.ratingLabel, { color: item.color }]}>{item.label}</Text>
     </Pressable>
   );
 }
@@ -95,6 +160,7 @@ export default function FlashcardReviewScreen() {
   const [gradeFlashcard] = useMutation(GRADE_FLASHCARD);
   const [idx, setIdx] = useState(0);
   const [flipped, setFlipped] = useState(false);
+  const [done, setDone] = useState(false);
 
   const cards = data?.flashcards ?? [];
   const safeIdx = Math.min(idx, Math.max(0, cards.length - 1));
@@ -103,33 +169,48 @@ export default function FlashcardReviewScreen() {
   useEffect(() => {
     setIdx(0);
     setFlipped(false);
+    setDone(false);
   }, [data?.flashcards?.length]);
 
   const gradingRef = useRef(false);
 
-  const grade = async (quality: number) => {
-    if (!card || gradingRef.current) return;
-    gradingRef.current = true;
-    try {
-      await gradeFlashcard({ variables: { id: card.id, quality } });
-      if (idx < cards.length - 1) {
-        setIdx(i => i + 1);
-        setFlipped(false);
-      } else {
-        navigation.goBack();
+  const grade = useCallback(
+    async (quality: number) => {
+      if (!card || gradingRef.current) return;
+      gradingRef.current = true;
+      try {
+        await gradeFlashcard({ variables: { id: card.id, quality } });
+        if (idx < cards.length - 1) {
+          setIdx((i) => i + 1);
+          setFlipped(false);
+        } else {
+          setDone(true);
+        }
+      } catch (err: any) {
+        RNAlert.alert("Grade Error", err?.message ?? "Could not save your rating.");
+      } finally {
+        gradingRef.current = false;
       }
-    } catch (err: any) {
-      Alert.alert("Grade Error", err?.message ?? "Could not save your rating. Check your connection.");
-    } finally {
-      gradingRef.current = false;
-    }
-  };
+    },
+    [card, idx, cards.length, gradeFlashcard],
+  );
+
+  const currentNum = idx + 1;
+  const totalNum = cards.length;
+  const progress = totalNum > 0 ? currentNum / totalNum : 0;
 
   if (loading) {
     return (
-      <ExpressiveScreen title="Review" onBack={() => navigation.goBack()} scroll={false} contentStyle={{ padding: 0, gap: 0 }}>
+      <ExpressiveScreen
+        title="Review"
+        eyebrow="Flashcards"
+        leadingIcon="cards-outline"
+        onBack={() => navigation.goBack()}
+        scroll
+        contentStyle={{ gap: 0 }}
+      >
         <View style={styles.centerState}>
-          <ActivityIndicator color={brand.primary} />
+          <ActivityIndicator color={brand.primary} size="large" />
           <Text style={{ color: paperTheme.colors.onSurfaceVariant }}>Loading cards...</Text>
         </View>
       </ExpressiveScreen>
@@ -138,16 +219,33 @@ export default function FlashcardReviewScreen() {
 
   if (error || !card) {
     return (
-      <ExpressiveScreen title="Review" onBack={() => navigation.goBack()} scroll={false} contentStyle={{ padding: 0, gap: 0 }}>
+      <ExpressiveScreen
+        title="Review"
+        eyebrow="Flashcards"
+        leadingIcon="cards-outline"
+        onBack={() => navigation.goBack()}
+        scroll
+        contentStyle={{ gap: 0 }}
+      >
         <View style={styles.centerState}>
-          <Text variant="titleMedium" style={{ color: paperTheme.colors.onSurface, fontWeight: "700", textAlign: "center" }}>
+          <Text
+            variant="titleMedium"
+            style={{ color: paperTheme.colors.onSurface, fontWeight: "700", textAlign: "center" }}
+          >
             {error ? "Could not load flashcards" : "No cards to review"}
           </Text>
           <Text style={{ color: paperTheme.colors.onSurfaceVariant, textAlign: "center" }}>
-            {error ? "Check your connection and try again." : "Add cards to this set before starting a review."}
+            {error
+              ? "Check your connection and try again."
+              : "Add cards to this set before starting a review."}
           </Text>
           {error ? (
-            <Button mode="contained" buttonColor={brand.primary} onPress={() => refetch()} style={{ borderRadius: SHAPE.lg }}>
+            <Button
+              mode="contained"
+              buttonColor={brand.primary}
+              onPress={() => refetch()}
+              style={{ borderRadius: SHAPE.lg }}
+            >
               Retry
             </Button>
           ) : null}
@@ -156,49 +254,148 @@ export default function FlashcardReviewScreen() {
     );
   }
 
-  const currentNum = idx + 1;
-  const totalNum = cards.length;
+  if (done) {
+    return (
+      <ExpressiveScreen
+        title="Review"
+        eyebrow="Complete"
+        leadingIcon="cards-outline"
+        onBack={() => navigation.goBack()}
+        scroll={false}
+        contentStyle={{ gap: 0, flex: 1 }}
+      >
+        <View style={styles.centerState}>
+          <Animated.View entering={ZoomIn.duration(400).springify()}>
+            <Text style={{ fontSize: 64 }}>🏆</Text>
+          </Animated.View>
+          <Animated.View entering={FadeInUp.duration(400).delay(200)}>
+            <Text style={[styles.doneTitle, { color: paperTheme.colors.onSurface }]}>
+              All cards reviewed!
+            </Text>
+            <Text style={[styles.doneSub, { color: paperTheme.colors.onSurfaceVariant }]}>
+              Great work. Come back tomorrow for more review.
+            </Text>
+          </Animated.View>
+          <Animated.View entering={FadeInUp.duration(400).delay(400)}>
+            <Button
+              mode="contained"
+              buttonColor={brand.primary}
+              onPress={() => {
+                setIdx(0);
+                setFlipped(false);
+                setDone(false);
+              }}
+              style={{ borderRadius: SHAPE.lg, marginTop: 24 }}
+            >
+              Review Again
+            </Button>
+          </Animated.View>
+        </View>
+      </ExpressiveScreen>
+    );
+  }
 
   return (
-    <ExpressiveScreen title="Review" subtitle={`Card ${currentNum} of ${totalNum}`} onBack={() => navigation.goBack()} scroll={false} contentStyle={{ padding: 0, gap: 0 }}>
-      <ProgressBar progress={currentNum / totalNum} color={brand.primary} style={[styles.progress, { backgroundColor: paperTheme.colors.surfaceVariant }]} />
-
-      <View style={styles.cardWrap}>
-        <FlipCard
-          key={`review-${idx}`}
-          front={card.front}
-          back={card.back}
-          flipped={flipped}
-          onFlip={() => setFlipped(!flipped)}
-          cardKey={`review-${idx}`}
+    <ExpressiveScreen
+      title="Review"
+      eyebrow="Flashcards"
+      subtitle={`Card ${currentNum} of ${totalNum}`}
+      leadingIcon="cards-outline"
+      onBack={() => navigation.goBack()}
+      scroll={false}
+      contentStyle={{ gap: 0, flex: 1 }}
+    >
+      <View style={{ paddingHorizontal: 16, paddingTop: 4 }}>
+        <ProgressBar
+          progress={progress}
+          color={brand.primary}
+          style={[styles.progress, { backgroundColor: paperTheme.colors.surfaceVariant }]}
         />
       </View>
 
+      <View style={styles.cardWrap}>
+        <Animated.View
+          key={`card-${idx}`}
+          entering={SlideInRight.duration(220)}
+          exiting={SlideOutLeft.duration(150)}
+        >
+          <FlipCard
+            front={card.front}
+            back={card.back}
+            flipped={flipped}
+            onFlip={() => setFlipped(!flipped)}
+            themeCardBg={paperTheme.colors.surface}
+            themeBorderColor={paperTheme.colors.outlineVariant}
+            brandPrimary={brand.primary}
+          />
+        </Animated.View>
+      </View>
+
       {flipped && (
-        <View style={[styles.grades, { paddingBottom: 32 }]}>
-          <Button mode="outlined" style={styles.gradeBtn} textColor={paperTheme.colors.error} onPress={() => grade(1)}>
-            Again
-          </Button>
-          <Button mode="outlined" style={styles.gradeBtn} textColor={brand.primary} onPress={() => grade(2)}>
-            Good
-          </Button>
-          <Button mode="contained" buttonColor={brand.primary} style={styles.gradeBtn} onPress={() => grade(3)}>
-            Easy
-          </Button>
-        </View>
+        <Animated.View entering={FadeInUp.duration(300)} style={styles.ratingsRow}>
+          {RATINGS.map((r) => (
+            <RatingButton key={r.label} item={r} onPress={() => grade(r.quality)} />
+          ))}
+        </Animated.View>
       )}
     </ExpressiveScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  centerState: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24, gap: 12 },
-  progress: { height: 6, marginHorizontal: 16, borderRadius: SHAPE.xs, marginTop: 8 },
-  cardWrap: { flex: 1, justifyContent: "center", alignItems: "center", padding: 16 },
-  grades: { flexDirection: "row", paddingHorizontal: 20, gap: 8 },
-  gradeBtn: { flex: 1, borderRadius: SHAPE.lg, minHeight: 48 },
-  flipPressable: { alignItems: "center", justifyContent: "center", alignSelf: "center" },
-  flipFrame: { position: "relative" },
-  flipCard: { borderRadius: SHAPE.xl, width: "100%", height: "100%", justifyContent: "center", borderWidth: 2, borderColor: "#6366f144" },
-  flipCardContent: { paddingVertical: 32, paddingHorizontal: 20, alignItems: "center", justifyContent: "center", height: "100%" },
+  centerState: {
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 24,
+    gap: 12,
+    minHeight: 300,
+  },
+  progress: { height: 6, borderRadius: SHAPE.xs },
+  cardWrap: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 16,
+  },
+  ratingsRow: {
+    flexDirection: "row",
+    paddingHorizontal: 16,
+    paddingBottom: 20,
+    gap: 8,
+    justifyContent: "center",
+  },
+  ratingBtn: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 12,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    maxWidth: 88,
+  },
+  ratingIcon: { fontSize: 14, marginBottom: 2 },
+  ratingLabel: { fontSize: 11, fontWeight: "700" },
+  card: {
+    borderRadius: 20,
+    borderWidth: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    elevation: 8,
+    width: "100%",
+  },
+  cardBack: {},
+  cardInner: {
+    paddingVertical: 40,
+    paddingHorizontal: 24,
+    alignItems: "center",
+    minHeight: 260,
+    justifyContent: "center",
+  },
+  sideLabel: { textAlign: "center", marginBottom: 12, fontWeight: "700", letterSpacing: 1.5, fontSize: 11 },
+  mainText: { fontWeight: "700", textAlign: "center", lineHeight: 32 },
+  tapHint: { textAlign: "center", marginTop: 24, fontSize: 11 },
+  doneTitle: { fontSize: 22, fontWeight: "700", textAlign: "center" },
+  doneSub: { fontSize: 14, textAlign: "center", marginTop: 4 },
 });

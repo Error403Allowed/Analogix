@@ -226,22 +226,22 @@ export const themes = [
     name: "Paper",
     p: hsl(40, 5, 20),
     g: ["#373530", "#787774", "#9B9B9B"],
-    accent: hsl(40, 5, 96),
-    accent2: hsl(30, 4, 85),
-    success: hsl(145, 20, 35),
-    warning: hsl(35, 50, 45),
-    danger: hsl(5, 50, 50),
+    accent: hsl(40, 8, 82),
+    accent2: hsl(30, 8, 55),
+    success: hsl(145, 50, 38),
+    warning: hsl(35, 70, 50),
+    danger: hsl(5, 70, 50),
     muted: hsl(40, 5, 96),
-    mutedFg: hsl(40, 4, 46),
+    mutedFg: hsl(40, 6, 32),
     bg: ["rgba(120,119,116,0.06)", "rgba(120,119,116,0.04)", "rgba(120,119,116,0.02)"],
     bgDark: ["rgba(255,255,255,0.04)", "rgba(255,255,255,0.03)", "rgba(255,255,255,0.02)"],
     glass: {
       bg: "rgba(255,255,255,0.92)",
-      tint: "rgba(55,53,48,0.03)",
-      border: "rgba(55,53,48,0.08)",
+      tint: "rgba(55,53,48,0.08)",
+      border: "rgba(55,53,48,0.14)",
       darkBg: "rgba(25,25,25,0.95)",
-      darkTint: "rgba(255,255,255,0.03)",
-      darkBorder: "rgba(255,255,255,0.06)",
+      darkTint: "rgba(255,255,255,0.06)",
+      darkBorder: "rgba(255,255,255,0.10)",
     },
     charts: ["#373530", "#787774", "#9B9B9B", "#A6A299", "#C8C7C3", "#E9E9E7"],
   }),
@@ -317,8 +317,8 @@ export const applyThemeByName = (themeName: string) => {
 
 const ThemeSelector = () => {
   const [activeTheme, setActiveTheme] = useState(() => {
-    if (typeof window === "undefined") return "Classic Blue";
-    return localStorage.getItem("app-theme") || "Classic Blue";
+    if (typeof window === "undefined") return "Analogix";
+    return localStorage.getItem("app-theme") || "Analogix";
   });
   const [paperMode, setPaperMode] = useState(() => {
     if (typeof window === "undefined") return false;
@@ -328,7 +328,7 @@ const ThemeSelector = () => {
 
   // On mount, apply saved theme
   useEffect(() => {
-    const saved = localStorage.getItem("app-theme") || "Classic Blue";
+    const saved = localStorage.getItem("app-theme") || "Analogix";
     const isPaper = localStorage.getItem("paper-mode") === "true";
     if (isPaper) {
       applyThemeByName("Paper");
@@ -345,7 +345,7 @@ const ThemeSelector = () => {
       applyThemeByName("Paper");
       setActiveTheme("Paper");
     } else {
-      const prev = lastColorTheme.current || "Classic Blue";
+      const prev = lastColorTheme.current || "Analogix";
       applyThemeByName(prev);
       setActiveTheme(prev);
     }

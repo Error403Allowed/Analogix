@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@apollo/client";
 import { USER_STATS } from "../graphql/queries/user";
 import { ACHIEVEMENTS, UNLOCK_ACHIEVEMENT } from "../graphql/queries/misc";
@@ -29,24 +29,35 @@ const RULES: { id: string; check: (stats: Stats) => boolean }[] = [
   { id: "flash_10", check: (s) => (s.cardsReviewed ?? 0) >= 10 },
 ];
 
+const unlockedInSession = new Set<string>();
+
 export function useAchievementChecker() {
-  const { data: statsData } = useQuery(USER_STATS);
-  const { data: achievementsData } = useQuery(ACHIEVEMENTS);
+  const { data: statsData, loading: statsLoading } = useQuery(USER_STATS);
+  const { data: achievementsData, loading: achievementsLoading } = useQuery(ACHIEVEMENTS);
   const [unlockAchievement] = useMutation(UNLOCK_ACHIEVEMENT);
+  const ran = useRef(false);
 
   useEffect(() => {
+    if (statsLoading || achievementsLoading) return;
+    if (ran.current) return;
+    ran.current = true;
+
     const stats = statsData?.userStats as Stats | undefined;
     if (!stats) return;
 
     const unlocked = new Set(
-      (achievementsData?.unlockedAchievements ?? []).map((a: { achievementId: string }) => a.achievementId)
+      (achievementsData?.unlockedAchievements ?? []).map(
+        (a: { achievementId: string }) => a.achievementId
+      )
     );
 
     RULES.forEach(({ id, check }) => {
       if (unlocked.has(id)) return;
+      if (unlockedInSession.has(id)) return;
       if (check(stats)) {
+        unlockedInSession.add(id);
         unlockAchievement({ variables: { achievementId: id } }).catch(() => {});
       }
     });
-  }, [statsData, achievementsData, unlockAchievement]);
+  }, [statsData, achievementsData, statsLoading, achievementsLoading, unlockAchievement]);
 }

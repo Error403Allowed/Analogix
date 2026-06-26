@@ -10,12 +10,13 @@
 
 ## Screenshots
 
-| Mobile Dashboard | Chat | Flashcards | Web Dashboard |
-|:---:|:---:|:---:|:---:|
-| `screenshots/mobile-dashboard.png` | `screenshots/mobile-chat.png` | `screenshots/mobile-flashcards.png` | `screenshots/web-dashboard.png` |
-| | | | |
-| Study Hub | Calendar | Timer | Quiz |
-| `screenshots/mobile-studyhub.png` | `screenshots/mobile-calendar.png` | `screenshots/mobile-timer.png` | `screenshots/mobile-quiz.png` |
+| Mobile Dashboard | Chat | Web Dashboard |
+|:---:|:---:|:---:|
+| ![Mobile Dashboard](screenshots/mobile-dashboard.png) | ![Chat](screenshots/mobile-chat.png) | ![Web Dashboard](screenshots/web-dashboard.png) |
+| Study Hub | Calendar | Timer |
+| ![Study Hub](screenshots/mobile-studyhub.png) | ![Calendar](screenshots/mobile-calendar.png) | ![Timer](screenshots/mobile-timer.png) |
+| Quiz | | |
+| ![Quiz](screenshots/mobile-quiz.png) | | |
 
 ---
 
@@ -134,5 +135,5 @@ npm run dev:mobile   # Expo dev server
 ## See also
 
 - [`AnalogixMobile/README.md`](./AnalogixMobile/README.md) — Full mobile app docs, screenshots, theming, auth, EAS builds
-- [`AnalogixGraphQL/README.md`](./AnalogixGraphQL/README.md) — API schema, resolvers, auth flow, Fly.io deployment
+- [`AnalogixGraphQL/README.md`](./AnalogixGraphQL/README.md) — API schema, resolvers, auth flow, deployment
 - [`AnalogixWeb/README.md`](./AnalogixWeb/README.md) — Web client setup, Vercel deployment

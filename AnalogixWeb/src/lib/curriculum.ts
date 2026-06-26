@@ -291,4 +291,29 @@ export function getStateSpecificCurriculum(state: string | null): Record<string,
   return curriculumMapping[state.toUpperCase()] || {};
 }
 
+// Deduplicated list of all valid ACARA subjects
+const ALL_VALID_SUBJECTS = [...new Set(ACARA_SUBJECTS)].sort();
+
+/**
+ * Builds a string listing all valid subjects for injection into the AI system prompt.
+ * This tells the AI exactly which subjects exist so it never invents one.
+ */
+export function buildValidSubjectsPrompt(): string {
+  const allSenior = SENIOR_SUBJECTS.map(s => `  • "${s.label}" (${s.states.includes("ALL") ? "All states" : s.states.join(", ")} — Years ${s.years.join("-")})`).join("\n");
+  return `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+VALID SUBJECTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+The following are the ONLY valid subjects in the Australian Curriculum. Do NOT create, reference, or suggest subjects outside this list:
+
+General ACARA Subjects (Years 7-10):
+${ALL_VALID_SUBJECTS.map(s => `  • ${s}`).join("\n")}
+
+Senior Secondary Subjects (Years 11-12, state-dependent):
+${allSenior}
+
+If a user asks about a topic in a subject NOT in this list, explain that it's not part of the Australian curriculum and suggest the closest valid subject.
+When calling tools, always use the subject ID that matches one of these valid subject names.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
+}
+
 export { ACARA_CURRICULUM, ACARA_SUBJECTS, SENIOR_SUBJECTS, STATE_CURRICULUM_DOCUMENTS };

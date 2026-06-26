@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { View, StyleSheet, ScrollView, TextInput as RNTextInput } from "react-native";
-import { Text, useTheme, Portal, Modal, Switch, ActivityIndicator } from "react-native-paper";
+import { View, StyleSheet, ScrollView, Image, TextInput as RNTextInput } from "react-native";
+import { Text, useTheme, Portal, Modal, TextInput, Button, Switch, ActivityIndicator } from "react-native-paper";
 import { useQuery, useMutation, useSubscription } from "@apollo/client";
 import { useNavigation } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ME, USER_STATS, ACTIVITY_LOG, INCREMENT_ACTIVITY } from "../../graphql/queries/user";
 import { DOCUMENTS } from "../../graphql/queries/subject";
 import { EVENTS } from "../../graphql/queries/calendar";
-import { FLASHCARD_SETS, FLASHCARDS_DUE } from "../../graphql/queries/flashcard";
+import { FLASHCARD_SETS } from "../../graphql/queries/flashcard";
 import { CREATE_CHAT_SESSION, STREAM_CHAT_MESSAGE, CHAT_STREAM } from "../../graphql/queries/chat";
 import { useThemeContext } from "../../theme/ThemeContext";
 import { SHAPE } from "../../theme/tokens";
@@ -20,26 +20,28 @@ import {
   ExpressiveSection,
   PressableScale,
 } from "../../components/expressive";
+import Svg, { Circle } from "react-native-svg";
 import Icon from "../../components/Icon";
 import { useAchievementChecker } from "../../hooks/useAchievementChecker";
+import { getCachedActivity, setCachedActivity } from "../../utils/streakCache";
 
 function greeting(name: string): string {
   const h = new Date().getHours();
-  if (h < 12) return `Good morning, ${name} ☀`;
-  if (h < 17) return `Good afternoon, ${name} ✦`;
-  return `Good evening, ${name} 🌙`;
+  if (h < 12) return `Morning, ${name}`;
+  if (h < 17) return `Afternoon, ${name}`;
+  return `Evening, ${name}`;
 }
 
 function formatDate(): string {
   return new Date().toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short" });
 }
 
-type WidgetId = "stats" | "chat" | "docs" | "events" | "timer" | "quicklinks" | "flashcards";
+type WidgetId = "streak" | "chat" | "docs" | "events" | "timer" | "quicklinks" | "flashcards";
 
 const WIDGETS: { key: WidgetId; label: string; icon: string; defaultOn: boolean }[] = [
-  { key: "stats",      label: "Stats",       icon: "trophy",           defaultOn: true },
+  { key: "streak",     label: "Streak",      icon: "fire",             defaultOn: true },
   { key: "chat",       label: "AI Tutor",    icon: "message-text",     defaultOn: true },
-  { key: "docs",       label: "Recent Docs", icon: "file-text",        defaultOn: true },
+  { key: "docs",       label: "Recent Docs", icon: "file-document-outline", defaultOn: true },
   { key: "events",     label: "Events",      icon: "calendar",         defaultOn: true },
   { key: "timer",      label: "Timer",       icon: "timer",            defaultOn: true },
   { key: "quicklinks", label: "Quick Links", icon: "link-variant",     defaultOn: true },
@@ -68,7 +70,7 @@ const DAYS_SH = ["M", "T", "W", "T", "F", "S", "S"];
 const mondayIndex = (jsDay: number) => (jsDay + 6) % 7;
 const dayLabel = (d: string) => { if (!d) return ""; return DAYS_SH[mondayIndex(new Date(d).getDay())] ?? ""; };
 
-/* ── Stats Widget ──────────────────────────────────────── */
+/* ── Streak Widget ──────────────────────────────────────── */
 const STREAK_MSGS = ["Start your streak today!", "Nice, keep it going!", "You're on fire!", "Unstoppable!", "Legendary!"];
 
 function streakMsg(days: number): string {
@@ -148,15 +150,14 @@ function computeStreak(log: { date: string; count: number }[]): number {
   return streak;
 }
 
-function StatsWidget() {
+function StreakWidget() {
   const paperTheme = useTheme();
   const { brand } = useThemeContext();
-  const { data: statsData } = useQuery(USER_STATS);
   const { data: activityData } = useQuery(ACTIVITY_LOG, { variables: { days: 90 } });
-  const s = statsData?.userStats;
-  const allActivity = (activityData?.activityLog ?? []) as { date: string; count: number }[];
+  const liveActivity = (activityData?.activityLog ?? []) as { date: string; count: number }[];
+  const allActivity = liveActivity.length > 0 ? liveActivity : getCachedActivity();
   const streak = computeStreak(allActivity);
-  // Build a Map for O(1) lookups and build the actual Mon–Sun week
+  if (liveActivity.length > 0) setCachedActivity(liveActivity);
   const activityMap = new Map(allActivity.map((a) => [a.date, a.count]));
   const week = buildWeek(activityMap);
 
@@ -175,20 +176,9 @@ function StatsWidget() {
           </View>
           <Text style={{ fontSize: 12, color: paperTheme.colors.onSurfaceVariant, marginTop: 1 }}>{streakMsg(streak)}</Text>
         </View>
-        {streak >= 7 && (
-          <View style={{ paddingHorizontal: 10, paddingVertical: 5, borderRadius: SHAPE.pill, backgroundColor: brand.primary + "14" }}>
-            <Text variant="labelSmall" style={{ fontWeight: "800", color: brand.primary }}>HOT</Text>
-          </View>
-        )}
       </View>
 
       <StreakBars week={week} brandPrimary={brand.primary} mutedColor={paperTheme.colors.onSurfaceVariant} />
-
-      <View style={{ flexDirection: "row", gap: 8 }}>
-        <ExpressiveRailCard value={s?.quizzesDone ?? 0} label="Quizzes" icon="clipboard-check" />
-        <ExpressiveRailCard value={`${s?.accuracy ?? 0}%`} label="Accuracy" icon="target" />
-        <ExpressiveRailCard value={s?.conversationsCount ?? 0} label="Chats" icon="message-text" />
-      </View>
     </View>
   );
 }
@@ -334,9 +324,8 @@ function EventsWidget() {
   const todayStr = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
   const [y, m, d_] = todayStr.split("-").map(Number);
   const startOfToday = new Date(y, m - 1, d_);
-  const to = new Date(startOfToday);
-  to.setDate(to.getDate() + 30);
-  const { data } = useQuery(EVENTS, { variables: { from: startOfToday.toISOString(), to: to.toISOString() } });
+  const endOfToday = new Date(y, m - 1, d_, 23, 59, 59, 999);
+  const { data } = useQuery(EVENTS, { variables: { from: startOfToday.toISOString(), to: endOfToday.toISOString() } });
 
   // Merge events and deadlines into a single list, sorted by date ascending
   const rawEvents = (data?.events ?? []).map((ev: any) => ({
@@ -354,9 +343,8 @@ function EventsWidget() {
     type: "deadline" as const,
   }));
   const allItems = [...rawEvents, ...rawDeadlines]
-    .filter((item) => item.date)
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-    .slice(0, 5);
+    .filter((item) => item.date && new Date(item.date).getTime() > now.getTime())
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
   if (allItems.length === 0) return (
     <View style={{ paddingVertical: 16, alignItems: "center", gap: 8 }}>
@@ -414,18 +402,28 @@ function useTimerState(): [TimerState, React.Dispatch<React.SetStateAction<Timer
 
           // If the timer was running when the app was closed, account for elapsed time
           let effectiveTimeLeft = typeof timeLeft === "number" ? timeLeft : focusDuration;
+          let effectiveRunning = !!parsed.running;
+          let effectivePhase: TimerPhase = parsed.phase === "break" ? "break" : "focus";
+          let effectiveSessions = sessionsCompleted;
+
           if (parsed.running && lastTick) {
             const elapsed = Math.floor((Date.now() - lastTick) / 1000);
             effectiveTimeLeft = Math.max(0, effectiveTimeLeft - elapsed);
+            if (effectiveTimeLeft <= 0) {
+              effectiveRunning = false;
+              effectiveSessions += effectivePhase === "focus" ? 1 : 0;
+              effectivePhase = effectivePhase === "focus" ? "break" : "focus";
+              effectiveTimeLeft = effectivePhase === "focus" ? focusDuration : breakDuration;
+            }
           }
 
           setState({
-            phase: parsed.phase === "break" ? "break" : "focus",
+            phase: effectivePhase,
             secondsLeft: effectiveTimeLeft,
-            running: false, // Always start paused on dashboard load
+            running: effectiveRunning,
             focusDuration,
             breakDuration,
-            sessionsCompleted,
+            sessionsCompleted: effectiveSessions,
             sessionTarget,
             lastTick,
           });
@@ -480,16 +478,45 @@ function TimerWidget() {
   const strokeWidth = 4;
   const radius = (ringSize - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
-  const strokeDashoffset = circumference * (1 - progress);
+  const strokeDashoffset = circumference * progress;
   const phaseColor = timer.phase === "focus" ? brand.primary : "#22c55e";
+
+  const [showSettings, setShowSettings] = useState(false);
+  const [editFocus, setEditFocus] = useState("25");
+  const [editBreak, setEditBreak] = useState("5");
+  const [editTarget, setEditTarget] = useState("4");
+
+  const openSettings = useCallback(() => {
+    setEditFocus(String(Math.round(timer.focusDuration / 60)));
+    setEditBreak(String(Math.round(timer.breakDuration / 60)));
+    setEditTarget(String(timer.sessionTarget));
+    setShowSettings(true);
+  }, [timer.focusDuration, timer.breakDuration, timer.sessionTarget]);
+
+  const applySettings = useCallback(() => {
+    const fd = Math.max(1, parseInt(editFocus, 10) || 25) * 60;
+    const bd = Math.max(1, parseInt(editBreak, 10) || 5) * 60;
+    const st = Math.min(8, Math.max(1, parseInt(editTarget, 10) || 4));
+    setTimer((t) => ({
+      ...t, focusDuration: fd, breakDuration: bd, sessionTarget: st,
+      secondsLeft: t.phase === "focus" ? fd : bd, running: false,
+    }));
+    setShowSettings(false);
+  }, [editFocus, editBreak, editTarget, setTimer]);
 
   return (
     <View style={{ borderRadius: SHAPE.xl, backgroundColor: paperTheme.colors.surface, padding: 16, gap: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
         <PressableScale onPress={() => setTimer((p) => ({ ...p, running: !p.running }))}>
           <View style={{ width: ringSize, height: ringSize }}>
-            <View style={[styles.timerRing, { width: ringSize, height: ringSize, borderRadius: ringSize / 2, borderWidth: strokeWidth, borderColor: paperTheme.colors.surfaceVariant }]} />
-            <View style={[styles.timerRing, { width: ringSize, height: ringSize, borderRadius: ringSize / 2, borderWidth: strokeWidth, borderColor: phaseColor, borderLeftColor: "transparent", borderBottomColor: timer.running ? phaseColor : "transparent", transform: [{ rotate: `${progress * 360}deg` }] }]} />
+            <Svg width={ringSize} height={ringSize} style={styles.timerRing}>
+              <Circle cx={ringSize / 2} cy={ringSize / 2} r={radius} stroke={paperTheme.colors.surfaceVariant} strokeWidth={strokeWidth} fill="none" />
+              <Circle
+                cx={ringSize / 2} cy={ringSize / 2} r={radius} stroke={phaseColor} strokeWidth={strokeWidth} fill="none"
+                strokeDasharray={`${circumference} ${circumference}`} strokeDashoffset={strokeDashoffset}
+                strokeLinecap="round" transform={`rotate(-90 ${ringSize / 2} ${ringSize / 2})`}
+              />
+            </Svg>
             <View style={styles.timerRingCenter}>
               <Icon name={timer.running ? "pause" : "play"} size={20} color={phaseColor} />
             </View>
@@ -505,11 +532,14 @@ function TimerWidget() {
               {timer.phase === "focus" ? "Focus" : "Break"}
             </Text>
           </View>
-          <View style={{ flexDirection: "row", gap: 4, marginTop: 6 }}>
+          <View style={{ flexDirection: "row", gap: 4, marginTop: 6, alignItems: "center" }}>
             {Array.from({ length: SESSION_GOAL }, (_, i) => (
               <View key={i} style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: i < timer.sessionsCompleted ? phaseColor : paperTheme.colors.surfaceVariant }} />
             ))}
             <Text variant="labelSmall" style={{ color: paperTheme.colors.onSurfaceVariant, marginLeft: 4 }}>{timer.sessionsCompleted}/{SESSION_GOAL}</Text>
+            <PressableScale onPress={openSettings} hitSlop={8}>
+              <Icon name="cog" size={14} color={paperTheme.colors.onSurfaceVariant} />
+            </PressableScale>
           </View>
         </View>
         <View style={{ gap: 6 }}>
@@ -528,6 +558,16 @@ function TimerWidget() {
       <PressableScale onPress={() => navigation.navigate("Study", { screen: "Timer" })} style={styles.timerLink}>
         <Text variant="labelSmall" style={{ color: brand.primary, fontWeight: "700" }}>Full timer →</Text>
       </PressableScale>
+
+      <Portal>
+        <Modal visible={showSettings} onDismiss={() => setShowSettings(false)} contentContainerStyle={[styles.modal, { backgroundColor: paperTheme.colors.surface }]}>
+          <Text variant="titleLarge" style={{ fontWeight: "700", marginBottom: 16 }}>Timer settings</Text>
+          <TextInput mode="outlined" label="Focus duration (min)" value={editFocus} onChangeText={setEditFocus} keyboardType="number-pad" style={{ marginBottom: 12 }} />
+          <TextInput mode="outlined" label="Break duration (min)" value={editBreak} onChangeText={setEditBreak} keyboardType="number-pad" style={{ marginBottom: 12 }} />
+          <TextInput mode="outlined" label="Sessions per cycle" value={editTarget} onChangeText={setEditTarget} keyboardType="number-pad" style={{ marginBottom: 20 }} />
+          <Button mode="contained" onPress={applySettings}>Apply</Button>
+        </Modal>
+      </Portal>
     </View>
   );
 }
@@ -607,17 +647,17 @@ function FlashcardsWidget() {
   const { brand } = useThemeContext();
   const navigation = useNavigation<any>();
   const { data: setsData, loading: sl } = useQuery(FLASHCARD_SETS);
-  const { data: dueData, loading: dl } = useQuery(FLASHCARDS_DUE);
-  const total = (setsData?.flashcardSets ?? []).reduce((s: number, x: any) => s + (x.cardCount ?? 0), 0);
-  const due = (dueData?.flashcardsDue ?? []).length;
+  const sets = setsData?.flashcardSets ?? [];
+  const totalCards = sets.reduce((s: number, x: any) => s + (x.cardCount ?? 0), 0);
+  const totalSets = sets.length;
 
-  if (sl || dl) return (
+  if (sl) return (
     <View style={{ flexDirection: "row", gap: 8 }}>
       {[0, 1].map((i) => <View key={i} style={{ flex: 1, height: 80, borderRadius: SHAPE.lg, backgroundColor: paperTheme.colors.surfaceVariant }} />)}
     </View>
   );
 
-  if (total === 0) return (
+  if (totalSets === 0) return (
     <View style={{ paddingVertical: 16, alignItems: "center", gap: 8 }}>
       <Icon name="cards" size={32} color={paperTheme.colors.onSurfaceVariant} />
       <Text variant="bodyMedium" style={{ color: paperTheme.colors.onSurfaceVariant }}>No flashcards yet</Text>
@@ -632,30 +672,17 @@ function FlashcardsWidget() {
   return (
     <View>
       <View style={{ flexDirection: "row", gap: 8, marginBottom: 8 }}>
-        <ExpressiveRailCard value={total} label="Cards" icon="cards" />
-        <ExpressiveRailCard value={due} label="Due now" icon="clock-outline" />
+        <ExpressiveRailCard value={totalSets} label="Sets" icon="cards" />
+        <ExpressiveRailCard value={totalCards} label="Cards" icon="cards-outline" />
       </View>
-      <View style={{ flexDirection: "row", gap: 8 }}>
-        <PressableScale
-          disabled={due === 0}
-          onPress={() => navigation.navigate("Study", { screen: "Flashcards" })}
-          style={{ flex: 1 }}
-        >
-          <View style={{ flex: 1, paddingVertical: 10, borderRadius: SHAPE.lg, backgroundColor: due === 0 ? paperTheme.colors.surfaceVariant : brand.primary, alignItems: "center", opacity: due === 0 ? 0.5 : 1 }}>
-            <Text variant="labelLarge" style={{ fontWeight: "800", color: due === 0 ? paperTheme.colors.onSurfaceVariant : "#fff" }}>
-              Review {due > 0 ? `(${due})` : ""}
-            </Text>
-          </View>
-        </PressableScale>
-        <PressableScale
-          onPress={() => navigation.navigate("Study", { screen: "Flashcards" })}
-          style={{ flex: 1 }}
-        >
-          <View style={{ flex: 1, paddingVertical: 10, borderRadius: SHAPE.lg, borderWidth: 1, borderColor: paperTheme.colors.outline, alignItems: "center" }}>
-            <Text variant="labelLarge" style={{ fontWeight: "800", color: paperTheme.colors.primary }}>Browse</Text>
-          </View>
-        </PressableScale>
-      </View>
+      <PressableScale
+        onPress={() => navigation.navigate("Study", { screen: "Flashcards" })}
+        style={{ flex: 1 }}
+      >
+        <View style={{ flex: 1, paddingVertical: 12, borderRadius: SHAPE.lg, backgroundColor: brand.primary, alignItems: "center" }}>
+          <Text variant="labelLarge" style={{ fontWeight: "800", color: "#fff" }}>Browse Sets</Text>
+        </View>
+      </PressableScale>
     </View>
   );
 }
@@ -700,10 +727,8 @@ export default function DashboardScreen() {
   const { brand } = useThemeContext();
   const navigation = useNavigation<any>();
   const { data: meData } = useQuery(ME);
-  const { data: statsData } = useQuery(USER_STATS);
   const [incrementActivity] = useMutation(INCREMENT_ACTIVITY);
   const me = meData?.me;
-  const stats = statsData?.userStats;
   const firstName = me?.name?.split(" ")[0] ?? "there";
   const [showSettings, setShowSettings] = useState(false);
   const { enabled, save: setEnabled } = useEnabledWidgets();
@@ -734,35 +759,26 @@ export default function DashboardScreen() {
           </PressableScale>
           <PressableScale
             onPress={() => navigation.navigate("Profile", { screen: "ProfileHome" })}
-            style={[styles.avatarBox, { backgroundColor: brand.primary }]}
+            style={[styles.avatarBox, { backgroundColor: me?.avatarUrl ? "transparent" : brand.primary }]}
             accessibilityLabel="Open profile"
           >
-            <Text style={{ fontWeight: "800", fontSize: 16, color: paperTheme.colors.onPrimary }}>{(me?.name ?? "U").charAt(0)}</Text>
+            {me?.avatarUrl ? (
+              <Image source={{ uri: me.avatarUrl }} style={styles.avatarImage} />
+            ) : (
+              <Text style={{ fontWeight: "800", fontSize: 16, color: paperTheme.colors.onPrimary }}>{(me?.name ?? "U").charAt(0)}</Text>
+            )}
           </PressableScale>
         </View>
       }
     >
-      <ExpressiveHeroPanel>
-        <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 14 }}>
-          <View style={{ flex: 1, gap: 4 }}>
-            <Text variant="labelLarge" style={{ color: paperTheme.colors.onPrimaryContainer, fontWeight: "800" }}>Current level</Text>
-            <Text variant="displaySmall" numberOfLines={1} adjustsFontSizeToFit style={{ color: paperTheme.colors.onPrimaryContainer, fontWeight: "900" }}>
-              Level {stats?.level ?? 1}
-            </Text>
-            <Text variant="bodyMedium" style={{ color: paperTheme.colors.onPrimaryContainer, opacity: 0.8 }}>{stats?.xp ?? 0} XP earned</Text>
-          </View>
-          <View style={{ width: 72, height: 72, borderRadius: 24, alignItems: "center", justifyContent: "center", backgroundColor: brand.primary + "22" }}>
-            <Icon name="trophy" size={32} color={brand.primary} />
-          </View>
-        </View>
-      </ExpressiveHeroPanel>
+
 
       {hasWidgets ? (
         <>
-          {on("stats") && <ExpressiveSection title="Stats"><StatsWidget /></ExpressiveSection>}
+          {on("streak") && <ExpressiveSection title="Streak"><StreakWidget /></ExpressiveSection>}
           {on("chat") && <ExpressiveSection title="Quick Chat"><ChatWidget /></ExpressiveSection>}
           {on("docs") && <ExpressiveSection title="Recent Docs"><DocsWidget /></ExpressiveSection>}
-          {on("events") && <ExpressiveSection title="Upcoming" actionLabel="View all" onAction={() => navigation.navigate("Study", { screen: "Calendar" })}><EventsWidget /></ExpressiveSection>}
+          {on("events") && <ExpressiveSection title="Today" actionLabel="View all" onAction={() => navigation.navigate("Study", { screen: "Calendar" })}><EventsWidget /></ExpressiveSection>}
           {on("timer") && <ExpressiveSection title="Timer"><TimerWidget /></ExpressiveSection>}
           {on("quicklinks") && <ExpressiveSection title="Quick Links"><LinksWidget /></ExpressiveSection>}
           {on("flashcards") && <ExpressiveSection title="Flashcards"><FlashcardsWidget /></ExpressiveSection>}
@@ -788,7 +804,8 @@ export default function DashboardScreen() {
 }
 
 const styles = StyleSheet.create({
-  avatarBox: { width: 44, height: 44, borderRadius: SHAPE.pill, alignItems: "center", justifyContent: "center" },
+  avatarBox: { width: 44, height: 44, borderRadius: SHAPE.pill, alignItems: "center", justifyContent: "center", overflow: "hidden" },
+  avatarImage: { width: 44, height: 44, borderRadius: SHAPE.pill },
   chatInput: { flex: 1, borderRadius: SHAPE.lg, paddingHorizontal: 12, paddingVertical: 8, maxHeight: 80, borderWidth: StyleSheet.hairlineWidth, fontSize: 14, lineHeight: 20 },
   sendBtn: { width: 36, height: 36, borderRadius: SHAPE.pill, alignItems: "center", justifyContent: "center" },
   timerToggle: { width: 36, height: 36, borderRadius: SHAPE.pill, alignItems: "center", justifyContent: "center" },

@@ -146,7 +146,8 @@ const useCleanCopy = (ref: React.RefObject<HTMLDivElement | null>) => {
 // Normalise LaTeX delimiters so remark-math always sees $...$ / $$...$$
 // Models often output \(...\) for inline and \[...\] for display math.
 // Also handles \begin{aligned}...\end{aligned} environments.
-const normaliseLatex = (text: string): string => {
+const normaliseLatex = (text: string | undefined | null): string => {
+  if (!text) return "";
   let result = text;
   
   // Handle \begin{...}...\end{...} environments — wrap in $$ for display math
@@ -168,7 +169,8 @@ const normaliseLatex = (text: string): string => {
 // Close any unclosed markdown fences/delimiters so partial content mid-stream
 // doesn't cause KaTeX or ReactMarkdown to throw or render garbage.
 // Think of it like auto-saving — we always keep the doc valid even mid-sentence.
-const closePartialMarkdown = (text: string): string => {
+const closePartialMarkdown = (text: string | undefined | null): string => {
+  if (!text) return "";
   // Close unclosed triple-backtick code fences
   const fenceMatches = (text.match(/^```/gm) || []).length;
   if (fenceMatches % 2 !== 0) text += "\n```";

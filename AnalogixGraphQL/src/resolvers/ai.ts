@@ -3,7 +3,10 @@ import { z } from "zod";
 import { requireUser } from "./_helpers.js";
 import type { GraphQLContext } from "../context.js";
 import { callGroqChat } from "../ai/groq.js";
+import { executeTools as runTools } from "../ai/executeTools.js";
 import { logger } from "../logger.js";
+import { createCurriculumRetriever } from "../retrieval/curriculum.js";
+import { buildValidSubjectsPrompt } from "@analogix/shared/curriculum";
 import {
   StudyScheduleInput,
   AssessmentGuideInput,
@@ -127,7 +130,22 @@ export const aiResolvers = {
       const parsed = TutorInput.parse(args.input);
       // Fetch user context (subjects, grade, state, hobbies) for system prompt tailoring
       const { data: profile } = await ctx.supabase!.from("profiles").select("*").eq("id", user.id).maybeSingle();
-      const prompt = buildTutorSystemPrompt(parsed, profile);
+
+      // Retrieve curriculum context via RAG
+      let curriculumContext = "";
+      try {
+        const retriever = createCurriculumRetriever(ctx.serviceClient);
+        const subjects = Array.isArray(profile?.subjects) ? profile.subjects : [];
+        const filters: { subject?: string; grade?: string } = {};
+        if (subjects.length > 0) filters.subject = String(subjects[0]);
+        if (profile?.grade) filters.grade = String(profile.grade);
+        const results = await retriever.retrieve(parsed.question, filters, 5);
+        curriculumContext = retriever.formatContext(results);
+      } catch (err) {
+        logger.warn({ err }, "[tutor] curriculum RAG failed");
+      }
+
+      const prompt = buildTutorSystemPrompt(parsed, profile, curriculumContext);
       const response = await callGroqChat({
         messages: [
           { role: "system", content: prompt },
@@ -251,10 +269,17 @@ export const aiResolvers = {
       return { text: response || `Welcome back, ${userName}.` };
     },
 
+    executeTools: async (_: unknown, args: { tools: { name: string; args: Record<string, unknown> }[] }, ctx: GraphQLContext) => {
+      requireUser(ctx);
+      return runTools(args.tools, ctx);
+    },
+
     generateTitle: async (_: unknown, args: { input: Record<string, unknown> }, ctx: GraphQLContext) => {
       requireUser(ctx);
-      const conversation = String(args.input?.conversation ?? "");
-      const latestMessage = String(args.input?.latestMessage ?? "");
+      // Strip TOOL_CALLS blocks from conversation to avoid JSON leaking into title gen
+      const stripToolCalls = (text: string) => text.replace(/TOOL_CALLS:\s*\[[\s\S]*?\]/g, "").trim();
+      const conversation = stripToolCalls(String(args.input?.conversation ?? ""));
+      const latestMessage = stripToolCalls(String(args.input?.latestMessage ?? ""));
       const systemPrompt = "You are naming a study chat session. Write a short 3-6 word title capturing the SPECIFIC topic being studied. Be concrete — not \"Math Help\" but \"Quadratic Formula Confusion\", \"WW2 Causes Breakdown\", \"Python List Indexing\". No quotes, no punctuation, just the title.";
       let response = await callGroqChat({
         messages: [
@@ -278,15 +303,25 @@ export const aiResolvers = {
   },
 };
 
-function buildTutorSystemPrompt(input: z.infer<typeof TutorInput>, profile: Record<string, unknown> | null): string {
+function buildTutorSystemPrompt(
+  input: z.infer<typeof TutorInput>,
+  profile: Record<string, unknown> | null,
+  curriculumContext?: string
+): string {
   const subjects = Array.isArray(profile?.subjects) ? profile.subjects.join(", ") : "general";
   const grade = profile?.grade ?? "7-12";
   const state = profile?.state ?? null;
   const context = input.contextText ? `\n\nWorkspace context:\n${input.contextText.slice(0, 8_000)}` : "";
+  const curriculumSection = curriculumContext ? `\n\n${curriculumContext}\n\nReference this curriculum content in your answer. Mention the ACARA code (e.g. AC9M8G03) when relevant. Ensure your explanations match the specified grade level and syllabus outcomes.` : "";
+  const validSubjectsPrompt = buildValidSubjectsPrompt();
+  const subjectsContext = Array.isArray(profile?.subjects) && profile.subjects.length > 0
+    ? `\n\nThe user is enrolled in: ${(profile.subjects as string[]).join(", ")}. Only create data in these subjects.`
+    : "";
   return `You are Analogix AI, an expert tutor for Australian secondary students. ` +
     `The student is in Year ${grade}${state ? ` in ${state}` : ""} studying ${subjects}. ` +
     `Be clear, structured, encouraging, and use LaTeX ($...$) for math. ` +
-    `Use analogies when they genuinely help.${context}`;
+    `Use analogies when they genuinely help.${context}${curriculumSection}` +
+    `\n\n${validSubjectsPrompt}${subjectsContext}`;
 }
 
 function safeParseJson(raw: string): Record<string, unknown> | null {

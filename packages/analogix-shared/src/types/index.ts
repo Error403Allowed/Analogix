@@ -18,3 +18,4 @@ export * from "./memory.js";
 export * from "./resource.js";
 export * from "./research.js";
 export * from "./enums.js";
+export * from "./tool-proposal.js";

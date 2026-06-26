@@ -14,6 +14,7 @@ import LoginScreen from "../screens/auth/LoginScreen";
 import OnboardingScreen from "../screens/auth/OnboardingScreen";
 import TermsScreen from "../screens/auth/TermsScreen";
 import PrivacyPolicyScreen from "../screens/auth/PrivacyPolicyScreen";
+import ResetPasswordScreen from "../screens/auth/ResetPasswordScreen";
 
 import DashboardScreen from "../screens/dashboard/DashboardScreen";
 import AchievementsScreen from "../screens/dashboard/AchievementsScreen";
@@ -31,7 +32,6 @@ import QuizResultsScreen from "../screens/study/QuizResultsScreen";
 import CalendarScreen from "../screens/study/CalendarScreen";
 import EventDetailScreen from "../screens/study/EventDetailScreen";
 import FormulasScreen from "../screens/study/FormulasScreen";
-import FormulasSubjectScreen from "../screens/study/FormulasSubjectScreen";
 import TimerScreen from "../screens/study/TimerScreen";
 import StudyScheduleScreen from "../screens/study/StudyScheduleScreen";
 import AssessmentGuideScreen from "../screens/study/AssessmentGuideScreen";
@@ -89,7 +89,6 @@ function StudyStackNav() {
       <StudyStack.Screen name="Calendar" component={CalendarScreen} />
       <StudyStack.Screen name="EventDetail" component={EventDetailScreen} />
       <StudyStack.Screen name="Formulas" component={FormulasScreen} />
-      <StudyStack.Screen name="FormulasSubject" component={FormulasSubjectScreen} />
       <StudyStack.Screen name="Timer" component={TimerScreen} />
       <StudyStack.Screen name="StudySchedule" component={StudyScheduleScreen} />
       <StudyStack.Screen name="AssessmentGuide" component={AssessmentGuideScreen} />
@@ -113,19 +112,6 @@ function RoomsStackNav() {
     </RoomsStack.Navigator>
   );
 }
-function ProfileStackNav() {
-  return (
-    <ProfileStack.Navigator screenOptions={{ headerShown: false }}>
-      <ProfileStack.Screen name="ProfileHome" component={ProfileScreen} />
-      <ProfileStack.Screen name="Settings" component={SettingsScreen} />
-      <ProfileStack.Screen name="ThemePicker" component={ThemePickerScreen} />
-      <ProfileStack.Screen name="PersonalityEditor" component={PersonalityEditorScreen} />
-      <ProfileStack.Screen name="MemoryManager" component={MemoryManagerScreen} />
-      <ProfileStack.Screen name="Support" component={SupportScreen} />
-      <ProfileStack.Screen name="Privacy" component={PrivacyScreen} />
-    </ProfileStack.Navigator>
-  );
-}
 
 function MainTabs() {
   return (
@@ -138,7 +124,6 @@ function MainTabs() {
       <Tabs.Screen name="Study" component={StudyStackNav} />
       <Tabs.Screen name="Subjects" component={SubjectsStackNav} />
       <Tabs.Screen name="Rooms" component={RoomsStackNav} />
-      <Tabs.Screen name="Profile" component={ProfileStackNav} />
     </Tabs.Navigator>
   );
 }
@@ -200,6 +185,7 @@ export function RootNavigator() {
             <RootStack.Screen name="Onboarding" component={OnboardingScreen} />
             <RootStack.Screen name="Terms" component={TermsScreen} />
             <RootStack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
+            <RootStack.Screen name="ResetPassword" component={ResetPasswordScreen} />
           </>
         )}
       </RootStack.Navigator>

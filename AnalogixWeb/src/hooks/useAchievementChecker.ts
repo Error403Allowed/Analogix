@@ -1,27 +1,44 @@
-import { useEffect } from "react";
-import { statsStore } from "@/utils/statsStore";
-import { achievementStore } from "@/utils/achievementStore";
+import { useEffect, useRef } from "react";
+import { useQuery, useMutation } from "@apollo/client";
+import { USER_STATS } from "@/graphql/queries/user";
+import { ACHIEVEMENTS, UNLOCK_ACHIEVEMENT } from "@/graphql/queries/user";
 import { ACHIEVEMENTS_LIBRARY } from "@/data/achievements";
+import { toast } from "sonner";
+
+const shownInSession = new Set<string>();
 
 export const useAchievementChecker = () => {
+  const { data: statsData, loading: statsLoading } = useQuery(USER_STATS);
+  const { data: achievementsData, loading: achievementsLoading } = useQuery(ACHIEVEMENTS);
+  const [unlockAchievement] = useMutation(UNLOCK_ACHIEVEMENT);
+  const ran = useRef(false);
+
   useEffect(() => {
-    const checkAchievements = async () => {
-      const [stats, unlocked] = await Promise.all([
-        statsStore.get(),
-        achievementStore.getUnlocked(),
-      ]);
+    if (statsLoading || achievementsLoading) return;
+    if (ran.current) return;
+    ran.current = true;
 
-      ACHIEVEMENTS_LIBRARY.forEach((achievement) => {
-        if (unlocked.some(u => u.id === achievement.id)) return;
-        if (!achievement.condition) return;
-        if (achievement.condition(stats)) {
-          achievementStore.unlock(achievement.id);
-        }
-      });
-    };
+    const stats = statsData?.userStats;
+    if (!stats) return;
 
-    checkAchievements();
-    window.addEventListener("statsUpdated", checkAchievements);
-    return () => window.removeEventListener("statsUpdated", checkAchievements);
-  }, []);
+    const unlocked = new Set(
+      (achievementsData?.unlockedAchievements ?? []).map(
+        (a: { achievementId: string }) => a.achievementId
+      )
+    );
+
+    ACHIEVEMENTS_LIBRARY.forEach((achievement) => {
+      if (unlocked.has(achievement.id)) return;
+      if (!achievement.condition) return;
+      if (shownInSession.has(achievement.id)) return;
+      if (achievement.condition(stats)) {
+        shownInSession.add(achievement.id);
+        unlockAchievement({ variables: { achievementId: achievement.id } }).catch(() => {});
+        toast.success(`Achievement Unlocked: ${achievement.title}!`, {
+          description: achievement.description,
+          duration: 5000,
+        });
+      }
+    });
+  }, [statsData, achievementsData, statsLoading, achievementsLoading, unlockAchievement]);
 };

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useEffect } from "react";
+import React, { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { View, StyleSheet, ScrollView, Pressable, Alert, useWindowDimensions } from "react-native";
 import { Text, useTheme, FAB, Portal, Modal, Button, TextInput, SegmentedButtons, ActivityIndicator, Searchbar } from "react-native-paper";
 import { useQuery, useMutation } from "@apollo/client";
@@ -16,7 +16,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 type CalendarView = "month" | "week" | "day" | "schedule";
 
-const HOUR_H = 52;
+const HOUR_H = 54;
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const WEEKDAYS_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const BUILTIN_EVENT_TYPES = ["exam", "assignment", "event", "class", "lesson", "reminder", "sport", "meeting", "personal"];
@@ -114,6 +114,7 @@ export default function CalendarScreen() {
 
   const [view, setView] = useState<CalendarView>("month");
   const [focusDate, setFocusDate] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [createMode, setCreateMode] = useState<"event" | "deadline">("event");
   const [newTitle, setNewTitle] = useState("");
@@ -121,6 +122,7 @@ export default function CalendarScreen() {
   const [newType, setNewType] = useState("event");
   const [newPriority, setNewPriority] = useState("medium");
   const [newSubject, setNewSubject] = useState("");
+  const scrollRef = useRef<ScrollView>(null);
 
   const [customTypes, setCustomTypes] = useState<{ id: string; name: string; color: string }[]>([]);
   const [showTypeManager, setShowTypeManager] = useState(false);
@@ -190,7 +192,6 @@ export default function CalendarScreen() {
     await AsyncStorage.setItem(CUSTOM_TYPES_KEY, JSON.stringify(updated));
   }, [customTypes]);
 
-  // ─── Month helpers ──────────────────────────────────────────────────────
   const year = focusDate.getFullYear();
   const m = focusDate.getMonth();
   const daysInMonth = new Date(year, m + 1, 0).getDate();
@@ -209,7 +210,6 @@ export default function CalendarScreen() {
       return date.getDate() === d && date.getMonth() === m && date.getFullYear() === year;
     }), [deadlines, m, year]);
 
-  // ─── Week helpers ───────────────────────────────────────────────────────
   const weekStart = useMemo(() => startOfWeek(focusDate), [focusDate]);
   const weekDays = useMemo(() =>
     Array.from({ length: 7 }, (_, i) => { const d = new Date(weekStart); d.setDate(d.getDate() + i); return d; }), [weekStart]);
@@ -217,12 +217,14 @@ export default function CalendarScreen() {
   const isToday = (d: Date) =>
     d.getDate() === now.getDate() && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
 
+  const isSameDay = (a: Date, b: Date) =>
+    a.getDate() === b.getDate() && a.getMonth() === b.getMonth() && a.getFullYear() === b.getFullYear();
+
   const todayTop = useMemo(() => {
     const min = now.getHours() * 60 + now.getMinutes();
     return (min / 60) * HOUR_H;
   }, [now]);
 
-  // ─── Navigation ─────────────────────────────────────────────────────────
   const prev = () => {
     if (view === "month") setFocusDate(new Date(year, m - 1, 1));
     else if (view === "week") setFocusDate(new Date(focusDate.getTime() - 7 * 86400000));
@@ -235,7 +237,10 @@ export default function CalendarScreen() {
     else if (view === "day") setFocusDate(new Date(focusDate.getTime() + 86400000));
     else if (view === "schedule") setFocusDate(new Date(focusDate.getTime() + 14 * 86400000));
   };
-  const goToday = () => setFocusDate(new Date());
+  const goToday = () => {
+    setFocusDate(new Date());
+    setSelectedDate(new Date());
+  };
 
   const viewTitle = useMemo(() => {
     if (view === "month") return focusDate.toLocaleDateString("en-US", { month: "long", year: "numeric" });
@@ -331,32 +336,44 @@ export default function CalendarScreen() {
     navigation.navigate("EventDetail", { eventId: event.id });
   };
 
-  // ─── Headers + controls ─────────────────────────────────────────────────
+  const surfaceLow = c.surfaceContainerLow ?? c.surfaceVariant;
+  const surfaceHigh = c.surfaceContainerHigh ?? paperTheme.colors.surface;
+  const outline = c.outlineVariant ?? "rgba(128,128,128,0.2)";
+
   const viewControls = (
-    <View>
-      <SegmentedButtons
-        value={view}
-        onValueChange={(v) => setView(v as CalendarView)}
-        buttons={[
-          { value: "month", label: "Month" },
-          { value: "week", label: "Week" },
-          { value: "day", label: "Day" },
-          { value: "schedule", label: "List" },
-        ]}
-        density="small"
-      />
+    <View style={{ paddingHorizontal: 4 }}>
       <View style={styles.navRow}>
-        <Pressable onPress={prev} style={styles.navBtn}>
-          <Icon name="chevron-left" size={20} color={paperTheme.colors.onSurfaceVariant} />
+        <Pressable onPress={prev} style={styles.navBtn} hitSlop={8}>
+          <Icon name="chevron-left" size={22} color={paperTheme.colors.onSurface} />
         </Pressable>
-        <Text variant="titleSmall" numberOfLines={1} style={{ flex: 1, textAlign: "center", fontWeight: "700", color: paperTheme.colors.onSurface }}>{viewTitle}</Text>
-        <Pressable onPress={next} style={styles.navBtn}>
-          <Icon name="chevron-right" size={20} color={paperTheme.colors.onSurfaceVariant} />
+        <Pressable onPress={goToday} style={styles.todayBtn}>
+          <Text variant="titleMedium" style={{ fontWeight: "600", color: paperTheme.colors.onSurface, letterSpacing: -0.3 }}>
+            {viewTitle}
+          </Text>
+        </Pressable>
+        <Pressable onPress={next} style={styles.navBtn} hitSlop={8}>
+          <Icon name="chevron-right" size={22} color={paperTheme.colors.onSurface} />
         </Pressable>
       </View>
+      {view !== "schedule" && (
+        <View style={{ paddingHorizontal: 12, marginBottom: 6 }}>
+          <SegmentedButtons
+            value={view}
+            onValueChange={(v) => setView(v as CalendarView)}
+            buttons={[
+              { value: "month", label: "Month" },
+              { value: "week", label: "Week" },
+              { value: "day", label: "Day" },
+              { value: "schedule", label: "List" },
+            ]}
+            density="small"
+            style={{ height: 32 }}
+          />
+        </View>
+      )}
       {termInfo && (
         <View style={styles.termRow}>
-          <View style={styles.termBar}>
+          <View style={[styles.termBar, { backgroundColor: paperTheme.colors.surfaceVariant }]}>
             <View style={[styles.termFill, { width: `${termInfo.progress}%`, backgroundColor: brand.primary }]} />
           </View>
           <Text variant="labelSmall" style={{ color: paperTheme.colors.onSurfaceVariant, flexShrink: 0, textAlign: "right" }}>
@@ -367,12 +384,11 @@ export default function CalendarScreen() {
     </View>
   );
 
-  // ─── Month view ─────────────────────────────────────────────────────────
   const monthGrid = (
     <>
       <View style={styles.weekdayRow}>
-        {WEEKDAYS_SHORT.map((d) => (
-          <Text key={d} variant="labelSmall" style={styles.weekdayLabel}>{d}</Text>
+        {WEEKDAYS_SHORT.map((d, i) => (
+          <Text key={i} variant="labelSmall" style={[styles.weekdayLabel, { color: paperTheme.colors.onSurfaceVariant }]}>{d}</Text>
         ))}
       </View>
       <View style={styles.grid}>
@@ -385,31 +401,39 @@ export default function CalendarScreen() {
           const hasItems = dayE.length + dayDl.length > 0;
           const dateObj = new Date(year, m, d);
           const today = isToday(dateObj);
+          const selected = selectedDate && isSameDay(dateObj, selectedDate);
+
           return (
             <Pressable
               key={d}
-              style={[
-                styles.dayCell,
-                hasItems && { backgroundColor: brand.primary + "08" },
-              ]}
-              onPress={() => { setFocusDate(dateObj); setView("day"); }}
+              style={[styles.dayCell, selected && { backgroundColor: surfaceHigh }]}
+              onPress={() => {
+                setSelectedDate(dateObj);
+                if (view === "month") setFocusDate(dateObj);
+              }}
               accessibilityRole="button"
               accessibilityLabel={`${dateObj.toLocaleDateString("en-AU", { weekday: "long", day: "numeric", month: "long" })}, ${dayE.length} events, ${dayDl.length} deadlines`}
             >
-              <View style={[styles.dayNum, today && { backgroundColor: brand.primary, transform: [{ scale: 1.15 }] }]}>
-                <Text style={{ fontWeight: today ? "800" : dayE.length > 0 ? "700" : "400", fontSize: 12, color: today ? "#fff" : paperTheme.colors.onSurface }}>{d}</Text>
+              <View style={styles.dayNumRow}>
+                {today ? (
+                  <View style={[styles.todayCircle]}>
+                    <Text style={styles.todayText}>{d}</Text>
+                  </View>
+                ) : (
+                  <Text style={[styles.dayNum, { color: paperTheme.colors.onSurface }]}>{d}</Text>
+                )}
               </View>
               {hasItems && (
                 <View style={styles.dayEventRow}>
-                  {dayE.slice(0, 2).map((e: any) => (
-                    <View key={e.id} style={[styles.dayEventDot, { backgroundColor: getEventColor(e.type, customTypes) }]} />
-                  ))}
-                  {dayDl.slice(0, Math.max(0, 2 - dayE.slice(0, 2).length)).map((dl: any) => (
-                    <View key={dl.id} style={[styles.deadlineDot, { backgroundColor: dl.priority === "high" ? "#ef4444" : dl.priority === "low" ? "#10b981" : "#f59e0b" }]} />
-                  ))}
-                  {dayE.length + dayDl.length > 2 && (
-                    <Text variant="labelSmall" style={{ fontSize: 9, color: paperTheme.colors.onSurfaceVariant, marginTop: 1 }}>
-                      +{dayE.length + dayDl.length - 2}
+                  {[...dayE, ...dayDl.map((dl: any) => ({ ...dl, _isDeadline: true }))].slice(0, 3).map((item: any, i: number) => {
+                    const color = item._isDeadline
+                      ? (item.priority === "high" ? "#ef4444" : item.priority === "low" ? "#10b981" : "#f59e0b")
+                      : getEventColor(item.type, customTypes);
+                    return <View key={item.id ?? i} style={[styles.eventPill, { backgroundColor: color }]} />;
+                  })}
+                  {dayE.length + dayDl.length > 3 && (
+                    <Text style={[styles.moreText, { color: paperTheme.colors.onSurfaceVariant }]}>
+                      +{dayE.length + dayDl.length - 3}
                     </Text>
                   )}
                 </View>
@@ -418,34 +442,110 @@ export default function CalendarScreen() {
           );
         })}
       </View>
+      {selectedDate && (
+        <View style={[styles.selectedDetail, { borderTopColor: outline }]}>
+          <View style={styles.selectedDateHeader}>
+            <Text variant="titleSmall" style={{ fontWeight: "600", color: paperTheme.colors.onSurface }}>
+              {selectedDate.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
+            </Text>
+          </View>
+          {(() => {
+            const selEvents = events.filter((e: any) => toDateStr(new Date(e.date)) === toDateStr(selectedDate));
+            const selDeadlines = deadlines.filter((dl: any) => toDateStr(new Date(dl.dueDate)) === toDateStr(selectedDate));
+            if (selEvents.length === 0 && selDeadlines.length === 0) {
+              return (
+                <Pressable onPress={() => openCreate(toDateStr(selectedDate), "event")} style={styles.noEventsRow}>
+                  <Icon name="plus-circle-outline" size={18} color={paperTheme.colors.onSurfaceVariant} />
+                  <Text variant="bodyMedium" style={{ color: paperTheme.colors.onSurfaceVariant, marginLeft: 8 }}>
+                    No events
+                  </Text>
+                </Pressable>
+              );
+            }
+            return (
+              <>
+                {selEvents.map((e: any) => {
+                  const color = getEventColor(e.type, customTypes);
+                  return (
+                    <Pressable key={e.id} onPress={() => handleEventPress(e)} style={styles.selectedEventRow}>
+                      <View style={[styles.selectedEventDot, { backgroundColor: color }]} />
+                      <View style={{ flex: 1 }}>
+                        <Text variant="bodyMedium" style={{ fontWeight: "600", color: paperTheme.colors.onSurface }}>{e.title}</Text>
+                        {e.date?.includes("T") && (
+                          <Text variant="bodySmall" style={{ color: paperTheme.colors.onSurfaceVariant }}>
+                            {new Date(e.date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                          </Text>
+                        )}
+                      </View>
+                      <Text variant="labelSmall" style={{ color }}>{e.type}</Text>
+                    </Pressable>
+                  );
+                })}
+                {selDeadlines.map((dl: any) => (
+                  <Pressable key={dl.id} onPress={() => handleDeadlineAction(dl)} style={styles.selectedEventRow}>
+                    <View style={[styles.selectedEventDot, { backgroundColor: dl.priority === "high" ? "#ef4444" : dl.priority === "low" ? "#10b981" : "#f59e0b" }]} />
+                    <View style={{ flex: 1 }}>
+                      <Text variant="bodyMedium" style={{ fontWeight: "600", color: paperTheme.colors.onSurface }}>{dl.title}</Text>
+                      <Text variant="bodySmall" style={{ color: paperTheme.colors.onSurfaceVariant }}>Deadline</Text>
+                    </View>
+                  </Pressable>
+                ))}
+              </>
+            );
+          })()}
+        </View>
+      )}
     </>
   );
 
-  // ─── Week/Day time grid ─────────────────────────────────────────────────
   const timeGrid = (isWeek: boolean) => {
     const days = isWeek ? weekDays : [focusDate];
     return (
       <View style={styles.timeGridContainer}>
-        <ScrollView horizontal={isWeek} showsHorizontalScrollIndicator={false}>
+        <ScrollView horizontal={isWeek} showsHorizontalScrollIndicator={false} bounces={false}>
           <View>
             {isWeek && (
               <View style={styles.weekHeader}>
-                <View style={{ width: 40 }} />
-                {weekDays.map((d, i) => (
-                  <View key={i} style={[styles.weekDayCol, { width: weekColumnWidth }]}>
-                    <Text variant="labelSmall" style={{ color: paperTheme.colors.onSurfaceVariant }}>{WEEKDAYS_SHORT[d.getDay()]}</Text>
-                    <View style={[styles.weekDayNum, isToday(d) && { backgroundColor: brand.primary }]}>
-                      <Text style={{ fontWeight: "700", fontSize: 13, color: isToday(d) ? "#fff" : paperTheme.colors.onSurface }}>{d.getDate()}</Text>
-                    </View>
-                  </View>
-                ))}
+                <View style={{ width: 44 }} />
+                {weekDays.map((d, i) => {
+                  const today = isToday(d);
+                  const selected = selectedDate && isSameDay(d, selectedDate);
+                  return (
+                    <Pressable
+                      key={i}
+                      style={[styles.weekDayCol, { width: weekColumnWidth }]}
+                      onPress={() => {
+                        setSelectedDate(d);
+                        setFocusDate(d);
+                      }}
+                    >
+                      <Text variant="labelSmall" style={{ color: today ? "#FF3B30" : paperTheme.colors.onSurfaceVariant, fontWeight: today ? "600" : "400", fontSize: 11 }}>
+                        {WEEKDAYS_SHORT[d.getDay()]}
+                      </Text>
+                      <View style={[styles.weekDayNum, today && { backgroundColor: "#FF3B30" }, selected && !today && { backgroundColor: surfaceHigh }]}>
+                        <Text style={{ fontWeight: today ? "600" : "400", fontSize: 17, color: today ? "#fff" : paperTheme.colors.onSurface }}>
+                          {d.getDate()}
+                        </Text>
+                      </View>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            )}
+            {!isWeek && (
+              <View style={[styles.daySingleHeader, { borderBottomColor: outline }]}>
+                <Text variant="titleMedium" style={{ fontWeight: "600", color: isToday(focusDate) ? "#FF3B30" : paperTheme.colors.onSurface }}>
+                  {focusDate.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
+                </Text>
               </View>
             )}
             <View style={{ flexDirection: "row" }}>
-              <View style={{ width: 40 }}>
+              <View style={{ width: 44 }}>
                 {HOURS.map((h) => (
-                  <View key={h} style={[styles.hourLabel, { borderTopColor: c.outlineVariant }]}>
-                    <Text variant="labelSmall" style={{ color: paperTheme.colors.onSurfaceVariant }}>{h === 0 ? "" : `${h}`}</Text>
+                  <View key={h} style={[styles.hourLabel, { borderTopColor: outline }]}>
+                    <Text variant="labelSmall" style={{ color: paperTheme.colors.onSurfaceVariant, fontSize: 10 }}>
+                      {h === 0 ? "" : `${h > 12 ? h - 12 : h}${h >= 12 ? "p" : "a"}`}
+                    </Text>
                   </View>
                 ))}
               </View>
@@ -453,30 +553,32 @@ export default function CalendarScreen() {
                 const laid = layoutEvents(events, d);
                 return (
                   <View key={di} style={isWeek ? [styles.dayCol, { width: weekColumnWidth }] : { width: dayColumnWidth, position: "relative" }}>
-                    {HOURS.map((h) => (
-                      <Pressable key={h} style={[styles.hourSlot, { borderTopColor: c.outlineVariant }]}
-                        onPress={() => {
-                          setNewDate(`${toDateStr(d)}T${String(h).padStart(2, "0")}:00`);
-                          setCreateMode("event");
-                          setShowCreate(true);
-                        }}
-                      />
-                    ))}
+                    <View style={[styles.hourSlotBg, { borderTopColor: outline }]}>
+                      {HOURS.map((h) => (
+                        <Pressable key={h} style={[styles.hourSlot, { borderTopColor: outline }]}
+                          onPress={() => {
+                            setNewDate(`${toDateStr(d)}T${String(h).padStart(2, "0")}:00`);
+                            setCreateMode("event");
+                            setShowCreate(true);
+                          }}
+                        />
+                      ))}
+                    </View>
                     {laid.map((item) => {
                       const color = getEventColor(item.type, customTypes);
                       return (
                         <Pressable key={item.id} onPress={() => handleEventPress(item)}
-                          style={[styles.timeBlock, { top: item.top, height: item.height, width: `${(item.span / item.totalCols) * 100}%` as any, left: `${(item.col / item.totalCols) * 100}%` as any, backgroundColor: color + "18", borderLeftColor: color }]}>
-                          <Text style={[styles.timeBlockTitle, { color }]} numberOfLines={1}>{item.title}</Text>
-                          <Text style={[styles.timeBlockTime, { color: color + "cc" }]}>
+                          style={[styles.eventBlock, { top: item.top, height: item.height, width: `${(item.span / item.totalCols) * 94}%` as any, left: `${(item.col / item.totalCols) * 94 + 3}%` as any, backgroundColor: color + "14", borderLeftColor: color }]}>
+                          <Text style={[styles.eventBlockTitle, { color }]} numberOfLines={1}>{item.title}</Text>
+                          <Text style={[styles.eventBlockTime, { color: paperTheme.colors.onSurfaceVariant }]}>
                             {new Date(item.date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                           </Text>
                         </Pressable>
                       );
                     })}
                     {isToday(d) && (
-                      <View style={[styles.nowLine, { top: todayTop, backgroundColor: brand.primary }]}>
-                        <View style={[styles.nowDot, { backgroundColor: brand.primary }]} />
+                      <View style={[styles.nowLine, { top: todayTop }]}>
+                        <View style={styles.nowDot} />
                       </View>
                     )}
                   </View>
@@ -489,15 +591,14 @@ export default function CalendarScreen() {
     );
   };
 
-  // ─── Schedule/list view ─────────────────────────────────────────────────
   const scheduleView = (
-    <View style={{ paddingHorizontal: 16, paddingBottom: 100 }}>
+    <View style={{ paddingHorizontal: 16, paddingBottom: 100, paddingTop: 8 }}>
       <Searchbar
         placeholder="Search events..."
         value={searchQuery}
         onChangeText={setSearchQuery}
-        style={{ marginBottom: 8, borderRadius: 16 }}
-        inputStyle={{ fontSize: 14 }}
+        style={{ marginBottom: 8, borderRadius: 10, height: 40, backgroundColor: c.surfaceContainerHigh ?? paperTheme.colors.surfaceVariant }}
+        inputStyle={{ fontSize: 14, minHeight: 0 }}
       />
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
         <View style={{ flexDirection: "row", gap: 6 }}>
@@ -519,31 +620,40 @@ export default function CalendarScreen() {
         <Text variant="bodyMedium" style={{ color: paperTheme.colors.onSurfaceVariant, textAlign: "center", paddingVertical: 40 }}>
           No upcoming events
         </Text>
-      ) : scheduleDays.map(([dateStr, items]) => (
-        <View key={dateStr} style={{ marginBottom: 16 }}>
-          <Text variant="titleSmall" style={{ fontWeight: "700", color: paperTheme.colors.onSurface, marginBottom: 8 }}>
-            {new Date(dateStr).toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })}
-          </Text>
-          {items.map((item: any, i: number) => {
-            const color = getEventColor(item.type ?? "event", customTypes);
-            return (
-              <Pressable key={item.id ?? i}
-                style={[styles.scheduleItem, { backgroundColor: c.surfaceContainerLow ?? paperTheme.colors.surfaceVariant }]}
-                onPress={() => item._type === "deadline" ? handleDeadlineAction(item) : handleEventPress(item)}>
-                <View style={[styles.scheduleDot, { backgroundColor: color }]} />
-                <View style={{ flex: 1 }}>
-                  <Text variant="bodyMedium" style={{ fontWeight: "600", color: paperTheme.colors.onSurface }}>{item.title}</Text>
-                  <Text variant="bodySmall" style={{ color: paperTheme.colors.onSurfaceVariant }}>
-                    {new Date(item.date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                    {item.subject ? ` \u00b7 ${item.subject}` : ""}
-                  </Text>
-                </View>
-                <Text variant="labelSmall" style={{ color }}>{item.type ?? (item._type === "deadline" ? "deadline" : "")}</Text>
-              </Pressable>
-            );
-          })}
-        </View>
-      ))}
+      ) : scheduleDays.map(([dateStr, items]) => {
+        const d = new Date(dateStr);
+        const isTod = isToday(d);
+        return (
+          <View key={dateStr} style={{ marginBottom: 20 }}>
+            <View style={{ flexDirection: "row", alignItems: "baseline", marginBottom: 8 }}>
+              <Text variant="titleSmall" style={{ fontWeight: "600", color: isTod ? "#FF3B30" : paperTheme.colors.onSurface, fontSize: 15 }}>
+                {isTod ? "Today" : d.toLocaleDateString("en-US", { weekday: "long" })}
+              </Text>
+              <Text variant="bodySmall" style={{ color: paperTheme.colors.onSurfaceVariant, marginLeft: 8 }}>
+                {d.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+              </Text>
+            </View>
+            {items.map((item: any, i: number) => {
+              const color = getEventColor(item.type ?? "event", customTypes);
+              return (
+                <Pressable key={item.id ?? i}
+                  style={[styles.scheduleItem, { backgroundColor: surfaceLow }]}
+                  onPress={() => item._type === "deadline" ? handleDeadlineAction(item) : handleEventPress(item)}>
+                  <View style={[styles.scheduleDot, { backgroundColor: color }]} />
+                  <View style={{ flex: 1 }}>
+                    <Text variant="bodyMedium" style={{ fontWeight: "600", color: paperTheme.colors.onSurface }}>{item.title}</Text>
+                    <Text variant="bodySmall" style={{ color: paperTheme.colors.onSurfaceVariant }}>
+                      {new Date(item.date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      {item.subject ? ` \u00b7 ${item.subject}` : ""}
+                    </Text>
+                  </View>
+                  <Text variant="labelSmall" style={{ color }}>{item.type ?? (item._type === "deadline" ? "deadline" : "")}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        );
+      })}
     </View>
   );
 
@@ -556,7 +666,7 @@ export default function CalendarScreen() {
       contentStyle={{ padding: 0, gap: 0 }}
       actions={
         <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-          <Pressable onPress={goToday} style={styles.todayBtn}>
+          <Pressable onPress={goToday} style={styles.headerTodayBtn}>
             <Text variant="labelSmall" style={{ color: brand.primary, fontWeight: "600" }}>Today</Text>
           </Pressable>
           <Pressable onPress={handleImportICS} style={styles.iconBtn}>
@@ -569,7 +679,12 @@ export default function CalendarScreen() {
       }
     >
       {viewControls}
-      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        ref={scrollRef}
+        style={{ flex: 1 }}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={view === "month" ? { paddingBottom: 100 } : undefined}
+      >
         {loading ? (
           <View style={styles.centerState}>
             <ActivityIndicator color={brand.primary} />
@@ -582,7 +697,7 @@ export default function CalendarScreen() {
               Retry
             </Button>
           </View>
-        ) : totalItemCount === 0 ? (
+        ) : totalItemCount === 0 && view !== "month" ? (
           <View style={styles.centerState}>
             <ExpressiveEmptyState icon="calendar-blank" title="Nothing scheduled" subtitle="Add an event or import a calendar to start planning." />
             <Button mode="contained" buttonColor={brand.primary} onPress={() => openCreate(toDateStr(focusDate), "event")} style={{ borderRadius: SHAPE.lg }}>
@@ -603,7 +718,7 @@ export default function CalendarScreen() {
         <Modal visible={showCreate} onDismiss={() => setShowCreate(false)} contentContainerStyle={[styles.modal, { backgroundColor: c.surface ?? paperTheme.colors.surface }]}>
           <ScrollView showsVerticalScrollIndicator={false}>
             <Text variant="titleLarge" style={{ fontWeight: "700", color: paperTheme.colors.onSurface, marginBottom: 16 }}>
-              New {createMode === "deadline" ? "deadline" : "event"}
+              New {createMode === "deadline" ? "Deadline" : "Event"}
             </Text>
             <SegmentedButtons
               value={createMode}
@@ -695,48 +810,54 @@ export default function CalendarScreen() {
 }
 
 const styles = StyleSheet.create({
-  todayBtn: { minHeight: 36, paddingHorizontal: 12, paddingVertical: 8, justifyContent: "center" },
+  headerTodayBtn: { minHeight: 36, paddingHorizontal: 12, paddingVertical: 8, justifyContent: "center" },
   iconBtn: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
 
-  // Controls below header
-  navRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8, paddingHorizontal: 12, paddingVertical: 6 },
-  navBtn: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
-  termRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 16, marginBottom: 8 },
-  termBar: { flex: 1, height: 4, backgroundColor: "rgba(128,128,128,0.15)", borderRadius: 2 },
-  termFill: { height: 4, borderRadius: 2 },
+  navRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8, paddingHorizontal: 12, paddingTop: 2, paddingBottom: 4 },
+  navBtn: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
+  todayBtn: { flex: 1, alignItems: "center" },
+  termRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 16, marginBottom: 4 },
+  termBar: { flex: 1, height: 3, borderRadius: 1.5 },
+  termFill: { height: 3, borderRadius: 1.5 },
 
-  // Month
-  weekdayRow: { flexDirection: "row", marginHorizontal: 4, marginTop: 8, marginBottom: 2 },
-  weekdayLabel: { flex: 1, textAlign: "center", color: "rgba(128,128,128,0.5)", fontWeight: "700", fontSize: 10, letterSpacing: 0.5, textTransform: "uppercase" },
-  grid: { flexDirection: "row", flexWrap: "wrap", paddingHorizontal: 4 },
-  dayCell: { width: "14.28%", aspectRatio: 1, padding: 2, alignItems: "center", justifyContent: "flex-start", paddingTop: 4 },
-  dayNum: { width: 26, height: 26, borderRadius: 13, alignItems: "center", justifyContent: "center", marginBottom: 1 },
-  dayEventRow: { flexDirection: "row", gap: 2, alignItems: "center", justifyContent: "center", flexWrap: "wrap", minHeight: 8, marginTop: 1 },
-  dayEventDot: { width: 5, height: 5, borderRadius: 2.5 },
-  deadlineDot: { width: 5, height: 5, borderRadius: 2.5, borderWidth: 1, borderColor: "#fff" },
+  weekdayRow: { flexDirection: "row", marginHorizontal: 8, marginTop: 8, marginBottom: 2 },
+  weekdayLabel: { flex: 1, textAlign: "center", fontWeight: "500", fontSize: 11, letterSpacing: 0.2 },
+  grid: { flexDirection: "row", flexWrap: "wrap", paddingHorizontal: 8 },
+  dayCell: { width: "14.28%", aspectRatio: 0.9, padding: 2, alignItems: "center", justifyContent: "flex-start", paddingTop: 6, borderRadius: 4 },
+  dayNumRow: { width: "100%", alignItems: "center", marginBottom: 2, minHeight: 26 },
+  todayCircle: { width: 26, height: 26, borderRadius: 13, backgroundColor: "#FF3B30", alignItems: "center", justifyContent: "center" },
+  todayText: { fontSize: 15, fontWeight: "600", color: "#fff" },
+  dayNum: { fontSize: 15, fontWeight: "400" },
+  dayEventRow: { flexDirection: "row", gap: 2, alignItems: "center", justifyContent: "center", flexWrap: "wrap", minHeight: 10 },
+  eventPill: { width: 16, height: 4, borderRadius: 2 },
+  moreText: { fontSize: 9, fontWeight: "600" },
+  selectedDetail: { marginHorizontal: 16, marginTop: 6, marginBottom: 8, paddingTop: 8, borderTopWidth: StyleSheet.hairlineWidth },
+  selectedDateHeader: { marginBottom: 6 },
+  selectedEventRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 8, paddingHorizontal: 4, borderRadius: 8 },
+  selectedEventDot: { width: 8, height: 8, borderRadius: 4 },
+  noEventsRow: { flexDirection: "row", alignItems: "center", paddingVertical: 12, paddingHorizontal: 4 },
 
-  // Week/day
-  timeGridContainer: { paddingBottom: 100, paddingTop: 4 },
-  weekHeader: { flexDirection: "row", marginLeft: 40 },
-  weekDayCol: { width: 100, alignItems: "center", paddingVertical: 4 },
-  weekDayNum: { width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center" },
-  dayCol: { width: 100, position: "relative" },
-  hourLabel: { height: HOUR_H, justifyContent: "flex-start", alignItems: "flex-end", paddingRight: 4, borderTopWidth: StyleSheet.hairlineWidth },
+  timeGridContainer: { paddingBottom: 100, paddingTop: 2 },
+  weekHeader: { flexDirection: "row", marginLeft: 44, paddingBottom: 4 },
+  weekDayCol: { alignItems: "center", paddingVertical: 4 },
+  weekDayNum: { width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center" },
+  dayCol: { position: "relative" },
+  daySingleHeader: { marginLeft: 44, paddingVertical: 8, paddingHorizontal: 12, borderBottomWidth: StyleSheet.hairlineWidth, marginBottom: 2 },
+  hourLabel: { height: HOUR_H, justifyContent: "flex-start", alignItems: "flex-end", paddingRight: 6, borderTopWidth: StyleSheet.hairlineWidth },
+  hourSlotBg: {},
   hourSlot: { height: HOUR_H, borderTopWidth: StyleSheet.hairlineWidth, minWidth: 86 },
-  timeBlock: {
-    position: "absolute", borderRadius: 4, borderLeftWidth: 3,
-    paddingHorizontal: 4, paddingVertical: 2, overflow: "hidden",
+  eventBlock: {
+    position: "absolute", borderRadius: 5, borderLeftWidth: 3,
+    paddingHorizontal: 5, paddingVertical: 2, overflow: "hidden",
   },
-  timeBlockTitle: { fontSize: 11, fontWeight: "600" },
-  timeBlockTime: { fontSize: 9 },
-  nowLine: { position: "absolute", left: 0, right: 0, height: 2, zIndex: 10 },
-  nowDot: { width: 8, height: 8, borderRadius: 4, position: "absolute", left: -4, top: -3 },
+  eventBlockTitle: { fontSize: 11, fontWeight: "600" },
+  eventBlockTime: { fontSize: 9 },
+  nowLine: { position: "absolute", left: 0, right: 0, height: 1.5, zIndex: 10, backgroundColor: "#FF3B30" },
+  nowDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#FF3B30", position: "absolute", left: -4, top: -3.25 },
 
-  // Schedule
-  scheduleItem: { flexDirection: "row", alignItems: "center", gap: 10, padding: 14, borderRadius: 14, marginBottom: 8 },
-  scheduleDot: { width: 8, height: 8, borderRadius: 4 },
+  scheduleItem: { flexDirection: "row", alignItems: "center", gap: 10, padding: 12, borderRadius: 12, marginBottom: 6 },
+  scheduleDot: { width: 10, height: 10, borderRadius: 5 },
 
-  // Shared
   centerState: { minHeight: 360, alignItems: "center", justifyContent: "center", padding: 24, gap: 12 },
   modal: { margin: 20, padding: 24, borderRadius: SHAPE.xl, maxHeight: "86%" },
   typeChip: { borderRadius: SHAPE.pill, paddingHorizontal: 12, paddingVertical: 6, flexDirection: "row", alignItems: "center" },

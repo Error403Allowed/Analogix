@@ -12,16 +12,11 @@
 
 | Home Dashboard | AI Chat | Study Hub |
 |:---:|:---:|:---:|
-| `screenshots/mobile-dashboard.png` | `screenshots/mobile-chat.png` | `screenshots/mobile-studyhub.png` |
+| ![Home Dashboard](../screenshots/mobile-dashboard.png) | ![AI Chat](../screenshots/mobile-chat.png) | ![Study Hub](../screenshots/mobile-studyhub.png) |
 | Streak & Timer widget, quick actions | ChatGPT-inspired streaming chat | 7 tool cards |
-| | | |
-| **Flashcards** | **Quiz** | **Calendar** |
-| `screenshots/mobile-flashcards.png` | `screenshots/mobile-quiz.png` | `screenshots/mobile-calendar.png` |
-| Spaced repetition + AI generation | Timed/mixed/essay modes | Month/week/day views |
-| | | |
-| **Timer** | **Subjects** | **Profile** |
-| `screenshots/mobile-timer.png` | `screenshots/mobile-subjects.png` | `screenshots/mobile-profile.png` |
-| Pomodoro with session tracking | Syllabus, marks, homework, docs | Settings, themes, achievements |
+| **Quiz** | **Calendar** | **Timer** |
+| ![Quiz](../screenshots/mobile-quiz.png) | ![Calendar](../screenshots/mobile-calendar.png) | ![Timer](../screenshots/mobile-timer.png) |
+| Timed/mixed/essay modes | Month/week/day views | Pomodoro with session tracking |
 
 ---
 

@@ -63,9 +63,14 @@ function buildSystemPrompt(
     'Maximum analogy integration. Every explanation should be anchored in a vivid, extended analogy that the student can visualize and relate to their own life.',
   ][Math.min(analogyIntensity, 5)];
 
+  const curriculumInstruction = workspaceContext.includes('CURRICULUM CONTENT')
+    ? '\n\nThe workspace above includes Australian curriculum content for the student\'s grade and subject. Reference this curriculum content in your answer. Mention the ACARA code (e.g. AC9M8G03) when relevant. Ensure your explanations match the specified grade level and syllabus outcomes.'
+    : '';
+
   const workspaceSection = workspaceContext || calendarContext ? `
 ${calendarContext ? `━━━ CALENDAR & DEADLINES ━━━\n${calendarContext}\n━━━ END CALENDAR ━━━\n` : ''}
 ${workspaceContext ? `━━━ YOUR WORKSPACE ━━━\n${workspaceContext}\n━━━ END WORKSPACE ━━━` : ''}
+${curriculumInstruction}
 ` : '';
 
   return `You are "Analogix AI", a friendly AI tutor for Australian students.
@@ -121,6 +126,7 @@ export async function POST(request: Request) {
         query: lastMessage,
         scopes: [
           { type: 'documents', maxResults: 5 },
+          { type: 'curriculum', maxResults: 5 },
           { type: 'flashcards', maxResults: 3 },
           { type: 'quizzes', maxResults: 3 },
           { type: 'calendar', maxResults: 5 },
@@ -130,11 +136,25 @@ export async function POST(request: Request) {
       });
 
       const docs = retrievalResult.scopes.documents || [];
+      const curriculumEntries = retrievalResult.scopes.curriculum || [];
+
+      const docParts: string[] = [];
       if (docs.length > 0) {
-        workspaceContext = docs.map((d) => 
+        docParts.push('━━━ YOUR DOCUMENTS ━━━');
+        docParts.push(docs.map((d) =>
           `[${d.entity.metadata?.subject_id?.toUpperCase()}] "${d.entity.metadata?.title}": ${d.entity.entity_data?.content || ''}`
-        ).join('\n\n');
+        ).join('\n\n'));
       }
+
+      if (curriculumEntries.length > 0) {
+        docParts.push('━━━ CURRICULUM CONTENT ━━━');
+        docParts.push(curriculumEntries.map((c) => {
+          const data = c.entity.entity_data as Record<string, unknown>;
+          return `[${String(data.state || 'ACARA')}] ${String(data.subject || '')} Year ${String(data.grade || '')}${data.acara_code ? ` (${data.acara_code})` : ''}: ${data.topic ? `${data.strand} > ${data.topic}: ` : ''}${data.content || ''}`;
+        }).join('\n\n'));
+      }
+
+      workspaceContext = docParts.join('\n\n');
 
       const events = retrievalResult.scopes.calendar || [];
       if (events.length > 0) {

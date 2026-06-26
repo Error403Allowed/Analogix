@@ -180,7 +180,7 @@ Analogix uses Groq API with task-based routing:
 | `/api/groq/greeting` | Greeting generation |
 | `/api/groq/extract-text` | Text extraction from documents |
 | `/api/groq/study-guide-edit` | Study guide editing |
-| `/api/groq/agent-action` | Agent action execution |
+| `/api/groq/tools/execute` | MCP tool execution (read/write via child process) |
 | `/api/groq/flashcard-from-doc` | Flashcard generation from documents |
 | `/api/groq/quiz-from-doc` | Quiz generation from documents |
 
@@ -265,7 +265,7 @@ Analogix uses Groq API with task-based routing:
 ## Getting Started
 
 ### Prerequisites
-- Node.js 20+
+- Node.js >=22
 - npm or bun
 - Groq API key
 - Supabase project
@@ -415,4 +415,4 @@ Issues and PRs welcome!
 
 ## Future Projects?
 
-There may be an Analogix native mobile app coming through for android and iOS, built in react native. Stay posted! 
+The Analogix mobile app (React Native + Expo) is available under [`AnalogixMobile/`](../AnalogixMobile/).

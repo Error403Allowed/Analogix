@@ -32,14 +32,14 @@ export default function UpcomingEvents() {
     const fetchEvents = async () => {
       const supabase = createClient();
       const now = new Date().toISOString();
-      const limit = addDays(new Date(), 30).toISOString();
+      const limit = addDays(new Date(), 1).toISOString();
       const { data } = await supabase
         .from("events")
         .select("id, title, date, end_date")
         .gte("date", now)
         .lte("date", limit)
         .order("date", { ascending: true })
-        .limit(6);
+        .limit(8);
       setEvents(data || []);
     };
     fetchEvents();

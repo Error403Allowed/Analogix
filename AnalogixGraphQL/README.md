@@ -133,8 +133,6 @@ Server starts on port `4000`. Open `http://localhost:4000/graphql` for the Apoll
 
 ```
 AnalogixGraphQL/
-├── Dockerfile              # multi-stage, node:22-bookworm-slim
-├── fly.toml                # Fly.io config (region: syd, port 4000)
 ├── package.json
 ├── tsconfig.json
 ├── codegen.ts              # graphql-codegen config
@@ -170,18 +168,6 @@ AnalogixGraphQL/
 | `npm start` | `node dist/server.js` |
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run codegen` | `graphql-codegen` against `codegen.ts` |
-
----
-
-## Deploy to Fly.io
-
-```bash
-fly launch --no-deploy
-fly secrets set SUPABASE_URL=... SUPABASE_ANON_KEY=... SUPABASE_SERVICE_ROLE_KEY=... GROQ_API_KEY=... GROQ_API_KEY_2=... GOOGLE_CLIENT_ID=... GOOGLE_CLIENT_SECRET=... DESMOS_API_KEY=... REDIS_URL=rediss://...
-fly deploy
-```
-
-The Dockerfile is multi-stage on `node:22-bookworm-slim`. Runtime copies only the compiled `dist/` directories. Region: `syd` (Sydney).
 
 ---
 

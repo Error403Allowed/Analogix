@@ -2,16 +2,17 @@
 
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Brain, Sparkles, X } from "lucide-react";
+import { Brain, Sparkles, X, Shield } from "lucide-react";
 import {
   Sheet, SheetContent, SheetTitle, SheetDescription,
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { PersonalityEditor } from "@/components/PersonalityEditor";
+import { ToolSettings } from "@/components/ToolSettings";
 import { MemoryManager } from "@/components/MemoryManager";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
-type AITab = "personality" | "memory";
+type AITab = "personality" | "memory" | "tools";
 
 interface AISettingsSheetProps {
   open: boolean;
@@ -55,6 +56,18 @@ export default function AISettingsSheet({ open, onOpenChange, defaultTab = "pers
               Personality
             </button>
             <button
+              onClick={() => setActiveTab("tools")}
+              className={cn(
+                "flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5",
+                activeTab === "tools"
+                  ? "bg-primary/15 text-primary border border-primary/30"
+                  : "bg-muted/30 text-muted-foreground/70 border border-border/60 hover:border-primary/30 hover:text-foreground"
+              )}
+            >
+              <Shield className="w-3.5 h-3.5" />
+              Tools
+            </button>
+            <button
               onClick={() => setActiveTab("memory")}
               className={cn(
                 "flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5",
@@ -82,6 +95,16 @@ export default function AISettingsSheet({ open, onOpenChange, defaultTab = "pers
                   transition={{ duration: 0.15 }}
                 >
                   <PersonalityEditor onClose={() => onOpenChange(false)} />
+                </motion.div>
+              ) : activeTab === "tools" ? (
+                <motion.div
+                  key="tools"
+                  initial={{ opacity: 0, x: 12 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -12 }}
+                  transition={{ duration: 0.15 }}
+                >
+                  <ToolSettings onClose={() => onOpenChange(false)} />
                 </motion.div>
               ) : (
                 <motion.div

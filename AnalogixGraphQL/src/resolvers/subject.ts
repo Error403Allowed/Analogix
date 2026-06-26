@@ -4,15 +4,16 @@ import type { GraphQLContext } from "../context.js";
 import { getCurriculum } from "@analogix/shared/curriculum";
 
 const ICONS: Record<string, string> = {
-  mathematics: "math-integral",
+  math: "math-integral",
+  biology: "leaf",
   science: "atom",
   english: "book-open-variant",
   history: "castle",
   geography: "earth",
-  "computer-science": "code-tags",
+  computing: "code-tags",
   physics: "lightning-bolt",
   chemistry: "flask",
-  biology: "leaf",
+  languages: "translate",
 };
 
 function subjectName(id: string): string {
@@ -28,7 +29,7 @@ function subjectIcon(id: string): string {
 
 function subjectColor(id: string): string {
   const palette: Record<string, string> = {
-    mathematics: "#7C5CFF",
+    math: "#7C5CFF",
     science: "#0EA5E9",
     english: "#F472B6",
     history: "#F59E0B",
@@ -36,6 +37,8 @@ function subjectColor(id: string): string {
     physics: "#A78BFA",
     chemistry: "#EC4899",
     biology: "#22C55E",
+    computing: "#3B82F6",
+    languages: "#8B5CF6",
   };
   return palette[id] ?? "#7C5CFF";
 }

@@ -21,7 +21,7 @@ const TOURS: TourConfig[] = [
     autoShow: true,
     steps: [
       { target: "dashboard-main", title: "Welcome!", description: "Your personalised dashboard shows everything at a glance." },
-      { target: "stats-strip", title: "Stats", description: "Track your streak, quizzes, and accuracy." },
+      { target: "streak-strip", title: "Streak", description: "Track your study streak." },
     ],
   },
   {

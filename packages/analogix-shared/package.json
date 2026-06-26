@@ -31,6 +31,14 @@
     "./schemas": {
       "types": "./dist/schemas/index.d.ts",
       "import": "./dist/schemas/index.js"
+    },
+    "./tools": {
+      "types": "./dist/tools/index.d.ts",
+      "import": "./dist/tools/index.js"
+    },
+    "./agent-quiz": {
+      "types": "./dist/agent-quiz.d.ts",
+      "import": "./dist/agent-quiz.js"
     }
   },
   "scripts": {

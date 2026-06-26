@@ -4,6 +4,8 @@ import type { GraphQLContext } from "../context.js";
 import { streamGroqChat, classifyTaskType, type GroqChatMessage } from "../ai/groq.js";
 import { logger } from "../logger.js";
 import { z } from "zod";
+import { createCurriculumRetriever } from "../retrieval/curriculum.js";
+import { buildValidSubjectsPrompt, getCurriculum } from "@analogix/shared/curriculum";
 
 const AppendMessageSchema = z.object({
   sessionId: z.string().uuid(),
@@ -175,9 +177,25 @@ export const chatResolvers = {
       // Inject personality-driven system prompt if none exists yet.
       const { data: profile } = await ctx.supabase!
         .from("profiles")
-        .select("ai_personality, subjects")
+        .select("ai_personality, subjects, grade, state")
         .eq("id", user.id)
         .maybeSingle();
+
+      // Retrieve curriculum context via RAG
+      let curriculumContext = "";
+      try {
+        const retriever = createCurriculumRetriever(ctx.serviceClient);
+        const question = parsed.content;
+        const filters: { subject?: string; grade?: string } = {};
+        const subjects = (profile?.subjects ?? []) as string[];
+        if (subjects.length > 0) filters.subject = subjects[0];
+        if (profile?.grade) filters.grade = String(profile.grade);
+        const results = await retriever.retrieve(question, filters, 3);
+        curriculumContext = retriever.formatContext(results);
+      } catch (err) {
+        logger.warn({ err }, "[chat] curriculum RAG failed");
+      }
+
       if (!groqMessages.some((m) => m.role === "system")) {
         const personality = (profile?.ai_personality ?? {}) as {
           tone?: string;
@@ -212,6 +230,16 @@ export const chatResolvers = {
               ? "Feel free to use creative examples and analogies."
               : "";
 
+        const curriculumSection = curriculumContext
+          ? `\n\n${curriculumContext}\n\nReference this curriculum content in your answer. Mention the ACARA code (e.g. AC9M8G03) when relevant. Ensure your explanations match the specified grade level and syllabus outcomes.`
+          : "";
+
+        const profileSubjects = (profile?.subjects ?? []) as string[];
+        const subjectsContext = profileSubjects.length > 0
+          ? `The user is enrolled in: ${profileSubjects.join(", ")}. Only create data in these subjects.`
+          : "";
+        const validSubjectsPrompt = buildValidSubjectsPrompt();
+
         const systemContent = [
           "You are Analogix — a personalized AI study companion for the user.",
           toneMap[personality.tone ?? "friendly"] ?? toneMap.friendly,
@@ -220,6 +248,8 @@ export const chatResolvers = {
           creativityGuide,
           "Respond in the same language the user writes in.",
           "Ask one follow-up question at the end to deepen understanding.",
+          curriculumSection,
+          `\n\n${validSubjectsPrompt}\n${subjectsContext}`,
         ]
           .filter(Boolean)
           .join(" ");

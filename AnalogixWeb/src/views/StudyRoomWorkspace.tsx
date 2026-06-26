@@ -26,6 +26,7 @@ import {
   ChevronRight,
   ChevronLeft,
   ArrowRight,
+  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -536,6 +537,8 @@ export default function StudyRoomWorkspace() {
     }
   };
 
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
   const leaveRoom = async () => {
     try {
       const response = await fetch(`/api/rooms/${roomId}/leave`, {
@@ -549,6 +552,22 @@ export default function StudyRoomWorkspace() {
     } catch (error) {
       console.error("[StudyRoomWorkspace] leaveRoom failed:", error);
       toast.error(error instanceof Error ? error.message : "Failed to leave room");
+    }
+  };
+
+  const deleteRoom = async () => {
+    try {
+      const response = await fetch(`/api/rooms/${roomId}`, {
+        method: "DELETE",
+      });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error || "Failed to delete room");
+      }
+      router.push("/rooms");
+    } catch (error) {
+      console.error("[StudyRoomWorkspace] deleteRoom failed:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to delete room");
     }
   };
 
@@ -854,9 +873,15 @@ export default function StudyRoomWorkspace() {
             <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => void loadRoom()} title="Refresh">
               <RefreshCw className="h-4 w-4" />
             </Button>
-            <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" onClick={leaveRoom} title="Leave room">
-              <DoorOpen className="h-4 w-4" />
-            </Button>
+            {state.room.isOwner ? (
+              <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => setShowDeleteConfirm(true)} title="Delete room">
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            ) : (
+              <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" onClick={leaveRoom} title="Leave room">
+                <DoorOpen className="h-4 w-4" />
+              </Button>
+            )}
           </div>
         </div>
       </header>
@@ -1255,6 +1280,25 @@ export default function StudyRoomWorkspace() {
                 Create
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete room?</DialogTitle>
+            <DialogDescription>
+              This will permanently delete the room and all its messages and documents. This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setShowDeleteConfirm(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={() => { setShowDeleteConfirm(false); void deleteRoom(); }}>
+              Delete room
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

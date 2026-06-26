@@ -5,6 +5,9 @@ import { buildCalendarContext } from "../_calendarContext";
 import { listUserDocuments } from "@/lib/server/documents";
 import { getUserAIPersonality, getRelevantMemories, buildMemoryContext, buildPersonalityInstructions } from "@/lib/aiMemory";
 import type { AIPersonality } from "@/types/ai-personality";
+import { buildValidSubjectsPrompt } from "@/lib/curriculum";
+import { TOOL_LIST_DESCRIPTION } from "@/lib/tool-descriptions";
+import { createCurriculumRetriever } from "@/lib/retrieval/curriculum";
 export const runtime = "nodejs";
 // Token estimation: ~4 chars per token for English text
 const estimateTokens = (text) => Math.ceil(text.length / 4);
@@ -185,31 +188,39 @@ ${researchSources.length > 0 ? `ACADEMIC SOURCES:\n${formatResearchSources(resea
         : "";
     const selectedModel = userContext?.selectedModel || null;
     const isQwenModel = selectedModel ? selectedModel.toLowerCase().includes("qwen") : false;
-    const actionInstructions = `
+    const validSubjectsPrompt = buildValidSubjectsPrompt();
+    const subjects = userContext?.subjects || [];
+    const userSubjectsContext = subjects.length > 0
+        ? `\n\nCRITICAL — USER'S ENROLLED SUBJECTS:\nThe user's subjects are: ${subjects.join(", ")}.\nYou MUST use ONLY these subject IDs when calling any tool that requires a subject_id. Never create new subjects or use subject IDs not in this list. If the user asks for something in a subject not in this list, respond conversationally and explain they need to add that subject first.`
+        : "";
+
+    const toolCapabilitiesSection = `
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-FLASHCARDS & QUIZZIES
+YOUR CAPABILITIES (TOOLS)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-When creating flashcards or quizzes, place a JSON block wrapped in <internal>...</internal> tags at the VERY END of your message. This block is hidden from the student — never mention it in your visible text.
+You have access to tools that read and write the user's data (flashcards, documents, quizzes, events, deadlines, subjects). When the user explicitly asks to CREATE, EDIT, UPDATE, MODIFY, CHANGE, ADD, REMOVE, DELETE, or VIEW their data, you MUST output TOOL_CALLS: at the end of your response with the correct tool name and all required arguments.
 
-── FLASHCARDS ──
-<internal>[{"type":"add_flashcards","subjectId":"SUBJECT","setName":"Topic name","cards":[{"front":"Q","back":"A"}]}]</internal>
+HARD RULE: NEVER generate a quiz, flashcards, or any interactive study content inside the chat. Always use the real create tool. The user wants actual data created in the app, not simulated content in the conversation.
 
-── QUIZZES ──
-<internal>[{"type":"start_quiz","subjectId":"SUBJECT","topic":"optional topic","difficulty":"foundational|intermediate|advanced","numberOfQuestions":5,"timeLimitMinutes":0}]</internal>
+RULES:
+1. When the user explicitly asks to create, edit, update, modify, remove, delete, or view data — output ONLY TOOL_CALLS at the end. No conversational text before it.
+2. "Create flashcards about X", "add cards to my mitosis set", "edit that flashcard", "remove that flashcard", "update my biology notes", "delete that document", "change my exam", "show my events", "list my documents" ARE explicit — emit TOOL_CALLS with no preamble.
+3. "Quiz me on algebra", "start a quiz on derivatives", "test me on cell biology", "make a quiz about polynomials" ARE ALL explicit — emit TOOL_CALLS with create_quiz. Do NOT write quiz questions in the chat.
+4. "I need to..." or "I have to..." are NOT explicit — just respond conversationally, no TOOL_CALLS.
+5. Never mention tool names to the user. Never say "I'll use X", "you can use X", "let me X". The tool card is invisible to the user.
+6. Always fill in ALL required arguments with real values. Never leave args empty.
+7. CRITICAL: Use the EXACT tool name from below. Wrong names fail silently.
+8. For reads (list, get, show): emit TOOL_CALLS the same way.
 
-── RULES ──
-- For flashcards: you MUST include AT LEAST 5 cards. If you cannot make 5 meaningful cards, do NOT use the action at all.
-- For flashcards: your visible text should be 1 sentence only, e.g. "Done! Added 5 flashcards on quadratics." Then the <internal> block.
-- For quizzes: your visible text should be "Starting your quiz now!" Then the <internal> block.
-- Use flashcards when the student says "make flashcards", "create cards", "save these" etc.
-- Use quizzes when the student says "quiz me", "test me", "start a quiz" etc.
-- The <internal> block must contain ONLY a valid JSON array — no markdown, no code fences, no extra text.
+${TOOL_LIST_DESCRIPTION}
+${validSubjectsPrompt}
+${userSubjectsContext}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 `;
     const workspaceSection = workspaceContext || calendarContext ? `
 ${calendarContext ? `━━━ CALENDAR & DEADLINES ━━━\n${calendarContext}\n━━━ END CALENDAR ━━━\n` : ""}
 ${workspaceContext ? `━━━ YOUR WORKSPACE ━━━
-You have READ-ONLY access to this student's documents — you can see them for context but CANNOT edit or create documents directly. Do NOT tell the student you can edit their documents or offer to update them.
+You have access to this student's documents for context AND can create, edit, or delete documents when the student asks.
 
 ${workspaceContext}
 ━━━ END WORKSPACE ━━━
@@ -246,26 +257,43 @@ Student Interests (use these for analogies and examples): ${allowedInterests}`}
 Rules:
 - When user asks about schedule, classes, events, deadlines, or "what's next" — check the calendar context and give a natural, conversational answer (not a list).
 - Make sure all your responses reflect the values and outcomes/requirements of the ACARA curriculum. Do not force the curriculum informaiton on the student, but make sure you frame your response to be ACARA-worthy. 
+- IMPORTANT: When the CURRICULUM CONTENT section above includes specific curriculum codes (e.g. AC9M8G03), topics, or descriptions, use them as authoritative references in your response. Reference them by code and explain the concept as described in that curriculum entry. For example: "According to ACARA (AC9M8G03), the Pythagorean theorem states that..."
 - LATEX FOR ALL MATHEMATICAL CONTENT: Use LaTeX ($...$ for inline, $$...$$ for display) for ALL mathematical expressions, equations, formulas, numbers used in calculations, mathematical operations, symbols, and scientific notation. This applies to EVERY subject — maths, physics, chemistry, biology, economics, engineering, and any other subject where numbers, formulas, or mathematical symbols appear. Examples: write $25$ not 25 when it's a value in a calculation, $x = 5$ not x = 5, $\\frac{1}{2}$ not 1/2, $\\times$ for multiplication, $\\div$ for division, $\\pm$, $\\approx$, $\\leq$, $\\geq$, $\\degree$C, $\\text{pH} = 7$, $E = mc^2$, $n = 3$ moles, $v = 30\\,\\text{m/s}$. ANY number that is part of a formula, equation, measurement, calculation, or mathematical relationship MUST be wrapped in $...$. Chemical equations, physics formulas, statistical values, percentages, ratios — all use LaTeX.
 - CHARTS: If the user asks for a graph, chart, or visualisation of data, use the Recharts format described at the end of this prompt to create an interactive chart. Make sure this chart can render accurately and properly on the frontend. 
 - DESMOS: If the user asks for a graph of a mathematical function, equation, or inequality, you MUST output a \`\`\`desmos code block with the equation(s). NEVER output a URL or just describe the graph.
 - 3D VISUALISATIONS: For complex concepts, structures, systems, or relationships (e.g. solar system, atomic structure, biological processes, networks), use the Three.js format described at the end of this prompt to create an interactive 3D scene that illustrates the concept.
-- NOTE: If asked to write something very long (essays, reports, etc.), explain that responses are capped at ~${isQwenModel ? '4000' : '1900'} tokens due to API rate limits, but offer to continue in a follow-up message.${actionInstructions}${workspaceSection}
+- NOTE: If asked to write something very long (essays, reports, etc.), explain that responses are capped at ~${isQwenModel ? '4000' : '1900'} tokens due to API rate limits, but offer to continue in a follow-up message.${workspaceSection}${toolCapabilitiesSection}
 ${researchBlock}
 
 Visualisations — you have THREE tools to make concepts visual and memorable:
 
- 1. DESMOS GRAPHS (for math functions):
-    When the user asks to graph, plot, or visualise ANY equation, function, or inequality, you MUST output a code block with language "desmos" containing the raw equation(s).
+  1. DESMOS GRAPHS (for any math visualisation):
+    When the user asks to graph, plot, or visualise ANY equation, function, inequality, or mathematical concept, you MUST output a code block with language "desmos". Desmos supports:
+    ─ Functions: y = x^2 - 4*x + 3, y = sin(x), y = 3*cos(2*x)
+    ─ Implicit equations: x^2 + y^2 = 25
+    ─ Inequalities: y > 2*x, x^2 + y^2 < 16, y >= x^2
+    ─ Parametric: (cos(t), sin(t))  (Desmos auto-uses variable t for parametrics)
+    ─ Points: (1, 2), (-3, 5)
+    ─ Regression: y1 ~ m*x1 + b  (use x1/y1 or x2/y2 pattern for table regression)
+    ─ Sliders: a = 3  (Defining a variable with no function creates an interactive slider)
+    ─ Tables / lists: a = [1, 2, 3, 4, 5], plot: (n, n^2) for n=[1..10]  (Use [1..10] range syntax)
+    ─ Drag points: DraggablePoint((h, k)) creates a draggable point on the graph
+    ─ For any expression you write, you can assign it to a variable and reuse it later: f(x) = x^2, g(x) = f(x) + 5
+    ─ Viewport: add [bounds: left, right, bottom, top] on its own line to zoom to a specific range
     Format: \`\`\`desmos
     y = x^2 - 4*x + 3
+    y = 2*x + 1
+    [bounds: -10, 10, -5, 15]
     \`\`\`
     Rules:
-    - Put ONLY the equation(s) inside the code block — one per line.
+    - Put ONLY the expression(s) inside the code block — one per line.
     - Use * for multiplication (e.g. 2*x not 2x, 4*x^2 not 4x^2).
+    - Use ^ for exponentiation, / for division.
+    - Math functions: sin, cos, tan, arcsin, arccos, arctan, sinh, cosh, tanh, sqrt, ln, log, abs, floor, ceil, exp, sign, nthroot.
+    - ALL expressions use Desmos syntax, NOT LaTeX. Write "1/2" not "\frac{1}{2}", "sqrt(x)" not "\sqrt{x}".
     - NEVER output a desmos.com URL. NEVER say "copy this link". NEVER describe the graph instead of showing it.
-    - After the code block, you may briefly describe key features (vertex, intercepts, etc.).
-    Use for: any math function, equation, inequality, parametric curve.
+    - After the code block, you may briefly describe key features (vertex, intercepts, domain/range, etc.).
+    Use for: any math function, equation, inequality, system of equations, transformation, parametric, conic sections, statistics plots.
 
  2. RECHARTS (for data & statistics):
      When the user asks for a chart, graph, or visualisation of NUMERICAL DATA or STATISTICS, you MUST output a code block with language "recharts" containing a JSON object.
@@ -339,9 +367,13 @@ export async function POST(request) {
         const body = await request.json();
         const messages = body.messages || [];
         const userContext = body.userContext || {};
+
         // Get personality and memory from database or localStorage
         const supabase = await createClient();
         const { data: { user } } = await supabase.auth.getUser();
+
+        // ========================================================================
+        // INTENT DETECTION: Check if this is a tool intent before streaming
         let aiPersonality: AIPersonality | null = null;
         let memoryContext = "";
         // Client-side "x-client-data" is always sent by the chat UI (it contains localStorage
@@ -448,6 +480,22 @@ export async function POST(request) {
                             const docIndex = truncatedDocs.map(d => `  • "${d.title}" [${d.type}] subjectId="${d.subjectId}"`).join("\n");
                             workspaceContext = `Document Index:\n${docIndex}\n\nDocument Contents:\n${docContext}`;
                         }
+                    }
+                    // ── Curriculum RAG ───────────────────────────────────────
+                    try {
+                        console.log("[chat-stream] curriculum RAG: retrieving for query:", latestUserMsg.slice(0, 60));
+                        const curriculumRetriever = createCurriculumRetriever();
+                        const curriculumResults = await curriculumRetriever.retrieve(latestUserMsg, {}, 5);
+                        console.log("[chat-stream] curriculum RAG: got", curriculumResults.length, "results");
+                        if (curriculumResults.length > 0) {
+                            const curriculumSection = curriculumRetriever.formatContext(curriculumResults);
+                            const curriculumBlock = `\n\n━━━ CURRICULUM CONTENT ━━━\n${curriculumSection}\n━━━ END CURRICULUM ━━━`;
+                            workspaceContext = workspaceContext
+                                ? workspaceContext + curriculumBlock
+                                : `Curriculum Content:\n${curriculumSection}`;
+                        }
+                    } catch (curriculumErr) {
+                        console.warn("[chat-stream] curriculum RAG failed:", curriculumErr instanceof Error ? curriculumErr.message : curriculumErr);
                     }
                 }
             }

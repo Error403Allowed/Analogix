@@ -169,5 +169,5 @@ export const BRAND_THEMES: BrandTheme[] = [
   { id: "Crimson",  name: "Crimson",  primary: "#DC2626", secondary: "#EF4444", tertiary: "#FCA5A5", preview: ["#DC2626","#EF4444"] },
   { id: "Sakura",   name: "Sakura",   primary: "#DB2777", secondary: "#EC4899", tertiary: "#F9A8D4", preview: ["#DB2777","#EC4899"] },
   { id: "Amethyst", name: "Amethyst", primary: "#7C3AED", secondary: "#8B5CF6", tertiary: "#C4B5FD", preview: ["#7C3AED","#8B5CF6"] },
-  { id: "Slate",    name: "Slate",    primary: "#475569", secondary: "#64748B", tertiary: "#94A3B8", preview: ["#475569","#64748B"] },
+  { id: "Slate",    name: "Slate",    primary: "#37352F", secondary: "#6B6B6B", tertiary: "#9B9B9B", preview: ["#37352F","#6B6B6B"] },
 ];

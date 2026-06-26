@@ -115,11 +115,10 @@ export const statsResolvers = {
     subjectCounts: (s: { subject_counts?: Record<string, number> }) => s.subject_counts ?? {},
     updatedAt: (s: { updated_at?: string }) => s.updated_at,
     // Mobile-facing extensions — derived fields
-    xp: (s: { quizzes_done?: number; cards_reviewed?: number; minutes_studied?: number; xp?: number }) =>
-      s.xp ?? (s.quizzes_done ?? 0) * 50 + (s.cards_reviewed ?? 0) * 2 + Math.floor((s.minutes_studied ?? 0) / 5),
-    level: (s: { quizzes_done?: number; cards_reviewed?: number; xp?: number; level?: number }) => {
-      if (s.level) return s.level;
-      const derivedXp = (s.xp ?? 0) + (s.quizzes_done ?? 0) * 50 + (s.cards_reviewed ?? 0) * 2;
+    xp: (s: { quizzes_done?: number; cards_reviewed?: number; minutes_studied?: number }) =>
+      (s.quizzes_done ?? 0) * 50 + (s.cards_reviewed ?? 0) * 2 + Math.floor((s.minutes_studied ?? 0) / 5),
+    level: (s: { quizzes_done?: number; cards_reviewed?: number }) => {
+      const derivedXp = (s.quizzes_done ?? 0) * 50 + (s.cards_reviewed ?? 0) * 2;
       return Math.max(1, Math.floor(Math.sqrt(derivedXp / 100)));
     },
     quizzesCompleted: (s: { quizzes_done?: number }) => s.quizzes_done ?? 0,

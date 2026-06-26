@@ -23,6 +23,9 @@ export function getCurriculum(): CurriculumSubject[] {
   return CURRICULUM_DATA;
 }
 
+export { chunkCurriculum, chunkCurriculumWithElaborations } from "./chunker.js";
+export type { ChunkedCurriculumEntry } from "./chunker.js";
+
 export function buildFullCurriculumPrompt(subject: string, grade: number): string {
   const s = CURRICULUM_DATA.find(
     (s) => s.name.toLowerCase() === subject.toLowerCase() || s.id === subject
@@ -38,4 +41,19 @@ export function buildFullCurriculumPrompt(subject: string, grade: number): strin
     }
   }
   return lines.join("\n");
+}
+
+/** Builds a system-prompt block listing all valid curriculum subjects. */
+export function buildValidSubjectsPrompt(): string {
+  const subjects = CURRICULUM_DATA.map((s) => `  • ${s.name}`).join("\n");
+  return `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+VALID SUBJECTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+The following are the ONLY valid subjects. Do NOT create, reference, or suggest subjects outside this list:
+
+${subjects}
+
+If a user asks about a topic in a subject NOT in this list, explain that it's not part of the Australian curriculum and suggest the closest valid subject.
+When calling tools, always use the subject ID that matches one of these valid subject names.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
 }

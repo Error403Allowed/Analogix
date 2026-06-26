@@ -19,6 +19,9 @@ function getDefaultPersonality() {
     use_analogies: true,
     analogy_frequency: 3,
     use_section_dividers: true,
+    auto_approve_tools: false,
+    auto_approve_read_tools: false,
+    auto_approve_write_subjects: [],
   };
 }
 
@@ -107,6 +110,11 @@ export async function PUT(request: Request) {
       analogy_frequency: Math.max(0, Math.min(5, body.analogy_frequency ?? 3)),
       use_section_dividers:
         body.use_section_dividers === undefined ? undefined : Boolean(body.use_section_dividers),
+      auto_approve_tools: Boolean(body.auto_approve_tools),
+      auto_approve_read_tools: Boolean(body.auto_approve_read_tools),
+      auto_approve_write_subjects: Array.isArray(body.auto_approve_write_subjects)
+        ? body.auto_approve_write_subjects.map(String)
+        : [],
     };
 
     // Check if personality exists
