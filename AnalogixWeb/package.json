@@ -8,6 +8,7 @@
   },
   "scripts": {
     "dev": "next dev",
+    "prebuild": "cd .. && npm run build --workspace=packages/analogix-shared",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
