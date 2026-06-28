@@ -7,8 +7,8 @@
 @layer base {
   :root {
     /* Original Analogix style with colorful gradients */
-    --background: 0 0% 100%;
-    --foreground: 0 0% 15%;
+    --background: 210 20% 98%;
+    --foreground: 222 47% 11%;
 
     --card: 0 0% 100%;
     --card-foreground: 0 0% 15%;
@@ -41,19 +41,19 @@
     --ring: var(--p-h) var(--p-s) var(--p-l);
 
     /* Colorful gradients - theme driven */
-    --bg-1: rgba(14, 165, 166, 0.14);
-    --bg-2: rgba(37, 99, 235, 0.12);
-    --bg-3: rgba(15, 118, 110, 0.12);
-    --bg-1-dark: rgba(14, 165, 166, 0.045);
-    --bg-2-dark: rgba(37, 99, 235, 0.035);
-    --bg-3-dark: rgba(15, 118, 110, 0.025);
+    --bg-1: rgba(37, 99, 235, 0.06);
+    --bg-2: rgba(79, 70, 229, 0.04);
+    --bg-3: rgba(67, 56, 202, 0.03);
+    --bg-1-dark: rgba(37, 99, 235, 0.045);
+    --bg-2-dark: rgba(79, 70, 229, 0.035);
+    --bg-3-dark: rgba(67, 56, 202, 0.025);
 
-    --glass-bg-light: rgba(255, 255, 255, 0.95);
-    --glass-tint-light: rgba(241, 241, 239, 0.5);
-    --glass-border-light: transparent;
-    --glass-bg-dark: rgba(25, 25, 25, 0.98);
-    --glass-tint-dark: rgba(56, 189, 248, 0.05);
-    --glass-border-dark: transparent;
+    --glass-bg-light: rgba(255, 255, 255, 0.85);
+    --glass-tint-light: rgba(37, 99, 235, 0.08);
+    --glass-border-light: rgba(37, 99, 235, 0.12);
+    --glass-bg-dark: rgba(15, 23, 42, 0.92);
+    --glass-tint-dark: rgba(37, 99, 235, 0.08);
+    --glass-border-dark: rgba(37, 99, 235, 0.15);
     --glass-bg: var(--glass-bg-light);
     --glass-tint: var(--glass-tint-light);
     --glass-border: var(--glass-border-light);
@@ -75,9 +75,9 @@
     --border-opacity: 0.08;
     --font-weight-display: 600;
 
-    --g-1: #37352F;
-    --g-2: #487CA5;
-    --g-3: #8A67AB;
+    --g-1: #2563eb;
+    --g-2: #4f46e5;
+    --g-3: #4338ca;
 
     --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, "Apple Color Emoji", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol";
     --font-display: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, "Apple Color Emoji", Arial, sans-serif;
@@ -139,11 +139,6 @@
     font-feature-settings: "rlig" 1, "calt" 1;
     overflow-x: hidden;
     overscroll-behavior-y: none;
-    background-image:
-      radial-gradient(900px 400px at 10% -10%, var(--bg-1), transparent 60%),
-      radial-gradient(800px 500px at 100% 10%, var(--bg-2), transparent 65%),
-      radial-gradient(700px 400px at 50% 100%, var(--bg-3), transparent 60%);
-    background-attachment: fixed;
   }
   .dark body {
     background-image: none;

@@ -47,7 +47,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     (storage.getString(MODE_KEY) as ColorMode) ?? "system"
   );
   const [brandId, setBrandIdState] = useState<BrandThemeId>(
-    (storage.getString(THEME_KEY) as BrandThemeId) ?? "Analogix"
+    (storage.getString(THEME_KEY) as BrandThemeId) ?? "Midnight"
   );
   const [dynamicSeedHex, setDynamicSeedHex] = useState<string>(
     storage.getString(DYNAMIC_SEED_KEY) ?? "#6750A4"

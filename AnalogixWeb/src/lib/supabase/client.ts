@@ -22,6 +22,14 @@ export const createClient = (): any => {
     cachedClient = createBrowserClient(browserSupabaseUrl, browserSupabaseAnonKey, {
       auth: {
         detectSessionInUrl: false,
+        persistSession: true,
+        autoRefreshToken: true,
+      },
+      cookieOptions: {
+        name: "sb-auth-token",
+        path: "/",
+        sameSite: "lax",
+        maxAge: 400 * 24 * 60 * 60,
       },
     });
   }

@@ -317,8 +317,8 @@ export const applyThemeByName = (themeName: string) => {
 
 const ThemeSelector = () => {
   const [activeTheme, setActiveTheme] = useState(() => {
-    if (typeof window === "undefined") return "Analogix";
-    return localStorage.getItem("app-theme") || "Analogix";
+    if (typeof window === "undefined") return "Classic Blue";
+    return localStorage.getItem("app-theme") || "Classic Blue";
   });
   const [paperMode, setPaperMode] = useState(() => {
     if (typeof window === "undefined") return false;
@@ -328,7 +328,7 @@ const ThemeSelector = () => {
 
   // On mount, apply saved theme
   useEffect(() => {
-    const saved = localStorage.getItem("app-theme") || "Analogix";
+    const saved = localStorage.getItem("app-theme") || "Classic Blue";
     const isPaper = localStorage.getItem("paper-mode") === "true";
     if (isPaper) {
       applyThemeByName("Paper");
@@ -345,7 +345,7 @@ const ThemeSelector = () => {
       applyThemeByName("Paper");
       setActiveTheme("Paper");
     } else {
-      const prev = lastColorTheme.current || "Analogix";
+      const prev = lastColorTheme.current || "Classic Blue";
       applyThemeByName(prev);
       setActiveTheme(prev);
     }
