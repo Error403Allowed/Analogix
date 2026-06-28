@@ -244,7 +244,6 @@ export class MemorySystem {
 
       await supabase
         .from('ai_memory_fragments')
-        // @ts-expect-error - Supabase type mismatch
         .update({
           reinforcement_count: newCount,
           importance: newImportance,
