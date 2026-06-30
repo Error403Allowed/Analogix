@@ -323,7 +323,13 @@ const Landing = () => {
       if (profile?.onboarding_complete) {
         setHasCompletedOnboarding(true);
         const existing = JSON.parse(localStorage.getItem("userPreferences") || "{}");
-        localStorage.setItem("userPreferences", JSON.stringify({ ...existing, ...profile, onboardingComplete: true }));
+        const dbGrade = profile.grade;
+        localStorage.setItem("userPreferences", JSON.stringify({
+          ...existing,
+          ...profile,
+          grade: existing.grade || dbGrade || null,
+          onboardingComplete: true,
+        }));
         window.dispatchEvent(new Event("userPreferencesUpdated"));
       }
     } catch { /* Silently skip — pre-fetch is best-effort */ }

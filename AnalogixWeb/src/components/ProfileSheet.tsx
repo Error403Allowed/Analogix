@@ -18,8 +18,10 @@ import {
   Leaf, Laptop, Book, Plane, Upload, Trash2,
   UserCircle,
 } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { useAuth } from "@/context/AuthContext";
 import { achievementStore } from "@/utils/achievementStore";
 import { HOBBY_OPTIONS, POPULAR_INTERESTS } from "@/utils/interests";
 import type { HobbyId } from "@/utils/interests";
@@ -85,6 +87,7 @@ interface ProfileSheetProps {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 const ProfileSheet = ({ open, onOpenChange }: ProfileSheetProps) => {
+  const { user: authUser } = useAuth();
   const loadPrefs = (): Prefs =>
     typeof window !== "undefined"
       ? JSON.parse(localStorage.getItem("userPreferences") || "{}")
@@ -218,7 +221,7 @@ const ProfileSheet = ({ open, onOpenChange }: ProfileSheetProps) => {
     mark();
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     // Build hobbies array (label + details) same format as onboarding
     const hobbiesWithDetails = hobbyIds.map(id => {
       const label = HOBBY_OPTIONS.find(h => h.id === id)?.label || id;
@@ -240,7 +243,60 @@ const ProfileSheet = ({ open, onOpenChange }: ProfileSheetProps) => {
     };
     localStorage.setItem("userPreferences", JSON.stringify(next));
     window.dispatchEvent(new Event("userPreferencesUpdated"));
-    toast.success("Profile saved!");
+
+    // Save to Supabase database
+    const supabase = createClient();
+    const userId = authUser?.id ?? (prefs as any).userId;
+    let savedToSupabase = false;
+    try {
+      if (userId) {
+        const { data: upsertResult, error } = await supabase
+          .from("profiles")
+          .upsert({
+            id: userId,
+            name: name.trim(),
+            grade,
+            state: state || null,
+            subjects,
+            hobbies: hobbiesWithDetails,
+            hobby_ids: hobbyIds,
+            hobby_details: hobbyDetails,
+            onboarding_complete: true,
+            updated_at: new Date().toISOString(),
+          }, { onConflict: "id" })
+          .select();
+        if (error) throw error;
+
+        if (String(upsertResult?.[0]?.grade ?? '') !== String(grade ?? '')) {
+          const { error: retryError } = await supabase
+            .from("profiles")
+            .upsert({
+              id: userId, name: name.trim(), grade, state: state || null,
+              subjects, hobbies: hobbiesWithDetails, hobby_ids: hobbyIds,
+              hobby_details: hobbyDetails, onboarding_complete: true,
+              updated_at: new Date().toISOString(),
+            }, { onConflict: "id" });
+          if (retryError) throw retryError;
+        }
+
+        const { data: verify, error: verifyError } = await supabase
+          .from("profiles")
+          .select("grade")
+          .eq("id", userId)
+          .single();
+        if (verifyError) throw verifyError;
+        if (String(verify?.grade ?? '') !== String(grade ?? '')) {
+          savedToSupabase = false;
+        } else {
+          savedToSupabase = true;
+        }
+      }
+    } catch (e) {
+      console.error("[ProfileSheet] Failed to save profile to database:", e);
+      toast.error("Failed to sync profile to server. Changes saved locally.");
+    }
+
+    toast.success(savedToSupabase ? "Profile saved!" : "Profile saved (offline only)");
     setDirty(false);
     onOpenChange(false);
   };

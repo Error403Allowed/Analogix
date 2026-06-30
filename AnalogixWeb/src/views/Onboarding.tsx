@@ -484,7 +484,7 @@ const Onboarding = () => {
             localStorage.setItem("userPreferences", JSON.stringify({
               ...existing,
               name: profile?.name ?? existing.name ?? "Student",
-              grade: profile?.grade ?? existing.grade ?? null,
+              grade: existing.grade || profile?.grade || null,
               state: profile?.state ?? existing.state ?? null,
               subjects: Array.isArray(profile?.subjects) ? profile.subjects : (existing.subjects ?? []),
               hobbies: Array.isArray(profile?.hobbies) ? profile.hobbies : (existing.hobbies ?? []),
@@ -559,6 +559,7 @@ const Onboarding = () => {
       hobbies, hobbyIds, hobbyDetails, onboardingComplete: true,
     };
     localStorage.setItem("userPreferences", JSON.stringify(prefs));
+    sessionStorage.setItem("isNewUser", "true");
 
     try {
       const supabase = createClient();

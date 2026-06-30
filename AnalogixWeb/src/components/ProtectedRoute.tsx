@@ -21,11 +21,12 @@ const hasProfileData = (profile: any) => {
 const syncPrefsFromProfile = (profile: any, userId: string) => {
   try {
     const existing = JSON.parse(localStorage.getItem("userPreferences") || "{}");
+    const dbGrade = profile?.grade;
     const next = {
       ...existing,
       name: profile?.name ?? existing.name ?? "Student",
-      grade: profile?.grade ?? existing.grade ?? null,
-      state: profile?.state ?? existing.state ?? null,
+      grade: existing.grade || dbGrade || null,
+      state: profile?.state ?? existing.state,
       subjects: Array.isArray(profile?.subjects) ? profile.subjects : (existing.subjects ?? []),
       hobbies: Array.isArray(profile?.hobbies) ? profile.hobbies : (existing.hobbies ?? []),
       hobbyIds: Array.isArray(profile?.hobby_ids) ? profile.hobby_ids : (existing.hobbyIds ?? []),

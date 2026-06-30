@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { ThemeToggle } from "./ThemeToggle";
 import ThemeSelector from "./ThemeSelector";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
 import SettingsDialog from "./SettingsDialog";
 import ProfileSheet from "./ProfileSheet";
 import { getAIGreeting } from "@/services/groq";
@@ -42,6 +43,7 @@ const SUBJECT_OPTIONS = [
 
 
 const Header = ({ userName = "Student", streak = 0 }: HeaderProps) => {
+  const { user } = useAuth();
   const router = useRouter();
   const [showSettings, setShowSettings] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
@@ -218,11 +220,10 @@ const Header = ({ userName = "Student", streak = 0 }: HeaderProps) => {
     localStorage.setItem("userPreferences", JSON.stringify(nextPrefs));
 
     // Save to Supabase database
-    try {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        await supabase.from("profiles").upsert({
+    if (user) {
+      try {
+        const supabase = createClient();
+        const { error } = await supabase.from("profiles").upsert({
           id: user.id,
           name,
           grade,
@@ -234,12 +235,14 @@ const Header = ({ userName = "Student", streak = 0 }: HeaderProps) => {
           onboarding_complete: true,
           updated_at: new Date().toISOString(),
         }, { onConflict: "id" });
+        if (error) throw error;
+      } catch (e) {
+        console.error("[Header] Failed to save profile to database:", e);
       }
-    } catch (e) {
-      console.error("[Header] Failed to save profile to database:", e);
     }
 
-    window.location.reload();
+    setShowProfile(false);
+    window.dispatchEvent(new Event("userPreferencesUpdated"));
   };
 
   return (
