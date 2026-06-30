@@ -142,3 +142,5 @@ Each sub-package has its own README with more detail:
 - [`AnalogixMobile/README.md`](./AnalogixMobile/README.md) — Mobile app screenshots, theming system, auth flow, EAS builds
 - [`AnalogixGraphQL/README.md`](./AnalogixGraphQL/README.md) — Full schema, resolver structure, auth, deployment notes
 - [`AnalogixWeb/README.md`](./AnalogixWeb/README.md) — Web client setup, pages, API endpoints, troubleshooting
+
+DISCLAIMER: AI was used in assistance of making this README and in some parts of the code, but everything is fact and bug-checked to ensure all users have the best experience possible.
