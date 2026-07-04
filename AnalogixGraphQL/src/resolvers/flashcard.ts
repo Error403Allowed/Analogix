@@ -1,6 +1,7 @@
 import { GraphQLError } from "graphql";
 import { requireUser } from "./_helpers.js";
 import type { GraphQLContext } from "../context.js";
+import { sanitizeError } from "../utils/errorHandler.js";
 import { z } from "zod";
 import { GenerateFlashcardsInput, CreateFlashcardInput, CreateFlashcardSetInput } from "@analogix/shared/schemas";
 import { callGroqChat } from "../ai/groq.js";
@@ -14,11 +15,12 @@ export const flashcardResolvers = {
         .from("flashcards")
         .select("*")
         .eq("user_id", user.id)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .limit(200);
       if (args.subjectId) query = query.eq("subject_id", args.subjectId);
       if (args.setId) query = query.eq("set_id", args.setId);
       const { data, error } = await query;
-      if (error) throw new GraphQLError(error.message);
+      if (error) throw new GraphQLError(sanitizeError(error, { userId: user.id, operation: "unknown" }));
       return (data ?? []).map(mapFlashcard);
     },
     flashcardsDue: async (_: unknown, args: { subjectId?: string; limit?: number }, ctx: GraphQLContext) => {
@@ -33,15 +35,15 @@ export const flashcardResolvers = {
         .limit(args.limit ?? 20);
       if (args.subjectId) query = query.eq("subject_id", args.subjectId);
       const { data, error } = await query;
-      if (error) throw new GraphQLError(error.message);
+      if (error) throw new GraphQLError(sanitizeError(error, { userId: user.id, operation: "unknown" }));
       return (data ?? []).map(mapFlashcard);
     },
     flashcardSets: async (_: unknown, args: { subjectId?: string }, ctx: GraphQLContext) => {
       const user = requireUser(ctx);
-      let query = ctx.supabase!.from("flashcard_sets").select("*, flashcards(count)").eq("user_id", user.id);
+      let query = ctx.supabase!.from("flashcard_sets").select("*, flashcards(count)").eq("user_id", user.id).order("updated_at", { ascending: false }).limit(100);
       if (args.subjectId) query = query.eq("subject_id", args.subjectId);
       const { data, error } = await query;
-      if (error) throw new GraphQLError(error.message);
+      if (error) throw new GraphQLError(sanitizeError(error, { userId: user.id, operation: "unknown" }));
       return (data ?? []).map((s) => ({
         id: s.id,
         subjectId: s.subject_id,
@@ -77,7 +79,7 @@ export const flashcardResolvers = {
         })
         .select()
         .single();
-      if (error) throw new GraphQLError(error.message);
+      if (error) throw new GraphQLError(sanitizeError(error, { userId: user.id, operation: "unknown" }));
       return mapFlashcard(data);
     },
     updateFlashcard: async (_: unknown, args: { input: Record<string, unknown> }, ctx: GraphQLContext) => {
@@ -94,13 +96,13 @@ export const flashcardResolvers = {
         .eq("user_id", user.id)
         .select()
         .single();
-      if (error) throw new GraphQLError(error.message);
+      if (error) throw new GraphQLError(sanitizeError(error, { userId: user.id, operation: "unknown" }));
       return mapFlashcard(data);
     },
     deleteFlashcard: async (_: unknown, args: { id: string }, ctx: GraphQLContext) => {
       const user = requireUser(ctx);
       const { error } = await ctx.supabase!.from("flashcards").delete().eq("id", args.id).eq("user_id", user.id);
-      if (error) throw new GraphQLError(error.message);
+      if (error) throw new GraphQLError(sanitizeError(error, { userId: user.id, operation: "unknown" }));
       return { success: true };
     },
     gradeFlashcard: async (_: unknown, args: { id: string; quality: number }, ctx: GraphQLContext) => {
@@ -111,7 +113,7 @@ export const flashcardResolvers = {
         .eq("id", args.id)
         .eq("user_id", user.id)
         .maybeSingle();
-      if (readError) throw new GraphQLError(readError.message);
+      if (readError) throw new GraphQLError(sanitizeError(readError, { userId: user.id, operation: "unknown" }));
       if (!card) throw new GraphQLError("Card not found");
       const { nextReview, intervalDays, easeFactor, repetitions } = sm2({
         quality: args.quality,
@@ -131,7 +133,7 @@ export const flashcardResolvers = {
         .eq("id", args.id)
         .select()
         .single();
-      if (error) throw new GraphQLError(error.message);
+      if (error) throw new GraphQLError(sanitizeError(error, { userId: user.id, operation: "unknown" }));
       return {
         card: mapFlashcard(data),
         nextReview,
@@ -154,7 +156,7 @@ export const flashcardResolvers = {
         })
         .select()
         .single();
-      if (error) throw new GraphQLError(error.message);
+      if (error) throw new GraphQLError(sanitizeError(error, { userId: user.id, operation: "unknown" }));
       return {
         id: data.id,
         subjectId: data.subject_id,
@@ -202,7 +204,7 @@ export const flashcardResolvers = {
       }));
       if (inserts.length === 0) return [];
       const { data, error } = await ctx.supabase!.from("flashcards").insert(inserts).select();
-      if (error) throw new GraphQLError(error.message);
+      if (error) throw new GraphQLError(sanitizeError(error, { userId: user.id, operation: "unknown" }));
       return (data ?? []).map(mapFlashcard);
     },
   },

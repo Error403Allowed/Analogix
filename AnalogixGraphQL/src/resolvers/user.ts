@@ -65,8 +65,13 @@ export const userResolvers = {
       if (error) throw new GraphQLError(error.message);
       return data;
     },
-    deleteAccount: async (_: unknown, __: unknown, ctx: GraphQLContext) => {
+    deleteAccount: async (_: unknown, args: { confirmation?: string }, ctx: GraphQLContext) => {
       const user = requireUser(ctx);
+      if (args.confirmation !== "DELETE") {
+        throw new GraphQLError("Must provide confirmation: 'DELETE' to delete your account.", {
+          extensions: { code: "BAD_USER_INPUT" },
+        });
+      }
       const { error } = await ctx.serviceClient.auth.admin.deleteUser(user.id);
       if (error) throw new GraphQLError(error.message);
       return { success: true };

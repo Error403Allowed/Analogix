@@ -6,7 +6,7 @@ export const calendarResolvers = {
   Query: {
     events: async (_: unknown, args: { from?: string; to?: string }, ctx: GraphQLContext) => {
       const user = requireUser(ctx);
-      let query = ctx.supabase!.from("events").select("*").eq("user_id", user.id).order("date", { ascending: true });
+      let query = ctx.supabase!.from("events").select("*").eq("user_id", user.id).order("date", { ascending: true }).limit(200);
       if (args.from) query = query.gte("date", args.from);
       if (args.to) query = query.lt("date", args.to);
       const { data, error } = await query;
@@ -19,7 +19,8 @@ export const calendarResolvers = {
         .from("deadlines")
         .select("*")
         .eq("user_id", user.id)
-        .order("due_date", { ascending: true });
+        .order("due_date", { ascending: true })
+        .limit(100);
       if (error) throw new GraphQLError(error.message);
       return (data ?? []).map(mapDeadline);
     },

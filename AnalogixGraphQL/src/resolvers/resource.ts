@@ -6,7 +6,7 @@ export const resourceResolvers = {
   Query: {
     resources: async (_: unknown, args: { subjectId?: string }, ctx: GraphQLContext) => {
       const user = requireUser(ctx);
-      let query = ctx.supabase!.from("resources").select("*").eq("user_id", user.id).order("created_at", { ascending: false });
+      let query = ctx.supabase!.from("resources").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(100);
       if (args.subjectId) query = query.eq("subject_id", args.subjectId);
       const { data, error } = await query;
       if (error) throw new GraphQLError(error.message);
@@ -32,11 +32,12 @@ export const resourceResolvers = {
       const user = requireUser(ctx);
       const buffer = Buffer.from(args.base64, "base64");
       const fileName = `${user.id}/${crypto.randomUUID()}-${args.name}`;
-      const { error: uploadError } = await ctx.serviceClient.storage
+      const { error: uploadError } = await ctx.supabase!
+        .storage
         .from("resources")
         .upload(fileName, buffer, { contentType: args.mimeType, upsert: false });
       if (uploadError) throw new GraphQLError(uploadError.message);
-      const { data: pub } = ctx.serviceClient.storage.from("resources").getPublicUrl(fileName);
+      const { data: pub } = ctx.supabase!.storage.from("resources").getPublicUrl(fileName);
       const { data, error } = await ctx.supabase!
         .from("resources")
         .insert({

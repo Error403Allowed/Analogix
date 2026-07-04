@@ -10,6 +10,18 @@ interface ExtractInput {
   fileName?: string;
 }
 
+// Allowed URL schemes for SSRF prevention
+const ALLOWED_URL_PREFIXES = [
+  "https://",
+  "http://localhost",
+  "http://127.0.0.1",
+];
+
+function isAllowedUrl(url: string): boolean {
+  const lower = url.toLowerCase().trim();
+  return ALLOWED_URL_PREFIXES.some((prefix) => lower.startsWith(prefix));
+}
+
 /**
  * Extracts plain text from a PDF, DOCX, or plain-text payload.
  * Uses pdf-parse for PDFs and mammoth for DOCX.
@@ -21,8 +33,18 @@ export async function extractTextFromPayload(input: ExtractInput): Promise<strin
     if (input.base64) {
       buffer = Buffer.from(input.base64, "base64");
     } else if (input.url) {
-      const res = await fetch(input.url);
-      buffer = Buffer.from(await res.arrayBuffer());
+      if (!isAllowedUrl(input.url)) {
+        logger.warn({ url: input.url }, "[extractText] Blocked SSRF attempt — URL not allowed");
+        return "";
+      }
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10_000);
+      try {
+        const res = await fetch(input.url, { signal: controller.signal });
+        buffer = Buffer.from(await res.arrayBuffer());
+      } finally {
+        clearTimeout(timeout);
+      }
     } else {
       throw new Error("Either base64 or url must be provided");
     }

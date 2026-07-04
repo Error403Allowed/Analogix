@@ -34,8 +34,8 @@ export function getPubSub(): PubSub {
     logger.warn("[pubsub] No REDIS_URL set — using in-process PubSub (dev only, no horizontal scaling)");
     pubsubInstance = new PubSub();
   } else {
-    logger.error("[pubsub] REDIS_URL is required in production. Falling back to in-process (NOT horizontally scalable).");
-    pubsubInstance = new PubSub();
+    logger.fatal("[pubsub] REDIS_URL is required in production. Server will not start without a Redis URL.");
+    throw new Error("REDIS_URL environment variable is required in production mode for PubSub scaling.");
   }
   return pubsubInstance;
 }

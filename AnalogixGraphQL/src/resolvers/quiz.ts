@@ -2,6 +2,7 @@ import { GraphQLError } from "graphql";
 import { z } from "zod";
 import { requireUser } from "./_helpers.js";
 import type { GraphQLContext } from "../context.js";
+import { sanitizeError } from "../utils/errorHandler.js";
 import { GenerateQuizInput, GradeShortAnswerInput, QuizReviewInput } from "@analogix/shared/schemas";
 import { callGroqChat } from "../ai/groq.js";
 import { logger } from "../logger.js";
@@ -10,10 +11,10 @@ export const quizResolvers = {
   Query: {
     quizzes: async (_: unknown, args: { subjectId?: string }, ctx: GraphQLContext) => {
       const user = requireUser(ctx);
-      let query = ctx.supabase!.from("quizzes").select("*").eq("user_id", user.id).order("created_at", { ascending: false });
+      let query = ctx.supabase!.from("quizzes").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(100);
       if (args.subjectId) query = query.eq("subject_id", args.subjectId);
       const { data, error } = await query;
-      if (error) throw new GraphQLError(error.message);
+      if (error) throw new GraphQLError(sanitizeError(error, { userId: user.id, operation: "unknown" }));
       return (data ?? []).map(mapQuiz);
     },
     quiz: async (_: unknown, args: { id: string }, ctx: GraphQLContext) => {
@@ -24,15 +25,15 @@ export const quizResolvers = {
         .eq("id", args.id)
         .eq("user_id", user.id)
         .maybeSingle();
-      if (error) throw new GraphQLError(error.message);
+      if (error) throw new GraphQLError(sanitizeError(error, { userId: user.id, operation: "unknown" }));
       return data ? mapQuiz(data) : null;
     },
     attempts: async (_: unknown, args: { quizId?: string }, ctx: GraphQLContext) => {
       const user = requireUser(ctx);
-      let query = ctx.supabase!.from("quiz_attempts").select("*").eq("user_id", user.id).order("created_at", { ascending: false });
+      let query = ctx.supabase!.from("quiz_attempts").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(100);
       if (args.quizId) query = query.eq("quiz_id", args.quizId);
       const { data, error } = await query;
-      if (error) throw new GraphQLError(error.message);
+      if (error) throw new GraphQLError(sanitizeError(error, { userId: user.id, operation: "unknown" }));
       return (data ?? []).map(mapAttempt);
     },
   },
@@ -70,7 +71,7 @@ export const quizResolvers = {
         })
         .select()
         .single();
-      if (error) throw new GraphQLError(error.message);
+      if (error) throw new GraphQLError(sanitizeError(error, { userId: user.id, operation: "unknown" }));
       return mapQuiz(data);
     },
     gradeShortAnswer: async (_: unknown, args: { input: Record<string, unknown> }, ctx: GraphQLContext) => {
@@ -139,7 +140,7 @@ export const quizResolvers = {
         })
         .select()
         .single();
-      if (error) throw new GraphQLError(error.message);
+      if (error) throw new GraphQLError(sanitizeError(error, { userId: user.id, operation: "unknown" }));
       return mapAttempt(data);
     },
   },

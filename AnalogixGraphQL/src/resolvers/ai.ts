@@ -181,46 +181,8 @@ export const aiResolvers = {
 
     executePython: async (_: unknown, args: { input: Record<string, unknown> }, ctx: GraphQLContext) => {
       requireUser(ctx);
-      const code = String(args.input?.code ?? "");
-      if (!code) throw new GraphQLError("No code provided");
-      const dangerousPatterns = [
-        /\bimport\b/, /\b__\w+__\b/, /\beval\s*\(/, /\bexec\s*\(/, /\bopen\s*\(/,
-        /\bfile\s*\(/, /\bcompile\s*\(/, /\bgetattr\s*\(/, /\bsetattr\s*\(/,
-        /\bdelattr\s*\(/, /\bos\./, /\bsys\./, /\bsubprocess\./,
-      ];
-      for (const pattern of dangerousPatterns) {
-        if (pattern.test(code)) {
-          return { stdout: "", stderr: "", error: "Code contains unsafe operations", durationMs: 0 };
-        }
-      }
-      const start = Date.now();
-      try {
-        const ctx = createSafeContext();
-        const wrappedCode = `
-          "use strict";
-          const __result = (function(sin, cos, tan, asin, acos, atan, sqrt, log, log10, exp, abs, floor, ceil, round, pow, array, linspace, arange, sum, mean, min, max, len) {
-            ${code}
-          })(ctx.sin, ctx.cos, ctx.tan, ctx.asin, ctx.acos, ctx.atan, ctx.sqrt, ctx.log, ctx.log10, ctx.exp, ctx.abs, ctx.floor, ctx.ceil, ctx.round, ctx.pow, ctx.array, ctx.linspace, ctx.arange, ctx.sum, ctx.mean, ctx.min, ctx.max, ctx.len);
-          return __result;
-        `;
-        const executeCode = new Function("ctx", wrappedCode);
-        const result = executeCode(ctx);
-        const durationMs = Date.now() - start;
-        let stdout: string;
-        if (typeof result === "number") {
-          stdout = String(Math.round(result * 1e10) / 1e10);
-        } else if (Array.isArray(result)) {
-          stdout = `[${result.join(", ")}]`;
-        } else if (typeof result === "object" && result !== null) {
-          stdout = JSON.stringify(result);
-        } else {
-          stdout = String(result);
-        }
-        return { stdout, stderr: "", error: null, durationMs };
-      } catch (err) {
-        const durationMs = Date.now() - start;
-        return { stdout: "", stderr: "", error: `Execution failed: ${err instanceof Error ? err.message : "Unknown error"}`, durationMs };
-      }
+      logger.warn("[executePython] Disabled for security — server-side code execution is not available");
+      return { stdout: "", stderr: "", error: "Code execution is disabled", durationMs: 0 };
     },
 
     generateBanner: async (_: unknown, args: { input: Record<string, unknown> }, ctx: GraphQLContext) => {

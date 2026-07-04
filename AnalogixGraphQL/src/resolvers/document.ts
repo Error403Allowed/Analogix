@@ -10,7 +10,8 @@ export const documentResolvers = {
         .from("documents")
         .select("*")
         .eq("owner_user_id", user.id)
-        .order("updated_at", { ascending: false });
+        .order("updated_at", { ascending: false })
+        .limit(100);
       if (args.subjectId) query = query.eq("subject_id", args.subjectId);
       const { data, error } = await query;
       if (error) throw new GraphQLError(error.message);
@@ -33,7 +34,8 @@ export const documentResolvers = {
         .from("document_versions")
         .select("*")
         .eq("document_id", args.documentId)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .limit(50);
       if (error) throw new GraphQLError(error.message);
       return (data ?? []).map((v) => ({
         id: v.id,

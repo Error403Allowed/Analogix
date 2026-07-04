@@ -6,7 +6,7 @@ export const roomResolvers = {
   Query: {
     rooms: async (_: unknown, __: unknown, ctx: GraphQLContext) => {
       const user = requireUser(ctx);
-      const { data, error } = await ctx.supabase!.from("study_rooms").select("*").order("updated_at", { ascending: false });
+      const { data, error } = await ctx.supabase!.from("study_rooms").select("*").order("updated_at", { ascending: false }).limit(100);
       if (error) throw new GraphQLError(error.message);
       return (data ?? []).map((r) => mapRoom(r, user.id));
     },
@@ -16,7 +16,8 @@ export const roomResolvers = {
         .from("study_rooms")
         .select("*")
         .eq("visibility", "public")
-        .order("updated_at", { ascending: false });
+        .order("updated_at", { ascending: false })
+        .limit(100);
       if (error) throw new GraphQLError(error.message);
       return (data ?? []).map((r) => mapRoom(r, user.id));
     },
@@ -29,7 +30,7 @@ export const roomResolvers = {
     roomMembers: async (_: unknown, args: { roomId: string }, ctx: GraphQLContext) => {
       const user = requireUser(ctx);
       await requireRoomMember(ctx, args.roomId, user.id);
-      const { data, error } = await ctx.supabase!.from("study_room_members").select("*").eq("room_id", args.roomId);
+      const { data, error } = await ctx.supabase!.from("study_room_members").select("*").eq("room_id", args.roomId).limit(200);
       if (error) throw new GraphQLError(error.message);
       return (data ?? []).map((m) => ({
         id: m.id,
@@ -170,7 +171,7 @@ export const roomResolvers = {
       const { data: room, error } = await ctx.supabase!.from("study_rooms").select("*").eq("join_code", args.joinCode).maybeSingle();
       if (error) throw new GraphQLError(error.message);
       if (!room) throw new GraphQLError("Room not found");
-      await ctx.supabase!.from("study_room_members").upsert(
+      const { error: upsertError } = await ctx.supabase!.from("study_room_members").upsert(
         {
           id: crypto.randomUUID(),
           room_id: room.id,
@@ -182,6 +183,7 @@ export const roomResolvers = {
         },
         { onConflict: "room_id,user_id" }
       );
+      if (upsertError) throw new GraphQLError(upsertError.message);
       const { data: updatedRoom } = await ctx.supabase!.from("study_rooms").select("*").eq("id", room.id).single();
       const presenceMember = {
         id: crypto.randomUUID(),
@@ -294,7 +296,7 @@ export const roomResolvers = {
         .select()
         .single();
       if (error) throw new GraphQLError(error.message);
-      const { data: profile } = await ctx.serviceClient.from("profiles").select("id, name, avatar_url").eq("id", user.id).maybeSingle();
+      const { data: profile } = await ctx.supabase!.from("profiles").select("id, name, avatar_url").eq("id", user.id).maybeSingle();
       const msg = {
         id: data.id,
         roomId: data.room_id,
@@ -374,16 +376,25 @@ export const roomResolvers = {
 
   Subscription: {
     roomMessagesStream: {
-      subscribe: (_: unknown, args: { roomId: string }, ctx: GraphQLContext) =>
-        ctx.pubsub.asyncIterator([`room.${args.roomId}.messages` as const]) as unknown as AsyncIterator<unknown>,
+      subscribe: async (_: unknown, args: { roomId: string }, ctx: GraphQLContext) => {
+        const user = requireUser(ctx);
+        await requireRoomMember(ctx, args.roomId, user.id);
+        return ctx.pubsub.asyncIterator([`room.${args.roomId}.messages` as const]) as unknown as AsyncIterator<unknown>;
+      },
     },
     roomPresenceStream: {
-      subscribe: (_: unknown, args: { roomId: string }, ctx: GraphQLContext) =>
-        ctx.pubsub.asyncIterator([`room.${args.roomId}.presence` as const]) as unknown as AsyncIterator<unknown>,
+      subscribe: async (_: unknown, args: { roomId: string }, ctx: GraphQLContext) => {
+        const user = requireUser(ctx);
+        await requireRoomMember(ctx, args.roomId, user.id);
+        return ctx.pubsub.asyncIterator([`room.${args.roomId}.presence` as const]) as unknown as AsyncIterator<unknown>;
+      },
     },
     roomTimerStream: {
-      subscribe: (_: unknown, args: { roomId: string }, ctx: GraphQLContext) =>
-        ctx.pubsub.asyncIterator([`room.${args.roomId}.timer` as const]) as unknown as AsyncIterator<unknown>,
+      subscribe: async (_: unknown, args: { roomId: string }, ctx: GraphQLContext) => {
+        const user = requireUser(ctx);
+        await requireRoomMember(ctx, args.roomId, user.id);
+        return ctx.pubsub.asyncIterator([`room.${args.roomId}.timer` as const]) as unknown as AsyncIterator<unknown>;
+      },
     },
   },
 
@@ -394,7 +405,7 @@ export const roomResolvers = {
       if (error) throw new GraphQLError(error.message);
       const userIds = [...new Set((data ?? []).map((m: any) => m.user_id).filter(Boolean))];
       const { data: profiles } = userIds.length
-        ? await ctx.serviceClient.from("profiles").select("id, name, avatar_url").in("id", userIds)
+        ? await ctx.supabase!.from("profiles").select("id, name, avatar_url").in("id", userIds)
         : { data: [] };
       const profileMap = new Map((profiles ?? []).map((p: any) => [p.id, p]));
       return (data ?? []).map((m: any) => {
@@ -425,7 +436,7 @@ export const roomResolvers = {
       if (error) throw new GraphQLError(error.message);
       const userIds = [...new Set((data ?? []).map((m: any) => m.user_id).filter(Boolean))];
       const { data: profiles } = userIds.length
-        ? await ctx.serviceClient.from("profiles").select("id, name, avatar_url").in("id", userIds)
+        ? await ctx.supabase!.from("profiles").select("id, name, avatar_url").in("id", userIds)
         : { data: [] };
       const profileMap = new Map((profiles ?? []).map((p: any) => [p.id, p]));
       return (data ?? []).map((m: any) => {

@@ -2,6 +2,7 @@ import http from "node:http";
 import express, { type Request } from "express";
 import cors from "cors";
 import bodyParser from "body-parser";
+import rateLimit from "express-rate-limit";
 import { WebSocketServer } from "ws";
 import { useServer } from "graphql-ws/lib/use/ws";
 import { makeExecutableSchema } from "@graphql-tools/schema";
@@ -25,13 +26,38 @@ async function main() {
   const app = express();
   const httpServer = http.createServer(app);
 
-  // CORS
+  // CORS — explicit origins only; wildcard is never allowed with credentials
+  if (env.corsOrigins.includes("*")) {
+    logger.warn("[cors] CORS_ORIGINS contains '*' — falling back to localhost for safety. Set explicit origins in production.");
+    env.corsOrigins = ["http://localhost:3000"];
+  }
   app.use(
     cors({
-      origin: env.corsOrigins.includes("*") ? true : env.corsOrigins,
+      origin: env.corsOrigins,
       credentials: true,
     })
   );
+
+  // Global rate limiting (skip health endpoint)
+  const globalLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 200,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many requests, please try again later." },
+    skip: (req) => req.path === "/health",
+  });
+  app.use(globalLimiter);
+
+  // Stricter rate limit for auth mutations
+  const authLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many auth requests, please try again later." },
+  });
+  app.use("/graphql", authLimiter);
 
   // Health
   app.get("/health", (_req, res) => {
@@ -58,9 +84,13 @@ async function main() {
   );
 
   // Apollo Server
+  // GraphQL query depth limit — prevents deeply nested malicious queries
+  const depthLimit = (await import("graphql-depth-limit")).default;
+
   const apollo = new ApolloServer<GraphQLContext>({
     schema,
     introspection: !isProd,
+    validationRules: [depthLimit(7)],
     plugins: [
       isProd
         ? undefined
@@ -93,9 +123,7 @@ async function main() {
   app.get("/", (_req, res) => {
     res.json({
       name: "AnalogixGraphQL",
-      version: "0.1.0",
       graphql: "/graphql",
-      subscriptions: "ws://" + (env.corsOrigins[0] ?? "localhost") + "/graphql",
       health: "/health",
     });
   });

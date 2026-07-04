@@ -17,7 +17,7 @@ export const chatResolvers = {
   Query: {
     chatSessions: async (_: unknown, args: { subjectId?: string }, ctx: GraphQLContext) => {
       const user = requireUser(ctx);
-      let query = ctx.supabase!.from("chat_sessions").select("*").eq("user_id", user.id).order("updated_at", { ascending: false });
+      let query = ctx.supabase!.from("chat_sessions").select("*").eq("user_id", user.id).order("updated_at", { ascending: false }).limit(50);
       if (args.subjectId) query = query.eq("subject_id", args.subjectId);
       const { data: sessions, error } = await query;
       if (error) throw new GraphQLError(error.message);
@@ -266,14 +266,21 @@ export const chatResolvers = {
       };
       const selectedModel = args.model ?? modelMap[taskType] ?? modelMap.general;
 
-      // 4. Kick off streaming in the background; do not await.
-      void triggerChatStream({
+      // 4. Kick off streaming — fire with a timeout that publishes an error to the subscription
+      triggerChatStream({
         sessionId: parsed.sessionId,
         messages: groqMessages,
         pubsub: ctx.pubsub,
         supabase: ctx.supabase!,
         userId: user.id,
         model: selectedModel,
+      }).catch((err) => {
+        logger.error({ err, sessionId: parsed.sessionId }, "[chat] triggerChatStream failed");
+        ctx.pubsub.publish(`chatStream.${parsed.sessionId}` as const, {
+          token: "",
+          done: true,
+          fullText: "Sorry, the AI service is unavailable right now.",
+        }).catch(() => {});
       });
 
       return {
