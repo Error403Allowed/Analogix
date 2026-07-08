@@ -2,8 +2,10 @@ import js from "@eslint/js";
 import tseslint from "typescript-eslint";
 import tsParser from "@typescript-eslint/parser";
 import path from "path";
+import { fileURLToPath } from "url";
 
-const repoRoot = path.resolve('.');
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const repoRoot = __dirname;
 
 // Explicit per-workspace overrides — keeps the TypeScript parser unambiguous.
 // Update this list if you add new workspaces.
