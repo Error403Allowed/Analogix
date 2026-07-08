@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireUser, unauthResponse } from "@/lib/api-auth";
 
 /**
  * Simple text-to-speech endpoint
@@ -7,6 +8,7 @@ import { NextResponse } from "next/server";
  */
 export async function POST(request: Request) {
   try {
+    await requireUser();
     const { text, voice = "default", rate = 1.0, pitch = 1.0 } = await request.json();
 
     if (!text || typeof text !== "string") {

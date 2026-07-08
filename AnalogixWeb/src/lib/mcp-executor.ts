@@ -3,7 +3,6 @@ import fs from "fs";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import type { ToolCall, ToolResult, ToolExecutionResult } from "@analogix/shared/types";
-import { ua } from "zod/v4/locales";
 
 const IS_DEV = process.env.NODE_ENV !== "production";
 
@@ -101,7 +100,7 @@ export async function executeTools(
 
   for (const tool of tools) {
     try {
-      const args = { ...tool.args, _userId: userId, _accessToken: accessToken };
+      const args = { ...tool.args, _userId: userId };
       const mcpResult = await c.callTool({ name: tool.name, arguments: args });
       const isError = (mcpResult as any)?.isError === true;
       const rawText = (mcpResult as any)?.content?.[0]?.text ?? JSON.stringify(mcpResult);

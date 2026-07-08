@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Search, Sigma, X } from "lucide-react";
+import { ArrowLeft, Search, Sigma, Star, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import MarkdownRenderer from "@/components/MarkdownRenderer";
@@ -20,6 +20,8 @@ const subjectLabel = (id: string) =>
   SUBJECT_CATALOG.find(s => s.id === id)?.label
   || FORMULA_SHEETS.find(s => s.subjectId === id)?.label
   || id;
+
+const FAVORITES_KEY = "formula_favorites";
 
 const matchesQuery = (formula: Formula, query: string) => {
   if (!query) return true;
@@ -45,16 +47,24 @@ const groupByTopic = (formulas: Formula[], query: string, state: string | null) 
   return grouped;
 };
 
-const FormulaCard = ({ formula }: { formula: Formula }) => (
+const FormulaCard = ({ formula, isFavorite, onToggleFavorite }: { formula: Formula; isFavorite?: boolean; onToggleFavorite?: () => void }) => (
   <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
     <div className="flex items-start justify-between gap-3">
-      <div>
+      <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold text-foreground">{formula.name}</p>
         <p className="text-[11px] text-muted-foreground mt-1">{formula.description}</p>
       </div>
-      <Badge variant="outline" className="text-[10px] uppercase tracking-wide shrink-0">
-        {formula.topic}
-      </Badge>
+      <div className="flex items-center gap-2 shrink-0">
+        {onToggleFavorite && (
+          <button type="button" onClick={(e) => { e.stopPropagation(); onToggleFavorite(); }}
+            className="text-muted-foreground hover:text-amber-500 transition-colors">
+            <Star className={`w-4 h-4 ${isFavorite ? "fill-amber-500 text-amber-500" : ""}`} />
+          </button>
+        )}
+        <Badge variant="outline" className="text-[10px] uppercase tracking-wide">
+          {formula.topic}
+        </Badge>
+      </div>
     </div>
     <div className="mt-3 rounded-xl border border-border/60 bg-background/40 px-3 py-2">
       <MarkdownRenderer content={`$$${formula.latex}$$`} className="text-base" />
@@ -68,31 +78,46 @@ export default function FormulasPage() {
   const [subjectSearch, setSubjectSearch] = useState("");
   const [activeSheetId, setActiveSheetId] = useState<string | null>(null);
   const [activeTopic, setActiveTopic] = useState<string>("All");
-  const [userSubjects, setUserSubjects] = useState<string[]>([]);
   const [userState, setUserState] = useState<string | null>(null); // for state‑based filtering
+  const [favorites, setFavorites] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const load = () => {
-      try {
-        const prefs = JSON.parse(localStorage.getItem("userPreferences") || "{}");
-        setUserSubjects(Array.isArray(prefs.subjects) ? prefs.subjects : []);
-        setUserState(typeof prefs.state === "string" ? prefs.state : null);
-      } catch {
-        setUserSubjects([]);
-        setUserState(null);
-      }
-    };
-    load();
-    window.addEventListener("userPreferencesUpdated", load);
-    return () => window.removeEventListener("userPreferencesUpdated", load);
+    try {
+      const prefs = JSON.parse(localStorage.getItem("userPreferences") || "{}");
+      setUserState(typeof prefs.state === "string" ? prefs.state : null);
+    } catch {
+      setUserState(null);
+    }
+    try {
+      const saved = JSON.parse(localStorage.getItem(FAVORITES_KEY) || "[]");
+      setFavorites(new Set(saved));
+    } catch {}
   }, []);
 
+  const toggleFavorite = useCallback((id: string) => {
+    setFavorites(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      localStorage.setItem(FAVORITES_KEY, JSON.stringify([...next]));
+      return next;
+    });
+  }, []);
+
+  const favoriteFormulas = useMemo(() => {
+    if (favorites.size === 0) return [];
+    const result: Formula[] = [];
+    for (const sheet of FORMULA_SHEETS) {
+      for (const formula of sheet.formulas) {
+        if (favorites.has(formula.name)) result.push(formula);
+      }
+    }
+    return result;
+  }, [favorites]);
+
   // All sheets the user has access to
-  const sheets = useMemo<FormulaSheet[]>(() => {
-    if (userSubjects.length === 0) return FORMULA_SHEETS;
-    return FORMULA_SHEETS.filter(sheet => userSubjects.includes(sheet.subjectId));
-  }, [userSubjects]);
+  const sheets = FORMULA_SHEETS;
 
   // Sheets filtered by the subject search box
   const filteredSheets = useMemo(() => {
@@ -262,6 +287,31 @@ export default function FormulasPage() {
                 )}
               </div>
             </div>
+
+            {favoriteFormulas.length > 0 && (
+              <div className="rounded-2xl border border-border bg-card p-4">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">Favorites</p>
+                <div className="space-y-2">
+                  {favoriteFormulas.slice(0, 5).map(f => (
+                    <button key={f.name} type="button" onClick={() => {
+                      const sheet = FORMULA_SHEETS.find(s => s.formulas.some(f2 => f2.name === f.name));
+                      if (sheet) { setActiveSheetId(sheet.subjectId); setQuery(""); setActiveTopic("All"); }
+                    }}
+                      className="w-full text-left rounded-lg border border-border bg-background px-3 py-2 text-xs font-medium text-foreground hover:border-primary/50 transition flex items-center justify-between gap-2">
+                      <span className="truncate">{f.name}</span>
+                      <button type="button" onClick={(e) => { e.stopPropagation(); toggleFavorite(f.name); }}
+                        className="shrink-0 text-amber-500 hover:text-amber-600">
+                        <Star className="w-3 h-3 fill-amber-500" />
+                      </button>
+                    </button>
+                  ))}
+                  {favoriteFormulas.length > 5 && (
+                    <p className="text-[11px] text-muted-foreground text-center pt-1">+{favoriteFormulas.length - 5} more</p>
+                  )}
+                </div>
+              </div>
+            )}
+
           </div>
 
           {/* Main content */}
@@ -350,7 +400,7 @@ export default function FormulasPage() {
                       </div>
                       <div className="grid gap-3 md:grid-cols-2">
                         {results.map(({ formula }) => (
-                          <FormulaCard key={`${subjectId}-${formula.name}`} formula={formula} />
+                          <FormulaCard key={`${subjectId}-${formula.name}`} formula={formula} isFavorite={favorites.has(formula.name)} onToggleFavorite={() => toggleFavorite(formula.name)} />
                         ))}
                       </div>
                     </div>
@@ -365,7 +415,7 @@ export default function FormulasPage() {
               <div className="grid gap-4 md:grid-cols-2">
                 {(activeTopic === "All" ? topicList : [activeTopic]).flatMap(topic =>
                   (filteredTopics[topic] || []).map(formula => (
-                    <FormulaCard key={`${topic}-${formula.name}`} formula={formula} />
+                    <FormulaCard key={`${topic}-${formula.name}`} formula={formula} isFavorite={favorites.has(formula.name)} onToggleFavorite={() => toggleFavorite(formula.name)} />
                   ))
                 )}
               </div>

@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 import { callGroqChat, formatError } from "../_utils";
 import type { QuizAnswerInput, QuizReview } from "@/types/quiz";
+import { requireUser, unauthResponse } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   try {
+    await requireUser();
     const body = await request.json();
     const grade = body.grade || "7-12";
     const subject = body.subject || "General";

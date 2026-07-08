@@ -6,9 +6,29 @@ import { motion } from "framer-motion";
 import { Brain, Loader2, Lock, Eye, EyeOff, ArrowRight, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { updatePassword } from "@/lib/auth-client";
+import { updatePassword, validatePassword } from "@/lib/auth-client";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
+
+function PasswordRequirements({ password }: { password: string }) {
+  const { checks } = validatePassword(password);
+
+  return (
+    <div className="space-y-1.5">
+      {checks.map((c) => (
+        <div key={c.key} className="flex items-center gap-2 text-xs">
+          <div className={cn(
+            "w-4 h-4 rounded-full flex items-center justify-center shrink-0 transition-colors",
+            c.pass ? "bg-success/20 text-success" : "bg-muted text-muted-foreground"
+          )}>
+            {c.pass ? <Check className="w-3 h-3" /> : <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40" />}
+          </div>
+          <span className={c.pass ? "text-success" : "text-muted-foreground"}>{c.label}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export default function ResetPasswordForm() {
   const router = useRouter();
@@ -33,7 +53,7 @@ export default function ResetPasswordForm() {
     }
   }, []);
 
-  const pwOk = password.length >= 6;
+  const { allPass: pwOk } = validatePassword(password);
   const matchOk = password === confirm;
   const canSubmit = pwOk && matchOk && !loading;
 
@@ -119,7 +139,7 @@ export default function ResetPasswordForm() {
 
         <div className="text-center space-y-1">
           <h1 className="text-2xl font-bold tracking-tight">Create a new password</h1>
-          <p className="text-muted-foreground text-sm">At least 6 characters — make it a good one!</p>
+          <p className="text-muted-foreground text-sm">At least 8 characters with uppercase, lowercase, numbers, and symbols.</p>
         </div>
 
         {error && (
@@ -180,6 +200,8 @@ export default function ResetPasswordForm() {
         {confirm && password !== confirm && (
           <p className="text-xs text-destructive font-medium -mt-2">Passwords don&apos;t match</p>
         )}
+
+        {password.length > 0 && <PasswordRequirements password={password} />}
 
         <Button
           onClick={handleSubmit}

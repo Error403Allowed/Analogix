@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireUser, unauthResponse } from "@/lib/api-auth";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -7,6 +8,7 @@ const VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct";
 export async function POST(request) {
     console.log("[extract-text] POST request received");
     try {
+        await requireUser();
         const formData = await request.formData();
         const file = formData.get("file");
         if (!file)

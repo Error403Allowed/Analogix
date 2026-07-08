@@ -54,14 +54,18 @@ function buildSystemPrompt(
     ? `The student is in Year ${studentGrade} in ${stateFullName}, Australia. Always align explanations to the ${stateFullName} syllabus.`
     : `The student is in Year ${studentGrade} in Australia. Use Australian curriculum standards.`;
 
-  const analogyGuidance = [
+  const levels = [
     'SCHOOL MODE: Formal, precise, curriculum-aligned. No analogies.',
     'Use analogies sparingly — only when they genuinely help clarify a tricky point. When you do, weave the analogy naturally into the explanation.',
     'Use analogies as a teaching tool for abstract or complex concepts. Connect unfamiliar ideas to everyday experiences the student already understands.',
     'Weave analogies throughout your explanation. Compare new concepts to familiar things. Extend the comparison so the student can see how the pieces map across.',
     'Analogies are your primary teaching method. For every concept, find a relatable comparison and weave it into the explanation. Show how the analogy maps to the real concept step by step.',
     'Maximum analogy integration. Every explanation should be anchored in a vivid, extended analogy that the student can visualize and relate to their own life.',
-  ][Math.min(analogyIntensity, 5)];
+  ];
+  const clamped = typeof analogyIntensity === 'number' && !Number.isNaN(analogyIntensity)
+    ? Math.max(0, Math.min(5, Math.round(analogyIntensity)))
+    : 3;
+  const analogyGuidance = levels[clamped];
 
   const curriculumInstruction = workspaceContext.includes('CURRICULUM CONTENT')
     ? '\n\nThe workspace above includes Australian curriculum content for the student\'s grade and subject. Reference this curriculum content in your answer. Mention the ACARA code (e.g. AC9M8G03) when relevant. Ensure your explanations match the specified grade level and syllabus outcomes.'
@@ -114,7 +118,7 @@ export async function POST(request: Request) {
     const retriever = createRetriever(userId as string);
     const lastMessage = messages.filter(m => m.role === 'user').pop()?.content || '';
 
-    const isSimpleGreeting = /^(hi|hello|hey|hey|thanks?|bye)[\s!?.]*$/i.test(lastMessage.trim()) && 
+    const isSimpleGreeting = /^(hi|hello|hey|thanks?|bye)[\s!?.]*$/i.test(lastMessage.trim()) && 
       messages.filter(m => m.role === 'user').length <= 1;
 
     let workspaceContext = '';

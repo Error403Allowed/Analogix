@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 import { callGroqChat, formatError, classifyTaskType } from "../_utils";
 import type { ChatMessage, UserContext } from "@/types/chat";
+import { requireUser, unauthResponse } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   try {
+    await requireUser();
     const body = await request.json();
     const messages: ChatMessage[] = body.messages || [];
     const userContext: Partial<UserContext> & {

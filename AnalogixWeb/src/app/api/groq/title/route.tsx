@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { callGroqChat, formatError } from "../_utils";
+import { requireUser, unauthResponse } from "@/lib/api-auth";
 export const runtime = "nodejs";
 export async function POST(request) {
     try {
+        await requireUser();
         const body = await request.json();
         const conversation = body.conversation || "";
         const latestMessage = body.latestMessage || "";

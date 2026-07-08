@@ -143,17 +143,15 @@ class RequestThrottle {
      */
     waitWithBackoff(delay, signal) {
         return new Promise<void>((resolve, reject) => {
-            const timeout = setTimeout(resolve, delay);
+            const timeout = setTimeout(() => {
+                signal?.removeEventListener("abort", handleAbort);
+                resolve();
+            }, delay);
             const handleAbort = () => {
                 clearTimeout(timeout);
                 reject(new Error("Request aborted"));
             };
             signal?.addEventListener("abort", handleAbort, { once: true });
-            // Cleanup
-            return () => {
-                clearTimeout(timeout);
-                signal?.removeEventListener("abort", handleAbort);
-            };
         });
     }
     /**

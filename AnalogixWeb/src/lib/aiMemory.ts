@@ -359,12 +359,15 @@ export async function extractMemoriesFromConversation(
 
   // Save high-confidence memories
   for (const memory of potentialMemories.slice(0, 3)) {
-    await supabase.from("ai_memory_fragments").insert({
+    const { error } = await supabase.from("ai_memory_fragments").insert({
       user_id: userId,
       content: memory.content,
       memory_type: memory.type,
       importance: 0.6,
       session_id: null,
     });
+    if (error) {
+      console.error("[aiMemory] Failed to save memory:", error.message);
+    }
   }
 }

@@ -12,61 +12,32 @@ import { useAuth } from "@/context/AuthContext";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   signInWithGoogle, signInWithEmail, signUpWithEmail,
-  resetPasswordForEmail, getEmailError,
+  resetPasswordForEmail, getEmailError, validatePassword,
 } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 
-// ── Password strength "brainwave" bars ──────────────────────────────────
-function PasswordStrength({ password }: { password: string }) {
-  const score = Math.min(password.length / 12, 1);
-  const bars = 4;
-  const activeBars = Math.round(score * bars);
-
-  const color = (i: number) => {
-    if (!password) return "bg-muted";
-    if (i >= activeBars) return "bg-muted";
-    if (activeBars <= 1) return "bg-destructive";
-    if (activeBars <= 2) return "bg-warning";
-    if (activeBars <= 3) return "bg-primary";
-    return "bg-success";
-  };
-
-  const label = () => {
-    if (!password) return "";
-    if (activeBars <= 1) return "Weak";
-    if (activeBars <= 2) return "Getting there";
-    if (activeBars <= 3) return "Good";
-    return "Strong!";
-  };
+// ── Password requirements checklist ─────────────────────────────────────
+function PasswordRequirements({ password }: { password: string }) {
+  const { checks, allPass } = validatePassword(password);
 
   return (
     <div className="space-y-1.5">
-      <div className="flex gap-1.5">
-        {Array.from({ length: bars }).map((_, i) => (
-          <motion.div
-            key={i}
-            initial={{ scaleY: 0 }}
-            animate={{ scaleY: 1 }}
-            transition={{ delay: i * 0.08, type: "spring", stiffness: 200, damping: 20 }}
-            className={cn("h-2 flex-1 rounded-full transition-colors", color(i))}
-          />
-        ))}
-      </div>
-      {password && (
-        <motion.p
-          initial={{ opacity: 0, y: -4 }}
-          animate={{ opacity: 1, y: 0 }}
-          className={cn(
-            "text-[11px] font-bold uppercase tracking-wider",
-            activeBars <= 1 ? "text-destructive" :
-            activeBars <= 2 ? "text-warning" :
-            activeBars <= 3 ? "text-primary" :
-            "text-success"
-          )}
+      {checks.map((c) => (
+        <motion.div
+          key={c.key}
+          initial={{ opacity: 0, x: -8 }}
+          animate={{ opacity: 1, x: 0 }}
+          className="flex items-center gap-2 text-xs"
         >
-          {label()}
-        </motion.p>
-      )}
+          <div className={cn(
+            "w-4 h-4 rounded-full flex items-center justify-center shrink-0 transition-colors",
+            c.pass ? "bg-success/20 text-success" : "bg-muted text-muted-foreground"
+          )}>
+            {c.pass ? <Check className="w-3 h-3" /> : <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40" />}
+          </div>
+          <span className={c.pass ? "text-success" : "text-muted-foreground"}>{c.label}</span>
+        </motion.div>
+      ))}
     </div>
   );
 }
@@ -197,7 +168,7 @@ export default function LoginView() {
 
   const isValidEmail = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
   const emailOk = isValidEmail(email);
-  const pwOk = password.length >= 6;
+  const { allPass: pwOk } = validatePassword(password);
   const matchOk = mode === "signin" || password === confirmPassword;
   const canSubmit = emailOk && pwOk && matchOk;
 
@@ -241,7 +212,15 @@ export default function LoginView() {
 
   const handleGoogle = async () => {
     setLoading(true);
-    await signInWithGoogle("/dashboard");
+    setError(null);
+    try {
+      await signInWithGoogle("/dashboard");
+    } catch (e) {
+      const err = e as { code?: string; message?: string };
+      setError(getEmailError(err.code ?? null, err.message ?? null));
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (authLoading) {
@@ -405,7 +384,7 @@ export default function LoginView() {
                       ? "Sign in to continue learning"
                       : mode === "signin"
                         ? "Welcome back!"
-                        : "Make it a good one — at least 6 characters"}
+                        : "At least 8 characters with uppercase, lowercase, numbers, and symbols"}
                   </p>
                 </div>
 
@@ -536,8 +515,8 @@ export default function LoginView() {
                         </motion.p>
                       )}
 
-                      {/* Strength (sign-up only) */}
-                      {mode === "signup" && <PasswordStrength password={password} />}
+                      {/* Password requirements (sign-up only) */}
+                      {mode === "signup" && <PasswordRequirements password={password} />}
 
                       {/* Forgot link (sign-in only) */}
                       {mode === "signin" && (

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { sanitizeHtml } from "@/lib/sanitize";
 import {
   Shield, User, Settings, Brain, Database, Lock, Share2,
   Globe, Scale, Cookie, Baby, Clock, FileText, ExternalLink,
@@ -235,7 +236,7 @@ export default function PrivacyPage() {
                         {section.note && (
                           <p
                             className="text-base text-muted-foreground"
-                            dangerouslySetInnerHTML={{ __html: section.note }}
+                            dangerouslySetInnerHTML={{ __html: sanitizeHtml(section.note) }}
                           />
                         )}
                       </div>
@@ -243,7 +244,7 @@ export default function PrivacyPage() {
                     {"items" in section && section.note && !section.items && (
                       <p
                         className="text-base text-muted-foreground px-5 pb-5 pl-16"
-                        dangerouslySetInnerHTML={{ __html: section.note }}
+                        dangerouslySetInnerHTML={{ __html: sanitizeHtml(section.note) }}
                       />
                     )}
                   </motion.div>

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import katex from "katex";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { sanitizeHtml } from "@/lib/sanitize";
 
 interface MathInputProps {
   onInsert: (latex: string, mode: "inline" | "block") => void;
@@ -196,7 +197,7 @@ export default function MathInput({ onInsert, onClose, initialValue = "" }: Math
         ) : renderedHtml ? (
           <div
             className={cn("katex-preview", mode === "block" && "text-center w-full")}
-            dangerouslySetInnerHTML={{ __html: renderedHtml }}
+            dangerouslySetInnerHTML={{ __html: sanitizeHtml(renderedHtml) }}
           />
         ) : (
           <p className="text-xs text-muted-foreground/40 select-none">Preview appears here…</p>

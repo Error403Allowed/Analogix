@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { callGroqChat, formatError } from "../_utils";
+import { requireUser, unauthResponse } from "@/lib/api-auth";
 export const runtime = "nodejs";
 // Chunk text into smaller pieces for processing
 const chunkText = (text, maxChunkSize) => {
@@ -23,6 +24,7 @@ const chunkText = (text, maxChunkSize) => {
 };
 export async function POST(request) {
     try {
+        await requireUser();
         const body = await request.json();
         const documentContent = body.documentContent || "";
         const fileName = body.fileName || "Document";

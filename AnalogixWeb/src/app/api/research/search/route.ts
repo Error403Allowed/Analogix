@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { ResearchSource } from "@/types/research";
+import { requireUser, unauthResponse } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 
@@ -169,6 +170,7 @@ const fetchSemanticScholar = async (query: string, limit: number): Promise<Resea
 
 export async function POST(request: Request) {
   try {
+    await requireUser();
     const body = await request.json();
     const query: string = body.query || "";
     const limit: number = Math.max(3, Math.min(Number(body.limit || 8), 12));

@@ -8,6 +8,7 @@ import {
   type BlockConfig,
 } from "@blocknote/core";
 import katex from "katex";
+import { sanitizeHtml } from "@/lib/sanitize";
 
 const mathPropSchema = { formula: { default: "" } } as const;
 
@@ -86,7 +87,7 @@ function MathBlockView({ block, editor }: MathBlockRenderProps) {
         setEditing(true);
       }}
       title="Click to edit"
-      dangerouslySetInnerHTML={{ __html: html }}
+      dangerouslySetInnerHTML={{ __html: sanitizeHtml(html) }}
     />
   );
 }

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { callGroqChat } from "../_utils";
+import { requireUser, unauthResponse } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 
@@ -156,6 +157,7 @@ const actionMap: Record<string, ActionConfig> = {
 
 export async function POST(request: Request) {
   try {
+    await requireUser();
     const body = await request.json();
     const action = typeof body.action === "string" ? body.action : "";
     const text = typeof body.text === "string" ? body.text.trim() : "";

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { callGroqChat, formatError } from "../_utils";
+import { requireUser, unauthResponse } from "@/lib/api-auth";
 export const runtime = "nodejs";
 // ── RFC-6902 patch applier (replace / add / remove) ───────────────────────────
 function applyPatch(guide, edits) {
@@ -48,6 +49,7 @@ function applyPatch(guide, edits) {
 }
 export async function POST(request) {
     try {
+        await requireUser();
         const body = await request.json();
         const guide = body.guide;
         const userRequest = (body.request || "").trim();

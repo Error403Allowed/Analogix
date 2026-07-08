@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createCurriculumRetriever } from '@/lib/retrieval/curriculum';
+import { requireUser, unauthResponse } from "@/lib/api-auth";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -8,6 +9,7 @@ export async function GET(request: Request) {
   const grade = searchParams.get('grade') || undefined;
 
   try {
+    await requireUser();
     const retriever = createCurriculumRetriever();
     const results = await retriever.retrieve(query, { subject, grade }, 10);
 

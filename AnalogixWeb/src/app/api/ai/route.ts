@@ -6,6 +6,7 @@ import {
   toolDefinitionsToToolSet,
 } from "@blocknote/xl-ai/server";
 import { buildBlockNoteAISystemPrompt } from "@/lib/blocknoteAi";
+import { requireUser, unauthResponse } from "@/lib/api-auth";
 
 const groq = createGroq({ apiKey: process.env.GROQ_API_KEY });
 const model = groq("llama-3.3-70b-versatile");
@@ -19,6 +20,7 @@ interface BlockNoteAIRequestBody {
 
 export async function POST(req: Request) {
   try {
+    await requireUser();
     const body = await req.json() as BlockNoteAIRequestBody;
     const { messages, toolDefinitions, subject, documentTitle } = body;
 

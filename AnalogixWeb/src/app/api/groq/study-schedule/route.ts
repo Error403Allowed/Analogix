@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import { callGroqChat, formatError } from "../_utils";
+import { requireUser, unauthResponse } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   try {
+    await requireUser();
     const body = await request.json();
     const events: Array<{ title: string; date: string; type: string; subject?: string }> = body.events || [];
     const grade: string = body.grade || "7-12";

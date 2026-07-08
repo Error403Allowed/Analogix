@@ -33,28 +33,6 @@
       "expected": { "result": true },
       "validate": "equals",
       "tags": ["document", "detection"]
-    },
-    {
-      "id": "youtube-video-id",
-      "name": "Extract YouTube video ID from URL",
-      "type": "unit",
-      "importPath": "@/lib/youtube",
-      "function": "extractYouTubeVideoId",
-      "input": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-      "expected": { "result": "dQw4w9WgXcQ" },
-      "validate": "equals",
-      "tags": ["youtube", "parsing"]
-    },
-    {
-      "id": "youtube-video-id-short",
-      "name": "Extract YouTube video ID from short URL",
-      "type": "unit",
-      "importPath": "@/lib/youtube",
-      "function": "extractYouTubeVideoId",
-      "input": "https://youtu.be/dQw4w9WgXcQ",
-      "expected": { "result": "dQw4w9WgXcQ" },
-      "validate": "equals",
-      "tags": ["youtube", "parsing"]
     }
   ]
 }

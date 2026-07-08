@@ -22,7 +22,7 @@ import { AustralianState, STATE_LABELS } from "@/utils/termData";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/context/AuthContext";
-import { signInWithGoogle, signInWithEmail, signUpWithEmail, getEmailError } from "@/lib/auth-client";
+import { signInWithGoogle, signInWithEmail, signUpWithEmail, getEmailError, validatePassword } from "@/lib/auth-client";
 import OnboardingBackdrop from "@/components/OnboardingBackdrop";
 
 // ── Friendly auth error mapper ───────────────────────────────────────────────
@@ -53,7 +53,7 @@ function describeAuthError(code: string | null, raw: string | null): string {
 
   // Email/password errors
   if (c === "invalid_credentials" || c === "wrong_password" || r.includes("invalid login credentials")) {
-    return "Invalid email of password. Maybe you signed in using google?.";
+    return "Invalid email or password. Maybe you signed in using Google.";
   }
   if (c === "email_not_confirmed" || r.includes("email not confirmed")) {
     return "Please confirm your email address first — check your inbox for a confirmation link.";
@@ -61,8 +61,8 @@ function describeAuthError(code: string | null, raw: string | null): string {
   if (c === "user_not_found" || r.includes("user not found")) {
     return "No account found with this email.";
   }
-  if (c === "weak_password" || r.includes("weak password") || r.includes("password should be at least 6")) {
-    return "Password must be at least 6 characters.";
+  if (c === "weak_password" || r.includes("weak password") || r.includes("password should be at least 6") || r.includes("password should be at least 8")) {
+    return "Password must be at least 8 characters with uppercase, lowercase, numbers, and symbols.";
   }
   if (c === "email_exists" || r.includes("user already registered")) {
     return "An account with this email already exists. Try signing in.";
@@ -111,6 +111,27 @@ const TypewriterText = ({ text, delay = 0 }: { text: string; delay?: number }) =
   );
 };
 
+// ── Password requirements checklist ───────────────────────────────────────────
+function PasswordRequirements({ password }: { password: string }) {
+  const { checks } = validatePassword(password);
+
+  return (
+    <div className="space-y-1.5">
+      {checks.map((c) => (
+        <div key={c.key} className="flex items-center gap-2 text-xs">
+          <div className={cn(
+            "w-4 h-4 rounded-full flex items-center justify-center shrink-0 transition-colors",
+            c.pass ? "bg-success/20 text-success" : "bg-muted text-muted-foreground"
+          )}>
+            {c.pass ? <Check className="w-3 h-3" /> : <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40" />}
+          </div>
+          <span className={c.pass ? "text-success" : "text-muted-foreground"}>{c.label}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ── Auth Step ─────────────────────────────────────────────────────────────────
 function AuthStep({ onAuthed, externalError }: { onAuthed: () => void; externalError?: string | null }) {
   const { user, loading } = useAuth();
@@ -132,12 +153,20 @@ function AuthStep({ onAuthed, externalError }: { onAuthed: () => void; externalE
 
   const handleGoogle = async () => {
     setGoogleLoading(true);
-    await signInWithGoogle("/dashboard");
+    setAuthError(null);
+    try {
+      await signInWithGoogle("/dashboard");
+    } catch (e) {
+      const err = e as { code?: string; message?: string };
+      setAuthError(getEmailError(err.code ?? null, err.message ?? null));
+    } finally {
+      setGoogleLoading(false);
+    }
   };
 
   const isValidEmail = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
   const emailOk = isValidEmail(email);
-  const pwOk = password.length >= 6;
+  const { allPass: pwOk } = validatePassword(password);
   const matchOk = mode === "signin" || password === confirmPassword;
   const canSubmit = emailOk && pwOk && matchOk && !submitting;
 
@@ -245,7 +274,7 @@ function AuthStep({ onAuthed, externalError }: { onAuthed: () => void; externalE
             <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground w-5 h-5" />
             <Input
               type={showPassword ? "text" : "password"}
-              placeholder={mode === "signin" ? "Your password" : "Create a password (min 6 chars)"}
+              placeholder={mode === "signin" ? "Your password" : "Create a password "}
               value={password}
               onChange={e => { setPassword(e.target.value); setAuthError(null); }}
               onKeyDown={e => e.key === "Enter" && canSubmit && handleSubmit()}
@@ -288,6 +317,11 @@ function AuthStep({ onAuthed, externalError }: { onAuthed: () => void; externalE
                 <p className="text-xs text-destructive font-medium mt-1">Passwords don&apos;t match</p>
               )}
             </div>
+          )}
+
+          {/* Password requirements (sign-up) */}
+          {mode === "signup" && password.length > 0 && (
+            <PasswordRequirements password={password} />
           )}
 
           {/* Submit */}
