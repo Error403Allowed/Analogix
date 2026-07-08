@@ -6,7 +6,12 @@ export const roomResolvers = {
   Query: {
     rooms: async (_: unknown, __: unknown, ctx: GraphQLContext) => {
       const user = requireUser(ctx);
-      const { data, error } = await ctx.supabase!.from("study_rooms").select("*").order("updated_at", { ascending: false }).limit(100);
+      const { data, error } = await ctx.supabase!
+        .from("study_rooms")
+        .select("*")
+        .or(`owner_user_id.eq.${user.id},visibility.eq.public`)
+        .order("updated_at", { ascending: false })
+        .limit(100);
       if (error) throw new GraphQLError(error.message);
       return (data ?? []).map((r) => mapRoom(r, user.id));
     },
@@ -23,9 +28,18 @@ export const roomResolvers = {
     },
     room: async (_: unknown, args: { id: string }, ctx: GraphQLContext) => {
       const user = requireUser(ctx);
+      await requireRoomMember(ctx, args.id, user.id);
       const { data, error } = await ctx.supabase!.from("study_rooms").select("*").eq("id", args.id).maybeSingle();
       if (error) throw new GraphQLError(error.message);
       return data ? mapRoom(data, user.id) : null;
+    },
+    publicRoomInfo: async (_: unknown, args: { id: string }, ctx: GraphQLContext) => {
+      const user = requireUser(ctx);
+      const { data, error } = await ctx.supabase!.from("study_rooms").select("*").eq("id", args.id).maybeSingle();
+      if (error) throw new GraphQLError(error.message);
+      if (!data) throw new GraphQLError("Room not found");
+      if (data.visibility !== "public") throw new GraphQLError("Room is not public");
+      return mapRoom(data, user.id);
     },
     roomMembers: async (_: unknown, args: { roomId: string }, ctx: GraphQLContext) => {
       const user = requireUser(ctx);

@@ -13,8 +13,6 @@ interface ExtractInput {
 // Allowed URL schemes for SSRF prevention
 const ALLOWED_URL_PREFIXES = [
   "https://",
-  "http://localhost",
-  "http://127.0.0.1",
 ];
 
 function isAllowedUrl(url: string): boolean {
@@ -31,6 +29,10 @@ export async function extractTextFromPayload(input: ExtractInput): Promise<strin
   try {
     let buffer: Buffer | null = null;
     if (input.base64) {
+      if (input.base64.length > 20_000_000) {
+        logger.warn("[extractText] base64 payload too large");
+        return "";
+      }
       buffer = Buffer.from(input.base64, "base64");
     } else if (input.url) {
       if (!isAllowedUrl(input.url)) {

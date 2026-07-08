@@ -1,5 +1,6 @@
 import { GraphQLError } from "graphql";
 import { requireUser } from "./_helpers.js";
+import { serviceClient } from "../supabase.js";
 import type { GraphQLContext } from "../context.js";
 
 export const userResolvers = {
@@ -72,7 +73,7 @@ export const userResolvers = {
           extensions: { code: "BAD_USER_INPUT" },
         });
       }
-      const { error } = await ctx.serviceClient.auth.admin.deleteUser(user.id);
+      const { error } = await serviceClient.auth.admin.deleteUser(user.id);
       if (error) throw new GraphQLError(error.message);
       return { success: true };
     },

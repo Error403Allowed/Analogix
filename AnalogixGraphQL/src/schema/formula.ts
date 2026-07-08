@@ -6,6 +6,7 @@ export const formulaTypeDefs = /* GraphQL */ `
     description: String
     variables: JSON
     subjectId: String!
+    subjectName: String!
     category: String!
   }
 

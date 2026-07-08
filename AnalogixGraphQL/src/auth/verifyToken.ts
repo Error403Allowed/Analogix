@@ -48,7 +48,7 @@ export async function verifyAccessToken(token: string | null | undefined): Promi
     });
     return mapPayloadToUser(payload);
   } catch (err) {
-    logger.debug({ err: (err as Error).message }, "[auth] JWT verification failed");
+    logger.warn({ err: (err as Error).message }, "[auth] JWT verification failed");
     return null;
   }
 }

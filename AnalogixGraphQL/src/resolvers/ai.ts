@@ -134,7 +134,7 @@ export const aiResolvers = {
       // Retrieve curriculum context via RAG
       let curriculumContext = "";
       try {
-        const retriever = createCurriculumRetriever(ctx.serviceClient);
+        const retriever = createCurriculumRetriever(ctx.supabase!);
         const subjects = Array.isArray(profile?.subjects) ? profile.subjects : [];
         const filters: { subject?: string; grade?: string } = {};
         if (subjects.length > 0) filters.subject = String(subjects[0]);

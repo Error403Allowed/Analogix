@@ -184,7 +184,7 @@ export const chatResolvers = {
       // Retrieve curriculum context via RAG
       let curriculumContext = "";
       try {
-        const retriever = createCurriculumRetriever(ctx.serviceClient);
+        const retriever = createCurriculumRetriever(ctx.supabase!);
         const question = parsed.content;
         const filters: { subject?: string; grade?: string } = {};
         const subjects = (profile?.subjects ?? []) as string[];

@@ -30,6 +30,9 @@ export const resourceResolvers = {
       ctx: GraphQLContext
     ) => {
       const user = requireUser(ctx);
+      if (args.base64.length > 20_000_000) {
+        throw new GraphQLError("Upload payload too large. Maximum size is ~15MB.");
+      }
       const buffer = Buffer.from(args.base64, "base64");
       const fileName = `${user.id}/${crypto.randomUUID()}-${args.name}`;
       const { error: uploadError } = await ctx.supabase!

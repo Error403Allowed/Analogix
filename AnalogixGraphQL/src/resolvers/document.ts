@@ -30,6 +30,13 @@ export const documentResolvers = {
     },
     documentVersions: async (_: unknown, args: { documentId: string }, ctx: GraphQLContext) => {
       const user = requireUser(ctx);
+      const { data: doc } = await ctx.supabase!
+        .from("documents")
+        .select("id")
+        .eq("id", args.documentId)
+        .eq("owner_user_id", user.id)
+        .maybeSingle();
+      if (!doc) throw new GraphQLError("Document not found");
       const { data, error } = await ctx.supabase!
         .from("document_versions")
         .select("*")

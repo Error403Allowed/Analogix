@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { randomUUID } from "crypto";
+import { GraphQLError } from "graphql";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ToolCall, ToolResult, ToolExecutionResult } from "@analogix/shared/types";
 import type { GraphQLContext } from "../context.js";
@@ -656,8 +657,13 @@ export async function executeTools(
   tools: ToolCall[],
   ctx: GraphQLContext,
 ): Promise<ToolExecutionResult> {
-  const userId = ctx.user!.id;
-  const supabase = ctx.supabase!;
+  if (!ctx.user || !ctx.supabase) {
+    throw new GraphQLError("Authentication required", {
+      extensions: { code: "UNAUTHENTICATED", http: { status: 401 } },
+    });
+  }
+  const userId = ctx.user.id;
+  const supabase = ctx.supabase;
 
   const results: ToolResult[] = [];
 

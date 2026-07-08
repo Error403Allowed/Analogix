@@ -13,7 +13,6 @@ import { typeDefs } from "./schema/index.js";
 import { resolvers } from "./resolvers/index.js";
 import { buildContext, type GraphQLContext } from "./context.js";
 import { getPubSub } from "./pubsub.js";
-import { serviceClient } from "./supabase.js";
 import { env, isProd } from "./env.js";
 import { logger } from "./logger.js";
 import { extractBearerToken } from "./auth/verifyToken.js";
@@ -38,6 +37,9 @@ async function main() {
     })
   );
 
+  // Body parser must run before rate limiters so auth limiter can inspect query body
+  app.use("/graphql", bodyParser.json({ limit: "50mb" }));
+
   // Global rate limiting (skip health endpoint)
   const globalLimiter = rateLimit({
     windowMs: 60 * 1000,
@@ -49,19 +51,25 @@ async function main() {
   });
   app.use(globalLimiter);
 
-  // Stricter rate limit for auth mutations
+  // Stricter rate limit for auth mutations only
   const authLimiter = rateLimit({
     windowMs: 60 * 1000,
     max: 10,
     standardHeaders: true,
     legacyHeaders: false,
     message: { error: "Too many auth requests, please try again later." },
+    skip: (req) => {
+      if (req.method !== "POST" || !req.body?.query) return true;
+      const op = (req.body.query as string).toLowerCase();
+      const authOps = ["login", "signup", "register", "forgotpassword", "resetpassword", "changepassword"];
+      return !authOps.some((kw) => op.includes(kw));
+    },
   });
   app.use("/graphql", authLimiter);
 
   // Health
   app.get("/health", (_req, res) => {
-    res.json({ status: "ok", timestamp: new Date().toISOString() });
+    res.json({ status: "ok" });
   });
 
   // WebSocket server (graphql-ws) for subscriptions
@@ -77,7 +85,7 @@ async function main() {
           (params.authorization as string | undefined) ??
           "";
         const token = raw.toLowerCase().startsWith("bearer ") ? raw.slice(7) : null;
-        return buildContext({ token, serviceClient, pubsub, requestId: crypto.randomUUID() });
+        return buildContext({ token, pubsub, requestId: crypto.randomUUID() });
       },
     },
     wsServer as unknown as Parameters<typeof useServer>[1]
@@ -110,11 +118,10 @@ async function main() {
 
   app.use(
     "/graphql",
-    bodyParser.json({ limit: "50mb" }),
     expressMiddleware(apollo, {
       context: async ({ req }: { req: Request }) => {
         const token = extractBearerToken({ headers: req.headers, url: req.url });
-        return buildContext({ token, serviceClient, pubsub, requestId: crypto.randomUUID() });
+        return buildContext({ token, pubsub, requestId: crypto.randomUUID() });
       },
     })
   );

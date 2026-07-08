@@ -79,6 +79,7 @@ export const roomTypeDefs = /* GraphQL */ `
     rooms: [StudyRoom!]!
     publicRooms: [StudyRoom!]!
     room(id: ID!): StudyRoom
+    publicRoomInfo(id: ID!): StudyRoom
     roomMembers(roomId: ID!): [StudyRoomMember!]!
     roomMessages(roomId: ID!, limit: Int = 100): [StudyRoomMessage!]!
     roomCanvas(roomId: ID!): StudyRoomCanvas

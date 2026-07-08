@@ -14,6 +14,8 @@ import { roomTypeDefs } from "./room.js";
 import { formulaTypeDefs } from "./formula.js";
 import { achievementTypeDefs } from "./achievement.js";
 import { resourceTypeDefs } from "./resource.js";
+import { curatedResourceTypeDefs } from "./curatedResource.js";
+import { curriculumTypeDefs } from "./curriculum.js";
 import { commonTypeDefs } from "./common.js";
 
 export const typeDefs = [
@@ -31,4 +33,6 @@ export const typeDefs = [
   formulaTypeDefs,
   achievementTypeDefs,
   resourceTypeDefs,
+  curatedResourceTypeDefs,
+  curriculumTypeDefs,
 ];

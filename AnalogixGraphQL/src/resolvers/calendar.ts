@@ -29,12 +29,13 @@ export const calendarResolvers = {
   Mutation: {
     createEvent: async (_: unknown, args: { input: Record<string, unknown> }, ctx: GraphQLContext) => {
       const user = requireUser(ctx);
+      const allowed = pickAllowed(args.input, ["title", "date", "end_date", "type", "subject", "color", "description", "location"]);
       const { data, error } = await ctx.supabase!
         .from("events")
         .insert({
           id: crypto.randomUUID(),
           user_id: user.id,
-          ...args.input,
+          ...allowed,
           source: "manual",
         })
         .select()
@@ -44,9 +45,10 @@ export const calendarResolvers = {
     },
     updateEvent: async (_: unknown, args: { id: string; input: Record<string, unknown> }, ctx: GraphQLContext) => {
       const user = requireUser(ctx);
+      const allowed = pickAllowed(args.input, ["title", "date", "end_date", "type", "subject", "color", "description", "location"]);
       const { data, error } = await ctx.supabase!
         .from("events")
-        .update(args.input)
+        .update(allowed)
         .eq("id", args.id)
         .eq("user_id", user.id)
         .select()
@@ -83,12 +85,13 @@ export const calendarResolvers = {
     },
     addDeadline: async (_: unknown, args: { input: Record<string, unknown> }, ctx: GraphQLContext) => {
       const user = requireUser(ctx);
+      const allowed = pickAllowed(args.input, ["title", "due_date", "subject", "priority", "description"]);
       const { data, error } = await ctx.supabase!
         .from("deadlines")
         .insert({
           id: crypto.randomUUID(),
           user_id: user.id,
-          ...args.input,
+          ...allowed,
         })
         .select()
         .single();
@@ -97,9 +100,10 @@ export const calendarResolvers = {
     },
     updateDeadline: async (_: unknown, args: { id: string; input: Record<string, unknown> }, ctx: GraphQLContext) => {
       const user = requireUser(ctx);
+      const allowed = pickAllowed(args.input, ["title", "due_date", "subject", "priority", "description"]);
       const { data, error } = await ctx.supabase!
         .from("deadlines")
-        .update(args.input)
+        .update(allowed)
         .eq("id", args.id)
         .eq("user_id", user.id)
         .select()
@@ -140,4 +144,14 @@ function mapDeadline(row: Record<string, unknown>) {
     priority: String(row.priority ?? "medium"),
     createdAt: String(row.created_at),
   };
+}
+
+function pickAllowed(input: Record<string, unknown>, allowed: string[]): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+  for (const key of allowed) {
+    if (key in input) {
+      result[key] = input[key];
+    }
+  }
+  return result;
 }

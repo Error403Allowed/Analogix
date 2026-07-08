@@ -8,8 +8,6 @@ export interface GraphQLContext {
   user: AuthenticatedUser | null;
   /** Supabase client scoped to the user's access token (RLS applies). Null if unauthenticated. */
   supabase: SupabaseClient | null;
-  /** Service-role client. Use sparingly — never for user-data access checks. */
-  serviceClient: SupabaseClient;
   /** PubSub for subscriptions (chatStream, room presence, etc.). */
   pubsub: import("graphql-subscriptions").PubSub;
   /** Request ID for log correlation. */
@@ -22,12 +20,10 @@ export interface GraphQLContext {
  */
 export async function buildContext({
   token,
-  serviceClient,
   pubsub,
   requestId,
 }: {
   token: string | null;
-  serviceClient: SupabaseClient;
   pubsub: import("graphql-subscriptions").PubSub;
   requestId: string;
 }): Promise<GraphQLContext> {
@@ -38,7 +34,6 @@ export async function buildContext({
   return {
     user,
     supabase,
-    serviceClient,
     pubsub,
     requestId,
   };

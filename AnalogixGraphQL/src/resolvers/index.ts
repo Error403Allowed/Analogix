@@ -15,6 +15,8 @@ import { roomResolvers } from "./room.js";
 import { formulaResolvers } from "./formula.js";
 import { achievementResolvers } from "./achievement.js";
 import { resourceResolvers } from "./resource.js";
+import { curatedResourceResolvers } from "./curatedResource.js";
+import { curriculumResolvers } from "./curriculum.js";
 import { scalarResolvers } from "./scalars.js";
 
 function merge(...maps: Record<string, Record<string, unknown>>[]): Record<string, Record<string, unknown>> {
@@ -41,7 +43,9 @@ export const resolvers = merge(
   roomResolvers as unknown as Record<string, Record<string, unknown>>,
   formulaResolvers as unknown as Record<string, Record<string, unknown>>,
   achievementResolvers as unknown as Record<string, Record<string, unknown>>,
-  resourceResolvers as unknown as Record<string, Record<string, unknown>>
+  resourceResolvers as unknown as Record<string, Record<string, unknown>>,
+  curatedResourceResolvers as unknown as Record<string, Record<string, unknown>>,
+  curriculumResolvers as unknown as Record<string, Record<string, unknown>>
 );
 
 export type RootResolvers = typeof resolvers;

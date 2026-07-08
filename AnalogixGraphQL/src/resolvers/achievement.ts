@@ -163,7 +163,10 @@ const ACHIEVEMENTS: Achievement[] = [
 
 export const achievementResolvers = {
   Query: {
-    achievements: async () => ACHIEVEMENTS,
+    achievements: async (_: unknown, __: unknown, ctx: GraphQLContext) => {
+      requireUser(ctx);
+      return ACHIEVEMENTS;
+    },
     unlockedAchievements: async (_: unknown, __: unknown, ctx: GraphQLContext) => {
       const user = requireUser(ctx);
       const { data, error } = await ctx.supabase!

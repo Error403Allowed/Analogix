@@ -14,6 +14,9 @@ export interface ParsedIcsEvent {
  * in AnalogixWeb/src/utils/icsParser.ts.
  */
 export function parseIcs(ics: string): ParsedIcsEvent[] {
+  if (ics.length > 1_000_000) {
+    return [];
+  }
   try {
     const jcal = ICAL.parse(ics);
     const comp = new ICAL.Component(jcal);
