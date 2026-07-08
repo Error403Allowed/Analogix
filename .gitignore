@@ -37,4 +37,17 @@ src/graphql/generated/
 
 # supabase local
 supabase/.temp/
+
+# test outputs (playwright/vitest)
+test-results/
+
+# backup / duplicate files
+*.bak
+* 2/*
+* 2.tsx
+* 2.ts
+
+# bun lock (npm is the package manager)
+bun.lock
+
 AUTH_FIX_NOTES.md
