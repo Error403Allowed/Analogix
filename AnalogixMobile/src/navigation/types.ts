@@ -33,9 +33,11 @@ export type StudyStackParamList = {
   Calendar: undefined;
   EventDetail: { eventId: string };
   Formulas: { subjectId?: string } | undefined;
+  FormulaDetail: { formulaId: string; subjectId: string; subjectName: string; categoryName: string };
   Timer: undefined;
   StudySchedule: { subjectId?: string } | undefined;
   AssessmentGuide: { text?: string; subjectId?: string } | undefined;
+  Resources: undefined;
 };
 
 // -----------------------------------------------------------------------------
@@ -45,6 +47,7 @@ export type SubjectsStackParamList = {
   SubjectsList: undefined;
   SubjectDetail: { subjectId: string; name?: string };
   DocumentEditor: { subjectId: string; documentId: string };
+  CurriculumBrowser: undefined;
 };
 
 // -----------------------------------------------------------------------------

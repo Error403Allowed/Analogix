@@ -27,6 +27,7 @@ export const SEARCH_FORMULAS = gql`
       latex
       description
       subjectId
+      subjectName
       category
     }
   }

@@ -119,6 +119,36 @@ export const JOIN_ROOM = gql`
   }
 `;
 
+export const PUBLIC_ROOM_INFO = gql`
+  query PublicRoomInfo($id: ID!) {
+    publicRoomInfo(id: $id) {
+      id
+      title
+      topic
+      visibility
+      joinCode
+      memberCount
+      isOwner
+      timerState
+      timerDurationSeconds
+      timerElapsedSeconds
+      name
+      subject
+      members {
+        id
+        userId
+        role
+        isOnline
+        user {
+          id
+          name
+          avatarUrl
+        }
+      }
+    }
+  }
+`;
+
 export const LEAVE_ROOM = gql`
   mutation LeaveRoom($roomId: ID!) {
     leaveRoom(roomId: $roomId) {

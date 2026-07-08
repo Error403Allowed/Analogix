@@ -330,10 +330,10 @@ export default function SubjectDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  hero: { gap: 16 },
+  hero: { gap: 20 },
   heroTop: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
   heroIcon: { width: 64, height: 64, borderRadius: 20, alignItems: "center", justifyContent: "center" },
-  statRow: { flexDirection: "row", gap: 8 },
-  actionsRow: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
+  statRow: { flexDirection: "row", gap: 14 },
+  actionsRow: { flexDirection: "row", gap: 12, flexWrap: "wrap" },
   modal: { margin: 20, padding: 24, borderRadius: 26 },
 });

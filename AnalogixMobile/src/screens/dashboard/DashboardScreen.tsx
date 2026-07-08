@@ -300,7 +300,7 @@ function DocsWidget() {
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingVertical: 2 }}>
       {docs.map((doc: any) => (
         <PressableScale key={doc.id} onPress={() => navigation.navigate("Subjects", { screen: "DocumentEditor", params: { subjectId: doc.subjectId, documentId: doc.id } })}>
-          <View style={{ width: 140, borderRadius: SHAPE.lg, backgroundColor: paperTheme.colors.surface, padding: 12, gap: 8, boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}>
+          <View style={{ width: 140, height: 132, borderRadius: SHAPE.lg, backgroundColor: paperTheme.colors.surface, padding: 12, gap: 8, borderWidth: 1, borderColor: paperTheme.colors.outlineVariant, boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}>
             <View style={{ width: 32, height: 32, borderRadius: 10, alignItems: "center", justifyContent: "center", backgroundColor: brand.primary + "16" }}>
               <Icon name={doc.icon ?? "file-document-outline"} size={16} color={brand.primary} />
             </View>

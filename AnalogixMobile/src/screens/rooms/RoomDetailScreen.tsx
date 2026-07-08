@@ -16,7 +16,7 @@ import {
   ROOM_TIMER_STREAM,
   UPDATE_ROOM_MEMBER_ROLE,
 } from "../../graphql/queries/room";
-import { DOCUMENTS, CREATE_DOCUMENT } from "../../graphql/queries/subject";
+import { DOCUMENTS, CREATE_DOCUMENT, DUPLICATE_DOCUMENT } from "../../graphql/queries/subject";
 import { ME } from "../../graphql/queries/user";
 import { TUTOR } from "../../graphql/queries/ai";
 import { useAuth } from "../../context/AuthContext";
@@ -25,6 +25,9 @@ import { SHAPE } from "../../theme/tokens";
 import { ExpressiveCard, ExpressiveEmptyState, ExpressiveScreen } from "../../components/expressive";
 import Icon from "../../components/Icon";
 import { MarkdownRenderer } from "../../components/MarkdownRenderer";
+import { ThinkingBlock } from "../../components/ThinkingBlock";
+import { parseThinking } from "../../utils/parseThinking";
+import { CollaborativeEditor } from "../../components/CollaborativeEditor";
 
 export default function RoomDetailScreen() {
   const paperTheme = useTheme();
@@ -54,6 +57,7 @@ export default function RoomDetailScreen() {
   const [updateRole] = useMutation(UPDATE_ROOM_MEMBER_ROLE);
   const [tutorMutation] = useMutation(TUTOR);
   const [createDocument] = useMutation(CREATE_DOCUMENT);
+  const [duplicateDoc] = useMutation(DUPLICATE_DOCUMENT);
   const [text, setText] = useState("");
   const [chatMode, setChatMode] = useState<"group" | "ai">("group");
   const [aiMessages, setAiMessages] = useState<Array<{ role: "user" | "assistant"; text: string }>>([]);
@@ -71,8 +75,11 @@ export default function RoomDetailScreen() {
   const [canvasContent, setCanvasContent] = useState("");
   const [savingCanvas, setSavingCanvas] = useState(false);
   const [timerDurationMin, setTimerDurationMin] = useState("25");
+  const [inRoom, setInRoom] = useState(false);
+  const [joining, setJoining] = useState(false);
   const [selectedDocId, setSelectedDocId] = useState("");
-  const [section, setSection] = useState<"chat" | "docs" | "members">("chat");
+  const [section, setSection] = useState<"chat" | "docs" | "members" | "workspace">("chat");
+  const [activeDocId, setActiveDocId] = useState<string | null>(null);
 
   const { data: docsData } = useQuery(DOCUMENTS);
   const allDocs = docsData?.documents ?? [];
@@ -213,6 +220,17 @@ export default function RoomDetailScreen() {
     }
   };
 
+  const handleCopyDoc = async (doc: any) => {
+    try {
+      await duplicateDoc({
+        variables: { documentId: doc.documentId ?? doc.id, subjectId: room.subject ?? "general" },
+      });
+      Alert.alert("Copied", "Document copied to your personal documents.");
+    } catch (err: any) {
+      Alert.alert("Error", err.message ?? "Failed to copy document.");
+    }
+  };
+
   const handleUpdateRole = (member: any, newRole: string) => {
     Alert.alert(
       newRole === "cohost" ? "Promote to co-host" : "Demote to member",
@@ -283,6 +301,8 @@ export default function RoomDetailScreen() {
   const remaining = Math.max(0, timerState.duration - localElapsed);
   const timerLabel = `${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, "0")}`;
 
+  const handleEnterRoom = () => setInRoom(true);
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -290,21 +310,86 @@ export default function RoomDetailScreen() {
     >
       <ExpressiveScreen
         title={name ?? room?.title ?? "Room"}
-        subtitle={`${onlineCount} online · ${members.length} members · ${docs.length} docs`}
+        subtitle={inRoom ? `${onlineCount} online · ${members.length} members · ${docs.length} docs` : `${onlineCount} studying now · ${members.length} members`}
         onBack={() => navigation.goBack()}
-        scroll={false}
-        contentStyle={styles.sessionContent}
+        scroll={!inRoom}
+        contentStyle={inRoom ? styles.sessionContent : undefined}
         actions={
           <View style={{ flexDirection: "row", alignItems: "center" }}>
-            {room?.isOwner ? (
-              <IconButton icon="delete" iconColor={paperTheme.colors.error} onPress={handleDeleteRoom} accessibilityLabel="Delete room" />
-            ) : (
-              <IconButton icon="exit-to-app" iconColor={paperTheme.colors.error} onPress={handleLeave} accessibilityLabel="Leave room" />
-            )}
+            <IconButton icon="refresh" iconColor={paperTheme.colors.onSurfaceVariant} onPress={() => refetch()} />
+            {inRoom ? (
+              room?.isOwner ? (
+                <IconButton icon="delete" iconColor={paperTheme.colors.error} onPress={handleDeleteRoom} />
+              ) : (
+                <IconButton icon="exit-to-app" iconColor={paperTheme.colors.error} onPress={handleLeave} />
+              )
+            ) : null}
           </View>
         }
       >
-        <ExpressiveCard style={styles.timerCard} tone="low">
+        {!inRoom ? (
+          /* ─── Room Overview (pre-entry) ─── */
+          <>
+            {/* Timer card */}
+            <ExpressiveCard style={styles.timerCard} tone="low">
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                <Text variant="labelMedium" style={{ fontWeight: "700", color: paperTheme.colors.onSurface }}>Shared timer</Text>
+                {(room?.isOwner || room?.viewerRole === "host" || room?.viewerRole === "cohost") && (
+                  <Pressable onPress={() => setEditingTimer(!editingTimer)} hitSlop={8}>
+                    <Icon name={editingTimer ? "close" : "pencil"} size={16} color={paperTheme.colors.primary} />
+                  </Pressable>
+                )}
+              </View>
+              <Text variant="headlineSmall" style={{ fontWeight: "900", color: paperTheme.colors.primary, marginVertical: 4 }}>{timerLabel}</Text>
+              <Text variant="bodySmall" style={{ color: paperTheme.colors.onSurfaceVariant, marginBottom: 8 }}>
+                {timerState.state === "running" ? "The room is in a live focus block." : timerState.state === "paused" ? "The timer is paused for everyone." : "Set the next focus block and start together."}
+              </Text>
+              <View style={styles.timerActions}>
+                <Button compact mode="outlined" onPress={() => syncTimer("running", localElapsed)}>Start</Button>
+                <Button compact mode="outlined" onPress={() => syncTimer("paused", localElapsed)}>Pause</Button>
+                <Button compact mode="outlined" onPress={() => { setLocalElapsed(0); syncTimer("idle", 0); }}>Reset</Button>
+              </View>
+            </ExpressiveCard>
+
+            {/* Members card */}
+            <ExpressiveCard style={styles.timerCard} tone="low">
+              <Text variant="labelMedium" style={{ fontWeight: "700", color: paperTheme.colors.onSurface, marginBottom: 8 }}>Active members</Text>
+              {members.map((m: any) => {
+                const isMe = m.userId === myUserId;
+                const canManage = room?.isOwner && !isMe;
+                return (
+                  <View key={m.id} style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                    <View style={[styles.statusDot, { backgroundColor: m.isOnline ? "#22C55E" : paperTheme.colors.outlineVariant }]} />
+                    <Text variant="bodyMedium" style={{ flex: 1, color: paperTheme.colors.onSurface, fontWeight: isMe ? "700" : "400" }}>
+                      {m.user?.name ?? m.name ?? "User"} {isMe ? "(you)" : ""}
+                    </Text>
+                    <View style={[styles.roleBadge, { backgroundColor: m.role === "host" ? "#FBBF24" + "20" : m.role === "cohost" ? "#6366F1" + "20" : "transparent" }]}>
+                      <Icon
+                        name={m.role === "host" ? "crown" : m.role === "cohost" ? "shield-check" : "account"}
+                        size={14}
+                        color={m.role === "host" ? "#D97706" : m.role === "cohost" ? "#6366F1" : paperTheme.colors.onSurfaceVariant}
+                      />
+                    </View>
+                    <Text variant="labelSmall" style={{ color: paperTheme.colors.onSurfaceVariant, marginLeft: 2 }}>{m.role}</Text>
+                    {canManage && (
+                      <Pressable onPress={() => handleUpdateRole(m, m.role === "cohost" ? "member" : "cohost")} hitSlop={8}>
+                        <Icon name={m.role === "cohost" ? "arrow-down" : "arrow-up"} size={16} color={paperTheme.colors.primary} />
+                      </Pressable>
+                    )}
+                  </View>
+                );
+              })}
+            </ExpressiveCard>
+
+            {/* Enter button */}
+            <Button mode="contained" buttonColor={brand.primary} onPress={handleEnterRoom} style={{ borderRadius: SHAPE.lg, paddingVertical: 4 }}>
+              Enter room
+            </Button>
+          </>
+        ) : (
+          /* ─── In-Room Workspace ─── */
+          <>
+          <ExpressiveCard style={styles.timerCard} tone="low">
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
             <Text variant="labelMedium" style={{ fontWeight: "700", color: paperTheme.colors.onSurface }}>Shared timer</Text>
             {(room?.isOwner || room?.viewerRole === "host" || room?.viewerRole === "cohost") && (
@@ -351,9 +436,10 @@ export default function RoomDetailScreen() {
         <View style={styles.sectionTabs}>
           <SegmentedButtons
             value={section}
-            onValueChange={(v) => setSection(v as "chat" | "docs" | "members")}
+            onValueChange={(v) => setSection(v as "chat" | "docs" | "members" | "workspace")}
             buttons={[
               { value: "chat", label: "Chat", icon: "message-text" },
+              { value: "workspace", label: "Workspace", icon: "pencil-ruler" },
               { value: "docs", label: "Docs", icon: "file-document" },
               { value: "members", label: "Members", icon: "account-group" },
             ]}
@@ -390,6 +476,7 @@ export default function RoomDetailScreen() {
                     }
                     renderItem={({ item }) => {
                       const isUser = item.role === "user";
+                      const { thinking, response } = isUser ? { thinking: null, response: item.text } : parseThinking(item.text);
                       return (
                         <View style={[styles.msgRow, isUser && styles.msgRowUser]}>
                           {!isUser && (
@@ -420,7 +507,10 @@ export default function RoomDetailScreen() {
                               {isUser ? (
                                 <Text style={{ color: paperTheme.colors.onPrimary, lineHeight: 20 }}>{item.text}</Text>
                               ) : (
-                                <MarkdownRenderer content={item.text} />
+                                <>
+                                  {thinking && <ThinkingBlock content={thinking} />}
+                                  {response ? <MarkdownRenderer content={response} /> : null}
+                                </>
                               )}
                             </View>
                           </View>
@@ -526,6 +616,45 @@ export default function RoomDetailScreen() {
             </View>
           )}
 
+          {section === "workspace" && (
+            <View style={{ flex: 1, minHeight: 0 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 12, paddingVertical: 6 }}>
+                <Pressable
+                  onPress={() => setActiveDocId(null)}
+                  style={({ pressed }) => [
+                    { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: !activeDocId ? paperTheme.colors.primary + "20" : "transparent" },
+                  ]}
+                >
+                  <Text variant="labelSmall" style={{ fontWeight: "700", color: !activeDocId ? paperTheme.colors.primary : paperTheme.colors.onSurfaceVariant }}>
+                    Canvas
+                  </Text>
+                </Pressable>
+                {docs.slice(0, 5).map((d: any) => (
+                  <Pressable
+                    key={d.id}
+                    onPress={() => setActiveDocId(d.documentId ?? d.id)}
+                    style={({ pressed }) => [
+                      { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: activeDocId === (d.documentId ?? d.id) ? paperTheme.colors.primary + "20" : "transparent" },
+                    ]}
+                  >
+                    <Text variant="labelSmall" style={{ fontWeight: "700", color: activeDocId === (d.documentId ?? d.id) ? paperTheme.colors.primary : paperTheme.colors.onSurfaceVariant }} numberOfLines={1}>
+                      {d.title}
+                    </Text>
+                  </Pressable>
+                ))}
+                <View style={{ flex: 1 }} />
+              </View>
+
+              <View style={{ flex: 1, marginHorizontal: 4, borderRadius: 12, overflow: "hidden" }}>
+                <CollaborativeEditor
+                  roomId={roomId}
+                  surfaceType={activeDocId ? "document" : "canvas"}
+                  surfaceId={activeDocId ?? "room-canvas"}
+                />
+              </View>
+            </View>
+          )}
+
           {section === "docs" && (
             <ScrollView style={styles.sectionScroll} contentContainerStyle={styles.tabContentPad}>
               {docs.length > 0 ? (
@@ -534,7 +663,10 @@ export default function RoomDetailScreen() {
                   {docs.map((d: any) => (
                     <Pressable
                       key={d.id}
-                      onPress={() => navigation.navigate("DocumentEditor", { documentId: d.documentId ?? d.id, subjectId: room.subject ?? "general" })}
+                      onPress={() => {
+                        setActiveDocId(d.documentId ?? d.id);
+                        setSection("workspace");
+                      }}
                       style={({ pressed }) => [
                         styles.docItem,
                         { backgroundColor: pressed ? paperTheme.colors.surfaceVariant : "transparent" },
@@ -542,6 +674,9 @@ export default function RoomDetailScreen() {
                     >
                       <Icon name="file-document-outline" size={18} color={paperTheme.colors.onSurfaceVariant} />
                       <Text variant="bodyMedium" style={{ flex: 1, color: paperTheme.colors.onSurface }}>{d.title}</Text>
+                      <Pressable onPress={() => handleCopyDoc(d)} hitSlop={8} style={{ padding: 4 }}>
+                        <Icon name="content-copy" size={16} color={paperTheme.colors.primary} />
+                      </Pressable>
                       <Icon name="chevron-right" size={18} color={paperTheme.colors.outlineVariant} />
                     </Pressable>
                   ))}
@@ -597,44 +732,49 @@ export default function RoomDetailScreen() {
           )}
         </View>
 
-        <Portal>
-          <Modal visible={showShareDoc} onDismiss={() => setShowShareDoc(false)} contentContainerStyle={[styles.modal, { backgroundColor: paperTheme.colors.surface }]}>
-            <Text variant="titleLarge" style={{ fontWeight: "700", marginBottom: 16 }}>Share document</Text>
-            {allDocs.length === 0 ? (
-              <Text variant="bodyMedium" style={{ color: paperTheme.colors.onSurfaceVariant }}>No documents to share.</Text>
-            ) : (
-              <View style={{ gap: 8, maxHeight: 300 }}>
-                {allDocs.map((doc: any) => (
-                  <Pressable
-                    key={doc.id}
-                    onPress={() => setSelectedDocId(doc.id)}
-                    style={[styles.docRow, { backgroundColor: selectedDocId === doc.id ? paperTheme.colors.primary + "18" : paperTheme.colors.surfaceVariant, borderRadius: SHAPE.md }]}
-                  >
-                    <Icon name="file-document-outline" size={18} color={paperTheme.colors.onSurface} />
-                    <Text variant="bodyMedium" style={{ flex: 1, color: paperTheme.colors.onSurface }}>{doc.title}</Text>
-                    {selectedDocId === doc.id && <Icon name="check" size={18} color={paperTheme.colors.primary} />}
-                  </Pressable>
-                ))}
-              </View>
-            )}
-            <Button mode="contained" onPress={handleShareDoc} disabled={!selectedDocId} style={{ marginTop: 16 }}>Share</Button>
-          </Modal>
+        {inRoom && (
+          <Portal>
+            <Modal visible={showShareDoc} onDismiss={() => setShowShareDoc(false)} contentContainerStyle={[styles.modal, { backgroundColor: paperTheme.colors.surface }]}>
+              <Text variant="titleLarge" style={{ fontWeight: "700", marginBottom: 16 }}>Share document</Text>
+              {allDocs.length === 0 ? (
+                <Text variant="bodyMedium" style={{ color: paperTheme.colors.onSurfaceVariant }}>No documents to share.</Text>
+              ) : (
+                <View style={{ gap: 8, maxHeight: 300 }}>
+                  {allDocs.map((doc: any) => (
+                    <Pressable
+                      key={doc.id}
+                      onPress={() => setSelectedDocId(doc.id)}
+                      style={[styles.docRow, { backgroundColor: selectedDocId === doc.id ? paperTheme.colors.primary + "18" : paperTheme.colors.surfaceVariant, borderRadius: SHAPE.md }]}
+                    >
+                      <Icon name="file-document-outline" size={18} color={paperTheme.colors.onSurface} />
+                      <Text variant="bodyMedium" style={{ flex: 1, color: paperTheme.colors.onSurface }}>{doc.title}</Text>
+                      {selectedDocId === doc.id && <Icon name="check" size={18} color={paperTheme.colors.primary} />}
+                    </Pressable>
+                  ))}
+                </View>
+              )}
+              <Button mode="contained" onPress={handleShareDoc} disabled={!selectedDocId} style={{ marginTop: 16 }}>Share</Button>
+            </Modal>
 
-          <Modal visible={showCanvas} onDismiss={() => { setShowCanvas(false); setCanvasTitle(""); setCanvasContent(""); }} contentContainerStyle={[styles.modal, { backgroundColor: paperTheme.colors.surface }]}>
-            <Text variant="titleLarge" style={{ fontWeight: "700", marginBottom: 4 }}>New document</Text>
-            <Text variant="bodySmall" style={{ color: paperTheme.colors.onSurfaceVariant, marginBottom: 16 }}>
-              Will be saved to {(room?.subject ?? "general")} documents
-            </Text>
-            <TextInput mode="outlined" label="Title" value={canvasTitle} onChangeText={setCanvasTitle} placeholder="Canvas notes" style={{ marginBottom: 12 }} />
-            <TextInput mode="outlined" label="Content" value={canvasContent} onChangeText={setCanvasContent} placeholder="Start writing..." multiline style={{ minHeight: 200, maxHeight: 350 }} />
-            <View style={{ flexDirection: "row", gap: 8, marginTop: 16 }}>
-              <Button mode="outlined" onPress={() => { setShowCanvas(false); setCanvasTitle(""); setCanvasContent(""); }} style={{ flex: 1, borderRadius: SHAPE.lg }}>Cancel</Button>
-              <Button mode="contained" buttonColor={brand.primary} onPress={handleSaveCanvas} loading={savingCanvas} style={{ flex: 1, borderRadius: SHAPE.lg }}>Save</Button>
-            </View>
-          </Modal>
-        </Portal>
-      </ExpressiveScreen>
-    </KeyboardAvoidingView>
+            <Modal visible={showCanvas} onDismiss={() => { setShowCanvas(false); setCanvasTitle(""); setCanvasContent(""); }} contentContainerStyle={[styles.modal, { backgroundColor: paperTheme.colors.surface }]}>
+              <Text variant="titleLarge" style={{ fontWeight: "700", marginBottom: 4 }}>New document</Text>
+              <Text variant="bodySmall" style={{ color: paperTheme.colors.onSurfaceVariant, marginBottom: 16 }}>
+                Will be saved to {(room?.subject ?? "general")} documents
+              </Text>
+              <TextInput mode="outlined" label="Title" value={canvasTitle} onChangeText={setCanvasTitle} placeholder="Canvas notes" style={{ marginBottom: 12 }} />
+              <TextInput mode="outlined" label="Content" value={canvasContent} onChangeText={setCanvasContent} placeholder="Start writing..." multiline style={{ minHeight: 200, maxHeight: 350 }} />
+              <View style={{ flexDirection: "row", gap: 8, marginTop: 16 }}>
+                <Button mode="outlined" onPress={() => { setShowCanvas(false); setCanvasTitle(""); setCanvasContent(""); }} style={{ flex: 1, borderRadius: SHAPE.lg }}>Cancel</Button>
+                <Button mode="contained" buttonColor={brand.primary} onPress={handleSaveCanvas} loading={savingCanvas} style={{ flex: 1, borderRadius: SHAPE.lg }}>Save</Button>
+              </View>
+            </Modal>
+
+          </Portal>
+        )}
+      </>
+      )}
+    </ExpressiveScreen>
+  </KeyboardAvoidingView>
   );
 }
 
@@ -658,6 +798,7 @@ const styles = StyleSheet.create({
   composer: { paddingTop: 10, paddingHorizontal: 12, borderTopWidth: StyleSheet.hairlineWidth, gap: 8 },
   input: { borderRadius: SHAPE.pill },
   modal: { margin: 16, padding: 24, borderRadius: 26 },
+
   docRow: { flexDirection: "row", alignItems: "center", gap: 10, padding: 12 },
   docItem: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 8, paddingHorizontal: 4, borderRadius: 8 },
   statusDot: { width: 8, height: 8, borderRadius: 4 },

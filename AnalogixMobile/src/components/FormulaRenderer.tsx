@@ -1,7 +1,7 @@
 import React, { useRef, useState, useCallback, useMemo } from "react";
 import { StyleSheet, View, Text, Platform } from "react-native";
 import { WebView } from "react-native-webview";
-import { renderLatex, stripDelimiters } from "../utils/katexUtils";
+import { renderLatex, stripDelimiters, KATEX_CSS } from "../utils/katexUtils";
 
 interface Props {
   math: string;
@@ -32,12 +32,13 @@ export default function FormulaRenderer({ math, style, minHeight: minH = 48 }: P
     );
   }
 
+  const katexNoFonts = KATEX_CSS.replace(/@font-face\{[^}]*\}/g, "");
   const html = `<!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.28/dist/katex.min.css">
+<style>${katexNoFonts}</style>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{width:100%;min-height:100%}
@@ -73,9 +74,10 @@ body{display:flex;align-items:center;justify-content:center;padding:6px 4px;font
         bounces={false}
         showsVerticalScrollIndicator={false}
         showsHorizontalScrollIndicator={false}
-        originWhitelist={["*"]}
+        originWhitelist={[]}
         javaScriptEnabled={true}
-        domStorageEnabled={true}
+        domStorageEnabled={false}
+        allowFileAccess={false}
         onMessage={handleMessage}
         onError={() => setWebViewError(true)}
         onHttpError={() => setWebViewError(true)}

@@ -178,7 +178,11 @@ export function ExpressiveScreen({
         <View style={[styles.screenContent, contentStyle, { flex: 1 }]}>
           {children}
         </View>
-        {fab}
+        {fab && (
+          <View style={styles.fabContainer}>
+            {fab}
+          </View>
+        )}
       </View>
     );
   }
@@ -524,7 +528,9 @@ const styles = StyleSheet.create({
   },
 
   section: {
-    gap: 12,
+    gap: 16,
+    paddingBottom: 8,
+    paddingHorizontal: 20,
   },
   sectionHeader: {
     flexDirection: "row",

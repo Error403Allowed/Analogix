@@ -1,5 +1,5 @@
-import React, { useMemo, useCallback, useRef, useEffect } from "react";
-import { View, StyleSheet, Dimensions, Platform } from "react-native";
+import React, { useMemo, useCallback, useRef, useEffect, useState } from "react";
+import { View, Text, StyleSheet, Dimensions, Platform } from "react-native";
 
 let WebView: any = () => null;
 let WebViewMessageEvent: any = null;
@@ -138,26 +138,15 @@ function renderMarkdownToHtml(markdown: string, blockIndex: { current: number })
   return html;
 }
 
-function buildHtml(markdown: string): { html: string; codes: string[] } {
+function buildHtml(markdown: string): { html: string } {
   const blockIndex = { current: 0 };
-  const codes: string[] = [];
 
   const body = renderMarkdownToHtml(markdown, blockIndex);
 
   const scripts = `
-    var codeBlocks = ${JSON.stringify(codes)};
     document.addEventListener("DOMContentLoaded", function() {
       document.querySelectorAll("pre code").forEach(function(block) {
         hljs.highlightElement(block);
-      });
-      document.querySelectorAll(".run-btn").forEach(function(btn) {
-        btn.addEventListener("click", function(e) {
-          e.stopPropagation();
-          var idx = parseInt(this.getAttribute("data-code-idx"));
-          if (!isNaN(idx) && codeBlocks[idx]) {
-            window.ReactNativeWebView.postMessage(JSON.stringify({type:'run-code', index: idx}));
-          }
-        });
       });
       if (window.renderMathInElement) {
         renderMathInElement(document.body, {
@@ -180,6 +169,19 @@ function buildHtml(markdown: string): { html: string; codes: string[] } {
       <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
       <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.28/dist/katex.min.css">
       <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+      <style>
+        @font-face{font-family:'KaTeX_AMS';src:local('serif');font-display:swap}
+        @font-face{font-family:'KaTeX_Caligraphic';src:local('serif');font-display:swap}
+        @font-face{font-family:'KaTeX_Fraktur';src:local('serif');font-display:swap}
+        @font-face{font-family:'KaTeX_Main';src:local('serif');font-display:swap}
+        @font-face{font-family:'KaTeX_Math';src:local('serif');font-display:swap}
+        @font-face{font-family:'KaTeX_SansSerif';src:local('serif');font-display:swap}
+        @font-face{font-family:'KaTeX_Script';src:local('serif');font-display:swap}
+        @font-face{font-family:'KaTeX_Size1';src:local('serif');font-display:swap}
+        @font-face{font-family:'KaTeX_Size2';src:local('serif');font-display:swap}
+        @font-face{font-family:'KaTeX_Size3';src:local('serif');font-display:swap}
+        @font-face{font-family:'KaTeX_Size4';src:local('serif');font-display:swap}
+        @font-face{font-family:'KaTeX_Typewriter';src:local('serif');font-display:swap}
       <script src="https://cdn.jsdelivr.net/npm/katex@0.16.28/dist/katex.min.js"></script>
       <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
       <script src="https://cdn.jsdelivr.net/npm/katex@0.16.28/dist/contrib/auto-render.min.js"></script>
@@ -275,7 +277,7 @@ function buildHtml(markdown: string): { html: string; codes: string[] } {
     <body>${body}</body>
     </html>
   `;
-  return { html, codes };
+  return { html };
 }
 
 function extractCodes(markdown: string): string[] {
@@ -291,13 +293,15 @@ function extractCodes(markdown: string): string[] {
 export function MarkdownRenderer({ content, maxWidth, style, onRunCode }: Props) {
   const codesRef = useRef<string[]>([]);
 
-  const { html, codes } = useMemo(() => {
+  const { html } = useMemo(() => {
     const normalised = normaliseLatex(content);
     codesRef.current = extractCodes(content);
     return buildHtml(normalised);
   }, [content]);
 
   const width = maxWidth ?? Math.min(SCREEN_WIDTH - 80, 400);
+
+  const [webViewError, setWebViewError] = useState(false);
 
   const handleMessage = useCallback((event: any) => {
     try {
@@ -311,6 +315,14 @@ export function MarkdownRenderer({ content, maxWidth, style, onRunCode }: Props)
     } catch { /* noop */ }
   }, [onRunCode]);
 
+  if (webViewError) {
+    return (
+      <View style={[styles.container, style, { padding: 8, backgroundColor: "#f9fafb" }]}>
+        <Text style={{ fontSize: 12, color: "#6b7280" }}>{content}</Text>
+      </View>
+    );
+  }
+
   return (
     <View style={[styles.container, style]}>
       {Platform.OS === "web" ? (
@@ -321,10 +333,13 @@ export function MarkdownRenderer({ content, maxWidth, style, onRunCode }: Props)
           style={{ width, height: 1, backgroundColor: "transparent" }}
           scrollEnabled={false}
           showsVerticalScrollIndicator={false}
-          javaScriptEnabled
-          domStorageEnabled
+          javaScriptEnabled={true}
+          domStorageEnabled={false}
           onMessage={handleMessage}
-          originWhitelist={["*"]}
+          onError={() => setWebViewError(true)}
+          onHttpError={() => setWebViewError(true)}
+          originWhitelist={[]}
+          allowFileAccess={false}
         />
       )}
     </View>
@@ -332,16 +347,19 @@ export function MarkdownRenderer({ content, maxWidth, style, onRunCode }: Props)
 }
 
 function WebMarkdown({ html, width }: { html: string; width: number }) {
-  const ref = useRef<any>(null);
+  const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
     el.innerHTML = html;
-    const scripts = el.querySelectorAll("script");
-    scripts.forEach((old: HTMLScriptElement) => {
+    el.querySelectorAll("script").forEach((old) => {
       const s = document.createElement("script");
-      s.textContent = old.textContent;
+      if (old.src) {
+        s.src = old.src;
+      } else {
+        s.textContent = old.textContent;
+      }
       old.parentNode?.replaceChild(s, old);
     });
   }, [html]);

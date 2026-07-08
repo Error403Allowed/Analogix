@@ -65,7 +65,8 @@
           "iCloudContainerEnvironment": "Production"
         }
       ],
-      "expo-notifications"
+      "expo-notifications",
+      "expo-secure-store"
     ],
     "extra": {
       "eas": {

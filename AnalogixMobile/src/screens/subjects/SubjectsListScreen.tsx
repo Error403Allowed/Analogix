@@ -79,7 +79,7 @@ export default function SubjectsListScreen() {
     >
       {subjects.length > 0 && (
         <>
-          <Searchbar placeholder="Search subjects" value={search} onChangeText={setSearch} style={{ marginHorizontal: 12, marginBottom: 8 }} />
+          <Searchbar placeholder="Search subjects" value={search} onChangeText={setSearch} style={{ marginHorizontal: 16, marginBottom: 12 }} />
           <SegmentedButtons
             value={viewMode}
             onValueChange={(v) => setViewMode(v as "grid" | "list")}
@@ -87,7 +87,7 @@ export default function SubjectsListScreen() {
               { value: "grid", icon: "view-grid" },
               { value: "list", icon: "view-list" },
             ]}
-            style={{ marginHorizontal: 12, marginBottom: 8 }}
+            style={{ marginHorizontal: 16, marginBottom: 16 }}
           />
         </>
       )}
@@ -132,7 +132,7 @@ export default function SubjectsListScreen() {
             )}
           </View>
         ) : (
-          <View style={{ gap: 8 }}>
+          <View style={{ gap: 12 }}>
             {subjects.length === 0 ? (
               <ExpressiveEmptyState icon="school-outline" title="No subjects yet" subtitle={search ? "No subjects match your search." : "Set your subjects in onboarding to see them here."} />
             ) : (
@@ -180,7 +180,7 @@ export default function SubjectsListScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  grid: { flexDirection: "row", flexWrap: "wrap", gap: 16, justifyContent: "space-between" },
+  grid: { flexDirection: "row", flexWrap: "wrap", gap: 20, justifyContent: "space-between" },
   card: { minHeight: 160, justifyContent: "space-between" },
   cardTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   iconWrap: { width: 52, height: 52, borderRadius: 20, alignItems: "center", justifyContent: "center" },

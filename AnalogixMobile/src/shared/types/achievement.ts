@@ -6,6 +6,7 @@ export interface Achievement {
   description: string;
   icon: string;
   category: AchievementCategory;
+  condition?: (stats: Record<string, any>) => boolean;
 }
 
 export interface UnlockedAchievement {

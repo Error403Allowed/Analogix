@@ -95,7 +95,7 @@ function getEmailError(code: string | null, message: string | null): string {
   const c = (code || "").toLowerCase();
   const m = (message || "").toLowerCase();
   if (c === "invalid_credentials" || c === "wrong_password" || m.includes("invalid login credentials")) {
-    return "Invalid email of password. Maybe you signed in using google?.";
+    return "Invalid email or password. Maybe you signed in using Google.";
   }
   if (c === "email_not_confirmed" || m.includes("email not confirmed")) {
     return "Please confirm your email first — check your inbox.";

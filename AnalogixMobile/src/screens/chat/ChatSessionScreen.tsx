@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import { View, StyleSheet, FlatList, KeyboardAvoidingView, Platform, Pressable, TextInput as RNTextInput, Alert, Modal } from "react-native";
 import { Text, useTheme, ActivityIndicator, Searchbar } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -24,6 +24,37 @@ import { readAsStringAsync } from "expo-file-system/legacy";
 import { useQuery as useApolloQuery } from "@apollo/client";
 import { ME } from "../../graphql/queries/user";
 import { FORMULA_SHEETS } from "../../graphql/queries/misc";
+import { GraphPlotter } from "../../components/GraphPlotter";
+
+function desmosBlocks(content: string): { text: string; expressions: string[] }[] {
+  const parts = content.split(/(```desmos[\s\S]*?```)/);
+  const blocks: { text: string; expressions: string[] }[] = [];
+  for (const part of parts) {
+    if (part.startsWith("```desmos")) {
+      const inner = part.replace(/```desmos\n?/, "").replace(/```$/, "").trim();
+      const exprs = inner.split("\n").filter(l => !l.trim().startsWith("[") && l.trim());
+      if (exprs.length > 0) blocks.push({ text: "", expressions: exprs });
+    } else if (part.trim()) {
+      blocks.push({ text: part, expressions: [] });
+    }
+  }
+  return blocks;
+}
+
+function MarkdownWithGraphs({ content, onRunCode }: { content: string; onRunCode?: (code: string) => void }) {
+  const blocks = useMemo(() => desmosBlocks(content), [content]);
+  return (
+    <View>
+      {blocks.map((block, i) =>
+        block.expressions.length > 0 ? (
+          <GraphPlotter key={`g-${i}`} expressions={block.expressions} height={250} />
+        ) : (
+          block.text ? <MarkdownRenderer key={`m-${i}`} content={block.text} onRunCode={onRunCode} /> : null
+        )
+      )}
+    </View>
+  );
+}
 
 interface AttachedFile {
   name: string;
@@ -525,7 +556,7 @@ export default function ChatSessionScreen() {
               <View style={{ paddingHorizontal: 20, marginBottom: 16 }}>
                 {parsed.thinking && <ThinkingBlock content={parsed.thinking} />}
                 {parsed.response ? (
-                  <MarkdownRenderer content={parsed.response} onRunCode={handleRunCode} />
+                  <MarkdownWithGraphs content={parsed.response} onRunCode={handleRunCode} />
                 ) : null}
                 <View style={{ flexDirection: "row", alignItems: "center", marginTop: 8, gap: 6 }}>
                   <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: paperTheme.colors.primary }}>
@@ -600,7 +631,7 @@ export default function ChatSessionScreen() {
               <View style={styles.assistantMsg}>
                 {parsed.thinking && <ThinkingBlock content={parsed.thinking} />}
                 {parsed.response ? (
-                  <MarkdownRenderer content={parsed.response} onRunCode={handleRunCode} />
+                  <MarkdownWithGraphs content={parsed.response} onRunCode={handleRunCode} />
                 ) : null}
               </View>
               <View style={styles.assistantActions}>

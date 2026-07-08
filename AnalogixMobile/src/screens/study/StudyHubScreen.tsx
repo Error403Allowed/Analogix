@@ -27,12 +27,22 @@ const TOOLS: StudyTool[] = [
   { key: "calendar", name: "Calendar", icon: "calendar", description: "Upcoming events and deadlines", screen: "Calendar", color: "#f59e0b" },
   { key: "formulas", name: "Formulas", icon: "function", description: "Formula sheets and references", screen: "Formulas", color: "#10b981" },
   { key: "timer", name: "Timer", icon: "timer", description: "Focus and break time tracking", screen: "Timer", color: "#ef4444" },
+  { key: "resources", name: "Resources", icon: "bookmark-multiple", description: "Past papers, textbooks and study links", screen: "Resources", color: "#a855f7" },
+  { key: "curriculum", name: "Curriculum", icon: "school", description: "ACARA Australian Curriculum browser", screen: "CurriculumBrowser", color: "#06b6d4" },
 ];
 
 export default function StudyHubScreen() {
   const paperTheme = useTheme();
   const { brand } = useThemeContext();
   const navigation = useNavigation<any>();
+
+  const navigateTo = (screen: string) => {
+    if (screen === "CurriculumBrowser") {
+      navigation.navigate("Subjects", { screen: "CurriculumBrowser" });
+    } else {
+      navigation.navigate(screen);
+    }
+  };
 
   return (
     <ExpressiveScreen 
@@ -44,7 +54,7 @@ export default function StudyHubScreen() {
           {TOOLS.map((tool) => (
             <PressableScale
               key={tool.key}
-              onPress={() => navigation.navigate(tool.screen)}
+              onPress={() => navigateTo(tool.screen)}
             >
               <View style={[styles.toolCard, { backgroundColor: paperTheme.colors.surface, boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }]}>
                 <View style={[styles.iconBox, { backgroundColor: tool.color + "16" }]}>

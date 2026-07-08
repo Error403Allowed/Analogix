@@ -4,26 +4,30 @@ import {
   StyleSheet,
   ScrollView,
   Pressable,
-  useWindowDimensions,
   TextInput,
+  Platform,
 } from "react-native";
 import { Text, useTheme, ActivityIndicator } from "react-native-paper";
 import { useQuery } from "@apollo/client";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { FORMULA_SHEETS, SEARCH_FORMULAS } from "../../graphql/queries/misc";
 import { useNavigation } from "@react-navigation/native";
 import { useThemeContext } from "../../theme/ThemeContext";
 import { SHAPE } from "../../theme/tokens";
 import Animated, {
-  FadeInDown,
-  SlideInRight,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
 } from "react-native-reanimated";
 import Icon from "../../components/Icon";
+import BatchFormulaRenderer from "../../components/BatchFormulaRenderer";
 import FormulaRenderer from "../../components/FormulaRenderer";
+import { renderLatex, KATEX_CSS } from "../../utils/katexUtils";
 import { ExpressiveScreen, ExpressiveEmptyState } from "../../components/expressive";
 import { SkeletonList } from "../../components/SkeletonLoader";
+import { FORMULA_SHEET_DATA } from "../../shared/formulas";
+
+const FAVORITES_KEY = "formula_favorites";
 
 function FilterChip({
   label,
@@ -68,81 +72,54 @@ function FilterChip({
   );
 }
 
-function FormulaCard({
-  name,
-  latex,
-  description,
-  subjectColor,
-  subjectName,
-  catName,
-  themeSurface,
-  themeOutlineVariant,
-  themeOnSurface,
-  themeOnSurfaceVariant,
-}: {
-  name: string;
-  latex: string;
-  description?: string;
-  subjectColor: string;
-  subjectName?: string;
-  catName?: string;
-  themeSurface: string;
-  themeOutlineVariant: string;
-  themeOnSurface: string;
-  themeOnSurfaceVariant: string;
-}) {
+if (Platform.OS === "web" && typeof document !== "undefined" && !document.getElementById("katex-css")) {
+  const style = document.createElement("style");
+  style.id = "katex-css";
+  style.textContent = KATEX_CSS;
+  document.head.appendChild(style);
+}
+
+function WebFormulaCard({ name, latex, description, onPress, onToggleFavorite, isFavorite }: { name: string; latex: string; description?: string; onPress?: () => void; onToggleFavorite?: () => void; isFavorite?: boolean }) {
+  const { colors } = useTheme();
+  const { isDark } = useThemeContext();
+  const latexRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (latexRef.current) {
+      latexRef.current.innerHTML = renderLatex(latex, true);
+    }
+  }, [latex]);
+
+  useEffect(() => {
+    if (!isDark || !latexRef.current) return;
+    const style = document.createElement("style");
+    style.textContent = ".katex,.katex .katex-html,.katex .katex-mathml,.katex .base,.katex .strut{color:#e5e7eb}";
+    latexRef.current.parentElement!.insertBefore(style, latexRef.current);
+    return () => style.remove();
+  }, [isDark]);
+
+  const bg = colors.surface;
+  const border = colors.outlineVariant;
+  const text = colors.onSurface;
+  const desc = colors.onSurfaceVariant;
+
   return (
-    <Animated.View entering={FadeInDown.duration(250).springify().damping(22)}>
-      <View
-        style={[
-          styles.formulaCard,
-          { backgroundColor: themeSurface, borderColor: themeOutlineVariant },
-        ]}
-      >
-        <View style={styles.formulaCardHeader}>
-          <Text
-            style={[styles.formulaName, { color: themeOnSurface }]}
-            numberOfLines={1}
-          >
-            {name}
-          </Text>
-          <View style={{ flexDirection: "row", gap: 4 }}>
-            {catName ? (
-              <View style={[styles.formulaBadge, { backgroundColor: subjectColor + "14" }]}>
-                <Text style={[styles.formulaBadgeText, { color: subjectColor }]}>
-                  {catName}
-                </Text>
-              </View>
-            ) : null}
-            {subjectName ? (
-              <View style={[styles.formulaBadge, { backgroundColor: subjectColor + "14" }]}>
-                <Text style={[styles.formulaBadgeText, { color: subjectColor }]}>
-                  {subjectName}
-                </Text>
-              </View>
-            ) : null}
-          </View>
-        </View>
-
-        <View
-          style={[
-            styles.latexBox,
-            { backgroundColor: subjectColor + "06", borderColor: themeOutlineVariant },
-          ]}
-        >
-          <FormulaRenderer math={latex} style={styles.formulaPreview} minHeight={36} />
-        </View>
-
-        {description ? (
-          <Text
-            style={[styles.formulaDesc, { color: themeOnSurfaceVariant }]}
-            numberOfLines={2}
-          >
-            {description}
-          </Text>
-        ) : null}
+    <Pressable onPress={onPress} style={({ pressed }) => [styles.formulaCard, { backgroundColor: bg, borderColor: border }, pressed && Platform.OS === "web" ? { opacity: 0.8 } : null]}>
+      <View style={styles.formulaCardTop}>
+        <Text style={[styles.formulaName, { color: text }]} numberOfLines={1}>{name}</Text>
+        {onToggleFavorite && (
+          <Pressable onPress={onToggleFavorite} hitSlop={8}>
+            <Icon name={isFavorite ? "star" : "star-outline"} size={16} color={isFavorite ? "#F59E0B" : desc} />
+          </Pressable>
+        )}
       </View>
-    </Animated.View>
+      <View style={[styles.latexBox, { backgroundColor: bg, borderColor: border }]}>
+        <div ref={latexRef} />
+      </View>
+      {description ? (
+        <Text style={[styles.formulaDesc, { color: desc }]} numberOfLines={2}>{description}</Text>
+      ) : null}
+    </Pressable>
   );
 }
 
@@ -153,16 +130,45 @@ export default function FormulasScreen() {
   const [q, setQ] = useState("");
   const [activeSubject, setActiveSubject] = useState<string | null>(null);
   const [activeTopic, setActiveTopic] = useState<string | null>(null);
+  const [favorites, setFavorites] = useState<Set<string>>(new Set());
+  const [favsLoaded, setFavsLoaded] = useState(false);
   const searchRef = useRef<TextInput>(null);
 
-  const { data, loading } = useQuery(FORMULA_SHEETS);
+  useEffect(() => {
+    AsyncStorage.getItem(FAVORITES_KEY).then((v) => {
+      if (v) setFavorites(new Set(JSON.parse(v)));
+      setFavsLoaded(true);
+    });
+  }, []);
+
+  const toggleFavorite = useCallback(async (id: string) => {
+    const next = new Set(favorites);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setFavorites(next);
+    await AsyncStorage.setItem(FAVORITES_KEY, JSON.stringify([...next]));
+  }, [favorites]);
+
+  const handleFormulaPress = useCallback((formulaId: string, subjectId: string, subjectName: string, categoryName: string) => {
+    navigation.navigate("FormulaDetail", { formulaId, subjectId, subjectName, categoryName });
+  }, [navigation]);
+
+  const { data } = useQuery(FORMULA_SHEETS);
   const { data: searchData, loading: searchLoading } = useQuery(SEARCH_FORMULAS, {
     variables: { query: q.trim() },
     skip: q.trim().length < 2,
   });
 
-  const sheets = useMemo(() => data?.formulaSheets ?? [], [data]);
-  const searchResults = useMemo(() => searchData?.searchFormulas ?? [], [searchData]);
+  const sheets = useMemo(() => {
+    return FORMULA_SHEET_DATA;
+  }, []);
+  const searchResults = useMemo(() => {
+    if (searchData?.searchFormulas?.length) return searchData.searchFormulas;
+    if (!data?.formulaSheets?.length && !searchData) {
+      return [];
+    }
+    return [];
+  }, [searchData, data]);
   const isSearching = q.trim().length >= 2;
 
   const subjectNames = useMemo(
@@ -239,6 +245,22 @@ export default function FormulasScreen() {
     [filteredGroups],
   );
 
+  const favoriteFormulas = useMemo(() => {
+    if (favorites.size === 0 || !favsLoaded) return [];
+    const result: Array<{ formula: any; subjectId: string; subjectName: string; categoryName: string }> = [];
+    for (const sheet of sheets) {
+      for (const cat of sheet.categories) {
+        for (const f of cat.formulas) {
+          const id = f.id || f.name || "";
+          if (favorites.has(id)) {
+            result.push({ formula: f, subjectId: sheet.subjectId, subjectName: sheet.subjectName, categoryName: cat.name });
+          }
+        }
+      }
+    }
+    return result;
+  }, [sheets, favorites, favsLoaded]);
+
   const handleClear = useCallback(() => {
     setQ("");
     setActiveSubject(null);
@@ -254,13 +276,23 @@ export default function FormulasScreen() {
     background,
   } = paperTheme.colors;
 
+  const formulaTheme = useMemo(() => ({
+    text: onSurface,
+    textSecondary: onSurfaceVariant,
+    cardBg: surface,
+    cardBorder: outlineVariant,
+    descBg: surfaceVariant,
+    descText: onSurfaceVariant,
+    fallbackBg: surfaceVariant,
+    fallbackText: onSurfaceVariant,
+  }), [onSurface, onSurfaceVariant, surface, outlineVariant, surfaceVariant]);
+
   return (
     <ExpressiveScreen
       title="Formulas"
       eyebrow="Reference"
       leadingIcon="sigma"
       onBack={() => navigation.goBack()}
-      scroll={false}
       contentStyle={{ padding: 0, gap: 0 }}
     >
       <View style={[styles.searchWrap, { backgroundColor: background }]}>
@@ -364,104 +396,130 @@ export default function FormulasScreen() {
         </Text>
       </View>
 
-      <ScrollView
-        style={[styles.scrollArea, { backgroundColor: background }]}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {loading || searchLoading ? (
-          <SkeletonList count={3} style={{ marginTop: 8 }} />
-        ) : isSearching && searchResults.length === 0 ? (
-          <ExpressiveEmptyState
-            icon="sigma"
-            title="No results"
-            subtitle="Try a different search term."
-          />
-        ) : isSearching ? (
-          searchGroups.map((group) => (
-            <View key={group.subjectId} style={styles.groupSection}>
-              <Text
-                style={[styles.sectionTitle, { color: brand.primary }]}
-              >
-                {group.subjectName}
-              </Text>
-              {group.formulas.map((f: any) => (
-                <FormulaCard
-                  key={f.id}
-                  name={f.name}
-                  latex={f.latex}
-                  description={f.description}
-                  subjectColor={brand.primary}
-                  catName={f.category}
-                  themeSurface={surface}
-                  themeOutlineVariant={outlineVariant}
-                  themeOnSurface={onSurface}
-                  themeOnSurfaceVariant={onSurfaceVariant}
-                />
-              ))}
-            </View>
-          ))
-        ) : formulaCount === 0 ? (
-          <ExpressiveEmptyState
-            icon="sigma"
-            title="No formulas"
-            subtitle="No formulas available yet."
-          />
-        ) : (
-          filteredGroups.map((group) => (
-            <View key={group.subjectId} style={styles.groupSection}>
-              <Text style={[styles.sectionTitle, { color: onSurface }]}>
-                {group.subjectName}
-              </Text>
-              {group.categories.map((cat: any) => (
-                <View key={cat.name} style={styles.categoryBlock}>
-                  <View
-                    style={[
-                      styles.categoryHeader,
-                      { backgroundColor: brand.primary + "10" },
-                    ]}
-                  >
-                    <Icon
-                      name="book"
-                      size={16}
-                      color={brand.primary}
-                    />
-                    <Text
-                      style={[
-                        styles.categoryName,
-                        { color: onSurface },
-                      ]}
-                    >
-                      {cat.name}
-                    </Text>
-                    <Text
-                      style={[
-                        styles.categoryCount,
-                        { color: onSurfaceVariant },
-                      ]}
-                    >
-                      {cat.formulas.length}
-                    </Text>
-                  </View>
-                  {cat.formulas.map((f: any) => (
-                    <FormulaCard
-                      key={f.id}
-                      name={f.name}
-                      latex={f.latex}
-                      description={f.description}
-                      subjectColor={brand.primary}
-                      themeSurface={surface}
-                      themeOutlineVariant={outlineVariant}
-                      themeOnSurface={onSurface}
-                      themeOnSurfaceVariant={onSurfaceVariant}
-                    />
+      {!isSearching && favoriteFormulas.length > 0 && (
+        <View style={{ paddingHorizontal: 16, paddingVertical: 10 }}>
+          <Text style={[styles.sectionLabel, { color: brand.primary }]}>Favorites</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
+            {favoriteFormulas.slice(0, 8).map((item) => {
+              const id = item.formula.id || item.formula.name || "";
+              return (
+                <Pressable
+                  key={id}
+                  onPress={() => handleFormulaPress(id, item.subjectId, item.subjectName, item.categoryName)}
+                  style={[styles.favoriteCard, { backgroundColor: surface, borderColor: outlineVariant }]}
+                >
+                  <Text style={[styles.favCardName, { color: onSurface }]} numberOfLines={1}>{item.formula.name}</Text>
+                  <Text style={[styles.favCardSubject, { color: onSurfaceVariant }]}>{item.subjectName}</Text>
+                  <Pressable onPress={() => toggleFavorite(id)} hitSlop={8} style={{ position: "absolute", top: 6, right: 6 }}>
+                    <Icon name="star" size={14} color="#F59E0B" />
+                  </Pressable>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        </View>
+      )}
+
+      {searchLoading ? (
+        <SkeletonList count={3} style={{ marginTop: 8 }} />
+      ) : isSearching && searchResults.length === 0 ? (
+        <ExpressiveEmptyState
+          icon="sigma"
+          title="No results"
+          subtitle="Try a different search term."
+        />
+      ) : formulaCount === 0 && !isSearching ? (
+        <ExpressiveEmptyState
+          icon="sigma"
+          title="No formulas"
+          subtitle="No formulas available yet."
+        />
+      ) : Platform.OS === "web" ? (
+        <View style={styles.scrollContent}>
+        {isSearching
+          ? searchGroups.map((group) => (
+              <View key={group.subjectId} style={styles.groupSection}>
+                <Text style={[styles.sectionTitle, { color: brand.primary }]}>
+                  {group.subjectName}
+                </Text>
+                  {group.formulas.map((f: any) => {
+                    const fid = f.id || f.name || "";
+                    return (
+                      <WebFormulaCard
+                        key={fid}
+                        name={f.name}
+                        latex={f.latex}
+                        description={f.description}
+                        onPress={() => handleFormulaPress(fid, group.subjectId, group.subjectName, group.subjectName)}
+                        onToggleFavorite={() => toggleFavorite(fid)}
+                        isFavorite={favorites.has(fid)}
+                      />
+                    );
+                  })}
+                </View>
+              ))
+            : filteredGroups.map((group) => (
+                <View key={group.subjectId} style={styles.groupSection}>
+                  <Text style={[styles.sectionTitle, { color: onSurface }]}>
+                    {group.subjectName}
+                  </Text>
+                  {group.categories.map((cat: any) => (
+                    <View key={cat.name} style={styles.categoryBlock}>
+                      <View style={[styles.categoryHeader, { backgroundColor: brand.primary + "10" }]}>
+                        <Icon name="book" size={16} color={brand.primary} />
+                        <Text style={[styles.categoryName, { color: onSurface }]}>{cat.name}</Text>
+                        <Text style={[styles.categoryCount, { color: onSurfaceVariant }]}>{cat.formulas.length}</Text>
+                      </View>
+                      <View>
+                        {cat.formulas.map((f: any) => {
+                          const fid = f.id || f.name || "";
+                          return (
+                            <WebFormulaCard
+                              key={fid}
+                              name={f.name}
+                              latex={f.latex}
+                              description={f.description}
+                              onPress={() => handleFormulaPress(fid, group.subjectId, group.subjectName, cat.name)}
+                              onToggleFavorite={() => toggleFavorite(fid)}
+                              isFavorite={favorites.has(fid)}
+                            />
+                          );
+                        })}
+                      </View>
+                    </View>
                   ))}
                 </View>
               ))}
-            </View>
-          ))
-        )}
-      </ScrollView>
+        </View>
+      ) : Platform.OS === "android" || Platform.OS === "ios" ? (
+        <View style={styles.scrollContent}>
+        {isSearching
+          ? searchGroups.map((group) => (
+              <View key={group.subjectId} style={styles.groupSection}>
+                <Text style={[styles.sectionTitle, { color: brand.primary }]}>
+                  {group.subjectName}
+                </Text>
+                <BatchFormulaRenderer
+                  categories={[{ name: group.subjectName, formulas: group.formulas }]}
+                  minHeight={48}
+                  theme={formulaTheme}
+                />
+              </View>
+            ))
+          : filteredGroups.map((group) => (
+              <View key={group.subjectId} style={styles.groupSection}>
+                <Text style={[styles.sectionTitle, { color: onSurface }]}>
+                  {group.subjectName}
+                </Text>
+                <BatchFormulaRenderer
+                  categories={group.categories}
+                  minHeight={48}
+                  theme={formulaTheme}
+                />
+              </View>
+            ))}
+        </View>
+      ) : null}
     </ExpressiveScreen>
   );
 }
@@ -520,10 +578,10 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 
-  scrollArea: { flex: 1 },
   scrollContent: {
     padding: 12,
     paddingBottom: 40,
+    flexGrow: 1,
   },
 
   groupSection: {
@@ -558,6 +616,31 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 
+  sectionLabel: {
+    fontSize: 13,
+    fontWeight: "700",
+    marginBottom: 10,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  favoriteCard: {
+    width: 160,
+    padding: 12,
+    borderRadius: SHAPE.lg,
+    borderWidth: 1,
+    ...Platform.select({ ios: { shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 8 }, android: { elevation: 2 } }),
+  },
+  favCardName: {
+    fontSize: 13,
+    fontWeight: "600",
+    marginBottom: 4,
+    paddingRight: 16,
+  },
+  favCardSubject: {
+    fontSize: 11,
+    fontWeight: "500",
+  },
+
   formulaCard: {
     borderRadius: 14,
     padding: 14,
@@ -574,6 +657,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
     flex: 1,
+  },
+  formulaCardTop: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 10,
   },
   formulaBadge: {
     paddingHorizontal: 8,
