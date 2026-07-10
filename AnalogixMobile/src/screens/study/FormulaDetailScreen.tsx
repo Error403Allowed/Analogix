@@ -12,7 +12,7 @@ import { useRoute, useNavigation, RouteProp } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ExpressiveScreen } from "../../components/expressive";
 import FormulaRenderer from "../../components/FormulaRenderer";
-import { FORMULA_SHEET_DATA } from "../../shared/formulas";
+import { FORMULA_SHEET_DATA } from "@analogix/shared/formulas";
 import { SHAPE } from "../../theme/tokens";
 import Icon from "../../components/Icon";
 

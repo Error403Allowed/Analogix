@@ -8,7 +8,7 @@ import { ACHIEVEMENTS } from "../../graphql/queries/misc";
 import { useThemeContext } from "../../theme/ThemeContext";
 import { SHAPE } from "../../theme/tokens";
 import Icon from "../../components/Icon";
-import type { AchievementCategory } from "../../shared/types/achievement";
+import type { AchievementCategory } from "@analogix/shared/types";
 
 function getAchievementIcon(id: string, fallbackIcon?: string): string {
   if (id.startsWith("streak_")) return "fire";

@@ -16,9 +16,17 @@
       "types": "./dist/curriculum/index.d.ts",
       "import": "./dist/curriculum/index.js"
     },
+    "./curriculum/acara": {
+      "types": "./dist/curriculum/acara-data.d.ts",
+      "import": "./dist/curriculum/acara-data.js"
+    },
     "./formulas": {
       "types": "./dist/formulas/index.d.ts",
       "import": "./dist/formulas/index.js"
+    },
+    "./formulas/web": {
+      "types": "./dist/formulas/web-formulas.d.ts",
+      "import": "./dist/formulas/web-formulas.js"
     },
     "./achievements": {
       "types": "./dist/achievements/index.d.ts",

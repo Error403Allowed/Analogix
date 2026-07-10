@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@apollo/client";
 import { USER_STATS } from "../graphql/queries/user";
 import { ACHIEVEMENTS as ACHIEVEMENTS_QUERY, UNLOCK_ACHIEVEMENT } from "../graphql/queries/misc";
-import { ACHIEVEMENTS } from "../shared/achievements";
+import { ACHIEVEMENTS } from "@analogix/shared/achievements";
 
 const unlockedInSession = new Set<string>();
 

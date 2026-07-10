@@ -9,7 +9,7 @@ import { useThemeContext } from "../../theme/ThemeContext";
 import { ExpressiveCard, ExpressiveEmptyState, ExpressiveScreen, ExpressiveSection } from "../../components/expressive";
 import Icon from "../../components/Icon";
 import SubjectCustomizationSheet from "../../components/SubjectCustomizationSheet";
-import { SUBJECT_CATALOG, mapSubjectIcon } from "../../shared/subjects/catalog";
+import { SUBJECT_CATALOG, mapSubjectIcon } from "@/data/subjects";
 
 export default function SubjectsListScreen() {
   const paperTheme = useTheme();

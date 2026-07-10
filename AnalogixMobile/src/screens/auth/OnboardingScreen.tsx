@@ -17,13 +17,13 @@ import Animated, {
 import { useAuth } from "../../context/AuthContext";
 import { ME, UPDATE_PROFILE } from "../../graphql/queries/user";
 import { IMPORT_ICS } from "../../graphql/queries/calendar";
-import { AUSTRALIAN_STATES, GRADES, type AustralianState, type Grade } from "../../shared/curriculum";
+import { AUSTRALIAN_STATES, GRADES, type AustralianState, type Grade } from "@analogix/shared/curriculum";
 import InterestPicker from "../../components/InterestPicker";
 import { buildHobbyDetails } from "../../utils/interests";
 import { SHAPE } from "../../theme/tokens";
 import { MOTION } from "../../theme/tokens";
 import Icon from "../../components/Icon";
-import { SUBJECT_CATALOG } from "../../shared/subjects/catalog";
+import { SUBJECT_CATALOG } from "@/data/subjects";
 
 const SUBJECTS = SUBJECT_CATALOG.map((s) => s.label);
 

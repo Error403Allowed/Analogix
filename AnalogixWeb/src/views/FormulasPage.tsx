@@ -6,7 +6,7 @@ import { ArrowLeft, Search, Sigma, Star, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import MarkdownRenderer from "@/components/MarkdownRenderer";
-import FORMULA_SHEETS, { Formula, FormulaSheet } from "@/data/formulaSheets";
+import { FORMULA_SHEETS, type Formula, type FormulaSheet } from "@/data/formulaSheets";
 import { SUBJECT_CATALOG } from "@/constants/subjects";
 import { cn } from "@/lib/utils";
 import { NextConfig } from 'next';

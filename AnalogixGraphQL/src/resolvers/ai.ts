@@ -17,6 +17,8 @@ import {
   SpeakInput,
 } from "@analogix/shared/schemas";
 
+import { safeParseJson } from "../utils/json.js";
+
 const safeMath: Record<string, (...args: number[]) => number> = {
   sin: Math.sin, cos: Math.cos, tan: Math.tan,
   asin: Math.asin, acos: Math.acos, atan: Math.atan,
@@ -284,14 +286,4 @@ function buildTutorSystemPrompt(
     `Be clear, structured, encouraging, and use LaTeX ($...$) for math. ` +
     `Use analogies when they genuinely help.${context}${curriculumSection}` +
     `\n\n${validSubjectsPrompt}${subjectsContext}`;
-}
-
-function safeParseJson(raw: string): Record<string, unknown> | null {
-  const match = raw.match(/\{[\s\S]*\}/);
-  if (!match) return null;
-  try {
-    return JSON.parse(match[0]);
-  } catch {
-    return null;
-  }
 }

@@ -4,6 +4,7 @@ import { requireUser } from "./_helpers.js";
 import type { GraphQLContext } from "../context.js";
 import { sanitizeError } from "../utils/errorHandler.js";
 import { GenerateQuizInput, GradeShortAnswerInput, QuizReviewInput } from "@analogix/shared/schemas";
+import { safeParseJson } from "../utils/json.js";
 import { callGroqChat } from "../ai/groq.js";
 import { logger } from "../logger.js";
 
@@ -282,12 +283,4 @@ function safeParseQuiz(raw: string): { questions: Array<Record<string, unknown>>
   }
 }
 
-function safeParseJson(raw: string): Record<string, unknown> | null {
-  const match = raw.match(/\{[\s\S]*\}/);
-  if (!match) return null;
-  try {
-    return JSON.parse(match[0]);
-  } catch {
-    return null;
-  }
-}
+

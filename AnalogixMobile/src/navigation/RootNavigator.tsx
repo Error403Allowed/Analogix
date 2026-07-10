@@ -144,6 +144,7 @@ function MainTabs() {
       <Tabs.Screen name="Study" component={StudyStackNav} />
       <Tabs.Screen name="Subjects" component={SubjectsStackNav} />
       <Tabs.Screen name="Rooms" component={RoomsStackNav} />
+      <Tabs.Screen name="Profile" component={ProfileStackNav} />
     </Tabs.Navigator>
   );
 }

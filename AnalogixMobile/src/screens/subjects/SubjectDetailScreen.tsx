@@ -5,7 +5,7 @@ import { useQuery, useMutation } from "@apollo/client";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import { SUBJECT_DETAIL, SUBJECT, DOCUMENTS, CREATE_DOCUMENT, SAVE_SUBJECT_NOTES, ADD_MARK, DUPLICATE_DOCUMENT } from "../../graphql/queries/subject";
 import { ME } from "../../graphql/queries/user";
-import { RESOURCES, SUBJECT_LABELS } from "../../shared/resources";
+import { RESOURCES, SUBJECT_LABELS } from "@/data/resources";
 import {
   ExpressiveActionPill,
   ExpressiveCard,
@@ -17,7 +17,7 @@ import {
   ExpressiveSection,
 } from "../../components/expressive";
 import Icon from "../../components/Icon";
-import { SUBJECT_CATALOG } from "../../shared/subjects/catalog";
+import { SUBJECT_CATALOG } from "@/data/subjects";
 import { SkeletonList } from "../../components/SkeletonLoader";
 import SubjectCustomizationSheet from "../../components/SubjectCustomizationSheet";
 

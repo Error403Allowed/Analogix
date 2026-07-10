@@ -15,10 +15,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import CursorParticles from "@/components/CursorParticles";
 import { useAuth } from "@/context/AuthContext";
 import { createClient } from "@/lib/supabase/client";
-
-function cn(...inputs: (string | boolean | undefined | null)[]) {
-  return inputs.filter(Boolean).join(" ");
-}
+import { cn } from "@/lib/utils";
 
 function TiltCard({ children, className, delay = 0, onClick }: { children: React.ReactNode; className?: string; delay?: number; onClick?: () => void }) {
   const ref = useRef<HTMLDivElement>(null);

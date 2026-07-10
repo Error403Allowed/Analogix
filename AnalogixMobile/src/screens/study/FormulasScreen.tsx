@@ -25,7 +25,7 @@ import FormulaRenderer from "../../components/FormulaRenderer";
 import { renderLatex, KATEX_CSS } from "../../utils/katexUtils";
 import { ExpressiveScreen, ExpressiveEmptyState } from "../../components/expressive";
 import { SkeletonList } from "../../components/SkeletonLoader";
-import { FORMULA_SHEET_DATA } from "../../shared/formulas";
+import { FORMULA_SHEET_DATA } from "@analogix/shared/formulas";
 
 const FAVORITES_KEY = "formula_favorites";
 

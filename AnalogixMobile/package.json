@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "@apollo/client": "^3.13.1",
+    "@analogix/shared": "*",
     "@expo-google-fonts/space-grotesk": "^0.4.1",
     "@material/material-color-utilities": "^0.3.0",
     "@opentelemetry/api": "^1.9.1",

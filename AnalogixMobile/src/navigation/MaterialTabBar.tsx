@@ -18,6 +18,7 @@ const TAB_CONFIG: Record<string, { icon: string; iconOutline: string; label: str
   Study:    { icon: "book-open-variant",    iconOutline: "book-open-variant-outline",    label: "Study" },
   Subjects: { icon: "school",              iconOutline: "school-outline",               label: "Subjects" },
   Rooms:    { icon: "account-group",       iconOutline: "account-group-outline",        label: "Rooms" },
+  Profile:  { icon: "account-circle",      iconOutline: "account-circle-outline",       label: "Profile" },
 };
 
 export function MaterialTabBar(props: BottomTabBarProps) {

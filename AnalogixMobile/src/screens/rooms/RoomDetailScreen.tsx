@@ -26,7 +26,7 @@ import { ExpressiveCard, ExpressiveEmptyState, ExpressiveScreen } from "../../co
 import Icon from "../../components/Icon";
 import { MarkdownRenderer } from "../../components/MarkdownRenderer";
 import { ThinkingBlock } from "../../components/ThinkingBlock";
-import { parseThinking } from "../../utils/parseThinking";
+import { parseThinkingBlock } from "../../utils/parseThinkingBlock";
 import { CollaborativeEditor } from "../../components/CollaborativeEditor";
 
 export default function RoomDetailScreen() {
@@ -476,7 +476,7 @@ export default function RoomDetailScreen() {
                     }
                     renderItem={({ item }) => {
                       const isUser = item.role === "user";
-                      const { thinking, response } = isUser ? { thinking: null, response: item.text } : parseThinking(item.text);
+                      const { thinking, response } = isUser ? { thinking: null, response: item.text } : parseThinkingBlock(item.text, false);
                       return (
                         <View style={[styles.msgRow, isUser && styles.msgRowUser]}>
                           {!isUser && (
