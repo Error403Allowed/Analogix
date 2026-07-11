@@ -8,6 +8,19 @@
 
 ---
 
+## Table of Contents
+
+- [Screenshots](#screenshots)
+- [The story behind Analogix](#the-story-behind-analogix)
+- [Architecture](#architecture)
+- [The apps](#the-apps)
+- [Getting started](#getting-started)
+- [Environment variables](#environment-variables)
+- [Root-level scripts](#root-level-scripts)
+- [Further reading](#further-reading)
+
+---
+
 ## Screenshots
 
 | Mobile Dashboard | Chat | Web Dashboard |
@@ -22,21 +35,21 @@
 
 ## The story behind Analogix
 
-We were of a mind to put an end to having too many tabs open. There was ChatGPT to get an explanation, Quizlet for the cards, Google Docs for notes, a standalone calendar for what is due and a Pomodoro timer on top of that — with nothing communicating with anything else. So we built a monorepo out of sheer irritation.
+We were of a mind to put an end to having too many tabs open. ChatGPT for explanations, Quizlet for cards, Google Docs for notes, a standalone calendar for deadlines, a Pomodoro timer on top of that — nothing communicating with anything else. So we built a monorepo out of sheer irritation.
 
-Analogix has the essentials for any student, high school or otherwise:
+Analogix has the essentials for any student:
 
-- **AI Tutor** — Backed by Groq it can explain things, put together a quiz or some flashcards to suit your interests. Handy for those last-minute pre-exam jitters.
-- *Flashcards* — SM-2 spaced repetition. You can make your own or let the AI build a set from an uploaded file or a chat session.
-- *Quizzes* — Multiple choice, essay, mixed. Timed or not. The AI will create them from your material.
-- *Calendar* — View by day, week or month. We auto-calculate term dates for every Australian state and will import ICS from your school portal.
-- *Timer* — A configurable Pomodoro to keep track of your sessions and streaks.
-- **Study Schedule** — Let the AI put together a weekly plan based on your subjects and deadlines. Feel free to make adjustments.
-- *Subjects* — For keeping tabs on marks, homework and the syllabus, plus a document editor.
-- *Rooms* — For group work in real time. You get a shared chat, documents and a synced timer.
-- *Formulas* — Subject-based formula sheets rendered in LaTeX and searchable.
-- *Achievements* — Some gamification in the form of XP and badges to make the grind more palatable.
-- **Assessment Guide** — Hand the AI an assessment PDF and it will draft a study plan.
+- **AI Tutor** — Backed by Groq. Explains concepts, generates quizzes and flashcards from your material.
+- **Flashcards** — SM-2 spaced repetition. Create your own or let AI build a set from an uploaded file or chat session.
+- **Quizzes** — Multiple choice, essay, or mixed. Timed or untimed. AI-generated from your content.
+- **Calendar** — Day, week, or month view. Auto-calculates term dates for every Australian state, imports ICS from school portals.
+- **Timer** — Configurable Pomodoro with session and streak tracking.
+- **Study Schedule** — AI generates a weekly plan from your subjects and deadlines. Editable.
+- **Subjects** — Track marks, homework, syllabus, with a built-in document editor.
+- **Rooms** — Real-time group work with shared chat, documents, and a synced timer.
+- **Formulas** — Subject-based formula sheets rendered in LaTeX. Searchable.
+- **Achievements** — XP and badges to make the grind more palatable.
+- **Assessment Guide** — Hand the AI an assessment PDF and it drafts a study plan.
 
 ---
 
@@ -63,54 +76,53 @@ Analogix has the essentials for any student, high school or otherwise:
                     └───────────────────────┘
 ```
 
-Some details on how it is put together:
+Key design decisions:
 
-- There are no duplicate endpoints; the web and mobile apps use the same GraphQL API.
-- We do not need custom auth as the server handles Supabase JWT verification.
-- In development Redis will fall back to in-process PubSub, but in production it is what manages the subscriptions for room sync and chat streaming.
-- Both clients pull their types and schemas from `@analogix/shared`. Make a change to a Zod schema and the rest of the apps follow suit.
+- Web and mobile share the same GraphQL API — no duplicate endpoints.
+- Auth is handled server-side via Supabase JWT verification.
+- Redis PubSub manages subscriptions for room sync and chat streaming (falls back to in-process in dev).
+- Both clients share types and schemas from `@analogix/shared`. Change a Zod schema and the rest follows.
 
 ---
 
-## The Apps
+## The apps
 
 | Package | Description | Tech stack |
 |---------|-------------|------------|
-| `AnalogixWeb` | Web client | Next.js 16, Turbopack and TypeScript |
-| `AnalogixMobile` | Mobile app | React Native 0.81 on Expo SDK 54 with react-native-paper and Reanimated 4 |
+| `AnalogixWeb` | Web client | Next.js 16, Turbopack, TypeScript |
+| `AnalogixMobile` | Mobile app | React Native 0.81 (Expo SDK 54), react-native-paper, Reanimated 4 |
 | `AnalogixGraphQL` | BFF / GraphQL gateway | Apollo Server v5, Express 5, graphql-ws, Redis |
 | `@analogix/shared` | Common types and schemas | TypeScript, Zod, JSON manifests |
+| `@analogix/mcp` | Model Context Protocol server | TypeScript, exposes app data via MCP |
 
 ---
 
 ## Getting started
 
 ```bash
-# 1. Get the root and workspaces installed
+# 1. Install root and workspace dependencies
 npm install
 
-# 2. Make a copy of the env templates and put in your secrets
+# 2. Copy environment templates and add your secrets
 cp AnalogixGraphQL/.env.example AnalogixGraphQL/.env
 cp AnalogixMobile/.env.example AnalogixMobile/.env
 
-# 3. Do a build on the shared package
+# 3. Build the shared package first (required by all other workspaces)
 npm run build:shared
 
-# 4. Fire up the API (terminal 1)
+# 4. Start the API (terminal 1)
 npm run dev:api      # http://localhost:4000/graphql
 
-# 5. For the web client (terminal 2)
+# 5. Start the web client (terminal 2)
 npm run dev:web      # http://localhost:3000
 
-# 6. And the mobile app (terminal 3)
+# 6. Start the mobile app (terminal 3)
 npm run dev:mobile   # Expo dev server
 ```
 
 ---
 
-## A note on environment variables
-
-The following are required for each application:
+## Environment variables
 
 **AnalogixGraphQL/.env** (Server runtime)
 `PORT`, `NODE_ENV`, `CORS_ORIGINS`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `GROQ_API_KEY`, `GROQ_API_KEY_2`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `DESMOS_API_KEY`, `REDIS_URL`, `LOG_LEVEL`
@@ -123,29 +135,37 @@ The following are required for each application:
 
 ---
 
-## Root level scripts
+## Root-level scripts
 
 | Command | Function |
 |---------|----------|
-| `npm run dev` | Turbo will handle `dev` for all workspaces |
-| `npm run dev:api` | To start the GraphQL BFF |
-| `npm run dev:web` | Next.js dev server |
-| `npm run dev:mobile` | Expo Dev Client |
-| `npm run dev:shared` | Keep an eye on `@analogix/shared` |
-| `npm run build` | Build all of them |
-| `npm run build:shared` | Shared package first |
-| `npm run typecheck` | `tsc --noEmit` in every workspace |
+| `npm run dev` | Starts all workspaces in dev mode |
+| `npm run dev:api` | GraphQL BFF on `:4000` |
+| `npm run dev:web` | Next.js dev server on `:3000` |
+| `npm run dev:mobile` | Expo dev client on `:8081` |
+| `npm run dev:shared` | Watches `@analogix/shared` for changes |
+| `npm run build` | Builds all workspaces in dependency order |
+| `npm run build:shared` | Builds shared package first |
+| `npm run typecheck` | `tsc --noEmit` across all workspaces |
 | `npm run lint` | Run ESLint |
-| `npm run clean` | Clear out the build outputs |
+| `npm run clean` | Clears `dist/`, `.next/`, etc. |
 
 ---
 
 ## Further reading
 
-For anything not covered here, refer to the individual READMEs in the sub-packages:
+Refer to the individual READMEs in each package for details:
 
-- [`AnalogixMobile/README.md`](./AnalogixMobile/README.md): Screenshots, the theming system, EAS builds and how auth works.
-- [`AnalogixGraphQL/README.md`](./AnalogixGraphQL/README.md): Details on the schema, resolvers, deployment and so on.
-- [`AnalogixWeb/README.md`](./AnalogixWeb/README.md): Setup for the web client, pages and some troubleshooting.
+- [`AnalogixGraphQL/README.md`](./AnalogixGraphQL/README.md) — schema, resolvers, deployment.
+- [`AnalogixMobile/README.md`](./AnalogixMobile/README.md) — screenshots, theming, EAS builds, auth.
+- [`AnalogixWeb/README.md`](./AnalogixWeb/README.md) — setup, pages, troubleshooting.
+
+---
+
+## License
+
+Analogix is a private project. All rights reserved.
+
+---
 
 *Disclaimer: While AI has been of assistance in putting together this document and portions of the code, it has all been fact and bug-checked to provide the best experience.*
