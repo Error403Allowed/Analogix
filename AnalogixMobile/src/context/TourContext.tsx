@@ -24,7 +24,12 @@ export const useTour = () => {
   return context;
 };
 
-export function TourProvider({ children }: { children: React.ReactNode }) {
+interface TourProviderProps {
+  children: React.ReactNode;
+  onTourCompleted?: (tourId: string) => void;
+}
+
+export function TourProvider({ children, onTourCompleted }: TourProviderProps) {
   const [activeTour, setActiveTour] = useState<TourConfig | null>(null);
   const [currentStep, setCurrentStep] = useState(0);
   const seenCache = useRef<Set<string>>(new Set());
@@ -41,6 +46,10 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
     await AsyncStorage.setItem(storageKey, "true");
   }, []);
 
+  const syncTour = useCallback((tourId: string) => {
+    onTourCompleted?.(tourId);
+  }, [onTourCompleted]);
+
   const startTour = useCallback((tour: TourConfig) => {
     setActiveTour(tour);
     setCurrentStep(0);
@@ -52,10 +61,11 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
       setCurrentStep(prev => prev + 1);
     } else {
       markSeen(activeTour.storageKey);
+      syncTour(activeTour.id);
       setActiveTour(null);
       setCurrentStep(0);
     }
-  }, [activeTour, currentStep, markSeen]);
+  }, [activeTour, currentStep, markSeen, syncTour]);
 
   const prevStep = useCallback(() => {
     if (currentStep > 0) {
@@ -66,10 +76,11 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
   const endTour = useCallback(() => {
     if (activeTour) {
       markSeen(activeTour.storageKey);
+      syncTour(activeTour.id);
     }
     setActiveTour(null);
     setCurrentStep(0);
-  }, [activeTour, markSeen]);
+  }, [activeTour, markSeen, syncTour]);
 
   return (
     <TourContext.Provider value={{ activeTour, currentStep, startTour, nextStep, prevStep, endTour, hasSeen, markSeen }}>

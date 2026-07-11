@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
-  View, StyleSheet, Platform, Image, useWindowDimensions,
+  View, StyleSheet, Platform, Image, useWindowDimensions, Pressable,
   TextInput as RNTextInput, KeyboardAvoidingView, ScrollView,
 } from "react-native";
 import { Text, useTheme, Button, TextInput } from "react-native-paper";
@@ -91,28 +91,29 @@ function FloatingOrbs({ primary, secondary }: { primary: string; secondary: stri
   );
 }
 
-function getEmailError(code: string | null, message: string | null): string {
+export function getEmailError(code: string | null, message: string | null): string {
   const c = (code || "").toLowerCase();
   const m = (message || "").toLowerCase();
+
   if (c === "invalid_credentials" || c === "wrong_password" || m.includes("invalid login credentials")) {
     return "Invalid email or password. Maybe you signed in using Google.";
   }
   if (c === "email_not_confirmed" || m.includes("email not confirmed")) {
-    return "Please confirm your email first — check your inbox.";
+    return "Please confirm your email address first — check your inbox for a confirmation link.";
   }
   if (c === "user_not_found" || m.includes("user not found")) {
     return "No account found with this email.";
   }
-  if (c === "weak_password" || m.includes("weak password") || m.includes("password should be at least 6")) {
-    return "Password must be at least 6 characters.";
+  if (c === "weak_password" || m.includes("weak password") || m.includes("password should be at least 6") || m.includes("password should be at least 8")) {
+    return "Password must be at least 8 characters with uppercase, lowercase, numbers, and symbols.";
   }
-  if (c === "email_exists" || m.includes("user already registered")) {
+  if (c === "email_exists" || m.includes("already registered") || m.includes("user already registered")) {
     return "An account with this email already exists. Try signing in.";
   }
   if (c === "rate_limit" || m.includes("rate limit") || m.includes("too many requests")) {
-    return "Too many attempts. Please wait and try again.";
+    return "Too many attempts. Please wait a moment and try again.";
   }
-  if (message) return message;
+  if (m) return message!;
   return "Something went wrong. Please try again.";
 }
 
@@ -468,15 +469,11 @@ export default function LoginScreen() {
                 {/* Mode toggle */}
                 <View style={styles.modePill}>
                   {(["signin", "signup"] as const).map((m) => (
-                    <Text
+                    <Pressable
                       key={m}
                       style={[
                         styles.modeOption,
                         {
-                          color:
-                            mode === m
-                              ? paperTheme.colors.onPrimary
-                              : paperTheme.colors.onSurfaceVariant,
                           backgroundColor:
                             mode === m ? paperTheme.colors.primary : "transparent",
                         },
@@ -488,9 +485,21 @@ export default function LoginScreen() {
                         setPassword("");
                         setConfirmPassword("");
                       }}
+                      accessibilityRole="tab"
+                      accessibilityState={{ selected: mode === m }}
                     >
-                      {m === "signin" ? "Sign In" : "Sign Up"}
-                    </Text>
+                      <Text
+                        style={{
+                          color: mode === m
+                            ? paperTheme.colors.onPrimary
+                            : paperTheme.colors.onSurfaceVariant,
+                          fontWeight: "600",
+                          fontSize: 14,
+                        }}
+                      >
+                        {m === "signin" ? "Sign In" : "Sign Up"}
+                      </Text>
+                    </Pressable>
                   ))}
                 </View>
 

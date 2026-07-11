@@ -1,7 +1,7 @@
 import { GraphQLError } from "graphql";
 import { requireUser } from "./_helpers.js";
 import type { GraphQLContext } from "../context.js";
-import { getCurriculum } from "@analogix/shared/curriculum";
+import { getCurriculum, type CurriculumSubject } from "@analogix/shared/curriculum";
 
 const ICONS: Record<string, string> = {
   math: "math-integral",
@@ -133,7 +133,7 @@ export const subjectResolvers = {
         .from("quizzes")
         .select("subject_id, score, total")
         .eq("user_id", user.id);
-      return curriculum.map((entry: { id: string; grades: { strands: { topics: unknown[] }[] }[] }) => {
+      return curriculum.map((entry: CurriculumSubject) => {
         const totalTopics = entry.grades.reduce(
           (acc, g) => acc + g.strands.reduce((s, st) => s + st.topics.length, 0),
           0

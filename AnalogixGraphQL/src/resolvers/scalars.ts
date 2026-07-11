@@ -1,4 +1,28 @@
-import { GraphQLScalarType, Kind } from "graphql";
+import { GraphQLScalarType, Kind, type ValueNode } from "graphql";
+
+function parseJSONLiteral(ast: ValueNode): unknown {
+  switch (ast.kind) {
+    case Kind.STRING:
+    case Kind.BOOLEAN:
+      return (ast as { value: unknown }).value;
+    case Kind.INT:
+    case Kind.FLOAT:
+      return Number((ast as { value: string }).value);
+    case Kind.OBJECT: {
+      const obj: Record<string, unknown> = {};
+      for (const field of (ast as unknown as { fields: readonly { name: { value: string }; value: ValueNode }[] }).fields) {
+        obj[field.name.value] = parseJSONLiteral(field.value);
+      }
+      return obj;
+    }
+    case Kind.LIST:
+      return (ast as unknown as { values: readonly ValueNode[] }).values.map(parseJSONLiteral);
+    case Kind.NULL:
+      return null;
+    default:
+      return null;
+  }
+}
 
 export const scalarResolvers = {
   DateTime: new GraphQLScalarType({
@@ -24,26 +48,6 @@ export const scalarResolvers = {
     description: "Arbitrary JSON value",
     serialize: (v) => v,
     parseValue: (v) => v,
-    parseLiteral(ast): unknown {
-      switch (ast.kind) {
-        case Kind.STRING:
-        case Kind.BOOLEAN:
-          return ast.value;
-        case Kind.INT:
-        case Kind.FLOAT:
-          return Number(ast.value);
-        case Kind.OBJECT: {
-          const obj: Record<string, unknown> = {};
-          ast.fields.forEach((f) => {
-            obj[f.name.value] = (f.value as { value?: unknown }).value;
-          });
-          return obj;
-        }
-        case Kind.LIST:
-          return ast.values.map((v) => (v as { value?: unknown }).value);
-        default:
-          return null;
-      }
-    },
+    parseLiteral: (ast) => parseJSONLiteral(ast),
   }),
 };

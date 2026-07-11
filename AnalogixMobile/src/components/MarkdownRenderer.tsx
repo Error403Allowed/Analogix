@@ -1,5 +1,6 @@
 import React, { useMemo, useCallback, useRef, useEffect, useState } from "react";
 import { View, Text, StyleSheet, Dimensions, Platform } from "react-native";
+import { useTheme } from "react-native-paper";
 
 let WebView: any = () => null;
 let WebViewMessageEvent: any = null;
@@ -138,7 +139,7 @@ function renderMarkdownToHtml(markdown: string, blockIndex: { current: number })
   return html;
 }
 
-function buildHtml(markdown: string): { html: string } {
+function buildHtml(markdown: string, isDark: boolean): { html: string } {
   const blockIndex = { current: 0 };
 
   const body = renderMarkdownToHtml(markdown, blockIndex);
@@ -162,13 +163,25 @@ function buildHtml(markdown: string): { html: string } {
     });
   `;
 
+  const fg = isDark ? "#e0e0e0" : "#1a1a2e";
+  const bg = isDark ? "#1c1c1e" : "#ffffff";
+  const codeBg = isDark ? "#2a2a3e" : "#f0f0f0";
+  const preBg = isDark ? "#1e1e2e" : "#f5f5f5";
+  const border = isDark ? "#333" : "#e0e0e0";
+  const thBg = isDark ? "#2a2a3e" : "#f5f5f5";
+  const tdBorder = isDark ? "#333" : "#ddd";
+  const blockquoteColor = isDark ? "#999" : "#666";
+  const headerBg = isDark ? "#2a2a3e" : "#f0f0f0";
+  const langColor = isDark ? "#aaa" : "#888";
+  const hljsTheme = isDark ? "github-dark.min.css" : "github.min.css";
+
   const html = `
     <!DOCTYPE html>
     <html>
     <head>
       <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
       <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.28/dist/katex.min.css">
-      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/${hljsTheme}">
       <style>
         @font-face{font-family:'KaTeX_AMS';src:local('serif');font-display:swap}
         @font-face{font-family:'KaTeX_Caligraphic';src:local('serif');font-display:swap}
@@ -192,7 +205,8 @@ function buildHtml(markdown: string): { html: string } {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
           font-size: 15px;
           line-height: 1.6;
-          color: #1a1a2e;
+          color: ${fg};
+          background: ${bg};
           padding: 0;
           overflow: hidden;
           word-wrap: break-word;
@@ -208,10 +222,10 @@ function buildHtml(markdown: string): { html: string } {
           border-left: 3px solid #6366f1;
           padding-left: 12px;
           margin: 8px 0;
-          color: #666;
+          color: ${blockquoteColor};
         }
         pre {
-          background: #f5f5f5;
+          background: ${preBg};
           border-radius: 0 0 8px 8px;
           padding: 12px;
           margin: 0;
@@ -221,29 +235,29 @@ function buildHtml(markdown: string): { html: string } {
           font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
           font-size: 13px;
         }
-        p > code, li > code { background: #f0f0f0; padding: 2px 6px; border-radius: 4px; }
+        p > code, li > code { background: ${codeBg}; padding: 2px 6px; border-radius: 4px; }
         table { border-collapse: collapse; width: 100%; margin: 8px 0; }
-        th, td { border: 1px solid #ddd; padding: 6px 10px; text-align: left; font-size: 13px; }
-        th { background: #f5f5f5; font-weight: 600; }
-        hr { border: none; border-top: 1px solid #ddd; margin: 12px 0; }
+        th, td { border: 1px solid ${tdBorder}; padding: 6px 10px; text-align: left; font-size: 13px; }
+        th { background: ${thBg}; font-weight: 600; }
+        hr { border: none; border-top: 1px solid ${tdBorder}; margin: 12px 0; }
         del { opacity: 0.6; }
         .math-block { text-align: center; margin: 8px 0; overflow-x: auto; }
         .code-wrapper {
           border-radius: 8px;
           overflow: hidden;
           margin: 8px 0;
-          border: 1px solid #e0e0e0;
+          border: 1px solid ${border};
         }
         .code-header {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          background: #f0f0f0;
+          background: ${headerBg};
           padding: 4px 12px;
           font-size: 11px;
         }
         .code-lang {
-          color: #888;
+          color: ${langColor};
           font-weight: 600;
           text-transform: uppercase;
           letter-spacing: 0.5px;
@@ -261,17 +275,6 @@ function buildHtml(markdown: string): { html: string } {
         }
         .run-btn:hover { background: #4f46e5; }
         .run-btn:active { background: #4338ca; }
-        @media (prefers-color-scheme: dark) {
-          body { color: #e0e0e0; }
-          pre { background: #1e1e2e; }
-          p > code, li > code { background: #2a2a3e; }
-          th { background: #2a2a3e; }
-          th, td { border-color: #333; }
-          blockquote { color: #999; }
-          hr { border-top-color: #333; }
-          .code-wrapper { border-color: #333; }
-          .code-header { background: #2a2a3e; }
-        }
       </style>
     </head>
     <body>${body}</body>
@@ -292,12 +295,14 @@ function extractCodes(markdown: string): string[] {
 
 export function MarkdownRenderer({ content, maxWidth, style, onRunCode }: Props) {
   const codesRef = useRef<string[]>([]);
+  const paperTheme = useTheme();
+  const isDark = paperTheme.dark;
 
   const { html } = useMemo(() => {
     const normalised = normaliseLatex(content);
     codesRef.current = extractCodes(content);
-    return buildHtml(normalised);
-  }, [content]);
+    return buildHtml(normalised, isDark);
+  }, [content, isDark]);
 
   const width = maxWidth ?? Math.min(SCREEN_WIDTH - 80, 400);
 

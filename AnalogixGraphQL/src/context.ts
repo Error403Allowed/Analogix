@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { AuthenticatedUser } from "./auth/verifyToken.js";
+import { verifyAccessToken, type AuthenticatedUser } from "./auth/verifyToken.js";
 import { getUserClient } from "./supabase.js";
 import type { PubSubChannels } from "./pubsub.js";
 
@@ -27,7 +27,6 @@ export async function buildContext({
   pubsub: import("graphql-subscriptions").PubSub;
   requestId: string;
 }): Promise<GraphQLContext> {
-  const { verifyAccessToken } = await import("./auth/verifyToken.js");
   const user = await verifyAccessToken(token);
   const supabase = user ? getUserClient(token!) : null;
 

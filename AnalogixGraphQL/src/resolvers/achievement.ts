@@ -193,11 +193,17 @@ export const achievementResolvers = {
             achievement_id: args.achievementId,
             unlocked_at: new Date().toISOString(),
           },
-          { onConflict: "user_id,achievement_id" }
+          { onConflict: "user_id,achievement_id", ignoreDuplicates: false }
         )
         .select()
         .single();
-      if (error) throw new GraphQLError(error.message);
+      if (error) {
+        const msg = error.message;
+        if (msg.includes("violates")) {
+          throw new GraphQLError("Achievement may already be unlocked. Ensure the 'achievements' table has a unique constraint on (user_id, achievement_id).", { extensions: { code: "CONSTRAINT_VIOLATION", original: msg } });
+        }
+        throw new GraphQLError(msg);
+      }
       return {
         id: data.id,
         achievementId: data.achievement_id,

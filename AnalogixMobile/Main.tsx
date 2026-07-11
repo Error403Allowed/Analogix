@@ -13,6 +13,10 @@ if (typeof __DEV__ !== "undefined" && __DEV__) {
   console.error = (...args: any[]) => {
     const msg = args[0] instanceof Error ? args[0].message : typeof args[0] === "string" ? args[0] : "";
     if (msg && (msg.includes("Extension context invalidated") || msg.includes("chrome.runtime"))) return;
+    if (msg && msg.includes("Unexpected text node") && msg.includes("A text node cannot be a child of a <View>")) {
+      origConsoleError.apply(console, [...args, new Error(msg).stack]);
+      return;
+    }
     origConsoleError.apply(console, args);
   };
   const origConsoleWarn = console.warn;
@@ -27,6 +31,7 @@ import React, { useEffect, useState } from "react";
 import { Platform, Animated, View, Text, StyleSheet } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import * as Device from "expo-device";
+import { preventScreenCaptureAsync } from "expo-screen-capture";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
@@ -48,14 +53,10 @@ function SecurityGate({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (Platform.OS !== "android" && Platform.OS !== "ios") return;
-    (async () => {
-      const { usePreventScreenCapture } = await import("expo-screen-capture");
-      try { usePreventScreenCapture(); } catch {}
-      const isRooted = await Device.isRootedExperimentalAsync();
-      if (isRooted) {
-        setBlocked(true);
-      }
-    })();
+    preventScreenCaptureAsync().catch(() => {});
+    Device.isRootedExperimentalAsync().then((isRooted) => {
+      if (isRooted) setBlocked(true);
+    });
   }, []);
 
   if (blocked) {

@@ -11,6 +11,7 @@ export const userTypeDefs = /* GraphQL */ `
     hobbyDetails: JSON
     timezone: String
     onboardingComplete: Boolean!
+    toursCompleted: [String!]!
     avatarUrl: String
     createdAt: DateTime
     updatedAt: DateTime
@@ -50,5 +51,6 @@ export const userTypeDefs = /* GraphQL */ `
     updatePreferences(input: JSON!): UserPreferences!
     updateAiPersonality(input: JSON!): Profile!
     deleteAccount: DeleteResult!
+    markToursCompleted(tourIds: [String!]!): Profile!
   }
 `;

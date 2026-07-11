@@ -115,7 +115,7 @@ ${DARK_CSS}
 </script>
 </body>
 </html>`;
-  }, [categories]);
+  }, [categories, theme]);
 
   if (Platform.OS === "web" || categories.length === 0) return null;
 

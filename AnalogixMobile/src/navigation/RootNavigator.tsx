@@ -1,13 +1,16 @@
-import React from "react";
+import React, { useCallback, useEffect } from "react";
 import { useTheme } from "react-native-paper";
 import { NavigationContainer, DarkTheme as NavDarkTheme, DefaultTheme as NavLightTheme } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { useQuery } from "@apollo/client";
+import { useQuery, useMutation } from "@apollo/client";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useThemeContext } from "../theme/ThemeContext";
 import { MaterialTabBar } from "./MaterialTabBar";
 import { useAuth } from "../context/AuthContext";
-import { ME } from "../graphql/queries/user";
+import { ME, MARK_TOURS_COMPLETED } from "../graphql/queries/user";
+import { TourProvider } from "../context/TourContext";
+import { TourAutoTrigger } from "../components/TourAutoTrigger";
 import type { RootStackParamList, TabParamList, HomeStackParamList, TutorStackParamList, StudyStackParamList, SubjectsStackParamList, RoomsStackParamList, ProfileStackParamList } from "./types";
 
 import LoginScreen from "../screens/auth/LoginScreen";
@@ -151,15 +154,47 @@ function MainTabs() {
 
 function AuthGate({ children }: { children: React.ReactNode }) {
   const { data, loading } = useQuery(ME, { fetchPolicy: "cache-and-network" });
+
+  useEffect(() => {
+    if (data?.me?.toursCompleted) {
+      AsyncStorage.setItem(
+        "tours_completed_server",
+        JSON.stringify(data.me.toursCompleted),
+      );
+    }
+  }, [data?.me?.toursCompleted]);
+
   if (loading) return null;
   if (!data?.me || !data.me.onboardingComplete) return <OnboardingScreen />;
   return <>{children}</>;
 }
 
+function TourGate({ children }: { children: React.ReactNode }) {
+  const [markToursCompleted] = useMutation(MARK_TOURS_COMPLETED);
+
+  const handleTourCompleted = useCallback(
+    (tourId: string) => {
+      markToursCompleted({
+        variables: { tourIds: [tourId] },
+      }).catch(() => {});
+    },
+    [markToursCompleted],
+  );
+
+  return (
+    <TourProvider onTourCompleted={handleTourCompleted}>
+      <TourAutoTrigger />
+      {children}
+    </TourProvider>
+  );
+}
+
 function TabsWithGate() {
   return (
     <AuthGate>
-      <MainTabs />
+      <TourGate>
+        <MainTabs />
+      </TourGate>
     </AuthGate>
   );
 }

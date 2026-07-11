@@ -7,7 +7,7 @@ import * as ImagePicker from "expo-image-picker";
 import { ME, USER_STATS, UPDATE_PROFILE } from "../../graphql/queries/user";
 import { SHAPE } from "../../theme/tokens";
 import { useAuth } from "../../context/AuthContext";
-import { SUBJECT_CATALOG } from "@/data/subjects";
+import { SUBJECT_CATALOG } from "../../data/subjects";
 import Icon from "../../components/Icon";
 import {
   ExpressiveHeroPanel,

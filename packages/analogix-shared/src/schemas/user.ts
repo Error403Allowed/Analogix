@@ -10,6 +10,7 @@ export const UpdateProfileInput = z.object({
   hobbyIds: z.array(z.string()).optional(),
   timezone: z.string().optional(),
   onboardingComplete: z.boolean().optional(),
+  toursCompleted: z.array(z.string()).optional(),
 });
 
 export const UpdatePreferencesInput = z.object({

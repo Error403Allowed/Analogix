@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { ApolloProvider } from "@apollo/client";
+import { ApolloProvider, useMutation } from "@apollo/client";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/toaster";
@@ -14,6 +14,20 @@ import { TourProvider } from "@/context/TourContext";
 import PageTour from "@/components/PageTour";
 import { TourAutoTrigger } from "@/components/TourAutoTrigger";
 import { createApolloClient } from "@/graphql/client";
+import { MARK_TOURS_COMPLETED } from "@/graphql/queries/user";
+
+function TourSyncProvider({ children }: { children: React.ReactNode }) {
+  const [markTours] = useMutation(MARK_TOURS_COMPLETED);
+  const handleTourCompleted = useCallback((tourId: string) => {
+    markTours({ variables: { tourIds: [tourId] } }).catch(() => {});
+  }, [markTours]);
+
+  return (
+    <TourProvider onTourCompleted={handleTourCompleted}>
+      {children}
+    </TourProvider>
+  );
+}
 
 export default function AppProviders({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => new QueryClient());
@@ -30,7 +44,7 @@ export default function AppProviders({ children }: { children: React.ReactNode }
         <ApolloProvider client={apolloClient}>
           <QueryClientProvider client={queryClient}>
             <TooltipProvider>
-              <TourProvider>
+              <TourSyncProvider>
                 <ThemeSync />
                 <FirstVisitOverlay />
                 <TourAutoTrigger />
@@ -38,7 +52,7 @@ export default function AppProviders({ children }: { children: React.ReactNode }
                 {children}
                 <Toaster />
                 <Sonner />
-              </TourProvider>
+              </TourSyncProvider>
             </TooltipProvider>
           </QueryClientProvider>
         </ApolloProvider>

@@ -315,7 +315,9 @@ export function CollaborativeEditor({ roomId, surfaceType, surfaceId, initialCon
         setStatus(msg.status);
         onStatus?.(msg.status);
       }
-    } catch {}
+    } catch (e) {
+      console.warn("[CollaborativeEditor] Failed to parse message:", e);
+    }
   }, [authToken, roomId, surfaceType, surfaceId, initialContent, onContentChange, onStatus]);
 
   if (!authToken) {
@@ -340,7 +342,7 @@ export function CollaborativeEditor({ roomId, surfaceType, surfaceId, initialCon
         ref={webViewRef}
         source={{ html: buildHtml(config.supabase.url, config.supabase.anonKey, paperTheme) }}
         onMessage={handleMessage}
-        originWhitelist={["*"]}
+        originWhitelist={[]}
         allowFileAccess={false}
         domStorageEnabled={true}
         javaScriptEnabled={true}

@@ -7,6 +7,16 @@ export const ME = gql`
       name
       email
       avatarUrl
+      toursCompleted
+    }
+  }
+`;
+
+export const MARK_TOURS_COMPLETED = gql`
+  mutation MarkToursCompleted($tourIds: [String!]!) {
+    markToursCompleted(tourIds: $tourIds) {
+      id
+      toursCompleted
     }
   }
 `;

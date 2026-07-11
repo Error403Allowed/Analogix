@@ -21,10 +21,13 @@ export const useAutoTour = () => {
 
     if (triggeredRef.current.has(tour.id)) return;
 
-    // Only trigger after onboarding is complete
+    // Only trigger after onboarding is complete and tour not seen server-side
     try {
       const prefs = JSON.parse(localStorage.getItem("userPreferences") || "{}");
       if (!prefs?.onboardingComplete) return;
+      // Skip if already synced to server (persists across devices/browser clears)
+      const serverTours: string[] = prefs?.toursCompleted ?? [];
+      if (serverTours.includes(tour.id)) return;
     } catch {
       return;
     }

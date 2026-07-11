@@ -197,7 +197,9 @@ function NotionEditor({ value, onChange, placeholder, isWeb }: Props & { isWeb?:
         contentRef.current = msg.html;
         onChange(msg.html);
       }
-    } catch {}
+    } catch (e) {
+      console.warn("[RichTextEditor] Failed to parse message:", e);
+    }
   }, [onChange]);
 
   const html = buildNotionHtml(paperTheme);
@@ -242,7 +244,7 @@ function NotionEditor({ value, onChange, placeholder, isWeb }: Props & { isWeb?:
         ref={webViewRef}
         source={{ html }}
         onMessage={handleMessage}
-        originWhitelist={["*"]}
+        originWhitelist={[]}
         allowFileAccess={false}
         domStorageEnabled={false}
         javaScriptEnabled={true}

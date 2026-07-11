@@ -23,7 +23,7 @@ import { buildHobbyDetails } from "../../utils/interests";
 import { SHAPE } from "../../theme/tokens";
 import { MOTION } from "../../theme/tokens";
 import Icon from "../../components/Icon";
-import { SUBJECT_CATALOG } from "@/data/subjects";
+import { SUBJECT_CATALOG } from "../../data/subjects";
 
 const SUBJECTS = SUBJECT_CATALOG.map((s) => s.label);
 

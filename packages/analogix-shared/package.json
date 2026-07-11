@@ -14,39 +14,48 @@
     },
     "./curriculum": {
       "types": "./dist/curriculum/index.d.ts",
-      "import": "./dist/curriculum/index.js"
+      "import": "./dist/curriculum/index.js",
+      "require": "./dist/curriculum/index.js"
     },
     "./curriculum/acara": {
       "types": "./dist/curriculum/acara-data.d.ts",
-      "import": "./dist/curriculum/acara-data.js"
+      "import": "./dist/curriculum/acara-data.js",
+      "require": "./dist/curriculum/acara-data.js"
     },
     "./formulas": {
       "types": "./dist/formulas/index.d.ts",
-      "import": "./dist/formulas/index.js"
+      "import": "./dist/formulas/index.js",
+      "require": "./dist/formulas/index.js"
     },
     "./formulas/web": {
       "types": "./dist/formulas/web-formulas.d.ts",
-      "import": "./dist/formulas/web-formulas.js"
+      "import": "./dist/formulas/web-formulas.js",
+      "require": "./dist/formulas/web-formulas.js"
     },
     "./achievements": {
       "types": "./dist/achievements/index.d.ts",
-      "import": "./dist/achievements/index.js"
+      "import": "./dist/achievements/index.js",
+      "require": "./dist/achievements/index.js"
     },
     "./types": {
       "types": "./dist/types/index.d.ts",
-      "import": "./dist/types/index.js"
+      "import": "./dist/types/index.js",
+      "require": "./dist/types/index.js"
     },
     "./schemas": {
       "types": "./dist/schemas/index.d.ts",
-      "import": "./dist/schemas/index.js"
+      "import": "./dist/schemas/index.js",
+      "require": "./dist/schemas/index.js"
     },
     "./tools": {
       "types": "./dist/tools/index.d.ts",
-      "import": "./dist/tools/index.js"
+      "import": "./dist/tools/index.js",
+      "require": "./dist/tools/index.js"
     },
     "./agent-quiz": {
       "types": "./dist/agent-quiz.d.ts",
-      "import": "./dist/agent-quiz.js"
+      "import": "./dist/agent-quiz.js",
+      "require": "./dist/agent-quiz.js"
     }
   },
   "scripts": {

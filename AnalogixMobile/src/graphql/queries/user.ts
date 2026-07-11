@@ -13,6 +13,7 @@ export const ME = gql`
       hobbyIds
       hobbyDetails
       onboardingComplete
+      toursCompleted
       avatarUrl
       aiPersonality {
         tone
@@ -132,6 +133,15 @@ export const MY_PREFERENCES = gql`
       userId
       mood
       theme
+    }
+  }
+`;
+
+export const MARK_TOURS_COMPLETED = gql`
+  mutation MarkToursCompleted($tourIds: [String!]!) {
+    markToursCompleted(tourIds: $tourIds) {
+      id
+      toursCompleted
     }
   }
 `;

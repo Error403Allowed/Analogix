@@ -21,6 +21,7 @@
     "build:mobile": "npm run build --workspace=AnalogixMobile",
     "build:shared": "npm run build --workspace=packages/analogix-shared",
     "build:mcp": "npm run build --workspace=packages/analogix-mcp",
+    "postinstall": "npm run build:shared",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
     "lint:mobile": "npm run lint --workspace=AnalogixMobile",

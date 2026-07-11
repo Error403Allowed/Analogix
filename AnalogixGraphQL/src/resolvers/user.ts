@@ -66,6 +66,26 @@ export const userResolvers = {
       if (error) throw new GraphQLError(error.message);
       return data;
     },
+    markToursCompleted: async (_: unknown, args: { tourIds: string[] }, ctx: GraphQLContext) => {
+      const user = requireUser(ctx);
+      const { data: current } = await ctx.supabase!
+        .from("profiles")
+        .select("tours_completed")
+        .eq("id", user.id)
+        .maybeSingle();
+      const existing: string[] = (current?.tours_completed as string[]) ?? [];
+      const merged = [...new Set([...existing, ...args.tourIds])];
+      const { data, error } = await ctx.supabase!
+        .from("profiles")
+        .upsert(
+          { id: user.id, tours_completed: merged, updated_at: new Date().toISOString() },
+          { onConflict: "id" }
+        )
+        .select()
+        .single();
+      if (error) throw new GraphQLError(error.message);
+      return data;
+    },
     deleteAccount: async (_: unknown, args: { confirmation?: string }, ctx: GraphQLContext) => {
       const user = requireUser(ctx);
       if (args.confirmation !== "DELETE") {
@@ -86,6 +106,7 @@ export const userResolvers = {
     hobbyIds: (p: { hobby_ids?: string[] }) => p.hobby_ids ?? [],
     hobbyDetails: (p: { hobby_details?: unknown }) => p.hobby_details ?? {},
     onboardingComplete: (p: { onboarding_complete?: boolean }) => Boolean(p.onboarding_complete),
+    toursCompleted: (p: { tours_completed?: string[] }) => p.tours_completed ?? [],
     createdAt: (p: { created_at?: string }) => p.created_at,
     updatedAt: (p: { updated_at?: string }) => p.updated_at,
     aiPersonality: (p: { ai_personality?: { tone?: string; focus?: string; verbosity?: number; creativity?: number } | null }) =>

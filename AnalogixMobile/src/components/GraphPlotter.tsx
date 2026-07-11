@@ -95,7 +95,7 @@ export function GraphPlotter({ expressions, title, height = 350 }: Props) {
       <WebView
         ref={webViewRef}
         source={{ html }}
-        originWhitelist={["*"]}
+        originWhitelist={[]}
         allowFileAccess={false}
         domStorageEnabled={true}
         javaScriptEnabled={true}
@@ -107,8 +107,8 @@ export function GraphPlotter({ expressions, title, height = 350 }: Props) {
 }
 
 export function GraphPlotterModal({ expressions, visible, onClose }: { expressions: string[]; visible: boolean; onClose: () => void }) {
-  if (!visible) return null;
   const paperTheme = useTheme();
+  if (!visible) return null;
   return (
     <View style={[StyleSheet.absoluteFill, { backgroundColor: paperTheme.colors.background, zIndex: 1000 }]}>
       <GraphPlotter expressions={expressions} height={undefined} />

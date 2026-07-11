@@ -92,7 +92,7 @@ export default function ResourcesScreen() {
   const [activeTab, setActiveTab] = useState<Tab>("pastPapers");
   const searchRef = useRef<TextInput>(null);
 
-  const resources: SubjectResources[] = data?.curatedResources ?? [];
+  const resources: SubjectResources[] = useMemo(() => data?.curatedResources ?? [], [data?.curatedResources]);
 
   const matchesQuery = useCallback(
     (link: ResourceLink) => {

@@ -33,6 +33,7 @@ const syncPrefsFromProfile = (profile: any, userId: string) => {
       hobbyDetails: profile?.hobby_details && typeof profile.hobby_details === "object"
         ? profile.hobby_details
         : (existing.hobbyDetails ?? {}),
+      toursCompleted: Array.isArray(profile?.tours_completed) ? profile.tours_completed : (existing.toursCompleted ?? []),
       onboardingComplete: true,
       userId,
     };
@@ -89,7 +90,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
       const supabase = createClient();
       const { data: profile } = await supabase
         .from("profiles")
-        .select("onboarding_complete, name, grade, state, subjects, hobbies, hobby_ids, hobby_details")
+        .select("onboarding_complete, tours_completed, name, grade, state, subjects, hobbies, hobby_ids, hobby_details")
         .eq("id", userId)
         .maybeSingle();
 

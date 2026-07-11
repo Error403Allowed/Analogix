@@ -35,9 +35,10 @@ export const useTour = () => {
 
 interface TourProviderProps {
   children: ReactNode;
+  onTourCompleted?: (tourId: string) => void;
 }
 
-export const TourProvider: React.FC<TourProviderProps> = ({ children }) => {
+export const TourProvider: React.FC<TourProviderProps> = ({ children, onTourCompleted }) => {
   const [activeTour, setActiveTour] = useState<TourConfig | null>(null);
   const [currentStep, setCurrentStep] = useState(0);
 
@@ -45,6 +46,10 @@ export const TourProvider: React.FC<TourProviderProps> = ({ children }) => {
     setActiveTour(tour);
     setCurrentStep(0);
   }, []);
+
+  const syncTour = useCallback((tourId: string) => {
+    onTourCompleted?.(tourId);
+  }, [onTourCompleted]);
 
   const nextStep = useCallback(() => {
     if (!activeTour) return;
@@ -54,10 +59,11 @@ export const TourProvider: React.FC<TourProviderProps> = ({ children }) => {
     } else {
       // End of tour - mark as seen and close
       markTourAsSeen(activeTour.storageKey);
+      syncTour(activeTour.id);
       setActiveTour(null);
       setCurrentStep(0);
     }
-  }, [activeTour, currentStep]);
+  }, [activeTour, currentStep, syncTour]);
 
   const prevStep = useCallback(() => {
     if (currentStep > 0) {
@@ -69,10 +75,11 @@ export const TourProvider: React.FC<TourProviderProps> = ({ children }) => {
     if (activeTour) {
       // Mark as seen even if user exits early
       markTourAsSeen(activeTour.storageKey);
+      syncTour(activeTour.id);
     }
     setActiveTour(null);
     setCurrentStep(0);
-  }, [activeTour]);
+  }, [activeTour, syncTour]);
 
   const hasSeen = useCallback((storageKey: string) => {
     return hasSeenTour(storageKey);

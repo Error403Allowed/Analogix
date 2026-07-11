@@ -27,12 +27,7 @@ config.resolver.nodeModulesPaths = [
 config.resolver.unstable_enableSymlinks = false;
 config.resolver.unstable_enablePackageExports = true;
 
-// 4. Make sure Babel resolves `@/*` aliases to src/* (mobile project only).
-config.resolver.extraNodeModules = {
-  "@": path.resolve(projectRoot, "src"),
-};
-
-// 5. Tell Metro to start from our own index.js so the `main` field
+// 4. Tell Metro to start from our own index.js so the `main` field
 //    (currently "App.tsx") isn't ambiguous across platforms.
 const entryFile = path.resolve(projectRoot, "index.js");
 if (require("fs").existsSync(entryFile)) {

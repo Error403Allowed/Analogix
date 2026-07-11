@@ -72,7 +72,9 @@ export default function FormulaDetailScreen() {
     const msg = `${(formula as any).name}: ${(formula as any).latex}`;
     try {
       await Share.share({ message: msg });
-    } catch {}
+    } catch (e) {
+      console.warn("[FormulaDetail] Share failed:", e);
+    }
   }, [formula]);
 
   const isFav = formula ? favorites.has((formula as any).id || (formula as any).name || "") : false;
