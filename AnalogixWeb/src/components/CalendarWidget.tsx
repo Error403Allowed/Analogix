@@ -150,16 +150,17 @@ const CalendarWidget = ({ streak = 0, streakLabel = "days" }: CalendarWidgetProp
               className="rounded-xl border-0 p-0 w-full"
               classNames={{
                 month: "space-y-1 w-full",
-                head_row: "flex w-full mb-1",
-                head_cell: "text-foreground/60 flex-1 text-center font-bold text-[0.55rem] uppercase tracking-wider",
-                row: "flex w-full mt-0.5 gap-0.5",
-                cell: "flex-1 h-8 text-center text-xs p-0 relative",
-                day: cn(buttonVariants({ variant: "ghost" }), "h-8 w-8 mx-auto p-0 font-bold aria-selected:opacity-100 rounded-md transition-all hover:bg-primary/10 hover:text-primary text-xs"),
-                day_selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground shadow-md",
-                day_today: "bg-muted text-foreground font-bold",
+                weekdays: "flex w-full mb-1",
+                weekday: "text-foreground/60 flex-1 text-center font-bold text-[0.55rem] uppercase tracking-wider",
+                week: "flex w-full mt-0.5 gap-0.5",
+                day: "flex-1 h-8 text-center text-xs p-0 relative",
+                day_button: cn(buttonVariants({ variant: "ghost" }), "h-8 w-8 mx-auto p-0 font-bold aria-selected:opacity-100 rounded-md transition-all hover:bg-primary/10 hover:text-primary text-xs"),
+                selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground shadow-md",
+                today: "bg-muted text-foreground font-bold",
                 caption_label: "text-xs font-bold uppercase tracking-wider text-foreground",
-                nav_button: cn(buttonVariants({ variant: "outline" }), "h-7 w-7 bg-card/80 border-border/70 p-0 opacity-85 hover:opacity-100 rounded-md"),
-                table: "w-full border-collapse space-y-0",
+                button_next: cn(buttonVariants({ variant: "outline" }), "h-7 w-7 bg-card/80 border-border/70 p-0 opacity-85 hover:opacity-100 rounded-md"),
+                button_previous: cn(buttonVariants({ variant: "outline" }), "h-7 w-7 bg-card/80 border-border/70 p-0 opacity-85 hover:opacity-100 rounded-md"),
+                month_grid: "w-full border-collapse space-y-0",
               }}
               modifiers={{ event: d => events.some(e => isSameDay(new Date(e.date), d)) }}
               modifiersClassNames={{ event: "relative after:absolute after:bottom-1.5 after:left-1/2 after:-translate-x-1/2 after:w-1 after:h-1 after:bg-primary after:rounded-full" }}

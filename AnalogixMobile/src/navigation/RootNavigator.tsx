@@ -3,7 +3,7 @@ import { useTheme } from "react-native-paper";
 import { NavigationContainer, DarkTheme as NavDarkTheme, DefaultTheme as NavLightTheme } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { useQuery, useMutation } from "@apollo/client";
+import { useQuery, useMutation } from "@apollo/client/react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useThemeContext } from "../theme/ThemeContext";
 import { MaterialTabBar } from "./MaterialTabBar";

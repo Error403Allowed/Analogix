@@ -46,7 +46,7 @@ const DARK_CSS = `
 export default function BatchFormulaRenderer({ categories, minHeight = 48, theme }: Props) {
   const [webViewHeight, setWebViewHeight] = useState(Math.max(minHeight, 200));
   const [webViewError, setWebViewError] = useState(false);
-  const webViewRef = useRef<WebView>(null);
+  const webViewRef = useRef<any>(null);
 
   const handleMessage = useCallback((event: any) => {
     try {

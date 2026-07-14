@@ -1,0 +1,46 @@
+# Render Blueprint — https://render.com/docs/blueprint-spec
+# Deploys the GraphQL BFF as a Web Service.
+#
+# Steps:
+#   1. Push this repo to GitHub
+#   2. In Render Dashboard → Blueprint → connect your repo
+#   3. Set the synced env vars in Render Dashboard:
+#      SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY,
+#      GROQ_API_KEY, GROQ_API_KEY_2,
+#      GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
+#   4. (Optional) Add REDIS_URL for horizontal scaling — free at upstash.com
+#   5. Deploy — Render runs the build & start commands automatically
+#
+services:
+  - type: web
+    name: analogix-graphql
+    env: node
+    region: oregon
+    plan: free
+    buildCommand: npm install && npm run build:shared && npm run build:api
+    startCommand: node AnalogixGraphQL/dist/server.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: CORS_ORIGINS
+        value: https://analogix.vercel.app
+      # Set these in Render Dashboard with 'sync: false':
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GROQ_API_KEY_2
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: REDIS_URL
+        sync: false

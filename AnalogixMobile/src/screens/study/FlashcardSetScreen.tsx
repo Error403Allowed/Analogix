@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useCallback } from "react";
 import { View, StyleSheet, ScrollView, Pressable, Alert, useWindowDimensions } from "react-native";
 import { Text, useTheme, Card, Button, Portal, Modal, TextInput, SegmentedButtons, ProgressBar, ActivityIndicator } from "react-native-paper";
-import { useQuery, useMutation } from "@apollo/client";
+import { useQuery, useMutation } from "@apollo/client/react";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import Animated, { useAnimatedStyle, withTiming, FadeInDown } from "react-native-reanimated";
 import {

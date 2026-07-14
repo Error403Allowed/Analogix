@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { useMutation } from "@apollo/client";
+import { useMutation } from "@apollo/client/react";
 import { EXECUTE_PYTHON } from "../graphql/queries/ai";
 
 interface PythonResult {

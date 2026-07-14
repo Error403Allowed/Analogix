@@ -8,7 +8,7 @@ import {
   ActivityIndicator,
   TextInput,
 } from "react-native-paper";
-import { useMutation, useQuery } from "@apollo/client";
+import { useMutation, useQuery } from "@apollo/client/react";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import Animated, {
   SlideInRight,

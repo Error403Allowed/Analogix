@@ -4,7 +4,8 @@ import cors from "cors";
 import bodyParser from "body-parser";
 import rateLimit from "express-rate-limit";
 import { WebSocketServer } from "ws";
-import { useServer } from "graphql-ws/lib/use/ws";
+import { useServer, type Extra } from "graphql-ws/use/ws";
+import type { Context as WsContext } from "graphql-ws";
 import { makeExecutableSchema } from "@graphql-tools/schema";
 import { ApolloServer } from "@apollo/server";
 import { ApolloServerPluginLandingPageLocalDefault } from "@apollo/server/plugin/landingPage/default";
@@ -77,9 +78,9 @@ async function main() {
   const serverCleanup = useServer(
     {
       schema,
-      context: async (ctx) => {
+      context: async (ctx: WsContext<Record<string, unknown>, Extra>) => {
         // Pull token from connection params (preferred) or initial payload
-        const params = (ctx.connectionParams ?? {}) as Record<string, unknown>;
+        const params = ctx.connectionParams ?? {};
         const raw =
           (params.Authorization as string | undefined) ??
           (params.authorization as string | undefined) ??

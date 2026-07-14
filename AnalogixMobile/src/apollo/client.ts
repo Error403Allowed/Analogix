@@ -13,16 +13,24 @@ import {
   ApolloLink,
   HttpLink,
   split,
-  type NormalizedCacheObject,
-} from "@apollo/client";
+} from "@apollo/client/core";
 import { setContext } from "@apollo/client/link/context";
-import { onError } from "@apollo/client/link/error";
+import { ErrorLink } from "@apollo/client/link/error";
 import { GraphQLWsLink } from "@apollo/client/link/subscriptions";
 import { getMainDefinition } from "@apollo/client/utilities";
 import { createClient as createWsClient } from "graphql-ws";
 import { MMKV } from "../storage/mmkv";
 import { config } from "../config";
 import { getSupabase } from "../supabase";
+import { CombinedGraphQLErrors } from "@apollo/client/errors";
+
+declare module "@apollo/client/core" {
+  export interface DeclareDefaultOptions {
+    watchQuery: { errorPolicy: "all" };
+    query: { errorPolicy: "all" };
+    mutate: { errorPolicy: "all" };
+  }
+}
 
 const cacheStorage = new MMKV({ id: "analogix.apollo" });
 const CACHE_KEY = "apolloCache";
@@ -53,20 +61,15 @@ const authLink = setContext(async (_, { headers }) => {
   };
 });
 
-const errorLink = onError(({ graphQLErrors, networkError }) => {
-  if (graphQLErrors) {
-    for (const err of graphQLErrors) {
-      // Surface auth errors so the app can route to the login screen.
+const errorLink = new ErrorLink(({ error }) => {
+  if (CombinedGraphQLErrors.is(error)) {
+    for (const err of error.errors) {
       if (err.extensions?.code === "UNAUTHENTICATED") {
-        // The AuthContext already handles the unauth state, so this is mostly for logging.
-         
         console.warn("[apollo] unauthenticated, redirecting to login");
       }
     }
-  }
-  if (networkError) {
-     
-    console.warn("[apollo] network error", networkError);
+  } else {
+    console.warn("[apollo] network error", error);
   }
 });
 
@@ -90,7 +93,7 @@ const splitLink = split(
   ApolloLink.from([errorLink, authLink, httpLink])
 );
 
-export function createApolloClient(): ApolloClient<NormalizedCacheObject> {
+export function createApolloClient(): ApolloClient {
   return new ApolloClient({
     link: splitLink,
     cache: new InMemoryCache({
@@ -127,7 +130,7 @@ export function createApolloClient(): ApolloClient<NormalizedCacheObject> {
  * Restores the InMemoryCache from MMKV. Call once at app start.
  * Returns the same client after awaiting cache restoration.
  */
-export async function hydrateApolloCache(client: ApolloClient<NormalizedCacheObject>) {
+export async function hydrateApolloCache(client: ApolloClient) {
   const persisted = cacheStorage.getString(CACHE_KEY);
   if (persisted) {
     try {
@@ -140,12 +143,12 @@ export async function hydrateApolloCache(client: ApolloClient<NormalizedCacheObj
 }
 
 /** Persists the InMemoryCache to MMKV. Call on app pause / significant state changes. */
-export function persistApolloCache(client: ApolloClient<NormalizedCacheObject>) {
+export function persistApolloCache(client: ApolloClient) {
   cacheStorage.set(CACHE_KEY, JSON.stringify(client.cache.extract()));
 }
 
 /** Wipes the cache — call on sign-out. */
-export function clearApolloCache(client: ApolloClient<NormalizedCacheObject>) {
+export function clearApolloCache(client: ApolloClient) {
   client.cache.reset();
   cacheStorage.delete(CACHE_KEY);
 }

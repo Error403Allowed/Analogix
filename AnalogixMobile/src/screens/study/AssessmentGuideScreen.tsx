@@ -2,7 +2,7 @@ import React, { useState, useCallback } from "react";
 import { View, StyleSheet, ScrollView, Pressable, Alert } from "react-native";
 import { Text, useTheme, ActivityIndicator, Button, TextInput } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useMutation } from "@apollo/client";
+import { useMutation } from "@apollo/client/react";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { GENERATE_ASSESSMENT_GUIDE } from "../../graphql/queries/ai";
 import Icon from "../../components/Icon";

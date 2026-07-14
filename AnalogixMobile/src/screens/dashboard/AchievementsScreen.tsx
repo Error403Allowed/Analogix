@@ -2,7 +2,7 @@ import React, { useMemo, useState } from "react";
 import { View, StyleSheet, ScrollView, Dimensions, Pressable } from "react-native";
 import { Text, useTheme, IconButton, Searchbar, ActivityIndicator } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useQuery } from "@apollo/client";
+import { useQuery } from "@apollo/client/react";
 import { useNavigation } from "@react-navigation/native";
 import { ACHIEVEMENTS } from "../../graphql/queries/misc";
 import { useThemeContext } from "../../theme/ThemeContext";

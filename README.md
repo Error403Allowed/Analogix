@@ -1,6 +1,6 @@
 # Analogix
 
-> Why have 5 tabs open when one platform will do? With Analogix the Groq AI tutor, your Pomodoro timer, calendar and collaborative study rooms are all in one place. Spaced-repetition flashcards included. Everything is fed by the same API and your data is shared across the board.
+> Why have so many tabs open when one platform will do? With Analogix, everything's all in one place, so you don't need to switch between claude, quizlet, anki, and any other tools.
 
 ![Platform](https://img.shields.io/badge/platform-web%20%7C%20mobile%20%7C%20api-6366f1)
 ![Node](https://img.shields.io/badge/node-%3E%3D22%20%3C27-339933)
@@ -33,23 +33,19 @@
 
 ---
 
-## The story behind Analogix
+## Features
 
-We were of a mind to put an end to having too many tabs open. ChatGPT for explanations, Quizlet for cards, Google Docs for notes, a standalone calendar for deadlines, a Pomodoro timer on top of that — nothing communicating with anything else. So we built a monorepo out of sheer irritation.
-
-Analogix has the essentials for any student:
-
-- **AI Tutor** — Backed by Groq. Explains concepts, generates quizzes and flashcards from your material.
-- **Flashcards** — SM-2 spaced repetition. Create your own or let AI build a set from an uploaded file or chat session.
-- **Quizzes** — Multiple choice, essay, or mixed. Timed or untimed. AI-generated from your content.
-- **Calendar** — Day, week, or month view. Auto-calculates term dates for every Australian state, imports ICS from school portals.
-- **Timer** — Configurable Pomodoro with session and streak tracking.
-- **Study Schedule** — AI generates a weekly plan from your subjects and deadlines. Editable.
-- **Subjects** — Track marks, homework, syllabus, with a built-in document editor.
-- **Rooms** — Real-time group work with shared chat, documents, and a synced timer.
-- **Formulas** — Subject-based formula sheets rendered in LaTeX. Searchable.
-- **Achievements** — XP and badges to make the grind more palatable.
-- **Assessment Guide** — Hand the AI an assessment PDF and it drafts a study plan.
+- **AI Tutor:** Backed by Groq. Explains concepts, generates quizzes and flashcards from your material.
+- **Flashcards:** SM-2 spaced repetition. Create your own or let AI build a set from an uploaded file or chat session.
+- **Quizzes:** Multiple choice, essay, or mixed. Timed or untimed. AI-generated from your content.
+- **Calendar:** Day, week, or month view. Auto-calculates term dates for every Australian state, imports ICS from school portals.
+- **Timer:** Configurable Pomodoro with session and streak tracking.
+- **Study Schedule:** AI generates a weekly plan from your subjects and deadlines. Editable.
+- **Subjects:** Track marks, homework, syllabus, with a built-in document editor.
+- **Rooms:** Real-time group work with shared chat, documents, and a synced timer.
+- **Formulas:** Subject-based formula sheets rendered in LaTeX. Searchable.
+- **Achievements:** XP and badges to make the grind more palatable.
+- **Assessment Guide:** Hand the AI an assessment PDF and it drafts a study plan.
 
 ---
 
@@ -63,10 +59,10 @@ Analogix has the essentials for any student:
                     └────────┬──────────────┘
                              │ HTTP/WS
                     ┌────────▼──────────────┐
-                    │   AnalogixGraphQL      │
-                    │  Apollo Server v5      │◄──── Supabase Auth (JWT)
+                    │   AnalogixGraphQL     │
+                    │  Apollo Server v5     │◄──── Supabase Auth (JWT)
                     │  Express 5 + graphql-ws│      Groq AI, OpenAlex
-                    │  Redis PubSub          │      Supabase DB/Storage
+                    │  Redis PubSub         │      Supabase DB/Storage
                     └────────┬──────────────┘
                              │ HTTP/WS
                     ┌────────▼──────────────┐
@@ -168,4 +164,4 @@ Analogix is a private project. All rights reserved.
 
 ---
 
-*Disclaimer: While AI has been of assistance in putting together this document and portions of the code, it has all been fact and bug-checked to provide the best experience.*
+*Disclaimer: While AI has been of assistance in putting together portions of the code, it has all been fact and bug-checked to provide the best experience.*

@@ -1,4 +1,4 @@
-import pdfParse from "pdf-parse";
+import { PDFParse } from "pdf-parse";
 import { getGradeBand } from "@/constants/subjects";
 const SOURCE_LIST = [
     {
@@ -181,8 +181,8 @@ const fetchText = async (url, type) => {
         }
         // Dynamic import so the native addon only loads when actually parsing a PDF,
         // preventing it from crashing the module on startup.
-        const parsed = await pdfParse(buffer);
-        text = parsed.text || "";
+        const pdf = new PDFParse({ data: buffer });
+        text = (await pdf.getText()).text;
     }
     else {
         const html = await fetchHtml(url);

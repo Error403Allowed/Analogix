@@ -54,6 +54,13 @@ export function AssistantMessage({
       </View>
       <View style={styles.actions}>
         <ReadAloudButton text={parsed.response || parsed.thinking || ""} size={15} />
+        <Pressable
+          onPress={() => onReExplainRequest(id)}
+          style={({ pressed }) => [styles.actionBtn, { opacity: pressed ? 1 : 0.5 }]}
+          accessibilityLabel="Explain differently"
+        >
+          <Icon name="auto-fix" size={13} color={theme.colors.onSurfaceVariant} />
+        </Pressable>
         {isLastAssistant && !hasStreaming && (
           <Pressable
             onPress={onRegenerate}

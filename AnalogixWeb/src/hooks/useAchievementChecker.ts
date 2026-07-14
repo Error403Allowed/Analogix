@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { useQuery, useMutation } from "@apollo/client";
+import { useQuery, useMutation } from "@apollo/client/react";
 import { USER_STATS } from "@/graphql/queries/user";
 import { ACHIEVEMENTS, UNLOCK_ACHIEVEMENT } from "@/graphql/queries/user";
 import { ACHIEVEMENTS_LIBRARY } from "@/data/achievements";
@@ -8,9 +8,9 @@ import { toast } from "sonner";
 const shownInSession = new Set<string>();
 
 export const useAchievementChecker = () => {
-  const { data: statsData, loading: statsLoading } = useQuery(USER_STATS);
-  const { data: achievementsData, loading: achievementsLoading } = useQuery(ACHIEVEMENTS);
-  const [unlockAchievement] = useMutation(UNLOCK_ACHIEVEMENT);
+  const { data: statsData, loading: statsLoading } = useQuery(USER_STATS) as any;
+  const { data: achievementsData, loading: achievementsLoading } = useQuery(ACHIEVEMENTS) as any;
+  const [unlockAchievement] = useMutation(UNLOCK_ACHIEVEMENT) as any;
   const ran = useRef(false);
 
   useEffect(() => {

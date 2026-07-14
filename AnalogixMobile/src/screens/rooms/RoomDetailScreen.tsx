@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { View, StyleSheet, FlatList, KeyboardAvoidingView, Platform, Alert, Pressable, ScrollView, Image } from "react-native";
 import { Text, useTheme, ActivityIndicator, TextInput, Button, IconButton, Portal, Modal, SegmentedButtons } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useQuery, useMutation, useSubscription } from "@apollo/client";
+import { useQuery, useMutation, useSubscription } from "@apollo/client/react";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import {
   ROOM_DETAIL,
@@ -102,7 +102,7 @@ export default function RoomDetailScreen() {
   useSubscription(ROOM_TIMER_STREAM, {
     variables: { roomId },
     skip: skipSub,
-    onData: ({ data: result }) => {
+    onData: ({ data: result }: any) => {
       const t = result?.data?.roomTimerStream;
       if (!t) return;
       setTimerState({

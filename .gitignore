@@ -51,3 +51,4 @@ test-results/
 bun.lock
 
 AUTH_FIX_NOTES.md
+.vercel

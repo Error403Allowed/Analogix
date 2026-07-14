@@ -63,7 +63,7 @@ export const EntityRelationshipSchema = z.object({
   target_type: EntityTypeEnum,
   target_id: z.string(),
   relationship_type: RelationshipTypeEnum,
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
 export type EntityRelationship = z.infer<typeof EntityRelationshipSchema>;
@@ -73,7 +73,7 @@ export const WorkspaceEntitySchema = z.object({
   entity_type: EntityTypeEnum,
   workspace_id: z.string().uuid(),
   entity_id: z.string(),
-  entity_data: z.record(z.unknown()),
+  entity_data: z.record(z.string(), z.unknown()),
   metadata: EntityMetadataSchema,
   relationships: z.array(EntityRelationshipSchema),
   tags: z.array(z.string()),

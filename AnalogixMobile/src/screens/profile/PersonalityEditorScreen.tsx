@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { View, StyleSheet, ScrollView, Pressable } from "react-native";
 import { Text, useTheme, Card, IconButton, Button, ActivityIndicator, SegmentedButtons, Snackbar } from "react-native-paper";
-import { useQuery, useMutation } from "@apollo/client";
+import { useQuery, useMutation } from "@apollo/client/react";
 import { useNavigation } from "@react-navigation/native";
 import { ME, UPDATE_AI_PERSONALITY } from "../../graphql/queries/user";
 import { useThemeContext } from "../../theme/ThemeContext";

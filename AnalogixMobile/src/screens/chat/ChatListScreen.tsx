@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect } from "react";
 import { View, StyleSheet, Animated as RNAnimated, Alert } from "react-native";
 import { Text, useTheme, Searchbar, FAB, Portal, Modal, TextInput, Button } from "react-native-paper";
-import { useQuery, useMutation } from "@apollo/client";
+import { useQuery, useMutation } from "@apollo/client/react";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { CHAT_SESSIONS, DELETE_CHAT_SESSION, UPDATE_CHAT_SESSION } from "../../graphql/queries/chat";

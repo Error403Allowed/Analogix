@@ -3,7 +3,7 @@ import { View, StyleSheet, ScrollView, Pressable, Alert } from "react-native";
 import { Text, useTheme, Card, IconButton, Switch, Button, Dialog, Portal } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
-import { useMutation } from "@apollo/client";
+import { useMutation } from "@apollo/client/react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { DELETE_ACCOUNT } from "../../graphql/queries/user";
 import { useAuth } from "../../context/AuthContext";
@@ -43,7 +43,7 @@ export default function SettingsScreen() {
     try {
       const keys = await AsyncStorage.getAllKeys();
       const localKeys = keys.filter((k) => k.startsWith("analogix_") || k.startsWith("onboarding_") || k.startsWith("custom_event_types"));
-      await AsyncStorage.multiRemove(localKeys);
+      await Promise.all(localKeys.map(k => AsyncStorage.removeItem(k)));
       setShowResetDialog(false);
       Alert.alert("Data reset", "Local data has been cleared. Please restart the app.", [{ text: "OK" }]);
     } catch {

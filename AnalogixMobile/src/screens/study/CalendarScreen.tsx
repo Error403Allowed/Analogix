@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { View, StyleSheet, ScrollView, Pressable, Alert, useWindowDimensions } from "react-native";
 import { Text, useTheme, FAB, Portal, Modal, Button, TextInput, SegmentedButtons, ActivityIndicator, Searchbar } from "react-native-paper";
-import { useQuery, useMutation } from "@apollo/client";
+import { useQuery, useMutation } from "@apollo/client/react";
 import { useNavigation } from "@react-navigation/native";
 import { EVENTS, CREATE_EVENT, ADD_DEADLINE, DELETE_DEADLINE, IMPORT_ICS, UPDATE_DEADLINE } from "../../graphql/queries/calendar";
 import { ME } from "../../graphql/queries/user";

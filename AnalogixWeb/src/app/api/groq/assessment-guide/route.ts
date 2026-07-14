@@ -15,10 +15,10 @@ export async function POST(request: Request) {
     // If a PDF was uploaded, extract its text server-side
     if (!extractedText && base64 && mimeType === "application/pdf") {
       try {
-        const pdfParse = (await import("pdf-parse")).default;
+        const { PDFParse } = await import("pdf-parse");
         const buffer = Buffer.from(base64, "base64");
-        const parsed = await pdfParse(buffer);
-        extractedText = parsed.text;
+        const pdf = new PDFParse({ data: buffer });
+        extractedText = (await pdf.getText()).text;
       } catch (e) {
         console.error("[assessment-guide] pdf-parse failed:", e);
         return NextResponse.json({ error: "Couldn't read the PDF. Try copying and pasting the text instead." }, { status: 400 });

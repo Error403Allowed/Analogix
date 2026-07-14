@@ -77,7 +77,7 @@ function buildHtml(expressions: string[], isDark: boolean): string {
 
 export function GraphPlotter({ expressions, title, height = 350 }: Props) {
   const paperTheme = useTheme();
-  const webViewRef = useRef<WebView>(null);
+  const webViewRef = useRef<any>(null);
   const isDark = paperTheme.dark;
 
   const html = buildHtml(expressions, isDark);

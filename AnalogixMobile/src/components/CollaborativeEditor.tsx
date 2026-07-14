@@ -281,7 +281,7 @@ function buildHtml(supabaseUrl: string, supabaseAnonKey: string, theme: any): st
 
 export function CollaborativeEditor({ roomId, surfaceType, surfaceId, initialContent, onContentChange, onPeerCount, onStatus }: Props) {
   const paperTheme = useTheme();
-  const webViewRef = useRef<WebView>(null);
+  const webViewRef = useRef<any>(null);
   const [status, setStatus] = useState("initializing");
   const [authToken, setAuthToken] = useState<string | null>(null);
 

@@ -29,9 +29,9 @@ export async function POST(request) {
         }
         else if (mimeType === "application/pdf" || fileName.endsWith(".pdf")) {
             const buffer = Buffer.from(await file.arrayBuffer());
-            const pdfParse = (await import("pdf-parse")).default;
-            const result = await pdfParse(buffer);
-            text = result.text || "";
+            const { PDFParse } = await import("pdf-parse");
+            const pdf = new PDFParse({ data: buffer });
+            text = (await pdf.getText()).text;
             // ── DOCX / DOC ──────────────────────────────────────────────────────────
         }
         else if (mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||

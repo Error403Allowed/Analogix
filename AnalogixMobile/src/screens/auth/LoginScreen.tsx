@@ -26,6 +26,15 @@ import type { RootStackParamList } from "../../navigation/types";
 
 WebBrowser.maybeCompleteAuthSession();
 
+function extractUrlParam(url: string, name: string): string | null {
+  try {
+    const u = new URL(url);
+    return u.searchParams.get(name) || new URLSearchParams(u.hash.slice(1)).get(name);
+  } catch {
+    return null;
+  }
+}
+
 function extractCodeFromUrl(url: string): string | null {
   try {
     const hashIndex = url.indexOf("#");
@@ -91,6 +100,23 @@ function FloatingOrbs({ primary, secondary }: { primary: string; secondary: stri
   );
 }
 
+export type PasswordCheck = {
+  label: string;
+  key: string;
+  pass: boolean;
+};
+
+export function validatePassword(pw: string): { checks: PasswordCheck[]; allPass: boolean } {
+  const checks: PasswordCheck[] = [
+    { label: "At least 8 characters", key: "minLength", pass: pw.length >= 8 },
+    { label: "One lowercase letter", key: "lowercase", pass: /[a-z]/.test(pw) },
+    { label: "One uppercase letter", key: "uppercase", pass: /[A-Z]/.test(pw) },
+    { label: "One number", key: "digit", pass: /\d/.test(pw) },
+    { label: "One symbol", key: "symbol", pass: /[^a-zA-Z0-9]/.test(pw) },
+  ];
+  return { checks, allPass: checks.every((c) => c.pass) };
+}
+
 export function getEmailError(code: string | null, message: string | null): string {
   const c = (code || "").toLowerCase();
   const m = (message || "").toLowerCase();
@@ -117,6 +143,38 @@ export function getEmailError(code: string | null, message: string | null): stri
   return "Something went wrong. Please try again.";
 }
 
+// ── Password requirements checklist ─────────────────────────────────────
+function PasswordRequirements({ password }: { password: string }) {
+  const paperTheme = useTheme();
+  const { checks } = validatePassword(password);
+  return (
+    <View style={{ gap: 4, marginTop: 4, marginBottom: 8 }}>
+      {checks.map((c) => (
+        <View key={c.key} style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+          <View style={[{
+            width: 16, height: 16, borderRadius: 8, alignItems: "center", justifyContent: "center",
+            backgroundColor: c.pass ? paperTheme.colors.primary + "20" : paperTheme.colors.surfaceVariant,
+          }]}>
+            {c.pass ? (
+              <Text style={{ fontSize: 10, fontWeight: "700", color: paperTheme.colors.primary }}>✓</Text>
+            ) : (
+              <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: paperTheme.colors.onSurfaceVariant + "40" }} />
+            )}
+          </View>
+          <Text
+            style={{
+              fontSize: 12, fontWeight: "500",
+              color: c.pass ? paperTheme.colors.primary : paperTheme.colors.onSurfaceVariant,
+            }}
+          >
+            {c.label}
+          </Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
 export default function LoginScreen() {
   const paperTheme = useTheme();
   const insets = useSafeAreaInsets();
@@ -138,6 +196,19 @@ export default function LoginScreen() {
   const emailRef = useRef<RNTextInput>(null);
   const passwordRef = useRef<RNTextInput>(null);
   const confirmRef = useRef<RNTextInput>(null);
+
+  // Detect OAuth error in URL after web redirect
+  useEffect(() => {
+    if (Platform.OS !== "web") return;
+    const err = extractUrlParam(window.location.href, "error_description")
+      || extractUrlParam(window.location.href, "error");
+    if (err) {
+      setError(err === "server_error"
+        ? "Google sign-in failed. Please try again or use email."
+        : err);
+      window.history.replaceState(null, "", window.location.pathname);
+    }
+  }, []);
 
   const cardY = useSharedValue(40);
   const cardOpacity = useSharedValue(0);
@@ -163,7 +234,7 @@ export default function LoginScreen() {
 
   const isValidEmail = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
   const emailOk = isValidEmail(email);
-  const pwOk = password.length >= 6;
+  const { allPass: pwOk } = validatePassword(password);
   const matchOk = mode === "signin" || password === confirmPassword;
   const canSubmit = emailOk && pwOk && matchOk && !submitting;
 
@@ -184,21 +255,42 @@ export default function LoginScreen() {
         if (data?.url) {
           const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
           if (result.type === "success" && result.url) {
+            const errDesc = extractUrlParam(result.url, "error_description")
+              || extractUrlParam(result.url, "error");
+            if (errDesc) {
+              setError(errDesc === "server_error"
+                ? "Google sign-in failed. Please try again or use email."
+                : errDesc);
+              setBusy(false);
+              return;
+            }
             const code = extractCodeFromUrl(result.url);
             if (code) {
               const { error: exchangeErr } = await supabase.auth.exchangeCodeForSession(code);
               if (exchangeErr) throw exchangeErr;
             } else {
-              await supabase.auth.getSession();
+              const fragment = result.url.split("#")[1];
+              if (fragment) {
+                const params = new URLSearchParams(fragment);
+                const access_token = params.get("access_token");
+                const refresh_token = params.get("refresh_token");
+                if (access_token && refresh_token) {
+                  const { error: sessionErr } = await supabase.auth.setSession({
+                    access_token,
+                    refresh_token,
+                  });
+                  if (sessionErr) throw sessionErr;
+                }
+              }
             }
-          } else {
-            setBusy(false);
           }
+          setBusy(false);
         }
       } else {
+        const supabaseUrl = `${window.location.origin}/auth/callback`;
         const { data, error: oauthErr } = await supabase.auth.signInWithOAuth({
           provider: "google",
-          options: { redirectTo: window.location.origin },
+          options: { redirectTo: supabaseUrl },
         });
         if (oauthErr) throw oauthErr;
         if (data?.url) window.location.href = data.url;
@@ -611,6 +703,9 @@ export default function LoginScreen() {
                     Passwords don't match
                   </Text>
                 )}
+
+                {/* Password requirements */}
+                {mode === "signup" && password.length > 0 && <PasswordRequirements password={password} />}
 
                 {/* Submit */}
                 <Button

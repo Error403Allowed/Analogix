@@ -1,6 +1,7 @@
 import { GraphQLError } from "graphql";
 import { requireUser } from "./_helpers.js";
 import type { GraphQLContext } from "../context.js";
+import { pubsubAsyncIterator } from "../pubsub-async-iterator.js";
 
 export const roomResolvers = {
   Query: {
@@ -393,21 +394,21 @@ export const roomResolvers = {
       subscribe: async (_: unknown, args: { roomId: string }, ctx: GraphQLContext) => {
         const user = requireUser(ctx);
         await requireRoomMember(ctx, args.roomId, user.id);
-        return ctx.pubsub.asyncIterator([`room.${args.roomId}.messages` as const]) as unknown as AsyncIterator<unknown>;
+        return pubsubAsyncIterator(ctx.pubsub, [`room.${args.roomId}.messages`]) as unknown as AsyncIterator<unknown>;
       },
     },
     roomPresenceStream: {
       subscribe: async (_: unknown, args: { roomId: string }, ctx: GraphQLContext) => {
         const user = requireUser(ctx);
         await requireRoomMember(ctx, args.roomId, user.id);
-        return ctx.pubsub.asyncIterator([`room.${args.roomId}.presence` as const]) as unknown as AsyncIterator<unknown>;
+        return pubsubAsyncIterator(ctx.pubsub, [`room.${args.roomId}.presence`]) as unknown as AsyncIterator<unknown>;
       },
     },
     roomTimerStream: {
       subscribe: async (_: unknown, args: { roomId: string }, ctx: GraphQLContext) => {
         const user = requireUser(ctx);
         await requireRoomMember(ctx, args.roomId, user.id);
-        return ctx.pubsub.asyncIterator([`room.${args.roomId}.timer` as const]) as unknown as AsyncIterator<unknown>;
+        return pubsubAsyncIterator(ctx.pubsub, [`room.${args.roomId}.timer`]) as unknown as AsyncIterator<unknown>;
       },
     },
   },

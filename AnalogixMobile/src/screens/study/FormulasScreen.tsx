@@ -8,7 +8,7 @@ import {
   Platform,
 } from "react-native";
 import { Text, useTheme, ActivityIndicator } from "react-native-paper";
-import { useQuery } from "@apollo/client";
+import { useQuery } from "@apollo/client/react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { FORMULA_SHEETS, SEARCH_FORMULAS } from "../../graphql/queries/misc";
 import { useNavigation } from "@react-navigation/native";

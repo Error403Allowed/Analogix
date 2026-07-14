@@ -8,6 +8,7 @@ export const UpdateProfileInput = z.object({
   subjects: z.array(z.string()).optional(),
   hobbies: z.array(z.string()).optional(),
   hobbyIds: z.array(z.string()).optional(),
+  avatarUrl: z.string().optional(),
   timezone: z.string().optional(),
   onboardingComplete: z.boolean().optional(),
   toursCompleted: z.array(z.string()).optional(),

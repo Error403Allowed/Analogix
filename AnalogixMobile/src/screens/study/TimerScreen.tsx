@@ -6,7 +6,7 @@ import { SHAPE } from "../../theme/tokens";
 import Svg, { Circle } from "react-native-svg";
 import * as Haptics from "expo-haptics";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useMutation } from "@apollo/client";
+import { useMutation } from "@apollo/client/react";
 import { INCREMENT_ACTIVITY } from "../../graphql/queries/user";
 import { useNavigation } from "@react-navigation/native";
 import Icon from "../../components/Icon";

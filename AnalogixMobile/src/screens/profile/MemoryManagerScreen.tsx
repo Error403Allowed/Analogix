@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { View, StyleSheet, ScrollView, Pressable } from "react-native";
 import { Text, useTheme, Card, IconButton, Button, ActivityIndicator, TextInput, Portal, Modal, Snackbar } from "react-native-paper";
-import { useQuery, useMutation } from "@apollo/client";
+import { useQuery, useMutation } from "@apollo/client/react";
 import { useNavigation } from "@react-navigation/native";
 import { USER_STATS, FORGET_MEMORY, REMEMBER_MEMORY } from "../../graphql/queries/user";
 import { useThemeContext } from "../../theme/ThemeContext";

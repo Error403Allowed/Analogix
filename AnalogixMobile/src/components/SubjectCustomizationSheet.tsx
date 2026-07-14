@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { View, StyleSheet, Pressable, ScrollView } from "react-native";
 import { Text, useTheme, Portal, Modal, TextInput, Button } from "react-native-paper";
-import { useMutation, useQuery } from "@apollo/client";
+import { useMutation, useQuery } from "@apollo/client/react";
 import { SAVE_CUSTOM_SUBJECT, CUSTOM_SUBJECTS } from "../graphql/queries/subject";
 import { SHAPE } from "../theme/tokens";
 import Icon from "../components/Icon";

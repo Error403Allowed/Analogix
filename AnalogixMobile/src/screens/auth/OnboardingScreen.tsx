@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { View, StyleSheet, ScrollView, Pressable, TextInput, Dimensions } from "react-native";
 import { Text, useTheme, Button, ProgressBar, Card, TextInput as PaperInput } from "react-native-paper";
-import { useMutation, useQuery, gql, useApolloClient } from "@apollo/client";
+import { gql } from "@apollo/client";
+import { useMutation, useQuery, useApolloClient } from "@apollo/client/react";
 import * as DocumentPicker from "expo-document-picker";
 import { readAsStringAsync } from "expo-file-system/legacy";
 import ConfettiCannon from "react-native-confetti-cannon";
@@ -163,9 +164,9 @@ export default function OnboardingScreen() {
       // Optimistically mark onboarding as complete so AuthGate
       // transitions to the main tabs even if the server returned 401.
       apolloClient.cache.writeFragment({
-        id: `User:${user?.id}`,
+        id: `Profile:${user?.id}`,
         fragment: gql`
-          fragment _onboarded on User {
+          fragment _onboarded on Profile {
             onboardingComplete
           }
         `,

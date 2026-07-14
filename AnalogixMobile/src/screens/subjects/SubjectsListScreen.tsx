@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { View, StyleSheet, Pressable, useWindowDimensions } from "react-native";
 import { Text, useTheme, ActivityIndicator, Searchbar, SegmentedButtons } from "react-native-paper";
-import { useQuery } from "@apollo/client";
+import { useQuery } from "@apollo/client/react";
 import { useNavigation } from "@react-navigation/native";
 import { ME } from "../../graphql/queries/user";
 import { SUBJECTS, CUSTOM_SUBJECTS } from "../../graphql/queries/subject";

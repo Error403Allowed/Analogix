@@ -181,7 +181,7 @@ const Onboarding = () => {
           const supabase = createClient();
           const { data: profile } = await supabase
             .from("profiles")
-            .select("name, grade, state, subjects, hobbies, hobby_ids, hobby_details, onboarding_complete")
+            .select("name, grade, state, subjects, hobbies, hobby_ids, hobby_details, onboarding_complete, avatar_url")
             .eq("id", authUser.id)
             .single();
 
@@ -206,10 +206,11 @@ const Onboarding = () => {
                 subjects: Array.isArray(profile?.subjects) ? profile.subjects : (existing.subjects ?? []),
                 hobbies: Array.isArray(profile?.hobbies) ? profile.hobbies : (existing.hobbies ?? []),
                 hobbyIds: Array.isArray(profile?.hobby_ids) ? profile.hobby_ids : (existing.hobbyIds ?? []),
-                hobbyDetails: profile?.hobby_details && typeof profile.hobby_details === "object"
-                  ? profile.hobby_details
-                  : (existing.hobbyDetails ?? {}),
-                onboardingComplete: true,
+              hobbyDetails: profile?.hobby_details && typeof profile.hobby_details === "object"
+                ? profile.hobby_details
+                : (existing.hobbyDetails ?? {}),
+              avatarUrl: profile?.avatar_url ?? existing.avatarUrl,
+              onboardingComplete: true,
                 userId: authUser.id,
               };
               localStorage.setItem("userPreferences", JSON.stringify(next));

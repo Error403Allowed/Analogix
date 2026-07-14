@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { View, StyleSheet } from "react-native";
 import { Text, useTheme, FAB, Portal, Modal, TextInput, Button, ActivityIndicator } from "react-native-paper";
-import { useQuery, useMutation } from "@apollo/client";
+import { useQuery, useMutation } from "@apollo/client/react";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { FLASHCARD_SETS, CREATE_FLASHCARD_SET } from "../../graphql/queries/flashcard";
 import { useThemeContext } from "../../theme/ThemeContext";

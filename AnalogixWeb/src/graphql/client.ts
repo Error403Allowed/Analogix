@@ -1,6 +1,8 @@
-import { ApolloClient, InMemoryCache, ApolloLink, HttpLink } from "@apollo/client";
-import { setContext } from "@apollo/client/link/context";
-import { onError } from "@apollo/client/link/error";
+import { ApolloClient, InMemoryCache, ApolloLink } from "@apollo/client/core";
+import { HttpLink } from "@apollo/client/link/http";
+import { SetContextLink } from "@apollo/client/link/context";
+import { ErrorLink } from "@apollo/client/link/error";
+import { CombinedGraphQLErrors } from "@apollo/client/errors";
 import { createClient } from "@/lib/supabase/client";
 
 function getGraphQlUrl(): string {
@@ -19,37 +21,37 @@ async function getAccessToken(): Promise<string | null> {
 
 const httpLink = new HttpLink({ uri: getGraphQlUrl() });
 
-const authLink = setContext(async (_, { headers }) => {
+const authLink = new SetContextLink(async (prevContext) => {
   const token = await getAccessToken();
   return {
+    ...prevContext,
     headers: {
-      ...(headers ?? {}),
+      ...(prevContext.headers ?? {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
   };
 });
 
-const errorLink = onError(({ graphQLErrors, networkError }) => {
-  if (graphQLErrors) {
-    for (const err of graphQLErrors) {
+const errorLink = new ErrorLink(({ error }) => {
+  if (CombinedGraphQLErrors.is(error)) {
+    for (const err of error.errors) {
       if (err.extensions?.code === "UNAUTHENTICATED") {
         console.warn("[apollo] unauthenticated");
       }
     }
-  }
-  if (networkError) {
-    console.warn("[apollo] network error", networkError);
+  } else {
+    console.warn("[apollo] network error", error);
   }
 });
 
-export function createApolloClient(): ApolloClient<unknown> {
+export function createApolloClient(): ApolloClient {
   return new ApolloClient({
     link: ApolloLink.from([errorLink, authLink, httpLink]),
     cache: new InMemoryCache(),
     defaultOptions: {
-      watchQuery: { fetchPolicy: "cache-and-network", errorPolicy: "all" },
-      query: { fetchPolicy: "network-only", errorPolicy: "all" },
-      mutate: { errorPolicy: "all" },
-    },
+      watchQuery: { fetchPolicy: "cache-and-network", errorPolicy: "all" as const },
+      query: { fetchPolicy: "network-only", errorPolicy: "all" as const },
+      mutate: { errorPolicy: "all" as const },
+    } as unknown as ApolloClient.DefaultOptions.Input,
   });
 }

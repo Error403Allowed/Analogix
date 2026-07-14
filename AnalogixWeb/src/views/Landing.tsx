@@ -8,7 +8,7 @@ import {
   Calculator, FlaskConical, Check, ChevronRight, Rocket, Shield,
   Lightbulb, Zap, Target, Clock, FileText, GraduationCap,
   Calendar, Layers, Star, TrendingUp, BookMarked, PenTool, Cpu,
-  BookOpenText, Github, ExternalLink, Users, Loader2
+  BookOpenText, GitBranch, ExternalLink, Users, Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -314,7 +314,7 @@ const Landing = () => {
       const supabase = createClient();
       const { data: profile } = await supabase
         .from("profiles")
-        .select("onboarding_complete, name, grade, state, subjects, hobbies, hobby_ids, hobby_details")
+        .select("onboarding_complete, name, grade, state, subjects, hobbies, hobby_ids, hobby_details, avatar_url")
         .eq("id", user.id)
         .maybeSingle();
       if (profile?.onboarding_complete) {
@@ -325,6 +325,7 @@ const Landing = () => {
           ...existing,
           ...profile,
           grade: existing.grade || dbGrade || null,
+          avatarUrl: profile?.avatar_url ?? existing.avatarUrl,
           onboardingComplete: true,
         }));
         window.dispatchEvent(new Event("userPreferencesUpdated"));
@@ -453,7 +454,7 @@ const Landing = () => {
               className="w-8 h-8 rounded-full hover:bg-accent flex items-center justify-center transition-colors text-muted-foreground hover:text-foreground border border-border"
               title="View on GitHub"
             >
-              <Github className="w-4 h-4" />
+                <GitBranch className="w-4 h-4" />
             </a>
 
             {loading || !isMounted ? (
@@ -890,7 +891,7 @@ const Landing = () => {
                 className="text-muted-foreground hover:text-foreground transition-colors"
                 title="GitHub"
               >
-                <Github className="w-4 h-4" />
+                <GitBranch className="w-4 h-4" />
               </a>
             </div>
           </div>

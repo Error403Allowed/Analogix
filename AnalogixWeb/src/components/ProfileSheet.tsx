@@ -261,6 +261,7 @@ const ProfileSheet = ({ open, onOpenChange }: ProfileSheetProps) => {
             hobbies: hobbiesWithDetails,
             hobby_ids: hobbyIds,
             hobby_details: hobbyDetails,
+            avatar_url: avatarUrl || null,
             onboarding_complete: true,
             updated_at: new Date().toISOString(),
           }, { onConflict: "id" })
@@ -273,7 +274,8 @@ const ProfileSheet = ({ open, onOpenChange }: ProfileSheetProps) => {
             .upsert({
               id: userId, name: name.trim(), grade, state: state || null,
               subjects, hobbies: hobbiesWithDetails, hobby_ids: hobbyIds,
-              hobby_details: hobbyDetails, onboarding_complete: true,
+              hobby_details: hobbyDetails, avatar_url: avatarUrl || null,
+              onboarding_complete: true,
               updated_at: new Date().toISOString(),
             }, { onConflict: "id" });
           if (retryError) throw retryError;

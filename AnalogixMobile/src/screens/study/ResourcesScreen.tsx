@@ -8,7 +8,7 @@ import {
   Platform,
 } from "react-native";
 import { Text, useTheme, ActivityIndicator, Chip } from "react-native-paper";
-import { useQuery } from "@apollo/client";
+import { useQuery } from "@apollo/client/react";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { useThemeContext } from "../../theme/ThemeContext";
 import Animated, {

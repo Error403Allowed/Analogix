@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { View, StyleSheet, Pressable, useWindowDimensions, Alert as RNAlert } from "react-native";
 import { Text, useTheme, Button, ActivityIndicator, ProgressBar } from "react-native-paper";
-import { useQuery, useMutation } from "@apollo/client";
+import { useQuery, useMutation } from "@apollo/client/react";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import Animated, {
   useSharedValue,

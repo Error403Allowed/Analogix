@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { View, StyleSheet, Alert, KeyboardAvoidingView, Platform, TextInput } from "react-native";
 import { Text, useTheme, IconButton, Button, ActivityIndicator, Menu } from "react-native-paper";
-import { useQuery, useMutation } from "@apollo/client";
+import { useQuery, useMutation } from "@apollo/client/react";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { DOCUMENT, UPDATE_DOCUMENT, DELETE_DOCUMENT } from "../../graphql/queries/subject";

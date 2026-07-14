@@ -1,8 +1,8 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import { Alert } from "react-native";
-import { useQuery, useMutation, useSubscription } from "@apollo/client";
+import { useQuery, useMutation, useSubscription } from "@apollo/client/react";
 import { useRoute, useNavigation } from "@react-navigation/native";
-import { useQuery as useApolloQuery } from "@apollo/client";
+import { useQuery as useApolloQuery } from "@apollo/client/react";
 import * as DocumentPicker from "expo-document-picker";
 import { readAsStringAsync } from "expo-file-system/legacy";
 import { CHAT_MESSAGES, CREATE_CHAT_SESSION, STREAM_CHAT_MESSAGE, CHAT_STREAM } from "../../../graphql/queries/chat";
@@ -92,8 +92,8 @@ export function useChatSession(route: any, navigation: any) {
     variables: { sessionId: activeSessionId },
     skip: !realSessionId,
     shouldResubscribe: true,
-    onData: ({ data: result }) => {
-      const d = result?.data?.chatStream;
+    onData: ({ data }: any) => {
+      const d = data?.data?.chatStream;
       if (!d) return;
       if (d.done) {
         setStreamingText("");
@@ -103,7 +103,7 @@ export function useChatSession(route: any, navigation: any) {
         setStreamingText(d.fullText ?? "");
       }
     },
-    onError: (err) => {
+    onError: (err: any) => {
       console.warn("[chat] CHAT_STREAM error", err);
     },
   });

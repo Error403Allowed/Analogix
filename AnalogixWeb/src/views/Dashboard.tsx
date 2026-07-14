@@ -15,7 +15,7 @@ import {
 import { DashboardPanel } from "@/components/ui/panels";
 import UpcomingEvents from "@/components/UpcomingEvents";
 import QuickLinks from "@/components/QuickLinks";
-import { useQuery } from "@apollo/client";
+import { useQuery } from "@apollo/client/react";
 import { USER_STATS, ACTIVITY_LOG } from "@/graphql/queries/user";
 import { useAchievementChecker } from "@/hooks/useAchievementChecker";
 import TutorialOverlay from "@/components/TutorialOverlay";
@@ -607,8 +607,8 @@ export default function Dashboard() {
   const [enabledWidgets, setEnabledWidgets] = useState<WidgetId[]>(DEFAULT_ENABLED);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  const { data: statsData } = useQuery(USER_STATS);
-  const { data: activityData } = useQuery(ACTIVITY_LOG, { variables: { days: 7 } });
+  const { data: statsData } = useQuery(USER_STATS) as any;
+  const { data: activityData } = useQuery(ACTIVITY_LOG, { variables: { days: 7 } }) as any;
 
   useEffect(() => { setEnabledWidgets(loadEnabledWidgets()); }, []);
 

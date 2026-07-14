@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  MessageCircle, Calendar, Github, ExternalLink, ChevronDown, ChevronUp,
+  MessageCircle, Calendar, GitBranch, ExternalLink, ChevronDown, ChevronUp,
   Sparkles, BookOpen, Shield, Clock, Users, Zap, Bug, FileText, ArrowUpRight
 } from "lucide-react";
 
@@ -105,7 +105,7 @@ export default function SupportPage() {
             rel="noopener noreferrer"
             className="text-muted-foreground hover:text-foreground transition-colors"
           >
-            <Github className="w-5 h-5" />
+            <GitBranch className="w-5 h-5" />
           </a>
         </div>
       </header>

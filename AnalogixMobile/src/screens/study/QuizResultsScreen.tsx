@@ -2,7 +2,7 @@ import React, { useMemo, useEffect, useState, useRef, useCallback } from "react"
 import { View, StyleSheet, ScrollView } from "react-native";
 import { Text, useTheme, Card, Button, ActivityIndicator } from "react-native-paper";
 import { useRoute, useNavigation } from "@react-navigation/native";
-import { useQuery, useMutation } from "@apollo/client";
+import { useQuery, useMutation } from "@apollo/client/react";
 import { QUIZ, QUIZ_REVIEW } from "../../graphql/queries/quiz";
 import { UNLOCK_ACHIEVEMENT } from "../../graphql/queries/misc";
 import { useThemeContext } from "../../theme/ThemeContext";

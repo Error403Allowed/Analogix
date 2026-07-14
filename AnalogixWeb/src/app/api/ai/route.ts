@@ -1,5 +1,5 @@
 import { createGroq } from "@ai-sdk/groq";
-import { type UIMessage, convertToModelMessages, streamText } from "ai";
+import { convertToModelMessages, streamText } from "ai";
 import {
   getProviderOverrides,
   injectDocumentStateMessages,
@@ -12,8 +12,8 @@ const groq = createGroq({ apiKey: process.env.GROQ_API_KEY });
 const model = groq("llama-3.3-70b-versatile");
 
 interface BlockNoteAIRequestBody {
-  messages?: UIMessage[];
-  toolDefinitions?: Parameters<typeof toolDefinitionsToToolSet>[0];
+  messages?: any[];
+  toolDefinitions?: Record<string, any>;
   subject?: string;
   documentTitle?: string;
 }
@@ -32,15 +32,15 @@ export async function POST(req: Request) {
       return new Response("toolDefinitions are required", { status: 400 });
     }
 
-    const tools = toolDefinitionsToToolSet(toolDefinitions);
-    const providerOverrides = getProviderOverrides(model);
-    const messagesWithDocState = injectDocumentStateMessages(messages);
+    const tools = toolDefinitionsToToolSet(toolDefinitions) as any;
+    const providerOverrides = getProviderOverrides(model as any);
+    const messagesWithDocState = injectDocumentStateMessages(messages as any) as any;
     const modelMessages = await convertToModelMessages(messagesWithDocState, {
       tools,
     });
 
     const result = streamText({
-      model,
+      model: model as any,
       system: buildBlockNoteAISystemPrompt({ subject, documentTitle }),
       messages: modelMessages,
       tools,

@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { View, StyleSheet, Pressable, Alert, Linking } from "react-native";
 import { Text, useTheme, ActivityIndicator, Portal, Modal, TextInput, Button, Checkbox } from "react-native-paper";
-import { useQuery, useMutation } from "@apollo/client";
+import { useQuery, useMutation } from "@apollo/client/react";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import { SUBJECT_DETAIL, SUBJECT, DOCUMENTS, CREATE_DOCUMENT, SAVE_SUBJECT_NOTES, ADD_MARK, DUPLICATE_DOCUMENT } from "../../graphql/queries/subject";
 import { ME } from "../../graphql/queries/user";

@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { View, StyleSheet, Pressable } from "react-native";
 import { Text, useTheme, ActivityIndicator } from "react-native-paper";
-import { useQuery } from "@apollo/client";
+import { useQuery } from "@apollo/client/react";
 import { useNavigation } from "@react-navigation/native";
 import { useThemeContext } from "../../theme/ThemeContext";
 import Animated, {

@@ -88,7 +88,7 @@ const BlockNoteEditor = forwardRef<BlockNoteHandle, Props>(
             subject: aiContextRef.current.subjectLabel,
             documentTitle: aiContextRef.current.documentTitle,
           }),
-        }),
+        }) as any,
       [],
     );
     const aiExtensions = useMemo(

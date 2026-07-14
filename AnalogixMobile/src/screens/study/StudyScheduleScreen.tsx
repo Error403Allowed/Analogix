@@ -2,7 +2,7 @@ import React, { useState, useCallback } from "react";
 import { View, StyleSheet, ScrollView, Pressable } from "react-native";
 import { Text, useTheme, ActivityIndicator, Button, SegmentedButtons } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useQuery, useMutation } from "@apollo/client";
+import { useQuery, useMutation } from "@apollo/client/react";
 import { useNavigation } from "@react-navigation/native";
 import { GENERATE_STUDY_SCHEDULE } from "../../graphql/queries/ai";
 import { EVENTS } from "../../graphql/queries/calendar";

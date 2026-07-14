@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { View, StyleSheet, Alert, ScrollView, Pressable } from "react-native";
 import { Text, useTheme, Card, IconButton, Button, Portal, Modal, TextInput, ActivityIndicator } from "react-native-paper";
-import { useQuery, useMutation } from "@apollo/client";
+import { useQuery, useMutation } from "@apollo/client/react";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import { EVENTS, DELETE_EVENT, UPDATE_EVENT } from "../../graphql/queries/calendar";
 import { useThemeContext } from "../../theme/ThemeContext";

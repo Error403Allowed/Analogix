@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { View, Pressable, StyleSheet, Alert } from "react-native";
 import { Text, useTheme, ActivityIndicator } from "react-native-paper";
-import { useMutation } from "@apollo/client";
+import { useMutation } from "@apollo/client/react";
 import { GENERATE_FLASHCARDS } from "../graphql/queries/flashcard";
 import { GENERATE_QUIZ } from "../graphql/queries/quiz";
 import { useNavigation } from "@react-navigation/native";

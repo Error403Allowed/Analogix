@@ -13,7 +13,7 @@ export default function FormulaRenderer({ math, style, minHeight: minH = 48 }: P
   const latex = useMemo(() => stripDelimiters(math), [math]);
   const [webViewHeight, setWebViewHeight] = useState(Math.max(minH, 48));
   const [webViewError, setWebViewError] = useState(false);
-  const webViewRef = useRef<WebView>(null);
+  const webViewRef = useRef<any>(null);
   const renderedHtml = useMemo(() => (latex ? renderLatex(latex) : ""), [latex]);
 
   const handleMessage = useCallback((event: any) => {

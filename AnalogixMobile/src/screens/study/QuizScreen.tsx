@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect } from "react";
 import { View, StyleSheet, Pressable, Alert } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { Text, useTheme, FAB, Portal, Modal, Button, TextInput, SegmentedButtons, ActivityIndicator } from "react-native-paper";
-import { useQuery, useMutation } from "@apollo/client";
+import { useQuery, useMutation } from "@apollo/client/react";
 import { useNavigation } from "@react-navigation/native";
 import { QUIZZES, GENERATE_QUIZ, ATTEMPTS } from "../../graphql/queries/quiz";
 import { EXTRACT_TEXT } from "../../graphql/queries/ai";

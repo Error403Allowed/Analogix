@@ -2,12 +2,11 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { ApolloProvider, useMutation } from "@apollo/client";
+import { ApolloProvider, useMutation } from "@apollo/client/react";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
-import FirstVisitOverlay from "@/components/FirstVisitOverlay";
 import ThemeSync from "@/components/ThemeSync";
 import { AuthProvider } from "@/context/AuthContext";
 import { TourProvider } from "@/context/TourContext";
@@ -46,7 +45,6 @@ export default function AppProviders({ children }: { children: React.ReactNode }
             <TooltipProvider>
               <TourSyncProvider>
                 <ThemeSync />
-                <FirstVisitOverlay />
                 <TourAutoTrigger />
                 <PageTour />
                 {children}

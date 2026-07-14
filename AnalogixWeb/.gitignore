@@ -45,3 +45,4 @@ eslint.config.js.map
 *.js.map
 src/**/*.js
 src/**/*.d.ts
+.vercel

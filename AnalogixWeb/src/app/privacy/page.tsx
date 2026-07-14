@@ -6,7 +6,7 @@ import { sanitizeHtml } from "@/lib/sanitize";
 import {
   Shield, User, Settings, Brain, Database, Lock, Share2,
   Globe, Scale, Cookie, Baby, Clock, FileText, ExternalLink,
-  ChevronDown, ArrowUpRight, Github
+  ChevronDown, ArrowUpRight, GitBranch
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -142,7 +142,7 @@ export default function PrivacyPage() {
             rel="noopener noreferrer"
             className="text-muted-foreground hover:text-foreground transition-colors"
           >
-            <Github className="w-5 h-5" />
+            <GitBranch className="w-5 h-5" />
           </a>
         </div>
       </header>

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { useQuery, useMutation } from "@apollo/client";
+import { useQuery, useMutation } from "@apollo/client/react";
 import { USER_STATS } from "../graphql/queries/user";
 import { ACHIEVEMENTS as ACHIEVEMENTS_QUERY, UNLOCK_ACHIEVEMENT } from "../graphql/queries/misc";
 import { ACHIEVEMENTS } from "@analogix/shared/achievements";

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { View, StyleSheet, ScrollView, Image, TextInput as RNTextInput } from "react-native";
 import { Text, useTheme, Portal, Modal, TextInput, Button, Switch, ActivityIndicator } from "react-native-paper";
-import { useQuery, useMutation, useSubscription } from "@apollo/client";
+import { useQuery, useMutation, useSubscription } from "@apollo/client/react";
 import { useNavigation } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ME, USER_STATS, ACTIVITY_LOG, INCREMENT_ACTIVITY } from "../../graphql/queries/user";
@@ -199,7 +199,7 @@ function ChatWidget() {
   useSubscription(CHAT_STREAM, {
     variables: { sessionId: activeSessionId },
     skip: !activeSessionId,
-    onData: ({ data }) => {
+    onData: ({ data }: any) => {
       const d = data?.data?.chatStream;
       if (!d) return;
       if (d.done) {
