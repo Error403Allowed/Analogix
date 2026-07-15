@@ -10,11 +10,23 @@
 
 ## Screenshots
 
-| | | | |
-|---|---|---|---|
-| ![Chat](screenshots/chat.png) | ![Dashboard](screenshots/dashboard.png) | | |
-| ![Study Rooms](screenshots/rooms.png) | ![Calendar](screenshots/calendar.png) | ![Timer](screenshots/timer.png) | |
-| ![Flashcards](screenshots/flashcards.png) | ![Subjects](screenshots/subjects.png) | ![Subject](screenshots/subject.png) | ![Document Editor](screenshots/document-editor.png) |
+<table>
+  <tr>
+    <td align="center"><img src="screenshots/chat.png" width="400"/><br/><b>Chat</b></td>
+    <td align="center"><img src="screenshots/dashboard.png" width="400"/><br/><b>Dashboard</b></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="screenshots/rooms.png" width="260"/><br/><b>Study Rooms</b></td>
+    <td align="center"><img src="screenshots/calendar.png" width="260"/><br/><b>Calendar</b></td>
+    <td align="center"><img src="screenshots/timer.png" width="260"/><br/><b>Timer</b></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="screenshots/flashcards.png" width="200"/><br/><b>Flashcards</b></td>
+    <td align="center"><img src="screenshots/subjects.png" width="200"/><br/><b>Subjects</b></td>
+    <td align="center"><img src="screenshots/subject.png" width="200"/><br/><b>Subject</b></td>
+    <td align="center"><img src="screenshots/document-editor.png" width="200"/><br/><b>Document Editor</b></td>
+  </tr>
+</table>
 
 These are just a few of the features! Visit [Analogix](https://analogix.vercel.app) for the full experience! 
 
