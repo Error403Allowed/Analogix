@@ -92,7 +92,7 @@ export default function FormulasPage() {
     try {
       const saved = JSON.parse(localStorage.getItem(FAVORITES_KEY) || "[]");
       setFavorites(new Set(saved));
-    } catch {}
+    } catch { /* invalid JSON */ }
   }, []);
 
   const toggleFavorite = useCallback((id: string) => {

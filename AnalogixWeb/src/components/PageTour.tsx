@@ -66,7 +66,7 @@ export const PageTour: React.FC = () => {
       const gap = 20;
       const arrowSize = 10;
 
-      let top = 0, left = 0, arrowTop = 0, arrowLeft = 0, rotation = 0;
+      let top: number, left: number, arrowTop = 0, arrowLeft = 0, rotation = 0;
 
       if (highlightedElement && spotlightRect) {
         const rect = spotlightRect;

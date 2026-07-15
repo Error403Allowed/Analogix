@@ -72,7 +72,7 @@ function MathBlockView({ block, editor }: MathBlockRenderProps) {
     );
   }
 
-  let html = "";
+  let html: string;
   try {
     html = katex.renderToString(input, { displayMode: true, throwOnError: false });
   } catch {

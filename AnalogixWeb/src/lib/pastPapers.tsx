@@ -110,7 +110,7 @@ const stripHtml = (html) => {
 const extractPdfLinks = (html, baseUrl) => {
     const links: string[] = [];
     const regex = /href=["']([^"']+\.pdf[^"']*)["']/gi;
-    let match: RegExpExecArray | null = null;
+    let match: RegExpExecArray | null;
     while ((match = regex.exec(html)) !== null) {
         try {
             const url = new URL(match[1], baseUrl).toString();
@@ -165,7 +165,7 @@ const fetchText = async (url, type) => {
     if (cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
         return cached.text;
     }
-    let text = "";
+    let text: string;
     if (type === "pdf") {
         const response = await withTimeout(url);
         if (!response.ok) {

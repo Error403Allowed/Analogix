@@ -79,7 +79,7 @@ const Header = ({ userName = "Student", streak = 0 }: HeaderProps) => {
   const [customInterest, setCustomInterest] = useState<Record<string, string>>({});
 
   const loadPreferences = () => {
-    let prefs: any = {};
+    let prefs: any;
     try {
       prefs = JSON.parse(localStorage.getItem("userPreferences") || "{}");
     } catch {
@@ -176,7 +176,7 @@ const Header = ({ userName = "Student", streak = 0 }: HeaderProps) => {
   };
 
   const saveProfile = async () => {
-    let prefs: any = {};
+    let prefs: any;
     try {
       prefs = JSON.parse(localStorage.getItem("userPreferences") || "{}");
     } catch {

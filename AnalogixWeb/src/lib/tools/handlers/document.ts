@@ -14,7 +14,7 @@ export async function getDocuments(
   const supabase = createToolsClient();
   const { subjectId, type = 'all', limit = 20 } = params;
 
-  let roles: string[] = [];
+  let roles: string[];
   if (type === 'document') roles = ['document'];
   else if (type === 'study_guide') roles = ['study_guide'];
   else roles = ['document', 'study_guide'];

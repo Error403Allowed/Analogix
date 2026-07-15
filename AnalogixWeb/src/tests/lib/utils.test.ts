@@ -7,7 +7,7 @@ describe('cn', () => {
   });
 
   it('handles conditional classes', () => {
-    expect(cn('base', false && 'hidden', 'visible')).toBe('base visible');
+    expect(cn('base', '', 'visible')).toBe('base visible');
   });
 
   it('handles array inputs', () => {

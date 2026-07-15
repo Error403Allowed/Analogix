@@ -106,7 +106,7 @@ export const quizTools = [
         subjectId: z.string(),
         title: z.string(),
         difficulty: z.string().optional().default("intermediate"),
-        questions: z.array(z.record(z.unknown())),
+        questions: z.array(z.record(z.string(), z.unknown())),
       }).parse(args);
       const normalizedSubjectId = normalizeSubject(subjectId);
       const subjectError = validateSubject(normalizedSubjectId);

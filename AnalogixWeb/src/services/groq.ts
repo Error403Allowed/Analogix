@@ -271,7 +271,7 @@ const fetchJson = async <T>(
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
-    throw new Error(message);
+    throw new Error(message, error instanceof Error ? { cause: error } : undefined);
   }
 };
 

@@ -504,7 +504,7 @@ Visualisations — you have THREE tools to make concepts visual and memorable:
     - Use * for multiplication (e.g. 2*x not 2x, 4*x^2 not 4x^2).
     - Use ^ for exponentiation, / for division.
     - Math functions: sin, cos, tan, arcsin, arccos, arctan, sinh, cosh, tanh, sqrt, ln, log, abs, floor, ceil, exp, sign, nthroot.
-    - ALL expressions use Desmos syntax, NOT LaTeX. Write "1/2" not "\frac{1}{2}", "sqrt(x)" not "\sqrt{x}".
+    - ALL expressions use Desmos syntax, NOT LaTeX. Write "1/2" not "\\frac{1}{2}", "sqrt(x)" not "\\sqrt{x}".
     - NEVER output a desmos.com URL. NEVER say "copy this link". NEVER describe the graph instead of showing it.
     - After the code block, you may briefly describe key features (vertex, intercepts, domain/range, etc.).
     Use for: any math function, equation, inequality, system of equations, transformation, parametric, conic sections, statistics plots.

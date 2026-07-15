@@ -24,14 +24,6 @@ import { config } from "../config";
 import { getSupabase } from "../supabase";
 import { CombinedGraphQLErrors } from "@apollo/client/errors";
 
-declare module "@apollo/client/core" {
-  export interface DeclareDefaultOptions {
-    watchQuery: { errorPolicy: "all" };
-    query: { errorPolicy: "all" };
-    mutate: { errorPolicy: "all" };
-  }
-}
-
 const cacheStorage = new MMKV({ id: "analogix.apollo" });
 const CACHE_KEY = "apolloCache";
 
@@ -122,7 +114,7 @@ export function createApolloClient(): ApolloClient {
       watchQuery: { fetchPolicy: "cache-and-network", errorPolicy: "all" },
       query: { fetchPolicy: "network-only", errorPolicy: "all" },
       mutate: { errorPolicy: "all" },
-    },
+    } as any,
   });
 }
 

@@ -40,7 +40,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Code too long" }, { status: 400 });
     }
 
-    const restrictedCode = code.replace(/[^a-zA-Z0-9_+\-*/().,%\s\[\],:]/g, "");
+    const restrictedCode = code.replace(/[^a-zA-Z0-9_+\-*/().,%\s[\],:]/g, "");
     if (restrictedCode !== code) {
       return NextResponse.json({ error: "Code contains unsafe characters" }, { status: 400 });
     }

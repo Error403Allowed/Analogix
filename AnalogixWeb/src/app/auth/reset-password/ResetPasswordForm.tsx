@@ -41,17 +41,19 @@ export default function ResetPasswordForm() {
   const [done, setDone] = useState(false);
 
   // Check for access_token in URL hash (Supabase sends it here)
-  const [hasToken, setHasToken] = useState(false);
+  const [hasToken, setHasToken] = useState(() => {
+    if (typeof window === "undefined") return false;
+    const hash = window.location.hash;
+    return !!(hash && (hash.includes("access_token") || hash.includes("type=recovery")));
+  });
 
   useEffect(() => {
-    const hash = window.location.hash;
-    if (hash && (hash.includes("access_token") || hash.includes("type=recovery"))) {
-      setHasToken(true);
+    if (hasToken) {
       // Supabase SSR client will automatically pick up the session from hash
       const supabase = createClient();
       supabase.auth.getSession();
     }
-  }, []);
+  }, [hasToken]);
 
   const { allPass: pwOk } = validatePassword(password);
   const matchOk = password === confirm;

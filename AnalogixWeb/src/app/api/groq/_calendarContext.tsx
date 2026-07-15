@@ -123,7 +123,7 @@ export async function buildCalendarContext(supabase, userId) {
     if (nextClass && !currentEvent && !rightNowLines.some(l => l.includes(nextClass.title))) {
         const classMins = Math.round((nextClass.date.getTime() - now.getTime()) / 60000);
         const classDays = Math.ceil((nextClass.date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-        let when = "";
+        let when: string;
         if (classMins < 60) {
             when = `in ${classMins} mins`;
         }

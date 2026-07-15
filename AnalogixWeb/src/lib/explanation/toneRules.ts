@@ -207,7 +207,7 @@ export function transformTone(text: string): string {
 
   result = convertToFriendly(text);
   result = enforceBrevity(result);
-  result = convertAustralian(text);
+  result = convertAustralian(result);
 
   return result;
 }

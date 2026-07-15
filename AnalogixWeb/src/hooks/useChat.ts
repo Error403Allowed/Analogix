@@ -325,8 +325,7 @@ Title:` }];
       textarea.select();
       try {
         document.execCommand("copy");
-      } catch {
-      }
+      } catch { /* clipboard copy not supported */ }
       document.body.removeChild(textarea);
     }
 
@@ -559,8 +558,7 @@ Title:` }];
   }, []);
 
   useEffect(() => {
-    if (streamingId || isTyping) {
-    }
+    if (streamingId || isTyping) { /* streaming in progress */ }
   }, [streamingId, isTyping]);
 
   useEffect(() => {
@@ -849,8 +847,8 @@ Title:` }];
     } finally {
       setPendingProposal(null);
       setPendingProposalMessageId(null);
-      if (error) throw error;
     }
+    if (error) throw error instanceof Error ? error : new Error(String(error));
   }, [pendingProposal, pendingProposalMessageId, router, messages]);
 
   const handleDenyTools = useCallback(() => {

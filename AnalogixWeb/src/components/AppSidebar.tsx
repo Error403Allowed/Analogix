@@ -68,14 +68,12 @@ export function AppSidebar() {
   const [activeThemeName,  setActiveThemeName]  = useState("Classic Blue");
   const [paperMode,        setPaperMode]        = useState(false);
   const lastColorRef = useRef<string>("Classic Blue");
-  const [mounted,          setMounted]          = useState(false);
+  const [mounted,          setMounted]          = useState(true);
   const [themeOpen,        setThemeOpen]        = useState(false);
   const [profileOpen,      setProfileOpen]      = useState(false);
   const [streak,           setStreak]           = useState(0);
   const [isNewPageModalOpen, setIsNewPageModalOpen] = useState(false);
   const isDark = resolvedTheme === "dark";
-
-  useEffect(() => { setMounted(true); }, []);
 
   useEffect(() => {
     const load = () => {

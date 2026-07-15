@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, startTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Play, Pause, RotateCcw, SkipForward, Check, ArrowLeft, Pencil, Timer, Coffee } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -14,56 +14,44 @@ const CIRCUMFERENCE = 2 * Math.PI * RING_R;
 
 export default function TimerPage() {
   const router = useRouter();
-  const initialStateRef = useRef<TimerState>(getDefaultTimerState());
-  const initialState = initialStateRef.current;
-  const [settings, setSettings] = useState<TimerSettings>(initialState.settings);
-  const [phase, setPhase] = useState<TimerPhase>(initialState.phase);
-  const [timeLeft, setTimeLeft] = useState(initialState.timeLeft);
-  const [isActive, setIsActive] = useState(initialState.isActive);
-  const [sessionsCompleted, setSessionsCompleted] = useState(initialState.sessionsCompleted);
-  const [sessionsTarget, setSessionsTarget] = useState(initialState.sessionsTarget);
+  const [settings, setSettings] = useState<TimerSettings>(() => loadTimerState().settings);
+  const [phase, setPhase] = useState<TimerPhase>(() => loadTimerState().phase);
+  const [timeLeft, setTimeLeft] = useState(() => loadTimerState().timeLeft);
+  const [isActive, setIsActive] = useState(() => loadTimerState().isActive);
+  const [sessionsCompleted, setSessionsCompleted] = useState(() => loadTimerState().sessionsCompleted);
+  const [sessionsTarget, setSessionsTarget] = useState(() => loadTimerState().sessionsTarget);
   const [editing, setEditing] = useState(false);
   const [editingPhase, setEditingPhase] = useState<TimerPhase>("study");
   const [editMins, setEditMins] = useState("25");
   const [editSecs, setEditSecs] = useState("00");
   const [editingSessions, setEditingSessions] = useState(false);
-  const [editSessionsValue, setEditSessionsValue] = useState(String(initialState.sessionsTarget));
+  const [editSessionsValue, setEditSessionsValue] = useState(() => String(loadTimerState().sessionsTarget));
   const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const [hydrated, setHydrated] = useState(false);
   const phaseRef = useRef(phase);
   const settingsRef = useRef(settings);
   const sessionsTargetRef = useRef(sessionsTarget);
   const hasRecordedActivityRef = useRef(false);
-  phaseRef.current = phase;
-  settingsRef.current = settings;
-  sessionsTargetRef.current = sessionsTarget;
+
+  useEffect(() => { phaseRef.current = phase; });
+  useEffect(() => { settingsRef.current = settings; });
+  useEffect(() => { sessionsTargetRef.current = sessionsTarget; });
 
   useEffect(() => {
-    const s = loadTimerState();
-    setSettings(s.settings);
-    setPhase(s.phase);
-    setTimeLeft(s.timeLeft);
-    setIsActive(s.isActive);
-    setSessionsCompleted(s.sessionsCompleted);
-    setSessionsTarget(s.sessionsTarget);
-    setHydrated(true);
-  }, []);
-
-  useEffect(() => {
-    if (!hydrated) return;
     saveTimerState({ phase, timeLeft, isActive, sessionsCompleted, sessionsTarget, settings, lastTick: Date.now() });
-  }, [phase, timeLeft, isActive, sessionsCompleted, sessionsTarget, settings, hydrated]);
+  }, [phase, timeLeft, isActive, sessionsCompleted, sessionsTarget, settings]);
 
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {
       if (e.key === "analogix_timer_state") {
         const s = loadTimerState();
-        setSettings(s.settings);
-        setPhase(s.phase);
-        setTimeLeft(s.timeLeft);
-        setIsActive(s.isActive);
-        setSessionsCompleted(s.sessionsCompleted);
-        setSessionsTarget(s.sessionsTarget);
+        startTransition(() => {
+          setSettings(s.settings);
+          setPhase(s.phase);
+          setTimeLeft(s.timeLeft);
+          setIsActive(s.isActive);
+          setSessionsCompleted(s.sessionsCompleted);
+          setSessionsTarget(s.sessionsTarget);
+        });
       }
     };
     window.addEventListener("storage", onStorage);
@@ -85,16 +73,21 @@ export default function TimerPage() {
     setTimeLeft(settingsRef.current[next]);
   }, []);
 
+  const handleTick = useCallback(() => {
+    setTimeLeft((prev) => {
+      if (prev <= 1) {
+        advancePhase();
+        return 0;
+      }
+      return prev - 1;
+    });
+  }, [advancePhase]);
+
   useEffect(() => {
-    if (isActive && timeLeft > 0) {
-      timerRef.current = setInterval(() => setTimeLeft(t => t - 1), 1000);
-    } else if (isActive && timeLeft === 0) {
-      setIsActive(false);
-      if (timerRef.current) clearInterval(timerRef.current);
-      advancePhase();
-    }
+    if (!isActive || timeLeft <= 0) return;
+    timerRef.current = setInterval(handleTick, 1000);
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [isActive, timeLeft, advancePhase]);
+  }, [isActive, timeLeft, handleTick]);
 
   const reset = () => { setIsActive(false); setTimeLeft(settings[phase]); };
 

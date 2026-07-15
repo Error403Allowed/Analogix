@@ -147,11 +147,11 @@ export function useChatSession(route: any, navigation: any) {
     try {
       setPendingUserText(messages[prevUserIdx].content);
       setStreamingText("");
-      const { errors: streamErrors } = await streamMessage({
+      const streamError = (await streamMessage({
         variables: { sessionId: realSessionId, content: messages[prevUserIdx].content, model: getGroqModelString(selectedModel) },
-      });
-      if (streamErrors?.length) {
-        console.warn("[chat] regenerate stream error", streamErrors);
+      })).error;
+      if (streamError) {
+        console.warn("[chat] regenerate stream error", streamError);
       }
     } catch (err) {
       console.warn("[chat] regenerate error", err);
@@ -300,15 +300,16 @@ export function useChatSession(route: any, navigation: any) {
       }
 
       if (!sid) {
-        const { data: created, errors: createErrors } = await createSession({
+        const result = await createSession({
           variables: { subjectId: route.params?.subjectId ?? "general" },
         });
-        if (createErrors?.length || !created?.createChatSession?.id) {
-          console.warn("[chat] createSession error", createErrors ?? "no id");
+        const created = result.data?.createChatSession;
+        if (!created?.id) {
+          console.warn("[chat] createSession error", result.error ?? "no id");
           setText(content);
           return;
         }
-        sid = created.createChatSession.id;
+        sid = created.id;
         setRealSessionId(sid);
       }
 
@@ -329,11 +330,11 @@ export function useChatSession(route: any, navigation: any) {
         augmentedContent += `\n\n[Analogy anchor: ${anchor}]`;
       }
 
-      const { errors: streamErrors } = await streamMessage({
+      const streamResult = await streamMessage({
         variables: { sessionId: sid, content: augmentedContent, model: getGroqModelString(selectedModel) },
       });
-      if (streamErrors?.length) {
-        console.warn("[chat] streamMessage error", streamErrors);
+      if (streamResult.error) {
+        console.warn("[chat] streamMessage error", streamResult.error);
       }
 
       if (isNew && sid && sid !== sessionId) {

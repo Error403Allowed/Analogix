@@ -32,6 +32,7 @@ Monorepo (npm workspaces + Turborepo) for an AI study platform. Four workspaces 
 - After context compaction, always refer back to AGENTS.md
 - Do not go with quick fixes, make fixes that work in the long-term and produce less errors over time
 - When asked to commit and push changes, make sure all local changes are pushed neatly so that commits can be referred in a neat and structured manner
+- Before committing and pushing, ALWAYS run "npm run build". npm run build MUST PASS before pushing in order to create a valid vercel deployment. 
 
 ## Testing
 
