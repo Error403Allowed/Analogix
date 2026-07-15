@@ -10,23 +10,59 @@
 
 ## Screenshots
 
+<h3>Core Screens</h3>
 <table>
   <tr>
-    <td align="center"><img src="screenshots/chat.png" width="400"/><br/><b>Chat</b></td>
-    <td align="center"><img src="screenshots/dashboard.png" width="400"/><br/><b>Dashboard</b></td>
-  </tr>
-  <tr>
-    <td align="center"><img src="screenshots/rooms.png" width="260"/><br/><b>Study Rooms</b></td>
-    <td align="center"><img src="screenshots/calendar.png" width="260"/><br/><b>Calendar</b></td>
-    <td align="center"><img src="screenshots/timer.png" width="260"/><br/><b>Timer</b></td>
-  </tr>
-  <tr>
-    <td align="center"><img src="screenshots/flashcards.png" width="200"/><br/><b>Flashcards</b></td>
-    <td align="center"><img src="screenshots/subjects.png" width="200"/><br/><b>Subjects</b></td>
-    <td align="center"><img src="screenshots/subject.png" width="200"/><br/><b>Subject</b></td>
-    <td align="center"><img src="screenshots/document-editor.png" width="200"/><br/><b>Document Editor</b></td>
+    <td align="center">
+      <img src="screenshots/chat.png" alt="Chat" width="460"><br>
+      <b>Chat</b>
+    </td>
+    <td align="center">
+      <img src="screenshots/dashboard.png" alt="Dashboard" width="460"><br>
+      <b>Dashboard</b>
+    </td>
   </tr>
 </table>
+
+<table>
+  <tr>
+    <td align="center">
+      <img src="screenshots/rooms.png" alt="Study Rooms" width="300"><br>
+      <b>Study Rooms</b>
+    </td>
+    <td align="center">
+      <img src="screenshots/calendar.png" alt="Calendar" width="300"><br>
+      <b>Calendar</b>
+    </td>
+    <td align="center">
+      <img src="screenshots/timer.png" alt="Timer" width="300"><br>
+      <b>Timer</b>
+    </td>
+  </tr>
+</table>
+
+<table>
+  <tr>
+    <td align="center">
+      <img src="screenshots/flashcards.png" alt="Flashcards" width="220"><br>
+      <b>Flashcards</b>
+    </td>
+    <td align="center">
+      <img src="screenshots/subjects.png" alt="Subjects" width="220"><br>
+      <b>Subjects</b>
+    </td>
+    <td align="center">
+      <img src="screenshots/subject.png" alt="Subject" width="220"><br>
+      <b>Subject</b>
+    </td>
+    <td align="center">
+      <img src="screenshots/document-editor.png" alt="Document Editor" width="220"><br>
+      <b>Document Editor</b>
+    </td>
+  </tr>
+</table>
+
+These are just a few of the features! Visit <a href="https://analogix.vercel.app" target="_blank" rel="noopener noreferrer">Analogix</a> for the full experience!
 
 These are just a few of the features! Visit [Analogix](https://analogix.vercel.app) for the full experience! 
 
