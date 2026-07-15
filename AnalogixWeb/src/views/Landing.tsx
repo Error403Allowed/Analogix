@@ -426,7 +426,7 @@ const Landing = () => {
               transition={{ duration: 0.3 }}
               className="w-8 h-8 rounded-xl overflow-hidden shrink-0"
             >
-              <img src="/tab-icon.png" alt="Analogix" className="w-full h-full object-cover" />
+              <img src="/tab-icon.png" alt="Analogix" className="w-full h-full object-contain" />
             </motion.div>
             <span className="text-lg font-black tracking-tight">Analogix</span>
           </motion.div>
@@ -864,7 +864,7 @@ const Landing = () => {
           <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6">
             <div className="flex items-center gap-2">
               <div className="w-7 h-7 rounded-lg overflow-hidden shrink-0">
-                <img src="/tab-icon.png" alt="Analogix" className="w-full h-full object-cover" />
+                <img src="/tab-icon.png" alt="Analogix" className="w-full h-full object-contain" />
               </div>
               <span className="font-black">Analogix</span>
             </div>

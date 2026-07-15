@@ -72,7 +72,7 @@ function AnimatedBrain({ focused, mode }: {
         }}
         transition={{ type: "spring", stiffness: 200, damping: 15 }}
       >
-        <img src="/tab-icon.png" alt="Analogix" className="w-full h-full object-cover" />
+        <img src="/tab-icon.png" alt="Analogix" className="w-full h-full object-contain" />
       </motion.div>
     </div>
   );

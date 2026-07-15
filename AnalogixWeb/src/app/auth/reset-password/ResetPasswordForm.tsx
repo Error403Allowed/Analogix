@@ -104,7 +104,7 @@ export default function ResetPasswordForm() {
       >
         <div className="bg-card border border-border rounded-3xl p-8 shadow-2xl text-center space-y-6">
           <div className="w-14 h-14 rounded-2xl overflow-hidden mx-auto shadow-lg shadow-primary/20">
-            <img src="/tab-icon.png" alt="Analogix" className="w-full h-full object-cover" />
+            <img src="/tab-icon.png" alt="Analogix" className="w-full h-full object-contain" />
           </div>
           <div className="space-y-1">
             <h1 className="text-2xl font-bold tracking-tight">Invalid reset link</h1>
