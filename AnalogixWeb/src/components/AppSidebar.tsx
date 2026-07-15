@@ -203,8 +203,8 @@ export function AppSidebar() {
               onClick={() => router.push("/?force=true")}
               className="flex items-center gap-3.5 rounded-3xl px-3 py-2 hover:bg-muted/30 transition-all active:scale-[0.98]"
             >
-              <div className="w-11 h-11 rounded-2xl bg-primary p-1.5 overflow-hidden shrink-0 shadow-xl shadow-primary/20">
-                <img src="/tab-icon.png" alt="Analogix" className="w-full h-full object-contain" />
+              <div className="w-11 h-11 rounded-2xl overflow-hidden shrink-0 shadow-xl shadow-primary/20">
+                <img src="/tab-icon.png" alt="Analogix" className="w-full h-full object-cover" />
               </div>
               <span className="text-lg font-black tracking-tight text-foreground">Analogix</span>
             </button>

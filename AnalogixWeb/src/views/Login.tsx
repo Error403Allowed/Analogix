@@ -63,7 +63,7 @@ function AnimatedBrain({ focused, mode }: {
         transition={{ duration: 0.8, ease: "easeInOut" }}
       />
       <motion.div
-        className="relative w-14 h-14 rounded-2xl bg-primary p-2 overflow-hidden shadow-lg shadow-primary/20"
+        className="relative w-14 h-14 rounded-2xl overflow-hidden shadow-lg shadow-primary/20"
         animate={{
           scale: focused ? 1.05 : 1,
           boxShadow: focused
@@ -72,7 +72,7 @@ function AnimatedBrain({ focused, mode }: {
         }}
         transition={{ type: "spring", stiffness: 200, damping: 15 }}
       >
-        <img src="/tab-icon.png" alt="Analogix" className="w-full h-full object-contain" />
+        <img src="/tab-icon.png" alt="Analogix" className="w-full h-full object-cover" />
       </motion.div>
     </div>
   );
