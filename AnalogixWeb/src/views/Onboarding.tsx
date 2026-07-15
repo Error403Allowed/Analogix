@@ -8,7 +8,7 @@ import {
   Cpu, LineChart, Briefcase, Wallet, HeartPulse, Globe, Wrench,
   Stethoscope, Languages, Dumbbell, Gamepad2, Music, CookingPot,
   Palette, Film, Leaf, Laptop, Book, Plane, CalendarDays, Upload,
-  Loader2, Brain, Eye, EyeOff, Mail, Lock,
+  Loader2, Eye, EyeOff, Mail, Lock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -204,8 +204,8 @@ function AuthStep({ onAuthed, externalError }: { onAuthed: () => void; externalE
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <div className="w-12 h-12 rounded-2xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20 flex-shrink-0">
-          <Brain className="w-6 h-6 text-primary-foreground" />
+        <div className="w-12 h-12 rounded-2xl overflow-hidden shadow-lg shadow-primary/20 flex-shrink-0">
+          <img src="/tab-icon.png" alt="Analogix" className="w-full h-full object-cover" />
         </div>
         <div>
           <h1 className="text-3xl font-black text-foreground tracking-tight">Welcome to Analogix.</h1>

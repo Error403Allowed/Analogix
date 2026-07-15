@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Brain, Loader2, Lock, Eye, EyeOff, ArrowRight, Check } from "lucide-react";
+import { Loader2, Lock, Eye, EyeOff, ArrowRight, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { updatePassword, validatePassword } from "@/lib/auth-client";
@@ -103,8 +103,8 @@ export default function ResetPasswordForm() {
         className="w-full max-w-md"
       >
         <div className="bg-card border border-border rounded-3xl p-8 shadow-2xl text-center space-y-6">
-          <div className="w-14 h-14 rounded-2xl bg-primary flex items-center justify-center mx-auto shadow-lg shadow-primary/20">
-            <Brain className="w-7 h-7 text-primary-foreground" />
+          <div className="w-14 h-14 rounded-2xl overflow-hidden mx-auto shadow-lg shadow-primary/20">
+            <img src="/tab-icon.png" alt="Analogix" className="w-full h-full object-cover" />
           </div>
           <div className="space-y-1">
             <h1 className="text-2xl font-bold tracking-tight">Invalid reset link</h1>
@@ -127,7 +127,7 @@ export default function ResetPasswordForm() {
       className="w-full max-w-md"
     >
       <div className="bg-card border border-border rounded-3xl p-8 shadow-2xl space-y-6">
-        {/* Brain icon */}
+        {/* Logo */}
         <div className="relative flex justify-center">
           <motion.div
             className="absolute inset-0 rounded-full blur-xl bg-primary/[0.08]"
