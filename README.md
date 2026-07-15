@@ -12,12 +12,11 @@
 
 | Mobile Dashboard | Chat | Web Dashboard |
 |:---:|:---:|:---:|
-| ![Mobile Dashboard](screenshots/mobile-dashboard.png) | ![Chat](screenshots/mobile-chat.png) | ![Web Dashboard](screenshots/web-dashboard.png) |
-| Study Hub | Calendar | Timer |
-| ![Study Hub](screenshots/mobile-studyhub.png) | ![Calendar](screenshots/mobile-calendar.png) | ![Timer](screenshots/mobile-timer.png) |
-| Quiz | | |
-| ![Quiz](screenshots/mobile-quiz.png) | | |
+| ![Chat](screenshots/chat.png) | ![Dashboard](screenshots/dashboard.png) |
+| ![Study Rooms](screenshots/rooms.png) | ![Calendar](screenshots/calendar.png) | ![Timer](screenshots/timer.png) |
+| ![Flashcards](screenshots/flashcards.png) | ![Subjects](screenshots/subjects.png) | ![Subject](screenshots/subject.png) | ![Document Editor](screenshots/document-editor.png) |
 
+These are just a few of the features! Visit [Analogix](https://analogix.vercel.app) for the full experience! 
 ---
 
 ## Features

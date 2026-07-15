@@ -446,9 +446,9 @@ const Landing = () => {
             <motion.div
               whileHover={{ scale: 1.1 }}
               transition={{ duration: 0.3 }}
-              className="w-8 h-8 shrink-0"
+              className="w-8 h-8 rounded-xl overflow-hidden shrink-0 shadow-lg shadow-primary/25"
             >
-              <img src="/tab-icon.png" alt="Analogix" className="w-full h-full object-contain" />
+              <img src="/tab-icon.png" alt="Analogix" className="w-full h-full object-cover" />
             </motion.div>
             <span className="text-lg font-black tracking-tight">Analogix</span>
           </motion.div>
@@ -885,8 +885,8 @@ const Landing = () => {
         <footer className="py-10 border-t border-border/40">
           <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6">
             <div className="flex items-center gap-2">
-              <div className="w-7 h-7 shrink-0">
-                <img src="/tab-icon.png" alt="Analogix" className="w-full h-full object-contain" />
+              <div className="w-7 h-7 rounded-lg overflow-hidden shrink-0">
+                <img src="/tab-icon.png" alt="Analogix" className="w-full h-full object-cover" />
               </div>
               <span className="font-black">Analogix</span>
             </div>
