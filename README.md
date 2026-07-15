@@ -10,8 +10,10 @@
 
 ## Screenshots
 
-| ![Chat](screenshots/chat.png) | ![Dashboard](screenshots/dashboard.png) |
-| ![Study Rooms](screenshots/rooms.png) | ![Calendar](screenshots/calendar.png) | ![Timer](screenshots/timer.png) |
+| | | | |
+|---|---|---|---|
+| ![Chat](screenshots/chat.png) | ![Dashboard](screenshots/dashboard.png) | | |
+| ![Study Rooms](screenshots/rooms.png) | ![Calendar](screenshots/calendar.png) | ![Timer](screenshots/timer.png) | |
 | ![Flashcards](screenshots/flashcards.png) | ![Subjects](screenshots/subjects.png) | ![Subject](screenshots/subject.png) | ![Document Editor](screenshots/document-editor.png) |
 
 These are just a few of the features! Visit [Analogix](https://analogix.vercel.app) for the full experience! 
