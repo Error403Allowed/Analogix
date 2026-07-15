@@ -1,23 +1,10 @@
 # Analogix
 
-> Why have so many tabs open when one platform will do? With Analogix, everything's all in one place, so you don't need to switch between claude, quizlet, anki, and any other tools.
+> Analogix puts everything all in one place, and is built specifically for students, so there's no need to switch between claude, quizlet, anki, and others.
 
 ![Platform](https://img.shields.io/badge/platform-web%20%7C%20mobile%20%7C%20api-6366f1)
 ![Node](https://img.shields.io/badge/node-%3E%3D22%20%3C27-339933)
 ![npm](https://img.shields.io/badge/npm-%3E%3D11-CC3534)
-
----
-
-## Table of Contents
-
-- [Screenshots](#screenshots)
-- [The story behind Analogix](#the-story-behind-analogix)
-- [Architecture](#architecture)
-- [The apps](#the-apps)
-- [Getting started](#getting-started)
-- [Environment variables](#environment-variables)
-- [Root-level scripts](#root-level-scripts)
-- [Further reading](#further-reading)
 
 ---
 

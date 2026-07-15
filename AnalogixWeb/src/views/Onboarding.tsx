@@ -204,8 +204,8 @@ function AuthStep({ onAuthed, externalError }: { onAuthed: () => void; externalE
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <div className="w-12 h-12 rounded-2xl overflow-hidden shadow-lg shadow-primary/20 flex-shrink-0">
-          <img src="/tab-icon.png" alt="Analogix" className="w-full h-full object-cover" />
+        <div className="w-12 h-12 rounded-2xl bg-primary p-1.5 overflow-hidden shadow-lg shadow-primary/20 flex-shrink-0">
+          <img src="/tab-icon.png" alt="Analogix" className="w-full h-full object-contain" />
         </div>
         <div>
           <h1 className="text-3xl font-black text-foreground tracking-tight">Welcome to Analogix.</h1>
