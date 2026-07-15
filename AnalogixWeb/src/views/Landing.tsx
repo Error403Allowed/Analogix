@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { motion, useScroll, useTransform, AnimatePresence, useSpring, useMotionValue, useInView } from "framer-motion";
 import {
-  ArrowRight, Sparkles, BookOpen, MessageCircle, Brain, Trophy,
+  ArrowRight, Sparkles, BookOpen, MessageCircle, Trophy,
   Calculator, FlaskConical, Check, ChevronRight, Rocket, Shield,
   Lightbulb, Zap, Target, Clock, FileText, GraduationCap,
   Calendar, Layers, Star, TrendingUp, BookMarked, PenTool, Cpu,
@@ -421,12 +421,12 @@ const Landing = () => {
             className="flex items-center gap-2.5 cursor-pointer"
             onClick={() => router.push("/")}
           >
-            <motion.div 
-              whileHover={{ rotate: 180, scale: 1.1 }}
+            <motion.div
+              whileHover={{ scale: 1.1 }}
               transition={{ duration: 0.3 }}
-              className="w-8 h-8 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/25"
+              className="w-8 h-8 rounded-xl overflow-hidden shrink-0 shadow-lg shadow-primary/25"
             >
-              <Brain className="w-4.5 h-4.5 text-primary-foreground" style={{ width: 18, height: 18 }} />
+              <img src="/tab-icon.png" alt="Analogix" className="w-full h-full object-cover" />
             </motion.div>
             <span className="text-lg font-black tracking-tight">Analogix</span>
           </motion.div>
@@ -863,8 +863,8 @@ const Landing = () => {
         <footer className="py-10 border-t border-border/40">
           <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6">
             <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center">
-                <Brain className="w-4 h-4 text-primary-foreground" />
+              <div className="w-7 h-7 rounded-lg overflow-hidden shrink-0">
+                <img src="/tab-icon.png" alt="Analogix" className="w-full h-full object-cover" />
               </div>
               <span className="font-black">Analogix</span>
             </div>
