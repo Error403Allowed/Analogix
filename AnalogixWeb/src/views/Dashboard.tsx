@@ -656,7 +656,7 @@ export default function Dashboard() {
       <div className="sticky top-0 z-30 bg-background/80 backdrop-blur-md border-b border-border/30">
         <div className="px-6 py-3 flex items-center justify-between max-w-4xl mx-auto w-full">
           <div className="min-w-0 flex-1">
-            <h1 className="text-xl font-display font-black text-foreground tracking-tight truncate">
+            <h1 className="text-xl font-display font-semibold text-foreground tracking-tight truncate">
               {greeting()}, {userName.split(" ")[0]} 👋
             </h1>
             <p className="text-[11px] text-muted-foreground/50 mt-0.5">
