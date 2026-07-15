@@ -15,7 +15,7 @@
 | ![Flashcards](screenshots/flashcards.png) | ![Subjects](screenshots/subjects.png) | ![Subject](screenshots/subject.png) | ![Document Editor](screenshots/document-editor.png) |
 
 These are just a few of the features! Visit [Analogix](https://analogix.vercel.app) for the full experience! 
-gi
+
 ---
 
 ## Features
