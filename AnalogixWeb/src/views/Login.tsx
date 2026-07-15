@@ -63,7 +63,7 @@ function AnimatedBrain({ focused, mode }: {
         transition={{ duration: 0.8, ease: "easeInOut" }}
       />
       <motion.div
-        className="relative w-14 h-14 rounded-2xl overflow-hidden shadow-lg shadow-primary/20"
+        className="relative w-14 h-14 shadow-lg shadow-primary/20"
         animate={{
           scale: focused ? 1.05 : 1,
           boxShadow: focused
