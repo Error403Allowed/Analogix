@@ -7,11 +7,11 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
-      "node": "22.16.0"
+      "node": "26.3.0"
     },
     "preview": {
       "distribution": "internal",
-      "node": "22.16.0",
+      "node": "26.3.0",
       "android": {
         "buildType": "apk"
       },
@@ -24,7 +24,7 @@
     },
     "production": {
       "autoIncrement": true,
-      "node": "22.16.0",
+      "node": "26.3.0",
       "android": {
         "buildType": "apk"
       },
