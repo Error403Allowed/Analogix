@@ -64,19 +64,13 @@ function mapPayloadToUser(payload: JWTPayload): AuthenticatedUser {
 }
 
 /**
- * Pulls a bearer token out of an HTTP request. Looks at the `Authorization`
- * header first, then falls back to a `?token=` query param (used by some
- * WebView clients). Returns null if none found.
+ * Pulls a bearer token out of an HTTP request from the `Authorization` header.
+ * Returns null if not found.
  */
-export function extractBearerToken(req: { headers: { authorization?: string | undefined }; url?: string }): string | null {
+export function extractBearerToken(req: { headers: { authorization?: string | undefined } }): string | null {
   const header = req.headers.authorization ?? "";
   if (header.toLowerCase().startsWith("bearer ")) {
     return header.slice(7).trim();
-  }
-  if (req.url) {
-    const url = new URL(req.url, "http://localhost");
-    const token = url.searchParams.get("token");
-    if (token) return token;
   }
   return null;
 }

@@ -99,20 +99,24 @@ export async function POST(request: Request) {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
-    // DEV MODE: Allow testing without auth
     const isDevMode = process.env.NODE_ENV === 'development' && process.env.ALLOW_DEV_API === 'true';
-    const userId = user?.id || (isDevMode ? 'dev-test-user' : null);
+    const devUserId = isDevMode ? (process.env.DEV_USER_ID || crypto.randomUUID()) : null;
+    const userId = user?.id || devUserId;
 
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    if (isDevMode && !user) {
+      console.warn('[chat] Dev mode: using anonymous userId', userId, '— set ALLOW_DEV_API=false in production');
     }
 
     const body: ChatRequest = await request.json();
     const { messages, userContext = {} } = body;
 
     const [personality, memoryContext] = await Promise.all([
-      isDevMode ? null : getUserAIPersonality(userId),
-      isDevMode ? '' : buildMemoryContext(userId, messages[messages.length - 1]?.content),
+      user ? getUserAIPersonality(userId) : Promise.resolve(null),
+      user ? buildMemoryContext(userId, messages[messages.length - 1]?.content) : Promise.resolve(''),
     ]);
 
     const retriever = createRetriever(userId as string);

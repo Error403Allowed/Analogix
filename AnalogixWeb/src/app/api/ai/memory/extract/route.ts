@@ -128,7 +128,6 @@ ${transcript}`;
     });
 
     const raw = response.choices[0]?.message?.content?.trim() || "{}";
-    console.log("[memory/extract] LLM raw output:", raw.slice(0, 300));
 
     // Strip markdown code blocks if present (LLMs love wrapping JSON in ```json ... ```)
     const cleaned = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");

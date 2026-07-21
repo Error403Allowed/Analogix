@@ -20,5 +20,6 @@ export function sanitizeHtml(html: string): string {
       "xmlns", "encoding",
     ],
     ALLOW_DATA_ATTR: false,
+    ALLOWED_URI_REGEXP: /^(?:(?:https?|ftp|mailto):|[^a-z]|[a-z+.]+(?:[^a-z+]|$))/i,
   });
 }

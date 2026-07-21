@@ -39,7 +39,7 @@ async function main() {
   );
 
   // Body parser must run before rate limiters so auth limiter can inspect query body
-  app.use("/graphql", bodyParser.json({ limit: "50mb" }));
+  app.use("/graphql", bodyParser.json({ limit: "10mb" }));
 
   // Global rate limiting (skip health endpoint)
   const globalLimiter = rateLimit({
@@ -121,7 +121,7 @@ async function main() {
     "/graphql",
     expressMiddleware(apollo, {
       context: async ({ req }: { req: Request }) => {
-        const token = extractBearerToken({ headers: req.headers, url: req.url });
+        const token = extractBearerToken({ headers: req.headers });
         return buildContext({ token, pubsub, requestId: crypto.randomUUID() });
       },
     })

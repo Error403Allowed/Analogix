@@ -65,6 +65,7 @@
     "react-native-gifted-charts": "^1.4.77",
     "react-native-math-view": "^3.9.5",
     "react-native-mmkv": "^4.3.2",
+    "react-native-nitro-modules": "^0.36.1",
     "react-native-paper": "^5.15.3",
     "react-native-reanimated": "~4.5.1",
     "react-native-safe-area-context": "~5.8.0",

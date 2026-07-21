@@ -16,6 +16,14 @@ interface EnvCheck {
  * Check if critical environment variables are configured.
  * Returns diagnostics to help debug "Failed to fetch" errors.
  */
+const SENSITIVE_KEYS = new Set([
+  'SUPABASE_SERVICE_ROLE_KEY',
+  'GROQ_API_KEY',
+  'GROQ_API_KEY_2',
+  'GOOGLE_CLIENT_SECRET',
+  'DESMOS_API_KEY',
+]);
+
 export const checkEnvironmentSetup = (): {
   checks: EnvCheck[];
   isHealthy: boolean;
@@ -33,7 +41,7 @@ export const checkEnvironmentSetup = (): {
   });
 
   if (!groqKey) {
-    diagnostics.push('❌ GROQ_API_KEY is missing. AI features will fail.');
+    diagnostics.push('GROQ_API_KEY is missing. AI features will fail.');
   }
 
   // Check Supabase
@@ -53,14 +61,14 @@ export const checkEnvironmentSetup = (): {
   });
 
   if (!supabaseUrl) {
-    diagnostics.push('❌ NEXT_PUBLIC_SUPABASE_URL is missing. Auth and data will fail.');
+    diagnostics.push('NEXT_PUBLIC_SUPABASE_URL is missing. Auth and data will fail.');
   }
 
   if (!supabaseKey) {
-    diagnostics.push('❌ NEXT_PUBLIC_SUPABASE_ANON_KEY is missing. Supabase client cannot initialize.');
+    diagnostics.push('NEXT_PUBLIC_SUPABASE_ANON_KEY is missing. Supabase client cannot initialize.');
   }
 
-  // Check optional server-side keys
+  // Check optional server-side keys (redacted from response)
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   checks.push({
     name: 'SUPABASE_SERVICE_ROLE_KEY',
@@ -69,7 +77,7 @@ export const checkEnvironmentSetup = (): {
   });
 
   if (!serviceRoleKey) {
-    diagnostics.push('⚠️  SUPABASE_SERVICE_ROLE_KEY is missing. Server operations (account deletion) will fail.');
+    diagnostics.push('SUPABASE_SERVICE_ROLE_KEY is missing. Server operations (account deletion) will fail.');
   }
 
   // Determine overall health
@@ -78,10 +86,20 @@ export const checkEnvironmentSetup = (): {
   const isHealthy = failedRequired.length === 0;
 
   if (isHealthy && diagnostics.length === 0) {
-    diagnostics.push('✅ Environment is properly configured.');
+    diagnostics.push('Environment is properly configured.');
   }
 
-  return { checks, isHealthy, diagnostics };
+  // Redact values from sensitive keys before returning
+  const sanitized = {
+    checks: checks.map((c) => ({
+      ...c,
+      value: SENSITIVE_KEYS.has(c.name) ? undefined : c.value,
+    })),
+    isHealthy,
+    diagnostics,
+  };
+
+  return sanitized;
 };
 
 /**
