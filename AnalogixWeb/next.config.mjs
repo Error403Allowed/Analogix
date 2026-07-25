@@ -60,7 +60,7 @@ const nextConfig = {
               "font-src 'self' data: https:",
               "img-src 'self' data: blob: https:",
                `connect-src 'self' https: wss:${process.env.NODE_ENV === 'development' ? " http://localhost:4000 ws://localhost:4000" : ''}`,
-              "frame-src 'none'",
+              "frame-src https://vercel.live",
               "object-src 'none'",
               "base-uri 'self'",
               "form-action 'self' https://ffezpchxhxmxlkzkahha.supabase.co",

@@ -214,7 +214,7 @@ export default function LoginView() {
     setLoading(true);
     setError(null);
     try {
-      await signInWithGoogle("/dashboard");
+      await signInWithGoogle("/onboarding");
     } catch (e) {
       const err = e as { code?: string; message?: string };
       setError(getEmailError(err.code ?? null, err.message ?? null));

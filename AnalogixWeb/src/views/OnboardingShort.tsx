@@ -34,7 +34,7 @@ function AuthStep({ onAuthed, externalError }: { onAuthed: () => void; externalE
 
   const handleGoogle = async () => {
     setGoogleLoading(true);
-    await signInWithGoogle("/dashboard");
+    await signInWithGoogle("/onboarding");
   };
 
   if (loading) {

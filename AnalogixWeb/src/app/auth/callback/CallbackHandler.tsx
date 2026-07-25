@@ -71,12 +71,27 @@ export default function CallbackHandler() {
       }
 
       return supabase.auth.getUser();
-    }).then((result) => {
+    }).then(async (result) => {
       if (!result) return;
       const { data: { user }, error: userError } = result;
       if (userError || !user) {
         router.replace(`${origin}${next}`);
         return;
+      }
+
+      const meta = user.user_metadata || {};
+      const profileData: Record<string, unknown> = {
+        id: user.id,
+        updated_at: new Date().toISOString(),
+      };
+      if (meta.name || meta.full_name) {
+        profileData.name = meta.name || meta.full_name;
+      }
+      if (meta.avatar_url || meta.picture) {
+        profileData.avatar_url = meta.avatar_url || meta.picture;
+      }
+      if (Object.keys(profileData).length > 1) {
+        await supabase.from("profiles").upsert(profileData, { onConflict: "id" }).maybeSingle();
       }
 
       router.replace(next);

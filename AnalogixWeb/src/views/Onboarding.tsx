@@ -155,7 +155,7 @@ function AuthStep({ onAuthed, externalError }: { onAuthed: () => void; externalE
     setGoogleLoading(true);
     setAuthError(null);
     try {
-      await signInWithGoogle("/dashboard");
+      await signInWithGoogle("/onboarding");
     } catch (e) {
       const err = e as { code?: string; message?: string };
       setAuthError(getEmailError(err.code ?? null, err.message ?? null));
