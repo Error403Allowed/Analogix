@@ -379,13 +379,24 @@ export async function POST(request) {
         // Client-side "x-client-data" is always sent by the chat UI (it contains localStorage
         // personality/memories). Even if the user is authenticated, merging these values ensures
         // the next response reflects the latest UI toggles immediately.
+        const ALLOWED_PERSONALITY_OVERRIDES = new Set([
+            "analogy_frequency", "detail_level", "verbosity", "creativity", "tone", "focus"
+        ]);
         const clientData = request.headers.get("x-client-data");
         let clientPersonality: any = null;
         let clientMemories: any[] | null = null;
         if (clientData) {
             try {
                 const parsed = JSON.parse(clientData);
-                clientPersonality = parsed.personality ?? null;
+                const safePersonality: Record<string, unknown> = {};
+                if (parsed.personality && typeof parsed.personality === "object") {
+                    for (const key of Object.keys(parsed.personality)) {
+                        if (ALLOWED_PERSONALITY_OVERRIDES.has(key)) {
+                            safePersonality[key] = (parsed.personality as Record<string, unknown>)[key];
+                        }
+                    }
+                    clientPersonality = safePersonality;
+                }
                 clientMemories = parsed.memories ?? null;
             }
             catch (e) {

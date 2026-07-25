@@ -39,7 +39,7 @@ async function main() {
   );
 
   // Body parser must run before rate limiters so auth limiter can inspect query body
-  app.use("/graphql", bodyParser.json({ limit: "10mb" }));
+  app.use("/graphql", bodyParser.json({ limit: "5mb" }));
 
   // Global rate limiting (skip health endpoint)
   const globalLimiter = rateLimit({

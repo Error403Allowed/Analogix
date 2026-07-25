@@ -28,8 +28,8 @@ export const createClient = (): any => {
       cookieOptions: {
         name: "sb-auth-token",
         path: "/",
-        sameSite: "lax",
-        maxAge: 400 * 24 * 60 * 60,
+        sameSite: "strict",
+        maxAge: 7 * 24 * 60 * 60,
       },
     });
   }

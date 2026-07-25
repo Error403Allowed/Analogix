@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getRoomCanvas, requireRoomMembership } from "@/lib/rooms/server";
+import { sanitizeHtml } from "@/lib/sanitize";
 
 export async function PATCH(
   request: Request,
@@ -16,7 +17,7 @@ export async function PATCH(
     };
 
     if (body.title !== undefined) payload.title = String(body.title || "").trim() || "Room canvas";
-    if (body.content !== undefined) payload.content = String(body.content ?? "");
+    if (body.content !== undefined) payload.content = sanitizeHtml(String(body.content ?? ""));
     if (body.contentJson !== undefined) payload.content_json = body.contentJson;
 
     const { error } = await supabase.from("study_room_canvas").upsert({

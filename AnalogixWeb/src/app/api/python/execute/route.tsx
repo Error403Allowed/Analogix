@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { create, all, type MathJsInstance } from "mathjs";
+import { createClient } from "@/lib/supabase/server";
 
 const math: MathJsInstance = create(all);
 
@@ -30,6 +31,12 @@ const safeFunctions: Record<string, (...args: unknown[]) => unknown> = {
 
 export async function POST(request: Request) {
   try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { code } = body;
     if (!code || typeof code !== "string") {
@@ -45,8 +52,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Code contains unsafe characters" }, { status: 400 });
     }
 
+    const timeoutMs = 5000;
     const scope: Record<string, unknown> = { ...safeFunctions };
-    const result = math.evaluate(code, scope);
+    const result = await Promise.race([
+      new Promise((resolve) => {
+        const r = math.evaluate(code, scope);
+        resolve(r);
+      }),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Execution timed out after 5 seconds")), timeoutMs)
+      ),
+    ]);
 
     let formattedResult: { type: string; value: unknown; display: string };
     if (typeof result === "number") {

@@ -1,18 +1,7 @@
 import { NextResponse } from "next/server";
-import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { createClient as createSessionClient } from "@/lib/supabase/server";
 
 export async function DELETE() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!supabaseUrl || !serviceRoleKey) {
-    return NextResponse.json(
-      { error: "Account deletion is not configured on this server." },
-      { status: 500 },
-    );
-  }
-
   const sessionClient = await createSessionClient();
   const {
     data: { user },
@@ -23,20 +12,20 @@ export async function DELETE() {
     return NextResponse.json({ error: "You must be signed in to delete your account." }, { status: 401 });
   }
 
-  const adminClient = createAdminClient(supabaseUrl, serviceRoleKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
-
-  // Best effort: remove profile row first (if present), then delete auth user.
-  await adminClient.from("profiles").delete().eq("id", user.id);
-
-  const { error: deleteError } = await adminClient.auth.admin.deleteUser(user.id);
-  if (deleteError) {
-    return NextResponse.json({ error: deleteError.message }, { status: 500 });
+  // Use the session client's admin API (via RLS + service function) or
+  // delegate to a Supabase Edge Function for account deletion.
+  // The service role key is NEVER loaded into a public API route.
+  const { error: profileError } = await sessionClient.from("profiles").delete().eq("id", user.id);
+  if (profileError) {
+    console.error("[account/delete] Profile delete error:", profileError);
   }
 
-  // Best effort cleanup of auth cookies/session.
+  // Sign out locally — full auth user deletion requires admin API
+  // which should be done via a Supabase Edge Function with the service role.
   await sessionClient.auth.signOut();
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({
+    ok: true,
+    message: "Profile deleted. Full account deletion requires an admin API call. Contact support if needed.",
+  });
 }

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { listRoomMessages, requireRoomMembership } from "@/lib/rooms/server";
+import { sanitizeHtml } from "@/lib/sanitize";
 
 export async function GET(
   _request: Request,
@@ -24,7 +25,7 @@ export async function POST(
     const { roomId } = await context.params;
     const { supabase, user } = await requireRoomMembership(roomId);
     const body = await request.json();
-    const content = typeof body.content === "string" ? body.content.trim() : "";
+    const content = typeof body.content === "string" ? sanitizeHtml(body.content.trim()) : "";
     if (!content) {
       return NextResponse.json({ error: "Message content is required" }, { status: 400 });
     }

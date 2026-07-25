@@ -19,7 +19,7 @@ const nextConfig = {
   // Increase body size limit for file uploads (default is 1MB)
   experimental: {
     serverActions: {
-      bodySizeLimit: '50mb',
+      bodySizeLimit: '5mb',
     },
     // Tree-shake heavy libraries automatically
     optimizePackageImports: [
@@ -55,8 +55,8 @@ const nextConfig = {
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
-              `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === 'development' ? " 'unsafe-eval'" : ''} https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://www.desmos.com https://va.vercel-scripts.com https://vercel.live`,
-              "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com",
+              `script-src 'self' 'unsafe-inline' https://va.vercel-scripts.com https://vercel.live`,
+              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "font-src 'self' data: https:",
               "img-src 'self' data: blob: https:",
                `connect-src 'self' https: wss:${process.env.NODE_ENV === 'development' ? " http://localhost:4000 ws://localhost:4000" : ''}`,

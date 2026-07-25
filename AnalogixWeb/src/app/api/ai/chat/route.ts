@@ -99,16 +99,10 @@ export async function POST(request: Request) {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
-    const isDevMode = process.env.NODE_ENV === 'development' && process.env.ALLOW_DEV_API === 'true';
-    const devUserId = isDevMode ? (process.env.DEV_USER_ID || crypto.randomUUID()) : null;
-    const userId = user?.id || devUserId;
+    const userId = user?.id;
 
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    if (isDevMode && !user) {
-      console.warn('[chat] Dev mode: using anonymous userId', userId, '— set ALLOW_DEV_API=false in production');
     }
 
     const body: ChatRequest = await request.json();
