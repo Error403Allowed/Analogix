@@ -85,10 +85,8 @@ export function normalizeSubject(subjectId: string): string {
 export function validateSubject(subjectId: string): string | null {
   const lower = subjectId.toLowerCase().trim();
   if (VALID_SUBJECTS.has(lower)) return null;
-  // Check partial matches
-  for (const valid of VALID_SUBJECTS) {
-    if (lower.includes(valid) || valid.includes(lower)) return null;
-  }
+  // Check via normalizer first — if it maps to something, it's valid
+  if (SUBJECT_NORMALIZER[lower]) return null;
   return `"${subjectId}" is not a recognised Australian Curriculum subject. Valid subjects include: Mathematics, English, Science, Biology, Chemistry, Physics, History, Geography, Economics, Business, Digital Technologies, HASS, Visual Arts, Music, PDHPE, Languages, and senior-specific subjects (Mathematics Advanced, English Standard, etc.).`;
 }
 

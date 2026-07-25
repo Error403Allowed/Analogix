@@ -69,7 +69,7 @@ export const flashcardTools = [
       const { subjectId, name, cards } = z.object({
         subjectId: z.string(),
         name: z.string(),
-        cards: z.array(z.object({ front: z.string(), back: z.string() })),
+        cards: z.array(z.object({ front: z.string(), back: z.string() })).max(100),
       }).parse(args);
       const normalizedSubjectId = normalizeSubject(subjectId);
       const subjectError = validateSubject(normalizedSubjectId);
@@ -183,7 +183,7 @@ export const flashcardTools = [
       const userId = requireUserId(args);
       const { setId, cards } = z.object({
         setId: z.string(),
-        cards: z.array(z.object({ front: z.string(), back: z.string() })),
+        cards: z.array(z.object({ front: z.string(), back: z.string() })).max(100),
       }).parse(args);
       const supabase = createUserClient(args);
       const now = new Date().toISOString();

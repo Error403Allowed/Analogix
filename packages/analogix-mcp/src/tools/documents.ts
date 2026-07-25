@@ -3,6 +3,22 @@ import { createUserClient, requireUserId } from "../auth.js";
 import { randomUUID } from "crypto";
 import { validateSubject, normalizeSubject } from "../valid-subjects.js";
 
+function stripHtmlToText(html: string): string {
+  if (!html) return "";
+  // Strip all HTML tags, decode common entities
+  return html
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#x27;/g, "'")
+    .replace(/&#x2F;/g, "/")
+    .replace(/&#?\w+;/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export const documentTools = [
   {
     name: "list_documents",
@@ -49,8 +65,8 @@ export const documentTools = [
         subjectId: z.string(),
         title: z.string(),
         content: z.string(),
-        contentFormat: z.string().optional(),
-        role: z.string().optional(),
+        contentFormat: z.enum(["html", "markdown", "json", "plain"]).optional(),
+        role: z.enum(["notes", "study-guide", "shared"]).optional(),
       }).parse(args);
       const normalizedSubjectId = normalizeSubject(subjectId);
       const subjectError = validateSubject(normalizedSubjectId);
@@ -65,7 +81,7 @@ export const documentTools = [
           subject_id: normalizedSubjectId,
           title,
           content,
-          content_text: content.replace(/<[^>]*>/g, ""),
+          content_text: stripHtmlToText(content),
           content_format: contentFormat ?? "html",
           role: role ?? "notes",
           updated_at: now,
@@ -143,14 +159,14 @@ export const documentTools = [
         documentId: z.string(),
         title: z.string().optional(),
         content: z.string().optional(),
-        contentFormat: z.string().optional(),
+        contentFormat: z.enum(["html", "markdown", "json", "plain"]).optional(),
       }).parse(args);
       const supabase = createUserClient(args);
       const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
       if (title !== undefined) update.title = title;
       if (content !== undefined) {
         update.content = content;
-        update.content_text = content.replace(/<[^>]*>/g, "");
+        update.content_text = stripHtmlToText(content);
       }
       if (contentFormat !== undefined) update.content_format = contentFormat;
       const { data, error } = await supabase

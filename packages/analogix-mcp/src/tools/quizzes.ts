@@ -28,11 +28,16 @@ export const quizTools = [
       if (error) throw new Error(error.message);
 
       const quizzes = (data ?? []) as any[];
-      const withCounts = (quizzes as any[]).map((quiz) => {
-        const rawQuestions = (quiz as any).questions;
-        const questions = typeof rawQuestions === "string"
-          ? JSON.parse(rawQuestions)
-          : (rawQuestions ?? []);
+      const withCounts = quizzes.map((quiz) => {
+        const rawQuestions = quiz.questions;
+        let questions;
+        try {
+          questions = typeof rawQuestions === "string"
+            ? JSON.parse(rawQuestions)
+            : (rawQuestions ?? []);
+        } catch {
+          questions = [];
+        }
         return { ...quiz, questionCount: Array.isArray(questions) ? questions.length : 0 };
       });
       return { content: [{ type: "text", text: JSON.stringify(withCounts) }] };
@@ -105,8 +110,8 @@ export const quizTools = [
       const { subjectId, title, difficulty, questions } = z.object({
         subjectId: z.string(),
         title: z.string(),
-        difficulty: z.string().optional().default("intermediate"),
-        questions: z.array(z.record(z.string(), z.unknown())),
+        difficulty: z.enum(["beginner", "intermediate", "advanced"]).optional().default("intermediate"),
+        questions: z.array(z.record(z.string(), z.unknown())).max(50),
       }).parse(args);
       const normalizedSubjectId = normalizeSubject(subjectId);
       const subjectError = validateSubject(normalizedSubjectId);

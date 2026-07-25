@@ -56,7 +56,7 @@ export const calendarTools = [
         title: z.string(),
         date: z.string(),
         endDate: z.string().optional(),
-        type: z.string().optional().default("other"),
+        type: z.enum(["exam", "assignment", "event", "class", "lesson", "reminder", "sport", "meeting", "personal", "other"]).optional().default("other"),
         subject: z.string().optional(),
         color: z.string().optional(),
         description: z.string().optional(),
