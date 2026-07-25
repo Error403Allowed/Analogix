@@ -27,7 +27,7 @@ export const AddMarkInput = z.object({
 export const CreateDocumentInput = z.object({
   subjectId: z.string().min(1),
   title: z.string().min(1).max(500),
-  content: z.string().optional(),
+  content: z.string().max(10_000_000).optional(),
   role: z.enum(["notes", "study-guide", "shared"]).default("notes"),
   icon: z.string().nullable().optional(),
   cover: z.string().nullable().optional(),

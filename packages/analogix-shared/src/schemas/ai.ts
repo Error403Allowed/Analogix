@@ -22,10 +22,13 @@ export const ReexplainInput = z.object({
 });
 
 export const ExtractTextInput = z.object({
-  url: z.string().url().optional(),
-  base64: z.string().optional(),
+  url: z.string().url().refine(
+    (val) => val.startsWith("https://"),
+    { message: "Only HTTPS URLs are allowed" }
+  ).optional(),
+  base64: z.string().max(20_000_000).optional(),
   mimeType: z.string().min(1),
-  fileName: z.string().optional(),
+  fileName: z.string().max(500).optional(),
 });
 
 export const TutorInput = z.object({

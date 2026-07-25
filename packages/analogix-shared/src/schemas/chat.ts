@@ -2,13 +2,13 @@ import { z } from "zod";
 
 export const ChatMessageInput = z.object({
   role: z.enum(["user", "assistant"]),
-  content: z.string().min(1),
+  content: z.string().min(1).max(50_000),
 });
 
 export const AppendChatMessageInput = z.object({
   sessionId: z.string().uuid(),
   role: z.enum(["user", "assistant"]),
-  content: z.string().min(1),
+  content: z.string().min(1).max(50_000),
 });
 
 export const CreateChatSessionInput = z.object({
