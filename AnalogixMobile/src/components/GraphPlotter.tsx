@@ -2,6 +2,7 @@ import React, { useRef, useCallback } from "react";
 import { View, StyleSheet, Text, Platform } from "react-native";
 import { WebView } from "react-native-webview";
 import { useTheme } from "react-native-paper";
+import { config } from "../config";
 
 interface Props {
   expressions: string[];
@@ -9,7 +10,7 @@ interface Props {
   height?: number;
 }
 
-function buildHtml(expressions: string[], isDark: boolean): string {
+function buildHtml(expressions: string[], isDark: boolean, apiKey: string): string {
   const bg = isDark ? "#1c1c1e" : "#ffffff";
   const fg = isDark ? "#e5e7eb" : "#1f2937";
   const gridColor = isDark ? "#374151" : "#e5e7eb";
@@ -18,7 +19,7 @@ function buildHtml(expressions: string[], isDark: boolean): string {
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-<script src="https://www.desmos.com/api/v1.7/calculator.js?apiKey=dcb31709b452b1cf9dc26972add0fda6"></script>
+<script src="https://www.desmos.com/api/v1.7/calculator.js?apiKey=${apiKey}"></script>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { background: ${bg}; overflow: hidden; }
@@ -80,7 +81,7 @@ export function GraphPlotter({ expressions, title, height = 350 }: Props) {
   const webViewRef = useRef<any>(null);
   const isDark = paperTheme.dark;
 
-  const html = buildHtml(expressions, isDark);
+  const html = buildHtml(expressions, isDark, config.desmos.apiKey);
 
   if (Platform.OS === "web") {
     return (

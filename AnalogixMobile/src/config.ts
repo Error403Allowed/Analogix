@@ -29,4 +29,7 @@ export const config = {
     webClientId: read("EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID", ""),
     redirectScheme: read("EXPO_PUBLIC_GOOGLE_REDIRECT_SCHEME", "analogix"),
   },
+  desmos: {
+    apiKey: read("EXPO_PUBLIC_DESMOS_API_KEY", "dcb31709b452b1cf9dc26972add0fda6"),
+  },
 };

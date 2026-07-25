@@ -358,15 +358,6 @@ function WebMarkdown({ html, width }: { html: string; width: number }) {
     const el = ref.current;
     if (!el) return;
     el.innerHTML = html;
-    el.querySelectorAll("script").forEach((old) => {
-      const s = document.createElement("script");
-      if (old.src) {
-        s.src = old.src;
-      } else {
-        s.textContent = old.textContent;
-      }
-      old.parentNode?.replaceChild(s, old);
-    });
   }, [html]);
 
   return (
