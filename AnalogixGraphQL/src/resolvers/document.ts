@@ -95,7 +95,7 @@ export const documentResolvers = {
       if (typeof updates.content === "string") payload.content = updates.content;
       if (typeof updates.contentJson === "string") payload.content_json = updates.contentJson;
       if (typeof updates.contentText === "string") payload.content_text = updates.contentText;
-      if (typeof updates.contentFormat === "string") payload.content_format = updates.contentFormat;
+      if (typeof updates.contentFormat === "string" && ["tiptap", "markdown", "html", "plain"].includes(updates.contentFormat)) payload.content_format = updates.contentFormat;
       if (typeof updates.role === "string") payload.role = updates.role;
       if ("icon" in updates) payload.icon = updates.icon;
       if ("cover" in updates) payload.cover = updates.cover;

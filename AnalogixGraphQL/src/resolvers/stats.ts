@@ -74,9 +74,19 @@ export const statsResolvers = {
     },
     upsertUserStats: async (_: unknown, args: { input: Record<string, unknown> }, ctx: GraphQLContext) => {
       const user = requireUser(ctx);
+      const ALLOWED_STATS_FIELDS = new Set([
+        "quizzes_done", "current_streak", "accuracy", "conversations_count",
+        "cards_reviewed", "minutes_studied",
+      ]);
+      const filteredInput: Record<string, unknown> = {};
+      for (const [key, val] of Object.entries(args.input)) {
+        if (ALLOWED_STATS_FIELDS.has(key)) {
+          filteredInput[key] = val;
+        }
+      }
       const { data, error } = await ctx.supabase!
         .from("user_stats")
-        .upsert({ user_id: user.id, ...args.input, updated_at: new Date().toISOString() }, { onConflict: "user_id" })
+        .upsert({ user_id: user.id, ...filteredInput, updated_at: new Date().toISOString() }, { onConflict: "user_id" })
         .select()
         .single();
       if (error) throw new GraphQLError(error.message);

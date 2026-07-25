@@ -1,4 +1,5 @@
 import { GraphQLError } from "graphql";
+import { z } from "zod";
 import { requireUser } from "./_helpers.js";
 import { serviceClient } from "../supabase.js";
 import type { GraphQLContext } from "../context.js";
@@ -30,10 +31,17 @@ export const userResolvers = {
   Mutation: {
     updateProfile: async (_: unknown, args: { input: Record<string, unknown> }, ctx: GraphQLContext) => {
       const user = requireUser(ctx);
+      const ALLOWED_PROFILE_FIELDS = new Set([
+        "name", "grade", "state", "subjects", "hobby_ids",
+        "avatar_url", "onboarding_complete", "tours_completed",
+        "bio", "timezone",
+      ]);
       const snakePayload: Record<string, unknown> = { updated_at: new Date().toISOString() };
       for (const [key, val] of Object.entries(args.input)) {
         const snake = key.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`);
-        snakePayload[snake] = val;
+        if (ALLOWED_PROFILE_FIELDS.has(snake)) {
+          snakePayload[snake] = val;
+        }
       }
       const { data, error } = await ctx.supabase!
         .from("profiles")
