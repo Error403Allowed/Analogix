@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import type { LucideIcon } from "lucide-react";
 import {
   RefreshCw,
   Copy,
@@ -11,6 +12,10 @@ import {
   Trash2,
   FileText,
   Sparkles,
+  Lightbulb,
+  Beaker,
+  BookOpen,
+  Calculator,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import AISettingsSheet from "@/components/AISettingsSheet";
@@ -26,6 +31,13 @@ import ThreadSidebar from "@/components/chat/ThreadSidebar";
 import ChatHeader from "@/components/chat/ChatHeader";
 import ChatInput from "@/components/chat/ChatInput";
 import FormulaPanel from "@/components/chat/FormulaPanel";
+
+const SUGGESTED_PROMPTS: { label: string; prompt: string; icon: LucideIcon }[] = [
+  { label: "Break down a concept", prompt: "Explain the Pythagorean theorem like I'm into gaming", icon: Lightbulb },
+  { label: "Study with analogies", prompt: "Explain photosynthesis using analogies from gaming", icon: Beaker },
+  { label: "Understand a formula", prompt: "Walk me through the quadratic formula step by step", icon: Calculator },
+  { label: "Prepare for a topic", prompt: "What are the key things I need to know about cell division for Year 9 Science?", icon: BookOpen },
+];
 
 const Chat = () => {
   const {
@@ -219,59 +231,85 @@ const Chat = () => {
                   {/* Empty state — shown before any messages */}
                   {messages.length === 0 && !isTyping && (
                     <motion.div
-                      initial={{ opacity: 0, y: 12 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.4 }}
-                      className="flex flex-col items-center justify-center h-full min-h-[40vh] gap-5 text-center px-6"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.5 }}
+                      className="flex flex-col items-center justify-center min-h-[55vh] px-6 pt-8 sm:pt-12"
                     >
+                      {/* Greeting */}
                       <motion.div
-                        initial={{ scale: 0.8, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        transition={{ delay: 0.1, duration: 0.4 }}
-                        className="relative"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.05, duration: 0.5, ease: "easeOut" }}
+                        className="text-center mb-8"
                       >
+                        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground/90 mb-2">
+                          {userName ? `What are you studying, ${userName.split(" ")[0]}?` : "What are you studying?"}
+                        </h1>
                       </motion.div>
-                      <div className="space-y-2">
-                        <p className="text-lg font-semibold text-foreground/80 tracking-tight">
-                          {userName ? `Hey ${userName}, what are you studying?` : "Hey there, what are you studying?"}
-                        </p>
-                        <p className="text-sm text-muted-foreground/50 max-w-sm leading-relaxed">
-                          Ask about any concept — I'll explain it using <span className="text-foreground/70 font-medium">analogies from your interests</span>, aligned to the{" "}
-                          <span className="text-foreground/70 font-medium">ACARA curriculum</span>.
-                        </p>
-                      </div>
+
+                      {/* Interest badges */}
                       {userHobbies.length > 0 && (
                         <motion.div
-                          initial={{ opacity: 0, y: 8 }}
+                          initial={{ opacity: 0, y: 12 }}
                           animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: 0.2, duration: 0.3 }}
-                          className="flex flex-wrap items-center justify-center gap-1.5 mt-1"
+                          transition={{ delay: 0.15, duration: 0.4 }}
+                          className="flex flex-wrap items-center justify-center gap-1.5 mb-8"
                         >
-                          <span className="text-[11px] text-muted-foreground/40 font-medium mr-0.5">Your interests:</span>
-                          {userHobbies.slice(0, 4).map((hobby) => (
+                          <span className="text-[11px] text-muted-foreground/40 font-medium mr-1">Your interests:</span>
+                          {userHobbies.slice(0, 5).map((hobby) => (
                             <span
                               key={hobby}
-                              className="px-2.5 py-1 rounded-full bg-primary/5 border border-primary/10 text-[11px] font-medium text-primary/70"
+                              className="px-2.5 py-1 rounded-full bg-gradient-to-r from-primary/8 to-primary/5 border border-primary/12 text-[11px] font-medium text-primary/65 cursor-default"
                             >
                               {hobby}
                             </span>
                           ))}
-                          {userHobbies.length > 4 && (
-                            <span className="text-[11px] text-muted-foreground/40">
-                              +{userHobbies.length - 4} more
+                          {userHobbies.length > 5 && (
+                            <span className="text-[11px] text-muted-foreground/40 font-medium">
+                              +{userHobbies.length - 5}
                             </span>
                           )}
                         </motion.div>
                       )}
+
+                      {/* Suggested prompts */}
                       <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: 0.3, duration: 0.3 }}
-                        className="flex flex-wrap items-center justify-center gap-2 mt-2"
+                        initial={{ opacity: 0, y: 12 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.25, duration: 0.4 }}
+                        className="w-full max-w-xl mb-12"
                       >
-                        <span className="px-3 py-1.5 rounded-full bg-muted/40 border border-border/30 text-xs text-muted-foreground/60">
-                          Try: "Explain photosynthesis like I'm a gamer"
-                        </span>
+                        <p className="text-[11px] font-semibold text-muted-foreground/40 uppercase tracking-widest text-center mb-3">
+                          Try asking about
+                        </p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {SUGGESTED_PROMPTS.map((prompt, i) => (
+                            <motion.button
+                              key={prompt.label}
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: 0.3 + i * 0.05, duration: 0.3 }}
+                              onClick={() => {
+                                setInput(prompt.prompt);
+                                textareaRef.current?.focus();
+                              }}
+                              className="group flex items-start gap-3 p-3.5 rounded-xl border border-border/40 bg-card/50 hover:bg-card hover:border-border/70 transition-all text-left hover:shadow-sm"
+                            >
+                              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary/12 to-primary/5 flex items-center justify-center shrink-0 group-hover:from-primary/18 group-hover:to-primary/8 transition-all">
+                                <prompt.icon className="w-4 h-4 text-primary/60" />
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-xs font-medium text-foreground/80 group-hover:text-foreground transition-colors">
+                                  {prompt.label}
+                                </p>
+                                <p className="text-[11px] text-muted-foreground/50 mt-0.5 line-clamp-1">
+                                  {prompt.prompt}
+                                </p>
+                              </div>
+                            </motion.button>
+                          ))}
+                        </div>
                       </motion.div>
                     </motion.div>
                   )}
