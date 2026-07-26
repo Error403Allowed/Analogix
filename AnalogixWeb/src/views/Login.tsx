@@ -232,24 +232,9 @@ export default function LoginView() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Background orbs — subtle blue + green */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-[-8%] left-[-8%] w-[35%] h-[35%] bg-primary/[0.06] blur-[120px] rounded-full" />
-        <div className="absolute bottom-[-8%] right-[-8%] w-[35%] h-[35%] bg-accent/[0.06] blur-[120px] rounded-full" />
-        <motion.div
-          className="absolute top-[30%] left-[50%] w-[25%] h-[25%] bg-accent/[0.04] blur-[100px] rounded-full"
-          animate={{ x: [0, 20, 0], y: [0, -15, 0] }}
-          transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
-        />
-      </div>
-
-      <motion.div
-        initial={{ opacity: 0, y: 24 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md relative z-10"
-      >
-        <div className="bg-card border border-border rounded-3xl p-8 shadow-2xl space-y-6">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4 relative">
+      <div className="w-full max-w-md">
+        <div className="bg-card border border-border rounded-xl p-8 shadow-lg space-y-6">
           {/* Animated brain */}
           <AnimatedBrain
             focused={focused !== null}
@@ -304,9 +289,9 @@ export default function LoginView() {
                         onChange={e => { setForgotEmail(e.target.value); setError(null); }}
                         onFocus={() => setFocused("forgot-email")}
                         onBlur={() => setFocused(null)}
-                        onKeyDown={e => e.key === "Enter" && handleForgot()}
-                        className="pl-12 h-14 text-base border-2 focus:border-primary transition-all rounded-2xl"
-                        autoFocus
+                    onKeyDown={e => e.key === "Enter" && handleForgot()}
+                className="pl-12 h-14 text-base border focus:border-primary transition-all rounded-xl"
+                autoFocus
                       />
                     </div>
 
@@ -319,7 +304,7 @@ export default function LoginView() {
                     <Button
                       onClick={handleForgot}
                       disabled={!isValidEmail(forgotEmail) || forgotLoading}
-                      className="w-full h-14 gap-2 gradient-primary text-primary-foreground border-0 rounded-2xl font-bold shadow-xl hover:opacity-90 transition-opacity"
+                      className="w-full h-14 gap-2 bg-primary text-primary-foreground border-0 rounded-xl font-bold shadow-lg hover:opacity-90 transition-opacity"
                     >
                       {forgotLoading ? (
                         <Loader2 className="w-5 h-5 animate-spin" />
@@ -418,10 +403,8 @@ export default function LoginView() {
                     onBlur={() => setFocused(null)}
                     onKeyDown={e => e.key === "Enter" && step === 2 && handleSubmit()}
                     className={cn(
-                      "pl-12 h-14 text-base border-2 transition-all rounded-2xl",
-                      focused === "email"
-                        ? "border-primary shadow-[0_0_20px_-8px_hsl(var(--p-h)_var(--p-s)_var(--p-l))]"
-                        : "border-border"
+                      "pl-12 h-14 text-base border transition-all rounded-xl",
+                      focused === "email" ? "border-primary" : "border-border"
                     )}
                     autoFocus={step === 1}
                   />
@@ -452,13 +435,11 @@ export default function LoginView() {
                           onChange={e => { setPassword(e.target.value); setError(null); }}
                           onFocus={() => setFocused("password")}
                           onBlur={() => setFocused(null)}
-                          onKeyDown={e => e.key === "Enter" && canSubmit && handleSubmit()}
-                          className={cn(
-                            "pl-12 pr-12 h-14 text-base border-2 transition-all rounded-2xl",
-                            focused === "password"
-                              ? "border-primary shadow-[0_0_20px_-8px_hsl(var(--p-h)_var(--p-s)_var(--p-l))]"
-                              : "border-border"
-                          )}
+                    onKeyDown={e => e.key === "Enter" && canSubmit && handleSubmit()}
+                    className={cn(
+                      "pl-12 pr-12 h-14 text-base border transition-all rounded-xl",
+                      focused === "password" ? "border-primary" : "border-border"
+                    )}
                         />
                         <button
                           type="button"
@@ -484,14 +465,12 @@ export default function LoginView() {
                             onChange={e => { setConfirmPassword(e.target.value); setError(null); }}
                             onFocus={() => setFocused("confirm")}
                             onBlur={() => setFocused(null)}
-                            onKeyDown={e => e.key === "Enter" && canSubmit && handleSubmit()}
-                            className={cn(
-                              "pl-12 pr-12 h-14 text-base border-2 transition-all rounded-2xl",
-                              focused === "confirm"
-                                ? "border-primary shadow-[0_0_20px_-8px_hsl(var(--p-h)_var(--p-s)_var(--p-l))]"
-                                : "border-border",
-                              confirmPassword && password !== confirmPassword && "border-destructive"
-                            )}
+                    onKeyDown={e => e.key === "Enter" && canSubmit && handleSubmit()}
+                    className={cn(
+                      "pl-12 pr-12 h-14 text-base border transition-all rounded-xl",
+                      focused === "confirm" ? "border-primary" : "border-border",
+                      confirmPassword && password !== confirmPassword && "border-destructive"
+                    )}
                           />
                           <button
                             type="button"
@@ -534,7 +513,7 @@ export default function LoginView() {
                       <Button
                         onClick={handleSubmit}
                         disabled={!canSubmit || loading}
-                        className="w-full h-14 gap-2 gradient-primary text-primary-foreground border-0 rounded-2xl font-bold shadow-xl hover:opacity-90 transition-opacity text-base"
+                        className="w-full h-14 gap-2 bg-primary text-primary-foreground border-0 rounded-xl font-bold shadow-lg hover:opacity-90 transition-opacity text-base"
                       >
                         {loading ? (
                           <Loader2 className="w-5 h-5 animate-spin" />
@@ -560,7 +539,7 @@ export default function LoginView() {
 
               <Button
                 variant="outline"
-                className="w-full h-12 gap-3 rounded-2xl font-semibold border-2 hover:border-primary/30 transition-all"
+                className="w-full h-12 gap-3 rounded-xl font-semibold border hover:border-primary/30 transition-all"
                 onClick={handleGoogle}
                 disabled={loading}
               >
@@ -581,7 +560,7 @@ export default function LoginView() {
             </div>
           )}
         </div>
-      </motion.div>
+      </div>
     </div>
   );
 }

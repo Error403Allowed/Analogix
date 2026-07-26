@@ -7,7 +7,6 @@ import {
   Sun, Moon, User, Flame, Library, SigmaIcon, SquareStack, ClipboardList,
   Plus, Search, MoreHorizontal, Sparkles, Users, BookOpen,
 } from "lucide-react";
-import { motion } from "framer-motion";
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarHeader,
   SidebarMenu, SidebarMenuButton, SidebarMenuItem,
@@ -189,7 +188,7 @@ export function AppSidebar() {
     <Sidebar
       collapsible="offcanvas"
       data-tutorial="sidebar"
-      className="!border-r-0 !border-l-0 !border-none rounded-[32px] border border-white/10 bg-background/95 shadow-[0_40px_120px_-60px_rgba(15,23,42,0.9)] backdrop-blur-xl dark:border-slate-800/60"
+      className="!border-r-0 !border-l-0 !border-none rounded-xl border border-white/10 bg-background/95 shadow-[0_40px_120px_-60px_rgba(15,23,42,0.9)] backdrop-blur-xl dark:border-slate-800/60"
       style={{ background: "hsl(var(--background) / 0.95)" }}
     >
       {/* Inner container — clearer spacing and soft backdrop */}
@@ -215,7 +214,7 @@ export function AppSidebar() {
         {/* ── Nav ───────────────────────────────────────────────────── */}
         <SidebarContent className="flex-1 px-1 py-2 overflow-y-auto overflow-x-hidden text-foreground custom-scrollbar">
           {navGroups.map((group) => (
-            <SidebarGroup key={group.label} className="rounded-[26px] border border-muted/15 bg-muted/10 p-3 mb-3">
+            <SidebarGroup key={group.label} className="rounded-xl border border-muted/15 bg-muted/10 p-3 mb-3">
               <p className="px-2 mb-2 text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground/70">
                 {group.label}
               </p>
@@ -227,30 +226,28 @@ export function AppSidebar() {
                     const Icon = item.icon;
                     return (
                       <SidebarMenuItem key={item.title}>
-                        <motion.div whileTap={{ scale: 0.98 }} data-tutorial={item.tutorial}>
-                          <SidebarMenuButton
-                            isActive={isActive}
-                            onClick={() => {
-                              const meta = pathMeta(item.url);
-                              openTab(item.url, meta.label, meta.emoji);
-                              router.push(item.url);
-                            }}
+                        <SidebarMenuButton
+                          isActive={isActive}
+                          onClick={() => {
+                            const meta = pathMeta(item.url);
+                            openTab(item.url, meta.label, meta.emoji);
+                            router.push(item.url);
+                          }}
+                          className={cn(
+                            "min-h-[46px] rounded-xl px-4 transition-all duration-200 font-semibold text-sidebar-foreground/80",
+                            isActive
+                              ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-lg shadow-sidebar-accent/15"
+                              : "bg-transparent hover:bg-sidebar-accent/20 hover:text-sidebar-foreground"
+                          )}
+                        >
+                          <Icon
                             className={cn(
-                              "min-h-[46px] rounded-2xl px-4 transition-all duration-200 font-semibold text-sidebar-foreground/80",
-                              isActive
-                                ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-lg shadow-sidebar-accent/15"
-                                : "bg-transparent hover:bg-sidebar-accent/20 hover:text-sidebar-foreground"
+                              "w-5 h-5 shrink-0 transition-colors",
+                              isActive ? "text-sidebar-accent-foreground" : "text-sidebar-foreground/70"
                             )}
-                          >
-                            <Icon
-                              className={cn(
-                                "w-5 h-5 shrink-0 transition-colors",
-                                isActive ? "text-sidebar-accent-foreground" : "text-sidebar-foreground/70"
-                              )}
-                            />
-                            <span className="truncate">{item.title}</span>
-                          </SidebarMenuButton>
-                        </motion.div>
+                          />
+                          <span className="truncate">{item.title}</span>
+                        </SidebarMenuButton>
                       </SidebarMenuItem>
                     );
                   })}
@@ -347,7 +344,7 @@ export function AppSidebar() {
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton size="lg" onClick={() => setProfileOpen(true)} data-tutorial="profile"
-                className="h-auto w-full flex items-center gap-3 p-3 rounded-[28px] border border-muted/20 bg-muted/10 transition-all hover:bg-muted/20 text-foreground cursor-pointer"
+                className="h-auto w-full flex items-center gap-3 p-3 rounded-xl border border-muted/20 bg-muted/10 transition-all hover:bg-muted/20 text-foreground cursor-pointer"
               >
                 {/* Avatar */}
                 <div className="relative shrink-0">

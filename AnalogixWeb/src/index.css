@@ -36,8 +36,6 @@
   --color-sidebar-ring: hsl(var(--sidebar-ring));
 
   --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
-  --font-display: Inter, ui-serif, Georgia, serif;
-  --font-serif: Georgia, Cambria, Times New Roman, Times, serif;
   --font-mono: JetBrains Mono, SF Mono, Monaco, Consolas, monospace;
 
   --radius-sm: calc(var(--radius) - 4px);
@@ -48,14 +46,6 @@
 
   --animate-accordion-down: accordion-down 0.2s ease-out;
   --animate-accordion-up: accordion-up 0.2s ease-out;
-  --animate-float: float 3s ease-in-out infinite;
-  --animate-bounce-soft: bounce-soft 2s ease-in-out infinite;
-  --animate-wiggle: wiggle 0.5s ease-in-out infinite;
-  --animate-pulse-soft: pulse-soft 2s ease-in-out infinite;
-  --animate-scale-in: scale-in 0.3s ease-out;
-  --animate-slide-up: slide-up 0.4s ease-out;
-  --animate-confetti: confetti 1s ease-out forwards;
-  --animate-shimmer: shimmer 2s linear infinite;
 }
 
 @keyframes accordion-down {
@@ -66,42 +56,9 @@
   from { height: var(--radix-accordion-content-height); }
   to { height: 0; }
 }
-@keyframes float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
-}
-@keyframes bounce-soft {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-5px); }
-}
-@keyframes wiggle {
-  0%, 100% { transform: rotate(-3deg); }
-  50% { transform: rotate(3deg); }
-}
-@keyframes pulse-soft {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
-}
-@keyframes scale-in {
-  0% { transform: scale(0.9); opacity: 0; }
-  100% { transform: scale(1); opacity: 1; }
-}
-@keyframes slide-up {
-  0% { transform: translateY(20px); opacity: 0; }
-  100% { transform: translateY(0); opacity: 1; }
-}
-@keyframes confetti {
-  0% { transform: translateY(0) rotate(0deg); opacity: 1; }
-  100% { transform: translateY(-100px) rotate(720deg); opacity: 0; }
-}
-@keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
 
 @layer base {
   :root {
-    /* Original Analogix style with colorful gradients */
     --background: 210 20% 98%;
     --foreground: 222 47% 11%;
 
@@ -135,7 +92,6 @@
     --input: 0 0% 97%;
     --ring: var(--p-h) var(--p-s) var(--p-l);
 
-    /* Colorful gradients - theme driven */
     --bg-1: rgba(37, 99, 235, 0.06);
     --bg-2: rgba(79, 70, 229, 0.04);
     --bg-3: rgba(67, 56, 202, 0.03);
@@ -154,7 +110,6 @@
     --glass-border: var(--glass-border-light);
     --glass-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 
-    /* Sidebar colors — hover states for all themes */
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 0 0% 15%;
     --sidebar-primary: var(--p-h) var(--p-s) var(--p-l);
@@ -164,7 +119,7 @@
     --sidebar-border: 0 0% 90%;
     --sidebar-ring: var(--p-h) var(--p-s) var(--p-l);
 
-    --radius: 0.375rem;
+    --radius: 0.5rem;
     --blur: 8px;
     --glass-opacity: 0.95;
     --border-opacity: 0.08;
@@ -175,7 +130,6 @@
     --g-3: #4338ca;
 
     --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, "Apple Color Emoji", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol";
-    --font-display: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, "Apple Color Emoji", Arial, sans-serif;
     --font-mono: "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas, monospace;
   }
 
@@ -214,7 +168,6 @@
     --glass-border: transparent;
     --glass-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 
-    /* Sidebar dark — visible hover */
     --sidebar-background: 0 0% 12%;
     --sidebar-foreground: 0 0% 80%;
     --sidebar-primary: var(--p-h) var(--p-s) var(--p-l);
@@ -239,9 +192,6 @@
     background-image: none;
   }
 
-  /* Paper theme — Notion-inspired warm grays
-     Uses the same CSS variable system as all themes (via withDerived).
-     Only overrides base background/foreground/sidebar values that differ. */
   [data-theme="paper"] {
     --background: 40 5% 99%;
     --foreground: 40 5% 20%;
@@ -268,7 +218,6 @@
     --sidebar-primary-foreground: 0 0% 100%;
   }
 
-  /* Paper dark mode — Notion's actual dark palette */
   [data-theme="paper"].dark {
     --background: 0 0% 9.8%;
     --foreground: 0 0% 83%;
@@ -296,26 +245,6 @@
   }
 }
 
-/* Notion-specific layout scope */
-.notion-ui {
-  --notion-bg: 0 0% 100%;
-  --notion-fg: 45 10% 20%;
-  --notion-border: 45 6% 94%;
-  --notion-muted: 45 5% 50%;
-  --notion-font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-  --notion-font-display: "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-
-  font-family: var(--notion-font-sans);
-  color: hsl(var(--notion-fg));
-}
-
-.dark .notion-ui {
-  --notion-bg: 0 0% 10%;
-  --notion-fg: 0 0% 83%;
-  --notion-border: 0 0% 16%;
-  --notion-muted: 0 0% 50%;
-}
-
 @layer components {
   .glass-card {
     background: var(--glass-bg);
@@ -323,13 +252,6 @@
     -webkit-backdrop-filter: blur(var(--blur));
     border: 1px solid var(--glass-border);
     box-shadow: var(--glass-shadow);
-  }
-
-  .glass-pill {
-    background: var(--glass-bg);
-    backdrop-filter: blur(var(--blur));
-    border: 1px solid var(--glass-border);
-    border-radius: 9999px;
   }
 
   .gradient-text {
@@ -343,13 +265,8 @@
     background: linear-gradient(135deg, var(--g-1), var(--g-2), var(--g-3));
   }
 
-  .notion-btn-minimal {
-    @apply h-8 px-2 rounded-md hover:bg-muted transition-colors text-sm font-medium text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5;
-  }
-
-  /* Material 3 Expressive Dashboard Panel */
   .dashboard-panel {
-    @apply rounded-3xl p-5 transition-all duration-200;
+    @apply rounded-xl p-5 transition-all duration-200;
     background: hsl(var(--card) / 0.7);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
@@ -360,184 +277,25 @@
   .dark .dashboard-panel {
     box-shadow: 0 1px 3px 1px rgba(0, 0, 0, 0.2), 0 1px 2px rgba(0, 0, 0, 0.12);
   }
-
-  /* M3 Expressive Stat Rail Card */
-  .m3-rail-card {
-    @apply flex flex-col items-center gap-1 p-3 rounded-2xl transition-all duration-200;
-    background: hsl(var(--card));
-    border: 1px solid hsl(var(--border));
-  }
-
-  .m3-rail-card:hover {
-    @apply scale-[1.02];
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  }
-
-  /* M3 Expressive Icon Container */
-  .m3-icon-container {
-    @apply w-10 h-10 rounded-xl flex items-center justify-center;
-    background: hsl(var(--primary) / 0.1);
-  }
-
-  .dark .m3-icon-container {
-    background: hsl(var(--primary) / 0.15);
-  }
-
-  /* M3 Expressive List Row */
-  .m3-list-row {
-    @apply flex items-center gap-3 p-3.5 rounded-2xl transition-all duration-200;
-    background: hsl(var(--card));
-    border: 1px solid hsl(var(--border));
-  }
-
-  .m3-list-row:hover {
-    @apply scale-[1.01];
-    background: hsl(var(--muted));
-  }
-
-  /* M3 Expressive Action Button */
-  .m3-action-btn {
-    @apply inline-flex items-center justify-center gap-2 px-5 py-3 rounded-full text-sm font-semibold transition-all duration-200;
-    background: hsl(var(--primary));
-    color: hsl(var(--primary-foreground));
-  }
-
-  .m3-action-btn:hover {
-    @apply scale-[1.02] opacity-90;
-    box-shadow: 0 4px 12px hsl(var(--primary) / 0.3);
-  }
-
-  .m3-action-btn:active {
-    @apply scale-[0.98];
-  }
-
-  /* M3 Expressive Secondary Button */
-  .m3-secondary-btn {
-    @apply inline-flex items-center justify-center gap-2 px-5 py-3 rounded-full text-sm font-semibold transition-all duration-200;
-    background: hsl(var(--secondary));
-    color: hsl(var(--secondary-foreground));
-  }
-
-  .m3-secondary-btn:hover {
-    @apply scale-[1.02] opacity-90;
-  }
-
-  /* M3 Expressive Outlined Button */
-  .m3-outlined-btn {
-    @apply inline-flex items-center justify-center gap-2 px-5 py-3 rounded-full text-sm font-semibold transition-all duration-200;
-    background: transparent;
-    color: hsl(var(--primary));
-    border: 1px solid hsl(var(--border));
-  }
-
-  .m3-outlined-btn:hover {
-    @apply scale-[1.02];
-    background: hsl(var(--primary) / 0.05);
-  }
-
-  /* M3 Expressive Section Header */
-  .m3-section-header {
-    @apply flex items-center justify-between mb-3;
-  }
-
-  .m3-section-title {
-    @apply text-xs font-black uppercase tracking-[0.18em];
-    color: hsl(var(--muted-foreground));
-  }
-
-  .m3-section-action {
-    @apply text-xs font-semibold transition-colors;
-    color: hsl(var(--primary));
-  }
-
-  .m3-section-action:hover {
-    @apply opacity-80;
-  }
-
-  /* M3 Expressive Hero Panel */
-  .m3-hero-panel {
-    @apply rounded-3xl p-5 overflow-hidden;
-    background: hsl(var(--primary) / 0.1);
-  }
-
-  .dark .m3-hero-panel {
-    background: hsl(var(--primary) / 0.15);
-  }
-
-  /* M3 Expressive Card with Tonal Surface */
-  .m3-tonal-card {
-    @apply rounded-3xl p-4 transition-all duration-200;
-    background: hsl(var(--muted));
-    border: 1px solid hsl(var(--border));
-  }
-
-  .m3-tonal-card:hover {
-    @apply scale-[1.01];
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  }
-
-  /* M3 Expressive Progress Bar */
-  .m3-progress-track {
-    @apply h-2.5 rounded-full overflow-hidden;
-    background: hsl(var(--primary) / 0.1);
-  }
-
-  .m3-progress-fill {
-    @apply h-full rounded-full transition-all duration-500;
-    background: hsl(var(--primary));
-  }
-
-  /* M3 Expressive Badge */
-  .m3-badge {
-    @apply inline-flex items-center justify-center px-2.5 py-1 rounded-full text-xs font-bold;
-    background: hsl(var(--primary) / 0.1);
-    color: hsl(var(--primary));
-  }
-
-  .dark .m3-badge {
-    background: hsl(var(--primary) / 0.2);
-  }
-
-  /* M3 Expressive Toggle */
-  .m3-toggle {
-    @apply relative w-11 h-6 rounded-full transition-all duration-200 cursor-pointer;
-    background: hsl(var(--muted));
-    border: 2px solid hsl(var(--border));
-  }
-
-  .m3-toggle.active {
-    background: hsl(var(--primary));
-    border-color: hsl(var(--primary));
-  }
-
-  .m3-toggle-knob {
-    @apply absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-all duration-200;
-  }
-
-  .m3-toggle.active .m3-toggle-knob {
-    transform: translateX(20px);
-  }
-
-  /* M3 Expressive Input Field */
-  .m3-input {
-    @apply w-full px-4 py-3 rounded-2xl text-sm outline-none transition-all duration-200;
-    background: hsl(var(--muted));
-    border: 1px solid hsl(var(--border));
-    color: hsl(var(--foreground));
-  }
-
-  .m3-input:focus {
-    @apply ring-2;
-    border-color: hsl(var(--primary));
-    box-shadow: 0 0 0 4px hsl(var(--primary) / 0.1);
-  }
-
-  .m3-input::placeholder {
-    color: hsl(var(--muted-foreground) / 0.5);
-  }
 }
 
-/* BlockNote Customization to match Notion */
+.notion-ui {
+  --notion-bg: 0 0% 100%;
+  --notion-fg: 45 10% 20%;
+  --notion-border: 45 6% 94%;
+  --notion-muted: 45 5% 50%;
+  --notion-font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  font-family: var(--notion-font-sans);
+  color: hsl(var(--notion-fg));
+}
+
+.dark .notion-ui {
+  --notion-bg: 0 0% 10%;
+  --notion-fg: 0 0% 83%;
+  --notion-border: 0 0% 16%;
+  --notion-muted: 0 0% 50%;
+}
+
 .bn-container {
   padding-left: 0 !important;
   padding-right: 0 !important;
@@ -549,7 +307,6 @@
   font-family: var(--font-sans) !important;
 }
 
-/* Position SideMenu (Drag handle and + button) in the gutter, outside the block content */
 .bn-side-menu {
   position: absolute !important;
   left: -48px !important;
@@ -574,7 +331,7 @@
 
 .bn-block-content {
   margin-bottom: 1px !important;
-  padding-left: 0 !important; /* Ensure text is flush with the start of the block */
+  padding-left: 0 !important;
 }
 
 .bn-block-content-wrapper {
@@ -594,7 +351,6 @@
   opacity: 0.3 !important;
 }
 
-/* Minimalist Document Shell */
 .document-shell {
   @apply flex flex-col h-full bg-background overflow-hidden;
 }
@@ -615,7 +371,6 @@
   @apply w-full text-4xl font-bold bg-transparent border-none outline-none placeholder:text-muted-foreground/20 mb-8;
 }
 
-/* Animations */
 .fade-in {
   animation: fadeIn 0.2s ease-in-out;
 }
@@ -625,7 +380,6 @@
   to { opacity: 1; }
 }
 
-/* Hide scrollbars while keeping scroll functionality */
 .scrollbar-none::-webkit-scrollbar {
   display: none;
 }
@@ -635,13 +389,11 @@
   scrollbar-width: none;
 }
 
-/* Claude-style cursor blink animation */
 @keyframes blink {
   0%, 50% { opacity: 1; }
   51%, 100% { opacity: 0; }
 }
 
-/* Typing indicator dots for AI tutor */
 .typing-dot {
   width: 6px;
   height: 6px;
@@ -671,7 +423,6 @@
   }
 }
 
-/* Chat skeleton animation */
 .chat-skeleton-pulse {
   animation: chatSkeletonPulse 2s ease-in-out infinite;
 }
@@ -681,14 +432,12 @@
   50% { opacity: 0.8; }
 }
 
-/* Message bubble assistant */
 .message-bubble-assistant {
-  @apply rounded-2xl px-4 py-3;
+  @apply rounded-xl px-4 py-3;
   background: hsl(var(--muted) / 0.6);
   border: 1px solid hsl(var(--border) / 0.5);
 }
 
-/* Chat scroll area */
 .chat-scroll {
   scroll-behavior: smooth;
 }

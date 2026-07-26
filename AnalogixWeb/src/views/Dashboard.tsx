@@ -208,9 +208,9 @@ function AiChatWidget() {
   return (
     <div className="flex flex-col gap-3">
       {/* Header */}
-      <div className="m3-section-header">
+      <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <div className="m3-icon-container">
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-primary/10">
             <MessageSquare className="w-4 h-4 text-primary" />
           </div>
           <div>
@@ -218,7 +218,7 @@ function AiChatWidget() {
             <p className="text-[11px] text-muted-foreground/60">Quick chat with your AI</p>
           </div>
         </div>
-        <button onClick={() => router.push("/chat")} className="m3-section-action">
+        <button onClick={() => router.push("/chat")} className="text-xs font-semibold text-primary hover:opacity-80">
           Open
         </button>
       </div>
@@ -231,7 +231,7 @@ function AiChatWidget() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 6 }}
             transition={{ duration: 0.18 }}
-            className="m3-tonal-card"
+            className="rounded-xl p-4 bg-muted border border-border"
           >
             {busy ? (
               <div className="flex gap-1.5 items-center h-5">
@@ -266,7 +266,7 @@ function AiChatWidget() {
           placeholder="Ask anything..."
           rows={2}
           className={cn(
-            "m3-input flex-1 resize-none",
+            "flex-1 resize-none w-full px-4 py-3 rounded-xl text-sm outline-none bg-muted border border-border text-foreground placeholder:text-muted-foreground/50",
             focused && "ring-2 ring-primary/20"
           )}
         />
@@ -274,7 +274,7 @@ function AiChatWidget() {
           className={cn(
             "w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 shrink-0",
             input.trim() && !busy
-              ? "m3-action-btn !px-0 !py-0 !w-10 !h-10"
+              ? "bg-primary text-primary-foreground hover:opacity-90 active:scale-[0.98]"
               : "bg-muted text-muted-foreground/30 cursor-not-allowed"
           )}>
           {busy ? (
