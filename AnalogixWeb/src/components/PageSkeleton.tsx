@@ -66,10 +66,228 @@ export function DocumentSkeleton() {
 
 export function ChatSkeleton() {
   return (
-    <div className="flex flex-col h-full animate-pulse">
-      <div className="h-14 bg-muted/30 border-b border-border/50" />
-      <div className="flex-1 flex items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground/50" />
+    <div className="flex flex-col h-full">
+      {/* Header skeleton */}
+      <div className="h-14 bg-muted/30 border-b border-border/50 flex items-center px-4 gap-3">
+        <div className="h-8 w-8 rounded-full bg-muted/40 animate-pulse" />
+        <div className="h-4 bg-muted/40 rounded w-32 animate-pulse" />
+        <div className="flex-1" />
+        <div className="h-8 w-8 rounded-lg bg-muted/40 animate-pulse" />
+      </div>
+      {/* Messages skeleton */}
+      <div className="flex-1 p-6 space-y-6 overflow-hidden">
+        <div className="flex justify-start">
+          <div className="max-w-[75%] space-y-3">
+            <div className="h-3 bg-muted/30 rounded-full w-48 animate-pulse" />
+            <div className="h-3 bg-muted/30 rounded-full w-36 animate-pulse" />
+            <div className="h-3 bg-muted/30 rounded-full w-52 animate-pulse" />
+          </div>
+        </div>
+        <div className="flex justify-end">
+          <div className="max-w-[60%] space-y-2">
+            <div className="h-8 bg-primary/10 rounded-2xl w-40 animate-pulse" />
+          </div>
+        </div>
+        <div className="flex justify-start">
+          <div className="max-w-[75%] space-y-3">
+            <div className="h-3 bg-muted/30 rounded-full w-56 animate-pulse" />
+            <div className="h-3 bg-muted/30 rounded-full w-44 animate-pulse" />
+            <div className="h-3 bg-muted/30 rounded-full w-32 animate-pulse" />
+            <div className="h-3 bg-muted/30 rounded-full w-48 animate-pulse" />
+          </div>
+        </div>
+      </div>
+      {/* Input skeleton */}
+      <div className="p-4 border-t border-border/30">
+        <div className="h-12 bg-muted/20 rounded-2xl animate-pulse" />
+      </div>
+    </div>
+  );
+}
+
+export function FlashcardsSkeleton() {
+  return (
+    <div className="p-6 space-y-6 animate-pulse">
+      <div className="flex items-center gap-3">
+        <div className="h-10 w-10 rounded-xl bg-muted/40" />
+        <div className="space-y-2">
+          <div className="h-5 bg-muted/40 rounded w-36" />
+          <div className="h-3 bg-muted/30 rounded w-24" />
+        </div>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="h-48 rounded-2xl bg-muted/20 border border-border/30 p-5 space-y-4">
+            <div className="h-4 bg-muted/30 rounded w-3/4" />
+            <div className="h-3 bg-muted/20 rounded w-1/2" />
+            <div className="h-20 bg-muted/15 rounded-xl" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export function QuizSkeleton() {
+  return (
+    <div className="p-6 space-y-6 animate-pulse">
+      <div className="flex items-center gap-3">
+        <div className="h-10 w-10 rounded-xl bg-muted/40" />
+        <div className="space-y-2">
+          <div className="h-5 bg-muted/40 rounded w-28" />
+          <div className="h-3 bg-muted/30 rounded w-20" />
+        </div>
+      </div>
+      <div className="space-y-4">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="rounded-2xl border border-border/30 bg-card/50 p-5 space-y-3">
+            <div className="h-4 bg-muted/30 rounded w-3/4" />
+            <div className="space-y-2 pl-4">
+              <div className="h-8 bg-muted/20 rounded-xl w-full" />
+              <div className="h-8 bg-muted/20 rounded-xl w-5/6" />
+              <div className="h-8 bg-muted/20 rounded-xl w-4/6" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export function RoomsSkeleton() {
+  return (
+    <div className="p-6 space-y-6 animate-pulse">
+      <div className="flex items-center justify-between">
+        <div className="space-y-2">
+          <div className="h-6 bg-muted/40 rounded w-32" />
+          <div className="h-3 bg-muted/30 rounded w-48" />
+        </div>
+        <div className="h-10 w-28 rounded-xl bg-muted/30" />
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="h-40 rounded-2xl bg-muted/20 border border-border/30 p-5 space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="h-8 w-8 rounded-full bg-muted/30" />
+              <div className="h-4 bg-muted/30 rounded w-24" />
+            </div>
+            <div className="h-3 bg-muted/20 rounded w-3/4" />
+            <div className="h-3 bg-muted/20 rounded w-1/2" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export function CalendarSkeleton() {
+  return (
+    <div className="p-6 space-y-6 animate-pulse">
+      <div className="flex items-center justify-between">
+        <div className="h-6 bg-muted/40 rounded w-28" />
+        <div className="flex gap-2">
+          <div className="h-8 w-8 rounded-lg bg-muted/30" />
+          <div className="h-8 w-8 rounded-lg bg-muted/30" />
+        </div>
+      </div>
+      <div className="rounded-2xl border border-border/30 bg-card/50 overflow-hidden">
+        <div className="grid grid-cols-7 gap-px bg-border/30">
+          {Array.from({ length: 35 }).map((_, i) => (
+            <div key={i} className="h-24 bg-muted/10 p-2">
+              <div className="h-5 w-5 rounded-full bg-muted/20" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function AchievementsSkeleton() {
+  return (
+    <div className="p-6 space-y-6 animate-pulse">
+      <div className="h-6 bg-muted/40 rounded w-40" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="h-32 rounded-2xl bg-muted/20 border border-border/30 p-5 space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-muted/30" />
+              <div className="space-y-2 flex-1">
+                <div className="h-4 bg-muted/30 rounded w-24" />
+                <div className="h-3 bg-muted/20 rounded w-32" />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export function SubjectsSkeleton() {
+  return (
+    <div className="p-6 space-y-6 animate-pulse">
+      <div className="flex items-center justify-between">
+        <div className="space-y-2">
+          <div className="h-6 bg-muted/40 rounded w-36" />
+          <div className="h-3 bg-muted/30 rounded w-48" />
+        </div>
+        <div className="h-10 w-28 rounded-xl bg-muted/30" />
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="h-28 rounded-2xl bg-muted/20 border border-border/30 p-5 space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-muted/30" />
+              <div className="space-y-2 flex-1">
+                <div className="h-4 bg-muted/30 rounded w-20" />
+                <div className="h-3 bg-muted/20 rounded w-32" />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export function FormulasSkeleton() {
+  return (
+    <div className="p-6 space-y-6 animate-pulse">
+      <div className="flex items-center gap-3">
+        <div className="h-10 w-10 rounded-xl bg-muted/40" />
+        <div className="space-y-2">
+          <div className="h-5 bg-muted/40 rounded w-32" />
+          <div className="h-3 bg-muted/30 rounded w-40" />
+        </div>
+      </div>
+      <div className="space-y-3">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className="h-20 rounded-2xl bg-muted/20 border border-border/30 p-4 space-y-2">
+            <div className="h-4 bg-muted/30 rounded w-1/3" />
+            <div className="h-8 bg-muted/15 rounded-xl w-2/3" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export function ResourcesSkeleton() {
+  return (
+    <div className="p-6 space-y-6 animate-pulse">
+      <div className="h-6 bg-muted/40 rounded w-36" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="h-36 rounded-2xl bg-muted/20 border border-border/30 p-5 space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="h-8 w-8 rounded-lg bg-muted/30" />
+              <div className="h-4 bg-muted/30 rounded w-20" />
+            </div>
+            <div className="h-3 bg-muted/20 rounded w-3/4" />
+            <div className="h-3 bg-muted/20 rounded w-1/2" />
+          </div>
+        ))}
       </div>
     </div>
   );

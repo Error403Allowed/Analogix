@@ -640,3 +640,55 @@
   0%, 50% { opacity: 1; }
   51%, 100% { opacity: 0; }
 }
+
+/* Typing indicator dots for AI tutor */
+.typing-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: hsl(var(--primary) / 0.4);
+  animation: typingDot 1.4s ease-in-out infinite;
+}
+
+.typing-dot:nth-child(1) { animation-delay: 0s; }
+.typing-dot:nth-child(2) { animation-delay: 0.1s; }
+.typing-dot:nth-child(3) { animation-delay: 0.2s; }
+.typing-dot:nth-child(4) { animation-delay: 0.3s; }
+.typing-dot:nth-child(5) { animation-delay: 0.4s; }
+.typing-dot:nth-child(6) { animation-delay: 0.5s; }
+.typing-dot:nth-child(7) { animation-delay: 0.6s; }
+
+@keyframes typingDot {
+  0%, 60%, 100% {
+    transform: translateY(0);
+    opacity: 0.4;
+    background: hsl(var(--primary) / 0.4);
+  }
+  30% {
+    transform: translateY(-8px);
+    opacity: 1;
+    background: hsl(var(--primary) / 0.8);
+  }
+}
+
+/* Chat skeleton animation */
+.chat-skeleton-pulse {
+  animation: chatSkeletonPulse 2s ease-in-out infinite;
+}
+
+@keyframes chatSkeletonPulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.8; }
+}
+
+/* Message bubble assistant */
+.message-bubble-assistant {
+  @apply rounded-2xl px-4 py-3;
+  background: hsl(var(--muted) / 0.6);
+  border: 1px solid hsl(var(--border) / 0.5);
+}
+
+/* Chat scroll area */
+.chat-scroll {
+  scroll-behavior: smooth;
+}

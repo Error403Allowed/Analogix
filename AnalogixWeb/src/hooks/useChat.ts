@@ -997,198 +997,38 @@ Title:` }];
 
       const localStorageData = getLocalStorageData();
 
-      const result = await getGroqCompletion(newHistory, context);
-      setIsTyping(false);
+      const cleanForDisplay = (text: string) => {
+        return text
+          .replace(/<system-reminder[\s\S]*?<\/system-reminder>/gi, "")
+          .replace(/<system-reminder[\s\S]*$/gi, "")
+          .replace(/<\|[\w_]+\|>/g, "")
+          .replace(/<internal\s*>[\s\S]*?<\/internal\s*>/gi, "")
+          .replace(/<internal\s*>[\s\S]*/gi, "")
+          .replace(/\n\s*Actions\s*$/gi, "")
+          .replace(/\n\s*\n\s*$/g, "\n")
+          .trim();
+      };
 
-      if (result.proposal) {
-        const proposalId = (Date.now() + 1).toString();
-        const proposalContent = result.content || "";
-        setMessages(prev => [...prev, {
-          id: proposalId,
-          role: "assistant",
-          content: proposalContent,
-          isStreaming: true,
-        }]);
+      // ── PRIMARY: Try streaming first for best UX ──
+      const responseId = (Date.now() + 1).toString();
+      setMessages(prev => [...prev, {
+        id: responseId,
+        role: "assistant",
+        content: "",
+        isStreaming: true,
+        sources: researchSources,
+        researchQuery: researchQuery || undefined,
+      }]);
+      setStreamingId(responseId);
+      setStreamingContent("");
+      lockedToBottomRef.current = false;
 
-        if (activeSessionId) {
-          chatStore.addMessage(activeSessionId, "assistant", proposalContent).catch(e => console.error("[Chat] addMessage assistant:", e));
-        }
-
-        const proposalTools = result.proposal.tools;
-        if (shouldAutoApprove(proposalTools)) {
-          setPendingProposal(result.proposal);
-          setPendingProposalMessageId(proposalId);
-          setTimeout(async () => {
-            try {
-              const res = await fetch("/api/groq/tools/execute", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ tools: proposalTools }),
-              });
-              const execResult = await res.json();
-              const successCount = execResult.results?.filter((r: any) => r.success).length ?? 0;
-              const failCount = execResult.results?.filter((r: any) => !r.success).length ?? 0;
-
-              const resultText = execResult.results?.map(formatToolResult).filter(Boolean).join("\n\n") || "";
-              const combinedContent = proposalContent + (resultText ? `\n\n${resultText}` : "");
-              setMessages(prev => prev.map(m =>
-                m.id === proposalId
-                  ? { ...m, content: combinedContent, isStreaming: false }
-                  : m
-              ));
-
-              if (activeSessionId) {
-                chatStore.updateMessageContent(activeSessionId, proposalId, combinedContent).catch(e => console.error("[Chat] updateMessageContent:", e));
-              }
-
-              if (successCount > 0 && failCount === 0) {
-                const toolResult = execResult.results?.[0];
-                const toolName = toolResult?.toolName;
-                if (toolName === "create_quiz" && toolResult?.data) {
-                  const quizData = toolResult.data;
-                  const raw = typeof quizData.questions === "string" ? JSON.parse(quizData.questions) : (quizData.questions ?? []);
-                  const questions = (Array.isArray(raw) ? raw : []).map((q: any) => ({
-                    ...q,
-                    type: q.type === "multiple-choice" || q.type === "multiple_choice" ? "multiple_choice"
-                      : q.type === "true-false" ? "multiple_choice"
-                      : q.type === "short-answer" || q.type === "short_answer" ? "short_answer"
-                      : "multiple_choice",
-                    options: Array.isArray(q.options) ? q.options.map((opt: any, i: number) =>
-                      typeof opt === "string" ? { id: `opt-${i}`, text: opt, isCorrect: q.correctAnswer === opt } : opt
-                    ) : [],
-                    correctAnswer: q.correctAnswer || "",
-                  }));
-                  sessionStorage.setItem("pendingQuiz", JSON.stringify({ questions, subjectId: quizData.subject_id, title: quizData.title }));
-                  router.push("/quiz");
-                }
-              }
-            } catch (err) {
-              console.warn("[Chat] Auto-execute failed:", err);
-              setMessages(prev => prev.map(m =>
-                m.id === proposalId ? { ...m, content: proposalContent + "\n\n⚠️ Auto-execution failed. Please try again.", isStreaming: false } : m
-              ));
-            } finally {
-              setPendingProposal(null);
-              setPendingProposalMessageId(null);
-            }
-          }, 100);
-          if (activeSessionId) {
-            generateChatTitleIfNeeded(newHistory, messages, input, activeSessionId, buildContext);
-          }
-          return;
-        }
-
-        setPendingProposal(result.proposal);
-        setPendingProposalMessageId(proposalId);
-
-        if (proposalContent) {
-          setStreamingId(proposalId);
-          setStreamingContent("");
-          const totalLen = proposalContent.length;
-          const DURATION_MS = Math.min(2500, Math.max(600, totalLen * 15));
-          const startTime = performance.now();
-          const reveal = () => {
-            const elapsed = performance.now() - startTime;
-            const progress = Math.min(elapsed / DURATION_MS, 1);
-            const chars = Math.min(Math.floor(progress * totalLen), totalLen);
-            if (chars > 0) setStreamingContent(proposalContent.slice(0, chars));
-            if (chars < totalLen) {
-              requestAnimationFrame(reveal);
-            } else {
-              setMessages(prev => prev.map(m =>
-                m.id === proposalId ? { ...m, isStreaming: false } : m
-              ));
-              setStreamingId(null);
-              setStreamingContent("");
-            }
-          };
-          requestAnimationFrame(reveal);
-        }
-        if (activeSessionId) {
-          generateChatTitleIfNeeded(newHistory, messages, input, activeSessionId, buildContext);
-        }
-        return;
-      }
-
-      const typewriterText = result.content || "";
-      if (typewriterText) {
-        const responseId = (Date.now() + 1).toString();
-        setMessages(prev => [...prev, {
-          id: responseId,
-          role: "assistant",
-          content: typewriterText,
-          isStreaming: true,
-          sources: researchSources,
-          researchQuery: researchQuery || undefined,
-        }]);
-        if (activeSessionId) {
-          chatStore.addMessage(activeSessionId, "assistant", typewriterText).catch(e => console.error("[Chat] addMessage assistant:", e));
-        }
-        setIsTyping(false);
-        setStreamingId(responseId);
-        setStreamingContent("");
-        lockedToBottomRef.current = false;
-
-        const totalLen = typewriterText.length;
-        const DURATION_MS = Math.min(2500, Math.max(600, totalLen * 15));
-        const CHUNK = totalLen < 20 ? Math.max(1, Math.floor(totalLen / 4)) : 1;
-        const startTime = performance.now();
-        let animCancelled = false;
-        abortRef.current = { abort: () => { animCancelled = true; } } as unknown as AbortController;
-        const reveal = () => {
-          if (animCancelled) return;
-          const elapsed = performance.now() - startTime;
-          const progress = Math.min(elapsed / DURATION_MS, 1);
-          const chars = Math.min(Math.floor(progress * totalLen), totalLen);
-          if (chars > 0) setStreamingContent(typewriterText.slice(0, chars));
-          if (chars < totalLen) {
-            requestAnimationFrame(reveal);
-          } else {
-            setMessages(prev => prev.map(m =>
-              m.id === responseId ? { ...m, isStreaming: false } : m
-            ));
-            setStreamingId(null);
-            setStreamingContent("");
-            abortRef.current = null;
-          }
-        };
-        requestAnimationFrame(reveal);
-        if (activeSessionId) {
-          generateChatTitleIfNeeded(newHistory, messages, input, activeSessionId, buildContext);
-        }
-        return;
-      }
+      let accumulated = "";
+      let streamError: Error | null = null;
 
       try {
-        const responseId = (Date.now() + 1).toString();
-        setMessages(prev => [...prev, {
-          id: responseId,
-          role: "assistant",
-          content: "",
-          isStreaming: true,
-          sources: researchSources,
-          researchQuery: researchQuery || undefined,
-        }]);
-        setIsTyping(false);
-        setStreamingId(responseId);
-        setStreamingContent("");
-        lockedToBottomRef.current = false;
-
         const abort = new AbortController();
         abortRef.current = abort;
-        let accumulated = "";
-
-        const cleanForDisplay = (text: string) => {
-          return text
-            .replace(/<system-reminder[\s\S]*?<\/system-reminder>/gi, "")
-            .replace(/<system-reminder[\s\S]*$/gi, "")
-            .replace(/<\|[\w_]+\|>/g, "")
-            .replace(/<internal\s*>[\s\S]*?<\/internal\s*>/gi, "")
-            .replace(/<internal\s*>[\s\S]*/gi, "")
-            .replace(/\n\s*Actions\s*$/gi, "")
-            .replace(/\n\s*\n\s*$/g, "\n")
-            .trim();
-        };
 
         const stream = getGroqStream(newHistory, context, localStorageData);
         for await (const token of stream) {
@@ -1197,58 +1037,203 @@ Title:` }];
           setStreamingContent(cleanForDisplay(accumulated));
         }
 
-        const finalContent = cleanForDisplay(accumulated) || "I'm not sure how to answer that.";
+        if (abort.signal.aborted) {
+          setStreamingId(null);
+          setStreamingContent("");
+          setIsTyping(false);
+          abortRef.current = null;
+          return;
+        }
+      } catch (err) {
+        streamError = err instanceof Error ? err : new Error(String(err));
+        console.warn("[Chat] Stream failed, falling back to non-streaming:", streamError.message);
+      }
+
+      // ── If streaming returned content, finalize ──
+      if (accumulated.trim().length > 4) {
+        const finalContent = cleanForDisplay(accumulated);
         setMessages(prev => prev.map(m =>
           m.id === responseId ? { ...m, isStreaming: false, content: finalContent } : m
         ));
         setStreamingId(null);
         setStreamingContent("");
+        setIsTyping(false);
+        abortRef.current = null;
 
-      const trimmedAccumulated = accumulated.trim();
-      const lastUserMsg = userContent.trim().toLowerCase();
+        const trimmedAccumulated = accumulated.trim();
+        const lastUserMsg = userContent.trim().toLowerCase();
 
-      const isTrivialInput = lastUserMsg.length < 15 && /^(hi|hello|hey|sup|yo|ok|k|lol|thanks?|bye|good\s?(morning|evening|afternoon)|what'?s up|how are you|\?)$/i.test(lastUserMsg);
+        const isTrivialInput = lastUserMsg.length < 15 && /^(hi|hello|hey|sup|yo|ok|k|lol|thanks?|bye|good\s?(morning|evening|afternoon)|what'?s up|how are you|\?)$/i.test(lastUserMsg);
 
-      const shouldExtract = trimmedAccumulated.length >= 20 && !isTrivialInput && lastUserMsg.length >= 10;
+        const shouldExtract = trimmedAccumulated.length >= 20 && !isTrivialInput && lastUserMsg.length >= 10;
 
-      console.log("[memory] shouldExtract:", shouldExtract, "| isTrivial:", isTrivialInput, "| userMsgLen:", lastUserMsg.length, "| aiRespLen:", trimmedAccumulated.length);
-
-      if (shouldExtract) {
-        const messagesForExtraction = [
-          ...newHistory,
-          { role: "assistant" as const, content: trimmedAccumulated },
-        ];
-        console.log("[memory] Sending extraction request with", messagesForExtraction.length, "messages");
-        fetch("/api/ai/memory/extract", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ messages: messagesForExtraction, subjectId: selectedSubject }),
-        })
-          .then(r => {
-            if (!r.ok) return null;
-            return r.json();
+        if (shouldExtract) {
+          const messagesForExtraction = [
+            ...newHistory,
+            { role: "assistant" as const, content: trimmedAccumulated },
+          ];
+          fetch("/api/ai/memory/extract", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ messages: messagesForExtraction, subjectId: selectedSubject }),
           })
-          .then(d => { if (d) console.log("[memory] extract result:", d); })
-          .catch(err => console.error("[memory] extract error:", err));
+            .then(r => { if (!r.ok) return null; return r.json(); })
+            .then(d => { if (d) console.log("[memory] extract result:", d); })
+            .catch(err => console.error("[memory] extract error:", err));
+        }
+
+        if (activeSessionId) {
+          chatStore.addMessage(activeSessionId, "assistant", accumulated).catch(e => console.error("[Chat] addMessage assistant:", e));
+          setAllSessions(prev =>
+            [...prev.map(s => s.id === activeSessionId ? { ...s, updatedAt: new Date().toISOString() } : s)]
+              .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+          );
+          await generateChatTitleIfNeeded(newHistory, messages, input, activeSessionId, buildContext);
+        }
+        return;
       }
 
-      if (activeSessionId) {
-        chatStore.addMessage(activeSessionId, "assistant", accumulated).catch(e => console.error("[Chat] addMessage assistant:", e));
-        setAllSessions(prev =>
-          [...prev.map(s => s.id === activeSessionId ? { ...s, updatedAt: new Date().toISOString() } : s)]
-            .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-        );
-        await generateChatTitleIfNeeded(newHistory, messages, input, activeSessionId, buildContext);
-      }
-      } catch {
+      // ── FALLBACK: Non-streaming if streaming failed or returned nothing ──
+      try {
+        const result = await getGroqCompletion(newHistory, context);
+
+        if (result.proposal) {
+          const proposalId = (Date.now() + 2).toString();
+          const proposalContent = result.content || "";
+          setMessages(prev => [...prev, {
+            id: proposalId,
+            role: "assistant",
+            content: proposalContent,
+            isStreaming: true,
+          }]);
+
+          if (activeSessionId) {
+            chatStore.addMessage(activeSessionId, "assistant", proposalContent).catch(e => console.error("[Chat] addMessage assistant:", e));
+          }
+
+          const proposalTools = result.proposal.tools;
+          if (shouldAutoApprove(proposalTools)) {
+            setPendingProposal(result.proposal);
+            setPendingProposalMessageId(proposalId);
+            setTimeout(async () => {
+              try {
+                const res = await fetch("/api/groq/tools/execute", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ tools: proposalTools }),
+                });
+                const execResult = await res.json();
+                const successCount = execResult.results?.filter((r: any) => r.success).length ?? 0;
+                const failCount = execResult.results?.filter((r: any) => !r.success).length ?? 0;
+
+                const resultText = execResult.results?.map(formatToolResult).filter(Boolean).join("\n\n") || "";
+                const combinedContent = proposalContent + (resultText ? `\n\n${resultText}` : "");
+                setMessages(prev => prev.map(m =>
+                  m.id === proposalId
+                    ? { ...m, content: combinedContent, isStreaming: false }
+                    : m
+                ));
+
+                if (activeSessionId) {
+                  chatStore.updateMessageContent(activeSessionId, proposalId, combinedContent).catch(e => console.error("[Chat] updateMessageContent:", e));
+                }
+
+                if (successCount > 0 && failCount === 0) {
+                  const toolResult = execResult.results?.[0];
+                  const toolName = toolResult?.toolName;
+                  if (toolName === "create_quiz" && toolResult?.data) {
+                    const quizData = toolResult.data;
+                    const raw = typeof quizData.questions === "string" ? JSON.parse(quizData.questions) : (quizData.questions ?? []);
+                    const questions = (Array.isArray(raw) ? raw : []).map((q: any) => ({
+                      ...q,
+                      type: q.type === "multiple-choice" || q.type === "multiple_choice" ? "multiple_choice"
+                        : q.type === "true-false" ? "multiple_choice"
+                        : q.type === "short-answer" || q.type === "short_answer" ? "short_answer"
+                        : "multiple_choice",
+                      options: Array.isArray(q.options) ? q.options.map((opt: any, i: number) =>
+                        typeof opt === "string" ? { id: `opt-${i}`, text: opt, isCorrect: q.correctAnswer === opt } : opt
+                      ) : [],
+                      correctAnswer: q.correctAnswer || "",
+                    }));
+                    sessionStorage.setItem("pendingQuiz", JSON.stringify({ questions, subjectId: quizData.subject_id, title: quizData.title }));
+                    router.push("/quiz");
+                  }
+                }
+              } catch (err) {
+                console.warn("[Chat] Auto-execute failed:", err);
+                setMessages(prev => prev.map(m =>
+                  m.id === proposalId ? { ...m, content: proposalContent + "\n\n⚠️ Auto-execution failed. Please try again.", isStreaming: false } : m
+                ));
+              } finally {
+                setPendingProposal(null);
+                setPendingProposalMessageId(null);
+              }
+            }, 100);
+            if (activeSessionId) {
+              generateChatTitleIfNeeded(newHistory, messages, input, activeSessionId, buildContext);
+            }
+            setIsTyping(false);
+            return;
+          }
+
+          setPendingProposal(result.proposal);
+          setPendingProposalMessageId(proposalId);
+
+          if (proposalContent) {
+            setStreamingId(proposalId);
+            setStreamingContent("");
+            const totalLen = proposalContent.length;
+            const DURATION_MS = Math.min(2500, Math.max(600, totalLen * 15));
+            const startTime = performance.now();
+            const reveal = () => {
+              const elapsed = performance.now() - startTime;
+              const progress = Math.min(elapsed / DURATION_MS, 1);
+              const chars = Math.min(Math.floor(progress * totalLen), totalLen);
+              if (chars > 0) setStreamingContent(proposalContent.slice(0, chars));
+              if (chars < totalLen) {
+                requestAnimationFrame(reveal);
+              } else {
+                setMessages(prev => prev.map(m =>
+                  m.id === proposalId ? { ...m, isStreaming: false } : m
+                ));
+                setStreamingId(null);
+                setStreamingContent("");
+              }
+            };
+            requestAnimationFrame(reveal);
+          }
+          if (activeSessionId) {
+            generateChatTitleIfNeeded(newHistory, messages, input, activeSessionId, buildContext);
+          }
+          setIsTyping(false);
+          return;
+        }
+
+        const fallbackContent = result.content || "I'm not sure how to answer that.";
+        setMessages(prev => prev.map(m =>
+          m.id === responseId ? { ...m, isStreaming: false, content: fallbackContent } : m
+        ));
+        setStreamingId(null);
+        setStreamingContent("");
+
+        if (activeSessionId) {
+          chatStore.addMessage(activeSessionId, "assistant", result.content || "").catch(e => console.error("[Chat] addMessage assistant:", e));
+          setAllSessions(prev =>
+            [...prev.map(s => s.id === activeSessionId ? { ...s, updatedAt: new Date().toISOString() } : s)]
+              .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+          );
+          await generateChatTitleIfNeeded(newHistory, messages, input, activeSessionId, buildContext);
+        }
+        setIsTyping(false);
+        abortRef.current = null;
+      } catch (err) {
         setMessages(prev => [...prev, {
-          id: (Date.now() + 1).toString(),
+          id: (Date.now() + 3).toString(),
           role: "assistant",
           content: "I couldn't reach the AI service, you've either hit the rate limit of 1000 requests per day or you need to check your internet.",
         }]);
         setStreamingId(null);
         setStreamingContent("");
-      } finally {
         setIsTyping(false);
         abortRef.current = null;
       }

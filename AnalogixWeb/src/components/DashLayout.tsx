@@ -7,7 +7,7 @@ import { motion } from "framer-motion";
 import { TabsProvider, useTabs, pathMeta } from "@/context/TabsContext";
 import TabBar from "@/components/TabBar";
 import { useEffect, useRef, Suspense } from "react";
-import { PageLoader } from "@/components/PageSkeleton";
+import { PageLoader, ChatSkeleton, DashboardSkeleton, FlashcardsSkeleton, QuizSkeleton, RoomsSkeleton, CalendarSkeleton, AchievementsSkeleton, SubjectsSkeleton, FormulasSkeleton, ResourcesSkeleton } from "@/components/PageSkeleton";
 import dynamic from "next/dynamic";
 
 export default function DashLayout({ children }: { children: React.ReactNode }) {
@@ -40,38 +40,38 @@ export default function DashLayout({ children }: { children: React.ReactNode }) 
   );
 };
 
-// Stable page component definitions
+// Stable page component definitions with page-specific skeletons
 const LazyDashboardPage = dynamic(() => import("@/app/dashboard/page"), {
   ssr: false,
-  loading: () => <PageLoader message="Loading dashboard..." />,
+  loading: () => <DashboardSkeleton />,
 });
 const LazyChatPage = dynamic(() => import("@/app/chat/page"), {
   ssr: false,
-  loading: () => <PageLoader message="Loading tutor..." />,
+  loading: () => <ChatSkeleton />,
 });
 const LazyRoomsPage = dynamic(() => import("@/app/rooms/page"), {
   ssr: false,
-  loading: () => <PageLoader message="Loading rooms..." />,
+  loading: () => <RoomsSkeleton />,
 });
 const LazyFlashcardsPage = dynamic(() => import("@/app/flashcards/page"), {
   ssr: false,
-  loading: () => <PageLoader message="Loading flashcards..." />,
+  loading: () => <FlashcardsSkeleton />,
 });
 const LazyQuizPage = dynamic(() => import("@/app/quiz/page"), {
   ssr: false,
-  loading: () => <PageLoader message="Loading quiz..." />,
+  loading: () => <QuizSkeleton />,
 });
 const LazyFormulasPage = dynamic(() => import("@/app/formulas/page"), {
   ssr: false,
-  loading: () => <PageLoader message="Loading formulas..." />,
+  loading: () => <FormulasSkeleton />,
 });
 const LazyResourcesPage = dynamic(() => import("@/app/resources/page"), {
   ssr: false,
-  loading: () => <PageLoader message="Loading resources..." />,
+  loading: () => <ResourcesSkeleton />,
 });
 const LazySubjectsPage = dynamic(() => import("@/app/subjects/page"), {
   ssr: false,
-  loading: () => <PageLoader message="Loading subjects..." />,
+  loading: () => <SubjectsSkeleton />,
 });
 const LazySubjectDetail = dynamic(() => import("@/views/SubjectDetail"), {
   ssr: false,
@@ -87,11 +87,11 @@ const LazySubjectDocument = dynamic(() => import("@/views/SubjectDocument"), {
 });
 const LazyCalendarPage = dynamic(() => import("@/app/calendar/page"), {
   ssr: false,
-  loading: () => <PageLoader message="Loading calendar..." />,
+  loading: () => <CalendarSkeleton />,
 });
 const LazyAchievementsPage = dynamic(() => import("@/app/achievements/page"), {
   ssr: false,
-  loading: () => <PageLoader message="Loading achievements..." />,
+  loading: () => <AchievementsSkeleton />,
 });
 
 const LazyStudyRoomWorkspace = dynamic(() => import("@/views/StudyRoomWorkspace"), {
@@ -115,6 +115,20 @@ function getPageForPath(path: string) {
   if (path === "/calendar") return LazyCalendarPage;
   if (path === "/achievements") return LazyAchievementsPage;
   return LazyDashboardPage;
+}
+
+function getPageSkeleton(path: string) {
+  if (path === "/dashboard") return <DashboardSkeleton />;
+  if (path === "/chat") return <ChatSkeleton />;
+  if (path === "/rooms" || path.startsWith("/rooms/")) return <RoomsSkeleton />;
+  if (path === "/flashcards") return <FlashcardsSkeleton />;
+  if (path === "/quiz") return <QuizSkeleton />;
+  if (path === "/formulas") return <FormulasSkeleton />;
+  if (path === "/resources") return <ResourcesSkeleton />;
+  if (path === "/subjects" || path.startsWith("/subjects/")) return <SubjectsSkeleton />;
+  if (path === "/calendar") return <CalendarSkeleton />;
+  if (path === "/achievements") return <AchievementsSkeleton />;
+  return <PageLoader message="Loading..." />;
 }
 
 function DashContent({ children, isChatLike, pathname }: { children: React.ReactNode; isChatLike: boolean; pathname: string }) {
@@ -163,7 +177,7 @@ function DashContent({ children, isChatLike, pathname }: { children: React.React
                 zIndex: isActive ? 1 : 0,
               }}
             >
-              <Suspense fallback={<PageLoader message="Loading..." />}>
+              <Suspense fallback={getPageSkeleton(tab.path)}>
                 <PageComponent />
               </Suspense>
             </motion.div>

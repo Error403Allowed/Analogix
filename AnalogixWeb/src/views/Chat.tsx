@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   RefreshCw,
@@ -9,6 +10,7 @@ import {
   ChevronDown,
   Trash2,
   FileText,
+  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import AISettingsSheet from "@/components/AISettingsSheet";
@@ -19,6 +21,7 @@ import { StreamingMessage } from "@/components/chat/StreamingMessage";
 import { ResearchSourceCard } from "@/components/chat/ResearchSourceCard";
 import { parseThinkingContent } from "@/utils/parse-thinking-content";
 import { useChat } from "@/hooks/useChat";
+import { ChatSkeleton } from "@/components/PageSkeleton";
 import ThreadSidebar from "@/components/chat/ThreadSidebar";
 import ChatHeader from "@/components/chat/ChatHeader";
 import ChatInput from "@/components/chat/ChatInput";
@@ -97,6 +100,19 @@ const Chat = () => {
     handleDeleteThread,
     handleRenameThread,
   } = useChat();
+
+  const [initialLoading, setInitialLoading] = useState(true);
+
+  useEffect(() => {
+    if (!sessionsLoading) {
+      const timer = setTimeout(() => setInitialLoading(false), 300);
+      return () => clearTimeout(timer);
+    }
+  }, [sessionsLoading]);
+
+  if (initialLoading && sessionsLoading) {
+    return <ChatSkeleton />;
+  }
 
   return (
     <div className="h-full flex flex-row relative overflow-hidden bg-background">
@@ -206,16 +222,60 @@ const Chat = () => {
                       initial={{ opacity: 0, y: 12 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.4 }}
-                      className="flex flex-col items-center justify-center h-full min-h-[40vh] gap-3 text-center"
+                      className="flex flex-col items-center justify-center h-full min-h-[40vh] gap-5 text-center px-6"
                     >
-                      <div>
-                        <p className="text-base font-semibold text-foreground/80">
+                      <motion.div
+                        initial={{ scale: 0.8, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        transition={{ delay: 0.1, duration: 0.4 }}
+                        className="relative"
+                      >
+                        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/20 via-primary/10 to-primary/5 flex items-center justify-center border border-primary/10 shadow-sm">
+                          <Sparkles className="w-7 h-7 text-primary/70" />
+                        </div>
+                      </motion.div>
+                      <div className="space-y-2">
+                        <p className="text-lg font-semibold text-foreground/80 tracking-tight">
                           {userName ? `Hey ${userName}, what are you studying?` : "Hey there, what are you studying?"}
                         </p>
-                        <p className="text-sm text-muted-foreground/60 mt-1">
-                          Ask about any concept — I'll explain it with your interests
+                        <p className="text-sm text-muted-foreground/50 max-w-sm leading-relaxed">
+                          Ask about any concept — I'll explain it using <span className="text-foreground/70 font-medium">analogies from your interests</span>, aligned to the{" "}
+                          <span className="text-foreground/70 font-medium">ACARA curriculum</span>.
                         </p>
                       </div>
+                      {userHobbies.length > 0 && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 0.2, duration: 0.3 }}
+                          className="flex flex-wrap items-center justify-center gap-1.5 mt-1"
+                        >
+                          <span className="text-[11px] text-muted-foreground/40 font-medium mr-0.5">Your interests:</span>
+                          {userHobbies.slice(0, 4).map((hobby) => (
+                            <span
+                              key={hobby}
+                              className="px-2.5 py-1 rounded-full bg-primary/5 border border-primary/10 text-[11px] font-medium text-primary/70"
+                            >
+                              {hobby}
+                            </span>
+                          ))}
+                          {userHobbies.length > 4 && (
+                            <span className="text-[11px] text-muted-foreground/40">
+                              +{userHobbies.length - 4} more
+                            </span>
+                          )}
+                        </motion.div>
+                      )}
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.3, duration: 0.3 }}
+                        className="flex flex-wrap items-center justify-center gap-2 mt-2"
+                      >
+                        <span className="px-3 py-1.5 rounded-full bg-muted/40 border border-border/30 text-xs text-muted-foreground/60">
+                          Try: "Explain photosynthesis like I'm a gamer"
+                        </span>
+                      </motion.div>
                     </motion.div>
                   )}
                   <AnimatePresence>
