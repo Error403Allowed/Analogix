@@ -337,29 +337,6 @@ const Landing = () => {
     syncOnboardingFromDb();
   }, [syncOnboardingFromDb]);
 
-  const forceLanding =
-    searchParams?.get("force") === "true" || searchParams?.get("force") === "1";
-
-  // Don't auto-redirect - let users explore the landing page
-  // Only redirect on button click based on auth status
-
-  useEffect(() => {
-    const root = document.documentElement;
-    root.style.setProperty("--p-h", "199.2");
-    root.style.setProperty("--p-s", "78.2%");
-    root.style.setProperty("--p-l", "48.3%");
-
-    const hadDarkClass = root.classList.contains("dark");
-    if (hadDarkClass) {
-      root.classList.remove("dark");
-    }
-    return () => {
-      if (hadDarkClass) {
-        root.classList.add("dark");
-      }
-    };
-  }, []);
-
   const handleNav = (path?: string, sectionId?: string) => {
     if (!isMounted || loading) return;
     
