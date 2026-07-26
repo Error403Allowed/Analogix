@@ -35,7 +35,7 @@ export function ShortNavBar({ tabs, activeTab, onTabPress, onFabPress }: ShortNa
     fabScale.value = withSpring(0.92, MOTION.tap);
     if (Platform.OS === "ios") {
       try {
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
+         
         const haptics = require("expo-haptics");
         haptics.impactAsync(haptics.ImpactFeedbackStyle.Medium);
       } catch { /* haptics unavailable */ }

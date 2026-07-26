@@ -26,7 +26,7 @@ export function TimeGrid({ days, events, allTypes, now, onDelete, onSelect, onCr
   useEffect(() => {
     const scrollTop = Math.max(0, nowMinutes * (HOUR_H / 60) - 200);
     containerRef.current?.scrollTo({ top: scrollTop, behavior: "smooth" });
-  }, []);
+  }, [nowMinutes]);
 
   useEffect(() => {
     if (!interaction) return;
@@ -161,7 +161,7 @@ export function TimeGrid({ days, events, allTypes, now, onDelete, onSelect, onCr
       window.removeEventListener("pointermove", handlePointerMove);
       window.removeEventListener("pointerup", handlePointerUp);
     };
-  }, [days, events, getPointerSlot, interaction, onCreateSelection, onSelect, onUpdateEvent]);
+  }, [days, events, getPointerSlot, getSiblingDayEvents, interaction, onCreateSelection, onSelect, onUpdateEvent]);
 
   const startCreateInteraction = (dayIndex: number, pointerEvent: React.PointerEvent<HTMLDivElement>) => {
     if (pointerEvent.button !== 0) return;

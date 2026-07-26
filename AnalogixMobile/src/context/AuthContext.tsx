@@ -7,6 +7,9 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { Platform } from "react-native";
 import * as SecureStore from "expo-secure-store";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useApolloClient } from "@apollo/client/react";
+import { clearApolloCache } from "../apollo/client";
 import { getSupabase } from "../supabase";
 
 const USER_KEY = "user";
@@ -59,6 +62,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isReady, setIsReady] = useState(false);
+  const apolloClient = useApolloClient();
 
   useEffect(() => {
     const supabase = getSupabase();
@@ -101,8 +105,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const supabase = getSupabase();
     await supabase.auth.signOut();
     await setCachedUser(null);
+    await AsyncStorage.removeItem("tours_completed_server");
+    try { clearApolloCache(apolloClient); } catch { /* apollo may not be ready */ }
     setUser(null);
-  }, []);
+  }, [apolloClient]);
 
   const getAccessToken = useCallback(async (): Promise<string | null> => {
     const supabase = getSupabase();

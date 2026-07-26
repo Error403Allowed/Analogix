@@ -53,7 +53,7 @@ function extractCodeFromUrl(url: string): string | null {
   return null;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
+ 
 const LOGO = require("../../../assets/tab-icon.png");
 
 function FloatingOrbs({ primary, secondary }: { primary: string; secondary: string }) {

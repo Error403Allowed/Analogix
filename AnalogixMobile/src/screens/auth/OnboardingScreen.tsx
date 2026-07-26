@@ -109,6 +109,7 @@ export default function OnboardingScreen() {
   const [subtopics, setSubtopics] = useState<Record<string, string[]>>({});
   const [icsFile, setIcsFile] = useState<DocumentPicker.DocumentPickerResult | null>(null);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [confettiFired, setConfettiFired] = useState(false);
   const confettiRef = useRef<any>(null);
   const [stepKey, setStepKey] = useState(0);
@@ -133,15 +134,24 @@ export default function OnboardingScreen() {
     if (stepIdx < totalSteps - 1) {
       setStepKey((k) => k + 1);
       setStepIdx(stepIdx + 1);
+      setError(null);
     } else {
       setSaving(true);
+      setError(null);
       const hobbyData = buildHobbyDetails(hobbyIds, subtopics);
-      try {
-        if (icsFile && !icsFile.canceled && icsFile.assets?.[0]?.uri) {
+
+      // ICS import is optional — don't block profile update if it fails.
+      if (icsFile && !icsFile.canceled && icsFile.assets?.[0]?.uri) {
+        try {
           const icsContent = await readAsStringAsync(icsFile.assets[0].uri);
           await importIcs({ variables: { ics: icsContent } });
+        } catch {
+          console.warn("[onboarding] ICS import failed, continuing");
         }
-        await updateProfile({
+      }
+
+      try {
+        const result = await updateProfile({
           variables: {
             input: {
               name: name.trim(), grade, state, subjects,
@@ -152,26 +162,34 @@ export default function OnboardingScreen() {
             },
           },
         });
+        if (!result.data?.updateProfile) {
+          setError("Failed to save profile — no data returned");
+          setSaving(false);
+          return;
+        }
+
+        apolloClient.cache.writeFragment({
+          id: `Profile:${user?.id}`,
+          fragment: gql`
+            fragment _onboarded on Profile {
+              onboardingComplete
+            }
+          `,
+          data: { onboardingComplete: true },
+        });
+
         if (!confettiFired) {
           setConfettiFired(true);
           setTimeout(() => confettiRef.current?.start(), 200);
         }
       } catch (e) {
-        // Mutation may fail (e.g. 401 from server), still proceed
+        const message = e instanceof Error ? e.message : "Something went wrong";
+        setError(message);
+        setSaving(false);
+        return;
       } finally {
         setSaving(false);
       }
-      // Optimistically mark onboarding as complete so AuthGate
-      // transitions to the main tabs even if the server returned 401.
-      apolloClient.cache.writeFragment({
-        id: `Profile:${user?.id}`,
-        fragment: gql`
-          fragment _onboarded on Profile {
-            onboardingComplete
-          }
-        `,
-        data: { onboardingComplete: true },
-      });
     }
   };
 
@@ -345,8 +363,14 @@ export default function OnboardingScreen() {
         />
       )}
 
+      {error && (
+        <View style={[styles.errorBox, { backgroundColor: paperTheme.colors.errorContainer }]}>
+          <Text style={{ color: paperTheme.colors.onErrorContainer, textAlign: "center" }}>{error}</Text>
+        </View>
+      )}
+
       <View style={styles.footer}>
-        <Button mode="text" onPress={() => { setStepKey((k) => k + 1); setStepIdx(Math.max(0, stepIdx - 1)); }} disabled={stepIdx === 0}>
+        <Button mode="text" onPress={() => { setError(null); setStepKey((k) => k + 1); setStepIdx(Math.max(0, stepIdx - 1)); }} disabled={stepIdx === 0}>
           Back
         </Button>
         <Button
@@ -354,7 +378,7 @@ export default function OnboardingScreen() {
           buttonColor={paperTheme.colors.primary}
           onPress={next}
           loading={saving}
-          disabled={!canProceed()}
+          disabled={!canProceed() || saving}
           contentStyle={{ height: 48 }}
           style={{ borderRadius: SHAPE.pill, minWidth: 120 }}
         >
@@ -379,5 +403,6 @@ const styles = StyleSheet.create({
   icsPreview: { borderRadius: SHAPE.lg },
   doneContainer: { alignItems: "center", paddingTop: 40 },
   doneIcon: { width: 88, height: 88, borderRadius: SHAPE.xl, alignItems: "center", justifyContent: "center", marginBottom: 24 },
+  errorBox: { marginHorizontal: 16, padding: 12, borderRadius: SHAPE.md },
   footer: { flexDirection: "row", justifyContent: "space-between", padding: 16, paddingBottom: 32, gap: 8 },
 });

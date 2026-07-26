@@ -77,7 +77,6 @@ export type ProfileStackParamList = {
 export type RootStackParamList = {
   Tabs: NavigatorScreenParams<TabParamList>;
   Login: undefined;
-  Onboarding: undefined;
   Terms: undefined;
   PrivacyPolicy: undefined;
   ResetPassword: undefined;

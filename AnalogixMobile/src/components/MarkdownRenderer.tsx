@@ -5,9 +5,9 @@ import { useTheme } from "react-native-paper";
 let WebView: any = () => null;
 let WebViewMessageEvent: any = null;
 if (Platform.OS !== "web") {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
+   
   WebView = require("react-native-webview").WebView;
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
+   
   WebViewMessageEvent = require("react-native-webview").WebViewMessageEvent;
 }
 

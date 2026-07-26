@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect } from "react";
+import { View, ActivityIndicator } from "react-native";
 import { useTheme } from "react-native-paper";
 import { NavigationContainer, DarkTheme as NavDarkTheme, DefaultTheme as NavLightTheme } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
@@ -154,6 +155,7 @@ function MainTabs() {
 
 function AuthGate({ children }: { children: React.ReactNode }) {
   const { data, loading } = useQuery(ME, { fetchPolicy: "cache-and-network" });
+  const theme = useTheme();
 
   useEffect(() => {
     if (data?.me?.toursCompleted) {
@@ -164,7 +166,13 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     }
   }, [data?.me?.toursCompleted]);
 
-  if (loading) return null;
+  if (loading) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: theme.colors.background }}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+      </View>
+    );
+  }
   if (!data?.me || !data.me.onboardingComplete) return <OnboardingScreen />;
   return <>{children}</>;
 }
@@ -238,7 +246,6 @@ export function RootNavigator() {
         ) : (
           <>
             <RootStack.Screen name="Login" component={LoginScreen} />
-            <RootStack.Screen name="Onboarding" component={OnboardingScreen} />
             <RootStack.Screen name="Terms" component={TermsScreen} />
             <RootStack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
             <RootStack.Screen name="ResetPassword" component={ResetPasswordScreen} />

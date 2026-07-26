@@ -13,7 +13,7 @@ let createNativeMMKV: ((config: { id: string }) => StorageInterface) | null = nu
 
 try {
   if (Platform.OS !== "web") {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
+     
   const mmkv = require("react-native-mmkv");
     createNativeMMKV = (config: { id: string }) => {
       const instance = mmkv.createMMKV(config);

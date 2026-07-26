@@ -1024,7 +1024,7 @@ Title:` }];
       lockedToBottomRef.current = false;
 
       let accumulated = "";
-      let streamError: Error | null = null;
+      let streamError: Error | null;
 
       try {
         const abort = new AbortController();

@@ -73,7 +73,7 @@ export function MaterialTabBar(props: BottomTabBarProps) {
             props.navigation.navigate(route.name);
             if (Platform.OS === "ios") {
               try {
-                // eslint-disable-next-line @typescript-eslint/no-require-imports
+                 
                 const haptics = require("expo-haptics");
                 haptics.impactAsync(haptics.ImpactFeedbackStyle.Light);
               } catch { /* haptics unavailable */ }

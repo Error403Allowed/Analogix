@@ -70,7 +70,7 @@ export function PressableScale({
     scale.value = withSpring(0.97, MOTION.tap);
     if (Platform.OS === "ios") {
       try {
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
+         
         const haptics = require("expo-haptics");
         haptics.impactAsync(haptics.ImpactFeedbackStyle.Light);
       } catch { /* haptics unavailable */ }
