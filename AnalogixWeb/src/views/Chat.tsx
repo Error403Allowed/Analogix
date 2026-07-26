@@ -230,9 +230,6 @@ const Chat = () => {
                         transition={{ delay: 0.1, duration: 0.4 }}
                         className="relative"
                       >
-                        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/20 via-primary/10 to-primary/5 flex items-center justify-center border border-primary/10 shadow-sm">
-                          <Sparkles className="w-7 h-7 text-primary/70" />
-                        </div>
                       </motion.div>
                       <div className="space-y-2">
                         <p className="text-lg font-semibold text-foreground/80 tracking-tight">
