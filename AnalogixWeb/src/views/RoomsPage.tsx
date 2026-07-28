@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { gql } from "@apollo/client";
+import { useQuery, useMutation } from "@apollo/client/react";
 import { motion } from "framer-motion";
 import { CopyPlus, DoorOpen, Loader2, Lock, Plus, RefreshCw, Users } from "lucide-react";
 import { toast } from "sonner";
@@ -25,22 +27,32 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { CREATE_ROOM, JOIN_ROOM } from "@/graphql/queries/room";
 import type { StudyRoom } from "@/types/rooms";
-
-type RoomsPayload = {
-  rooms: StudyRoom[];
-  publicRooms: StudyRoom[];
-  memberRooms: StudyRoom[];
-};
 
 export default function RoomsPage() {
   const router = useRouter();
-  const [payload, setPayload] = useState<RoomsPayload>({
-    rooms: [],
-    publicRooms: [],
-    memberRooms: [],
-  });
-  const [loading, setLoading] = useState(true);
+  const ROOMS_QUERY = gql`
+    query RoomsList {
+      rooms {
+        id
+        title
+        topic
+        memberCount
+        isOwner
+        viewerRole
+        visibility
+        joinCode
+        timerState
+        timerDurationSeconds
+        timerElapsedSeconds
+      }
+    }
+  `;
+
+  const { data: roomsData, loading, refetch } = useQuery<{ rooms: StudyRoom[] }>(ROOMS_QUERY, { fetchPolicy: "network-only" });
+  const [createRoom] = useMutation(CREATE_ROOM);
+  const [joinRoom] = useMutation(JOIN_ROOM);
   const [joiningRoomId, setJoiningRoomId] = useState<string | null>(null);
   const [joinCode, setJoinCode] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
@@ -49,55 +61,29 @@ export default function RoomsPage() {
   const [createTopic, setCreateTopic] = useState("");
   const [createVisibility, setCreateVisibility] = useState<"public" | "private">("public");
 
-  const loadRooms = async () => {
-    setLoading(true);
-    try {
-      const response = await fetch("/api/rooms", { cache: "no-store" });
-      if (!response.ok) {
-        const nextPayload = await response.json().catch(() => null);
-        throw new Error(nextPayload?.error || "Failed to load rooms");
-      }
-      const nextPayload = await response.json();
-      setPayload(nextPayload as RoomsPayload);
-    } catch (error) {
-      console.error("[RoomsPage] load failed:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to load rooms");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    void loadRooms();
-  }, []);
+  const rooms = (roomsData?.rooms ?? []) as StudyRoom[];
+  const memberRooms = rooms.filter((room: StudyRoom) => room.isOwner || room.viewerRole);
+  const publicRooms = rooms.filter((room: StudyRoom) => room.visibility === "public");
 
   const joinedRoomIds = useMemo(
-    () => new Set(payload.memberRooms.map((room) => room.id)),
-    [payload.memberRooms],
+    () => new Set(memberRooms.map((room: StudyRoom) => room.id)),
+    [memberRooms],
   );
 
   const handleCreate = async () => {
     setCreating(true);
     try {
-      const response = await fetch("/api/rooms", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: createTitle,
-          topic: createTopic,
-          visibility: createVisibility,
-        }),
+      const result = await createRoom({
+        variables: {
+          input: { title: createTitle, topic: createTopic, visibility: createVisibility },
+        },
       });
-      if (!response.ok) {
-        const result = await response.json().catch(() => null);
-        throw new Error(result?.error || "Failed to create room");
-      }
-      const result = await response.json();
+      const created = (result.data as any)?.createRoom;
       toast.success("Room created.");
       setCreateOpen(false);
       setCreateTitle("");
       setCreateTopic("");
-      router.push(`/rooms/${result.room.id}`);
+      router.push(`/rooms/${created.id}`);
     } catch (error) {
       console.error("[RoomsPage] create failed:", error);
       toast.error(error instanceof Error ? error.message : "Failed to create room");
@@ -109,18 +95,12 @@ export default function RoomsPage() {
   const handleJoin = async (roomId?: string, code?: string) => {
     setJoiningRoomId(roomId ?? "join-code");
     try {
-      const response = await fetch("/api/rooms/join", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(roomId ? { roomId } : { joinCode: code }),
+      const result = await joinRoom({
+        variables: roomId ? { roomId } : { joinCode: code },
       });
-      if (!response.ok) {
-        const result = await response.json().catch(() => null);
-        throw new Error(result?.error || "Failed to join room");
-      }
-      const result = await response.json();
+      const joined = (result.data as any)?.joinRoom;
       toast.success("Joined room.");
-      router.push(`/rooms/${result.room.id}`);
+      router.push(`/rooms/${joined.id}`);
     } catch (error) {
       console.error("[RoomsPage] join failed:", error);
       toast.error(error instanceof Error ? error.message : "Failed to join room");
@@ -204,7 +184,7 @@ export default function RoomsPage() {
               </DialogContent>
             </Dialog>
 
-            <Button variant="secondary" onClick={() => void loadRooms()}>
+            <Button variant="secondary" onClick={() => void refetch()}>
               <RefreshCw className="mr-2 h-4 w-4" />
               Refresh
             </Button>
@@ -246,14 +226,14 @@ export default function RoomsPage() {
                 <p className="text-lg font-bold">Your rooms</p>
                 <p className="text-sm text-muted-foreground">Rooms you own or have already joined.</p>
               </div>
-              <Badge variant="secondary">{payload.memberRooms.length}</Badge>
+              <Badge variant="secondary">{memberRooms.length}</Badge>
             </div>
-            {payload.memberRooms.length === 0 ? (
+            {memberRooms.length === 0 ? (
               <div className="rounded-lg border border-dashed border-border/70 bg-muted/10 p-5 text-sm text-muted-foreground">
                 No rooms yet. Create one or join with a code.
               </div>
             ) : (
-              payload.memberRooms.map((room) => (
+              memberRooms.map((room: StudyRoom) => (
                 <RoomCard
                   key={room.id}
                   room={room}
@@ -271,14 +251,14 @@ export default function RoomsPage() {
                 <p className="text-lg font-bold">Public directory</p>
                 <p className="text-sm text-muted-foreground">Find active study groups and join them.</p>
               </div>
-              <Badge variant="secondary">{payload.publicRooms.length}</Badge>
+              <Badge variant="secondary">{publicRooms.length}</Badge>
             </div>
-            {payload.publicRooms.length === 0 ? (
+            {publicRooms.length === 0 ? (
               <div className="rounded-lg border border-dashed border-border/70 bg-muted/10 p-5 text-sm text-muted-foreground">
                 No public rooms are live right now.
               </div>
             ) : (
-              payload.publicRooms.map((room) => {
+              publicRooms.map((room: StudyRoom) => {
                 const isJoined = joinedRoomIds.has(room.id);
                 return (
                   <RoomCard

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 class RequestThrottle {
     maxConcurrent: number;
@@ -181,10 +181,6 @@ describe('RequestThrottle', () => {
     });
 
     describe('execute', () => {
-        async function delay(ms: number) {
-            return new Promise(resolve => setTimeout(resolve, ms));
-        }
-
         it('executes a successful request', async () => {
             const result = await throttle.execute(async () => 'done');
             expect(result).toBe('done');

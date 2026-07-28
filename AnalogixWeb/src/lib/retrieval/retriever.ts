@@ -1,10 +1,10 @@
-import { fullTextSearch, type FullTextSearchOptions } from './fulltext';
-import { filterByMetadata, getSubjects, type MetadataFilterOptions, type MetadataFilterResult } from './metadata';
-import { traverseGraph, getRelatedEntities, type GraphTraversalOptions } from './graph';
+import { fullTextSearch } from './fulltext';
+import { filterByMetadata, getSubjects } from './metadata';
+import { getRelatedEntities } from './graph';
 import { createToolsClient } from '@/lib/supabase/tools-client';
 import { createCurriculumRetriever } from './curriculum';
 import { generateEmbedding } from '@/lib/rag/embedder';
-import type { EntityType, RelationshipType, RetrievedEntity, WorkspaceContext, DocumentContext } from '@/types/workspace';
+import type { EntityType, RetrievedEntity, DocumentContext } from '@/types/workspace';
 
 interface EntityData {
   content?: string;

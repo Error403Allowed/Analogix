@@ -2,11 +2,7 @@ import { createToolsClient } from '@/lib/supabase/tools-client';
 import type {
   MemoryLayer,
   MemoryType,
-  MemoryFragment,
   EducationalMemory,
-  WorkspaceMemory,
-  SemanticMemory,
-  ExecutionMemory,
   MemoryRetrievalOptions,
   RetrievedMemory,
 } from '@/types/memory';

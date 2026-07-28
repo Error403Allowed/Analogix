@@ -39,7 +39,14 @@ const httpLink = new HttpLink({
   fetch: (uri, options) => {
     const controller = new AbortController();
     const id = setTimeout(() => controller.abort(), 15000);
-    return fetch(uri, { ...options, signal: controller.signal }).finally(() => clearTimeout(id));
+    return fetch(uri, {
+      ...options,
+      headers: {
+        ...(options?.headers as Record<string, string> | undefined),
+        "Content-Type": "application/json",
+      },
+      signal: controller.signal,
+    }).finally(() => clearTimeout(id));
   },
 });
 
@@ -47,6 +54,7 @@ const authLink = setContext(async (_, { headers }) => {
   const token = await getAccessToken();
   return {
     headers: {
+      "Content-Type": "application/json",
       ...(headers ?? {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },

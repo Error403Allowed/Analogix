@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ChevronLeft, ChevronRight, Plus, Clock,
+  ChevronLeft, ChevronRight, Plus,
   Trash2, Search, Upload, LayoutGrid,
   List, AlignLeft, Columns, Check, Pencil,
 } from "lucide-react";
@@ -22,10 +22,9 @@ import { getTermInfo, getStoredState } from "@/utils/termData";
 import { toast } from "sonner";
 import { CalendarView, CustomEventType } from "./calendar/types";
 import { useNow } from "./calendar/hooks/useNow";
-import { loadCustomTypes, loadDeletedBuiltins, loadBuiltinOverrides, saveCustomTypes, saveDeletedBuiltins, saveBuiltinOverrides, buildCustomTypeCandidate, getAllTypes, getTypeMeta } from "./calendar/storage";
+import { loadCustomTypes, loadDeletedBuiltins, loadBuiltinOverrides, saveCustomTypes, buildCustomTypeCandidate, getAllTypes, getTypeMeta } from "./calendar/storage";
 import { MiniCalendar } from "./calendar/components/MiniCalendar";
 import { MonthView } from "./calendar/components/MonthView";
-import { WeekGridView } from "./calendar/components/WeekGridView";
 import { TimeGrid } from "./calendar/components/TimeGrid";
 import { ScheduleView } from "./calendar/components/ScheduleView";
 import { CreateEventModal } from "./calendar/components/CreateEventModal";

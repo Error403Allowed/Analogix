@@ -41,6 +41,21 @@ async function main() {
   // Body parser must run before rate limiters so auth limiter can inspect query body
   app.use("/graphql", bodyParser.json({ limit: "5mb" }));
 
+  // Log request details on 400 errors for debugging
+  app.use("/graphql", (req, res, next) => {
+    const originalStatus = res.status.bind(res);
+    res.status = function (code: number) {
+      if (code >= 400 && code < 500) {
+        logger.warn(
+          { statusCode: code, method: req.method, url: req.url, query: (req.body as Record<string, unknown>)?.query },
+          "[graphql] client error"
+        );
+      }
+      return originalStatus(code);
+    };
+    next();
+  });
+
   // Global rate limiting (skip health endpoint)
   const globalLimiter = rateLimit({
     windowMs: 60 * 1000,
@@ -95,11 +110,19 @@ async function main() {
   // Apollo Server
   // GraphQL query depth limit — prevents deeply nested malicious queries
   const depthLimit = (await import("graphql-depth-limit")).default;
+  const { createComplexityRule, simpleEstimator, fieldExtensionsEstimator } = await import("graphql-query-complexity");
 
   const apollo = new ApolloServer<GraphQLContext>({
     schema,
     introspection: !isProd,
-    validationRules: [depthLimit(7)],
+    csrfPrevention: false,
+    validationRules: [
+      depthLimit(7),
+      createComplexityRule({
+        estimators: [fieldExtensionsEstimator(), simpleEstimator({ defaultComplexity: 1 })],
+        maximumComplexity: 1000,
+      }),
+    ],
     plugins: [
       isProd
         ? undefined

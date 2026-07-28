@@ -21,6 +21,7 @@ import { ME } from "../../graphql/queries/user";
 import { TUTOR } from "../../graphql/queries/ai";
 import { useAuth } from "../../context/AuthContext";
 import { useThemeContext } from "../../theme/ThemeContext";
+import { alpha } from "../../theme";
 import { SHAPE } from "../../theme/tokens";
 import { ExpressiveCard, ExpressiveEmptyState, ExpressiveScreen } from "../../components/expressive";
 import Icon from "../../components/Icon";
@@ -31,7 +32,7 @@ import { CollaborativeEditor } from "../../components/CollaborativeEditor";
 
 export default function RoomDetailScreen() {
   const paperTheme = useTheme();
-  const { brand } = useThemeContext();
+  const { theme } = useThemeContext();
   const insets = useSafeAreaInsets();
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
@@ -76,7 +77,6 @@ export default function RoomDetailScreen() {
   const [savingCanvas, setSavingCanvas] = useState(false);
   const [timerDurationMin, setTimerDurationMin] = useState("25");
   const [inRoom, setInRoom] = useState(false);
-  const [joining, setJoining] = useState(false);
   const [selectedDocId, setSelectedDocId] = useState("");
   const [section, setSection] = useState<"chat" | "docs" | "members" | "workspace">("chat");
   const [activeDocId, setActiveDocId] = useState<string | null>(null);
@@ -382,7 +382,7 @@ export default function RoomDetailScreen() {
             </ExpressiveCard>
 
             {/* Enter button */}
-            <Button mode="contained" buttonColor={brand.primary} onPress={handleEnterRoom} style={{ borderRadius: SHAPE.lg, paddingVertical: 4 }}>
+            <Button mode="contained" buttonColor={theme.colors.primary} onPress={handleEnterRoom} style={{ borderRadius: SHAPE.lg, paddingVertical: 4 }}>
               Enter room
             </Button>
           </>
@@ -413,7 +413,7 @@ export default function RoomDetailScreen() {
               <Button
                 compact
                 mode="contained"
-                buttonColor={brand.primary}
+                buttonColor={theme.colors.primary}
                 onPress={() => {
                   const seconds = Math.max(60, parseInt(timerDurationMin, 10) || 25) * 60;
                   updateTimer({
@@ -480,15 +480,15 @@ export default function RoomDetailScreen() {
                       return (
                         <View style={[styles.msgRow, isUser && styles.msgRowUser]}>
                           {!isUser && (
-                            <View style={[styles.avatar, { backgroundColor: brand.primary + "18" }]}>
-                              <Icon name="robot" size={20} color={brand.primary} />
+                            <View style={[styles.avatar, { backgroundColor: alpha(theme.colors.primary, 0.10) }]}>
+                              <Icon name="robot" size={20} color={theme.colors.primary} />
                             </View>
                           )}
                           <View style={{ flex: 1, alignItems: isUser ? "flex-end" : "flex-start" }}>
                             <Text
                               variant="labelSmall"
                               style={{
-                                color: isUser ? brand.primary : paperTheme.colors.onSurfaceVariant,
+                                color: isUser ? theme.colors.primary : paperTheme.colors.onSurfaceVariant,
                                 fontWeight: "600", marginBottom: 2, marginHorizontal: 4,
                               }}
                             >
@@ -555,7 +555,7 @@ export default function RoomDetailScreen() {
                             <Text
                               variant="labelSmall"
                               style={{
-                                color: isMe ? brand.primary : paperTheme.colors.onSurfaceVariant,
+                                color: isMe ? theme.colors.primary : paperTheme.colors.onSurfaceVariant,
                                 fontWeight: "600", marginBottom: 2, marginHorizontal: 4,
                               }}
                             >
@@ -621,7 +621,7 @@ export default function RoomDetailScreen() {
               <View style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 12, paddingVertical: 6 }}>
                 <Pressable
                   onPress={() => setActiveDocId(null)}
-                  style={({ pressed }) => [
+                  style={[
                     { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: !activeDocId ? paperTheme.colors.primary + "20" : "transparent" },
                   ]}
                 >
@@ -633,7 +633,7 @@ export default function RoomDetailScreen() {
                   <Pressable
                     key={d.id}
                     onPress={() => setActiveDocId(d.documentId ?? d.id)}
-                    style={({ pressed }) => [
+                    style={[
                       { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: activeDocId === (d.documentId ?? d.id) ? paperTheme.colors.primary + "20" : "transparent" },
                     ]}
                   >
@@ -765,7 +765,7 @@ export default function RoomDetailScreen() {
               <TextInput mode="outlined" label="Content" value={canvasContent} onChangeText={setCanvasContent} placeholder="Start writing..." multiline style={{ minHeight: 200, maxHeight: 350 }} />
               <View style={{ flexDirection: "row", gap: 8, marginTop: 16 }}>
                 <Button mode="outlined" onPress={() => { setShowCanvas(false); setCanvasTitle(""); setCanvasContent(""); }} style={{ flex: 1, borderRadius: SHAPE.lg }}>Cancel</Button>
-                <Button mode="contained" buttonColor={brand.primary} onPress={handleSaveCanvas} loading={savingCanvas} style={{ flex: 1, borderRadius: SHAPE.lg }}>Save</Button>
+                <Button mode="contained" buttonColor={theme.colors.primary} onPress={handleSaveCanvas} loading={savingCanvas} style={{ flex: 1, borderRadius: SHAPE.lg }}>Save</Button>
               </View>
             </Modal>
 

@@ -1,7 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { format, setHours, setMinutes, isToday, isSameDay, addMinutes } from "date-fns";
-import { cn } from "@/lib/utils";
 import { HOURS, HOUR_H } from "../constants";
 import { getEventStartMinutes, getEventDurationMinutes, snapMinutes, normalizeMinuteRange, clampEventStartMinutes, minutesToDate } from "@/views/calendar/timeGridUtils";
 import { layoutEvents } from "@/views/calendar/layoutEvents";

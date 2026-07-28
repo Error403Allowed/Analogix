@@ -2,29 +2,21 @@
 "use client";
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { cn } from "@/lib/utils";
-import { Search, X } from "lucide-react";
-import { useState, useEffect } from "react";
 import data from "@emoji-mart/data";
 import Picker from "@emoji-mart/react";
 
 interface EmojiPickerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  selectedEmoji: string;
   onSelect: (emoji: string) => void;
+  selectedEmoji?: string;
 }
 
-export function EmojiPicker({ open, onOpenChange, selectedEmoji, onSelect }: EmojiPickerProps) {
-  const [search, setSearch] = useState("");
-
+export function EmojiPicker({ open, onOpenChange, onSelect }: EmojiPickerProps) {
   // Handle emoji selection from the picker
   const handleEmojiSelect = (emoji: any) => {
     onSelect(emoji.native);
     onOpenChange(false);
-    setSearch("");
   };
 
   return (

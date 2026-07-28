@@ -1,5 +1,5 @@
 import React, { useRef, useCallback, useState, useEffect } from "react";
-import { View, StyleSheet, Platform, Text } from "react-native";
+import { View } from "react-native";
 import { WebView } from "react-native-webview";
 import { useTheme } from "react-native-paper";
 
@@ -182,7 +182,7 @@ post({type:'ready'})
 </html>`;
 }
 
-function NotionEditor({ value, onChange, placeholder, isWeb }: Props & { isWeb?: boolean }) {
+function NotionEditor({ value, onChange, isWeb }: Props & { isWeb?: boolean }) {
   const paperTheme = useTheme();
   const webViewRef = useRef<any>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -257,8 +257,8 @@ function NotionEditor({ value, onChange, placeholder, isWeb }: Props & { isWeb?:
   );
 }
 
-export function RichTextEditor({ value, onChange, placeholder }: Props) {
-  return <NotionEditor value={value} onChange={onChange} placeholder={placeholder} isWeb={Platform.OS === "web"} />;
+export function RichTextEditor({ value, onChange }: Props) {
+  return <NotionEditor value={value} onChange={onChange} />;
 }
 
-const styles = StyleSheet.create({});
+

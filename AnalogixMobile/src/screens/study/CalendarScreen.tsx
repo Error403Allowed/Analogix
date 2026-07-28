@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { View, StyleSheet, ScrollView, Pressable, Alert, useWindowDimensions } from "react-native";
-import { Text, useTheme, FAB, Portal, Modal, Button, TextInput, SegmentedButtons, ActivityIndicator, Searchbar } from "react-native-paper";
+import { Text, FAB, Portal, Modal, Button, TextInput, SegmentedButtons, ActivityIndicator, Searchbar } from "react-native-paper";
 import { useQuery, useMutation } from "@apollo/client/react";
 import { useNavigation } from "@react-navigation/native";
 import { EVENTS, CREATE_EVENT, ADD_DEADLINE, DELETE_DEADLINE, IMPORT_ICS, UPDATE_DEADLINE } from "../../graphql/queries/calendar";
@@ -106,9 +106,8 @@ function layoutEvents(events: any[], day: Date): any[] {
 }
 
 export default function CalendarScreen() {
-  const paperTheme = useTheme();
-  const { brand } = useThemeContext();
-  const c = paperTheme.colors as any;
+  const { theme } = useThemeContext();
+  const c = theme.colors;
   const { width } = useWindowDimensions();
   const navigation = useNavigation<any>();
 
@@ -336,23 +335,23 @@ export default function CalendarScreen() {
     navigation.navigate("EventDetail", { eventId: event.id });
   };
 
-  const surfaceLow = c.surfaceContainerLow ?? c.surfaceVariant;
-  const surfaceHigh = c.surfaceContainerHigh ?? paperTheme.colors.surface;
+  const surfaceLow = c.surfaceContainerLow;
+  const surfaceHigh = c.surfaceContainerHigh;
   const outline = c.outlineVariant ?? "rgba(128,128,128,0.2)";
 
   const viewControls = (
     <View style={{ paddingHorizontal: 4 }}>
       <View style={styles.navRow}>
         <Pressable onPress={prev} style={styles.navBtn} hitSlop={8}>
-          <Icon name="chevron-left" size={22} color={paperTheme.colors.onSurface} />
+          <Icon name="chevron-left" size={22} color={theme.colors.onSurface} />
         </Pressable>
         <Pressable onPress={goToday} style={styles.todayBtn}>
-          <Text variant="titleMedium" style={{ fontWeight: "600", color: paperTheme.colors.onSurface, letterSpacing: -0.3 }}>
+          <Text variant="titleMedium" style={{ fontWeight: "600", color: theme.colors.onSurface, letterSpacing: -0.3 }}>
             {viewTitle}
           </Text>
         </Pressable>
         <Pressable onPress={next} style={styles.navBtn} hitSlop={8}>
-          <Icon name="chevron-right" size={22} color={paperTheme.colors.onSurface} />
+          <Icon name="chevron-right" size={22} color={theme.colors.onSurface} />
         </Pressable>
       </View>
       {view !== "schedule" && (
@@ -373,10 +372,10 @@ export default function CalendarScreen() {
       )}
       {termInfo && (
         <View style={styles.termRow}>
-          <View style={[styles.termBar, { backgroundColor: paperTheme.colors.surfaceVariant }]}>
-            <View style={[styles.termFill, { width: `${termInfo.progress}%`, backgroundColor: brand.primary }]} />
+          <View style={[styles.termBar, { backgroundColor: theme.colors.surfaceVariant }]}>
+            <View style={[styles.termFill, { width: `${termInfo.progress}%`, backgroundColor: theme.colors.primary }]} />
           </View>
-          <Text variant="labelSmall" style={{ color: paperTheme.colors.onSurfaceVariant, flexShrink: 0, textAlign: "right" }}>
+          <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant, flexShrink: 0, textAlign: "right" }}>
             {termInfo.term.label} {termInfo.week}/{termInfo.totalWeeks} wks
           </Text>
         </View>
@@ -388,7 +387,7 @@ export default function CalendarScreen() {
     <>
       <View style={styles.weekdayRow}>
         {WEEKDAYS_SHORT.map((d, i) => (
-          <Text key={i} variant="labelSmall" style={[styles.weekdayLabel, { color: paperTheme.colors.onSurfaceVariant }]}>{d}</Text>
+          <Text key={i} variant="labelSmall" style={[styles.weekdayLabel, { color: theme.colors.onSurfaceVariant }]}>{d}</Text>
         ))}
       </View>
       <View style={styles.grid}>
@@ -420,7 +419,7 @@ export default function CalendarScreen() {
                     <Text style={styles.todayText}>{d}</Text>
                   </View>
                 ) : (
-                  <Text style={[styles.dayNum, { color: paperTheme.colors.onSurface }]}>{d}</Text>
+                  <Text style={[styles.dayNum, { color: theme.colors.onSurface }]}>{d}</Text>
                 )}
               </View>
               {hasItems && (
@@ -432,7 +431,7 @@ export default function CalendarScreen() {
                     return <View key={item.id ?? i} style={[styles.eventPill, { backgroundColor: color }]} />;
                   })}
                   {dayE.length + dayDl.length > 3 && (
-                    <Text style={[styles.moreText, { color: paperTheme.colors.onSurfaceVariant }]}>
+                    <Text style={[styles.moreText, { color: theme.colors.onSurfaceVariant }]}>
                       +{dayE.length + dayDl.length - 3}
                     </Text>
                   )}
@@ -445,7 +444,7 @@ export default function CalendarScreen() {
       {selectedDate && (
         <View style={[styles.selectedDetail, { borderTopColor: outline }]}>
           <View style={styles.selectedDateHeader}>
-            <Text variant="titleSmall" style={{ fontWeight: "600", color: paperTheme.colors.onSurface }}>
+            <Text variant="titleSmall" style={{ fontWeight: "600", color: theme.colors.onSurface }}>
               {selectedDate.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
             </Text>
           </View>
@@ -455,8 +454,8 @@ export default function CalendarScreen() {
             if (selEvents.length === 0 && selDeadlines.length === 0) {
               return (
                 <Pressable onPress={() => openCreate(toDateStr(selectedDate), "event")} style={styles.noEventsRow}>
-                  <Icon name="plus-circle-outline" size={18} color={paperTheme.colors.onSurfaceVariant} />
-                  <Text variant="bodyMedium" style={{ color: paperTheme.colors.onSurfaceVariant, marginLeft: 8 }}>
+                  <Icon name="plus-circle-outline" size={18} color={theme.colors.onSurfaceVariant} />
+                  <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant, marginLeft: 8 }}>
                     No events
                   </Text>
                 </Pressable>
@@ -470,9 +469,9 @@ export default function CalendarScreen() {
                     <Pressable key={e.id} onPress={() => handleEventPress(e)} style={styles.selectedEventRow}>
                       <View style={[styles.selectedEventDot, { backgroundColor: color }]} />
                       <View style={{ flex: 1 }}>
-                        <Text variant="bodyMedium" style={{ fontWeight: "600", color: paperTheme.colors.onSurface }}>{e.title}</Text>
+                        <Text variant="bodyMedium" style={{ fontWeight: "600", color: theme.colors.onSurface }}>{e.title}</Text>
                         {e.date?.includes("T") && (
-                          <Text variant="bodySmall" style={{ color: paperTheme.colors.onSurfaceVariant }}>
+                          <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
                             {new Date(e.date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                           </Text>
                         )}
@@ -485,8 +484,8 @@ export default function CalendarScreen() {
                   <Pressable key={dl.id} onPress={() => handleDeadlineAction(dl)} style={styles.selectedEventRow}>
                     <View style={[styles.selectedEventDot, { backgroundColor: dl.priority === "high" ? "#ef4444" : dl.priority === "low" ? "#10b981" : "#f59e0b" }]} />
                     <View style={{ flex: 1 }}>
-                      <Text variant="bodyMedium" style={{ fontWeight: "600", color: paperTheme.colors.onSurface }}>{dl.title}</Text>
-                      <Text variant="bodySmall" style={{ color: paperTheme.colors.onSurfaceVariant }}>Deadline</Text>
+                      <Text variant="bodyMedium" style={{ fontWeight: "600", color: theme.colors.onSurface }}>{dl.title}</Text>
+                      <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>Deadline</Text>
                     </View>
                   </Pressable>
                 ))}
@@ -519,11 +518,11 @@ export default function CalendarScreen() {
                         setFocusDate(d);
                       }}
                     >
-                      <Text variant="labelSmall" style={{ color: today ? "#FF3B30" : paperTheme.colors.onSurfaceVariant, fontWeight: today ? "600" : "400", fontSize: 11 }}>
+                      <Text variant="labelSmall" style={{ color: today ? "#FF3B30" : theme.colors.onSurfaceVariant, fontWeight: today ? "600" : "400", fontSize: 11 }}>
                         {WEEKDAYS_SHORT[d.getDay()]}
                       </Text>
                       <View style={[styles.weekDayNum, today && { backgroundColor: "#FF3B30" }, selected && !today && { backgroundColor: surfaceHigh }]}>
-                        <Text style={{ fontWeight: today ? "600" : "400", fontSize: 17, color: today ? "#fff" : paperTheme.colors.onSurface }}>
+                        <Text style={{ fontWeight: today ? "600" : "400", fontSize: 17, color: today ? "#fff" : theme.colors.onSurface }}>
                           {d.getDate()}
                         </Text>
                       </View>
@@ -534,7 +533,7 @@ export default function CalendarScreen() {
             )}
             {!isWeek && (
               <View style={[styles.daySingleHeader, { borderBottomColor: outline }]}>
-                <Text variant="titleMedium" style={{ fontWeight: "600", color: isToday(focusDate) ? "#FF3B30" : paperTheme.colors.onSurface }}>
+                <Text variant="titleMedium" style={{ fontWeight: "600", color: isToday(focusDate) ? "#FF3B30" : theme.colors.onSurface }}>
                   {focusDate.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
                 </Text>
               </View>
@@ -543,7 +542,7 @@ export default function CalendarScreen() {
               <View style={{ width: 44 }}>
                 {HOURS.map((h) => (
                   <View key={h} style={[styles.hourLabel, { borderTopColor: outline }]}>
-                    <Text variant="labelSmall" style={{ color: paperTheme.colors.onSurfaceVariant, fontSize: 10 }}>
+                    <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant, fontSize: 10 }}>
                       {h === 0 ? "" : `${h > 12 ? h - 12 : h}${h >= 12 ? "p" : "a"}`}
                     </Text>
                   </View>
@@ -570,7 +569,7 @@ export default function CalendarScreen() {
                         <Pressable key={item.id} onPress={() => handleEventPress(item)}
                           style={[styles.eventBlock, { top: item.top, height: item.height, width: `${(item.span / item.totalCols) * 94}%` as any, left: `${(item.col / item.totalCols) * 94 + 3}%` as any, backgroundColor: color + "14", borderLeftColor: color }]}>
                           <Text style={[styles.eventBlockTitle, { color }]} numberOfLines={1}>{item.title}</Text>
-                          <Text style={[styles.eventBlockTime, { color: paperTheme.colors.onSurfaceVariant }]}>
+                          <Text style={[styles.eventBlockTime, { color: theme.colors.onSurfaceVariant }]}>
                             {new Date(item.date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                           </Text>
                         </Pressable>
@@ -597,7 +596,7 @@ export default function CalendarScreen() {
         placeholder="Search events..."
         value={searchQuery}
         onChangeText={setSearchQuery}
-        style={{ marginBottom: 8, borderRadius: 10, height: 40, backgroundColor: c.surfaceContainerHigh ?? paperTheme.colors.surfaceVariant }}
+        style={{ marginBottom: 8, borderRadius: 10, height: 40, backgroundColor: c.surfaceContainerHigh ?? theme.colors.surfaceVariant }}
         inputStyle={{ fontSize: 14, minHeight: 0 }}
       />
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
@@ -607,8 +606,8 @@ export default function CalendarScreen() {
             const active = activeFilters.includes(t);
             return (
               <Pressable key={t} onPress={() => setActiveFilters(prev => prev.includes(t) ? prev.filter(f => f !== t) : [...prev, t])}
-                style={[styles.filterChip, { backgroundColor: active ? color : paperTheme.colors.surfaceVariant }]}>
-                <Text style={{ color: active ? "#fff" : paperTheme.colors.onSurface, fontWeight: "600", fontSize: 11 }}>
+                style={[styles.filterChip, { backgroundColor: active ? color : theme.colors.surfaceVariant }]}>
+                <Text style={{ color: active ? "#fff" : theme.colors.onSurface, fontWeight: "600", fontSize: 11 }}>
                   {customTypes.find(ct => ct.id === t)?.name ?? t}
                 </Text>
               </Pressable>
@@ -617,7 +616,7 @@ export default function CalendarScreen() {
         </View>
       </ScrollView>
       {scheduleDays.length === 0 ? (
-        <Text variant="bodyMedium" style={{ color: paperTheme.colors.onSurfaceVariant, textAlign: "center", paddingVertical: 40 }}>
+        <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant, textAlign: "center", paddingVertical: 40 }}>
           No upcoming events
         </Text>
       ) : scheduleDays.map(([dateStr, items]) => {
@@ -626,10 +625,10 @@ export default function CalendarScreen() {
         return (
           <View key={dateStr} style={{ marginBottom: 20 }}>
             <View style={{ flexDirection: "row", alignItems: "baseline", marginBottom: 8 }}>
-              <Text variant="titleSmall" style={{ fontWeight: "600", color: isTod ? "#FF3B30" : paperTheme.colors.onSurface, fontSize: 15 }}>
+              <Text variant="titleSmall" style={{ fontWeight: "600", color: isTod ? "#FF3B30" : theme.colors.onSurface, fontSize: 15 }}>
                 {isTod ? "Today" : d.toLocaleDateString("en-US", { weekday: "long" })}
               </Text>
-              <Text variant="bodySmall" style={{ color: paperTheme.colors.onSurfaceVariant, marginLeft: 8 }}>
+              <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginLeft: 8 }}>
                 {d.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
               </Text>
             </View>
@@ -641,8 +640,8 @@ export default function CalendarScreen() {
                   onPress={() => item._type === "deadline" ? handleDeadlineAction(item) : handleEventPress(item)}>
                   <View style={[styles.scheduleDot, { backgroundColor: color }]} />
                   <View style={{ flex: 1 }}>
-                    <Text variant="bodyMedium" style={{ fontWeight: "600", color: paperTheme.colors.onSurface }}>{item.title}</Text>
-                    <Text variant="bodySmall" style={{ color: paperTheme.colors.onSurfaceVariant }}>
+                    <Text variant="bodyMedium" style={{ fontWeight: "600", color: theme.colors.onSurface }}>{item.title}</Text>
+                    <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
                       {new Date(item.date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                       {item.subject ? ` \u00b7 ${item.subject}` : ""}
                     </Text>
@@ -667,15 +666,15 @@ export default function CalendarScreen() {
       actions={
         <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
           <Pressable onPress={goToday} style={styles.headerTodayBtn}>
-            <Text variant="labelSmall" style={{ color: brand.primary, fontWeight: "600" }}>Today</Text>
+            <Text variant="labelSmall" style={{ color: theme.colors.primary, fontWeight: "600" }}>Today</Text>
           </Pressable>
           <Pressable onPress={handleImportICS} style={styles.iconBtn}>
-            <Icon name="file-upload" size={18} color={paperTheme.colors.onSurfaceVariant} />
+            <Icon name="file-upload" size={18} color={theme.colors.onSurfaceVariant} />
           </Pressable>
         </View>
       }
       fab={
-        <FAB icon="plus" color="#fff" style={{ backgroundColor: brand.primary, borderRadius: SHAPE.lg }} onPress={() => openCreate(toDateStr(focusDate), "event")} />
+        <FAB icon="plus" color="#fff" style={{ backgroundColor: theme.colors.primary, borderRadius: SHAPE.lg }} onPress={() => openCreate(toDateStr(focusDate), "event")} />
       }
     >
       {viewControls}
@@ -687,20 +686,20 @@ export default function CalendarScreen() {
       >
         {loading ? (
           <View style={styles.centerState}>
-            <ActivityIndicator color={brand.primary} />
-            <Text style={{ color: paperTheme.colors.onSurfaceVariant }}>Loading calendar...</Text>
+            <ActivityIndicator color={theme.colors.primary} />
+            <Text style={{ color: theme.colors.onSurfaceVariant }}>Loading calendar...</Text>
           </View>
         ) : error ? (
           <View style={styles.centerState}>
             <ExpressiveEmptyState icon="calendar-alert" title="Could not load calendar" subtitle="Check your connection and try again." />
-            <Button mode="contained" buttonColor={brand.primary} onPress={() => refetch()} style={{ borderRadius: SHAPE.lg }}>
+            <Button mode="contained" buttonColor={theme.colors.primary} onPress={() => refetch()} style={{ borderRadius: SHAPE.lg }}>
               Retry
             </Button>
           </View>
         ) : totalItemCount === 0 && view !== "month" ? (
           <View style={styles.centerState}>
             <ExpressiveEmptyState icon="calendar-blank" title="Nothing scheduled" subtitle="Add an event or import a calendar to start planning." />
-            <Button mode="contained" buttonColor={brand.primary} onPress={() => openCreate(toDateStr(focusDate), "event")} style={{ borderRadius: SHAPE.lg }}>
+            <Button mode="contained" buttonColor={theme.colors.primary} onPress={() => openCreate(toDateStr(focusDate), "event")} style={{ borderRadius: SHAPE.lg }}>
               Add event
             </Button>
           </View>
@@ -715,9 +714,9 @@ export default function CalendarScreen() {
       </ScrollView>
 
       <Portal>
-        <Modal visible={showCreate} onDismiss={() => setShowCreate(false)} contentContainerStyle={[styles.modal, { backgroundColor: c.surface ?? paperTheme.colors.surface }]}>
+        <Modal visible={showCreate} onDismiss={() => setShowCreate(false)} contentContainerStyle={[styles.modal, { backgroundColor: c.surface }]}>
           <ScrollView showsVerticalScrollIndicator={false}>
-            <Text variant="titleLarge" style={{ fontWeight: "700", color: paperTheme.colors.onSurface, marginBottom: 16 }}>
+            <Text variant="titleLarge" style={{ fontWeight: "700", color: theme.colors.onSurface, marginBottom: 16 }}>
               New {createMode === "deadline" ? "Deadline" : "Event"}
             </Text>
             <SegmentedButtons
@@ -731,9 +730,9 @@ export default function CalendarScreen() {
             {createMode === "event" ? (
               <>
                 <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                  <Text variant="bodySmall" style={{ color: paperTheme.colors.onSurfaceVariant }}>Type</Text>
+                  <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>Type</Text>
                   <Pressable onPress={() => setShowTypeManager(true)}>
-                    <Text variant="labelSmall" style={{ color: brand.primary }}>Manage tags</Text>
+                    <Text variant="labelSmall" style={{ color: theme.colors.primary }}>Manage tags</Text>
                   </Pressable>
                 </View>
                 <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 16 }}>
@@ -742,13 +741,13 @@ export default function CalendarScreen() {
                     const isCustom = !BUILTIN_EVENT_TYPES.includes(t);
                     return (
                       <Pressable key={t} onPress={() => setNewType(t)}
-                        style={[styles.typeChip, { backgroundColor: newType === t ? color : paperTheme.colors.surfaceVariant }]}>
-                        <Text style={{ color: newType === t ? "#fff" : paperTheme.colors.onSurface, fontWeight: "700", fontSize: 12 }}>
+                        style={[styles.typeChip, { backgroundColor: newType === t ? color : theme.colors.surfaceVariant }]}>
+                        <Text style={{ color: newType === t ? "#fff" : theme.colors.onSurface, fontWeight: "700", fontSize: 12 }}>
                           {customTypes.find(ct => ct.id === t)?.name ?? t}
                         </Text>
                         {isCustom && (
                           <Pressable onPress={() => deleteCustomType(t)} style={{ marginLeft: 4 }}>
-                            <Icon name="close" size={12} color={newType === t ? "#fff" : paperTheme.colors.onSurfaceVariant} />
+                            <Icon name="close" size={12} color={newType === t ? "#fff" : theme.colors.onSurfaceVariant} />
                           </Pressable>
                         )}
                       </Pressable>
@@ -758,46 +757,46 @@ export default function CalendarScreen() {
               </>
             ) : (
               <>
-                <Text variant="bodySmall" style={{ color: paperTheme.colors.onSurfaceVariant, marginBottom: 8 }}>Priority</Text>
+                <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 8 }}>Priority</Text>
                 <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
                   {PRIORITIES.map((p) => (
                     <Pressable key={p} onPress={() => setNewPriority(p)}
-                      style={[styles.typeChip, { backgroundColor: newPriority === p ? brand.primary : paperTheme.colors.surfaceVariant }]}>
-                      <Text style={{ color: newPriority === p ? "#fff" : paperTheme.colors.onSurface, fontWeight: "700", fontSize: 12 }}>{p}</Text>
+                      style={[styles.typeChip, { backgroundColor: newPriority === p ? theme.colors.primary : theme.colors.surfaceVariant }]}>
+                      <Text style={{ color: newPriority === p ? "#fff" : theme.colors.onSurface, fontWeight: "700", fontSize: 12 }}>{p}</Text>
                     </Pressable>
                   ))}
                 </View>
                 <TextInput mode="outlined" label="Subject (optional)" value={newSubject} onChangeText={setNewSubject} style={{ marginBottom: 16 }} />
               </>
             )}
-            <Button mode="contained" buttonColor={brand.primary} style={{ borderRadius: SHAPE.lg }} onPress={handleCreate} disabled={!newTitle.trim()}>
+            <Button mode="contained" buttonColor={theme.colors.primary} style={{ borderRadius: SHAPE.lg }} onPress={handleCreate} disabled={!newTitle.trim()}>
               Create
             </Button>
           </ScrollView>
         </Modal>
 
-        <Modal visible={showTypeManager} onDismiss={() => setShowTypeManager(false)} contentContainerStyle={[styles.modal, { backgroundColor: c.surface ?? paperTheme.colors.surface }]}>
-          <Text variant="titleLarge" style={{ fontWeight: "700", color: paperTheme.colors.onSurface, marginBottom: 16 }}>Manage Event Tags</Text>
+        <Modal visible={showTypeManager} onDismiss={() => setShowTypeManager(false)} contentContainerStyle={[styles.modal, { backgroundColor: c.surface }]}>
+          <Text variant="titleLarge" style={{ fontWeight: "700", color: theme.colors.onSurface, marginBottom: 16 }}>Manage Event Tags</Text>
           <TextInput mode="outlined" label="New tag name" value={newTypeName} onChangeText={setNewTypeName} style={{ marginBottom: 12 }} />
-          <Text variant="bodySmall" style={{ color: paperTheme.colors.onSurfaceVariant, marginBottom: 8 }}>Colour</Text>
+          <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 8 }}>Colour</Text>
           <View style={{ flexDirection: "row", gap: 8, marginBottom: 16 }}>
             {["#ef4444", "#f59e0b", "#10b981", "#3b82f6", "#8b5cf6", "#ec4899", "#06b6d4", "#6366f1"].map((col) => (
-              <Pressable key={col} onPress={() => setNewTypeColor(col)} style={[styles.colorDot, { backgroundColor: col, borderWidth: newTypeColor === col ? 3 : 0, borderColor: paperTheme.colors.onSurface }]} />
+              <Pressable key={col} onPress={() => setNewTypeColor(col)} style={[styles.colorDot, { backgroundColor: col, borderWidth: newTypeColor === col ? 3 : 0, borderColor: theme.colors.onSurface }]} />
             ))}
           </View>
-          <Button mode="contained" buttonColor={brand.primary} style={{ borderRadius: SHAPE.lg }} onPress={saveCustomType} disabled={!newTypeName.trim()}>
+          <Button mode="contained" buttonColor={theme.colors.primary} style={{ borderRadius: SHAPE.lg }} onPress={saveCustomType} disabled={!newTypeName.trim()}>
             Add Tag
           </Button>
           {customTypes.length > 0 && (
             <>
               <View style={{ height: 1, backgroundColor: c.outlineVariant, marginVertical: 16 }} />
-              <Text variant="bodySmall" style={{ color: paperTheme.colors.onSurfaceVariant, marginBottom: 8 }}>Custom tags</Text>
+              <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 8 }}>Custom tags</Text>
               {customTypes.map((ct) => (
                 <View key={ct.id} style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 6 }}>
                   <View style={[styles.colorDot, { backgroundColor: ct.color }]} />
                   <Text variant="bodyMedium" style={{ flex: 1 }}>{ct.name}</Text>
                   <Pressable onPress={() => deleteCustomType(ct.id)}>
-                    <Icon name="delete-outline" size={18} color={paperTheme.colors.error} />
+                    <Icon name="delete-outline" size={18} color={theme.colors.error} />
                   </Pressable>
                 </View>
               ))}

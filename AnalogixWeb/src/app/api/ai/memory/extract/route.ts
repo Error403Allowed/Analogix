@@ -20,7 +20,6 @@ export async function POST(request: Request) {
 
     const body = await request.json();
     const messages: { role: string; content: string }[] = body.messages || [];
-    const subjectId: string | undefined = body.subjectId;
 
     // Only look at the last 6 messages (3 exchanges) — enough context, not too expensive
     const recent = messages.slice(-6);
@@ -92,7 +91,7 @@ Conversation:
 ${transcript}`;
 
     const response = await groq.chat.completions.create({
-      model: "llama-3.1-8b-instant",
+      model: "openai/gpt-oss-20b",
       messages: [{ role: "user", content: extractionPrompt }],
       max_tokens: 400,
       temperature: 0.1,
@@ -106,7 +105,7 @@ ${transcript}`;
           console.log(`[memory/extract] Rate limited, waiting ${waitMs}ms (retry-after: ${retryAfter})`);
           await new Promise(r => setTimeout(r, waitMs));
           return groq.chat.completions.create({
-            model: "llama-3.1-8b-instant",
+            model: "openai/gpt-oss-20b",
             messages: [{ role: "user", content: extractionPrompt }],
             max_tokens: 400,
             temperature: 0.1,
@@ -117,7 +116,7 @@ ${transcript}`;
         console.log(`[memory/extract] Rate limited, waiting ${waitMs}ms`);
         await new Promise(r => setTimeout(r, waitMs));
         return groq.chat.completions.create({
-          model: "llama-3.1-8b-instant",
+          model: "openai/gpt-oss-20b",
           messages: [{ role: "user", content: extractionPrompt }],
           max_tokens: 400,
           temperature: 0.1,

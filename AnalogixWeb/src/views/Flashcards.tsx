@@ -7,13 +7,10 @@ import {
   Sparkles, Trash2, X, ChevronLeft, ChevronRight, Brain,
   Zap, Trophy, Plus, FolderOpen,
   CheckCircle2, XCircle, Loader2, Eye, EyeOff,
-  Upload, Target, PenLine, MessageSquare,
-  ListChecks, Clock, AlertTriangle,
+  Upload, Target, Clock, AlertTriangle,
 } from "lucide-react";
-import { NextConfig } from 'next';
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
@@ -21,7 +18,7 @@ import { SUBJECT_CATALOG } from "@/constants/subjects";
 import { DynamicIcon } from "@/components/IconPicker";
 import { flashcardStore, type Flashcard, type FlashcardSet, type FlashcardRating } from "@/utils/flashcardStore";
 import { generateFlashcardsFromDocument, generateQuiz, generateQuizFromDocument } from "@/services/groq";
-import { extractFileText, ACCEPTED_FILE_TYPES } from "@/utils/extractFileText";
+import { extractFileText } from "@/utils/extractFileText";
 import QuizCard from "@/components/QuizCard";
 import MarkdownRenderer from "@/components/MarkdownRenderer";
 import { statsStore } from "@/utils/statsStore";
@@ -31,18 +28,13 @@ import {
   type PendingAgentQuiz,
 } from "@/lib/agentQuiz";
 
-// Caching
-const nextConfig: NextConfig = {
-  cacheComponents: true,
-}
-
 const subjectLabel = (id: string) =>
   SUBJECT_CATALOG.find(s => s.id === id)?.label || id;
 
 const subjectIconName = (id: string) =>
   SUBJECT_CATALOG.find(s => s.id === id)?.iconName || "BookOpen";
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// ── Types ─────────────────────────────
 type TopView = "library" | "subject-detail" | "set-detail" | "create-set" | "quiz-hub";
 type SetTab  = "flashcards" | "learn";
 
@@ -96,7 +88,7 @@ function StudyCardContent({
   );
 }
 
-// ── Flip Card ─────────────────────────────────────────────────────────────────
+// ── Flip Card ─────────────────────────
 function cardTextSize(text: string): string {
   const len = text.length;
   if (len < 80)  return "text-2xl sm:text-3xl font-bold leading-snug";
@@ -149,7 +141,7 @@ function FlipCard({ front, back, flipped, onClick }: {
     </div>
   );
 }
-// ── Main Component ────────────────────────────────────────────────────────────
+// ── Main Component ────────────────────
 export default function Flashcards() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -210,9 +202,8 @@ export default function Flashcards() {
 
   // ── Quiz Hub state ──
   const [quizSubject, setQuizSubject]     = useState("");
-  const [quizDocFile, setQuizDocFile]     = useState<File | null>(null);
-  const [quizDocMode, setQuizDocMode]     = useState(false); // true = generate from uploaded doc
-  const quizFileInputRef = useRef<HTMLInputElement | null>(null);
+  const [quizDocFile]     = useState<File | null>(null);
+  const [quizDocMode]     = useState(false); // true = generate from uploaded doc
   const [quizNumQ, setQuizNumQ]           = useState(5);
   const [quizDifficulty, setQuizDifficulty] = useState("intermediate");
   const [quizTopics, setQuizTopics]       = useState("");   // freetext topic outline
@@ -365,11 +356,6 @@ export default function Flashcards() {
     return map;
   }, [sets]);
 
-  // Subjects that have at least one set
-  const subjectsWithSets = useMemo(() =>
-    userSubjects.filter(id => (setsBySubject[id]?.length ?? 0) > 0),
-  [userSubjects, setsBySubject]);
-
   // All subjects to display in library: user subjects + any subjects that have sets
   const librarySubjects = useMemo(() => {
     const all = new Set([...userSubjects, ...Object.keys(setsBySubject)]);
@@ -378,10 +364,6 @@ export default function Flashcards() {
 
   const activeSet = sets.find(s => s.set.id === activeSetId);
   const totalCards = cards.length;
-  const totalDue   = useMemo(() => {
-    const now = new Date().toISOString();
-    return cards.filter(c => c.nextReview <= now).length;
-  }, [cards]);
 
   // ── Open a subject (drill into its sets) ──
   const openSubject = (subjectId: string) => {
@@ -758,7 +740,7 @@ export default function Flashcards() {
     await refresh();
   };
 
-  // ─── RENDER ───────────────────────────────────────────────────────────────
+  // ─── RENDER ───────────────────────
   return (
     <div className="min-h-screen bg-background text-foreground">
 

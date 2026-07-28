@@ -10,7 +10,6 @@ interface GraphingModuleProps {
 }
 
 export default function GraphingModule({
-  width = 800,
   height = 500
 }: GraphingModuleProps) {
   const [showControls, setShowControls] = useState(true);

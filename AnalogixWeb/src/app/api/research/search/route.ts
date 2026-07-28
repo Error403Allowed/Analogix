@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { ResearchSource } from "@/types/research";
-import { requireUser, unauthResponse } from "@/lib/api-auth";
+import { requireUser } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 

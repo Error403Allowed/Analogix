@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { requireUser, unauthResponse } from "@/lib/api-auth";
+import { requireUser } from "@/lib/api-auth";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 // Vision-capable model for image reading
-const VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct";
+const VISION_MODEL = "qwen/qwen3.6-27b";
 export async function POST(request) {
     console.log("[extract-text] POST request received");
     try {
@@ -20,19 +20,19 @@ export async function POST(request) {
         const fileName = file.name.toLowerCase();
         const mimeType = file.type;
         let text = "";
-        // ── Plain text ──────────────────────────────────────────────────────────
+        // ── Plain text ──────────────────
         if (mimeType.startsWith("text/") || mimeType === "application/rtf" ||
             fileName.endsWith(".txt") || fileName.endsWith(".md") ||
             fileName.endsWith(".csv") || fileName.endsWith(".rtf")) {
             text = await file.text();
-            // ── PDF ─────────────────────────────────────────────────────────────────
+            // ── PDF ─────────────────────────
         }
         else if (mimeType === "application/pdf" || fileName.endsWith(".pdf")) {
             const buffer = Buffer.from(await file.arrayBuffer());
             const { PDFParse } = await import("pdf-parse");
             const pdf = new PDFParse({ data: buffer });
             text = (await pdf.getText()).text;
-            // ── DOCX / DOC ──────────────────────────────────────────────────────────
+            // ── DOCX / DOC ──────────────────
         }
         else if (mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
             mimeType === "application/msword" ||
@@ -48,7 +48,7 @@ export async function POST(request) {
                 const matches = xmlStr.match(/<w:t[^>]*>([^<]*)<\/w:t>/g) || [];
                 text = matches.map((m) => m.replace(/<[^>]+>/g, "")).join(" ").replace(/\s+/g, " ").trim();
             }
-            // ── PPTX ────────────────────────────────────────────────────────────────
+            // ── PPTX ────────────────────────
         }
         else if (mimeType === "application/vnd.openxmlformats-officedocument.presentationml.presentation" ||
             fileName.endsWith(".pptx") || fileName.endsWith(".ppt")) {

@@ -8,6 +8,7 @@ import { QUIZZES, GENERATE_QUIZ, ATTEMPTS } from "../../graphql/queries/quiz";
 import { EXTRACT_TEXT } from "../../graphql/queries/ai";
 import { ME } from "../../graphql/queries/user";
 import { useThemeContext } from "../../theme/ThemeContext";
+import { alpha } from "../../theme";
 import { SHAPE } from "../../theme/tokens";
 import Icon from "../../components/Icon";
 import { ExpressiveScreen, ExpressiveEmptyState, ExpressiveCard } from "../../components/expressive";
@@ -43,7 +44,8 @@ function getDifficultyLabels(yearLevel?: number): { value: Difficulty; label: st
 
 export default function QuizScreen() {
   const paperTheme = useTheme();
-  const { brand } = useThemeContext();
+  const { theme } = useThemeContext();
+
   const c = paperTheme.colors as any;
   const navigation = useNavigation<any>();
 
@@ -200,7 +202,7 @@ export default function QuizScreen() {
         </Pressable>
       }
       fab={
-        <FAB icon="plus" label="Generate" color="#fff" style={{ backgroundColor: brand.primary, borderRadius: SHAPE.lg }} onPress={() => setShowGenerate(true)} />
+        <FAB icon="plus" label="Generate" color="#fff" style={{ backgroundColor: theme.colors.primary, borderRadius: SHAPE.lg }} onPress={() => setShowGenerate(true)} />
       }
     >
       {loading ? (
@@ -208,7 +210,7 @@ export default function QuizScreen() {
       ) : error ? (
         <View style={styles.centerState}>
           <ExpressiveEmptyState icon="alert-circle" title="Could not load quizzes" subtitle="Check your connection and try again." />
-          <Button mode="contained" buttonColor={brand.primary} onPress={() => refetch()} style={{ borderRadius: SHAPE.lg }}>
+          <Button mode="contained" buttonColor={theme.colors.primary} onPress={() => refetch()} style={{ borderRadius: SHAPE.lg }}>
             Retry
           </Button>
         </View>
@@ -220,8 +222,8 @@ export default function QuizScreen() {
             <Animated.View key={q.id} entering={FadeInDown.duration(300).delay(i * 80).springify()}>
             <ExpressiveCard tone="low" onPress={() => navigation.navigate("QuizSession", { quizId: q.id, questions: q.questions, quizTitle: q.title, subjectId: q.subjectId })}>
               <View style={styles.quizRow}>
-                <View style={[styles.iconWrap, { backgroundColor: brand.primary + "18" }]}>
-                  <Icon name="help-circle" size={22} color={brand.primary} />
+                <View style={[styles.iconWrap, { backgroundColor: alpha(theme.colors.primary, 0.10) }]}>
+                  <Icon name="help-circle" size={22} color={theme.colors.primary} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text variant="bodyLarge" style={{ fontWeight: "600", color: paperTheme.colors.onSurface }}>{q.title ?? q.subject}</Text>
@@ -235,7 +237,7 @@ export default function QuizScreen() {
                   </View>
                 </View>
                 <Pressable onPress={() => setShowStats(showStats === q.id ? null : q.id)} hitSlop={8}>
-                  <Icon name="chart-bar" size={20} color={showStats === q.id ? brand.primary : paperTheme.colors.onSurfaceVariant} />
+                  <Icon name="chart-bar" size={20} color={showStats === q.id ? theme.colors.primary : paperTheme.colors.onSurfaceVariant} />
                 </Pressable>
               </View>
               {showStats === q.id && (
@@ -290,7 +292,7 @@ export default function QuizScreen() {
             style={{ marginBottom: 16 }}
             density="small"
           />
-          <Button mode="contained" buttonColor={brand.primary} style={{ borderRadius: SHAPE.lg }} onPress={handleGenerate} loading={generating} disabled={generating}>
+          <Button mode="contained" buttonColor={theme.colors.primary} style={{ borderRadius: SHAPE.lg }} onPress={handleGenerate} loading={generating} disabled={generating}>
             Generate
           </Button>
         </Modal>
@@ -312,7 +314,7 @@ export default function QuizScreen() {
             style={{ marginBottom: 12 }}
             density="small"
           />
-          <Button mode="contained" buttonColor={brand.primary} loading={generating} onPress={handleImportFromText} disabled={pasteText.trim().length < 50}>
+          <Button mode="contained" buttonColor={theme.colors.primary} loading={generating} onPress={handleImportFromText} disabled={pasteText.trim().length < 50}>
             Generate Quiz
           </Button>
         </Modal>

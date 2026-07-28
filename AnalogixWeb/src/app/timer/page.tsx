@@ -6,8 +6,8 @@ import { Play, Pause, RotateCcw, SkipForward, Check, ArrowLeft, Pencil, Timer, C
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { statsStore } from "@/utils/statsStore";
-import { loadTimerState, saveTimerState, MAX_SESSIONS_TARGET, getDefaultTimerState } from "@/lib/timerStore";
-import type { TimerPhase, TimerSettings, TimerState } from "@/lib/timerStore";
+import { loadTimerState, saveTimerState, MAX_SESSIONS_TARGET } from "@/lib/timerStore";
+import type { TimerPhase, TimerSettings } from "@/lib/timerStore";
 
 const RING_R = 140;
 const CIRCUMFERENCE = 2 * Math.PI * RING_R;

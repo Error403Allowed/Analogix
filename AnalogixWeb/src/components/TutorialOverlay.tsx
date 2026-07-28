@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, ArrowLeft, X, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// ── Types ─────────────────────────────
 
 type Placement = "top" | "bottom" | "left" | "right" | "center";
 
@@ -20,7 +20,7 @@ interface Step {
 
 interface Rect { top: number; left: number; width: number; height: number }
 
-// ── Steps ─────────────────────────────────────────────────────────────────────
+// ── Steps ─────────────────────────────
 
 const STEPS: Step[] = [
   {
@@ -127,7 +127,7 @@ const STEPS: Step[] = [
   },
 ];
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────
 
 const CARD_W = 320;
 const CARD_H_APPROX = 180; // estimate for positioning, actual height varies
@@ -211,7 +211,7 @@ function getTargetRect(selector: string | null): Rect | null {
   return { top: r.top, left: r.left, width: r.width, height: r.height };
 }
 
-// ── SVG Spotlight ─────────────────────────────────────────────────────────────
+// ── SVG Spotlight ─────────────────────
 
 function Spotlight({ rect, padding = 8, vpW, vpH }: { rect: Rect | null; padding?: number; vpW: number; vpH: number }) {
   if (!rect) {
@@ -249,7 +249,7 @@ function Spotlight({ rect, padding = 8, vpW, vpH }: { rect: Rect | null; padding
   );
 }
 
-// ── Arrow ─────────────────────────────────────────────────────────────────────
+// ── Arrow ─────────────────────────────
 
 function Arrow({ dir, offsetX = 0, offsetY = 0 }: { dir: Placement | null; offsetX?: number; offsetY?: number }) {
   if (!dir || dir === "center") return null;
@@ -301,7 +301,7 @@ function Arrow({ dir, offsetX = 0, offsetY = 0 }: { dir: Placement | null; offse
   );
 }
 
-// ── Main Component ────────────────────────────────────────────────────────────
+// ── Main Component ────────────────────
 
 export default function TutorialOverlay({ onComplete }: { onComplete: () => void }) {
   const [stepIndex, setStepIndex] = useState(0);

@@ -5,7 +5,7 @@ import { getAuthUser } from "./authCache";
 // Alias so existing code in this file needs no changes
 const getUser = getAuthUser;
 
-// ── Shared Types ──────────────────────────────────────────────────────────────
+// ── Shared Types ──────────────────────
 export interface SubjectHomework {
     id: string;
     title: string;
@@ -61,7 +61,7 @@ export interface CustomSubject {
 
 export type DocumentRole = "document" | "notes" | "study-guide" | "summary" | "flashcards" | "homework" | "revision";
 
-// ── Subject data in-memory cache ─────────────────────────────────────────────
+// ── Subject data in-memory cache ─────
 // Keyed by subjectId. Invalidated on every write so data is always fresh after
 // a mutation, but repeat reads within a session are instant (no Supabase RTT).
 const subjectCache = new Map();

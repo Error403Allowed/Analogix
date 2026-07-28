@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles, Check, X, Edit3, Loader2, Brain, BookOpen, Calendar, FileText, GraduationCap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import type { ToolProposal, ToolCall, ToolPreview } from "@analogix/shared/types";
+import type { ToolProposal, ToolCall } from "@analogix/shared/types";
 import { EditProposalModal } from "./EditProposalModal";
 
 interface ToolProposalCardProps {
@@ -173,7 +173,6 @@ export function ToolProposalCard({ proposal, onAllow, onDeny }: ToolProposalCard
       <AnimatePresence>
         {editing && (
           <EditProposalModal
-            proposal={proposal}
             initialTools={editedTools}
             onSave={handleSaveEdits}
             onCancel={() => setEditing(false)}

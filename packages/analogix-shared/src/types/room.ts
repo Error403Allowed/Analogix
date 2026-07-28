@@ -3,6 +3,30 @@ export type RoomMemberRole = "host" | "cohost" | "member";
 export type RoomMessageType = "chat" | "ai" | "system";
 export type RoomTimerState = "idle" | "running" | "paused";
 
+export interface RoomPermissions {
+  canShareDocuments: boolean;
+  canInviteMembers: boolean;
+  canManageRoles: boolean;
+  canDeleteMessages: boolean;
+  canControlTimer: boolean;
+}
+
+export const DEFAULT_ROOM_PERMISSIONS: RoomPermissions = {
+  canShareDocuments: true,
+  canInviteMembers: false,
+  canManageRoles: false,
+  canDeleteMessages: false,
+  canControlTimer: false,
+};
+
+export const ADMIN_ROOM_PERMISSIONS: RoomPermissions = {
+  canShareDocuments: true,
+  canInviteMembers: true,
+  canManageRoles: true,
+  canDeleteMessages: true,
+  canControlTimer: true,
+};
+
 export interface StudyRoom {
   id: string;
   title: string;
@@ -11,6 +35,7 @@ export interface StudyRoom {
   joinCode: string;
   ownerUserId: string;
   memberCount: number;
+  permissions: RoomPermissions;
   timerState: RoomTimerState;
   timerDurationSeconds: number;
   timerElapsedSeconds: number;

@@ -1,8 +1,8 @@
-import { getFlashcardSets, type CreateFlashcardsParams } from './handlers/flashcard';
+import { getFlashcardSets } from './handlers/flashcard';
 import { getDocuments, searchWorkspace, type GetDocumentsParams } from './handlers/document';
 import { getQuizPerformance, getWeakAreas, type StartQuizParams } from './handlers/quiz';
 import { getUpcomingEvents, getSubjects } from './handlers/calendar';
-import { storeMemory, retrieveRelevantMemories, type StoreMemoryParams } from './handlers/memory';
+import { storeMemory, type StoreMemoryParams } from './handlers/memory';
 import { createCurriculumRetriever } from '@/lib/retrieval/curriculum';
 import type { ToolName } from './registry';
 

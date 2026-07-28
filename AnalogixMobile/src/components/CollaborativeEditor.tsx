@@ -279,7 +279,7 @@ function buildHtml(supabaseUrl: string, supabaseAnonKey: string, theme: any): st
 </html>`;
 }
 
-export function CollaborativeEditor({ roomId, surfaceType, surfaceId, initialContent, onContentChange, onPeerCount, onStatus }: Props) {
+export function CollaborativeEditor({ roomId, surfaceType, surfaceId, initialContent, onContentChange, onStatus }: Props) {
   const paperTheme = useTheme();
   const webViewRef = useRef<any>(null);
   const [status, setStatus] = useState("initializing");

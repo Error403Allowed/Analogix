@@ -35,12 +35,14 @@
   "packageManager": "npm@12.0.1",
   "dependencies": {
     "expo": "~57.0.4",
+    "graphql-ws": "^6.2.0",
     "pg": "^8.22.0",
     "react": "19.2.7",
     "react-dom": "19.2.7",
     "react-native": "0.86.0",
     "react-native-mmkv": "^4.3.2",
-    "rxjs": "^7.8.2"
+    "rxjs": "^7.8.2",
+    "sharp": "^0.35.3"
   },
   "devDependencies": {
     "jiti": "^2.7.0",
@@ -52,5 +54,12 @@
   "optionalDependencies": {
     "@tailwindcss/oxide-linux-x64-gnu": "4.3.2",
     "@tailwindcss/oxide-linux-x64-musl": "4.3.2"
+  },
+  "allowScripts": {
+    "sharp@0.34.5": true,
+    "sharp@0.35.3": true,
+    "sharp@0.32.6": true,
+    "esbuild@0.28.1": true,
+    "protobufjs@6.11.6": true
   }
 }

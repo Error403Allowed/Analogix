@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { PRESET_COLORS } from "../constants";
-import { EmojiPicker } from "./EmojiPicker";
+import { EmojiPicker } from "./CalendarEmojiPicker";
 
 export function TagEditorPanel({ currentLabel, currentColor, currentIcon, onSave, onCancel, saveLabel = "Save" }: {
   currentLabel?: string;

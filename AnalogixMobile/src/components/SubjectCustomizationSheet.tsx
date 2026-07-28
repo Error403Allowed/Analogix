@@ -129,7 +129,6 @@ export default function SubjectCustomizationSheet({ visible, subjectId, subjectN
           <Text variant="labelLarge" style={{ fontWeight: "600", marginTop: 12, marginBottom: 8 }}>Cover</Text>
           <View style={styles.coverGrid}>
             {COVER_OPTIONS.map((grad, idx) => {
-              const [_, cs] = grad.match(/background:\s*(.+?)(?:;|$)/) ?? [];
               const colors = grad.match(/#[a-f0-9]{6}/gi) ?? [];
               return (
                 <Pressable

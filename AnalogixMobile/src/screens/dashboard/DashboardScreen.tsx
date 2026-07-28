@@ -4,16 +4,16 @@ import { Text, useTheme, Portal, Modal, TextInput, Button, Switch, ActivityIndic
 import { useQuery, useMutation, useSubscription } from "@apollo/client/react";
 import { useNavigation } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { ME, USER_STATS, ACTIVITY_LOG, INCREMENT_ACTIVITY } from "../../graphql/queries/user";
+import { ME, ACTIVITY_LOG, INCREMENT_ACTIVITY } from "../../graphql/queries/user";
 import { DOCUMENTS } from "../../graphql/queries/subject";
 import { EVENTS } from "../../graphql/queries/calendar";
 import { FLASHCARD_SETS } from "../../graphql/queries/flashcard";
 import { CREATE_CHAT_SESSION, STREAM_CHAT_MESSAGE, CHAT_STREAM } from "../../graphql/queries/chat";
 import { useThemeContext } from "../../theme/ThemeContext";
+import { alpha } from "../../theme";
 import { SHAPE } from "../../theme/tokens";
 import {
   ExpressiveEmptyState,
-  ExpressiveHeroPanel,
   ExpressiveRailCard,
   ExpressiveListRow,
   ExpressiveScreen,
@@ -66,11 +66,7 @@ function useEnabledWidgets() {
 }
 
 const DAYS_SH = ["M", "T", "W", "T", "F", "S", "S"];
-/** Convert JS getDay() (0=Sun) to Mon-based index (0=Mon) */
-const mondayIndex = (jsDay: number) => (jsDay + 6) % 7;
-const dayLabel = (d: string) => { if (!d) return ""; return DAYS_SH[mondayIndex(new Date(d).getDay())] ?? ""; };
-
-/* ── Streak Widget ──────────────────────────────────────── */
+/* ── Streak Widget  */
 const STREAK_MSGS = ["Start your streak today!", "Nice, keep it going!", "You're on fire!", "Unstoppable!", "Legendary!"];
 
 function streakMsg(days: number): string {
@@ -152,7 +148,7 @@ function computeStreak(log: { date: string; count: number }[]): number {
 
 function StreakWidget() {
   const paperTheme = useTheme();
-  const { brand } = useThemeContext();
+  const { theme } = useThemeContext();
   const { data: activityData } = useQuery(ACTIVITY_LOG, { variables: { days: 90 } });
   const liveActivity = (activityData?.activityLog ?? []) as { date: string; count: number }[];
   const allActivity = liveActivity.length > 0 ? liveActivity : getCachedActivity();
@@ -164,29 +160,29 @@ function StreakWidget() {
   return (
     <View style={{ gap: 12 }}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 16, padding: 16, borderRadius: SHAPE.lg, backgroundColor: paperTheme.colors.surface, boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}>
-        <View style={{ width: 56, height: 56, borderRadius: 16, alignItems: "center", justifyContent: "center", backgroundColor: brand.primary + "14" }}>
-          <Icon name="fire" size={28} color={brand.primary} />
+        <View style={{ width: 56, height: 56, borderRadius: 16, alignItems: "center", justifyContent: "center", backgroundColor: alpha(theme.colors.primary, 0.08) }}>
+          <Icon name="fire" size={28} color={theme.colors.primary} />
         </View>
         <View style={{ flex: 1 }}>
           <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 8 }}>
-            <Text variant="headlineLarge" style={{ fontWeight: "900", color: brand.primary, lineHeight: 38 }}>{streak}</Text>
-            <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, backgroundColor: brand.primary + "14", marginBottom: 6 }}>
-              <Text style={{ fontSize: 12, fontWeight: "800", color: brand.primary, letterSpacing: 0.5, textTransform: "uppercase" }}>day streak</Text>
+            <Text variant="headlineLarge" style={{ fontWeight: "900", color: theme.colors.primary, lineHeight: 38 }}>{streak}</Text>
+            <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, backgroundColor: alpha(theme.colors.primary, 0.08), marginBottom: 6 }}>
+              <Text style={{ fontSize: 12, fontWeight: "800", color: theme.colors.primary, letterSpacing: 0.5, textTransform: "uppercase" }}>day streak</Text>
             </View>
           </View>
           <Text style={{ fontSize: 12, color: paperTheme.colors.onSurfaceVariant, marginTop: 1 }}>{streakMsg(streak)}</Text>
         </View>
       </View>
 
-      <StreakBars week={week} brandPrimary={brand.primary} mutedColor={paperTheme.colors.onSurfaceVariant} />
+      <StreakBars week={week} brandPrimary={theme.colors.primary} mutedColor={paperTheme.colors.onSurfaceVariant} />
     </View>
   );
 }
 
-/* ── Chat Widget ────────────────────────────────────────── */
+/* ── Chat Widget ── */
 function ChatWidget() {
   const paperTheme = useTheme();
-  const { brand } = useThemeContext();
+  const { theme } = useThemeContext();
   const navigation = useNavigation<any>();
   const [q, setQ] = useState("");
   const [resp, setResp] = useState<string | null>(null);
@@ -240,10 +236,10 @@ function ChatWidget() {
   return (
     <View style={{ borderRadius: SHAPE.xl, backgroundColor: paperTheme.colors.surface, padding: 16, gap: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-        <Icon name="message-text" size={18} color={brand.primary} />
+        <Icon name="message-text" size={18} color={theme.colors.primary} />
         <Text variant="titleSmall" style={{ fontWeight: "700", color: paperTheme.colors.onSurface, flex: 1 }}>AI Tutor</Text>
         <PressableScale onPress={() => navigation.navigate("Tutor", { screen: "ChatList" })}>
-          <Text variant="labelSmall" style={{ color: brand.primary, fontWeight: "700" }}>Open</Text>
+          <Text variant="labelSmall" style={{ color: theme.colors.primary, fontWeight: "700" }}>Open</Text>
         </PressableScale>
       </View>
       <View style={{ flexDirection: "row", gap: 8, alignItems: "flex-end" }}>
@@ -253,12 +249,12 @@ function ChatWidget() {
           value={q} onChangeText={setQ} multiline editable={!loading}
         />
         <PressableScale onPress={send} disabled={!q.trim() || loading}
-          style={[styles.sendBtn, { backgroundColor: brand.primary, opacity: !q.trim() || loading ? 0.5 : 1 }]}>
+          style={[styles.sendBtn, { backgroundColor: theme.colors.primary, opacity: !q.trim() || loading ? 0.5 : 1 }]}>
           {loading ? <ActivityIndicator size={14} color="#fff" /> : <Icon name="send" size={14} color="#fff" />}
         </PressableScale>
       </View>
       {displayText && (
-        <View style={{ backgroundColor: brand.primary + "10", borderRadius: SHAPE.md, padding: 10 }}>
+        <View style={{ backgroundColor: alpha(theme.colors.primary, 0.06), borderRadius: SHAPE.md, padding: 10 }}>
           <Text variant="bodySmall" style={{ color: paperTheme.colors.onSurface }}>{displayText}</Text>
         </View>
       )}
@@ -266,10 +262,10 @@ function ChatWidget() {
   );
 }
 
-/* ── Docs Widget ────────────────────────────────────────── */
+/* ── Docs Widget ── */
 function DocsWidget() {
   const paperTheme = useTheme();
-  const { brand } = useThemeContext();
+  const { theme } = useThemeContext();
   const navigation = useNavigation<any>();
   const { data, loading } = useQuery(DOCUMENTS);
   const docs = (data?.documents ?? [])
@@ -301,8 +297,8 @@ function DocsWidget() {
       {docs.map((doc: any) => (
         <PressableScale key={doc.id} onPress={() => navigation.navigate("Subjects", { screen: "DocumentEditor", params: { subjectId: doc.subjectId, documentId: doc.id } })}>
           <View style={{ width: 140, height: 132, borderRadius: SHAPE.lg, backgroundColor: paperTheme.colors.surface, padding: 12, gap: 8, borderWidth: 1, borderColor: paperTheme.colors.outlineVariant, boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}>
-            <View style={{ width: 32, height: 32, borderRadius: 10, alignItems: "center", justifyContent: "center", backgroundColor: brand.primary + "16" }}>
-              <Icon name={doc.icon ?? "file-document-outline"} size={16} color={brand.primary} />
+            <View style={{ width: 32, height: 32, borderRadius: 10, alignItems: "center", justifyContent: "center", backgroundColor: alpha(theme.colors.primary, 0.10) }}>
+              <Icon name={doc.icon ?? "file-document-outline"} size={16} color={theme.colors.primary} />
             </View>
             <View style={{ flex: 1 }}>
               <Text variant="labelSmall" numberOfLines={3} style={{ fontWeight: "700", color: paperTheme.colors.onSurface, lineHeight: 15 }}>{doc.title}</Text>
@@ -315,10 +311,10 @@ function DocsWidget() {
   );
 }
 
-/* ── Events Widget ──────────────────────────────────────── */
+/* ── Events Widget  */
 function EventsWidget() {
   const paperTheme = useTheme();
-  const { brand } = useThemeContext();
+  const { theme } = useThemeContext();
   const navigation = useNavigation<any>();
   const now = new Date();
   const todayStr = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
@@ -332,14 +328,14 @@ function EventsWidget() {
     id: ev.id,
     title: ev.title,
     date: ev.date,
-    color: ev.color ?? brand.primary,
+    color: ev.color ?? theme.colors.primary,
     type: "event" as const,
   }));
   const rawDeadlines = (data?.deadlines ?? []).map((dl: any) => ({
     id: dl.id,
     title: dl.title,
     date: dl.dueDate,
-    color: dl.priority === "high" ? "#ef4444" : dl.priority === "medium" ? "#f59e0b" : brand.primary,
+    color: dl.priority === "high" ? "#ef4444" : dl.priority === "medium" ? "#f59e0b" : theme.colors.primary,
     type: "deadline" as const,
   }));
   const allItems = [...rawEvents, ...rawDeadlines]
@@ -380,7 +376,7 @@ function EventsWidget() {
   );
 }
 
-/* ── Timer Widget ───────────────────────────────────────── */
+/* ── Timer Widget ─ */
 const TIMER_KEY = "analogix_timer_state";
 type TimerPhase = "focus" | "break";
 interface TimerState { phase: TimerPhase; secondsLeft: number; running: boolean; focusDuration: number; breakDuration: number; sessionsCompleted: number; sessionTarget: number; lastTick: number; }
@@ -447,7 +443,7 @@ function useTimerState(): [TimerState, React.Dispatch<React.SetStateAction<Timer
 }
 
 function TimerWidget() {
-  const { brand } = useThemeContext();
+  const { theme } = useThemeContext();
   const paperTheme = useTheme();
   const navigation = useNavigation<any>();
   const [timer, setTimer] = useTimerState();
@@ -479,7 +475,7 @@ function TimerWidget() {
   const radius = (ringSize - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference * progress;
-  const phaseColor = timer.phase === "focus" ? brand.primary : "#22c55e";
+  const phaseColor = timer.phase === "focus" ? theme.colors.primary : "#22c55e";
 
   const [showSettings, setShowSettings] = useState(false);
   const [editFocus, setEditFocus] = useState("25");
@@ -556,7 +552,7 @@ function TimerWidget() {
         </View>
       </View>
       <PressableScale onPress={() => navigation.navigate("Study", { screen: "Timer" })} style={styles.timerLink}>
-        <Text variant="labelSmall" style={{ color: brand.primary, fontWeight: "700" }}>Full timer →</Text>
+        <Text variant="labelSmall" style={{ color: theme.colors.primary, fontWeight: "700" }}>Full timer →</Text>
       </PressableScale>
 
       <Portal>
@@ -572,7 +568,7 @@ function TimerWidget() {
   );
 }
 
-/* ── Links Widget ───────────────────────────────────────── */
+/* ── Links Widget ─ */
 // Resources were moved into Subject Detail on web parity; no top-level link.
 const ALL_LINKS = [
   { id: "chat",         label: "AI Tutor",      icon: "message-text",  screen: "ChatList" },
@@ -644,7 +640,7 @@ function LinksWidget() {
 /* Flashcards Widget */
 function FlashcardsWidget() {
   const paperTheme = useTheme();
-  const { brand } = useThemeContext();
+  const { theme } = useThemeContext();
   const navigation = useNavigation<any>();
   const { data: setsData, loading: sl } = useQuery(FLASHCARD_SETS);
   const sets = setsData?.flashcardSets ?? [];
@@ -679,7 +675,7 @@ function FlashcardsWidget() {
         onPress={() => navigation.navigate("Study", { screen: "Flashcards" })}
         style={{ flex: 1 }}
       >
-        <View style={{ flex: 1, paddingVertical: 12, borderRadius: SHAPE.lg, backgroundColor: brand.primary, alignItems: "center" }}>
+        <View style={{ flex: 1, paddingVertical: 12, borderRadius: SHAPE.lg, backgroundColor: theme.colors.primary, alignItems: "center" }}>
           <Text variant="labelLarge" style={{ fontWeight: "800", color: "#fff" }}>Browse Sets</Text>
         </View>
       </PressableScale>
@@ -690,7 +686,7 @@ function FlashcardsWidget() {
 /* Customise Panel */
 function CustomisePanel({ visible, enabled, onSave, onClose }: { visible: boolean; enabled: WidgetId[]; onSave: (ids: WidgetId[]) => void; onClose: () => void }) {
   const paperTheme = useTheme();
-  const { brand } = useThemeContext();
+  const { theme } = useThemeContext();
   const [draft, setDraft] = useState(enabled);
   useEffect(() => setDraft(enabled), [enabled]);
   return (
@@ -704,7 +700,7 @@ function CustomisePanel({ visible, enabled, onSave, onClose }: { visible: boolea
               style={[styles.widgetRow, { backgroundColor: on ? paperTheme.colors.primaryContainer : paperTheme.colors.surfaceVariant }]}>
               <Icon name={w.icon} size={18} color={on ? paperTheme.colors.onPrimaryContainer : paperTheme.colors.onSurfaceVariant} />
               <Text variant="bodyMedium" style={{ flex: 1, marginLeft: 10, fontWeight: "600", color: on ? paperTheme.colors.onPrimaryContainer : paperTheme.colors.onSurfaceVariant }}>{w.label}</Text>
-              <Switch value={on} onValueChange={(v) => setDraft(v ? [...draft, w.key] : draft.filter((k) => k !== w.key))} color={brand.primary} />
+              <Switch value={on} onValueChange={(v) => setDraft(v ? [...draft, w.key] : draft.filter((k) => k !== w.key))} color={theme.colors.primary} />
             </PressableScale>
           );
         })}
@@ -712,7 +708,7 @@ function CustomisePanel({ visible, enabled, onSave, onClose }: { visible: boolea
           <Text variant="bodySmall" style={{ color: paperTheme.colors.onSurfaceVariant }}>Reset to defaults</Text>
         </PressableScale>
         <PressableScale onPress={() => { onSave(draft); onClose(); }} style={{ width: "100%" }}>
-          <View style={{ paddingVertical: 12, borderRadius: SHAPE.lg, backgroundColor: brand.primary, alignItems: "center" }}>
+          <View style={{ paddingVertical: 12, borderRadius: SHAPE.lg, backgroundColor: theme.colors.primary, alignItems: "center" }}>
             <Text variant="labelLarge" style={{ fontWeight: "800", color: "#fff" }}>Done</Text>
           </View>
         </PressableScale>
@@ -724,7 +720,7 @@ function CustomisePanel({ visible, enabled, onSave, onClose }: { visible: boolea
 /* Main Dashboard */
 export default function DashboardScreen() {
   const paperTheme = useTheme();
-  const { brand } = useThemeContext();
+  const { theme } = useThemeContext();
   const navigation = useNavigation<any>();
   const { data: meData } = useQuery(ME);
   const [incrementActivity] = useMutation(INCREMENT_ACTIVITY);
@@ -759,7 +755,7 @@ export default function DashboardScreen() {
           </PressableScale>
           <PressableScale
             onPress={() => navigation.navigate("Profile", { screen: "ProfileHome" })}
-            style={[styles.avatarBox, { backgroundColor: me?.avatarUrl ? "transparent" : brand.primary }]}
+            style={[styles.avatarBox, { backgroundColor: me?.avatarUrl ? "transparent" : theme.colors.primary }]}
             accessibilityLabel="Open profile"
           >
             {me?.avatarUrl ? (
@@ -791,7 +787,7 @@ export default function DashboardScreen() {
             subtitle="Customise your dashboard to see stats, quick actions, and more."
           />
           <PressableScale onPress={() => setShowSettings(true)}>
-            <View style={{ paddingHorizontal: 24, paddingVertical: 12, borderRadius: SHAPE.lg, backgroundColor: brand.primary }}>
+            <View style={{ paddingHorizontal: 24, paddingVertical: 12, borderRadius: SHAPE.lg, backgroundColor: theme.colors.primary }}>
               <Text variant="labelLarge" style={{ color: "#fff", fontWeight: "800", textAlign: "center" }}>Customise dashboard</Text>
             </View>
           </PressableScale>

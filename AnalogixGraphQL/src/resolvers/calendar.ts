@@ -1,5 +1,5 @@
 import { GraphQLError } from "graphql";
-import { requireUser } from "./_helpers.js";
+import { requireUser, throwSanitized } from "./_helpers.js";
 import type { GraphQLContext } from "../context.js";
 
 export const calendarResolvers = {
@@ -10,7 +10,7 @@ export const calendarResolvers = {
       if (args.from) query = query.gte("date", args.from);
       if (args.to) query = query.lt("date", args.to);
       const { data, error } = await query;
-      if (error) throw new GraphQLError(error.message);
+      if (error) throwSanitized(error, ctx);
       return (data ?? []).map(mapEvent);
     },
     deadlines: async (_: unknown, __: unknown, ctx: GraphQLContext) => {
@@ -21,7 +21,7 @@ export const calendarResolvers = {
         .eq("user_id", user.id)
         .order("due_date", { ascending: true })
         .limit(100);
-      if (error) throw new GraphQLError(error.message);
+      if (error) throwSanitized(error, ctx);
       return (data ?? []).map(mapDeadline);
     },
   },
@@ -40,7 +40,7 @@ export const calendarResolvers = {
         })
         .select()
         .single();
-      if (error) throw new GraphQLError(error.message);
+      if (error) throwSanitized(error, ctx);
       return mapEvent(data);
     },
     updateEvent: async (_: unknown, args: { id: string; input: Record<string, unknown> }, ctx: GraphQLContext) => {
@@ -53,13 +53,13 @@ export const calendarResolvers = {
         .eq("user_id", user.id)
         .select()
         .single();
-      if (error) throw new GraphQLError(error.message);
+      if (error) throwSanitized(error, ctx);
       return mapEvent(data);
     },
     deleteEvent: async (_: unknown, args: { id: string }, ctx: GraphQLContext) => {
       const user = requireUser(ctx);
       const { error } = await ctx.supabase!.from("events").delete().eq("id", args.id).eq("user_id", user.id);
-      if (error) throw new GraphQLError(error.message);
+      if (error) throwSanitized(error, ctx);
       return { success: true };
     },
     importIcs: async (_: unknown, args: { ics: string }, ctx: GraphQLContext) => {
@@ -80,7 +80,7 @@ export const calendarResolvers = {
         source: "import",
       }));
       const { error } = await ctx.supabase!.from("events").insert(inserts);
-      if (error) throw new GraphQLError(error.message);
+      if (error) throwSanitized(error, ctx);
       return inserts.length;
     },
     addDeadline: async (_: unknown, args: { input: Record<string, unknown> }, ctx: GraphQLContext) => {
@@ -95,7 +95,7 @@ export const calendarResolvers = {
         })
         .select()
         .single();
-      if (error) throw new GraphQLError(error.message);
+      if (error) throwSanitized(error, ctx);
       return mapDeadline(data);
     },
     updateDeadline: async (_: unknown, args: { id: string; input: Record<string, unknown> }, ctx: GraphQLContext) => {
@@ -108,13 +108,13 @@ export const calendarResolvers = {
         .eq("user_id", user.id)
         .select()
         .single();
-      if (error) throw new GraphQLError(error.message);
+      if (error) throwSanitized(error, ctx);
       return mapDeadline(data);
     },
     deleteDeadline: async (_: unknown, args: { id: string }, ctx: GraphQLContext) => {
       const user = requireUser(ctx);
       const { error } = await ctx.supabase!.from("deadlines").delete().eq("id", args.id).eq("user_id", user.id);
-      if (error) throw new GraphQLError(error.message);
+      if (error) throwSanitized(error, ctx);
       return { success: true };
     },
   },

@@ -5,7 +5,7 @@
  * "Dynamic" mode generates a full M3 color scheme from a user-chosen seed color
  * using Material Color Utilities — no native code required.
  */
-import React, { createContext, useContext, useEffect, useMemo, useState, useCallback } from "react";
+import React, { createContext, useContext, useMemo, useState, useCallback } from "react";
 import { useColorScheme } from "react-native";
 import { PaperProvider } from "react-native-paper";
 import { MMKV } from "../storage/mmkv";
@@ -13,6 +13,7 @@ import { lightTheme, darkTheme, BRAND_THEMES, type BrandTheme, type BrandThemeId
 import { MOTION, SHAPE } from "./tokens";
 import { generateDynamicScheme } from "./dynamicColor";
 import type { MD3Theme } from "react-native-paper";
+import type { ExpressiveColors } from "./dynamicColor";
 
 const storage = new MMKV({ id: "analogix.theme" });
 const THEME_KEY = "activeTheme";
@@ -22,7 +23,7 @@ const DYNAMIC_SEED_KEY = "dynamicSeed";
 export type ColorMode = "light" | "dark" | "system" | "dynamic";
 
 interface ThemeContextValue {
-  theme: typeof lightTheme;
+  theme: MD3Theme & { colors: ExpressiveColors };
   isDark: boolean;
   brand: BrandTheme;
   colorMode: ColorMode;
@@ -34,7 +35,7 @@ interface ThemeContextValue {
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
-function buildTonalTheme(isDark: boolean, seedHex: string): MD3Theme {
+function buildTonalTheme(isDark: boolean, seedHex: string): MD3Theme & { colors: ExpressiveColors } {
   const base = isDark ? darkTheme : lightTheme;
   const scheme = generateDynamicScheme(seedHex);
   const colors = isDark ? scheme.dark : scheme.light;

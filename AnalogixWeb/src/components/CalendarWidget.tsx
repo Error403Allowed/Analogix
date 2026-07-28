@@ -13,11 +13,6 @@ import { useRouter } from "next/navigation";
 import { Plus, X, ChevronRight } from "lucide-react";
 import { getTermInfo, getNextTerm, getStoredState } from "@/utils/termData";
 
-interface CalendarWidgetProps {
-  streak?: number;
-  streakLabel?: string;
-}
-
 const EVENT_COLORS = {
   exam: { bg: "bg-red-500", text: "text-red-600", light: "bg-red-500/10" },
   assignment: { bg: "bg-amber-500", text: "text-amber-600", light: "bg-amber-500/10" },
@@ -78,7 +73,7 @@ const TermBadge = () => {
   return null;
 };
 
-const CalendarWidget = ({ streak = 0, streakLabel = "days" }: CalendarWidgetProps) => {
+const CalendarWidget = () => {
   const router = useRouter();
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [events, setEvents] = useState<AppEvent[]>([]);

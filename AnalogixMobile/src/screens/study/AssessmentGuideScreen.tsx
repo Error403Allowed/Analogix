@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from "react";
 import { View, StyleSheet, ScrollView, Pressable, Alert } from "react-native";
-import { Text, useTheme, ActivityIndicator, Button, TextInput } from "react-native-paper";
+import { Text, useTheme, Button, TextInput } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useMutation } from "@apollo/client/react";
 import { useNavigation, useRoute } from "@react-navigation/native";
@@ -24,7 +24,7 @@ interface AssessmentGuide {
 
 export default function AssessmentGuideScreen() {
   const paperTheme = useTheme();
-  const { brand } = useThemeContext();
+  const { theme } = useThemeContext();
   const c = paperTheme.colors as any;
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
@@ -88,7 +88,7 @@ export default function AssessmentGuideScreen() {
         {!guide && (
           <View style={styles.setup}>
             <View style={styles.hero}>
-              <Icon name="file-document-outline" size={48} color={brand.primary} />
+              <Icon name="file-document-outline" size={48} color={theme.colors.primary} />
               <Text variant="titleLarge" style={[styles.heroTitle, { color: paperTheme.colors.onSurface }]}>
                 Create a study guide
               </Text>
@@ -140,7 +140,7 @@ export default function AssessmentGuideScreen() {
             {guide.weeks.map((week, i) => (
               <View key={i} style={[styles.weekCard, { backgroundColor: c.surfaceContainerLow ?? paperTheme.colors.surfaceVariant }]}>
                 <View style={styles.weekHeader}>
-                  <View style={[styles.weekBadge, { backgroundColor: brand.primary }]}>
+                  <View style={[styles.weekBadge, { backgroundColor: theme.colors.primary }]}>
                     <Text style={{ color: "#fff", fontWeight: "700", fontSize: 12 }}>W{week.week}</Text>
                   </View>
                   <Text variant="labelLarge" style={{ color: paperTheme.colors.onSurface, fontWeight: "600", flex: 1 }}>
@@ -149,7 +149,7 @@ export default function AssessmentGuideScreen() {
                 </View>
                 {week.tasks.map((task, j) => (
                   <View key={j} style={styles.taskRow}>
-                    <Icon name="check-circle-outline" size={16} color={brand.primary} />
+                    <Icon name="check-circle-outline" size={16} color={theme.colors.primary} />
                     <Text variant="bodySmall" style={{ color: paperTheme.colors.onSurface, flex: 1 }}>
                       {task}
                     </Text>

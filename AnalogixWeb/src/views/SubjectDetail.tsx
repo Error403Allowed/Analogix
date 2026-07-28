@@ -1,36 +1,29 @@
  
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   ArrowLeft,
-  ArrowRight,
   BookOpen,
   CheckCircle2,
-  ChevronRight,
   Circle,
   ClipboardList,
   ExternalLink,
   FileText,
   GraduationCap,
   Link as LinkIcon,
-  Loader2,
   Palette,
   Plus,
-  Send,
   Sparkles,
   Trash2,
   Upload,
-  X,
   Copy,
   MoreVertical,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   SUBJECT_CATALOG,
-  getGradeBand,
   getSubjectDescription,
 } from "@/constants/subjects";
 import {
@@ -38,19 +31,14 @@ import {
   type CustomSubject,
   type SubjectData,
   type SubjectHomework,
-  type SubjectLink,
 } from "@/utils/subjectStore";
-import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { getGroqCompletion } from "@/services/groq";
-import type { ChatMessage } from "@/types/chat";
-import { extractFileText } from "@/utils/extractFileText";
 import { useTabs } from "@/context/TabsContext";
 import { SUBJECT_COLORS } from "@/components/ColorPicker";
 import { DynamicIcon } from "@/components/IconPicker";
 import { SubjectCustomizationSheet } from "@/components/SubjectCustomizationSheet";
-import RESOURCES, { type SubjectResources } from "@/data/resources";
+import RESOURCES from "@/data/resources";
 import { ACARA_CURRICULUM } from "@/data/curriculum";
 import {
   DropdownMenu,
@@ -76,12 +64,6 @@ const SUBJECT_COVER_STYLES: Record<string, string> = {
   gold: "bg-gradient-to-r from-yellow-400 via-amber-500 to-orange-500",
 };
 
-const normalizeUrl = (url: string) => {
-  const trimmed = url.trim();
-  if (!trimmed) return "";
-  return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
-};
-
 export default function SubjectDetail() {
   const params = useParams();
   const router = useRouter();
@@ -98,16 +80,13 @@ export default function SubjectDetail() {
   const [customizeOpen, setCustomizeOpen] = useState(false);
   const [homeworkDraft, setHomeworkDraft] = useState({ title: "", dueDate: "", link: "", notes: "" });
   const [showHomeworkForm, setShowHomeworkForm] = useState(false);
-  const [linkDraft, setLinkDraft] = useState({ title: "", url: "" });
   const [showLinkForm, setShowLinkForm] = useState(false);
   const [docDraft, setDocDraft] = useState("");
   const [userPrefs, setUserPrefs] = useState<SubjectPagePrefs>({});
-  const [assessmentUploading, setAssessmentUploading] = useState(false);
 
   const homework = data.notes.homework || [];
   const links = data.notes.links || [];
   const documents = data.notes.documents || [];
-  const pendingCount = homework.filter((item) => !item.completed).length;
 
   const appearance = useMemo(() => {
     const colorId = customSubject?.custom_color || "default";

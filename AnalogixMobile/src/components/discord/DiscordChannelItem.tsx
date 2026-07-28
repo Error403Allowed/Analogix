@@ -3,6 +3,7 @@ import { Pressable, View, StyleSheet } from "react-native";
 import { Text, useTheme } from "react-native-paper";
 import Icon from "../Icon";
 import { SHAPE } from "../../theme/tokens";
+import { alpha } from "../../theme";
 import { SPACE } from "../../theme/spacing";
 import type { DiscordChannelItemProps } from "./types";
 
@@ -27,7 +28,7 @@ export default function DiscordChannelItem({
       style={({ pressed }) => [
         styles.container,
         active && { backgroundColor: theme.colors.surfaceVariant },
-        pressed && !active && { backgroundColor: theme.colors.surfaceVariant + "66" },
+        pressed && !active && { backgroundColor: alpha(theme.colors.surfaceVariant, 0.40) },
       ]}
     >
       <Icon name={prefixIcon} size={18} color={prefixColor} />

@@ -3,13 +3,15 @@ import { env } from "../env.js";
 import { logger } from "../logger.js";
 
 const ALLOWED_MODELS = new Set([
-  "llama-3.3-70b-versatile",
+  "openai/gpt-oss-120b",
+  "qwen/qwen3.6-27b",
+  "openai/gpt-oss-20b",
   "qwen-2.5-coder-32b",
   "deepseek-r1-distill-llama-70b",
   "mixtral-8x7b-32768",
 ]);
 
-const DEFAULT_MODEL = "llama-3.3-70b-versatile";
+const DEFAULT_MODEL = "openai/gpt-oss-120b";
 const REQUEST_TIMEOUT_MS = 30_000;
 const MAX_RETRIES = 2;
 

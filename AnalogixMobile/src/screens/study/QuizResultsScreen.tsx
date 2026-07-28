@@ -6,6 +6,7 @@ import { useQuery, useMutation } from "@apollo/client/react";
 import { QUIZ, QUIZ_REVIEW } from "../../graphql/queries/quiz";
 import { UNLOCK_ACHIEVEMENT } from "../../graphql/queries/misc";
 import { useThemeContext } from "../../theme/ThemeContext";
+import { alpha } from "../../theme";
 import { SHAPE } from "../../theme/tokens";
 import Icon from "../../components/Icon";
 import { ExpressiveScreen } from "../../components/expressive";
@@ -13,7 +14,8 @@ import ConfettiCannon from "react-native-confetti-cannon";
 
 export default function QuizResultsScreen() {
   const paperTheme = useTheme();
-  const { brand } = useThemeContext();
+  const { theme } = useThemeContext();
+
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
   const { quizId, answersSummary, questions: routeQuestions, subjectId: paramSubjectId } = route.params;
@@ -101,7 +103,7 @@ export default function QuizResultsScreen() {
           ref={confettiRef}
           count={150}
           origin={{ x: 200, y: 0 }}
-          colors={[brand.primary, "#f59e0b", "#10b981", "#3b82f6", "#8b5cf6"]}
+          colors={[theme.colors.primary, "#f59e0b", "#10b981", "#3b82f6", "#8b5cf6"]}
           autoStart={false}
           fadeOut
         />
@@ -111,7 +113,7 @@ export default function QuizResultsScreen() {
         <ScrollView style={styles.scroll} contentContainerStyle={{ paddingBottom: 24, gap: 16 }}>
           <Card mode="elevated" style={styles.scoreCard}>
             <Card.Content style={{ alignItems: "center", gap: 8 }}>
-              <Text variant="displaySmall" style={{ fontWeight: "700", color: answersSummary ? brand.primary : paperTheme.colors.onSurfaceVariant }}>
+              <Text variant="displaySmall" style={{ fontWeight: "700", color: answersSummary ? theme.colors.primary : paperTheme.colors.onSurfaceVariant }}>
                 {answersSummary ? `${accuracy}%` : "--%"}
               </Text>
               <Text variant="titleSmall" style={{ color: paperTheme.colors.onSurface, textAlign: "center" }}>
@@ -134,9 +136,9 @@ export default function QuizResultsScreen() {
               )}
 
               {achievementUnlocked && (
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: brand.primary + "18", paddingHorizontal: 12, paddingVertical: 6, borderRadius: SHAPE.pill, marginTop: 4 }}>
-                  <Icon name="trophy" size={16} color={brand.primary} />
-                  <Text variant="labelSmall" style={{ color: brand.primary, fontWeight: "700" }}>Achievement unlocked!</Text>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: alpha(theme.colors.primary, 0.10), paddingHorizontal: 12, paddingVertical: 6, borderRadius: SHAPE.pill, marginTop: 4 }}>
+                  <Icon name="trophy" size={16} color={theme.colors.primary} />
+                  <Text variant="labelSmall" style={{ color: theme.colors.primary, fontWeight: "700" }}>Achievement unlocked!</Text>
                 </View>
               )}
             </Card.Content>
@@ -187,7 +189,7 @@ export default function QuizResultsScreen() {
 
           {reviewLoading && (
             <View style={{ alignItems: "center", paddingVertical: 16 }}>
-              <ActivityIndicator size="small" color={brand.primary} />
+              <ActivityIndicator size="small" color={theme.colors.primary} />
               <Text variant="bodySmall" style={{ color: paperTheme.colors.onSurfaceVariant, marginTop: 8 }}>
                 Generating feedback...
               </Text>
@@ -222,7 +224,7 @@ export default function QuizResultsScreen() {
             <Button mode="outlined" style={{ flex: 1, borderRadius: SHAPE.lg }} onPress={() => navigation.navigate("Quiz")}>
               Try Again
             </Button>
-            <Button mode="contained" buttonColor={brand.primary} style={{ flex: 1, borderRadius: SHAPE.lg, height: 48 }} onPress={() => navigation.navigate("Dashboard")}>
+            <Button mode="contained" buttonColor={theme.colors.primary} style={{ flex: 1, borderRadius: SHAPE.lg, height: 48 }} onPress={() => navigation.navigate("Dashboard")}>
               Dashboard
             </Button>
           </View>

@@ -15,6 +15,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { FLASHCARDS, GRADE_FLASHCARD } from "../../graphql/queries/flashcard";
 import { useThemeContext } from "../../theme/ThemeContext";
+import { alpha } from "../../theme";
 import { SHAPE } from "../../theme/tokens";
 import { ExpressiveScreen } from "../../components/expressive";
 
@@ -35,7 +36,6 @@ function FlipCard({
   flipped,
   onFlip,
   themeCardBg,
-  themeBorderColor,
   brandPrimary,
 }: {
   front: string;
@@ -43,7 +43,6 @@ function FlipCard({
   flipped: boolean;
   onFlip: () => void;
   themeCardBg: string;
-  themeBorderColor: string;
   brandPrimary: string;
 }) {
   const { width } = useWindowDimensions();
@@ -95,28 +94,28 @@ function FlipCard({
         <Animated.View
           style={[
             styles.card,
-            { backgroundColor: themeCardBg, borderColor: brandPrimary + "44" },
+            { backgroundColor: themeCardBg, borderColor: alpha(brandPrimary, 0.27) },
             frontStyle,
           ]}
         >
           <View style={styles.cardInner}>
             <Text style={[styles.sideLabel, { color: brandPrimary }]}>TERM</Text>
             <Text style={[styles.mainText, { fontSize: frontFont }]}>{front}</Text>
-            <Text style={[styles.tapHint, { color: brandPrimary + "99" }]}>Tap to flip</Text>
+            <Text style={[styles.tapHint, { color: alpha(brandPrimary, 0.60) }]}>Tap to flip</Text>
           </View>
         </Animated.View>
         <Animated.View
           style={[
             styles.card,
             styles.cardBack,
-            { backgroundColor: themeCardBg, borderColor: brandPrimary + "44" },
+            { backgroundColor: themeCardBg, borderColor: alpha(brandPrimary, 0.27) },
             backStyle,
           ]}
         >
           <View style={styles.cardInner}>
             <Text style={[styles.sideLabel, { color: "#10b981" }]}>DEFINITION</Text>
             <Text style={[styles.mainText, { fontSize: backFont }]}>{back}</Text>
-            <Text style={[styles.tapHint, { color: brandPrimary + "99" }]}>Tap to flip back</Text>
+            <Text style={[styles.tapHint, { color: alpha(brandPrimary, 0.60) }]}>Tap to flip back</Text>
           </View>
         </Animated.View>
       </View>
@@ -149,7 +148,7 @@ function RatingButton({ item, onPress }: { item: (typeof RATINGS)[number]; onPre
 
 export default function FlashcardReviewScreen() {
   const paperTheme = useTheme();
-  const { brand } = useThemeContext();
+  const { theme } = useThemeContext();
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
   const setId = route.params?.setId;
@@ -210,7 +209,7 @@ export default function FlashcardReviewScreen() {
         contentStyle={{ gap: 0 }}
       >
         <View style={styles.centerState}>
-          <ActivityIndicator color={brand.primary} size="large" />
+          <ActivityIndicator color={theme.colors.primary} size="large" />
           <Text style={{ color: paperTheme.colors.onSurfaceVariant }}>Loading cards...</Text>
         </View>
       </ExpressiveScreen>
@@ -242,7 +241,7 @@ export default function FlashcardReviewScreen() {
           {error ? (
             <Button
               mode="contained"
-              buttonColor={brand.primary}
+              buttonColor={theme.colors.primary}
               onPress={() => refetch()}
               style={{ borderRadius: SHAPE.lg }}
             >
@@ -279,7 +278,7 @@ export default function FlashcardReviewScreen() {
           <Animated.View entering={FadeInUp.duration(400).delay(400)}>
             <Button
               mode="contained"
-              buttonColor={brand.primary}
+              buttonColor={theme.colors.primary}
               onPress={() => {
                 setIdx(0);
                 setFlipped(false);
@@ -308,7 +307,7 @@ export default function FlashcardReviewScreen() {
       <View style={{ paddingHorizontal: 16, paddingTop: 4 }}>
         <ProgressBar
           progress={progress}
-          color={brand.primary}
+          color={theme.colors.primary}
           style={[styles.progress, { backgroundColor: paperTheme.colors.surfaceVariant }]}
         />
       </View>
@@ -325,8 +324,7 @@ export default function FlashcardReviewScreen() {
             flipped={flipped}
             onFlip={() => setFlipped(!flipped)}
             themeCardBg={paperTheme.colors.surface}
-            themeBorderColor={paperTheme.colors.outlineVariant}
-            brandPrimary={brand.primary}
+            brandPrimary={theme.colors.primary}
           />
         </Animated.View>
       </View>

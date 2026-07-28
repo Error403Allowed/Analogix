@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireUser, unauthResponse } from "@/lib/api-auth";
+import { requireUser } from "@/lib/api-auth";
 
 /**
  * Simple text-to-speech endpoint

@@ -1,11 +1,10 @@
-import { selectBestInterest, buildMappingSection, getDefaultAnalogy } from "./interestMapper";
+import { selectBestInterest, buildMappingSection } from "./interestMapper";
 import { buildStructuredPrompt, DEFAULT_CONFIG } from "./promptTemplates";
 import { buildToneInstructions } from "./toneRules";
 
 export {
   selectBestInterest,
   getMappingsForConcept,
-  getDefaultAnalogy,
   buildMappingSection,
   getAllDomains,
   type ConceptMapping,

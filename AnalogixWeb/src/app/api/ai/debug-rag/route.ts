@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createCurriculumRetriever } from '@/lib/retrieval/curriculum';
-import { requireUser, unauthResponse } from "@/lib/api-auth";
+import { requireUser } from "@/lib/api-auth";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);

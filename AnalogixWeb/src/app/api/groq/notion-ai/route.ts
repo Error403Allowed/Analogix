@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { callGroqChatStream, classifyTaskType } from "../_utils";
-import { requireUser, unauthResponse } from "@/lib/api-auth";
+import { requireUser } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 

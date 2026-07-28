@@ -2,7 +2,6 @@ import React, { useMemo, useState, useRef, useEffect, useCallback } from "react"
 import { View, StyleSheet, Pressable } from "react-native";
 import {
   Text,
-  useTheme,
   Button,
   ProgressBar,
   ActivityIndicator,
@@ -18,6 +17,7 @@ import Animated, {
   FadeInUp,
 } from "react-native-reanimated";
 import { useThemeContext } from "../../theme/ThemeContext";
+import { alpha } from "../../theme";
 import { QUIZ, SUBMIT_QUIZ_ATTEMPT } from "../../graphql/queries/quiz";
 import Icon from "../../components/Icon";
 import { ExpressiveEmptyState, ExpressiveScreen } from "../../components/expressive";
@@ -89,8 +89,7 @@ const ENCOURAGEMENTS_WRONG = [
 ];
 
 export default function QuizSessionScreen() {
-  const paperTheme = useTheme();
-  const { brand } = useThemeContext();
+  const { theme } = useThemeContext();
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
   const { quizId, questions: paramQuestions, quizTitle, subjectId } = route.params ?? {};
@@ -211,7 +210,7 @@ export default function QuizSessionScreen() {
           />
           <Button
             mode="contained"
-            buttonColor={brand.primary}
+            buttonColor={theme.colors.primary}
             style={{ marginTop: 16, borderRadius: 12 }}
             onPress={() => refetch()}
           >
@@ -233,7 +232,7 @@ export default function QuizSessionScreen() {
           />
           <Button
             mode="contained"
-            buttonColor={brand.primary}
+            buttonColor={theme.colors.primary}
             style={{ marginTop: 16, borderRadius: 12 }}
             onPress={() => navigation.goBack()}
           >
@@ -248,8 +247,8 @@ export default function QuizSessionScreen() {
     return (
       <ExpressiveScreen title="Quiz" eyebrow="Study" leadingIcon="help-circle" onBack={() => navigation.goBack()} scroll>
         <View style={S.center}>
-          <ActivityIndicator size="large" color={brand.primary} />
-          <Text style={{ color: paperTheme.colors.onSurfaceVariant, textAlign: "center" }}>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+          <Text style={{ color: theme.colors.onSurfaceVariant, textAlign: "center" }}>
             Loading question...
           </Text>
         </View>
@@ -269,8 +268,8 @@ export default function QuizSessionScreen() {
     >
       <ProgressBar
         progress={current / total}
-        color={brand.primary}
-        style={[S.progressBar, { backgroundColor: paperTheme.colors.surfaceVariant }]}
+        color={theme.colors.primary}
+        style={[S.progressBar, { backgroundColor: theme.colors.surfaceVariant }]}
       />
 
       <Animated.View
@@ -282,26 +281,26 @@ export default function QuizSessionScreen() {
         <View
           style={[
             S.questionCard,
-            { backgroundColor: paperTheme.colors.surface, borderColor: paperTheme.colors.outlineVariant },
+            { backgroundColor: theme.colors.surface, borderColor: theme.colors.outlineVariant },
           ]}
         >
-          <Text style={[S.label, { color: brand.primary }]}>
+          <Text style={[S.label, { color: theme.colors.primary }]}>
             Question {current}
           </Text>
-          <Text style={[S.qText, { color: paperTheme.colors.onSurface }]}>
+          <Text style={[S.qText, { color: theme.colors.onSurface }]}>
             {question.question}
           </Text>
           {question.hint && !confirmed ? (
             <View
               style={[
                 S.hintBox,
-                { backgroundColor: paperTheme.colors.primaryContainer, borderColor: paperTheme.colors.outlineVariant },
+                { backgroundColor: theme.colors.primaryContainer, borderColor: theme.colors.outlineVariant },
               ]}
             >
-              <Icon name="lightbulb" size={14} color={brand.primary} />
+              <Icon name="lightbulb" size={14} color={theme.colors.primary} />
               <Text
                 style={{
-                  color: paperTheme.colors.onPrimaryContainer,
+                  color: theme.colors.onPrimaryContainer,
                   fontSize: 13,
                   lineHeight: 18,
                   flex: 1,
@@ -365,17 +364,17 @@ export default function QuizSessionScreen() {
                             : showWrong
                               ? "#ef444418"
                               : isSel
-                                ? brand.primary + "15"
-                                : paperTheme.colors.surface,
+                                ? alpha(theme.colors.primary, 0.09)
+                                : theme.colors.surface,
                           borderColor: showCorrect
                             ? "#10b981"
                             : showWrong
                               ? "#ef4444"
                               : isSel
-                                ? brand.primary
+                                ? theme.colors.primary
                                 : confirmed
-                                  ? paperTheme.colors.outline + "40"
-                                  : paperTheme.colors.outlineVariant,
+                                  ? alpha(theme.colors.outline, 0.25)
+                                  : theme.colors.outlineVariant,
                         },
                       ]}
                     >
@@ -389,8 +388,8 @@ export default function QuizSessionScreen() {
                                 : showWrong
                                   ? "#ef4444"
                                   : isSel
-                                    ? brand.primary
-                                    : paperTheme.colors.outlineVariant,
+                                    ? theme.colors.primary
+                                    : theme.colors.outlineVariant,
                             },
                           ]}
                         >
@@ -403,7 +402,7 @@ export default function QuizSessionScreen() {
                                     ? "#10b981"
                                     : showWrong
                                       ? "#ef4444"
-                                      : brand.primary,
+                                      : theme.colors.primary,
                                 },
                               ]}
                             />
@@ -415,8 +414,8 @@ export default function QuizSessionScreen() {
                             fontSize: 15,
                             color:
                               confirmed && !showCorrect && !showWrong
-                                ? paperTheme.colors.onSurface + "60"
-                                : paperTheme.colors.onSurface,
+                                ? alpha(theme.colors.onSurface, 0.38)
+                                : theme.colors.onSurface,
                             fontWeight: isSel ? "600" : "400",
                           }}
                         >
@@ -446,20 +445,20 @@ export default function QuizSessionScreen() {
             style={[
               S.explanationCard,
               {
-                backgroundColor: paperTheme.colors.primaryContainer,
-                borderColor: paperTheme.colors.outlineVariant,
+                backgroundColor: theme.colors.primaryContainer,
+                borderColor: theme.colors.outlineVariant,
               },
             ]}
           >
             <Icon
               name="lightbulb"
               size={16}
-              color={paperTheme.colors.onPrimaryContainer}
+              color={theme.colors.onPrimaryContainer}
               style={{ marginBottom: 6 }}
             />
             <Text
               style={{
-                color: paperTheme.colors.onPrimaryContainer,
+                color: theme.colors.onPrimaryContainer,
                 lineHeight: 20,
                 fontSize: 14,
               }}
@@ -470,19 +469,19 @@ export default function QuizSessionScreen() {
         ) : null}
       </Animated.View>
 
-      <View style={[S.footer, { borderTopColor: paperTheme.colors.outlineVariant }]}>
+      <View style={[S.footer, { borderTopColor: theme.colors.outlineVariant }]}>
         {confirmed && encouragement ? (
-          <Text style={[S.encouragement, { color: brand.primary }]}>{encouragement}</Text>
+          <Text style={[S.encouragement, { color: theme.colors.primary }]}>{encouragement}</Text>
         ) : null}
         <View style={S.scoreRow}>
-          <Text style={{ color: paperTheme.colors.onSurfaceVariant, fontSize: 13, fontWeight: "500" }}>
+          <Text style={{ color: theme.colors.onSurfaceVariant, fontSize: 13, fontWeight: "500" }}>
             {scoreSoFar}/{total} correct
           </Text>
         </View>
         {!confirmed ? (
           <Button
             mode="contained"
-            buttonColor={brand.primary}
+            buttonColor={theme.colors.primary}
             style={S.btn}
             contentStyle={{ height: 50 }}
             labelStyle={{ fontSize: 15, fontWeight: "700" }}
@@ -496,7 +495,7 @@ export default function QuizSessionScreen() {
         ) : (
           <Button
             mode="contained"
-            buttonColor={brand.primary}
+            buttonColor={theme.colors.primary}
             style={S.btn}
             contentStyle={{ height: 50 }}
             labelStyle={{ fontSize: 15, fontWeight: "700" }}

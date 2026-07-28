@@ -3,10 +3,9 @@
 
 import { useRef, useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Plus, Search, FileText, Sparkles, GripHorizontal, ArrowRight, PanelLeft } from "lucide-react";
+import { X, Plus, FileText, GripHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTabs, type AppTab, pathMeta } from "@/context/TabsContext";
-import { useSidebar } from "@/components/ui/sidebar";
 import {
   ContextMenu,
   ContextMenuTrigger,
@@ -28,13 +27,12 @@ interface TabBarProps {
   onNavigate: (path: string) => void;
 }
 
-// ── TabBar ────────────────────────────────────────────────────────────────────
+// ── TabBar ────────────────────────────
 export default function TabBar({ onNavigate }: TabBarProps) {
   const { tabs, activeTabId, hydrated, closeTab, setActiveTab, openTab, togglePin, reorderTabs } = useTabs();
   const pathname = usePathname(); // source of truth for active tab highlight
   const router = useRouter();
   const scrollRef = useRef<HTMLDivElement>(null);
-  const { toggleSidebar } = useSidebar();
 
   // ALL hooks must be declared before any early return
   const [newTabOpen, setNewTabOpen] = useState(false);
@@ -73,7 +71,7 @@ export default function TabBar({ onNavigate }: TabBarProps) {
     setDragOverIndex(null);
   }, []);
 
-  const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>, targetIndex: number, isPinned: boolean) => {
+  const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>, targetIndex: number) => {
     e.preventDefault();
     setDragOverIndex(null);
     
@@ -238,15 +236,6 @@ export default function TabBar({ onNavigate }: TabBarProps) {
       </AnimatePresence>
       <div className="relative h-11 shrink-0 border-b border-border/20 bg-background/80 px-3 py-1.5 backdrop-blur-lg">
         <div className="flex h-full items-center">
-        {/* Sidebar toggle button */}
-        <button
-          onClick={toggleSidebar}
-          className="mr-2 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-black/5 bg-black/[0.03] text-muted-foreground/80 transition-all duration-200 hover:border-black/10 hover:bg-black/[0.05] hover:text-foreground dark:border-white/10 dark:bg-white/[0.04] dark:hover:border-white/15 dark:hover:bg-white/[0.07]"
-          title="Toggle Sidebar"
-        >
-          <PanelLeft className="h-3.5 w-3.5" />
-        </button>
-
         <div
           ref={scrollRef}
           className="flex h-8 min-w-0 flex-1 items-center gap-1.5 overflow-x-auto overflow-y-hidden scrollbar-none rounded-xl border border-black/[0.05] bg-black/[0.02] px-1.5 py-1 dark:border-white/[0.06] dark:bg-white/[0.02]"
@@ -276,7 +265,7 @@ export default function TabBar({ onNavigate }: TabBarProps) {
                         onDragStart={(e) => handleDragStart(e, tab.id)}
                         onDragOver={(e) => handleDragOver(e, index)}
                         onDragLeave={handleDragLeave}
-                        onDrop={(e) => handleDrop(e, index, true)}
+                        onDrop={(e) => handleDrop(e, index)}
                         onDragEnd={handleDragEnd}
                         onClick={() => handleTabClick(tab)}
                         onMouseDown={(e) => handleMouseDown(e, tab.id)}
@@ -336,7 +325,7 @@ export default function TabBar({ onNavigate }: TabBarProps) {
                         onDragStart={(e) => handleDragStart(e, tab.id)}
                         onDragOver={(e) => handleDragOver(e, pinnedCount + index)}
                         onDragLeave={handleDragLeave}
-                        onDrop={(e) => handleDrop(e, pinnedCount + index, false)}
+                        onDrop={(e) => handleDrop(e, pinnedCount + index)}
                         onDragEnd={handleDragEnd}
                         onClick={() => handleTabClick(tab)}
                         onMouseDown={(e) => handleMouseDown(e, tab.id)}
@@ -464,7 +453,7 @@ export default function TabBar({ onNavigate }: TabBarProps) {
   );
 }
 
-// ── SubjectForm Component ────────────────────────────────────────────────────
+// ── SubjectForm Component ────────────
 function SubjectForm({
   mode,
   onSubmit,

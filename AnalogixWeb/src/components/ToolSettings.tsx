@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -9,17 +9,18 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Shield, Check, RotateCcw, Sparkles,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+
 import { toast } from "sonner";
 import type { AIPersonality } from "@/types/ai-personality";
-import { DEFAULT_AI_PERSONALITY } from "@/types/ai-personality";
+
 import { useAIPersonality } from "@/hooks/useAIPersonality";
 
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 interface ToolSettingsProps {
-  onClose?: () => void;
 }
 
-export const ToolSettings: React.FC<ToolSettingsProps> = ({ onClose }) => {
+export const ToolSettings: React.FC<ToolSettingsProps> = (_props) => {
+  void _props;
   const { personality, loading, saving, savePersonality, resetToDefaults } = useAIPersonality();
   const [local, setLocal] = useState<AIPersonality>(personality);
   const [dirty, setDirty] = useState(false);

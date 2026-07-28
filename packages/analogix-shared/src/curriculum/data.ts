@@ -5,9 +5,9 @@ import type {
   CurriculumTopic,
 } from "./types.js";
 
-// ──────────────────────────────────────────────
+// ──────
 // Maths (year 7–12)
-// ──────────────────────────────────────────────
+// ──────
 
 const mathGrade7: GradeCurriculum = {
   grade: 7,
@@ -249,9 +249,9 @@ const mathGrade12: GradeCurriculum = {
   ],
 };
 
-// ──────────────────────────────────────────────
+// ──────
 // Raw data — full curriculum tree
-// ──────────────────────────────────────────────
+// ──────
 
 export const CURRICULUM_DATA: CurriculumSubject[] = [
   {

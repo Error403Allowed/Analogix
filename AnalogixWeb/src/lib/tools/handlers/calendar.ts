@@ -27,17 +27,6 @@ export interface CalendarEvent {
   description?: string;
 }
 
-interface EventInsertParams {
-  user_id: string;
-  title: string;
-  date: string;
-  end_date?: string;
-  type: string;
-  subject?: string;
-  description?: string;
-  source: string;
-}
-
 export interface CreateEventParams {
   title: string;
   date: string;

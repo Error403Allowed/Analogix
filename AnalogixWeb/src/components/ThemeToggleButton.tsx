@@ -11,7 +11,7 @@ interface ThemeToggleButtonProps {
 }
 
 export function ThemeToggleButton({ buttonClassName, iconClassName }: ThemeToggleButtonProps) {
-  const { theme, setTheme, resolvedTheme } = useTheme();
+  const { setTheme, resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {

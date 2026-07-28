@@ -15,10 +15,13 @@ import Animated, {
   Easing,
 } from "react-native-reanimated";
 import { SHAPE } from "../../theme/tokens";
+import { alpha } from "../../theme";
+import { useThemeContext } from "../../theme/ThemeContext";
 import type { RootStackParamList } from "../../navigation/types";
 
 export default function ResetPasswordScreen() {
   const paperTheme = useTheme();
+  const { theme } = useThemeContext();
   const insets = useSafeAreaInsets();
   const nav = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
@@ -96,7 +99,7 @@ export default function ResetPasswordScreen() {
                 <View
                   style={[
                     styles.iconCircle,
-                    { backgroundColor: "#22C55E" + "14" },
+                    { backgroundColor: alpha(theme.colors.primary, 0.08) },
                   ]}
                 >
                   <Text style={{ fontSize: 32, color: "#22C55E" }}>✓</Text>
@@ -133,7 +136,7 @@ export default function ResetPasswordScreen() {
                   style={[
                     styles.iconCircle,
                     {
-                      backgroundColor: paperTheme.colors.primary + "14",
+                      backgroundColor: alpha(theme.colors.primary, 0.08),
                       alignSelf: "center",
                     },
                   ]}

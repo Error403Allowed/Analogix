@@ -1,28 +1,28 @@
- 
 "use client";
 
 import {
   LayoutDashboard, MessageCircle, Calendar,
   GraduationCap, Trophy, ChevronDown, Palette,
   Sun, Moon, User, Flame, Library, SigmaIcon, SquareStack, ClipboardList,
-  Plus, Search, MoreHorizontal, Sparkles, Users, BookOpen,
+  Plus, Search, Sparkles, Users, PanelLeft,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarHeader,
   SidebarMenu, SidebarMenuButton, SidebarMenuItem,
   SidebarGroup, SidebarGroupContent, SidebarSeparator,
+  SidebarRail, SidebarTrigger, useSidebar,
 } from "@/components/ui/sidebar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Switch } from "@/components/ui/switch";
 import { useRouter, usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useState, useEffect, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useTheme } from "next-themes";
 import { applyThemeByName } from "@/components/ThemeSelector";
 import { themes } from "@/components/ThemeSelector";
 import ProfileSheet from "@/components/ProfileSheet";
 import { NewPageModal } from "@/components/NewPageModal";
-import ChatHistoryPanel from "@/components/ChatHistoryPanel";
 import { useTabs, pathMeta } from "@/context/TabsContext";
 import { subjectStore, type SubjectData } from "@/utils/subjectStore";
 import { toast } from "sonner";
@@ -148,7 +148,7 @@ export function AppSidebar() {
       setSubjects(data);
       openTab(`/subjects/${subjectId}/document/${created.id}`, title, "📄");
       router.push(`/subjects/${subjectId}/document/${created.id}`);
-    } catch (error) {
+    } catch {
       toast.error("Failed to create page");
     }
   };
@@ -181,45 +181,50 @@ export function AppSidebar() {
 
   const name      = userData?.name || "Student";
   const avatarUrl = userData?.avatarUrl || "";
+  const { toggleSidebar, state } = useSidebar();
 
 
   return (
     /* Outer container — cleaner dark-friendly glass panel */
     <Sidebar
-      collapsible="offcanvas"
+      collapsible="icon"
       data-tutorial="sidebar"
-      className="!border-r-0 !border-l-0 !border-none rounded-xl border border-white/10 bg-background/95 shadow-[0_40px_120px_-60px_rgba(15,23,42,0.9)] backdrop-blur-xl dark:border-slate-800/60"
+      className="!border-r-0 !border-l-0 !border-none rounded-xl border border-white/10 bg-background/95 shadow-[0_40px_120px_-60px_rgba(15,23,42,0.9)] backdrop-blur-xl dark:border-slate-800/60 group-data-[collapsible=icon]:rounded-lg"
       style={{ background: "hsl(var(--background) / 0.95)" }}
     >
       {/* Inner container — clearer spacing and soft backdrop */}
-      <div className="flex flex-col h-full px-3 py-3 overflow-hidden space-y-3"
+      <div className="flex flex-col h-full px-3 py-3 overflow-hidden space-y-3 group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:py-1.5 group-data-[collapsible=icon]:space-y-1.5"
         style={{ background: "hsl(var(--background) / 0.94)" }}
       >
 
-        {/* ── Header: logo ──────────────────────────────────────── */}
-        <SidebarHeader className="h-20 shrink-0 flex flex-col justify-center px-4 pb-2 border-b border-muted/15">
-          <div className="flex items-center justify-between w-full">
+        {/* ── Header: logo (dock toggle on hover) ───────────────── */}
+        <SidebarHeader className="h-20 shrink-0 flex flex-col justify-center px-4 pb-2 border-b border-muted/15 group-data-[collapsible=icon]:h-auto group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:py-0.5 group-data-[collapsible=icon]:border-b-0">
+          <div className="flex items-center w-full justify-between group-data-[collapsible=icon]:justify-center">
             <button
-              onClick={() => router.push("/?force=true")}
-              className="flex items-center gap-3.5 rounded-3xl px-3 py-2 hover:bg-muted/30 transition-all active:scale-[0.98]"
+              onClick={toggleSidebar}
+              className="group/logo flex items-center gap-3.5 rounded-3xl px-3 py-2 hover:bg-muted/30 transition-all active:scale-[0.98] group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:w-8 group-data-[collapsible=icon]:h-8 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:rounded-lg"
             >
-              <div className="w-10 h-10 shrink-0">
-                <img src="/tab-icon.png" alt="Analogix" className="w-full h-full object-contain" />
+              <div className="w-10 h-10 shrink-0 relative group-data-[collapsible=icon]:w-5 group-data-[collapsible=icon]:h-5">
+                <img src="/tab-icon.png" alt="Analogix" className="w-full h-full object-contain group-hover/logo:opacity-0 group-hover/logo:scale-75 transition-all duration-200" />
+                <PanelLeft className="absolute inset-0 w-full h-full p-0 opacity-0 scale-75 group-hover/logo:opacity-100 group-hover/logo:scale-100 transition-all duration-200 text-sidebar-foreground" />
               </div>
-              <span className="text-lg font-black tracking-tight text-foreground">Analogix</span>
+              {state === "expanded" && <span className="text-lg font-black tracking-tight text-foreground">Analogix</span>}
             </button>
+            <SidebarTrigger className={`-mr-1 ${state !== "expanded" ? "hidden" : ""}`} />
           </div>
         </SidebarHeader>
 
         {/* ── Nav ───────────────────────────────────────────────────── */}
-        <SidebarContent className="flex-1 px-1 py-2 overflow-y-auto overflow-x-hidden text-foreground custom-scrollbar">
+        <SidebarContent className="flex-1 px-1 py-2 overflow-y-auto overflow-x-hidden text-foreground custom-scrollbar group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:py-0">
           {navGroups.map((group) => (
-            <SidebarGroup key={group.label} className="rounded-xl border border-muted/15 bg-muted/10 p-3 mb-3">
-              <p className="px-2 mb-2 text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground/70">
-                {group.label}
-              </p>
+            <SidebarGroup key={group.label} className="rounded-xl border border-muted/15 bg-muted/10 p-3 mb-3 group-data-[collapsible=icon]:border-none group-data-[collapsible=icon]:bg-transparent group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:mb-0">
+              {state === "expanded" && (
+                <p className="px-2 mb-2 text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground/70">
+                  {group.label}
+                </p>
+              )}
               <SidebarGroupContent>
-                <SidebarMenu className="gap-2">
+                <SidebarMenu className="gap-2 group-data-[collapsible=icon]:gap-1.5 group-data-[collapsible=icon]:items-center">
                   {group.items.map(item => {
                     const activeTab = tabs.find(t => t.id === activeTabId);
                     const isActive = activeTab?.path === item.url || pathname === item.url;
@@ -228,13 +233,14 @@ export function AppSidebar() {
                       <SidebarMenuItem key={item.title}>
                         <SidebarMenuButton
                           isActive={isActive}
+                          tooltip={item.title}
                           onClick={() => {
                             const meta = pathMeta(item.url);
                             openTab(item.url, meta.label, meta.emoji);
                             router.push(item.url);
                           }}
                           className={cn(
-                            "min-h-[46px] rounded-xl px-4 transition-all duration-200 font-semibold text-sidebar-foreground/80",
+                            "min-h-[46px] rounded-xl px-4 transition-all duration-200 font-semibold text-sidebar-foreground/80 group-data-[collapsible=icon]:min-h-0 group-data-[collapsible=icon]:rounded-lg group-data-[collapsible=icon]:px-0",
                             isActive
                               ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-lg shadow-sidebar-accent/15"
                               : "bg-transparent hover:bg-sidebar-accent/20 hover:text-sidebar-foreground"
@@ -246,7 +252,7 @@ export function AppSidebar() {
                               isActive ? "text-sidebar-accent-foreground" : "text-sidebar-foreground/70"
                             )}
                           />
-                          <span className="truncate">{item.title}</span>
+                          <span className={`truncate ${state !== "expanded" ? "hidden" : ""}`}>{item.title}</span>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
                     );
@@ -258,28 +264,30 @@ export function AppSidebar() {
         </SidebarContent>
 
         {/* ── Footer: user profile + streak ────────────────────────── */}
-        <SidebarFooter className="shrink-0 px-4 py-4 space-y-3 border-t border-muted/15 bg-background/90 backdrop-blur-xl">
-          <SidebarMenu className="gap-2 mb-1">
+          <SidebarFooter className="shrink-0 px-4 py-4 space-y-3 border-t border-muted/15 bg-background/90 backdrop-blur-xl group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:py-1.5 group-data-[collapsible=icon]:space-y-1.5">
+          <SidebarMenu className="gap-2 mb-1 group-data-[collapsible=icon]:gap-1.5 group-data-[collapsible=icon]:items-center">
             {/* Search button */}
             <SidebarMenuItem>
               <SidebarMenuButton
+                tooltip="Search"
                 onClick={() => setIsCommandMenuOpen(true)}
-                className="min-h-[46px] rounded-2xl px-4 text-sm font-semibold text-muted-foreground transition-colors hover:bg-muted/30"
+                className="min-h-[46px] rounded-2xl px-4 text-sm font-semibold text-muted-foreground transition-colors hover:bg-muted/30 group-data-[collapsible=icon]:min-h-0 group-data-[collapsible=icon]:rounded-lg group-data-[collapsible=icon]:px-0"
               >
                 <Search className="w-4 h-4 shrink-0" />
-                <span className="truncate">Search</span>
-                <span className="ml-auto text-[10px] opacity-50">⌘K</span>
+                <span className={`truncate ${state !== "expanded" ? "hidden" : ""}`}>Search</span>
+                <span className={`ml-auto text-[10px] opacity-50 ${state !== "expanded" ? "hidden" : ""}`}>⌘K</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
 
             {/* New page button */}
             <SidebarMenuItem>
               <SidebarMenuButton
+                tooltip="New page"
                 onClick={() => setIsNewPageModalOpen(true)}
-                className="min-h-[46px] rounded-2xl px-4 text-sm font-semibold text-muted-foreground transition-colors hover:bg-muted/30"
+                className="min-h-[46px] rounded-2xl px-4 text-sm font-semibold text-muted-foreground transition-colors hover:bg-muted/30 group-data-[collapsible=icon]:min-h-0 group-data-[collapsible=icon]:rounded-lg group-data-[collapsible=icon]:px-0"
               >
                 <Plus className="w-4 h-4 shrink-0" />
-                <span className="truncate">New page</span>
+                <span className={`truncate ${state !== "expanded" ? "hidden" : ""}`}>New page</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
 
@@ -287,11 +295,12 @@ export function AppSidebar() {
             {mounted && (
               <SidebarMenuItem>
                 <SidebarMenuButton
+                  tooltip={isDark ? "Light mode" : "Dark mode"}
                   onClick={() => setMode(isDark ? "light" : "dark")}
-                  className="min-h-[46px] rounded-2xl px-4 text-sm font-semibold text-muted-foreground transition-colors hover:bg-muted/30"
+                  className="min-h-[46px] rounded-2xl px-4 text-sm font-semibold text-muted-foreground transition-colors hover:bg-muted/30 group-data-[collapsible=icon]:min-h-0 group-data-[collapsible=icon]:rounded-lg group-data-[collapsible=icon]:px-0"
                 >
                   {isDark ? <Sun className="w-4 h-4 shrink-0" /> : <Moon className="w-4 h-4 shrink-0" />}
-                  <span className="truncate">{isDark ? "Light mode" : "Dark mode"}</span>
+                  <span className={`truncate ${state !== "expanded" ? "hidden" : ""}`}>{isDark ? "Light mode" : "Dark mode"}</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             )}
@@ -300,10 +309,10 @@ export function AppSidebar() {
             <SidebarMenuItem>
               <Popover open={themeOpen} onOpenChange={setThemeOpen}>
                 <PopoverTrigger asChild>
-                  <SidebarMenuButton className="min-h-[46px] rounded-2xl px-4 text-sm font-semibold text-muted-foreground transition-colors hover:bg-muted/30">
+                  <SidebarMenuButton tooltip="Colour scheme" className="min-h-[46px] rounded-2xl px-4 text-sm font-semibold text-muted-foreground transition-colors hover:bg-muted/30 group-data-[collapsible=icon]:min-h-0 group-data-[collapsible=icon]:rounded-lg group-data-[collapsible=icon]:px-0">
                     <Palette className="w-4 h-4 shrink-0" />
-                    <span className="truncate">Colour scheme</span>
-                    <ChevronDown className={cn("w-3 h-3 transition-transform ml-auto", themeOpen && "rotate-180")} />
+                    <span className={`truncate ${state !== "expanded" ? "hidden" : ""}`}>Colour scheme</span>
+                    <ChevronDown className={cn("w-3 h-3 transition-transform ml-auto", themeOpen && "rotate-180", state !== "expanded" && "hidden")} />
                   </SidebarMenuButton>
                 </PopoverTrigger>
                 <PopoverContent side="top" align="start" className="w-64 p-3 glass-card border border-muted/20 shadow-2xl bg-background/95 backdrop-blur-xl">
@@ -339,39 +348,41 @@ export function AppSidebar() {
             </SidebarMenuItem>
           </SidebarMenu>
 
-          <SidebarSeparator className="my-2 border-muted/15" />
+          <SidebarSeparator className="my-2 border-muted/15 group-data-[collapsible=icon]:my-1" />
 
-          <SidebarMenu>
+          <SidebarMenu className="group-data-[collapsible=icon]:items-center">
             <SidebarMenuItem>
-              <SidebarMenuButton size="lg" onClick={() => setProfileOpen(true)} data-tutorial="profile"
-                className="h-auto w-full flex items-center gap-3 p-3 rounded-xl border border-muted/20 bg-muted/10 transition-all hover:bg-muted/20 text-foreground cursor-pointer"
+              <SidebarMenuButton size="lg" tooltip={name} onClick={() => setProfileOpen(true)} data-tutorial="profile"
+                className="h-auto w-full flex items-center gap-3 p-3 rounded-xl border border-muted/20 bg-muted/10 transition-all hover:bg-muted/20 text-foreground cursor-pointer group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:w-8 group-data-[collapsible=icon]:h-8 group-data-[collapsible=icon]:border-none group-data-[collapsible=icon]:bg-transparent group-data-[collapsible=icon]:justify-center"
               >
                 {/* Avatar */}
                 <div className="relative shrink-0">
-                  <div className="w-11 h-11 rounded-2xl overflow-hidden bg-muted">
+                  <div className="w-11 h-11 rounded-2xl overflow-hidden bg-muted group-data-[collapsible=icon]:w-8 group-data-[collapsible=icon]:h-8 group-data-[collapsible=icon]:rounded-lg">
                     {avatarUrl ? (
                       <img src={avatarUrl} alt={name} className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full gradient-primary flex items-center justify-center">
-                        <User className="w-4 h-4 text-white" />
+                        <User className="w-4 h-4 text-white group-data-[collapsible=icon]:w-3.5 group-data-[collapsible=icon]:h-3.5" />
                       </div>
                     )}
                   </div>
                   {/* Streak badge — like the inspiration's percentage badge */}
                   {streak > 0 && (
-                    <div className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] rounded-full bg-amber-500 flex items-center justify-center px-1 shadow-md">
-                      <span className="text-[8px] font-black text-white leading-none flex items-center gap-0.5">
-                        <Flame className="w-2.5 h-2.5" />{streak}
+                    <div className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] rounded-full bg-amber-500 flex items-center justify-center px-1 shadow-md group-data-[collapsible=icon]:-top-1 group-data-[collapsible=icon]:-right-1 group-data-[collapsible=icon]:min-w-[14px] group-data-[collapsible=icon]:h-[14px] group-data-[collapsible=icon]:px-0.5">
+                      <span className="text-[8px] font-black text-white leading-none flex items-center gap-0.5 group-data-[collapsible=icon]:text-[6px]">
+                        <Flame className="w-2.5 h-2.5 group-data-[collapsible=icon]:w-2 group-data-[collapsible=icon]:h-2" />{streak}
                       </span>
                     </div>
                   )}
                 </div>
                 {/* Name + meta */}
-                <div className="flex-1 min-w-0 text-foreground">
-                  <p className="text-sm font-black truncate leading-tight">{name}</p>
-                  <p className="text-[9px] font-bold text-muted-foreground/60 uppercase tracking-widest truncate">
-                  </p>
-                </div>
+                {state === "expanded" && (
+                  <div className="flex-1 min-w-0 text-foreground">
+                    <p className="text-sm font-black truncate leading-tight">{name}</p>
+                    <p className="text-[9px] font-bold text-muted-foreground/60 uppercase tracking-widest truncate">
+                    </p>
+                  </div>
+                )}
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
@@ -379,47 +390,53 @@ export function AppSidebar() {
 
       </div>{/* end glass inner layer */}
       <ProfileSheet open={profileOpen} onOpenChange={setProfileOpen} />
-      
-      <NewPageModal
-        open={isNewPageModalOpen}
-        onClose={() => setIsNewPageModalOpen(false)}
-        onCreate={handleCreatePage}
-      />
 
-      <CommandMenu
-        open={isCommandMenuOpen}
-        onClose={() => setIsCommandMenuOpen(false)}
-        onNavigate={(path) => {
-          setIsCommandMenuOpen(false);
-          if (path === "new-event") {
-            router.push("/calendar");
-            setTimeout(() => window.dispatchEvent(new CustomEvent("openAddEvent")), 300);
-          } else if (path.startsWith("doc:")) {
-            // Parse "doc:docId:subjectId"
-            const parts = path.split(":");
-            const docId = parts[1];
-            const subjectId = parts[2];
-            
-            if (!docId || !subjectId) {
-              console.error("[AppSidebar] Invalid doc path format:", path);
-              return;
-            }
-            
-            // Get document title for tab label
-            const allDocs = Object.values(subjects).flatMap(s => (s?.notes?.documents || []));
-            const doc = allDocs.find(d => d.id === docId);
-            const title = doc?.title || "Document";
-            const icon = "📄";
-            
-            openTab(`/subjects/${subjectId}/document/${docId}`, title, icon);
-            router.push(`/subjects/${subjectId}/document/${docId}`);
-          } else if (path.startsWith("new-")) {
-            router.push("/dashboard");
-          } else {
-            router.push(path);
-          }
-        }}
-      />
+      {typeof document !== "undefined" && createPortal(
+        <>
+          <NewPageModal
+            open={isNewPageModalOpen}
+            onClose={() => setIsNewPageModalOpen(false)}
+            onCreate={handleCreatePage}
+          />
+
+          <CommandMenu
+            open={isCommandMenuOpen}
+            onClose={() => setIsCommandMenuOpen(false)}
+            onNavigate={(path) => {
+              setIsCommandMenuOpen(false);
+              if (path === "new-event") {
+                router.push("/calendar");
+                setTimeout(() => window.dispatchEvent(new CustomEvent("openAddEvent")), 300);
+              } else if (path.startsWith("doc:")) {
+                // Parse "doc:docId:subjectId"
+                const parts = path.split(":");
+                const docId = parts[1];
+                const subjectId = parts[2];
+
+                if (!docId || !subjectId) {
+                  console.error("[AppSidebar] Invalid doc path format:", path);
+                  return;
+                }
+
+                // Get document title for tab label
+                const allDocs = Object.values(subjects).flatMap(s => (s?.notes?.documents || []));
+                const doc = allDocs.find(d => d.id === docId);
+                const title = doc?.title || "Document";
+                const icon = "📄";
+
+                openTab(`/subjects/${subjectId}/document/${docId}`, title, icon);
+                router.push(`/subjects/${subjectId}/document/${docId}`);
+              } else if (path.startsWith("new-")) {
+                router.push("/dashboard");
+              } else {
+                router.push(path);
+              }
+            }}
+          />
+        </>,
+        document.body
+      )}
+      <SidebarRail />
     </Sidebar>
   );
 }

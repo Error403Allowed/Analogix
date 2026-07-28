@@ -1,5 +1,5 @@
 import { GraphQLError } from "graphql";
-import { requireUser } from "./_helpers.js";
+import { requireUser, throwSanitized } from "./_helpers.js";
 import type { GraphQLContext } from "../context.js";
 
 interface Achievement {
@@ -173,7 +173,7 @@ export const achievementResolvers = {
         .from("achievements")
         .select("*")
         .eq("user_id", user.id);
-      if (error) throw new GraphQLError(error.message);
+      if (error) throwSanitized(error, ctx);
       return (data ?? []).map((a) => ({
         id: a.id,
         achievementId: a.achievement_id,
@@ -202,7 +202,7 @@ export const achievementResolvers = {
         if (msg.includes("violates")) {
           throw new GraphQLError("Achievement may already be unlocked. Ensure the 'achievements' table has a unique constraint on (user_id, achievement_id).", { extensions: { code: "CONSTRAINT_VIOLATION", original: msg } });
         }
-        throw new GraphQLError(msg);
+        throwSanitized(error, ctx);
       }
       return {
         id: data.id,

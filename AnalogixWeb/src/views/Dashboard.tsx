@@ -8,10 +8,9 @@ import {
   MoreHorizontal, X, Check,
   MessageSquare, FileText, Calendar, Layers,
   Timer, Link2, Settings2,
-  Send, ArrowRight, Play, Pause, RotateCcw, SkipForward,
-  BookOpen, Plus, ChevronRight,
+  Send, ArrowRight, RotateCcw,
+  BookOpen, Plus,
 } from "lucide-react";
-import { DashboardPanel } from "@/components/ui/panels";
 import UpcomingEvents from "@/components/UpcomingEvents";
 import QuickLinks from "@/components/QuickLinks";
 import { useQuery } from "@apollo/client/react";
@@ -29,7 +28,7 @@ import type { TimerPhase } from "@/lib/timerStore";
 
 import { BarChart, Bar, XAxis, ResponsiveContainer } from "recharts";
 
-// ── helpers ───────────────────────────────────────────────────────────────────
+// ── helpers ───────────────────────────
 function buildWeek(entries: { date: string; count: number }[]): { date: string; count: number }[] {
   const now = new Date();
   const todayStr = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
@@ -69,7 +68,7 @@ function greeting() {
   return "Evening";
 }
 
-// ── Widget registry ───────────────────────────────────────────────────────────
+// ── Widget registry ───────────────────
 type WidgetId = "streak" | "chat" | "docs" | "events" | "timer" | "quicklinks" | "flashcards";
 
 interface WidgetMeta {
@@ -103,7 +102,7 @@ function loadEnabledWidgets(): WidgetId[] {
   return DEFAULT_ENABLED;
 }
 
-// ── Customise side panel ──────────────────────────────────────────────────────
+// ── Customise side panel ──────────────
 function CustomisePanel({ open, enabled, onSave, onClose }: {
   open: boolean; enabled: WidgetId[];
   onSave: (ids: WidgetId[]) => void; onClose: () => void;
@@ -173,7 +172,7 @@ function CustomisePanel({ open, enabled, onSave, onClose }: {
   );
 }
 
-// ── AiChatWidget ──────────────────────────────────────────────────────────────
+// ── AiChatWidget ──────────────────────
 
 function AiChatWidget() {
   const [input, setInput] = useState("");
@@ -382,7 +381,6 @@ function DocScrollRow() {
 
 // ── FlashcardWidget — live flashcard summary ──────────────────────────────────
 function FlashcardWidget() {
-  const router = useRouter();
   const [setsCount, setSetsCount] = useState(0);
   const [totalCards, setTotalCards] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -592,7 +590,7 @@ function MiniTimer() {
   );
 }
 
-// ── Dashboard ─────────────────────────────────────────────────────────────────
+// ── Dashboard ─────────────────────────
 type Prefs = { name?: string; subjects?: string[] };
 
 export default function Dashboard() {
@@ -719,7 +717,7 @@ export default function Dashboard() {
                   </div>
                   <div className="flex-1 min-w-0 self-end">
                     <ResponsiveContainer width="100%" height={72}>
-                      <BarChart data={(weekActivity.length > 0 ? weekActivity : Array.from({ length: 7 }, (_, i) => ({ date: "", count: 0 }))).map((d, i) => ({ ...d, day: DAY_SH[i] }))}>
+                      <BarChart data={(weekActivity.length > 0 ? weekActivity : Array.from({ length: 7 }, () => ({ date: "", count: 0 }))).map((d, i) => ({ ...d, day: DAY_SH[i] }))}>
                         <Bar dataKey="count" radius={[5, 5, 0, 0]} fill="#f59e0b" />
                         <XAxis dataKey="day" axisLine={false} tickLine={false}
                           tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} />

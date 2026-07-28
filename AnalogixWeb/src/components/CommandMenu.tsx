@@ -2,7 +2,7 @@
 
 import { useRef, useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, ArrowRight, CalendarPlus, FileText, FolderOpen, Loader2 } from "lucide-react";
+import { Search, ArrowRight, FolderOpen, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { subjectStore } from "@/utils/subjectStore";
 import type { SubjectDocumentItem } from "@/utils/subjectStore";
@@ -273,7 +273,6 @@ export function CommandMenu({
   if (!open) return null;
 
   // Group results for display
-  const hasDocs = visibleItems.some(r => r.type === "document");
   const hasNav = visibleItems.some(r => r.type === "nav");
 
   return (

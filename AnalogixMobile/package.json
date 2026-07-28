@@ -16,7 +16,7 @@
     "submit:android": "eas submit -p android",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "codegen": "graphql-codegen --config codegen.ts",
+    "codegen": "echo 'No codegen config — queries are handwritten'",
     "test:e2e": "playwright test"
   },
   "dependencies": {

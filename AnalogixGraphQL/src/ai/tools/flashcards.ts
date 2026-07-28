@@ -12,16 +12,19 @@ export const flashcardsHandlers: Record<string, ToolHandler> = {
     const { data, error } = await query;
     if (error) throw new Error(error.message);
     const sets = data ?? [];
-    const setsWithCounts = await Promise.all(
-      sets.map(async (set) => {
-        const { count } = await supabase
+    const setIds = sets.map((s) => s.id);
+    const { data: cardCounts } = setIds.length > 0
+      ? await supabase
           .from("flashcards")
-          .select("*", { count: "exact", head: true })
-          .eq("set_id", set.id)
-          .eq("user_id", userId);
-        return { ...set, cardCount: count ?? 0 };
-      })
-    );
+          .select("set_id, id", { count: "exact", head: false })
+          .in("set_id", setIds)
+          .eq("user_id", userId)
+      : { data: [] };
+    const countBySetId = new Map<string, number>();
+    for (const card of cardCounts ?? []) {
+      countBySetId.set(card.set_id, (countBySetId.get(card.set_id) ?? 0) + 1);
+    }
+    const setsWithCounts = sets.map((set) => ({ ...set, cardCount: countBySetId.get(set.id) ?? 0 }));
     return setsWithCounts;
   },
 

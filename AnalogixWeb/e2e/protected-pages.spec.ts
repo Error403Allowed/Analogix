@@ -28,11 +28,6 @@ const unprotectedRoutes = [
   { path: '/rooms', name: 'Rooms' },
 ];
 
-// Views that export directly as page exports (no ProtectedRoute)
-const viewExportRoutes = [
-  { path: '/rooms/room-1', name: 'Study Room Workspace (dynamic)', view: 'StudyRoomWorkspace' },
-];
-
 test.describe('Protected Pages — Redirect to Onboarding', () => {
   for (const { path, name } of protectedRoutes) {
     test(`redirects ${name} to onboarding`, async ({ page }) => {

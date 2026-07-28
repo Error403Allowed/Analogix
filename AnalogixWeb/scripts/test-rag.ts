@@ -1,5 +1,3 @@
-import { createToolsClient } from '@/lib/supabase/tools-client';
-import { generateEmbedding } from '@/lib/rag/embedder';
 import { createCurriculumRetriever } from '@/lib/retrieval/curriculum';
 
 async function testRAG() {

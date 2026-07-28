@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { BUILTIN_TYPES, PRESET_COLORS } from "../constants";
 import { saveCustomTypes, saveDeletedBuiltins, saveBuiltinOverrides } from "../storage";
 import type { CustomEventType, BuiltinOverrides, TypeMeta } from "../types";
-import { EmojiPicker } from "./EmojiPicker";
+import { EmojiPicker } from "./CalendarEmojiPicker";
 import { TagEditorPanel } from "./TagEditorPanel";
 
 export function ManageTagsModal({ customTypes, deletedBuiltins, builtinOverrides, onClose, onChange, onDeletedBuiltinsChange, onBuiltinOverridesChange, onAddCustomType }: {

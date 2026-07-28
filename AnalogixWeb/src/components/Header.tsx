@@ -1,15 +1,12 @@
-/* eslint-disable react-hooks/exhaustive-deps */
 "use client";
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Settings, User, Flame, Layers, Sigma, Sparkles, Brain, Users } from "lucide-react";
+import { Settings, User, Layers, Sigma, Sparkles, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ThemeToggle } from "./ThemeToggle";
-import ThemeSelector from "./ThemeSelector";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import SettingsDialog from "./SettingsDialog";

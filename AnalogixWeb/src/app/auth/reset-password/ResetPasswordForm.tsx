@@ -41,7 +41,7 @@ export default function ResetPasswordForm() {
   const [done, setDone] = useState(false);
 
   // Check for access_token in URL hash (Supabase sends it here)
-  const [hasToken, setHasToken] = useState(() => {
+  const [hasToken] = useState(() => {
     if (typeof window === "undefined") return false;
     const hash = window.location.hash;
     return !!(hash && (hash.includes("access_token") || hash.includes("type=recovery")));

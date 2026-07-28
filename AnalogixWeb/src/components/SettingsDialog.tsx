@@ -26,7 +26,7 @@ const SettingsDialog = ({ open, onOpenChange }: SettingsDialogProps) => {
   const [allToursSeen, setAllToursSeen] = useState(() => 
     typeof window !== "undefined" ? haveAllToursBeenSeen() : false
   );
-  const [prefs, setPrefs] = useState(() =>
+  const [prefs] = useState(() =>
     typeof window !== "undefined"
       ? JSON.parse(localStorage.getItem("userPreferences") || "{}")
       : {},

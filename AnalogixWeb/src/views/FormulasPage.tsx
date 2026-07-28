@@ -9,12 +9,6 @@ import MarkdownRenderer from "@/components/MarkdownRenderer";
 import { FORMULA_SHEETS, type Formula, type FormulaSheet } from "@/data/formulaSheets";
 import { SUBJECT_CATALOG } from "@/constants/subjects";
 import { cn } from "@/lib/utils";
-import { NextConfig } from 'next';
-
-// Caching
-const nextConfig: NextConfig = {
-  cacheComponents: true,
-}
 
 const subjectLabel = (id: string) =>
   SUBJECT_CATALOG.find(s => s.id === id)?.label

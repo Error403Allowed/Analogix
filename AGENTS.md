@@ -53,6 +53,38 @@ Monorepo (npm workspaces + Turborepo) for an AI study platform. Four workspaces 
 
 ## Important constraints
 
+## Migration Work Summary (brand.primary → theme.colors.primary + alpha())
+
+All 28+ files in AnalogixMobile have been migrated. The migration replaced:
+- `brand.primary` → `theme.colors.primary` (from `useThemeContext()`) across all screens/components, except where `brand` is intentionally kept for decorative/auth UI (LoginScreen orbs, Expressive decorative elements).
+- Hex color suffix patterns → `alpha()` function calls using the configured opacity table.
+- `paperTheme.colors.X` → `theme.colors.X` in files where `useThemeContext` was already imported.
+- Added `alpha` import to 20+ files where suffix patterns existed.
+
+Key mapping applied:
+| Hex suffix | Opacity |
+|---|---|
+| `"08"` | `0.03` |
+| `"10"` | `0.06` |
+| `"12"` | `0.07` |
+| `"14"` | `0.08` |
+| `"15"` | `0.09` |
+| `"16"` | `0.10` |
+| `"18"` | `0.10` |
+| `"1A"` | `0.10` |
+| `"20"` | `0.13` |
+| `"22"` | `0.13` |
+| `"30"` | `0.19` |
+| `"40"` | `0.25` |
+| `"44"` | `0.27` |
+| `"60"` | `0.38` |
+| `"66"` | `0.40` |
+| `"80"` | `0.50` |
+| `"99"` | `0.60` |
+| `"aa"` | `0.67` |
+
+Build verified: `npm run build` passes.
+
 - Node.js >=22 <27, npm >=11
 - `tsc --noEmit` requires `^build` (shared must be built first). Run `npm run build:shared` before `npm run typecheck`.
 - ESLint config lives at root `eslint.config.mjs` — do NOT add per-workspace eslint config files

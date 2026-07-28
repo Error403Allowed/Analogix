@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import { View, Pressable, StyleSheet, LayoutAnimation, Platform, UIManager } from "react-native";
-import { Text, useTheme } from "react-native-paper";
+import { Text } from "react-native-paper";
+import { useThemeContext } from "../theme/ThemeContext";
+import { alpha } from "../theme";
 import { MarkdownRenderer } from "./MarkdownRenderer";
 
 if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -13,7 +15,7 @@ interface Props {
 
 export function ThinkingBlock({ content }: Props) {
   const [open, setOpen] = useState(false);
-  const paperTheme = useTheme();
+  const { theme } = useThemeContext();
 
   return (
     <View style={styles.container}>
@@ -25,15 +27,15 @@ export function ThinkingBlock({ content }: Props) {
         style={styles.toggle}
         hitSlop={8}
       >
-        <Text style={[styles.arrow, { color: paperTheme.colors.onSurfaceVariant + "80" }]}>
+        <Text style={[styles.arrow, { color: alpha(theme.colors.onSurfaceVariant, 0.50) }]}>
           {open ? "▾" : "▸"}
         </Text>
-        <Text style={[styles.label, { color: paperTheme.colors.onSurfaceVariant + "80" }]}>
+        <Text style={[styles.label, { color: alpha(theme.colors.onSurfaceVariant, 0.50) }]}>
           {open ? "Hide thinking" : "Show thinking"}
         </Text>
       </Pressable>
       {open && (
-        <View style={[styles.body, { borderLeftColor: paperTheme.colors.outlineVariant }]}>
+        <View style={[styles.body, { borderLeftColor: theme.colors.outlineVariant }]}>
           <View style={styles.content}>
             <MarkdownRenderer content={content} />
           </View>

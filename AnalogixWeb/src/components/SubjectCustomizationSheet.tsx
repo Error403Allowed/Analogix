@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import {
   Sheet,
   SheetContent,
@@ -28,7 +27,7 @@ import { cn } from "@/lib/utils";
 import type { SubjectId } from "@/constants/subjects";
 import { SUBJECT_CATALOG } from "@/constants/subjects";
 import { IconPicker } from "@/components/IconPicker";
-import { ColorPicker, SUBJECT_COLORS, type SubjectColorId } from "@/components/ColorPicker";
+import { ColorPicker, SUBJECT_COLORS } from "@/components/ColorPicker";
 import { subjectStore } from "@/utils/subjectStore";
 import type { CustomSubject } from "@/utils/subjectStore";
 
@@ -65,7 +64,7 @@ export function SubjectCustomizationSheet({
   const [colorPickerOpen, setColorPickerOpen] = useState(false);
   const [customTitle, setCustomTitle] = useState("");
   const [selectedCover, setSelectedCover] = useState<string>("none");
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
 
   // Load custom subject data
   useEffect(() => {
@@ -107,7 +106,6 @@ export function SubjectCustomizationSheet({
   };
 
   const displayTitle = customTitle || subject?.label || "Unknown";
-  const displayIcon = customData?.custom_icon || subject?.icon.name || "BookOpen";
   const displayColor = customData?.custom_color || "default";
 
   const selectedColorData = SUBJECT_COLORS.find((c) => c.id === displayColor);

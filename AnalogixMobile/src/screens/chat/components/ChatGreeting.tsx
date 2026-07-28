@@ -2,9 +2,8 @@ import React from "react";
 import { View, Pressable } from "react-native";
 import { Text, useTheme } from "react-native-paper";
 
-export function ChatGreeting({ name }: { name: string }) {
+export function ChatGreeting() {
   const paperTheme = useTheme();
-  const displayName = name?.split(" ")[0] ?? "there";
   return (
     <View style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 32, paddingBottom: 120 }}>
       <Text style={{ fontSize: 26, fontWeight: "700", color: paperTheme.colors.onSurface, textAlign: "center", lineHeight: 34 }}>

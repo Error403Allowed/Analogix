@@ -3,7 +3,6 @@
 
 import { useState, useEffect, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { NextConfig } from 'next';
 import { ArrowLeft, Home, RotateCcw, Trophy, Lightbulb, Loader2, Sparkles, Clock, Brain, AlertTriangle, ChevronRight, Settings2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
@@ -20,11 +19,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
 import type { QuizAnswerInput, QuizOption, QuizQuestion, QuizReview } from "@/types/quiz";
-
-// Caching
-const nextConfig: NextConfig = {
-  cacheComponents: true,
-}
 
 type QuizAnswerRecord = QuizAnswerInput & {
   options?: QuizOption[];
@@ -338,13 +332,6 @@ const Quiz = () => {
       .catch(() => setReviewError("Couldn't generate AI feedback right now."))
       .finally(() => setIsReviewLoading(false));
   }, [isComplete, answeredRecords.length]);
-
-  const retryReview = () => {
-    setReview(null);
-    setReviewError(null);
-    reviewRequestedRef.current = false;
-  };
-
 
   const handleAnswer = (payload: { isCorrect: boolean; userAnswer: string; feedback?: string }) => {
     const question = questions[currentQuestion];

@@ -13,6 +13,7 @@ import {
 } from "../../graphql/queries/flashcard";
 import { EXTRACT_TEXT } from "../../graphql/queries/ai";
 import { useThemeContext } from "../../theme/ThemeContext";
+import { alpha } from "../../theme";
 import { SHAPE } from "../../theme/tokens";
 import Icon from "../../components/Icon";
 import { ExpressiveScreen, ExpressiveEmptyState } from "../../components/expressive";
@@ -90,7 +91,8 @@ function FlipCard({ front, back, flipped, onFlip, cardKey }: {
 
 export default function FlashcardSetScreen() {
   const paperTheme = useTheme();
-  const { brand } = useThemeContext();
+  const { theme } = useThemeContext();
+
   const c = paperTheme.colors as any;
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
@@ -241,14 +243,14 @@ export default function FlashcardSetScreen() {
           <View style={{ flex: 1 }}>
             <View style={styles.actions}>
               <Button
-                mode="contained" buttonColor={brand.primary} style={{ borderRadius: SHAPE.lg, flex: 1 }}
+                mode="contained" buttonColor={theme.colors.primary} style={{ borderRadius: SHAPE.lg, flex: 1 }}
                 disabled={cards.length === 0}
                 onPress={() => navigation.navigate("FlashcardReview", { setId })}
               >
                 Review ({cards.length})
               </Button>
-              <Pressable onPress={() => setShowAdd(true)} style={[styles.iconBtn, { backgroundColor: brand.primary + "12" }]}>
-                <Icon name="plus" size={20} color={brand.primary} />
+              <Pressable onPress={() => setShowAdd(true)} style={[styles.iconBtn, { backgroundColor: alpha(theme.colors.primary, 0.07) }]}>
+                <Icon name="plus" size={20} color={theme.colors.primary} />
               </Pressable>
               <Pressable onPress={() => setShowGenerate(true)} style={[styles.iconBtn, { backgroundColor: paperTheme.colors.surfaceVariant }]}>
                 <Icon name="auto-fix" size={20} color={paperTheme.colors.onSurfaceVariant} />
@@ -260,12 +262,12 @@ export default function FlashcardSetScreen() {
 
             {loading ? (
               <View style={styles.centerState}>
-                <ActivityIndicator color={brand.primary} />
+                <ActivityIndicator color={theme.colors.primary} />
               </View>
             ) : error ? (
               <View style={styles.centerState}>
                 <ExpressiveEmptyState icon="alert-circle" title="Could not load cards" subtitle="Check your connection and try again." />
-                <Button mode="contained" buttonColor={brand.primary} onPress={() => refetch()} style={{ borderRadius: SHAPE.lg }}>
+                <Button mode="contained" buttonColor={theme.colors.primary} onPress={() => refetch()} style={{ borderRadius: SHAPE.lg }}>
                   Retry
                 </Button>
               </View>
@@ -316,14 +318,14 @@ export default function FlashcardSetScreen() {
           <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.learnContent} showsVerticalScrollIndicator={true}>
             {learnComplete ? (
               <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 16 }}>
-                <Icon name="check-circle" size={64} color={brand.primary} />
+                <Icon name="check-circle" size={64} color={theme.colors.primary} />
                 <Text variant="headlineSmall" style={{ fontWeight: "700", color: paperTheme.colors.onSurface }}>
                   {correctCount} of {learnCards.length} correct
                 </Text>
                 <Text variant="bodyMedium" style={{ color: paperTheme.colors.onSurfaceVariant, textAlign: "center" }}>
                   {correctCount === learnCards.length ? "Perfect score!" : "Keep practising to improve."}
                 </Text>
-                <Button mode="contained" buttonColor={brand.primary} onPress={resetLearn}>Try Again</Button>
+                <Button mode="contained" buttonColor={theme.colors.primary} onPress={resetLearn}>Try Again</Button>
               </View>
             ) : learnCards.length === 0 ? (
               <View style={{ alignItems: "center", justifyContent: "center", flex: 1 }}>
@@ -333,7 +335,7 @@ export default function FlashcardSetScreen() {
               <View style={styles.learnSession}>
                 <ProgressBar
                   progress={(learnIdx + 1) / learnCards.length}
-                  color={brand.primary}
+                  color={theme.colors.primary}
                   style={[styles.progress, { backgroundColor: paperTheme.colors.surfaceVariant }]}
                 />
                 <Text variant="bodySmall" style={{ color: paperTheme.colors.onSurfaceVariant, textAlign: "center" }}>
@@ -360,7 +362,7 @@ export default function FlashcardSetScreen() {
                     </Button>
                     <Button
                       mode="contained" style={{ flex: 1, borderRadius: SHAPE.lg }}
-                      buttonColor={brand.primary}
+                      buttonColor={theme.colors.primary}
                       onPress={() => handleLearnAnswer(true)}
                     >
                       Got it
@@ -378,21 +380,21 @@ export default function FlashcardSetScreen() {
           <Text variant="titleLarge" style={{ fontWeight: "700", marginBottom: 16 }}>Add card</Text>
           <TextInput mode="outlined" label="Front" value={front} onChangeText={setFront} style={{ marginBottom: 12 }} />
           <TextInput mode="outlined" label="Back" value={back} onChangeText={setBack} multiline style={{ marginBottom: 16 }} />
-          <Button mode="contained" buttonColor={brand.primary} loading={creating} onPress={handleAdd} disabled={!front.trim() || !back.trim()}>Add</Button>
+          <Button mode="contained" buttonColor={theme.colors.primary} loading={creating} onPress={handleAdd} disabled={!front.trim() || !back.trim()}>Add</Button>
         </Modal>
 
         <Modal visible={showGenerate} onDismiss={() => setShowGenerate(false)} contentContainerStyle={[styles.modal, { backgroundColor: c.surface ?? paperTheme.colors.surface }]}>
           <Text variant="titleLarge" style={{ fontWeight: "700", marginBottom: 16 }}>Generate with AI</Text>
           <TextInput mode="outlined" label="Topic" value={topic} onChangeText={setTopic} style={{ marginBottom: 12 }} />
           <TextInput mode="outlined" label="Count" value={genCount} onChangeText={setGenCount} keyboardType="number-pad" style={{ marginBottom: 16 }} />
-          <Button mode="contained" buttonColor={brand.primary} loading={generating} onPress={handleGenerate} disabled={!topic.trim()}>Generate</Button>
+          <Button mode="contained" buttonColor={theme.colors.primary} loading={generating} onPress={handleGenerate} disabled={!topic.trim()}>Generate</Button>
         </Modal>
 
         <Modal visible={showEdit !== null} onDismiss={() => setShowEdit(null)} contentContainerStyle={[styles.modal, { backgroundColor: c.surface ?? paperTheme.colors.surface }]}>
           <Text variant="titleLarge" style={{ fontWeight: "700", marginBottom: 16 }}>Edit card</Text>
           <TextInput mode="outlined" label="Front" value={editFront} onChangeText={setEditFront} style={{ marginBottom: 12 }} />
           <TextInput mode="outlined" label="Back" value={editBack} onChangeText={setEditBack} multiline style={{ marginBottom: 16 }} />
-          <Button mode="contained" buttonColor={brand.primary} onPress={handleSaveEdit} disabled={!editFront.trim() || !editBack.trim()}>Save</Button>
+          <Button mode="contained" buttonColor={theme.colors.primary} onPress={handleSaveEdit} disabled={!editFront.trim() || !editBack.trim()}>Save</Button>
         </Modal>
 
         <Modal visible={showImport} onDismiss={() => setShowImport(false)} contentContainerStyle={[styles.modal, { backgroundColor: c.surface ?? paperTheme.colors.surface }]}>
@@ -402,7 +404,7 @@ export default function FlashcardSetScreen() {
           </Button>
           <Text variant="bodySmall" style={{ color: paperTheme.colors.onSurfaceVariant, textAlign: "center", marginBottom: 8 }}>or paste text below</Text>
           <TextInput mode="outlined" label="Paste content" value={pasteText} onChangeText={setPasteText} multiline style={{ minHeight: 120, marginBottom: 16 }} />
-          <Button mode="contained" buttonColor={brand.primary} loading={generating} onPress={handleImportFromText} disabled={pasteText.trim().length < 20}>
+          <Button mode="contained" buttonColor={theme.colors.primary} loading={generating} onPress={handleImportFromText} disabled={pasteText.trim().length < 20}>
             Generate Flashcards
           </Button>
         </Modal>

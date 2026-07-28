@@ -1,5 +1,5 @@
-import React, { useRef, useCallback } from "react";
-import { View, StyleSheet, Text, Platform } from "react-native";
+import React, { useRef } from "react";
+import { View, Text, StyleSheet, Platform } from "react-native";
 import { WebView } from "react-native-webview";
 import { useTheme } from "react-native-paper";
 import { config } from "../config";
@@ -76,7 +76,7 @@ function buildHtml(expressions: string[], isDark: boolean, apiKey: string): stri
 </html>`;
 }
 
-export function GraphPlotter({ expressions, title, height = 350 }: Props) {
+export function GraphPlotter({ expressions, height = 350 }: Props) {
   const paperTheme = useTheme();
   const webViewRef = useRef<any>(null);
   const isDark = paperTheme.dark;
@@ -107,7 +107,7 @@ export function GraphPlotter({ expressions, title, height = 350 }: Props) {
   );
 }
 
-export function GraphPlotterModal({ expressions, visible, onClose }: { expressions: string[]; visible: boolean; onClose: () => void }) {
+export function GraphPlotterModal({ expressions, visible }: { expressions: string[]; visible: boolean }) {
   const paperTheme = useTheme();
   if (!visible) return null;
   return (

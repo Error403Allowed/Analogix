@@ -2,36 +2,31 @@
 // CONFIGURATION: Where we send AI requests and which models to use
 // ============================================================================
 const GROQ_CHAT_URL = process.env.GROQ_CHAT_URL || "https://api.groq.com/openai/v1/chat/completions";
-// Model name normalization - fixes any short names to full model IDs
-// Groq API requires exact model IDs like "llama-3.1-8b-instant", not "llama-3.1-8b"
 const normalizeModelId = (modelId) => {
     const modelMap = {
-        "llama-3.1-8b": "llama-3.1-8b-instant",
-        "llama-3.1-70b": "llama-3.1-70b-versatile",
-        "llama-3.3-70b": "llama-3.3-70b-versatile",
-        "llama3-8b": "llama-3.1-8b-instant",
-        "llama3-70b": "llama-3.3-70b-versatile",
-        "llama-4-scout": "meta-llama/llama-4-scout-17b-16e-instruct",
-        "qwen-3-32b": "qwen/qwen3-32b",
+        "llama-3.1-8b": "openai/gpt-oss-20b",
+        "llama-3.1-70b": "openai/gpt-oss-120b",
+        "llama-3.3-70b": "openai/gpt-oss-120b",
+        "llama3-8b": "openai/gpt-oss-20b",
+        "llama3-70b": "openai/gpt-oss-120b",
+        "llama-4-scout": "qwen/qwen3.6-27b",
+        "qwen-3-32b": "qwen/qwen3.6-27b",
+        "qwen-3.6-27b": "qwen/qwen3.6-27b",
     };
-    // If already a full model ID, return as-is
-    if (modelId.includes("-instant") || modelId.includes("-versatile") || modelId.includes("meta-llama/")) {
+    if (modelId.includes("/")) {
         return modelId;
     }
     return modelMap[modelId] || modelId;
 };
 // Groq model lineup — using verified working model IDs from Groq API
 // Last verified: May 2025
-const DEFAULT_MODEL = "llama-3.3-70b-versatile"; // Llama 3.3 70B - best quality
-const DEFAULT_FALLBACK_MODEL = "llama-3.1-8b-instant"; // Llama 3.1 8B - fast & cheap
-const HIGH_THROUGHPUT_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"; // Higher TPM fallback for larger prompts
-const QWEN_MODEL = "qwen/qwen3-32b"; // Strong for math/science/coding
-// Additional models for specific use cases
-const LIGHTWEIGHT_MODEL = "llama-3.1-8b-instant"; // Fast, cheap
-const REASONING_MODEL = "qwen/qwen3-32b"; // Qwen3 for math/science reasoning
-const CODING_MODEL = "llama-3.3-70b-versatile"; // 70B for coding tasks
-const LARGE_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"; // Large context tasks
-const LAST_RESORT_MODEL = "llama-3.1-8b-instant"; // Fallback
+const DEFAULT_MODEL = "openai/gpt-oss-120b";
+const DEFAULT_FALLBACK_MODEL = "openai/gpt-oss-20b";
+const HIGH_THROUGHPUT_MODEL = "qwen/qwen3.6-27b";
+const LIGHTWEIGHT_MODEL = "openai/gpt-oss-20b";
+const REASONING_MODEL = "qwen/qwen3.6-27b";
+const CODING_MODEL = "openai/gpt-oss-120b";
+const LAST_RESORT_MODEL = "openai/gpt-oss-20b";
 // User-selected model (from client) — if provided, use this instead of auto-selection
 let userSelectedModel: string | null = null;
 /**
@@ -50,33 +45,21 @@ export const getUserSelectedModel = () => {
 // Model-specific token limits - capped to stay under Groq's rate limits
 // Qwen3-32B supports longer outputs for math/science reasoning
 const MODEL_OUTPUT_LIMITS = {
-    "llama-3.3-70b-versatile": 3000,
-    "llama-3.1-70b-versatile": 3000,
-    "llama-3.1-8b-instant": 3000,
-    "meta-llama/llama-4-scout-17b-16e-instruct": 3000,
-    "openai/gpt-oss-20b": 3000,
-    "openai/gpt-oss-120b": 3000,
-    "qwen/qwen3-32b": 4096,
+    "openai/gpt-oss-20b": 4096,
+    "openai/gpt-oss-120b": 4096,
+    "qwen/qwen3.6-27b": 4096,
 };
 const MODEL_CONTEXT_LIMITS = {
-    "llama-3.3-70b-versatile": 131072,
-    "llama-3.1-70b-versatile": 131072,
-    "llama-3.1-8b-instant": 131072,
-    "meta-llama/llama-4-scout-17b-16e-instruct": 131072,
     "openai/gpt-oss-20b": 131072,
     "openai/gpt-oss-120b": 131072,
-    "qwen/qwen3-32b": 131072,
+    "qwen/qwen3.6-27b": 131072,
 };
 // Conservative per-request caps based on Groq free-tier ~6k TPM
 // Qwen gets a higher budget for detailed math/science reasoning
 const MODEL_REQUEST_TOKEN_BUDGETS = {
-    "llama-3.3-70b-versatile": 12000,
-    "llama-3.1-70b-versatile": 12000,
-    "llama-3.1-8b-instant": 12000,
-    "meta-llama/llama-4-scout-17b-16e-instruct": 12000,
     "openai/gpt-oss-20b": 12000,
     "openai/gpt-oss-120b": 12000,
-    "qwen/qwen3-32b": 16000,
+    "qwen/qwen3.6-27b": 16000,
 };
 const MIN_COMPLETION_TOKENS = 256;
 const getSafeMaxTokens = (model, requested, estimatedInputTokens = 0) => {
@@ -90,43 +73,6 @@ const getSafeMaxTokens = (model, requested, estimatedInputTokens = 0) => {
 // ============================================================================
 // SMART QUESTION DETECTION: How we figure out what type of question it is
 // ============================================================================
-// Words that indicate a CODING question
-const CODING_KEYWORDS = [
-    "code", "coding", "program", "programming", "function", "method", "class",
-    "debug", "debugging", "algorithm", "script", "syntax", "compiler", "variable",
-    "api", "endpoint", "database", "sql", "query", "javascript", "python", "java",
-    "typescript", "react", "node", "html", "css", "git", "github", "array", "object",
-    "loop", "json", "const", "let", "var", "npm", "component", "interface",
-    "implement", "refactor", "deploy", "build", "compile", "runtime", "framework",
-    "library", "package", "module", "export", "import", "async", "await", "promise",
-    "callback", "middleware", "server", "client", "rest", "graphql", "docker",
-    "kubernetes", "ci/cd", "pipeline", "test", "unit test", "integration test"
-];
-// Words that indicate a REASONING / MATH / SCIENCE question
-const REASONING_KEYWORDS = [
-    "solve", "calculate", "find", "prove", "derivative", "integral",
-    "equation", "formula", "quadratic", "algebra", "geometry", "calculus",
-    "physics", "chemistry", "biology", "science",
-    "theorem", "hypothesis", "experiment", "analysis", "statistic", "probability",
-    "matrix", "vector", "polynomial", "logarithm", "trigonometry", "differential",
-    "molecular", "atomic", "reaction", "force", "velocity", "acceleration",
-    "energy", "momentum", "entropy", "wavelength", "frequency", "circuit",
-    "organic", "inorganic", "stoichiometry", "periodic", "isotope", "enzyme",
-    "cell", "dna", "rna", "protein", "metabolism", "evolution", "genetics"
-];
-// Words that indicate a CREATIVE / WRITING task (benefits from larger models)
-const CREATIVE_KEYWORDS = [
-    "write", "essay", "story", "poem", "creative", "describe", "explain in detail",
-    "compare", "contrast", "analyze", "discuss", "evaluate", "critique", "review",
-    "summarize", "outline", "draft", "compose", "narrative", "argument", "thesis",
-    "persuade", "opinion", "interpret", "meaning", "theme", "symbolism", "metaphor"
-];
-// Words that indicate a simple/conversational message (lightweight is fine)
-const CONVERSATIONAL_KEYWORDS = [
-    "thanks", "thank", "appreciate", "great", "awesome", "perfect", "nice",
-    "cool", "ok", "okay", "sure", "got it", "understood", "makes sense",
-    "interesting", "wow", "haha", "lol", "good", "bad", "right", "wrong"
-];
 // Simple greetings/small talk that should use fast path
 const SIMPLE_MESSAGES = [
     "hi", "hello", "hey", "greetings", "g'day", "hiya", "heya",
@@ -176,18 +122,10 @@ const getApiKeyAtIndex = (index) => {
 // ============================================================================
 // Groq free tier limits (adjust if you have different limits)
 const RATE_LIMIT_CONFIG = {
-    // Requests per minute per API key (conservative to avoid 429s)
-    rpmPerKey: 10,
-    // Tokens per minute per API key — Groq free tier is 6000 TPM per key
-    // We use 14000 as a generous local-side cap (actual enforcement is by Groq).
-    // The local bucket is just a soft throttle, not a hard gate.
-    tpmPerKey: 30000,
-    // Minimum delay between requests (ms) - spreads requests out
-    minDelayMs: 100,
-    // Maximum concurrent requests per key — set high enough that normal
-    // chat usage (2-3 messages in flight) never gets blocked locally.
-    // Groq's own 429s handle real overload; this just prevents runaway loops.
-    maxConcurrentPerKey: 10,
+    rpmPerKey: 6,
+    tpmPerKey: 6000,
+    minDelayMs: 200,
+    maxConcurrentPerKey: 2,
 };
 const keyBuckets = new Map();
 const getOrCreateBucket = (keyIndex) => {
@@ -203,27 +141,27 @@ const getOrCreateBucket = (keyIndex) => {
 const refillTokens = (bucket) => {
     const now = Date.now();
     const elapsedMs = now - bucket.lastRefill;
-    // Refill at per-key rate only (not multiplied by key count)
     const tokensPerMs = RATE_LIMIT_CONFIG.tpmPerKey / 60000;
-    const newTokens = Math.min(RATE_LIMIT_CONFIG.tpmPerKey, bucket.tokens + elapsedMs * tokensPerMs);
-    bucket.tokens = newTokens;
+    bucket.tokens = Math.min(RATE_LIMIT_CONFIG.tpmPerKey, bucket.tokens + elapsedMs * tokensPerMs);
     bucket.lastRefill = now;
 };
 const waitForToken = async (keyIndex, requiredTokens) => {
     const bucket = getOrCreateBucket(keyIndex);
-    refillTokens(bucket);
-    // Never block on concurrent requests locally — Groq handles real overload via 429.
-    // Just track it for observability.
+    // Block until tokens are available
+    const tokensPerMs = RATE_LIMIT_CONFIG.tpmPerKey / 60000;
+    while (true) {
+        refillTokens(bucket);
+        const effectiveRequired = Math.min(requiredTokens, RATE_LIMIT_CONFIG.tpmPerKey * 0.85);
+        if (bucket.tokens >= effectiveRequired) {
+            bucket.tokens -= effectiveRequired;
+            break;
+        }
+        // Wait for enough tokens to accumulate
+        const deficit = effectiveRequired - bucket.tokens;
+        const waitMs = Math.ceil(deficit / tokensPerMs) + 50;
+        await delay(Math.min(waitMs, 5000));
+    }
     bucket.concurrentRequests++;
-    // Deduct tokens if available; if not, let it through anyway (soft throttle only).
-    const effectiveRequired = Math.min(requiredTokens, RATE_LIMIT_CONFIG.tpmPerKey * 0.9);
-    if (bucket.tokens >= effectiveRequired) {
-        bucket.tokens -= effectiveRequired;
-    }
-    else {
-        // Bucket empty — let it through, Groq will 429 if truly overloaded
-        bucket.tokens = 0;
-    }
     return true;
 };
 const releaseRequest = (keyIndex) => {
@@ -238,8 +176,6 @@ const exponentialBackoff = async (attempt, baseMs = 500) => {
     await delay(waitTime + jitter);
 };
 // Global request queue to serialize requests when rate limited
-const requestQueue = [];
-const isProcessingQueue = false;
 const enqueueRequest = () => {
     // Don't queue at all — let requests run concurrently.
     // The token bucket and Groq's own 429s handle actual overload.
@@ -348,47 +284,6 @@ export const classifyTaskType = (messages, subject) => {
     // deterministic and return 'default'.)
     return "default";
 };
-const classifyWithAI = async (userMessage) => {
-    try {
-        const apiKey = getApiKeyAtIndex(0);
-        if (!apiKey)
-            return "default";
-        const classificationPrompt = `You are a task classifier. Analyze this user message and respond with ONLY one of these labels: coding, reasoning, default, lightweight
-
-Message: "${userMessage.slice(0, 500)}"
-
-Respond with only the label (no explanation):`;
-        const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-            method: "POST",
-            headers: {
-                "Authorization": `Bearer ${apiKey}`,
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-                model: "mixtral-8x7b-32768",
-                messages: [{ role: "user", content: classificationPrompt }],
-                temperature: 0,
-                max_tokens: 10,
-            }),
-        });
-        if (!response.ok) {
-            console.warn("[classifyWithAI] Classification API returned:", response.status);
-            return "default";
-        }
-        const data = await response.json();
-        const classification = data.choices?.[0]?.message?.content?.trim().toLowerCase() || "";
-        // Validate and return the classification
-        const validTypes = ["coding", "reasoning", "default", "lightweight"];
-        if (validTypes.includes(classification)) {
-            return classification;
-        }
-        return "default";
-    }
-    catch (error) {
-        console.warn("[classifyWithAI] Failed to classify with AI:", formatError(error));
-        return "default";
-    }
-};
 // ============================================================================
 // MODEL SELECTION
 // ============================================================================
@@ -468,18 +363,6 @@ const getModelsForTaskType = (taskType, userModel, estimatedTokens) => {
 };
 // DeepSeek-R1 works best with instructions in user messages, not system prompts.
 // This merges any system message into the first user message.
-const foldSystemIntoUser = (messages) => {
-    const systemMsg = messages.find(m => m.role === "system");
-    if (!systemMsg)
-        return messages;
-    const rest = messages.filter(m => m.role !== "system");
-    const firstUser = rest.find(m => m.role === "user");
-    if (!firstUser)
-        return rest;
-    return rest.map(m => m === firstUser
-        ? { ...m, content: `${systemMsg.content}\n\n${m.content}` }
-        : m);
-};
 // ============================================================================
 // FAST PATH: For simple messages like greetings - no queue, lightweight model
 // ============================================================================
@@ -548,7 +431,7 @@ export const callGroqChat = async (payload, taskType = "default", userSelectedMo
         try {
             return await callFastChat(payload);
         }
-        catch (error) {
+        catch {
             // Fast path failed (e.g., request too large), fall through to normal path
             console.log("[Groq] Fast path failed, using normal path");
         }

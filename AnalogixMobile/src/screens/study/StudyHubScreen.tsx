@@ -1,9 +1,8 @@
 import React from "react";
-import { View, StyleSheet, ScrollView } from "react-native";
+import { View, StyleSheet } from "react-native";
 import { Text, useTheme } from "react-native-paper";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
-import { useThemeContext } from "../../theme/ThemeContext";
+import { alpha } from "../../theme";
 import {
   ExpressiveScreen,
   ExpressiveSection,
@@ -28,12 +27,13 @@ const TOOLS: StudyTool[] = [
   { key: "formulas", name: "Formulas", icon: "function", description: "Formula sheets and references", screen: "Formulas", color: "#10b981" },
   { key: "timer", name: "Timer", icon: "timer", description: "Focus and break time tracking", screen: "Timer", color: "#ef4444" },
   { key: "resources", name: "Resources", icon: "bookmark-multiple", description: "Past papers, textbooks and study links", screen: "Resources", color: "#a855f7" },
+  { key: "studyMap", name: "Study Map", icon: "map", description: "Track your progress across subjects", screen: "StudyMap", color: "#6366f1" },
   { key: "curriculum", name: "Curriculum", icon: "school", description: "ACARA Australian Curriculum browser", screen: "CurriculumBrowser", color: "#06b6d4" },
 ];
 
 export default function StudyHubScreen() {
   const paperTheme = useTheme();
-  const { brand } = useThemeContext();
+
   const navigation = useNavigation<any>();
 
   const navigateTo = (screen: string) => {
@@ -57,7 +57,7 @@ export default function StudyHubScreen() {
               onPress={() => navigateTo(tool.screen)}
             >
               <View style={[styles.toolCard, { backgroundColor: paperTheme.colors.surface, boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }]}>
-                <View style={[styles.iconBox, { backgroundColor: tool.color + "16" }]}>
+                <View style={[styles.iconBox, { backgroundColor: alpha(tool.color, 0.10) }]}>
                   <Icon name={tool.icon} size={22} color={tool.color} />
                 </View>
                 <View style={{ flex: 1 }}>

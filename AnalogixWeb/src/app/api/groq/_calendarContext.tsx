@@ -4,18 +4,6 @@
  * them as a concise, human-readable string for injection into AI prompts.
  * Used by both /api/groq/agent and /api/groq/chat-stream.
  */
-const getTimeOfDay = (date) => {
-    const hour = date.getHours();
-    if (hour >= 5 && hour < 12)
-        return "morning";
-    if (hour >= 12 && hour < 14)
-        return "midday";
-    if (hour >= 14 && hour < 18)
-        return "afternoon";
-    if (hour >= 18 && hour < 22)
-        return "evening";
-    return "night";
-};
 const formatDate = (iso) => {
     try {
         const d = iso instanceof Date ? iso : new Date(iso + (iso.includes("Z") || iso.includes("+") ? "" : "+00:00"));
@@ -42,14 +30,11 @@ const formatTime = (iso) => {
 };
 export async function buildCalendarContext(supabase, userId) {
     const now = new Date();
-    const timeOfDay = getTimeOfDay(now);
-    const currentHour = now.getHours();
-    const currentMinute = now.getMinutes();
     const from = new Date(now);
     from.setDate(from.getDate() - 180);
     const to = new Date(now);
     to.setDate(to.getDate() + 180);
-    // ── Fetch events ──────────────────────────────────────────────────────────
+    // ── Fetch events ──────────────────
     const { data: eventRows } = await supabase
         .from("events")
         .select("title, date, type, subject, description")
@@ -64,7 +49,7 @@ export async function buildCalendarContext(supabase, userId) {
         subject: r.subject,
         description: r.description,
     }));
-    // ── Fetch deadlines ───────────────────────────────────────────────────────
+    // ── Fetch deadlines ───────────────
     const { data: deadlineRows } = await supabase
         .from("deadlines")
         .select("title, due_date, subject, priority")
@@ -91,8 +76,6 @@ export async function buildCalendarContext(supabase, userId) {
         const eventEnd = new Date(eventStart.getTime() + 60 * 60 * 1000); // Assume 1 hour duration
         return now >= eventStart && now < eventEnd;
     });
-    // Find next event/deadline
-    const nextItem = allItems.find(i => i.date >= now);
     // Find next class/lesson specifically
     const nextClass = allItems.find(i => i.date >= now && (i.type === "class" || i.type === "lesson" || i.title.toLowerCase().includes("class") || i.title.toLowerCase().includes("lesson")));
     // Today's events

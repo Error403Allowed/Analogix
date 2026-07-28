@@ -24,7 +24,6 @@ const QuickChat = () => {
     typeof window !== "undefined"
       ? JSON.parse(localStorage.getItem("userPreferences") || "{}")
       : {};
-  const userName = userPrefs.name || "friend";
   const userHobbies = buildInterestList(userPrefs, ["gaming"]);
   const userSubjects = userPrefs.subjects || ["general"];
 

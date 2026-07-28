@@ -1,8 +1,11 @@
-import { ApolloClient, InMemoryCache, ApolloLink } from "@apollo/client/core";
+import { ApolloClient, InMemoryCache, ApolloLink, split } from "@apollo/client/core";
 import { HttpLink } from "@apollo/client/link/http";
-import { SetContextLink } from "@apollo/client/link/context";
+import { setContext } from "@apollo/client/link/context";
 import { ErrorLink } from "@apollo/client/link/error";
+import { GraphQLWsLink } from "@apollo/client/link/subscriptions";
+import { createClient as createWsClient } from "graphql-ws";
 import { CombinedGraphQLErrors } from "@apollo/client/errors";
+import { getMainDefinition } from "@apollo/client/utilities";
 import { createClient } from "@/lib/supabase/client";
 
 function getGraphQlUrl(): string {
@@ -13,6 +16,12 @@ function getGraphQlUrl(): string {
   return "http://localhost:4000/graphql";
 }
 
+function getGraphQlWsUrl(): string {
+  if (typeof window === "undefined") return "ws://localhost:4000/graphql";
+  const httpUrl = getGraphQlUrl();
+  return httpUrl.replace(/^http/, "ws");
+}
+
 async function getAccessToken(): Promise<string | null> {
   const supabase = createClient();
   const { data } = await supabase.auth.getSession();
@@ -21,12 +30,29 @@ async function getAccessToken(): Promise<string | null> {
 
 const httpLink = new HttpLink({ uri: getGraphQlUrl() });
 
-const authLink = new SetContextLink(async (prevContext) => {
+let wsLink: GraphQLWsLink | undefined;
+if (typeof window !== "undefined") {
+  wsLink = new GraphQLWsLink(
+    createWsClient({
+      url: getGraphQlWsUrl(),
+      connectionParams: async () => {
+        const token = await getAccessToken();
+        return token ? { Authorization: `Bearer ${token}` } : {};
+      },
+      retryAttempts: 5,
+      shouldRetry: () => true,
+    }),
+  );
+}
+
+const authLink = setContext(async (prevContext) => {
   const token = await getAccessToken();
+  const prev = prevContext as Record<string, unknown>;
   return {
     ...prevContext,
     headers: {
-      ...(prevContext.headers ?? {}),
+      "Content-Type": "application/json",
+      ...(typeof prev.headers === "object" && prev.headers ? (prev.headers as Record<string, string>) : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
   };
@@ -44,9 +70,20 @@ const errorLink = new ErrorLink(({ error }) => {
   }
 });
 
+const terminatingLink = typeof window !== "undefined" && wsLink
+  ? split(
+      ({ query }) => {
+        const def = getMainDefinition(query);
+        return def.kind === "OperationDefinition" && def.operation === "subscription";
+      },
+      wsLink,
+      httpLink,
+    )
+  : httpLink;
+
 export function createApolloClient(): ApolloClient {
   return new ApolloClient({
-    link: ApolloLink.from([errorLink, authLink, httpLink]),
+    link: ApolloLink.from([errorLink, authLink, terminatingLink]),
     cache: new InMemoryCache(),
     defaultOptions: {
       watchQuery: { fetchPolicy: "cache-and-network", errorPolicy: "all" as const },

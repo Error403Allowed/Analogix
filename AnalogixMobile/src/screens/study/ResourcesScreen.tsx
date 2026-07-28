@@ -5,12 +5,12 @@ import {
   Pressable,
   TextInput,
   Linking,
-  Platform,
 } from "react-native";
-import { Text, useTheme, ActivityIndicator, Chip } from "react-native-paper";
+import { Text, useTheme, ActivityIndicator } from "react-native-paper";
 import { useQuery } from "@apollo/client/react";
-import { useNavigation, useFocusEffect } from "@react-navigation/native";
+import { useFocusEffect } from "@react-navigation/native";
 import { useThemeContext } from "../../theme/ThemeContext";
+import { alpha } from "../../theme";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -19,7 +19,7 @@ import Animated, {
 import Icon from "../../components/Icon";
 import { ExpressiveScreen, ExpressiveEmptyState } from "../../components/expressive";
 import { CURATED_RESOURCES } from "../../graphql/queries/curatedResource";
-import { SHAPE } from "../../theme/tokens";
+import { MOTION, SHAPE } from "../../theme/tokens";
 
 type Tab = "pastPapers" | "textbooks";
 type ResourceLink = { title: string; url: string; description?: string; free?: boolean; states?: string[] };
@@ -53,8 +53,8 @@ function ResourceCard({ resource, colors }: { resource: ResourceLink; colors: an
     <Animated.View style={animStyle}>
       <Pressable
         onPress={() => Linking.openURL(resource.url)}
-        onPressIn={() => { scale.value = withSpring(0.97); }}
-        onPressOut={() => { scale.value = withSpring(1); }}
+        onPressIn={() => { scale.value = withSpring(0.97, MOTION.tap); }}
+        onPressOut={() => { scale.value = withSpring(1, MOTION.tap); }}
         style={[styles.resourceCard, { backgroundColor: colors.surface, borderColor: colors.outlineVariant }]}
       >
         <View style={styles.resourceCardTop}>
@@ -62,7 +62,7 @@ function ResourceCard({ resource, colors }: { resource: ResourceLink; colors: an
             {resource.title}
           </Text>
           {resource.free && (
-            <View style={[styles.freeBadge, { backgroundColor: colors.primary + "15" }]}>
+            <View style={[styles.freeBadge, { backgroundColor: alpha(colors.primary, 0.09) }]}>
               <Text style={[styles.freeBadgeText, { color: colors.primary }]}>Free</Text>
             </View>
           )}
@@ -84,8 +84,7 @@ function ResourceCard({ resource, colors }: { resource: ResourceLink; colors: an
 
 export default function ResourcesScreen() {
   const paperTheme = useTheme();
-  const { brand } = useThemeContext();
-  const navigation = useNavigation();
+  const { theme } = useThemeContext();
   const { loading, error, data } = useQuery(CURATED_RESOURCES);
   const [query, setQuery] = useState("");
   const [activeSubjectId, setActiveSubjectId] = useState<string | null>(null);
@@ -134,7 +133,7 @@ export default function ResourcesScreen() {
     return (
       <ExpressiveScreen title="Resources">
         <View style={styles.center}>
-          <ActivityIndicator size="large" color={brand.primary} />
+          <ActivityIndicator size="large" color={theme.colors.primary} />
         </View>
       </ExpressiveScreen>
     );
@@ -178,7 +177,7 @@ export default function ResourcesScreen() {
             value={query}
             onChangeText={setQuery}
             placeholder="Search resources…"
-            placeholderTextColor={c.onSurfaceVariant + "80"}
+            placeholderTextColor={alpha(theme.colors.onSurfaceVariant, 0.50)}
             style={[styles.searchInput, { color: c.onSurface }]}
           />
           {query ? (
@@ -201,8 +200,8 @@ export default function ResourcesScreen() {
                 style={[
                   styles.subjectChip,
                   {
-                    backgroundColor: active ? brand.primary : c.surfaceVariant,
-                    borderColor: active ? brand.primary : c.outlineVariant,
+                    backgroundColor: active ? theme.colors.primary : c.surfaceVariant,
+                    borderColor: active ? theme.colors.primary : c.outlineVariant,
                   },
                 ]}
               >
@@ -241,8 +240,8 @@ export default function ResourcesScreen() {
                 style={[
                   styles.tab,
                   {
-                    backgroundColor: active ? brand.primary : c.surfaceVariant,
-                    borderColor: active ? brand.primary : c.outlineVariant,
+                    backgroundColor: active ? theme.colors.primary : c.surfaceVariant,
+                    borderColor: active ? theme.colors.primary : c.outlineVariant,
                   },
                 ]}
               >

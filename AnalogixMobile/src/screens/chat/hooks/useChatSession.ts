@@ -1,7 +1,6 @@
-import { useState, useCallback, useMemo, useRef, useEffect } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { Alert } from "react-native";
 import { useQuery, useMutation, useSubscription } from "@apollo/client/react";
-import { useRoute, useNavigation } from "@react-navigation/native";
 import { useQuery as useApolloQuery } from "@apollo/client/react";
 import * as DocumentPicker from "expo-document-picker";
 import { readAsStringAsync } from "expo-file-system/legacy";

@@ -1,13 +1,12 @@
 import React, { useEffect, useCallback } from "react";
 import { View, StyleSheet, Pressable, ScrollView, LayoutChangeEvent } from "react-native";
 import { Text, useTheme } from "react-native-paper";
-import { SHAPE, MOTION } from "../../theme/tokens";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring,
-  interpolate,
 } from "react-native-reanimated";
+import { SHAPE } from "../../theme/tokens";
 
 interface ToolbarOption {
   label: string;
@@ -41,9 +40,6 @@ export function FloatingToolbar({ options, selected, onSelect }: FloatingToolbar
     }
   }, [selected, options, optionWidths.value, indicatorX]);
 
-  const indicatorStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: indicatorX.value }],
-  }));
 
   return (
     <View style={[styles.toolbar, { backgroundColor: theme.colors.surfaceVariant, borderRadius: SHAPE.pill }]}>

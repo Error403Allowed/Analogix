@@ -1,8 +1,6 @@
 const { test, expect } = require("@playwright/test");
 
 const GRAPHQL_URL = "http://localhost:4000/graphql";
-const SUPABASE_URL = "https://ffezpchxhxmxlkzkahha.supabase.co";
-
 async function mockAllGraphQL(page, mocks) {
   await page.route(GRAPHQL_URL, async (route) => {
     const req = route.request();
@@ -63,7 +61,7 @@ const mockUser = {
   aiPersonality: null,
 };
 
-// ─── Auth / Login Screen ───────────────────────────────────────────────
+// ─── Auth / Login Screen ───────
 
 test.describe("Auth — Login Screen", () => {
   test.beforeEach(async ({ page }) => {

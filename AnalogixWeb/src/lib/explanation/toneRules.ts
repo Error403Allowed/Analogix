@@ -299,7 +299,6 @@ export function getToneReport(text: string): {
     }
   }
 
-  const wordCount = text.split(/\s+/).length;
   const longSentences = text.match(/[^.]*[.!?]{50,}/g) || [];
   if (longSentences.length > 0) {
     issues.push(`${longSentences.length} sentences over 50 words`);

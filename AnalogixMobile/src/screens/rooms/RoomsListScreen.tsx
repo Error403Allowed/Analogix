@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { View, StyleSheet, Alert } from "react-native";
-import { Text, useTheme, FAB, ActivityIndicator, Portal, Modal, TextInput, Button, SegmentedButtons } from "react-native-paper";
+import { Text, useTheme, FAB, Portal, Modal, TextInput, Button, SegmentedButtons } from "react-native-paper";
 import { useQuery, useMutation } from "@apollo/client/react";
 import { useNavigation } from "@react-navigation/native";
 import { ROOMS, CREATE_ROOM, JOIN_ROOM, PUBLIC_ROOMS } from "../../graphql/queries/room";

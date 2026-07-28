@@ -11,21 +11,19 @@ import {
 import { Text, useTheme, type MD3Theme } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-  withDelay,
-  useDerivedValue,
   FadeInDown,
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
   interpolate,
 } from "react-native-reanimated";
 import Icon from "../Icon";
-import { MOTION, SHAPE } from "../../theme/tokens";
+import { SHAPE, MOTION } from "../../theme/tokens";
+import { alpha } from "../../theme";
 
 const M3_TOUCH = 48;
-const M3_ICON_PRIMARY = 24;
 const M3_ICON_SECONDARY = 20;
-const M3_ICON_TERTIARY = 16;
+const M3_ICON_TERTIARY = 24;
 
 type ExpressiveColorRole =
   | "surfaceContainerLowest"
@@ -349,7 +347,7 @@ export function ExpressiveListRow({ title, subtitle, icon: iconName, onPress, on
         onPressOut={handlePressOut}
         style={[styles.listRow, { backgroundColor: c.surfaceContainerLow, borderColor: c.outlineVariant }, style]}
       >
-        <View style={[styles.listRowIconWrap, { backgroundColor: theme.colors.primary + "1A" }]}>
+        <View style={[styles.listRowIconWrap, { backgroundColor: alpha(theme.colors.primary, 0.10) }]}>
           <Icon name={iconName} size={M3_ICON_SECONDARY} color={theme.colors.primary} />
         </View>
         <View style={styles.listRowTextGroup}>
@@ -385,7 +383,7 @@ export function ExpressiveRailCard({ value, label, icon: iconName, style }: Expr
 
   return (
     <View style={[styles.railCard, { backgroundColor: theme.colors.surface, borderColor: c.outlineVariant }, style]}>
-      <View style={[styles.railIconWrap, { backgroundColor: theme.colors.primary + "1A" }]}>
+      <View style={[styles.railIconWrap, { backgroundColor: alpha(theme.colors.primary, 0.10) }]}>
         <Icon name={iconName} size={M3_ICON_TERTIARY} color={theme.colors.primary} />
       </View>
       <Text variant="titleMedium" style={{ color: theme.colors.onSurface, fontWeight: "900" }}>
@@ -455,7 +453,7 @@ export function ExpressiveEmptyState({ icon: iconName, title, subtitle, style }:
       entering={FadeInDown.duration(400).springify().damping(20)}
       style={[styles.emptyState, style]}
     >
-      <View style={[styles.emptyIconWrap, { backgroundColor: theme.colors.primary + "1A" }]}>
+      <View style={[styles.emptyIconWrap, { backgroundColor: alpha(theme.colors.primary, 0.10) }]}>
         <Icon name={iconName} size={36} color={theme.colors.primary} />
       </View>
       <Text variant="titleMedium" style={{ color: theme.colors.onSurface, fontWeight: "900", textAlign: "center" }}>

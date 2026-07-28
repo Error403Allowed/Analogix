@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  MessageCircle, Calendar, GitBranch, ExternalLink, ChevronDown, ChevronUp,
+  MessageCircle, Calendar, GitBranch, ExternalLink, ChevronDown,
   Sparkles, BookOpen, Shield, Clock, Users, Zap, Bug, FileText, ArrowUpRight
 } from "lucide-react";
 

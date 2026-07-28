@@ -7,13 +7,14 @@ import {
   TextInput,
   Platform,
 } from "react-native";
-import { Text, useTheme, ActivityIndicator } from "react-native-paper";
+import { Text, useTheme } from "react-native-paper";
 import { useQuery } from "@apollo/client/react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { FORMULA_SHEETS, SEARCH_FORMULAS } from "../../graphql/queries/misc";
 import { useNavigation } from "@react-navigation/native";
 import { useThemeContext } from "../../theme/ThemeContext";
-import { SHAPE } from "../../theme/tokens";
+import { alpha } from "../../theme";
+import { MOTION, SHAPE } from "../../theme/tokens";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -21,7 +22,6 @@ import Animated, {
 } from "react-native-reanimated";
 import Icon from "../../components/Icon";
 import BatchFormulaRenderer from "../../components/BatchFormulaRenderer";
-import FormulaRenderer from "../../components/FormulaRenderer";
 import { renderLatex, KATEX_CSS } from "../../utils/katexUtils";
 import { ExpressiveScreen, ExpressiveEmptyState } from "../../components/expressive";
 import { SkeletonList } from "../../components/SkeletonLoader";
@@ -49,8 +49,8 @@ function FilterChip({
     <Animated.View style={animStyle}>
       <Pressable
         onPress={onPress}
-        onPressIn={() => { scale.value = withSpring(0.94); }}
-        onPressOut={() => { scale.value = withSpring(1); }}
+        onPressIn={() => { scale.value = withSpring(0.94, MOTION.tap); }}
+        onPressOut={() => { scale.value = withSpring(1, MOTION.tap); }}
         style={[
           styles.filterChip,
           active
@@ -125,7 +125,8 @@ function WebFormulaCard({ name, latex, description, onPress, onToggleFavorite, i
 
 export default function FormulasScreen() {
   const paperTheme = useTheme();
-  const { brand } = useThemeContext();
+  const { theme } = useThemeContext();
+
   const navigation = useNavigation<any>();
   const [q, setQ] = useState("");
   const [activeSubject, setActiveSubject] = useState<string | null>(null);
@@ -335,7 +336,7 @@ export default function FormulasScreen() {
               setActiveSubject(null);
               setActiveTopic(null);
             }}
-            color={brand.primary}
+            color={theme.colors.primary}
           />
           {subjectNames.map((name) => {
             const sheet = sheets.find((s: any) => s.subjectName === name);
@@ -349,7 +350,7 @@ export default function FormulasScreen() {
                   setActiveSubject(isActive ? null : (sheet?.subjectId ?? null));
                   setActiveTopic(null);
                 }}
-                color={brand.primary}
+                color={theme.colors.primary}
               />
             );
           })}
@@ -367,7 +368,7 @@ export default function FormulasScreen() {
             label="All Topics"
             active={!activeTopic}
             onPress={() => setActiveTopic(null)}
-            color={brand.primary}
+            color={theme.colors.primary}
           />
           {topics.map((topic) => (
             <FilterChip
@@ -377,7 +378,7 @@ export default function FormulasScreen() {
               onPress={() =>
                 setActiveTopic(activeTopic === topic ? null : topic)
               }
-              color={brand.primary + "aa"}
+              color={alpha(theme.colors.primary, 0.67)}
             />
           ))}
         </ScrollView>
@@ -398,7 +399,7 @@ export default function FormulasScreen() {
 
       {!isSearching && favoriteFormulas.length > 0 && (
         <View style={{ paddingHorizontal: 16, paddingVertical: 10 }}>
-          <Text style={[styles.sectionLabel, { color: brand.primary }]}>Favorites</Text>
+          <Text style={[styles.sectionLabel, { color: theme.colors.primary }]}>Favorites</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
             {favoriteFormulas.slice(0, 8).map((item) => {
               const id = item.formula.id || item.formula.name || "";
@@ -439,7 +440,7 @@ export default function FormulasScreen() {
         {isSearching
           ? searchGroups.map((group) => (
               <View key={group.subjectId} style={styles.groupSection}>
-                <Text style={[styles.sectionTitle, { color: brand.primary }]}>
+                <Text style={[styles.sectionTitle, { color: theme.colors.primary }]}>
                   {group.subjectName}
                 </Text>
                   {group.formulas.map((f: any) => {
@@ -465,8 +466,8 @@ export default function FormulasScreen() {
                   </Text>
                   {group.categories.map((cat: any) => (
                     <View key={cat.name} style={styles.categoryBlock}>
-                      <View style={[styles.categoryHeader, { backgroundColor: brand.primary + "10" }]}>
-                        <Icon name="book" size={16} color={brand.primary} />
+                      <View style={[styles.categoryHeader, { backgroundColor: alpha(theme.colors.primary, 0.06) }]}>
+                        <Icon name="book" size={16} color={theme.colors.primary} />
                         <Text style={[styles.categoryName, { color: onSurface }]}>{cat.name}</Text>
                         <Text style={[styles.categoryCount, { color: onSurfaceVariant }]}>{cat.formulas.length}</Text>
                       </View>
@@ -496,7 +497,7 @@ export default function FormulasScreen() {
         {isSearching
           ? searchGroups.map((group) => (
               <View key={group.subjectId} style={styles.groupSection}>
-                <Text style={[styles.sectionTitle, { color: brand.primary }]}>
+                <Text style={[styles.sectionTitle, { color: theme.colors.primary }]}>
                   {group.subjectName}
                 </Text>
                 <BatchFormulaRenderer

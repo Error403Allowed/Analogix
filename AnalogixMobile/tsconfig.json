@@ -1,6 +1,7 @@
 {
   "extends": "../node_modules/expo/tsconfig.base.json",
   "compilerOptions": {
+    "ignoreDeprecations": "6.0",
     "strict": true,
     "resolveJsonModule": true,
     "esModuleInterop": true,
@@ -13,7 +14,20 @@
       "ES2022",
       "DOM"
     ],
-    "types": ["node"]
+    "types": ["node"],
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"],
+      "@graphql/*": ["src/graphql/*"],
+      "@components/*": ["src/components/*"],
+      "@screens/*": ["src/screens/*"],
+      "@theme/*": ["src/theme/*"],
+      "@context/*": ["src/context/*"],
+      "@hooks/*": ["src/hooks/*"],
+      "@utils/*": ["src/utils/*"],
+      "@data/*": ["src/data/*"],
+      "@navigation/*": ["src/navigation/*"]
+    }
   },
   "include": [
     "**/*.ts",

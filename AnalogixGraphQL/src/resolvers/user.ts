@@ -1,6 +1,6 @@
 import { GraphQLError } from "graphql";
 import { z } from "zod";
-import { requireUser } from "./_helpers.js";
+import { requireUser, throwSanitized } from "./_helpers.js";
 import { serviceClient } from "../supabase.js";
 import type { GraphQLContext } from "../context.js";
 
@@ -13,7 +13,7 @@ export const userResolvers = {
         .select("*")
         .eq("id", user.id)
         .maybeSingle();
-      if (error) throw new GraphQLError(error.message);
+      if (error) throwSanitized(error, ctx);
       return data;
     },
     myPreferences: async (_: unknown, __: unknown, ctx: GraphQLContext) => {
@@ -23,7 +23,7 @@ export const userResolvers = {
         .select("*")
         .eq("user_id", user.id)
         .maybeSingle();
-      if (error) throw new GraphQLError(error.message);
+      if (error) throwSanitized(error, ctx);
       return data ?? { user_id: user.id, mood: "focus", theme: "Cosmic Aurora" };
     },
   },
@@ -48,7 +48,7 @@ export const userResolvers = {
         .upsert({ id: user.id, ...snakePayload }, { onConflict: "id" })
         .select()
         .single();
-      if (error) throw new GraphQLError(error.message);
+      if (error) throwSanitized(error, ctx);
       return data;
     },
     updatePreferences: async (_: unknown, args: { input: Record<string, unknown> }, ctx: GraphQLContext) => {
@@ -58,7 +58,7 @@ export const userResolvers = {
         .upsert({ user_id: user.id, ...args.input, updated_at: new Date().toISOString() })
         .select()
         .single();
-      if (error) throw new GraphQLError(error.message);
+      if (error) throwSanitized(error, ctx);
       return data;
     },
     updateAiPersonality: async (_: unknown, args: { input: Record<string, unknown> }, ctx: GraphQLContext) => {
@@ -71,7 +71,7 @@ export const userResolvers = {
         )
         .select()
         .single();
-      if (error) throw new GraphQLError(error.message);
+      if (error) throwSanitized(error, ctx);
       return data;
     },
     markToursCompleted: async (_: unknown, args: { tourIds: string[] }, ctx: GraphQLContext) => {
@@ -91,7 +91,7 @@ export const userResolvers = {
         )
         .select()
         .single();
-      if (error) throw new GraphQLError(error.message);
+      if (error) throwSanitized(error, ctx);
       return data;
     },
     deleteAccount: async (_: unknown, args: { confirmation?: string }, ctx: GraphQLContext) => {
@@ -102,7 +102,7 @@ export const userResolvers = {
         });
       }
       const { error } = await serviceClient.auth.admin.deleteUser(user.id);
-      if (error) throw new GraphQLError(error.message);
+      if (error) throwSanitized(error, ctx);
       return { success: true };
     },
   },

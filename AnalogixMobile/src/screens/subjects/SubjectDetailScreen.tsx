@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { View, StyleSheet, Pressable, Alert, Linking } from "react-native";
-import { Text, useTheme, ActivityIndicator, Portal, Modal, TextInput, Button, Checkbox } from "react-native-paper";
+import { Text, useTheme, Portal, Modal, TextInput, Button, Checkbox } from "react-native-paper";
 import { useQuery, useMutation } from "@apollo/client/react";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import { SUBJECT_DETAIL, SUBJECT, DOCUMENTS, CREATE_DOCUMENT, SAVE_SUBJECT_NOTES, ADD_MARK, DUPLICATE_DOCUMENT } from "../../graphql/queries/subject";
@@ -17,6 +17,7 @@ import {
   ExpressiveSection,
 } from "../../components/expressive";
 import Icon from "../../components/Icon";
+import { alpha } from "../../theme";
 import { SUBJECT_CATALOG } from "../../data/subjects";
 import { SkeletonList } from "../../components/SkeletonLoader";
 import SubjectCustomizationSheet from "../../components/SubjectCustomizationSheet";
@@ -52,11 +53,7 @@ export default function SubjectDetailScreen() {
   const [customizing, setCustomizing] = useState(false);
   const [activeResourceTab, setActiveResourceTab] = useState<ResourceTab>("pastPapers");
 
-  type Chapter = {
-    id: string;
-    name: string;
-    topics?: { id: string; name: string }[];
-  }
+
 
   const chapters = data?.subject?.chapters ?? [];
   const subject = data?.subject;
@@ -200,7 +197,7 @@ export default function SubjectDetailScreen() {
               return (
                 <ExpressiveCard key={mark.id} tone="low">
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-                    <View style={{ width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center", backgroundColor: color + "20" }}><Text style={{ fontWeight: "900", color, fontSize: 13 }}>{Math.round(pct)}%</Text></View>
+                    <View style={{ width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center", backgroundColor: alpha(color, 0.13) }}><Text style={{ fontWeight: "900", color, fontSize: 13 }}>{Math.round(pct)}%</Text></View>
                     <View style={{ flex: 1 }}>
                       <Text variant="bodyLarge" style={{ fontWeight: "700", color: paperTheme.colors.onSurface }}>{mark.title}</Text>
                       <Text variant="bodySmall" style={{ color: paperTheme.colors.onSurfaceVariant, marginTop: 2 }}>{mark.score}/{mark.total}{mark.date ? " · " + new Date(mark.date).toLocaleDateString() : ""}</Text>

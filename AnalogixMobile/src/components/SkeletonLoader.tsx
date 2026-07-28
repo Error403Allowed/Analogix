@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import { View, StyleSheet, Animated, Easing } from "react-native";
+import { View, Animated, Easing } from "react-native";
 import { useTheme } from "react-native-paper";
 import { SHAPE } from "../theme/tokens";
 

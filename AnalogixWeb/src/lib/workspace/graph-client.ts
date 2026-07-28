@@ -2,11 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import {
   WorkspaceEntitySchema,
   EntityRelationshipSchema,
-  EntitySearchQuerySchema,
-  RelationshipQuerySchema,
-  GraphTraversalQuerySchema,
   GraphPathSchema,
-  RelatedEntitiesQuerySchema,
   type WorkspaceEntity,
   type EntityRelationship,
   type EntitySearchQuery,
@@ -14,8 +10,6 @@ import {
   type GraphTraversalQuery,
   type GraphPath,
   type RelatedEntitiesQuery,
-  EntityTypeEnum,
-  RelationshipTypeEnum,
 } from './graph-schema';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;

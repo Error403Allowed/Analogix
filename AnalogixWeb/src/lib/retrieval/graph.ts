@@ -177,7 +177,6 @@ export async function getRelatedEntities(
     return [];
   }
 
-  const targetIds = relationships.map(r => r.target_id);
   const targetTypes = [...new Set(relationships.map(r => r.target_type))];
 
   const results: { type: EntityType; id: string; data: Record<string, unknown> }[] = [];

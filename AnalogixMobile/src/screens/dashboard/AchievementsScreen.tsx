@@ -6,6 +6,7 @@ import { useQuery } from "@apollo/client/react";
 import { useNavigation } from "@react-navigation/native";
 import { ACHIEVEMENTS } from "../../graphql/queries/misc";
 import { useThemeContext } from "../../theme/ThemeContext";
+import { alpha } from "../../theme";
 import { SHAPE } from "../../theme/tokens";
 import Icon from "../../components/Icon";
 import type { AchievementCategory } from "@analogix/shared/types";
@@ -52,7 +53,7 @@ const CARD_PADDING = 16;
 export default function AchievementsScreen() {
   const paperTheme = useTheme();
   const insets = useSafeAreaInsets();
-  const { brand } = useThemeContext();
+  const { theme } = useThemeContext();
   const navigation = useNavigation<any>();
   const { data, loading } = useQuery(ACHIEVEMENTS);
   const allAchievements = useMemo(() => data?.achievements ?? [], [data]);
@@ -82,9 +83,9 @@ export default function AchievementsScreen() {
       <View style={[styles.topBar, { backgroundColor: paperTheme.colors.surface, paddingTop: insets.top + 4 }]}>
         <IconButton icon="arrow-left" onPress={() => navigation.goBack()} />
         <Text variant="titleLarge" style={{ fontWeight: "700", flex: 1 }}>Achievements</Text>
-        <View style={[styles.badge, { backgroundColor: brand.primary + "18" }]}>
-          <Text variant="labelLarge" style={{ color: brand.primary, fontWeight: "900" }}>{unlockedIds.size}</Text>
-          <Text variant="labelSmall" style={{ color: brand.primary + "99" }}>/{allAchievements.length}</Text>
+        <View style={[styles.badge, { backgroundColor: alpha(theme.colors.primary, 0.10) }]}>
+          <Text variant="labelLarge" style={{ color: theme.colors.primary, fontWeight: "900" }}>{unlockedIds.size}</Text>
+          <Text variant="labelSmall" style={{ color: alpha(theme.colors.primary, 0.60) }}>/{allAchievements.length}</Text>
         </View>
       </View>
 
@@ -97,7 +98,7 @@ export default function AchievementsScreen() {
         <View style={{ flex: 1 }}>
           <View style={{ paddingHorizontal: CARD_PADDING, paddingTop: 12 }}>
             <View style={[styles.progressTrack, { backgroundColor: paperTheme.colors.surfaceVariant }]}>
-              <View style={[styles.progressFill, { width: `${Math.round(progress * 100)}%`, backgroundColor: brand.primary }]} />
+              <View style={[styles.progressFill, { width: `${Math.round(progress * 100)}%`, backgroundColor: theme.colors.primary }]} />
             </View>
             <Text variant="labelSmall" style={{ color: paperTheme.colors.onSurfaceVariant, textAlign: "right", marginTop: 4 }}>
               {Math.round(progress * 100)}% complete
@@ -127,7 +128,7 @@ export default function AchievementsScreen() {
                   style={[
                     styles.chip,
                     {
-                      backgroundColor: isActive ? brand.primary : paperTheme.colors.surfaceVariant,
+                      backgroundColor: isActive ? theme.colors.primary : paperTheme.colors.surfaceVariant,
                     },
                   ]}
                 >
@@ -170,20 +171,20 @@ export default function AchievementsScreen() {
                         width: cardWidth,
                         opacity: unlocked ? 1 : 0.55,
                         backgroundColor: paperTheme.colors.surface,
-                        borderColor: unlocked ? brand.primary + "30" : paperTheme.colors.outlineVariant,
+                        borderColor: unlocked ? alpha(theme.colors.primary, 0.19) : paperTheme.colors.outlineVariant,
                       },
                     ]}
                   >
                     <View
                       style={[
                         styles.iconWrap,
-                        { backgroundColor: unlocked ? brand.primary + "18" : paperTheme.colors.surfaceVariant },
+                        { backgroundColor: unlocked ? alpha(theme.colors.primary, 0.10) : paperTheme.colors.surfaceVariant },
                       ]}
                     >
                       <Icon
                         name={getAchievementIcon(a.id, a.icon)}
                         size={28}
-                        color={unlocked ? brand.primary : paperTheme.colors.onSurfaceVariant}
+                        color={unlocked ? theme.colors.primary : paperTheme.colors.onSurfaceVariant}
                       />
                     </View>
                     <Text
@@ -210,8 +211,8 @@ export default function AchievementsScreen() {
                       {a.description}
                     </Text>
                     {unlocked && (
-                      <View style={[styles.unlockedBadge, { backgroundColor: brand.primary + "18" }]}>
-                        <Text variant="labelSmall" style={{ color: brand.primary, fontWeight: "700" }}>
+                      <View style={[styles.unlockedBadge, { backgroundColor: alpha(theme.colors.primary, 0.10) }]}>
+                        <Text variant="labelSmall" style={{ color: theme.colors.primary, fontWeight: "700" }}>
                           Unlocked
                         </Text>
                       </View>

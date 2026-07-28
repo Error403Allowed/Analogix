@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { View, ActivityIndicator } from "react-native";
 import { useTheme } from "react-native-paper";
 import { NavigationContainer, DarkTheme as NavDarkTheme, DefaultTheme as NavLightTheme } from "@react-navigation/native";
@@ -41,6 +41,8 @@ import TimerScreen from "../screens/study/TimerScreen";
 import StudyScheduleScreen from "../screens/study/StudyScheduleScreen";
 import AssessmentGuideScreen from "../screens/study/AssessmentGuideScreen";
 import ResourcesScreen from "../screens/study/ResourcesScreen";
+import StudyMapScreen from "../screens/study/StudyMapScreen";
+import StudyMapSubjectScreen from "../screens/study/StudyMapSubjectScreen";
 
 import SubjectsListScreen from "../screens/subjects/SubjectsListScreen";
 import SubjectDetailScreen from "../screens/subjects/SubjectDetailScreen";
@@ -57,6 +59,7 @@ import PersonalityEditorScreen from "../screens/profile/PersonalityEditorScreen"
 import MemoryManagerScreen from "../screens/profile/MemoryManagerScreen";
 import SupportScreen from "../screens/profile/SupportScreen";
 import PrivacyScreen from "../screens/profile/PrivacyScreen";
+
 const RootStack = createNativeStackNavigator<RootStackParamList>();
 const Tabs = createBottomTabNavigator<TabParamList>();
 
@@ -101,6 +104,8 @@ function StudyStackNav() {
       <StudyStack.Screen name="StudySchedule" component={StudyScheduleScreen} />
       <StudyStack.Screen name="AssessmentGuide" component={AssessmentGuideScreen} />
       <StudyStack.Screen name="Resources" component={ResourcesScreen} />
+      <StudyStack.Screen name="StudyMap" component={StudyMapScreen} />
+      <StudyStack.Screen name="StudyMapSubject" component={StudyMapSubjectScreen} />
     </StudyStack.Navigator>
   );
 }
@@ -155,7 +160,15 @@ function MainTabs() {
 
 function AuthGate({ children }: { children: React.ReactNode }) {
   const { data, loading } = useQuery(ME, { fetchPolicy: "cache-and-network" });
+  const { user } = useAuth();
   const theme = useTheme();
+  const [onboardedLocally, setOnboardedLocally] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    AsyncStorage.getItem("onboarding_complete").then((v) => {
+      setOnboardedLocally(v === "true");
+    });
+  }, []);
 
   useEffect(() => {
     if (data?.me?.toursCompleted) {
@@ -166,15 +179,19 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     }
   }, [data?.me?.toursCompleted]);
 
-  if (loading) {
-    return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: theme.colors.background }}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
-      </View>
-    );
+  if (onboardedLocally) return <>{children}</>;
+  if (loading) return (
+    <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: theme.colors.background }}>
+      <ActivityIndicator size="large" color={theme.colors.primary} />
+    </View>
+  );
+  if (data?.me && data.me.onboardingComplete) {
+    AsyncStorage.setItem("onboarding_complete", "true");
+    return <>{children}</>;
   }
-  if (!data?.me || !data.me.onboardingComplete) return <OnboardingScreen />;
-  return <>{children}</>;
+  if (data?.me && !data.me.onboardingComplete) return <OnboardingScreen />;
+  if (user) return <>{children}</>;
+  return <OnboardingScreen />;
 }
 
 function TourGate({ children }: { children: React.ReactNode }) {

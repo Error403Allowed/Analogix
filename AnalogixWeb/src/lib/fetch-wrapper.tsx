@@ -110,7 +110,7 @@ export async function fetchWithRetry(url, options: any = {}) {
 /**
  * Wrapper for fetchWithRetry that throws on error (for backward compatibility).
  */
-export async function fetchJsonWithRetry<T = any>(url, options = {}) {
+export async function fetchJsonWithRetry<T = any>(url, options = {}): Promise<T> {
     const result = await fetchWithRetry(url, options);
     if (!result.ok) {
         const errorDetails = [

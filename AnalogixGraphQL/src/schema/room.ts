@@ -7,6 +7,7 @@ export const roomTypeDefs = /* GraphQL */ `
     joinCode: String!
     ownerUserId: ID!
     memberCount: Int!
+    permissions: JSON!
     timerState: String!
     timerDurationSeconds: Int!
     timerElapsedSeconds: Int!
@@ -24,6 +25,7 @@ export const roomTypeDefs = /* GraphQL */ `
     members: [StudyRoomMember!]!
     messages(limit: Int = 50): [StudyRoomMessage!]!
     documents: [RoomSharedDocument!]!
+    canvas: StudyRoomCanvas
   }
 
   type StudyRoomMember {
@@ -84,18 +86,24 @@ export const roomTypeDefs = /* GraphQL */ `
     roomMessages(roomId: ID!, limit: Int = 100): [StudyRoomMessage!]!
     roomCanvas(roomId: ID!): StudyRoomCanvas
     roomDocuments(roomId: ID!): [RoomSharedDocument!]!
+    roomDocument(roomId: ID!, documentId: ID!): Document
   }
 
   extend type Mutation {
     createRoom(input: JSON!): StudyRoom!
-    joinRoom(joinCode: String!): StudyRoom!
+    joinRoom(joinCode: String, roomId: ID): StudyRoom!
     leaveRoom(roomId: ID!): DeleteResult!
+    updateRoom(roomId: ID!, input: JSON!): StudyRoom!
     updateRoomTimer(roomId: ID!, state: String!, durationSeconds: Int, elapsedSeconds: Int): StudyRoom!
     shareDocumentToRoom(roomId: ID!, documentId: ID!, subjectId: String!): RoomSharedDocument!
+    removeSharedDocument(roomId: ID!, documentId: ID!): [RoomSharedDocument!]!
     sendRoomMessage(roomId: ID!, content: String!, messageType: String = "chat"): StudyRoomMessage!
     updateRoomMemberRole(roomId: ID!, userId: ID!, role: String!): StudyRoomMember!
     updateRoomCanvas(roomId: ID!, input: JSON!): StudyRoomCanvas!
     deleteRoom(roomId: ID!): DeleteResult!
+    transferRoomOwnership(roomId: ID!, newOwnerUserId: ID!): StudyRoom!
+    configureRoomPermissions(roomId: ID!, input: JSON!): StudyRoom!
+    updatePresence(roomId: ID!, isOnline: Boolean!): DeleteResult!
   }
 
   extend type Subscription {

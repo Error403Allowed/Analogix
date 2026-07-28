@@ -6,11 +6,10 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   useDerivedValue,
-  withSpring,
   interpolate,
   Extrapolation,
 } from "react-native-reanimated";
-import { SHAPE, MOTION } from "../../theme/tokens";
+import { SHAPE } from "../../theme/tokens";
 
 interface SheetLayoutProps {
   heroColor: string;

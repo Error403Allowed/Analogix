@@ -3,12 +3,8 @@ import { View, Text, StyleSheet, Dimensions, Platform } from "react-native";
 import { useTheme } from "react-native-paper";
 
 let WebView: any = () => null;
-let WebViewMessageEvent: any = null;
 if (Platform.OS !== "web") {
-   
   WebView = require("react-native-webview").WebView;
-   
-  WebViewMessageEvent = require("react-native-webview").WebViewMessageEvent;
 }
 
 interface Props {

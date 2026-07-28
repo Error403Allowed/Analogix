@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { callGroqChatStream, formatError, classifyTaskType } from "../_utils";
 import { getFormulaSheetContext } from "@/data/formulaSheets";
-import { requireUser, unauthResponse } from "@/lib/api-auth";
+import { requireUser } from "@/lib/api-auth";
 export const runtime = "nodejs";
 export async function POST(request) {
     try {

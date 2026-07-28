@@ -85,5 +85,5 @@ export async function retrieveRelevantMemories(
     .filter(m => m.relevance > 0)
     .sort((a, b) => b.relevance - a.relevance)
     .slice(0, limit)
-    .map(({ relevance, ...rest }) => rest);
+    .map(({ ...rest }) => rest);
 }

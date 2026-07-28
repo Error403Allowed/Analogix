@@ -7,10 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import type { ToolProposal, ToolCall } from "@analogix/shared/types";
+import type { ToolCall } from "@analogix/shared/types";
 
 interface EditProposalModalProps {
-  proposal: ToolProposal;
   initialTools: ToolCall[];
   onSave: (tools: ToolCall[]) => void;
   onCancel: () => void;
@@ -32,7 +31,6 @@ const safeDateParse = (val: string): string => {
 };
 
 export function EditProposalModal({
-  proposal,
   initialTools,
   onSave,
   onCancel,

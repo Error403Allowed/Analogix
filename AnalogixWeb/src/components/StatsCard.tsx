@@ -10,28 +10,9 @@ interface StatsCardProps {
     value: number;
     isPositive: boolean;
   };
-  color: "primary" | "secondary" | "success" | "warning" | "accent" | "tertiary";
 }
 
-const StatsCard = ({ title, value, subtitle, icon: Icon, trend, color }: StatsCardProps) => {
-  const colorClasses = {
-    primary: "from-primary/20 to-primary/5 text-primary",
-    secondary: "from-secondary/20 to-secondary/5 text-secondary",
-    success: "from-success/20 to-success/5 text-success",
-    warning: "from-warning/20 to-warning/5 text-warning",
-    accent: "from-accent/20 to-accent/5 text-accent",
-    tertiary: "from-tertiary/20 to-tertiary/5 text-tertiary",
-  };
-
-  const iconBgClasses = {
-    primary: "bg-primary/10",
-    secondary: "bg-secondary/10",
-    success: "bg-success/10",
-    warning: "bg-warning/10",
-    accent: "bg-accent/10",
-    tertiary: "bg-tertiary/10",
-  };
-
+const StatsCard = ({ title, value, subtitle, icon: Icon, trend }: StatsCardProps) => {
   return (
   <motion.div
       className="dashboard-panel p-5"

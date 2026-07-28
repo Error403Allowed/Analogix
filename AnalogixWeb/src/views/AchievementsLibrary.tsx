@@ -2,17 +2,12 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useRouter } from "next/navigation";
-import { ArrowLeft, Trophy, Search, Filter, Medal } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Trophy, Search, Medal } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import Header from "@/components/Header";
 import { achievementStore } from "@/utils/achievementStore";
-import TypewriterText from "@/components/TypewriterText";
 import { cn } from "@/lib/utils";
 
 const AchievementsLibrary = () => {
-  const router = useRouter();
   const [achievements, setAchievements] = useState<Awaited<ReturnType<typeof achievementStore.getAll>>>([]);
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");

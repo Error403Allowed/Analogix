@@ -9,18 +9,17 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
-  Sparkles, Brain, Smile, BookOpen, Lightbulb, Target,
-  MessageCircle, Zap, Heart, GraduationCap, Clock, Check,
-  ArrowRight, RotateCcw, Save, Wand2, Shield,
+  Sparkles, Brain, Smile, BookOpen, Target,
+  MessageCircle, Heart, GraduationCap, Clock, Check,
+  RotateCcw, Wand2, Shield,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import type { AIPersonality } from "@/types/ai-personality";
-import { DEFAULT_AI_PERSONALITY, PERSONALITY_PRESETS } from "@/types/ai-personality";
+import { PERSONALITY_PRESETS } from "@/types/ai-personality";
 import { useAIPersonality } from "@/hooks/useAIPersonality";
 
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 interface PersonalityEditorProps {
-  onClose?: () => void;
 }
 
 const TRAIT_ICONS: Record<string, React.ReactNode> = {
@@ -59,8 +58,8 @@ const TRAIT_END_LABELS: Record<string, [string, string]> = {
   encouragement: ["Direct", "Supportive"],
 };
 
-export const PersonalityEditor: React.FC< PersonalityEditorProps> = ({ onClose }) => {
-  const { personality, loading, saving, savePersonality, applyPreset, resetToDefaults } = useAIPersonality();
+export const PersonalityEditor: React.FC< PersonalityEditorProps> = () => {
+  const { personality, loading, saving, savePersonality, resetToDefaults } = useAIPersonality();
   const [localPersonality, setLocalPersonality] = useState<AIPersonality>(personality);
   const [dirty, setDirty] = useState(false);
   const [showPresets, setShowPresets] = useState(false);
@@ -90,39 +89,6 @@ export const PersonalityEditor: React.FC< PersonalityEditorProps> = ({ onClose }
 
     return () => clearTimeout(timer);
   }, [localPersonality, dirty, saving, savePersonality]);
-
-  // Check if values have changed from original
-  const hasChanges = () => {
-    return (
-      personality.friendliness !== localPersonality.friendliness ||
-      personality.formality !== localPersonality.formality ||
-      personality.humor !== localPersonality.humor ||
-      personality.detail_level !== localPersonality.detail_level ||
-      personality.patience !== localPersonality.patience ||
-      personality.encouragement !== localPersonality.encouragement ||
-      personality.socratic_method !== localPersonality.socratic_method ||
-      personality.step_by_step !== localPersonality.step_by_step ||
-      personality.real_world_examples !== localPersonality.real_world_examples ||
-      personality.use_emojis !== localPersonality.use_emojis ||
-      personality.use_analogies !== localPersonality.use_analogies ||
-      personality.analogy_frequency !== localPersonality.analogy_frequency ||
-      personality.use_section_dividers !== localPersonality.use_section_dividers ||
-      personality.custom_instructions !== localPersonality.custom_instructions ||
-      personality.persona_description !== localPersonality.persona_description ||
-      personality.auto_approve_tools !== localPersonality.auto_approve_tools ||
-      personality.auto_approve_read_tools !== localPersonality.auto_approve_read_tools ||
-      JSON.stringify(personality.auto_approve_write_subjects) !== JSON.stringify(localPersonality.auto_approve_write_subjects)
-    );
-  };
-
-  // Save changes
-  const handleSave = async () => {
-    const success = await savePersonality(localPersonality);
-    if (success) {
-      setDirty(false);
-      onClose?.();
-    }
-  };
 
   // Apply a preset
   const handleApplyPreset = (presetKey: keyof typeof PERSONALITY_PRESETS) => {

@@ -4,7 +4,7 @@
  * Design tokens, base light/dark M3 themes, and the BRAND_THEMES catalogue.
  *
  * HOW COLOURS WORK
- * ─────────────────────────────────────────────────────────────────
+ * ─────────────────────────
  * Each BrandTheme supplies a `primary` seed hex.  ThemeContext feeds
  * that seed into generateDynamicScheme() (Material Color Utilities) which
  * derives the FULL M3 palette — primary, secondary, tertiary, neutral,
@@ -21,7 +21,7 @@
  * hue sits at good perceptual positions in the HCT space.
  *
  * COLOUR PSYCHOLOGY NOTES (research-backed)
- * ─────────────────────────────────────────────────────────────────
+ * ─────────────────────────
  * Indigo/Blue   Intellectual concentration, focus, calm, trust
  * Cyan/Teal     Clarity, technology, precision, freshness
  * Green         Balance, growth, calm; best for long focus sessions
@@ -39,7 +39,7 @@ import {
   type MD3Theme,
 } from "react-native-paper";
 
-// ─── Shape & motion tokens ────────────────────────────────────────────────────
+// ─── Shape & motion tokens ────────────
 
 export const SHAPE = {
   none: 0,
@@ -60,7 +60,7 @@ export const MOTION = {
   duration: { short: 150, medium: 300, long: 500 },
 } as const;
 
-// ─── Typography ───────────────────────────────────────────────────────────────
+// ─── Typography ───────────────────────
 
 const fontConfig = {
   displayLarge:   { fontWeight: "700" as const, fontSize: 57, lineHeight: 64,  letterSpacing: -0.25 },
@@ -122,7 +122,7 @@ export const darkTheme: MD3Theme = {
   },
 };
 
-// ─── Brand themes ─────────────────────────────────────────────────────────────
+// ─── Brand themes ─────────────────────
 
 /**
  * BrandThemeId — one ID per theme.

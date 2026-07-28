@@ -8,8 +8,6 @@ import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 
 import {
-  ArrowLeft,
-  BookOpenText,
   FileText,
   Loader2,
   Pause,
@@ -21,50 +19,28 @@ import {
   ChevronRight,
   Plus,
   RotateCcw,
-  Brain,
   Target,
   ListChecks,
   GraduationCap,
   Lightbulb,
-  MessageSquare,
-  FileQuestion,
   Puzzle,
-  Clock,
   AlertCircle,
-  CheckCircle2,
   Layers,
   Trash2,
   Edit3,
-  Type,
   AlignLeft,
   BookMarked,
-  FlaskConical,
-  Calculator,
-  Atom,
-  History,
-  Globe,
   PenTool,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { SUBJECT_CATALOG } from "@/constants/subjects";
 import { useTabs } from "@/context/TabsContext";
 import { useTextToSpeech } from "@/hooks/useTextToSpeech";
 import { subjectStore } from "@/utils/subjectStore";
-import { buildInterestList } from "@/utils/interests";
 
 import type { BlockNoteHandle } from "@/components/BlockNoteEditor";
-import {
-  BN_PREFIX,
-  isBNContent,
-  serialiseBN,
-} from "@/components/BlockNoteEditor";
+import { isBNContent } from "@/components/BlockNoteEditor";
 import {
   createBlockNoteContentParser,
 } from "@/components/blocknote/content";
@@ -157,7 +133,7 @@ export default function SubjectDocument() {
   
   
   const [icon, setIcon] = useState<string | null>(null);
-  const [cover, setCover] = useState<string | null>(null);
+  const [, setCover] = useState<string | null>(null);
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
   const [isAiPanelOpen, setIsAiPanelOpen] = useState(false);
 
@@ -165,30 +141,12 @@ export default function SubjectDocument() {
   const [lastSaved, setLastSaved] = useState<string | null>(null);
   const [canRevert, setCanRevert] = useState(false);
   const [isReverting, setIsReverting] = useState(false);
-  const [docMissing, setDocMissing] = useState(false);
+  const [, setDocMissing] = useState(false);
   const [stats, setStats] = useState({ text: "", words: 0, characters: 0 });
   const [sidebarBusy, setSidebarBusy] = useState<string | null>(null);
   const [customInstruction, setCustomInstruction] = useState("");
-   const [userGrade] = useState<string | undefined>(() => {
-     try {
-       const preferences = JSON.parse(localStorage.getItem("userPreferences") || "{}");
-       return typeof preferences.grade === "string" ? preferences.grade : undefined;
-     } catch {
-       return undefined;
-     }
-   });
-   
-   const [userHobbies] = useState<string[]>(() => {
-     try {
-       const preferences = JSON.parse(localStorage.getItem("userPreferences") || "{}");
-       return buildInterestList(preferences, []);
-     } catch {
-       return [];
-     }
-   });
-
   const { updateTabLabelByPath } = useTabs();
-  const { isSpeaking, isPaused, supported: ttsOk, speak, pause, resume, stop } = useTextToSpeech();
+  const { isSpeaking, isPaused, supported: ttsOk, speak, pause, resume } = useTextToSpeech();
 
   const loadDocument = useCallback(async (external = false) => {
     const data = await subjectStore.getSubject(subjectId);
@@ -465,12 +423,6 @@ export default function SubjectDocument() {
     toast.success("Icon updated");
   }, [docId, subjectId, title, updateTabLabelByPath]);
 
-  const handleCoverChange = useCallback(async (newCover: string | null) => {
-    setCover(newCover);
-    await subjectStore.updateDocument(subjectId, docId, { cover: newCover });
-    toast.success(newCover ? "Cover updated" : "Cover removed");
-  }, [docId, subjectId]);
-
   // Still loading user subject or subject not found
   if (subjectLoading) {
     return (
@@ -490,18 +442,6 @@ export default function SubjectDocument() {
       </div>
     );
   }
-
-  const SUBJECT_COVER_STYLES: Record<string, string> = {
-    sunset: "bg-gradient-to-r from-orange-500 via-pink-500 to-purple-500",
-    ocean: "bg-gradient-to-r from-blue-400 via-cyan-500 to-teal-500",
-    forest: "bg-gradient-to-r from-green-400 via-emerald-500 to-teal-500",
-    berry: "bg-gradient-to-r from-pink-500 via-rose-500 to-red-500",
-    sky: "bg-gradient-to-r from-blue-300 via-blue-500 to-indigo-500",
-    twilight: "bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500",
-    fire: "bg-gradient-to-r from-red-500 via-orange-500 to-yellow-500",
-    midnight: "bg-gradient-to-r from-slate-900 via-purple-900 to-slate-900",
-    gold: "bg-gradient-to-r from-yellow-400 via-amber-500 to-orange-500",
-  };
 
   return (
     <motion.div 

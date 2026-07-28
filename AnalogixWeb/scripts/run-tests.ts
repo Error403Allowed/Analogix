@@ -14,7 +14,7 @@
  */
 
 import { parseArgs } from "util";
-import { loadTestConfig, runAllTests, filterTests } from "../src/lib/test/testRunner";
+import { loadTestConfig, runAllTests } from "../src/lib/test/testRunner";
 
 async function main() {
   const args = parseArgs({

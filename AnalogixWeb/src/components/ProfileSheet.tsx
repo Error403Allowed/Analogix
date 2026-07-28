@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, type ChangeEvent } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
+  Sheet, SheetContent, SheetTitle, SheetDescription,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,7 +16,6 @@ import {
   Globe, Wrench, Stethoscope, Languages,
   Dumbbell, Gamepad2, Music, CookingPot, Palette, Film,
   Leaf, Laptop, Book, Plane, Upload, Trash2,
-  UserCircle,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
@@ -29,7 +28,7 @@ import { AustralianState, STATE_LABELS } from "@/utils/termData";
 
 
 
-// ── Data ─────────────────────────────────────────────────────────────────────
+// ── Data ─────────────────────────────
 
 const SUBJECTS = [
   { id: "math",        label: "Mathematics",      Icon: Calculator  },
@@ -65,7 +64,7 @@ const HOBBY_ICONS: Record<string, React.ReactNode> = {
 const YEARS = ["7", "8", "9", "10", "11", "12"];
 
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// ── Types ─────────────────────────────
 
 interface Prefs {
   name?: string;
@@ -84,7 +83,7 @@ interface ProfileSheetProps {
   onOpenChange: (open: boolean) => void;
 }
 
-// ── Component ─────────────────────────────────────────────────────────────────
+// ── Component ─────────────────────────
 
 const ProfileSheet = ({ open, onOpenChange }: ProfileSheetProps) => {
   const { user: authUser } = useAuth();
@@ -311,7 +310,7 @@ const ProfileSheet = ({ open, onOpenChange }: ProfileSheetProps) => {
   };
 
 
-  // ── Render ──────────────────────────────────────────────────────────────────
+  // ── Render ──────────────────────────
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>

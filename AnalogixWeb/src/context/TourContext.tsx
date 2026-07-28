@@ -1,7 +1,7 @@
 "use client";
 
-import React, { createContext, useContext, useState, useCallback, useEffect, ReactNode } from "react";
-import type { TourConfig, TourStep } from "@/types/tour";
+import React, { createContext, useContext, useState, useCallback, ReactNode } from "react";
+import type { TourConfig } from "@/types/tour";
 import { hasSeenTour, markTourAsSeen } from "@/types/tour";
 
 interface TourContextType {

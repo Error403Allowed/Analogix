@@ -2,11 +2,10 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createRetriever } from '@/lib/retrieval/retriever';
 import { createContextAssembler } from '@/lib/context/assembler';
-import { createMemorySystem, buildMemoryContext } from '@/lib/memory/layers';
-import { createMutationEngine } from '@/lib/mutations/engine';
+import { buildMemoryContext } from '@/lib/memory/layers';
 import { getToolsForCompound } from '@/lib/tools/registry';
 import { executeToolCall } from '@/lib/tools/caller';
-import { getUserAIPersonality, buildPersonalityInstructions } from '@/lib/aiMemory';
+import { getUserAIPersonality } from '@/lib/aiMemory';
 import type { RetrievedEntity, WorkspaceContext } from '@/types/workspace';
 
 const GROQ_API_URL = process.env.GROQ_CHAT_URL || 'https://api.groq.com/openai/v1/chat/completions';
@@ -48,7 +47,7 @@ async function callGroqWithTools(
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'llama-3.3-70b-versatile',
+      model: 'openai/gpt-oss-120b',
       messages,
       tools,
       max_tokens: maxTokens,
@@ -96,8 +95,6 @@ export async function POST(request: Request) {
     const { messages, userContext = {}, stream = false } = body;
 
     const retriever = createRetriever(userId);
-    const memorySystem = createMemorySystem(userId);
-    const mutationEngine = createMutationEngine(userId);
     const contextAssembler = createContextAssembler();
 
     const [personality, memoryContext] = await Promise.all([

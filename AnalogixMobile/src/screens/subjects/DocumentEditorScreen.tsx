@@ -1,15 +1,17 @@
 import React, { useState } from "react";
 import { View, StyleSheet, Alert, KeyboardAvoidingView, Platform, TextInput } from "react-native";
-import { Text, useTheme, IconButton, Button, ActivityIndicator, Menu } from "react-native-paper";
+import { Text, IconButton, Button, ActivityIndicator, Menu } from "react-native-paper";
 import { useQuery, useMutation } from "@apollo/client/react";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { DOCUMENT, UPDATE_DOCUMENT, DELETE_DOCUMENT } from "../../graphql/queries/subject";
 import { SHAPE } from "../../theme/tokens";
+import { alpha } from "../../theme";
+import { useThemeContext } from "../../theme/ThemeContext";
 import { RichTextEditor } from "../../components/RichTextEditor";
 
 export default function DocumentEditorScreen() {
-  const paperTheme = useTheme();
+  const { theme } = useThemeContext();
   const insets = useSafeAreaInsets();
   const route = useRoute<any>();
   const navigation = useNavigation();
@@ -57,7 +59,7 @@ export default function DocumentEditorScreen() {
   };
 
   if (loading) return (
-    <View style={[styles.container, { backgroundColor: paperTheme.colors.background, alignItems: "center", justifyContent: "center" }]}>
+    <View style={[styles.container, { backgroundColor: theme.colors.background, alignItems: "center", justifyContent: "center" }]}>
       <ActivityIndicator />
     </View>
   );
@@ -65,9 +67,9 @@ export default function DocumentEditorScreen() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
-      style={[styles.container, { backgroundColor: paperTheme.colors.background }]}
+      style={[styles.container, { backgroundColor: theme.colors.background }]}
     >
-      <View style={[styles.topBar, { backgroundColor: paperTheme.colors.surface, borderBottomColor: paperTheme.colors.outlineVariant, paddingTop: insets.top + 4 }]}>
+      <View style={[styles.topBar, { backgroundColor: theme.colors.surface, borderBottomColor: theme.colors.outlineVariant, paddingTop: insets.top + 4 }]}>
         <IconButton icon="arrow-left" onPress={() => navigation.goBack()} />
         <Text variant="titleMedium" style={{ fontWeight: "700", flex: 1 }}>
           {title || "Untitled"}
@@ -89,8 +91,8 @@ export default function DocumentEditorScreen() {
           value={title}
           onChangeText={setTitle}
           placeholder="Untitled"
-          placeholderTextColor={paperTheme.colors.onSurfaceVariant + "40"}
-          style={[styles.titleInput, { color: paperTheme.colors.onSurface }]}
+          placeholderTextColor={alpha(theme.colors.onSurfaceVariant, 0.25)}
+          style={[styles.titleInput, { color: theme.colors.onSurface }]}
         />
       )}
 

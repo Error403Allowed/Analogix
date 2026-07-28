@@ -50,7 +50,7 @@ export const userTypeDefs = /* GraphQL */ `
     updateProfile(input: JSON!): Profile!
     updatePreferences(input: JSON!): UserPreferences!
     updateAiPersonality(input: JSON!): Profile!
-    deleteAccount: DeleteResult!
+    deleteAccount(confirmation: String!): DeleteResult!
     markToursCompleted(tourIds: [String!]!): Profile!
   }
 `;

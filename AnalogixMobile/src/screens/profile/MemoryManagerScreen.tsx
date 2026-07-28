@@ -1,16 +1,17 @@
 import React, { useState } from "react";
-import { View, StyleSheet, ScrollView, Pressable } from "react-native";
+import { View, StyleSheet, ScrollView } from "react-native";
 import { Text, useTheme, Card, IconButton, Button, ActivityIndicator, TextInput, Portal, Modal, Snackbar } from "react-native-paper";
 import { useQuery, useMutation } from "@apollo/client/react";
 import { useNavigation } from "@react-navigation/native";
 import { USER_STATS, FORGET_MEMORY, REMEMBER_MEMORY } from "../../graphql/queries/user";
 import { useThemeContext } from "../../theme/ThemeContext";
+import { alpha } from "../../theme";
 import { SHAPE } from "../../theme/tokens";
 import Icon from "../../components/Icon";
 
 export default function MemoryManagerScreen() {
   const paperTheme = useTheme();
-  const { brand } = useThemeContext();
+  const { theme } = useThemeContext();
   const navigation = useNavigation();
   const { data, loading } = useQuery(USER_STATS);
   const [forgetMemory] = useMutation(FORGET_MEMORY, { refetchQueries: [{ query: USER_STATS }] });
@@ -58,20 +59,20 @@ export default function MemoryManagerScreen() {
             <Text variant="bodyLarge" style={{ color: paperTheme.colors.onSurfaceVariant, textAlign: "center", marginTop: 16 }}>
               No memories yet. Tap + to add one, or chat with the AI and it will remember your preferences.
             </Text>
-            <Button mode="contained" buttonColor={brand.primary} onPress={() => setShowAdd(true)} style={{ marginTop: 24, borderRadius: SHAPE.lg }}>
+            <Button mode="contained" buttonColor={theme.colors.primary} onPress={() => setShowAdd(true)} style={{ marginTop: 24, borderRadius: SHAPE.lg }}>
               Add a memory
             </Button>
           </View>
         ) : (
           <>
-            <Button mode="contained" buttonColor={brand.primary} icon="plus" onPress={() => setShowAdd(true)} style={{ marginBottom: 12, borderRadius: SHAPE.lg }}>
+            <Button mode="contained" buttonColor={theme.colors.primary} icon="plus" onPress={() => setShowAdd(true)} style={{ marginBottom: 12, borderRadius: SHAPE.lg }}>
               Add memory
             </Button>
             {memories.map((m: any) => (
               <Card key={m.id} mode="outlined" style={styles.memoryCard}>
                 <Card.Content style={styles.memoryRow}>
-                  <View style={[styles.iconWrap, { backgroundColor: brand.primary + "18" }]}>
-                    <Icon name="brain" size={20} color={brand.primary} />
+                  <View style={[styles.iconWrap, { backgroundColor: alpha(theme.colors.primary, 0.10) }]}>
+                    <Icon name="brain" size={20} color={theme.colors.primary} />
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text variant="bodyLarge" style={{ fontWeight: "600", color: paperTheme.colors.onSurface }}>{m.key}</Text>
@@ -92,7 +93,7 @@ export default function MemoryManagerScreen() {
           <Text variant="titleLarge" style={{ fontWeight: "700", marginBottom: 16 }}>Add a memory</Text>
           <TextInput mode="outlined" label="What to remember (key)" value={newKey} onChangeText={setNewKey} style={{ marginBottom: 12 }} placeholder="e.g., Learning style" />
           <TextInput mode="outlined" label="Details (value)" value={newValue} onChangeText={setNewValue} style={{ marginBottom: 16 }} placeholder="e.g., Visual explanations work best" multiline numberOfLines={3} />
-          <Button mode="contained" buttonColor={brand.primary} onPress={handleAdd} loading={saving} disabled={!newKey.trim() || !newValue.trim() || saving}>
+          <Button mode="contained" buttonColor={theme.colors.primary} onPress={handleAdd} loading={saving} disabled={!newKey.trim() || !newValue.trim() || saving}>
             Save memory
           </Button>
         </Modal>

@@ -22,7 +22,7 @@ export default function FormulaDetailScreen() {
   const route = useRoute<RouteProp<{ params: { formulaId: string; subjectId: string; subjectName: string; categoryName: string } }, "params">>();
   const navigation = useNavigation<any>();
   const paperTheme = useTheme();
-  const { formulaId, subjectId, subjectName, categoryName } = route.params;
+  const { formulaId, subjectId, subjectName } = route.params;
 
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [snackbarMsg, setSnackbarMsg] = useState("");

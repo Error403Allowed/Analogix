@@ -1,12 +1,12 @@
 import React, { useEffect, useCallback } from "react";
-import { View, StyleSheet, Pressable, LayoutChangeEvent, Platform } from "react-native";
+import { View, StyleSheet, Pressable, Platform } from "react-native";
 import { useTheme } from "react-native-paper";
 import { useThemeContext } from "../../theme/ThemeContext";
+import { alpha } from "../../theme";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring,
-  interpolate,
 } from "react-native-reanimated";
 import Icon from "../Icon";
 import { MOTION } from "../../theme/tokens";
@@ -28,7 +28,7 @@ const FAB_SIZE = 52;
 
 export function ShortNavBar({ tabs, activeTab, onTabPress, onFabPress }: ShortNavBarProps) {
   const theme = useTheme();
-  const { brand } = useThemeContext();
+  const { theme: ctxTheme } = useThemeContext();
   const fabScale = useSharedValue(1);
 
   const handleFabPressIn = useCallback(() => {
@@ -76,7 +76,7 @@ export function ShortNavBar({ tabs, activeTab, onTabPress, onFabPress }: ShortNa
                 { opacity: pressed ? 0.7 : 1 },
               ]}
             >
-              <NavTabItem icon={tab.icon} focused={focused} brand={brand} theme={theme} />
+              <NavTabItem icon={tab.icon} focused={focused} theme={theme} />
             </Pressable>
           );
         })}
@@ -90,11 +90,11 @@ export function ShortNavBar({ tabs, activeTab, onTabPress, onFabPress }: ShortNa
           style={[
             styles.fab,
             {
-              backgroundColor: brand.primary,
+              backgroundColor: ctxTheme.colors.primary,
               width: FAB_SIZE,
               height: FAB_SIZE,
               borderRadius: FAB_SIZE / 2,
-              boxShadow: `0px 4px 8px ${brand.primary}4D`,
+              boxShadow: `0px 4px 8px ${alpha(ctxTheme.colors.primary, 0.30)}`,
               elevation: 6,
             },
           ]}
@@ -106,7 +106,7 @@ export function ShortNavBar({ tabs, activeTab, onTabPress, onFabPress }: ShortNa
   );
 }
 
-function NavTabItem({ icon, focused, brand }: { icon: string; focused: boolean; brand: any; theme: any }) {
+function NavTabItem({ icon, focused, theme }: { icon: string; focused: boolean; theme: any }) {
   const scale = useSharedValue(1);
 
   useEffect(() => {
@@ -122,7 +122,7 @@ function NavTabItem({ icon, focused, brand }: { icon: string; focused: boolean; 
       style={[
         styles.tabInner,
         focused && {
-          backgroundColor: `${brand.primary}16`,
+          backgroundColor: alpha(theme.colors.primary, 0.10),
           borderRadius: 9999,
         },
         focused ? animStyle : undefined,
@@ -131,7 +131,7 @@ function NavTabItem({ icon, focused, brand }: { icon: string; focused: boolean; 
       <Icon
         name={icon}
         size={22}
-        color={focused ? brand.primary : "#999"}
+        color={focused ? theme.colors.primary : "#999"}
       />
     </Animated.View>
   );

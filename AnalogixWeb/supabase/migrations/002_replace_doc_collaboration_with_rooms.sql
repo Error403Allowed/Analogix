@@ -24,7 +24,7 @@ DROP TABLE IF EXISTS public.study_room_members CASCADE;
 DROP TABLE IF EXISTS public.study_room_canvas CASCADE;
 DROP TABLE IF EXISTS public.study_rooms CASCADE;
 
--- ── Documents ────────────────────────────────────────────────────────────────
+-- ── Documents ────────────────────────
 CREATE TABLE IF NOT EXISTS public.documents (
   id              TEXT PRIMARY KEY,
   owner_user_id   UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -105,7 +105,7 @@ SET notes = jsonb_set(COALESCE(notes, '{}'::JSONB), '{documents}', '[]'::JSONB, 
 WHERE jsonb_typeof(notes->'documents') = 'array'
   AND jsonb_array_length(notes->'documents') > 0;
 
--- ── Rooms ────────────────────────────────────────────────────────────────────
+-- ── Rooms ────────────────────────────
 CREATE TABLE IF NOT EXISTS public.study_rooms (
   id                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   title                    TEXT NOT NULL,
@@ -210,7 +210,7 @@ ALTER TABLE public.study_room_shared_documents ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.study_room_collab_updates ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.study_room_collab_snapshots ENABLE ROW LEVEL SECURITY;
 
--- ── Policies: documents ─────────────────────────────────────────────────────
+-- ── Policies: documents ─────────────
 CREATE POLICY "Users manage their own documents"
   ON public.documents FOR ALL
   USING (auth.uid() = owner_user_id)
@@ -254,7 +254,7 @@ CREATE POLICY "Room members can update shared documents"
     )
   );
 
--- ── Policies: rooms ─────────────────────────────────────────────────────────
+-- ── Policies: rooms ─────────────────
 CREATE OR REPLACE FUNCTION public.is_room_member(p_room_id UUID)
 RETURNS BOOLEAN LANGUAGE SQL SECURITY DEFINER STABLE AS $$
   SELECT EXISTS (
@@ -512,7 +512,7 @@ CREATE POLICY "Members can write collaboration snapshots"
     )
   );
 
--- ── Helper functions ────────────────────────────────────────────────────────
+-- ── Helper functions ────────────────
 CREATE OR REPLACE FUNCTION public.next_study_room_collab_seq(
   p_room_id UUID,
   p_surface_type TEXT,

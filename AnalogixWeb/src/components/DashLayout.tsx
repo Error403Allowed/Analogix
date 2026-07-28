@@ -2,7 +2,7 @@
 
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { TabsProvider, useTabs, pathMeta } from "@/context/TabsContext";
 import TabBar from "@/components/TabBar";
@@ -10,7 +10,8 @@ import { useEffect, useRef, Suspense } from "react";
 import { PageLoader, ChatSkeleton, DashboardSkeleton, FlashcardsSkeleton, QuizSkeleton, RoomsSkeleton, CalendarSkeleton, AchievementsSkeleton, SubjectsSkeleton, FormulasSkeleton, ResourcesSkeleton } from "@/components/PageSkeleton";
 import dynamic from "next/dynamic";
 
-export default function DashLayout({ children }: { children: React.ReactNode }) {
+export default function DashLayout({ children: _ }: { children?: React.ReactNode }) {
+  void _;
   const pathname = usePathname();
 
   const isLanding          = pathname === "/" || !pathname;
@@ -21,7 +22,7 @@ export default function DashLayout({ children }: { children: React.ReactNode }) 
   const isChatLike         = pathname === "/chat" || pathname === "/calendar";
 
   if (isLanding || isOnboarding || isTimerFullscreen || isAuthPage || isPublicPage) {
-    return <>{children}</>;
+    return <>{_}</>;
   }
 
   return (
@@ -30,9 +31,7 @@ export default function DashLayout({ children }: { children: React.ReactNode }) 
         <div className="flex h-screen w-full bg-background overflow-hidden">
           <AppSidebar />
           <SidebarInset className="flex flex-col flex-1 min-w-0 min-h-0">
-            <DashContent isChatLike={isChatLike} pathname={pathname}>
-              {children}
-            </DashContent>
+            <DashContent isChatLike={isChatLike} pathname={pathname} />
           </SidebarInset>
         </div>
       </SidebarProvider>
@@ -131,7 +130,7 @@ function getPageSkeleton(path: string) {
   return <PageLoader message="Loading..." />;
 }
 
-function DashContent({ children, isChatLike, pathname }: { children: React.ReactNode; isChatLike: boolean; pathname: string }) {
+function DashContent({ isChatLike, pathname }: { isChatLike: boolean; pathname: string }) {
   const { openTab, tabs, activeTabId, setActiveTab } = useTabs();
   const router = useRouter();
   const prevPathRef = useRef<string | null>(null);

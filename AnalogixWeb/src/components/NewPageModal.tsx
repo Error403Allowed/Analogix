@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, GraduationCap, FileText, Sparkles } from "lucide-react";
+import { X } from "lucide-react";
 import { subjectStore, type SubjectData } from "@/utils/subjectStore";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";

@@ -35,7 +35,7 @@ export function useAIPersonality() {
         }
         const data = await res.json();
         setPersonality({ ...DEFAULT_AI_PERSONALITY, ...data });
-      } catch (error) {
+      } catch {
         // Silently fail - use defaults or localStorage
         console.debug("[useAIPersonality] Using default personality");
         const local = localStorage.getItem("ai_personality");
@@ -142,7 +142,7 @@ export function useAIMemory() {
         const data = await res.json();
         setMemories(data.memories || []);
         setSummaries(data.summaries || []);
-      } catch (error) {
+      } catch {
         // Silently fail - use localStorage
         console.debug("[useAIMemory] Using localStorage memories");
         const local = JSON.parse(localStorage.getItem("ai_memories") || "[]");

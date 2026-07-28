@@ -1,5 +1,5 @@
 import { GraphQLError } from "graphql";
-import { requireUser } from "./_helpers.js";
+import { requireUser, throwSanitized } from "./_helpers.js";
 import type { GraphQLContext } from "../context.js";
 
 export const resourceResolvers = {
@@ -9,7 +9,7 @@ export const resourceResolvers = {
       let query = ctx.supabase!.from("resources").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(100);
       if (args.subjectId) query = query.eq("subject_id", args.subjectId);
       const { data, error } = await query;
-      if (error) throw new GraphQLError(error.message);
+      if (error) throwSanitized(error, ctx);
       return (data ?? []).map((r) => ({
         id: r.id,
         name: r.name,
@@ -39,7 +39,7 @@ export const resourceResolvers = {
         .storage
         .from("resources")
         .upload(fileName, buffer, { contentType: args.mimeType, upsert: false });
-      if (uploadError) throw new GraphQLError(uploadError.message);
+      if (uploadError) throwSanitized(uploadError, ctx);
       const { data: pub } = ctx.supabase!.storage.from("resources").getPublicUrl(fileName);
       const { data, error } = await ctx.supabase!
         .from("resources")
@@ -56,7 +56,7 @@ export const resourceResolvers = {
         })
         .select()
         .single();
-      if (error) throw new GraphQLError(error.message);
+      if (error) throwSanitized(error, ctx);
       return {
         id: data.id,
         name: data.name,
@@ -72,7 +72,7 @@ export const resourceResolvers = {
     deleteResource: async (_: unknown, args: { id: string }, ctx: GraphQLContext) => {
       const user = requireUser(ctx);
       const { error } = await ctx.supabase!.from("resources").delete().eq("id", args.id).eq("user_id", user.id);
-      if (error) throw new GraphQLError(error.message);
+      if (error) throwSanitized(error, ctx);
       return { success: true };
     },
   },

@@ -1,5 +1,5 @@
 import { GraphQLError } from "graphql";
-import { requireUser } from "./_helpers.js";
+import { requireUser, throwSanitized } from "./_helpers.js";
 import type { GraphQLContext } from "../context.js";
 
 export const documentResolvers = {
@@ -14,7 +14,7 @@ export const documentResolvers = {
         .limit(100);
       if (args.subjectId) query = query.eq("subject_id", args.subjectId);
       const { data, error } = await query;
-      if (error) throw new GraphQLError(error.message);
+      if (error) throwSanitized(error, ctx);
       return (data ?? []).map(mapDocument);
     },
     document: async (_: unknown, args: { id: string }, ctx: GraphQLContext) => {
@@ -25,7 +25,7 @@ export const documentResolvers = {
         .eq("id", args.id)
         .eq("owner_user_id", user.id)
         .maybeSingle();
-      if (error) throw new GraphQLError(error.message);
+      if (error) throwSanitized(error, ctx);
       return data ? mapDocument(data) : null;
     },
     documentVersions: async (_: unknown, args: { documentId: string }, ctx: GraphQLContext) => {
@@ -43,7 +43,7 @@ export const documentResolvers = {
         .eq("document_id", args.documentId)
         .order("created_at", { ascending: false })
         .limit(50);
-      if (error) throw new GraphQLError(error.message);
+      if (error) throwSanitized(error, ctx);
       return (data ?? []).map((v) => ({
         id: v.id,
         documentId: v.document_id,
@@ -81,7 +81,7 @@ export const documentResolvers = {
         })
         .select()
         .single();
-      if (error) throw new GraphQLError(error.message);
+      if (error) throwSanitized(error, ctx);
       return mapDocument(data);
     },
     updateDocument: async (_: unknown, args: { input: Record<string, unknown> }, ctx: GraphQLContext) => {
@@ -107,7 +107,7 @@ export const documentResolvers = {
         .eq("subject_id", subjectId)
         .select()
         .single();
-      if (error) throw new GraphQLError(error.message);
+      if (error) throwSanitized(error, ctx);
       return mapDocument(data);
     },
     duplicateDocument: async (_: unknown, args: { documentId: string; subjectId: string }, ctx: GraphQLContext) => {
@@ -118,7 +118,7 @@ export const documentResolvers = {
         .eq("id", args.documentId)
         .eq("owner_user_id", user.id)
         .maybeSingle();
-      if (readError) throw new GraphQLError(readError.message);
+      if (readError) throwSanitized(readError, ctx);
       if (!orig) throw new GraphQLError("Document not found");
       const now = new Date().toISOString();
       const { data, error } = await ctx.supabase!
@@ -133,7 +133,7 @@ export const documentResolvers = {
         })
         .select()
         .single();
-      if (error) throw new GraphQLError(error.message);
+      if (error) throwSanitized(error, ctx);
       return mapDocument(data);
     },
     deleteDocument: async (_: unknown, args: { documentId: string; subjectId: string }, ctx: GraphQLContext) => {
@@ -144,7 +144,7 @@ export const documentResolvers = {
         .eq("id", args.documentId)
         .eq("owner_user_id", user.id)
         .eq("subject_id", args.subjectId);
-      if (error) throw new GraphQLError(error.message);
+      if (error) throwSanitized(error, ctx);
       return { success: true };
     },
     revertDocument: async (_: unknown, args: { documentId: string; versionId: string }, ctx: GraphQLContext) => {
@@ -155,7 +155,7 @@ export const documentResolvers = {
         .eq("id", args.versionId)
         .eq("document_id", args.documentId)
         .maybeSingle();
-      if (readError) throw new GraphQLError(readError.message);
+      if (readError) throwSanitized(readError, ctx);
       if (!version) throw new GraphQLError("Version not found");
       const { data, error } = await ctx.supabase!
         .from("documents")
@@ -170,7 +170,7 @@ export const documentResolvers = {
         .eq("owner_user_id", user.id)
         .select()
         .single();
-      if (error) throw new GraphQLError(error.message);
+      if (error) throwSanitized(error, ctx);
       return mapDocument(data);
     },
   },

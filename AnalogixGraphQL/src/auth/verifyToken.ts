@@ -11,8 +11,10 @@ let jwks: ReturnType<typeof createRemoteJWKSet> | null = null;
 function getJwks() {
   if (jwks) return jwks;
   try {
-    // The JWKS URL is `${SUPABASE_URL}/auth/v1/.well-known/jwks.json`
-    jwks = createRemoteJWKSet(new URL(`${env.supabase.url}/auth/v1/.well-known/jwks.json`));
+    jwks = createRemoteJWKSet(
+      new URL(`${env.supabase.url}/auth/v1/.well-known/jwks.json`),
+      { timeoutDuration: 3000 },
+    );
   } catch (err) {
     logger.warn({ err }, "[auth] Could not initialize Supabase JWKS — verification will reject all tokens");
     jwks = null;

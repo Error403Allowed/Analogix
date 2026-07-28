@@ -1,10 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createRetriever } from '@/lib/retrieval/retriever';
-import { createContextAssembler } from '@/lib/context/assembler';
 import { buildMemoryContext } from '@/lib/memory/layers';
 import { getUserAIPersonality, buildPersonalityInstructions } from '@/lib/aiMemory';
-import { getFormulaSheetContext } from '@/data/formulaSheets';
 
 const GROQ_API_URL = process.env.GROQ_CHAT_URL || 'https://api.groq.com/openai/v1/chat/completions';
 const GROQ_API_KEY = process.env.GROQ_API_KEY || process.env.GROQ_API_KEY_2;
@@ -33,6 +31,7 @@ const FULL_MESSAGE_WINDOW = 8;
 
 function buildSystemPrompt(
   userContext: ChatRequest['userContext'],
+  userName: string,
   workspaceContext: string,
   calendarContext: string,
   memoryContext: string,
@@ -53,6 +52,10 @@ function buildSystemPrompt(
   const curriculumContext = stateFullName
     ? `The student is in Year ${studentGrade} in ${stateFullName}, Australia. Always align explanations to the ${stateFullName} syllabus.`
     : `The student is in Year ${studentGrade} in Australia. Use Australian curriculum standards.`;
+
+  const greeting = userName
+    ? `The student's name is ${userName}. Address them by name naturally in conversation — not in every message, but enough to feel personal and warm.`
+    : '';
 
   const levels = [
     'SCHOOL MODE: Formal, precise, curriculum-aligned. No analogies.',
@@ -81,6 +84,8 @@ ${curriculumInstruction}
 
 Context: Year ${studentGrade}${stateFullName ? ` in ${stateFullName}` : ''}, Australia. ${curriculumContext}
 
+${greeting}
+
 ${analogyIntensity === 0 ? 'Mode: School/Assessment — formal, precise, no analogies.' : `Learning Mode: ${analogyGuidance}`}
 
 Rules:
@@ -107,6 +112,16 @@ export async function POST(request: Request) {
 
     const body: ChatRequest = await request.json();
     const { messages, userContext = {} } = body;
+
+    let userName = '';
+    if (user) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('name')
+        .eq('id', userId)
+        .single();
+      userName = profile?.name || user.email?.split('@')[0] || '';
+    }
 
     const [personality, memoryContext] = await Promise.all([
       user ? getUserAIPersonality(userId) : Promise.resolve(null),
@@ -199,6 +214,7 @@ export async function POST(request: Request) {
 
     const systemPrompt = buildSystemPrompt(
       { ...userContext, analogyIntensity: effectiveAnalogyIntensity },
+      userName,
       workspaceContext,
       calendarContext,
       memoryContext,
@@ -224,7 +240,7 @@ export async function POST(request: Request) {
       fullSystemPrompt = fullSystemPrompt.replace('— Analogix', `${conversationSummary}\n\n— Analogix`);
     }
 
-    const model = userContext.selectedModel || 'llama-3.3-70b-versatile';
+    const model = userContext.selectedModel || 'openai/gpt-oss-120b';
 
     if (!GROQ_API_KEY) {
       return NextResponse.json({ error: 'GROQ_API_KEY not configured' }, { status: 500 });
@@ -248,7 +264,7 @@ export async function POST(request: Request) {
     });
 
     if (!response.ok) {
-      const error = await response.text();
+      await response.text();
       return NextResponse.json({ error: `AI error: ${response.status}` }, { status: response.status });
     }
 

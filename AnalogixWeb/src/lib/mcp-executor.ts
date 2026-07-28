@@ -80,7 +80,6 @@ async function ensureConnected(): Promise<Client> {
 export async function executeTools(
   tools: ToolCall[],
   userId: string,
-  accessToken?: string,
 ): Promise<ToolExecutionResult> {
   let c: Client;
   try {

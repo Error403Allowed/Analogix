@@ -7,10 +7,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
-  Brain, Trash2, Search, Filter, Clock, Target,
-  Bookmark, Star, BookOpen, Lightbulb, Zap,
+  Brain, Trash2, Search, Clock, Target,
+  Star, BookOpen, Zap,
   ChevronDown, ChevronUp, Plus, X, Check,
-  History, TrendingUp, Calendar,
+  History,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -46,7 +46,7 @@ interface MemoryManagerProps {
 }
 
 export const MemoryManager: React.FC<MemoryManagerProps> = ({ onClose }) => {
-  const { memories, summaries, loading, saving, addMemory, deleteMemory, updateMemoryImportance, clearAllMemories, getMemoriesByType } = useAIMemory();
+  const { memories, summaries, loading, saving, addMemory, deleteMemory, updateMemoryImportance, clearAllMemories } = useAIMemory();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedType, setSelectedType] = useState<MemoryType | "all">("all");
   const [expandedMemoryId, setExpandedMemoryId] = useState<string | null>(null);

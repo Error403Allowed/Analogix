@@ -148,7 +148,6 @@ export function useChat() {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const lockedToBottomRef = useRef(true);
-  const lastContentLengthRef = useRef<number>(0);
 
   const userPrefs =
     typeof window !== "undefined"
@@ -711,7 +710,6 @@ Title:` }];
     if (attachedFiles.length === 0 || generatingStudyGuide) return;
 
     const subjectToUse = selectedSubject || userSubjects[0] || "general";
-    const subject = SUBJECT_CATALOG.find(s => s.id === subjectToUse);
 
     const combinedText = attachedFiles
       .map(f => `File: ${f.name}\n\n${f.extractedText}`)
@@ -1226,7 +1224,7 @@ Title:` }];
         }
         setIsTyping(false);
         abortRef.current = null;
-      } catch (err) {
+      } catch {
         setMessages(prev => [...prev, {
           id: (Date.now() + 3).toString(),
           role: "assistant",

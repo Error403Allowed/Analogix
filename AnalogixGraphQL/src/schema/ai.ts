@@ -28,12 +28,7 @@ export const aiTypeDefs = /* GraphQL */ `
     format: String!
   }
 
-  type ExecutePythonResult {
-    stdout: String!
-    stderr: String!
-    error: String
-    durationMs: Float!
-  }
+
 
   type BannerResult {
     text: String!
@@ -72,10 +67,7 @@ export const aiTypeDefs = /* GraphQL */ `
     source: String!
   }
 
-  type TtsResult {
-    audioUrl: String!
-    duration: Float!
-  }
+
 
   type ToolResult {
     toolName: String!
@@ -100,8 +92,7 @@ export const aiTypeDefs = /* GraphQL */ `
     extractText(input: JSON!): ExtractTextResult!
     tutor(input: JSON!): TutorResponse!
     searchResearch(input: JSON!): ResearchSearchResult!
-    speak(input: JSON!): TtsResult!
-    executePython(input: JSON!): ExecutePythonResult!
+
     generateBanner(input: JSON!): BannerResult!
     generateGreeting(input: JSON!): GreetingResult!
     generateTitle(input: JSON!): TitleResult!

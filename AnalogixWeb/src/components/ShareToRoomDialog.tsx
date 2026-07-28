@@ -81,7 +81,7 @@ export function ShareToRoomDialog({
         const payload = await response.json().catch(() => null);
         throw new Error(payload?.error || "Failed to share document");
       }
-      const payload = await response.json();
+      await response.json();
       toast.success(`Shared "${documentTitle}" to the room.`);
       setOpen(false);
     } catch (error) {

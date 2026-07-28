@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/client";
 import { getAuthUser } from "./authCache";
-// ── SM-2 spaced repetition ────────────────────────────────────────────────────
+// ── SM-2 spaced repetition ────────────
 const sm2 = (card, rating) => {
     let { intervalDays, easeFactor, repetitions } = card;
     if (rating < 3) {
@@ -21,7 +21,7 @@ const sm2 = (card, rating) => {
     nextReview.setDate(nextReview.getDate() + intervalDays);
     return { intervalDays, easeFactor, repetitions, nextReview: nextReview.toISOString() };
 };
-// ── Row mappers ───────────────────────────────────────────────────────────────
+// ── Row mappers ───────────────────────
 const toSet = (row) => ({
     id: row.id,
     subjectId: row.subject_id,
@@ -43,7 +43,7 @@ const toCard = (row) => ({
     createdAt: row.created_at,
     updatedAt: row.updated_at,
 });
-// ── Cross-tab sync helper ─────────────────────────────────────────────────────
+// ── Cross-tab sync helper ─────────────
 const broadcastChange = () => {
     if (typeof window === "undefined")
         return;
@@ -63,9 +63,9 @@ const broadcastChange = () => {
 export type Flashcard = ReturnType<typeof toCard>;
 export type FlashcardSet = ReturnType<typeof toSet>;
 export type FlashcardRating = number;
-// ── Store ─────────────────────────────────────────────────────────────────────
+// ── Store ─────────────────────────────
 export const flashcardStore = {
-    // ── Sets ──────────────────────────────────────────────────────────────────
+    // ── Sets ──────────────────────────
     getSets: async () => {
         const user = await getAuthUser();
         if (!user)
@@ -128,7 +128,7 @@ export const flashcardStore = {
             console.warn("[flashcardStore] deleteSet failed:", error);
         broadcastChange();
     },
-    // ── Cards ─────────────────────────────────────────────────────────────────
+    // ── Cards ─────────────────────────
     getAll: async () => {
         const user = await getAuthUser();
         if (!user)

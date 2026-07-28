@@ -4,9 +4,8 @@ import { getFormulaSheetContext } from "@/data/formulaSheets";
 import { createClient } from "@/lib/supabase/server";
 import { getUserAIPersonality, getRelevantMemories, buildMemoryContext, buildPersonalityInstructions } from "@/lib/aiMemory";
 import type { AIPersonality } from "@/types/ai-personality";
-import { buildFullCurriculumPrompt, findCurriculumForQuery, buildValidSubjectsPrompt } from "@/lib/curriculum";
+import { buildValidSubjectsPrompt } from "@/lib/curriculum";
 import { createCurriculumRetriever } from "@/lib/retrieval/curriculum";
-import { buildMappingSection, buildToneInstructions } from "@/lib/explanation";
 import { TOOL_LIST_DESCRIPTION, parseToolCallsFromResponse, buildToolProposal, summarizeToolCall } from "@/lib/tool-descriptions";
 import type { ToolProposal } from "@analogix/shared/types";
 export const runtime = "nodejs";
@@ -107,57 +106,18 @@ export async function POST(request) {
             NT: "Northern Territory",
         };
         const stateFullName = studentState ? (STATE_FULL_NAMES[studentState] || studentState) : null;
-        const studentLocation = stateFullName ? `${stateFullName}, Australia` : "Australia";
         // Curriculum context injected into the system prompt
-        const curriculumContext = stateFullName
-            ? `The student is in Year ${studentGrade} in ${stateFullName} (${studentState}), Australia. Always align explanations, examples, terminology, and curriculum references to the ${stateFullName} syllabus and Australian educational standards for Year ${studentGrade}. Use Australian spelling and terminology (e.g. "maths" not "math", "Year" not "Grade"). Reference relevant local context where helpful (e.g. ${stateFullName}-specific examples, the Australian curriculum framework).`
-            : `The student is in Year ${studentGrade} in Australia. Always align explanations to the Australian curriculum for Year ${studentGrade}. Use Australian spelling and terminology.`;
         // ========================================================================
         // STEP 2: Build AI instructions based on user preferences
         // ========================================================================
         // Instructions for how much to use analogies - AI uses judgment
-        const analogyGuidance = [
-            "Use no analogies - focus on clear, direct explanations.",
-            "Use analogies sparingly - only when they genuinely clarify the concept.",
-            "Use analogies when helpful - when you do, weave the analogy through your explanation by mapping parts of the concept to parts of the analogy. Don't just state it and drop it.",
-            "Use analogies frequently - build an extended analogy and thread it through your response. Map each part of the concept to a corresponding part of the analogy, and keep returning to it.",
-            "Use extensive analogies - every explanation should be anchored in a vivid, extended analogy. Build it from the start, develop it throughout, and map concept elements to analogy elements at every step.",
-            "Use analogies as the primary tool - every concept should be explained through a rich, extended analogy. Weave the analogy through your entire response, showing how each piece of the concept maps to the analogy.",
-        ][analogyIntensity];
         // Formula sheet context — injected into prompt for formula-bearing subjects
         const primarySubjectForFormulas = userContext?.subjects?.[0] || null;
         const formulaSheetContext = primarySubjectForFormulas
             ? getFormulaSheetContext(primarySubjectForFormulas)
             : "";
-        // Instructions for how long responses should be - respect user's detail_level setting
-        const userDetailLevel = aiPersonality?.detail_level ?? 50;
-        let targetResponseLength = "balanced";
-        let minWords = 100;
-        let maxWords = 300;
-        if (userDetailLevel >= 70) {
-            targetResponseLength = "comprehensive";
-            minWords = 200;
-            maxWords = 500;
-        }
-        else if (userDetailLevel <= 30) {
-            targetResponseLength = "concise";
-            minWords = 50;
-            maxWords = 150;
-        }
-        else {
-            targetResponseLength = "balanced";
-            minWords = 100;
-            maxWords = 300;
-        }
         const selectedModel = userContext?.selectedModel || null;
         const isQwenModel = selectedModel ? selectedModel.toLowerCase().includes("qwen") : false;
-        const lengthGuidance = `RESPONSE LENGTH (${targetResponseLength}):
-    - Minimum ${minWords} words for substantive answers
-    - Maximum ${maxWords} words - go longer only when topic truly demands it
-    - Simple questions: 2-3 sentences
-    - Complex topics: Use full paragraphs, multiple examples, thorough coverage
-    - Don't hold back on detail when students need to understand something deeply
-    - NOTE: If asked to write something very long (essays, reports, etc.), explain that responses are capped at ~1900 tokens due to API rate limits, but offer to continue in a follow-up message`;
         const researchMode = Boolean(userContext?.researchMode);
         // Token budget — respect user's detail_level preference but hard cap at 1900
         // due to Groq's ~6k TPM rate limit (leaving ~4000 for input)
@@ -234,127 +194,13 @@ GUIDANCE:
 - When you do use an analogy, weave it in — map parts of the concept to parts of the analogy
 - Natural paragraphs only — no "Step 1:" structures`;
         // Core teaching philosophy
-        const teachingApproach = analogyIntensity === 0
-            ? "Build understanding through clear, direct explanations grounded in facts."
-            : "Explain directly when clear, use analogies to make abstract concepts concrete when helpful.";
         // TEACHING METHODOLOGY
-        const methodology = `
-    YOUR ROLE:
-    - Guide students to understand concepts, don't just give answers
-    - For homework/task questions: ask "What have you tried?" or give hints first
-    - Help them figure it out — don't do the work for them
-
-    RESPONSE BALANCE:
-    - Brief is fine for greetings: 1-2 sentences
-    - Substantive for learning: cover concept + one example
-    - Skip essays unless explicitly asked
-    - Match your answer length to the question`;
         // How to layer complexity in explanations
-        const complexityGuidance = `EXPLANATION DEPTH:
-    - Start: Plain-language summary anyone can understand
-    - Deepen: Explain the mechanism (why it works)
-    - Extend: Edge cases, common mistakes, advanced nuances
-    - Connect: Link to related concepts and real-world applications`;
         // Brevity guidance
-        const brevityGuidance = `
-DEPTH VS BREVITY:
-- Brief is fine for greetings: 1-2 sentences
-- Simple questions: 2-3 sentences
-- Complex concepts: Full paragraphs with examples - go deep
-- Math problems: Show all working with explanations
-- Quality over brevity - students need thorough explanations to learn`;
         // ========================================================================
         // STEP 2B: STRUCTURED EXPLANATION PIPELINE
         // ========================================================================
-        // Detect if this is a concept explanation request (new topic)
-        const isConceptExplanation = messages.length <= 2 &&
-            !latestUserMessage.toLowerCase().includes("solve") &&
-            !latestUserMessage.toLowerCase().includes("calculate") &&
-            !latestUserMessage.toLowerCase().includes("find the");
-        // Determine concept from the message (simple keyword extraction)
-        const detectConcept = (msg) => {
-            const lower = msg.toLowerCase();
-            const concepts = [
-                { keyword: "linear equation", concept: "linear equation" },
-                { keyword: "slope", concept: "linear equation" },
-                { keyword: "quadratic", concept: "quadratic equation" },
-                { keyword: "parabola", concept: "quadratic equation" },
-                { keyword: "function", concept: "function" },
-                { keyword: "derivative", concept: "calculus" },
-                { keyword: "integral", concept: "calculus" },
-                { keyword: "probability", concept: "probability" },
-                { keyword: "statistic", concept: "statistics" },
-                { keyword: "trigonometry", concept: "trigonometry" },
-                { keyword: "sine", concept: "trigonometry" },
-                { keyword: "cosine", concept: "trigonometry" },
-                { keyword: "matrix", concept: "matrix" },
-                { keyword: "algebra", concept: "algebra" },
-                { keyword: "geometry", concept: "geometry" },
-                { keyword: "circle", concept: "geometry" },
-                { keyword: "area", concept: "area" },
-                { keyword: "volume", concept: "volume" }
-            ];
-            for (const { keyword, concept } of concepts) {
-                if (lower.includes(keyword))
-                    return concept;
-            }
-            return "general concept";
-        };
-        const currentConcept = detectConcept(latestUserMessage);
         // Adjust explanation depth based on detail_level
-        const isConcise = detailLevel <= 40;
-        const isComprehensive = detailLevel >= 70;
-        // Build structured explanation prompt for concept explanations
-        const explanationPipeline = isConceptExplanation && analogyIntensity >= 2
-            ? `
-      
-================================================================================
-STRUCTURED EXPLANATION - ${isConcise ? "CONCISE" : isComprehensive ? "COMPREHENSIVE" : "BALANCED"}
-================================================================================
-${isConcise ? `Keep it SHORT and snappy:
-- Opening: 1 sentence max
-- Intuition: 1-2 sentences  
-- Core Idea: Under 15 words
-- Example: Simple, just the basics` : isComprehensive ? `Go deeper:
-- Opening: 1-2 sentences with rich detail
-- Intuition: 3-5 sentences, build understanding
-- Core Idea: Under 30 words, memorable
-- Example: Show reasoning, edge cases` : `Balance:
-- Opening: 1-2 sentences
-- Intuition: 2-3 sentences
-- Core Idea: Under 20 words
-- Example: Show key steps`}
-
-1. OPENING — Start with an engaging hook using "${analogyAnchor}".
-   NEVER: "${currentConcept} is defined as..." or "The definition of..."
-   Instead, draw the reader in with a relatable scenario or question.
-
-2. INTUITION — What's actually happening, not just what it is.
-   ${analogyIntensity >= 3 ? 'WEAVE YOUR ANALOGY HERE: As you explain the intuition, map parts of the concept to parts of your analogy. Show how the pieces correspond.' : ''}
-
-3. CORE IDEA — ONE sentence to remember.
-
-4. EXAMPLE — ${isConcise ? "just the answer" : "one worked example"}
-   ${analogyIntensity >= 3 ? 'Return to your analogy: Show how the example plays out in both the concept and the analogy, reinforcing the connection.' : ''}
-
-5. ${isComprehensive ? "QUICK CHECK - 1 question" : ""}
-
-QUALITY: Engaging opening, no dry definitions, clarity over cleverness
-${analogyIntensity >= 3 ? `\nANALOGY WEAVING: Don't just state an analogy and abandon it. Thread it through your entire explanation — map concept elements to analogy elements at each step, and keep returning to the comparison so the student sees how the pieces fit together.` : ''}
-================================================================================
-`
-            : "";
-        // Build concept-specific mapping section
-        const conceptMappingSection = isConceptExplanation && analogyAnchor && analogyIntensity >= 2
-            ? buildMappingSection(analogyAnchor, currentConcept, [])
-            : "";
-        // Add tone transformation instructions
-        const toneInstructions = analogyIntensity >= 2
-            ? `
-TONE RULES (apply to ALL outputs):
-${buildToneInstructions()}
-`
-            : "";
         const formatResearchSources = (sources) => {
             const truncateText = (text, max = 360) => text.length > max ? text.slice(0, max).trim() + "…" : text.trim();
             return sources.map((s, i) => {
@@ -391,21 +237,6 @@ ${researchSources.length > 0 ? `ACADEMIC SOURCES:\n${formatResearchSources(resea
         const userSubjectsContext = subjects.length > 0
             ? `\n\n${validSubjectsPrompt}\n\nCRITICAL — USER'S ENROLLED SUBJECTS:\nThe user's subjects are: ${subjects.join(", ")}.\nYou MUST use ONLY these subject IDs when calling any tool that requires a subject_id. Never create new subjects or use subject IDs not in this list. If the user asks for something in a subject not in this list, respond conversationally and explain they need to add that subject first.`
             : `\n\n${validSubjectsPrompt}`;
-        const gradeNum = parseInt(studentGrade.replace("7-12", "7").replace("F", "0"), 10) || 7;
-        // Build ACARA curriculum context - this is core knowledge the AI carries
-        const curriculumPrompt = primarySubject
-            ? buildFullCurriculumPrompt(primarySubject, gradeNum)
-            : "";
-        const curriculumSection = curriculumPrompt
-            ? `\n\n${curriculumPrompt}`
-            : "";
-        // Detect which curriculum topic the user's question relates to
-        const curriculumTopicMatch = primarySubject && gradeNum >= 7 && gradeNum <= 10
-            ? findCurriculumForQuery(primarySubject, gradeNum, latestUserMessage)
-            : "";
-        const topicSection = curriculumTopicMatch
-            ? `\n\n--- QUESTION CURRICULUM ALIGNMENT ---\n${curriculumTopicMatch}\n--- END ALIGNMENT ---`
-            : "";
         // ── Curriculum RAG (semantic search) ─────────────────────────────
         let curriculumRagSection = "";
         try {

@@ -8,7 +8,9 @@
     "dev": "tsx watch src/server.ts",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/server.js",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "lint": "echo 'lint placeholder'",
     "codegen": "graphql-codegen --config codegen.ts"
   },
@@ -40,7 +42,9 @@
     "pino": "^10.3.1",
     "pino-http": "^11.0.0",
     "ws": "^8.21.0",
-    "zod": "^4.4.3"
+    "zod": "^4.4.3",
+    "dataloader": "^2.2.3",
+    "graphql-query-complexity": "^2.0.0"
   },
   "devDependencies": {
     "@graphql-codegen/cli": "^7.2.0",
@@ -53,6 +57,7 @@
     "@types/node": "^26.1.1",
     "@types/ws": "^8.18.1",
     "tsx": "^4.23.1",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.10"
   }
 }

@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/exhaustive-deps */
 "use client";
 
 import { forwardRef, useEffect, useRef, useImperativeHandle, useMemo, useCallback } from "react";
@@ -49,7 +48,7 @@ export {
   htmlToPlainBlocks,
 } from "@/components/blocknote/content";
 
-// ── Handle + Props ────────────────────────────────────────────────────────────
+// ── Handle + Props ────────────────────
 export interface BlockNoteHandle {
   getContent: () => string;
   setContent: (raw: string) => void;
@@ -67,7 +66,7 @@ interface Props {
   collaboration?: Pick<RoomCollaborationRuntime, "fragment" | "user" | "provider">;
 }
 
-// ── Component ─────────────────────────────────────────────────────────────────
+// ── Component ─────────────────────────
 const BlockNoteEditor = forwardRef<BlockNoteHandle, Props>(
   ({ initialContent, onChange, placeholder, editable = true, subjectLabel, documentTitle, collaboration }, ref) => {
     const { resolvedTheme } = useTheme();

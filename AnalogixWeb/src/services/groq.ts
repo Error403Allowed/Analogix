@@ -97,7 +97,6 @@ function trimToBudget(
   const recentMessages = messages.slice(-Math.max(8, budget.maxMessages));
   
   // If still too big, truncate each message
-  const maxTokensPerMessage = Math.floor(budget.maxTokens / recentMessages.length);
   const trimmedMessages: ChatMessage[] = [];
   
   for (const msg of recentMessages) {
@@ -127,7 +126,7 @@ function trimToBudget(
   return { messages: trimmedMessages, memories: budgetedMemories };
 }
 
-// ─── Streaming helper ────────────────────────────────────────────────────────
+// ─── Streaming helper ────────────────
 // Calls /api/groq/chat-stream and yields token chunks as they arrive.
 export async function* getGroqStream(
   messages: ChatMessage[],

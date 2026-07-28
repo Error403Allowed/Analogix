@@ -5,11 +5,11 @@ import { motion } from "framer-motion";
 import {
   ArrowRight, Sparkles, BookOpen, MessageCircle, Trophy,
   Calculator, Check,
-  Lightbulb, Zap, Target, Clock, FileText, GraduationCap,
+  Zap, Target, Clock,
   Calendar, Layers, TrendingUp, BookMarked, Users, ChevronRight
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
@@ -129,7 +129,6 @@ const PRIVACY_URL = "/privacy";
 
 const Landing = () => {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { user, loading } = useAuth();
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
   const [isMounted, setIsMounted] = useState(false);

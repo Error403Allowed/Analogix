@@ -38,6 +38,8 @@ export type StudyStackParamList = {
   StudySchedule: { subjectId?: string } | undefined;
   AssessmentGuide: { text?: string; subjectId?: string } | undefined;
   Resources: undefined;
+  StudyMap: undefined;
+  StudyMapSubject: { subjectId: string };
 };
 
 // -----------------------------------------------------------------------------

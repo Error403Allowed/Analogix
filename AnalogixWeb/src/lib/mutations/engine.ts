@@ -44,7 +44,7 @@ export class MutationEngine {
       parent_operation_id: parentOperationId,
     };
 
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('operation_logs')
       .insert({
         id: operation.id,

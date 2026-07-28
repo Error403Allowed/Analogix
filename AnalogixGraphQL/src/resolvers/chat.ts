@@ -1,5 +1,5 @@
 import { GraphQLError } from "graphql";
-import { requireUser } from "./_helpers.js";
+import { requireUser, throwSanitized } from "./_helpers.js";
 import type { GraphQLContext } from "../context.js";
 import { streamGroqChat, classifyTaskType, type GroqChatMessage } from "../ai/groq.js";
 import { logger } from "../logger.js";
@@ -20,27 +20,31 @@ export const chatResolvers = {
       let query = ctx.supabase!.from("chat_sessions").select("*").eq("user_id", user.id).order("updated_at", { ascending: false }).limit(50);
       if (args.subjectId) query = query.eq("subject_id", args.subjectId);
       const { data: sessions, error } = await query;
-      if (error) throw new GraphQLError(error.message);
+      if (error) throwSanitized(error, ctx);
       // Hydrate message count and last message in one pass
-      const result = await Promise.all(
-        (sessions ?? []).map(async (s) => {
-          const { data: msgs } = await ctx.supabase!
+      const sessionIds = (sessions ?? []).map((s) => s.id);
+      const { data: lastMessages } = sessionIds.length > 0
+        ? await ctx.supabase!
             .from("chat_messages")
-            .select("content, role, created_at")
-            .eq("session_id", s.id)
+            .select("session_id, content, role, created_at")
+            .in("session_id", sessionIds)
             .order("created_at", { ascending: false })
-            .limit(1);
-          return {
-            id: s.id,
-            subjectId: s.subject_id,
-            title: s.title,
-            createdAt: s.created_at,
-            updatedAt: s.updated_at,
-            messageCount: 0, // optional: count via separate query if needed
-            lastMessage: msgs?.[0]?.content ?? null,
-          };
-        })
-      );
+        : { data: [] };
+      const lastMsgBySession = new Map<string, string>();
+      for (const msg of lastMessages ?? []) {
+        if (!lastMsgBySession.has(msg.session_id)) {
+          lastMsgBySession.set(msg.session_id, msg.content);
+        }
+      }
+      const result = (sessions ?? []).map((s) => ({
+        id: s.id,
+        subjectId: s.subject_id,
+        title: s.title,
+        createdAt: s.created_at,
+        updatedAt: s.updated_at,
+        messageCount: 0,
+        lastMessage: lastMsgBySession.get(s.id) ?? null,
+      }));
       return result;
     },
     chatMessages: async (_: unknown, args: { sessionId: string; limit?: number }, ctx: GraphQLContext) => {
@@ -52,7 +56,7 @@ export const chatResolvers = {
         .eq("user_id", user.id)
         .order("created_at", { ascending: true })
         .limit(args.limit ?? 100);
-      if (error) throw new GraphQLError(error.message);
+      if (error) throwSanitized(error, ctx);
       return (data ?? []).map((m) => ({
         id: m.id,
         sessionId: m.session_id,
@@ -79,7 +83,7 @@ export const chatResolvers = {
         })
         .select()
         .single();
-      if (error) throw new GraphQLError(error.message);
+      if (error) throwSanitized(error, ctx);
       return {
         id: data.id,
         subjectId: data.subject_id,
@@ -99,7 +103,7 @@ export const chatResolvers = {
         .eq("user_id", user.id)
         .select()
         .single();
-      if (error) throw new GraphQLError(error.message);
+      if (error) throwSanitized(error, ctx);
       return {
         id: data.id,
         subjectId: data.subject_id,
@@ -113,7 +117,7 @@ export const chatResolvers = {
     deleteChatSession: async (_: unknown, args: { id: string }, ctx: GraphQLContext) => {
       const user = requireUser(ctx);
       const { error } = await ctx.supabase!.from("chat_sessions").delete().eq("id", args.id).eq("user_id", user.id);
-      if (error) throw new GraphQLError(error.message);
+      if (error) throwSanitized(error, ctx);
       return { success: true };
     },
     appendChatMessage: async (_: unknown, args: { sessionId: string; role: string; content: string }, ctx: GraphQLContext) => {
@@ -132,7 +136,7 @@ export const chatResolvers = {
         })
         .select()
         .single();
-      if (error) throw new GraphQLError(error.message);
+      if (error) throwSanitized(error, ctx);
       // Bump session updated_at
       await ctx.supabase!.from("chat_sessions").update({ updated_at: now }).eq("id", parsed.sessionId);
       return {
@@ -160,7 +164,7 @@ export const chatResolvers = {
         })
         .select()
         .single();
-      if (insertError) throw new GraphQLError(insertError.message);
+      if (insertError) throwSanitized(insertError, ctx);
       await ctx.supabase!.from("chat_sessions").update({ updated_at: now }).eq("id", parsed.sessionId);
 
       // 2. Build the message history for Groq.
@@ -260,9 +264,9 @@ export const chatResolvers = {
       // 3. Classify the task and select the model.
       const taskType = classifyTaskType(groqMessages, profile?.subjects?.[0] as string | undefined);
       const modelMap: Record<string, string> = {
-        coding: "qwen-2.5-coder-32b",
-        reasoning: "deepseek-r1-distill-llama-70b",
-        general: "llama-3.3-70b-versatile",
+        coding: "openai/gpt-oss-120b",
+        reasoning: "qwen/qwen3.6-27b",
+        general: "openai/gpt-oss-120b",
       };
       const selectedModel = args.model ?? modelMap[taskType] ?? modelMap.general;
 

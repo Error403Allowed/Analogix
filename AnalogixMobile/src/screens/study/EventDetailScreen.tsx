@@ -11,7 +11,7 @@ const EVENT_TYPES = ["exam", "assignment", "event", "class", "lesson", "reminder
 
 export default function EventDetailScreen() {
   const paperTheme = useTheme();
-  const { brand } = useThemeContext();
+  const { theme } = useThemeContext();
   const route = useRoute<any>();
   const navigation = useNavigation();
   const { eventId } = route.params;
@@ -101,7 +101,7 @@ export default function EventDetailScreen() {
   if (loading) {
     return (
       <View style={[styles.container, { backgroundColor: paperTheme.colors.background, alignItems: "center", justifyContent: "center" }]}>
-        <ActivityIndicator color={brand.primary} size="large" />
+        <ActivityIndicator color={theme.colors.primary} size="large" />
       </View>
     );
   }
@@ -124,8 +124,8 @@ export default function EventDetailScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         <Card mode="elevated" style={styles.card}>
           <Card.Content>
-            <View style={[styles.typeBar, { backgroundColor: event.color ?? brand.primary }]} />
-            <Text variant="labelSmall" style={{ color: event.color ?? brand.primary, fontWeight: "700", textTransform: "uppercase", marginTop: 8 }}>
+            <View style={[styles.typeBar, { backgroundColor: event.color ?? theme.colors.primary }]} />
+            <Text variant="labelSmall" style={{ color: event.color ?? theme.colors.primary, fontWeight: "700", textTransform: "uppercase", marginTop: 8 }}>
               {event.type}
             </Text>
             <Text variant="titleLarge" style={{ fontWeight: "700", color: paperTheme.colors.onSurface, marginTop: 4 }}>
@@ -155,7 +155,7 @@ export default function EventDetailScreen() {
 
         <Button
           mode="contained"
-          buttonColor={brand.primary}
+          buttonColor={theme.colors.primary}
           style={{ borderRadius: SHAPE.lg, marginTop: 16 }}
           contentStyle={{ height: 48 }}
           onPress={openEdit}
@@ -187,12 +187,12 @@ export default function EventDetailScreen() {
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 16 }}>
             {EVENT_TYPES.map((t) => (
               <Pressable key={t} onPress={() => setEditType(t)}
-                style={[styles.typeChip, { backgroundColor: editType === t ? brand.primary : paperTheme.colors.surfaceVariant }]}>
+                style={[styles.typeChip, { backgroundColor: editType === t ? theme.colors.primary : paperTheme.colors.surfaceVariant }]}>
                 <Text style={{ color: editType === t ? "#fff" : paperTheme.colors.onSurface, fontWeight: "700", fontSize: 12 }}>{t}</Text>
               </Pressable>
             ))}
           </View>
-          <Button mode="contained" buttonColor={brand.primary} loading={saving} onPress={handleSave} disabled={!editTitle.trim()}>
+          <Button mode="contained" buttonColor={theme.colors.primary} loading={saving} onPress={handleSave} disabled={!editTitle.trim()}>
             Save
           </Button>
         </Modal>

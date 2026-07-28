@@ -6,10 +6,10 @@ import {
   toolDefinitionsToToolSet,
 } from "@blocknote/xl-ai/server";
 import { buildBlockNoteAISystemPrompt } from "@/lib/blocknoteAi";
-import { requireUser, unauthResponse } from "@/lib/api-auth";
+import { requireUser } from "@/lib/api-auth";
 
 const groq = createGroq({ apiKey: process.env.GROQ_API_KEY });
-const model = groq("llama-3.3-70b-versatile");
+const model = groq("openai/gpt-oss-120b");
 
 interface BlockNoteAIRequestBody {
   messages?: any[];

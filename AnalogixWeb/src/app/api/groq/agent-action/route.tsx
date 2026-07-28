@@ -12,7 +12,7 @@ export async function POST(request) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
         const body = await request.json();
-        const { actions = [], defaultSubjectId = "math", source = "chat" } = body;
+        const { actions = [], defaultSubjectId = "math" } = body;
         if (!Array.isArray(actions) || actions.length === 0) {
             return NextResponse.json({ results: [] });
         }
@@ -71,7 +71,7 @@ export async function handleAddFlashcards(supabase, userId, action, defaultSubje
         }
         const setId = randomUUID();
         const now = new Date().toISOString();
-        const { data: setData, error: setError } = await supabase
+        const { error: setError } = await supabase
             .from("flashcard_sets")
             .insert({
             id: setId,

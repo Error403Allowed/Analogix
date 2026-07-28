@@ -1,5 +1,5 @@
 import { GraphQLError } from "graphql";
-import { requireUser } from "./_helpers.js";
+import { requireUser, throwSanitized } from "./_helpers.js";
 import type { GraphQLContext } from "../context.js";
 import { getCurriculum, type CurriculumSubject } from "@analogix/shared/curriculum";
 
@@ -87,7 +87,7 @@ export const subjectResolvers = {
         .eq("user_id", user.id)
         .eq("subject_id", args.id)
         .maybeSingle();
-      if (error) throw new GraphQLError(error.message);
+      if (error) throwSanitized(error, ctx);
       const { data: documents } = await ctx.supabase!
         .from("documents")
         .select("*")
@@ -111,7 +111,7 @@ export const subjectResolvers = {
         .from("custom_subjects")
         .select("*")
         .eq("user_id", user.id);
-      if (error) throw new GraphQLError(error.message);
+      if (error) throwSanitized(error, ctx);
       return (data ?? []).map((row) => ({
         id: row.id,
         subjectId: row.subject_id,
@@ -171,7 +171,7 @@ export const subjectResolvers = {
         )
         .select()
         .single();
-      if (error) throw new GraphQLError(error.message);
+      if (error) throwSanitized(error, ctx);
       return {
         id: data.id,
         subjectId: data.subject_id,
@@ -189,7 +189,7 @@ export const subjectResolvers = {
         p_subject_id: args.subjectId,
         p_mark: mark,
       });
-      if (error) throw new GraphQLError(error.message);
+      if (error) throwSanitized(error, ctx);
       return data;
     },
     updateNotes: async (_: unknown, args: { subjectId: string; content: string; title?: string }, ctx: GraphQLContext) => {
@@ -219,7 +219,7 @@ export const subjectResolvers = {
         )
         .select("subject_id, marks, notes")
         .single();
-      if (error) throw new GraphQLError(error.message);
+      if (error) throwSanitized(error, ctx);
       return {
         id: data.subject_id,
         marks: data.marks ?? [],
@@ -234,7 +234,7 @@ export const subjectResolvers = {
         p_subject_id: args.subjectId,
         p_assessment: args.input,
       });
-      if (error) throw new GraphQLError(error.message);
+      if (error) throwSanitized(error, ctx);
       return data;
     },
     removeAssessment: async (_: unknown, args: { subjectId: string; assessmentId: string }, ctx: GraphQLContext) => {
@@ -244,7 +244,7 @@ export const subjectResolvers = {
         p_subject_id: args.subjectId,
         p_assessment_id: args.assessmentId,
       });
-      if (error) throw new GraphQLError(error.message);
+      if (error) throwSanitized(error, ctx);
       return { id: data?.subject_id ?? args.subjectId, marks: data?.marks ?? [], notes: normalizeNotes(data?.notes, args.subjectId) };
     },
     saveSubjectNotes: async (_: unknown, args: { subjectId: string; notes: Record<string, unknown> }, ctx: GraphQLContext) => {
@@ -265,7 +265,7 @@ export const subjectResolvers = {
         )
         .select("subject_id, marks, notes")
         .single();
-      if (error) throw new GraphQLError(error.message);
+      if (error) throwSanitized(error, ctx);
       return { id: data.subject_id, marks: data.marks ?? [], notes: normalizeNotes(data.notes, data.subject_id) };
     },
   },

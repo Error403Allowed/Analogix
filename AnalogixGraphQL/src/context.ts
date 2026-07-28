@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { verifyAccessToken, type AuthenticatedUser } from "./auth/verifyToken.js";
 import { getUserClient } from "./supabase.js";
 import type { PubSubChannels } from "./pubsub.js";
+import { createDataLoaders, type DataLoaders } from "./dataloaders/index.js";
 
 export interface GraphQLContext {
   /** The authenticated user, or null for unauthenticated requests. */
@@ -12,6 +13,8 @@ export interface GraphQLContext {
   pubsub: import("graphql-subscriptions").PubSub;
   /** Request ID for log correlation. */
   requestId: string;
+  /** Per-request DataLoader instances for batching. Null if unauthenticated. */
+  loaders: DataLoaders | null;
 }
 
 /**
@@ -35,5 +38,6 @@ export async function buildContext({
     supabase,
     pubsub,
     requestId,
+    loaders: supabase ? createDataLoaders(supabase) : null,
   };
 }

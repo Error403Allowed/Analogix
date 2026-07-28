@@ -5,6 +5,7 @@ import { useQuery, useMutation } from "@apollo/client/react";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { FLASHCARD_SETS, CREATE_FLASHCARD_SET } from "../../graphql/queries/flashcard";
 import { useThemeContext } from "../../theme/ThemeContext";
+import { alpha } from "../../theme";
 import { SHAPE } from "../../theme/tokens";
 import {
   ExpressiveCard,
@@ -17,7 +18,8 @@ import Icon from "../../components/Icon";
 
 export default function FlashcardsScreen() {
   const paperTheme = useTheme();
-  const { brand } = useThemeContext();
+  const { theme } = useThemeContext();
+
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const subjectId = route.params?.subjectId as string | undefined;
@@ -69,13 +71,13 @@ export default function FlashcardsScreen() {
       <ExpressiveSection title="Your sets">
         {setsLoading ? (
           <View style={styles.centerState}>
-            <ActivityIndicator color={brand.primary} />
+            <ActivityIndicator color={theme.colors.primary} />
             <Text style={{ color: paperTheme.colors.onSurfaceVariant }}>Loading flashcard sets...</Text>
           </View>
         ) : setsError ? (
           <View style={styles.centerState}>
             <ExpressiveEmptyState icon="alert-circle" title="Could not load sets" subtitle="Check your connection and try again." />
-            <Button mode="contained" buttonColor={brand.primary} onPress={() => refetch()} style={{ borderRadius: SHAPE.lg }}>
+            <Button mode="contained" buttonColor={theme.colors.primary} onPress={() => refetch()} style={{ borderRadius: SHAPE.lg }}>
               Retry
             </Button>
           </View>
@@ -90,8 +92,8 @@ export default function FlashcardsScreen() {
                 onPress={() => navigation.navigate("FlashcardSet", { setId: d.id, name: d.name, subjectId: d.subjectId })}
               >
                 <View style={styles.setRow}>
-                  <View style={[styles.setIcon, { backgroundColor: brand.primary + "18" }]}>
-                    <Icon name="cards" size={22} color={brand.primary} />
+                  <View style={[styles.setIcon, { backgroundColor: alpha(theme.colors.primary, 0.10) }]}>
+                    <Icon name="cards" size={22} color={theme.colors.primary} />
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text variant="bodyLarge" style={{ fontWeight: "700", color: paperTheme.colors.onSurface }}>{d.name}</Text>
@@ -108,7 +110,7 @@ export default function FlashcardsScreen() {
       <FAB
         icon="plus"
         color="#fff"
-        style={[styles.fab, { backgroundColor: brand.primary }]}
+        style={[styles.fab, { backgroundColor: theme.colors.primary }]}
         onPress={() => setShowCreate(true)}
       />
 
@@ -116,7 +118,7 @@ export default function FlashcardsScreen() {
         <Modal visible={showCreate} onDismiss={() => setShowCreate(false)} contentContainerStyle={[styles.modal, { backgroundColor: paperTheme.colors.surface }]}>
           <Text variant="titleLarge" style={{ fontWeight: "700", marginBottom: 16 }}>New flashcard set</Text>
           <TextInput mode="outlined" label="Set name" value={setName} onChangeText={setSetName} style={{ marginBottom: 16 }} />
-          <Button mode="contained" buttonColor={brand.primary} loading={creating} onPress={handleCreateSet} disabled={!setName.trim()}>
+          <Button mode="contained" buttonColor={theme.colors.primary} loading={creating} onPress={handleCreateSet} disabled={!setName.trim()}>
             Create
           </Button>
         </Modal>

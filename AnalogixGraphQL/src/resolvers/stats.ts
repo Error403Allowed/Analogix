@@ -1,5 +1,5 @@
 import { GraphQLError } from "graphql";
-import { requireUser } from "./_helpers.js";
+import { requireUser, throwSanitized } from "./_helpers.js";
 import type { GraphQLContext } from "../context.js";
 
 export const statsResolvers = {
@@ -10,7 +10,7 @@ export const statsResolvers = {
         ctx.supabase!.from("user_stats").select("*").eq("user_id", user.id).maybeSingle(),
         ctx.supabase!.from("user_memories").select("*").eq("user_id", user.id).order("last_used_at", { ascending: false }),
       ]);
-      if (error) throw new GraphQLError(error.message);
+      if (error) throwSanitized(error, ctx);
       const row =
         data ?? {
           user_id: user.id,
@@ -35,7 +35,7 @@ export const statsResolvers = {
         .eq("user_id", user.id)
         .gte("date", from)
         .order("date", { ascending: true });
-      if (error) throw new GraphQLError(error.message);
+      if (error) throwSanitized(error, ctx);
       return data ?? [];
     },
   },
@@ -47,7 +47,7 @@ export const statsResolvers = {
         p_user_id: user.id,
         p_date: args.date,
       });
-      if (error) throw new GraphQLError(error.message);
+      if (error) throwSanitized(error, ctx);
       // Recompute streak from activity_log.
       // Use the client-provided date as "today" so the streak walk matches
       // the timezone the client stores dates in (local, not UTC).
@@ -89,13 +89,13 @@ export const statsResolvers = {
         .upsert({ user_id: user.id, ...filteredInput, updated_at: new Date().toISOString() }, { onConflict: "user_id" })
         .select()
         .single();
-      if (error) throw new GraphQLError(error.message);
+      if (error) throwSanitized(error, ctx);
       return data;
     },
     forgetMemory: async (_: unknown, args: { id: string }, ctx: GraphQLContext) => {
       const user = requireUser(ctx);
       const { error } = await ctx.supabase!.from("user_memories").delete().eq("id", args.id).eq("user_id", user.id);
-      if (error) throw new GraphQLError(error.message);
+      if (error) throwSanitized(error, ctx);
       return { success: true };
     },
     rememberMemory: async (_: unknown, args: { input: Record<string, unknown> }, ctx: GraphQLContext) => {
@@ -110,7 +110,7 @@ export const statsResolvers = {
         .insert({ id, user_id: user.id, key, value, created_at: now, last_used_at: now })
         .select()
         .single();
-      if (error) throw new GraphQLError(error.message);
+      if (error) throwSanitized(error, ctx);
       return { id: data.id, key: data.key, value: data.value, createdAt: data.created_at, lastUsedAt: data.last_used_at };
     },
   },

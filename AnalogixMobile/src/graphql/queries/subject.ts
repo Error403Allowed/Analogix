@@ -258,6 +258,17 @@ export const CUSTOM_SUBJECTS = gql`
   }
 `;
 
+export const STUDY_MAP = gql`
+  query StudyMap {
+    studyMap {
+      subjectId
+      progressPercent
+      masteredTopics
+      totalTopics
+    }
+  }
+`;
+
 export const SAVE_CUSTOM_SUBJECT = gql`
   mutation SaveCustomSubject($subjectId: String!, $input: JSON!) {
     saveCustomSubject(subjectId: $subjectId, input: $input) {

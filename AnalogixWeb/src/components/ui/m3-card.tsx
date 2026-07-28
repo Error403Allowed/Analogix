@@ -1,4 +1,4 @@
-import { forwardRef, type HTMLAttributes, type ButtonHTMLAttributes } from 'react';
+import { forwardRef, type HTMLAttributes } from 'react';
 
 export const M3Card = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement> & { variant?: 'elevated'|'filled'|'outlined' }>(
   ({ variant = 'filled', style, children, ...p }, ref) => {

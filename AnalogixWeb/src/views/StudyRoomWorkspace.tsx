@@ -4,6 +4,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { usePathname, useRouter } from "next/navigation";
+import { useApolloClient } from "@apollo/client/react";
+import { gql } from "@apollo/client/core";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Bot,
@@ -29,6 +31,8 @@ import {
   Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/context/AuthContext";
+import * as RoomOps from "@/graphql/queries/room";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -90,12 +94,6 @@ const formatClock = (seconds: number) => {
   const mins = Math.floor(safe / 60);
   const secs = safe % 60;
   return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
-};
-
-const roleLabel = (role: StudyRoomMember["role"]) => {
-  if (role === "host") return "Host";
-  if (role === "cohost") return "Co-host";
-  return "Member";
 };
 
 const parseThinkingContent = (content: string): { thinking: string | null; response: string } => {
@@ -166,6 +164,9 @@ const sections = [
 export default function StudyRoomWorkspace() {
   const pathname = usePathname();
   const router = useRouter();
+  const { user } = useAuth();
+  const apolloClient = useApolloClient();
+  const myUserId = user?.id;
   const { updateTabLabelByPath } = useTabs();
   const roomId = pathname?.split("/rooms/")[1] || "";
 
@@ -226,27 +227,23 @@ export default function StudyRoomWorkspace() {
   const loadRoom = useCallback(async () => {
     if (!roomId) return;
     try {
-      const response = await fetch(`/api/rooms/${roomId}`, { cache: "no-store" });
-      if (!response.ok) {
-        let errorMsg = "Failed to load room";
-        try {
-          const ct = response.headers.get("content-type") || "";
-          if (ct.includes("application/json")) {
-            const p = await response.json();
-            errorMsg = p?.error || errorMsg;
-          } else {
-            const t = await response.text();
-            console.error("[StudyRoomWorkspace] loadRoom non-JSON response:", response.status, t.slice(0, 300));
-          }
-        } catch { /* ignore parse errors */ }
-        console.error("[StudyRoomWorkspace] loadRoom HTTP error:", response.status);
-        throw new Error(errorMsg);
-      }
-      const payload = await response.json();
-      setState(payload as RoomStateResponse);
+      const result = await apolloClient.query({
+        query: RoomOps.ROOM_DETAIL,
+        variables: { id: roomId },
+        fetchPolicy: "network-only",
+      });
+      const q = (result.data as any)?.room;
+      if (!q) throw new Error("Room not found");
+      setState({
+        room: q,
+        members: q.members,
+        messages: q.messages,
+        canvas: q.canvas,
+        sharedDocuments: q.documents,
+      });
 
-      if (payload.room?.title) {
-        updateTabLabelByPath(`/rooms/${roomId}`, payload.room.title, "👥");
+      if (q?.title) {
+        updateTabLabelByPath(`/rooms/${roomId}`, q.title, "👥");
       }
     } catch (error) {
       console.error("[StudyRoomWorkspace] loadRoom failed:", error);
@@ -254,7 +251,7 @@ export default function StudyRoomWorkspace() {
     } finally {
       setLoading(false);
     }
-  }, [roomId, updateTabLabelByPath]);
+  }, [roomId, updateTabLabelByPath, apolloClient]);
 
   useEffect(() => {
     void loadRoom();
@@ -271,11 +268,9 @@ export default function StudyRoomWorkspace() {
     if (!roomId) return undefined;
 
     const sendPresence = (online: boolean) =>
-      fetch(`/api/rooms/${roomId}/presence`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ online }),
-        keepalive: !online,
+      apolloClient.mutate({
+        mutation: RoomOps.UPDATE_PRESENCE,
+        variables: { roomId, isOnline: online },
       }).catch(() => undefined);
 
     void sendPresence(true);
@@ -293,7 +288,7 @@ export default function StudyRoomWorkspace() {
       window.removeEventListener("pagehide", handlePageHide);
       void sendPresence(false);
     };
-  }, [roomId]);
+  }, [roomId, apolloClient]);
 
   const onlineMembers = useMemo(
     () => (state?.members || []).filter((member) => member.isOnline),
@@ -321,38 +316,17 @@ export default function StudyRoomWorkspace() {
 
     const loadDocument = async () => {
       try {
-        const response = await fetch(`/api/rooms/${roomId}/documents/${activeDocumentId}`, {
-          cache: "no-store",
+        const result = await apolloClient.query({
+          query: RoomOps.ROOM_DOCUMENT,
+          variables: { roomId, documentId: activeDocumentId },
+          fetchPolicy: "network-only",
         });
-        if (!response.ok) {
-          let errorMsg = "Failed to load shared document";
-          // Try to parse error response as JSON, fall back to text or status-based message
-          try {
-            const ct = response.headers.get("content-type") || "";
-            if (ct.includes("application/json")) {
-              const payload = await response.json();
-              if (payload?.error) errorMsg = payload.error;
-            } else {
-              const text = await response.text();
-              // If it's HTML, use a status-based message instead
-              if (text.includes("<!DOCTYPE") || text.includes("<html")) {
-                errorMsg = response.status === 404 ? "Document not found" : `Server error (${response.status})`;
-              } else if (text) {
-                errorMsg = text.slice(0, 200);
-              }
-            }
-          } catch {
-            // Response body not parseable at all
-            errorMsg = response.status === 404 ? "Document not found" : response.status === 403 ? "Access denied" : `Server error (${response.status})`;
-          }
-          throw new Error(errorMsg);
-        }
-        const payload = await response.json();
         if (cancelled) return;
-        setSelectedDocument(payload.document as SharedDocumentRecord);
+        const doc = (result.data as any)?.roomDocument as SharedDocumentRecord;
+        setSelectedDocument(doc);
         loadedDocumentIdRef.current = activeDocumentId;
-        setDocumentTitle(String(payload.document.title || "Untitled"));
-        setDocumentContent(String(payload.document.content || "<p></p>"));
+        setDocumentTitle(String(doc.title || "Untitled"));
+        setDocumentContent(String(doc.content || "<p></p>"));
       } catch (error) {
         console.error("[StudyRoomWorkspace] loadDocument failed:", error);
       }
@@ -397,38 +371,45 @@ export default function StudyRoomWorkspace() {
     : 0;
 
   const queueDocumentSave = useCallback((nextContent: string, nextTitle: string) => {
-    if (!activeDocumentId) return;
+    if (!activeDocumentId || !selectedDocument) return;
     if (documentSaveTimerRef.current) window.clearTimeout(documentSaveTimerRef.current);
+    const subjectId = selectedDocument.subject_id;
     documentSaveTimerRef.current = window.setTimeout(async () => {
       try {
-        await fetch(`/api/rooms/${roomId}/documents/${activeDocumentId}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            title: nextTitle,
-            content: nextContent,
-          }),
+        await apolloClient.mutate({
+          mutation: gql`
+            mutation UpdateRoomDoc($input: JSON!) {
+              updateDocument(input: $input) {
+                id
+                title
+                content
+                contentJson
+              }
+            }
+          `,
+          variables: {
+            input: {
+              documentId: activeDocumentId,
+              subjectId,
+              title: nextTitle,
+              content: nextContent,
+            },
+          },
         });
       } catch (error) {
         console.error("[StudyRoomWorkspace] document save failed:", error);
       }
     }, 900);
-  }, [activeDocumentId, roomId]);
+  }, [activeDocumentId, selectedDocument, apolloClient]);
 
   const handleJoinRoom = async () => {
     setJoining(true);
     try {
-      const response = await fetch("/api/rooms/join", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ roomId }),
+      await apolloClient.mutate({
+        mutation: RoomOps.JOIN_ROOM,
+        variables: { roomId },
       });
-      if (!response.ok) {
-        const payload = await response.json().catch(() => null);
-        throw new Error(payload?.error || "Failed to join room");
-      }
-      const payload = await response.json();
-      setState(payload as RoomStateResponse);
+      await loadRoom();
       toast.success("Joined room.");
     } catch (error) {
       console.error("[StudyRoomWorkspace] join failed:", error);
@@ -452,28 +433,28 @@ export default function StudyRoomWorkspace() {
 
     setSubmitting(true);
     try {
-      const endpoint = composerMode === "ai"
-        ? `/api/rooms/${roomId}/ai`
-        : `/api/rooms/${roomId}/messages`;
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(
-          composerMode === "ai"
-            ? { prompt: content }
-            : { content },
-        ),
-      });
-      if (!response.ok) {
-        const payload = await response.json().catch(() => null);
-        throw new Error(payload?.error || "Failed to send message");
+      if (composerMode === "ai") {
+        const response = await fetch(`/api/rooms/${roomId}/ai`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt: content }),
+        });
+        if (!response.ok) {
+          const payload = await response.json().catch(() => null);
+          throw new Error(payload?.error || "Failed to send message");
+        }
+        const payload = await response.json();
+        setState((current) => current ? {
+          ...current,
+          messages: Array.isArray(payload.messages) ? payload.messages : current.messages,
+        } : current);
+      } else {
+        await apolloClient.mutate({
+          mutation: RoomOps.SEND_ROOM_MESSAGE,
+          variables: { roomId, content },
+        });
       }
-      const payload = await response.json();
       setComposer("");
-      setState((current) => current ? {
-        ...current,
-        messages: Array.isArray(payload.messages) ? payload.messages : current.messages,
-      } : current);
     } catch (error) {
       console.error("[StudyRoomWorkspace] sendMessage failed:", error);
       toast.error(error instanceof Error ? error.message : "Failed to send message");
@@ -484,20 +465,30 @@ export default function StudyRoomWorkspace() {
 
   const updateTimer = async (action: "start" | "pause" | "resume" | "reset") => {
     try {
-      const response = await fetch(`/api/rooms/${roomId}/timer`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action,
-          durationSeconds: Number(timerMinutes || "25") * 60,
-        }),
-      });
-      if (!response.ok) {
-        const payload = await response.json().catch(() => null);
-        throw new Error(payload?.error || "Failed to update timer");
+      const durationSeconds = Number(timerMinutes || "25") * 60;
+      let state: string;
+      let elapsedSeconds: number | undefined;
+      if (action === "start") {
+        state = "running";
+        elapsedSeconds = 0;
+      } else if (action === "pause") {
+        state = "paused";
+        elapsedSeconds = remainingSeconds === 0 ? 0 : undefined;
+      } else if (action === "resume") {
+        state = "running";
+        elapsedSeconds = undefined;
+      } else {
+        state = "idle";
+        elapsedSeconds = 0;
       }
-      const payload = await response.json();
-      setState((current) => current ? { ...current, room: payload.room } : current);
+      const result = await apolloClient.mutate({
+        mutation: RoomOps.UPDATE_ROOM_TIMER,
+        variables: { roomId, state, durationSeconds, elapsedSeconds },
+      });
+      const updated = (result.data as any)?.updateRoomTimer;
+      if (updated) {
+        setState((current) => current ? { ...current, room: { ...current.room, ...updated } } : current);
+      }
     } catch (error) {
       console.error("[StudyRoomWorkspace] updateTimer failed:", error);
       toast.error(error instanceof Error ? error.message : "Failed to update timer");
@@ -507,20 +498,11 @@ export default function StudyRoomWorkspace() {
   const updateMemberRole = async (member: StudyRoomMember) => {
     try {
       const nextRole = member.role === "cohost" ? "member" : "cohost";
-      const response = await fetch(`/api/rooms/${roomId}/members`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: member.userId,
-          role: nextRole,
-        }),
+      await apolloClient.mutate({
+        mutation: RoomOps.UPDATE_ROOM_MEMBER_ROLE,
+        variables: { roomId, userId: member.userId, role: nextRole },
       });
-      if (!response.ok) {
-        const payload = await response.json().catch(() => null);
-        throw new Error(payload?.error || "Failed to update member");
-      }
-      const payload = await response.json();
-      setState((current) => current ? { ...current, members: payload.members } : current);
+      await loadRoom();
     } catch (error) {
       console.error("[StudyRoomWorkspace] updateMemberRole failed:", error);
       toast.error(error instanceof Error ? error.message : "Failed to update member");
@@ -538,16 +520,28 @@ export default function StudyRoomWorkspace() {
   };
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showTransferOwnership, setShowTransferOwnership] = useState(false);
+  const [showPermissions, setShowPermissions] = useState(false);
+  const [perms, setPerms] = useState({
+    canShareDocuments: true,
+    canInviteMembers: false,
+    canManageRoles: false,
+    canDeleteMessages: false,
+    canControlTimer: false,
+  });
+
+  useEffect(() => {
+    if (state?.room?.permissions) {
+      setPerms((prev) => ({ ...prev, ...(typeof state.room.permissions === "object" ? state.room.permissions : {}) }));
+    }
+  }, [state?.room?.permissions]);
 
   const leaveRoom = async () => {
     try {
-      const response = await fetch(`/api/rooms/${roomId}/leave`, {
-        method: "POST",
+      await apolloClient.mutate({
+        mutation: RoomOps.LEAVE_ROOM,
+        variables: { roomId },
       });
-      if (!response.ok) {
-        const payload = await response.json().catch(() => null);
-        throw new Error(payload?.error || "Failed to leave room");
-      }
       router.push("/rooms");
     } catch (error) {
       console.error("[StudyRoomWorkspace] leaveRoom failed:", error);
@@ -557,17 +551,51 @@ export default function StudyRoomWorkspace() {
 
   const deleteRoom = async () => {
     try {
-      const response = await fetch(`/api/rooms/${roomId}`, {
-        method: "DELETE",
+      await apolloClient.mutate({
+        mutation: RoomOps.DELETE_ROOM,
+        variables: { roomId },
       });
-      if (!response.ok) {
-        const payload = await response.json().catch(() => null);
-        throw new Error(payload?.error || "Failed to delete room");
-      }
       router.push("/rooms");
     } catch (error) {
       console.error("[StudyRoomWorkspace] deleteRoom failed:", error);
       toast.error(error instanceof Error ? error.message : "Failed to delete room");
+    }
+  };
+
+  const transferOwnership = async (newOwnerUserId: string) => {
+    try {
+      const result = await apolloClient.mutate({
+        mutation: RoomOps.TRANSFER_ROOM_OWNERSHIP,
+        variables: { roomId, newOwnerUserId },
+      });
+      const t = (result.data as any)?.transferRoomOwnership;
+      if (t) {
+        setState((current) => current ? {
+          ...current,
+          room: { ...current.room, ...t, isOwner: false, viewerRole: "cohost" },
+          members: t.members,
+        } : current);
+      }
+      setShowTransferOwnership(false);
+      toast.success("Ownership transferred.");
+    } catch (error) {
+      console.error("[StudyRoomWorkspace] transferOwnership failed:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to transfer ownership");
+    }
+  };
+
+  const savePermissions = async () => {
+    try {
+      await apolloClient.mutate({
+        mutation: RoomOps.CONFIGURE_ROOM_PERMISSIONS,
+        variables: { roomId, input: perms },
+      });
+      setState((current) => current ? { ...current, room: { ...current.room, permissions: perms } } : current);
+      setShowPermissions(false);
+      toast.success("Permissions saved.");
+    } catch (error) {
+      console.error("[StudyRoomWorkspace] savePermissions failed:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to save permissions");
     }
   };
 
@@ -754,7 +782,11 @@ export default function StudyRoomWorkspace() {
                     </div>
                     {state.room.isOwner && member.role !== "host" ? (
                       <Button size="sm" variant="ghost" onClick={() => void updateMemberRole(member)}>
-                        {member.role === "cohost" ? "Remove" : "Make"}
+                        {member.role === "cohost" ? "Remove" : "Make co-host"}
+                      </Button>
+                    ) : state.room.viewerRole === "cohost" && member.role === "cohost" ? (
+                      <Button size="sm" variant="ghost" onClick={() => void updateMemberRole(member)}>
+                        Remove
                       </Button>
                     ) : null}
                   </div>
@@ -873,7 +905,17 @@ export default function StudyRoomWorkspace() {
             <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => void loadRoom()} title="Refresh">
               <RefreshCw className="h-4 w-4" />
             </Button>
-            {state.room.isOwner ? (
+            {state.room.isOwner && (
+              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setShowTransferOwnership(true)} title="Transfer ownership">
+                <Crown className="h-4 w-4 text-amber-500" />
+              </Button>
+            )}
+            {(state.room.isOwner || state.room.viewerRole === "cohost") && (
+              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setShowPermissions(true)} title="Room permissions">
+                <ShieldCheck className="h-4 w-4" />
+              </Button>
+            )}
+            {(state.room.isOwner || state.room.viewerRole === "cohost") ? (
               <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => setShowDeleteConfirm(true)} title="Delete room">
                 <Trash2 className="h-4 w-4" />
               </Button>
@@ -1298,6 +1340,73 @@ export default function StudyRoomWorkspace() {
             </Button>
             <Button variant="destructive" onClick={() => { setShowDeleteConfirm(false); void deleteRoom(); }}>
               Delete room
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Transfer ownership dialog */}
+      <Dialog open={showTransferOwnership} onOpenChange={setShowTransferOwnership}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Transfer ownership</DialogTitle>
+            <DialogDescription>
+              Choose a new host. You will become a co-host.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 pt-2 max-h-64 overflow-y-auto">
+            {state?.members?.filter((m) => m.userId !== myUserId).map((member) => (
+              <button
+                key={member.id}
+                onClick={() => void transferOwnership(member.userId)}
+                className="w-full text-left rounded-lg border border-border/30 px-3 py-2 hover:bg-muted/50 transition text-sm font-medium"
+              >
+                {member.name}
+              </button>
+            ))}
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setShowTransferOwnership(false)}>
+              Cancel
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Permissions dialog */}
+      <Dialog open={showPermissions} onOpenChange={setShowPermissions}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Room permissions</DialogTitle>
+            <DialogDescription>
+              Configure what members can do in this room.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 pt-2">
+            {([
+              { key: "canShareDocuments", label: "Share documents" },
+              { key: "canInviteMembers", label: "Invite new members" },
+              { key: "canManageRoles", label: "Manage member roles" },
+              { key: "canDeleteMessages", label: "Delete messages" },
+              { key: "canControlTimer", label: "Control timer" },
+            ] as const).map(({ key, label }) => (
+              <label key={key} className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={perms[key]}
+                  onChange={() => setPerms((p) => ({ ...p, [key]: !p[key] }))}
+                  className="h-4 w-4 rounded border-border"
+                />
+                <span className="text-sm">{label}</span>
+              </label>
+            ))}
+          </div>
+          <div className="flex justify-end gap-2 pt-4">
+            <Button variant="outline" onClick={() => setShowPermissions(false)}>
+              Cancel
+            </Button>
+            <Button onClick={() => void savePermissions()}>
+              Save
             </Button>
           </div>
         </DialogContent>

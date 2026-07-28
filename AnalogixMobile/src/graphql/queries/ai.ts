@@ -73,13 +73,4 @@ export const EXTRACT_TEXT = gql`
   }
 `;
 
-export const EXECUTE_PYTHON = gql`
-  mutation ExecutePython($input: JSON!) {
-    executePython(input: $input) {
-      stdout
-      stderr
-      error
-      durationMs
-    }
-  }
-`;
+

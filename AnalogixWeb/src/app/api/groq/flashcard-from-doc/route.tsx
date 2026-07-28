@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { callGroqChat, formatError } from "../_utils";
-import { requireUser, unauthResponse } from "@/lib/api-auth";
+import { requireUser } from "@/lib/api-auth";
 export const runtime = "nodejs";
 // Chunk text into smaller pieces for processing
 const chunkText = (text, maxChunkSize) => {

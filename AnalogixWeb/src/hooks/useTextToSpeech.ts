@@ -80,7 +80,7 @@ export function useTextToSpeech(): UseTextToSpeechReturn {
       setIsPaused(false);
     };
 
-    utterance.onerror = (event) => {
+    utterance.onerror = () => {
       // Silently handle errors - speech synthesis can fail for many benign reasons
       // (user cancelled, browser doesn't support, etc.)
       setIsSpeaking(false);

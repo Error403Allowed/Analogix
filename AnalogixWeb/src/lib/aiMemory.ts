@@ -73,7 +73,6 @@ export async function getRelevantMemories(
     const ageMs = now - new Date(m.created_at).getTime();
     const ageDays = ageMs / (1000 * 60 * 60 * 24);
     const recency = Math.max(0, 1 - ageDays / 90);
-    const frequency = Math.min(1, (m.reinforcement_count || 0) / 10);
 
     // Semantic relevance: how many keywords match this memory?
     let relevance = 0;
@@ -320,7 +319,6 @@ HOW TO WEAVE ANALOGIES:
 export async function extractMemoriesFromConversation(
   userId: string,
   messages: Array<{ role: string; content: string }>,
-  subjectId?: string
 ): Promise<void> {
   const supabase = await createClient();
   

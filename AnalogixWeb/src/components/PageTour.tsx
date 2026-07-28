@@ -13,12 +13,11 @@
  * - Replay from settings
  */
 
-import { useEffect, useState, useRef, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useEffect, useState, useRef } from "react";
+import { motion } from "framer-motion";
 import { X, ChevronLeft, ChevronRight, Check, Sparkles, ArrowRight, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTour } from "@/context/TourContext";
-import type { TourStep } from "@/types/tour";
 
 export const PageTour: React.FC = () => {
   const { activeTour, currentStep, nextStep, prevStep, endTour } = useTour();

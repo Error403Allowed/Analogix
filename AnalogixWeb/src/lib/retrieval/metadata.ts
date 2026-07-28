@@ -23,7 +23,7 @@ export async function filterByMetadata(
   userId: string,
   options: MetadataFilterOptions
 ): Promise<MetadataFilterResult> {
-  const { subjectId, topic, tags, entityTypes, limit = 20, offset = 0 } = options;
+  const { subjectId, topic, entityTypes, limit = 20, offset = 0 } = options;
 
   const results: MetadataFilterResult = {
     documents: [],

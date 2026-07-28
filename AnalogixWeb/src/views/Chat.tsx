@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useSidebar } from "@/components/ui/sidebar";
 import type { LucideIcon } from "lucide-react";
 import {
   RefreshCw,
@@ -24,6 +25,7 @@ import { ThinkingBlock } from "@/components/chat/ThinkingBlock";
 import { StreamingMessage } from "@/components/chat/StreamingMessage";
 import { ResearchSourceCard } from "@/components/chat/ResearchSourceCard";
 import { parseThinkingContent } from "@/utils/parse-thinking-content";
+import { NeuralNetworkLoader } from "@/components/NeuralNetworkLoader";
 import { useChat } from "@/hooks/useChat";
 import { ChatSkeleton } from "@/components/PageSkeleton";
 import ThreadSidebar from "@/components/chat/ThreadSidebar";
@@ -105,6 +107,13 @@ const Chat = () => {
   } = useChat();
 
   const [initialLoading, setInitialLoading] = useState(true);
+  const { state: sidebarState } = useSidebar();
+
+  useEffect(() => {
+    if (sidebarState === "collapsed") {
+      setSidebarOpen(false);
+    }
+  }, [sidebarState, setSidebarOpen]);
 
   useEffect(() => {
     if (!sessionsLoading) {
@@ -515,20 +524,12 @@ const Chat = () => {
 
                   {isTyping && (
                     <motion.div
-                      initial={{ opacity: 0, x: -12 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.3, ease: "easeOut" }}
                       className="flex justify-start"
                     >
-                      <div className="message-bubble-assistant">
-                        <div className="flex items-center gap-3">
-                          <div className="flex gap-1 items-end h-5">
-                            {[0, 1, 2, 3, 4, 5, 6].map((i) => (
-                              <div key={i} className="typing-dot" style={{ alignSelf: "flex-end" }} />
-                            ))}
-                          </div>
-                        </div>
-                      </div>
+                      <NeuralNetworkLoader />
                     </motion.div>
                   )}
 

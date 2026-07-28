@@ -21,7 +21,7 @@ const TONE_ICONS: Record<string, string> = {
 
 export default function PersonalityEditorScreen() {
   const paperTheme = useTheme();
-  const { brand } = useThemeContext();
+  const { brand, theme } = useThemeContext();
   const navigation = useNavigation();
   const { data, loading } = useQuery(ME);
   const [updateAiPersonality, { loading: saving }] = useMutation(UPDATE_AI_PERSONALITY);
@@ -67,7 +67,7 @@ export default function PersonalityEditorScreen() {
         {/* Tone */}
         <View style={styles.sectionCard}>
           <View style={styles.sectionHeader}>
-            <Icon name="account-tie" size={20} color={brand.primary} />
+            <Icon name="account-tie" size={20} color={theme.colors.primary} />
             <Text variant="titleSmall" style={styles.sectionLabel}>Tone</Text>
           </View>
           <Text variant="bodySmall" style={styles.sectionDesc}>How the AI speaks to you</Text>
@@ -76,7 +76,7 @@ export default function PersonalityEditorScreen() {
               <Pressable
                 key={t}
                 onPress={() => setTone(t)}
-                style={[styles.chip, { backgroundColor: tone === t ? brand.primary : paperTheme.colors.surfaceVariant, borderRadius: SHAPE.lg, borderWidth: tone === t ? 0 : 1, borderColor: paperTheme.colors.outline }]}
+                style={[styles.chip, { backgroundColor: tone === t ? theme.colors.primary : paperTheme.colors.surfaceVariant, borderRadius: SHAPE.lg, borderWidth: tone === t ? 0 : 1, borderColor: paperTheme.colors.outline }]}
               >
                 <Icon name={TONE_ICONS[t]} size={16} color={tone === t ? "#fff" : paperTheme.colors.onSurface} />
                 <Text style={{ color: tone === t ? "#fff" : paperTheme.colors.onSurface, fontWeight: "700", fontSize: 13, marginLeft: 6 }}>{t}</Text>
@@ -88,7 +88,7 @@ export default function PersonalityEditorScreen() {
         {/* Focus */}
         <View style={styles.sectionCard}>
           <View style={styles.sectionHeader}>
-            <Icon name="target" size={20} color={brand.primary} />
+            <Icon name="target" size={20} color={theme.colors.primary} />
             <Text variant="titleSmall" style={styles.sectionLabel}>Focus</Text>
           </View>
           <Text variant="bodySmall" style={styles.sectionDesc}>What the AI prioritises</Text>
@@ -102,7 +102,7 @@ export default function PersonalityEditorScreen() {
         {/* Verbosity */}
         <View style={styles.sectionCard}>
           <View style={styles.sectionHeader}>
-            <Icon name="format-align-left" size={20} color={brand.primary} />
+            <Icon name="format-align-left" size={20} color={theme.colors.primary} />
             <Text variant="titleSmall" style={styles.sectionLabel}>Verbosity</Text>
             <Text variant="bodySmall" style={{ color: paperTheme.colors.onSurfaceVariant, marginLeft: 8 }}>{verbosity}%</Text>
           </View>
@@ -114,7 +114,7 @@ export default function PersonalityEditorScreen() {
                   key={v}
                   onPress={() => setVerbosity(v)}
                   style={[styles.bar, {
-                    backgroundColor: verbosity >= v ? brand.primary : paperTheme.colors.surfaceVariant,
+                    backgroundColor: verbosity >= v ? theme.colors.primary : paperTheme.colors.surfaceVariant,
                     borderRadius: SHAPE.xs,
                     height: verbosity === v ? 28 : 20,
                   }]}
@@ -131,7 +131,7 @@ export default function PersonalityEditorScreen() {
         {/* Creativity */}
         <View style={styles.sectionCard}>
           <View style={styles.sectionHeader}>
-            <Icon name="lightbulb" size={20} color={brand.primary} />
+            <Icon name="lightbulb" size={20} color={theme.colors.primary} />
             <Text variant="titleSmall" style={styles.sectionLabel}>Creativity</Text>
             <Text variant="bodySmall" style={{ color: paperTheme.colors.onSurfaceVariant, marginLeft: 8 }}>{creativity}%</Text>
           </View>
@@ -158,7 +158,7 @@ export default function PersonalityEditorScreen() {
         </View>
 
         {/* Save */}
-        <Card mode="contained" style={[styles.saveCard, { backgroundColor: brand.primary }]}>
+        <Card mode="contained" style={[styles.saveCard, { backgroundColor: theme.colors.primary }]}>
           <Card.Content style={styles.saveContent}>
             <View style={{ flex: 1 }}>
               <Text variant="titleMedium" style={{ color: "#fff", fontWeight: "700" }}>Ready to save?</Text>
@@ -167,7 +167,7 @@ export default function PersonalityEditorScreen() {
             <Button
               mode="contained"
               buttonColor="#fff"
-              textColor={brand.primary}
+              textColor={theme.colors.primary}
               onPress={handleSave}
               loading={saving}
               style={{ borderRadius: SHAPE.lg }}

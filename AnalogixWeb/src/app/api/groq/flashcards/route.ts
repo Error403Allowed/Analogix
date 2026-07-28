@@ -14,7 +14,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { content, fileName, subject, count = 15, grade = "7" } = body;
+    const { content, subject, count = 15, grade = "7" } = body;
 
     if (!content?.trim()) {
       return NextResponse.json({ error: "Content is required" }, { status: 400 });

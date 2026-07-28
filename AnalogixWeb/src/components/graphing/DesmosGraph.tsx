@@ -259,7 +259,7 @@ function DesmosGraph({ expressions, height = DEFAULT_HEIGHT, showEditor = false 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hiddenIndices]);
 
-  // ── Drag-to-resize ──────────────────────────────────────────────────────
+  // ── Drag-to-resize ──────────────
   const handleDragStart = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     dragStartY.current = e.clientY;
@@ -279,7 +279,7 @@ function DesmosGraph({ expressions, height = DEFAULT_HEIGHT, showEditor = false 
     window.addEventListener("mouseup", onUp);
   }, [graphHeight]);
 
-  // ── Download PNG ────────────────────────────────────────────────────────
+  // ── Download PNG ────────────────
   const handleDownload = useCallback(() => {
     const calc = calcRef.current;
     if (!calc) return;
@@ -294,7 +294,7 @@ function DesmosGraph({ expressions, height = DEFAULT_HEIGHT, showEditor = false 
     } catch { /* silent */ }
   }, []);
 
-  // ── Copy expression LaTeX ───────────────────────────────────────────────
+  // ── Copy expression LaTeX ───────
   const handleCopyExpr = useCallback((expr: string, i: number) => {
     navigator.clipboard.writeText(expr).then(() => {
       setCopiedIndex(i);
@@ -302,7 +302,7 @@ function DesmosGraph({ expressions, height = DEFAULT_HEIGHT, showEditor = false 
     });
   }, []);
 
-  // ── Toggle visibility ───────────────────────────────────────────────────
+  // ── Toggle visibility ───────────
   const handleToggleHidden = useCallback((i: number) => {
     setHiddenIndices(prev => {
       const next = new Set(prev);
@@ -311,7 +311,7 @@ function DesmosGraph({ expressions, height = DEFAULT_HEIGHT, showEditor = false 
     });
   }, []);
 
-  // ── Add expression ──────────────────────────────────────────────────────
+  // ── Add expression ──────────────
   const handleAddExpression = useCallback(() => {
     const calc = calcRef.current;
     const latex = editLatex.trim();
@@ -344,8 +344,6 @@ function DesmosGraph({ expressions, height = DEFAULT_HEIGHT, showEditor = false 
     setEditingIndex(i);
     setShowExprEditor(true);
   }, []);
-
-  const activeHeight = isFullscreen ? "100%" : graphHeight;
 
   return (
     <div

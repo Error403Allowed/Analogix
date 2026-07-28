@@ -25,7 +25,7 @@ import { useAuth } from "@/context/AuthContext";
 import { signInWithGoogle, signInWithEmail, signUpWithEmail, getEmailError, validatePassword } from "@/lib/auth-client";
 import OnboardingBackdrop from "@/components/OnboardingBackdrop";
 
-// ── Friendly auth error mapper ───────────────────────────────────────────────
+// ── Friendly auth error mapper ───────
 // Translates Supabase auth / OAuth error codes into actionable messages a real
 // user can fix.
 function describeAuthError(code: string | null, raw: string | null): string {
@@ -75,7 +75,7 @@ function describeAuthError(code: string | null, raw: string | null): string {
   return "Authentication failed. Please try again.";
 }
 
-// ── Typewriter ────────────────────────────────────────────────────────────────
+// ── Typewriter ────────────────────────
 const TypewriterText = ({ text, delay = 0 }: { text: string; delay?: number }) => {
   const [displayed, setDisplayed] = useState("");
   const [done, setDone] = useState(false);
@@ -111,7 +111,7 @@ const TypewriterText = ({ text, delay = 0 }: { text: string; delay?: number }) =
   );
 };
 
-// ── Password requirements checklist ───────────────────────────────────────────
+// ── Password requirements checklist ───
 function PasswordRequirements({ password }: { password: string }) {
   const { checks } = validatePassword(password);
 
@@ -132,7 +132,7 @@ function PasswordRequirements({ password }: { password: string }) {
   );
 }
 
-// ── Auth Step ─────────────────────────────────────────────────────────────────
+// ── Auth Step ─────────────────────────
 function AuthStep({ onAuthed, externalError }: { onAuthed: () => void; externalError?: string | null }) {
   const { user, loading } = useAuth();
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -369,7 +369,7 @@ function AuthStep({ onAuthed, externalError }: { onAuthed: () => void; externalE
   );
 }
 
-// ── Data ──────────────────────────────────────────────────────────────────────
+// ── Data ──────────────────────────────
 const SUBJECTS = [
   { id: "math",        icon: <Calculator className="w-6 h-6" />,   label: "Mathematics",     description: "Numbers, algebra, geometry"      },
   { id: "biology",     icon: <Microscope className="w-6 h-6" />,   label: "Biology",          description: "Life, cells, nature"             },
@@ -396,7 +396,7 @@ const HOBBY_ICONS: Record<string, React.ReactNode> = {
   reading: <Book className="w-6 h-6" />, travel: <Plane className="w-6 h-6" />,
 };
 
-// ── ICS step ──────────────────────────────────────────────────────────────────
+// ── ICS step ──────────────────────────
 function IcsStep({ importing, imported, count, error, onFile }:
   { importing: boolean; imported: boolean; count: number; error: string | null; onFile: (f: File) => void }) {
   const ref = useRef<HTMLInputElement>(null);
@@ -435,7 +435,7 @@ function IcsStep({ importing, imported, count, error, onFile }:
   );
 }
 
-// ── Main ──────────────────────────────────────────────────────────────────────
+// ── Main ──────────────────────────────
 // Steps: 1=Auth, 2=Name, 3=Year, 4=State, 5=Subjects, 6=Hobbies, 7=ICS
 const TOTAL_STEPS = 7;
 

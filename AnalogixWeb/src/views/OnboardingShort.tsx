@@ -1,12 +1,11 @@
-/* eslint-disable react-hooks/exhaustive-deps */
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowRight, Check, Sparkles,
   Calculator, Microscope, Landmark, Zap, FlaskConical, BookOpen,
-  Cpu, LineChart, Briefcase, Wallet, HeartPulse, Globe, Wrench,
+  Cpu, LineChart, Briefcase, HeartPulse, Globe, Wrench,
   Stethoscope, Languages, Dumbbell, Gamepad2, Music, CookingPot,
   Palette, Film, Leaf, Laptop, Book, Plane, Loader2,
 } from "lucide-react";
@@ -23,7 +22,7 @@ import { useAuth } from "@/context/AuthContext";
 import { signInWithGoogle } from "@/lib/auth-client";
 import OnboardingBackdrop from "@/components/OnboardingBackdrop";
 
-// ── Auth Step ─────────────────────────────────────────────────────────────────
+// ── Auth Step ─────────────────────────
 function AuthStep({ onAuthed, externalError }: { onAuthed: () => void; externalError?: string | null }) {
   const { user, loading } = useAuth();
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -103,7 +102,7 @@ function AuthStep({ onAuthed, externalError }: { onAuthed: () => void; externalE
   );
 }
 
-// ── Data ──────────────────────────────────────────────────────────────────────
+// ── Data ──────────────────────────────
 const SUBJECTS = [
   { id: "math",        icon: <Calculator className="w-5 h-5" />,   label: "Mathematics"      },
   { id: "biology",     icon: <Microscope className="w-5 h-5" />,   label: "Biology"          },
@@ -129,7 +128,7 @@ const HOBBY_ICONS: Record<string, React.ReactNode> = {
   reading: <Book className="w-5 h-5" />, travel: <Plane className="w-5 h-5" />,
 };
 
-// ── Main ──────────────────────────────────────────────────────────────────────
+// ── Main ──────────────────────────────
 // SHORTENED: 4 steps total (was 6)
 // 1=Auth, 2=Name/Year/State, 3=Subjects, 4=Hobbies
 const TOTAL_STEPS = 4;
@@ -149,7 +148,7 @@ const Onboarding = () => {
     if (urlStep) return parseInt(urlStep, 10);
     return 1;
   });
-  const [authError, setAuthError] = useState<string | null>(() => {
+  const [authError] = useState<string | null>(() => {
     return searchParams?.get("error") === "auth_failed" ? "Authentication failed. Please try again." : null;
   });
 

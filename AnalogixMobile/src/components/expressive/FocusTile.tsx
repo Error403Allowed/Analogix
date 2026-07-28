@@ -1,5 +1,5 @@
 import React, { useCallback } from "react";
-import { View, StyleSheet, Pressable } from "react-native";
+import { StyleSheet, Pressable } from "react-native";
 import { Text } from "react-native-paper";
 import Animated, {
   useAnimatedStyle,

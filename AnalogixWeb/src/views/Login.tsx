@@ -9,7 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/context/AuthContext";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import {
   signInWithGoogle, signInWithEmail, signUpWithEmail,
   resetPasswordForEmail, getEmailError, validatePassword,
@@ -18,7 +18,7 @@ import { cn } from "@/lib/utils";
 
 // ── Password requirements checklist ─────────────────────────────────────
 function PasswordRequirements({ password }: { password: string }) {
-  const { checks, allPass } = validatePassword(password);
+  const { checks } = validatePassword(password);
 
   return (
     <div className="space-y-1.5">
@@ -42,7 +42,7 @@ function PasswordRequirements({ password }: { password: string }) {
   );
 }
 
-// ── Animated brain icon ─────────────────────────────────────────────────
+// ── Animated brain icon ─────────
 function AnimatedBrain({ focused, mode }: {
   focused: boolean;
   mode: "signin" | "signup" | "forgot" | "success";
@@ -78,7 +78,7 @@ function AnimatedBrain({ focused, mode }: {
   );
 }
 
-// ── Mode toggle pill ────────────────────────────────────────────────────
+// ── Mode toggle pill ────────────
 function ModePill({ mode, onChange }: {
   mode: "signin" | "signup";
   onChange: (m: "signin" | "signup") => void;
@@ -103,11 +103,10 @@ function ModePill({ mode, onChange }: {
   );
 }
 
-// ── Main LoginView ──────────────────────────────────────────────────────
+// ── Main LoginView ──────────────
 export default function LoginView() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
-  const searchParams = useSearchParams();
 
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");

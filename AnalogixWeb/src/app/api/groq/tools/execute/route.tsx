@@ -35,7 +35,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Tool arguments too large" }, { status: 400 });
     }
 
-    const result: ToolExecutionResult = await executeTools(rawTools, user.id, accessToken);
+    const result: ToolExecutionResult = await executeTools(rawTools, user.id);
 
     return NextResponse.json(result);
   } catch (error) {

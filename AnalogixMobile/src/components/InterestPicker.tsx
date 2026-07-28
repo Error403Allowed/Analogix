@@ -1,8 +1,8 @@
 import React, { useState } from "react";
-import { View, StyleSheet, TextInput as RNTextInput, Pressable } from "react-native";
+import { View, StyleSheet, TextInput as RNTextInput } from "react-native";
 import { Text, Chip, Button, useTheme } from "react-native-paper";
 import Animated, { FadeIn, FadeOut, Layout } from "react-native-reanimated";
-import { HOBBY_OPTIONS, POPULAR_INTERESTS, type HobbyId } from "../utils/interests";
+import { POPULAR_INTERESTS, HOBBY_OPTIONS } from "../utils/interests";
 import { SHAPE } from "../theme/tokens";
 
 interface InterestPickerProps {

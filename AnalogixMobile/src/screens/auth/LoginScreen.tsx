@@ -3,7 +3,7 @@ import {
   View, StyleSheet, Platform, Image, useWindowDimensions, Pressable,
   TextInput as RNTextInput, KeyboardAvoidingView, ScrollView,
 } from "react-native";
-import { Text, useTheme, Button, TextInput } from "react-native-paper";
+import { Text, Button, TextInput } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -21,6 +21,7 @@ import Animated, {
   interpolate,
 } from "react-native-reanimated";
 import { SHAPE } from "../../theme/tokens";
+import { alpha } from "../../theme";
 import { useThemeContext } from "../../theme/ThemeContext";
 import type { RootStackParamList } from "../../navigation/types";
 
@@ -57,7 +58,7 @@ function extractCodeFromUrl(url: string): string | null {
 const LOGO = require("../../../assets/tab-icon.png");
 
 function FloatingOrbs({ primary, secondary }: { primary: string; secondary: string }) {
-  const { width: W, height: H } = useWindowDimensions();
+  useWindowDimensions();
   const t = useSharedValue(0);
 
   useEffect(() => {
@@ -145,7 +146,7 @@ export function getEmailError(code: string | null, message: string | null): stri
 
 // ── Password requirements checklist ─────────────────────────────────────
 function PasswordRequirements({ password }: { password: string }) {
-  const paperTheme = useTheme();
+  const { theme } = useThemeContext();
   const { checks } = validatePassword(password);
   return (
     <View style={{ gap: 4, marginTop: 4, marginBottom: 8 }}>
@@ -153,18 +154,18 @@ function PasswordRequirements({ password }: { password: string }) {
         <View key={c.key} style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
           <View style={[{
             width: 16, height: 16, borderRadius: 8, alignItems: "center", justifyContent: "center",
-            backgroundColor: c.pass ? paperTheme.colors.primary + "20" : paperTheme.colors.surfaceVariant,
+            backgroundColor: c.pass ? alpha(theme.colors.primary, 0.13) : theme.colors.surfaceVariant,
           }]}>
             {c.pass ? (
-              <Text style={{ fontSize: 10, fontWeight: "700", color: paperTheme.colors.primary }}>✓</Text>
+              <Text style={{ fontSize: 10, fontWeight: "700", color: theme.colors.primary }}>✓</Text>
             ) : (
-              <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: paperTheme.colors.onSurfaceVariant + "40" }} />
+              <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: alpha(theme.colors.onSurfaceVariant, 0.25) }} />
             )}
           </View>
           <Text
             style={{
               fontSize: 12, fontWeight: "500",
-              color: c.pass ? paperTheme.colors.primary : paperTheme.colors.onSurfaceVariant,
+              color: c.pass ? theme.colors.primary : theme.colors.onSurfaceVariant,
             }}
           >
             {c.label}
@@ -176,9 +177,8 @@ function PasswordRequirements({ password }: { password: string }) {
 }
 
 export default function LoginScreen() {
-  const paperTheme = useTheme();
   const insets = useSafeAreaInsets();
-  const { brand } = useThemeContext();
+  const { brand, theme } = useThemeContext();
   const nav = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -193,7 +193,6 @@ export default function LoginScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  const emailRef = useRef<RNTextInput>(null);
   const passwordRef = useRef<RNTextInput>(null);
   const confirmRef = useRef<RNTextInput>(null);
 
@@ -227,18 +226,13 @@ export default function LoginScreen() {
     transform: [{ translateY: cardY.value }],
   }));
 
-  const btnAnimStyle = useAnimatedStyle(() => ({
-    opacity: btnOpacity.value,
-    transform: [{ scale: btnScale.value }],
-  }));
-
   const isValidEmail = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
   const emailOk = isValidEmail(email);
   const { allPass: pwOk } = validatePassword(password);
   const matchOk = mode === "signin" || password === confirmPassword;
   const canSubmit = emailOk && pwOk && matchOk && !submitting;
 
-  // ── Google sign-in ───────────────────────────────────────────────────
+  // ── Google sign-in ───────────
   const handleGoogle = useCallback(async () => {
     try {
       setBusy(true);
@@ -301,7 +295,7 @@ export default function LoginScreen() {
     }
   }, []);
 
-  // ── Email/password submit ────────────────────────────────────────────
+  // ── Email/password submit ────
   const handleSubmit = useCallback(async () => {
     if (!canSubmit) return;
     setSubmitting(true);
@@ -334,7 +328,7 @@ export default function LoginScreen() {
     }
   }, [canSubmit, mode, email, password]);
 
-  // ── Forgot password ──────────────────────────────────────────────────
+  // ── Forgot password ──────────
   const [showForgot, setShowForgot] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotSent, setForgotSent] = useState(false);
@@ -368,15 +362,15 @@ export default function LoginScreen() {
         contentContainerStyle={{ flexGrow: 1 }}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={[styles.screen, { backgroundColor: paperTheme.colors.background }]}>
+        <View style={[styles.screen, { backgroundColor: theme.colors.background }]}>
           <FloatingOrbs primary={brand.primary} secondary={brand.secondary} />
 
           <Animated.View
             style={[
               styles.card,
               {
-                backgroundColor: paperTheme.colors.surface,
-                borderColor: paperTheme.colors.outlineVariant,
+                backgroundColor: theme.colors.surface,
+                borderColor: theme.colors.outlineVariant,
                 marginTop: insets.top,
                 marginBottom: Math.max(insets.bottom, 24) + 16,
               },
@@ -384,8 +378,8 @@ export default function LoginScreen() {
             ]}
           >
             <View style={styles.logoContainer}>
-              <View style={[styles.logoOuter, { borderColor: brand.primary + "20" }]}>
-                <View style={[styles.logoBg, { backgroundColor: brand.primary + "14" }]}>
+              <View style={[styles.logoOuter, { borderColor: alpha(brand.primary, 0.13) }]}>
+                <View style={[styles.logoBg, { backgroundColor: alpha(brand.primary, 0.08) }]}>
                   <Image source={LOGO} style={styles.logoImage} resizeMode="contain" />
                 </View>
               </View>
@@ -396,13 +390,13 @@ export default function LoginScreen() {
                 <View style={styles.textGroup}>
                   <Text
                     variant="headlineSmall"
-                    style={[styles.heading, { color: paperTheme.colors.onSurface }]}
+                    style={[styles.heading, { color: theme.colors.onSurface }]}
                   >
                     {forgotSent ? "Check your email" : "Reset your password"}
                   </Text>
                   <Text
                     variant="bodyMedium"
-                    style={{ color: paperTheme.colors.onSurfaceVariant, textAlign: "center" }}
+                    style={{ color: theme.colors.onSurfaceVariant, textAlign: "center" }}
                   >
                     {forgotSent
                       ? "We've sent a reset link to your email."
@@ -415,14 +409,14 @@ export default function LoginScreen() {
                     <View
                       style={[
                         styles.iconCircle,
-                        { backgroundColor: brand.primary + "14" },
+                        { backgroundColor: alpha(brand.primary, 0.08) },
                       ]}
                     >
                       <Text style={{ fontSize: 24, color: brand.primary }}>✉️</Text>
                     </View>
                     <Text
                       variant="bodySmall"
-                      style={{ color: paperTheme.colors.onSurfaceVariant, textAlign: "center" }}
+                      style={{ color: theme.colors.onSurfaceVariant, textAlign: "center" }}
                     >
                       Check your inbox (and spam folder) for the reset link.
                     </Text>
@@ -462,12 +456,12 @@ export default function LoginScreen() {
                       <View
                         style={[
                           styles.errorBox,
-                          { backgroundColor: paperTheme.colors.errorContainer },
+                          { backgroundColor: theme.colors.errorContainer },
                         ]}
                       >
                         <Text
                           variant="bodySmall"
-                          style={{ color: paperTheme.colors.onErrorContainer }}
+                          style={{ color: theme.colors.onErrorContainer }}
                         >
                           {error}
                         </Text>
@@ -479,8 +473,8 @@ export default function LoginScreen() {
                       onPress={handleForgot}
                       loading={forgotLoading}
                       disabled={!isValidEmail(forgotEmail) || forgotLoading}
-                      buttonColor={paperTheme.colors.primary}
-                      textColor={paperTheme.colors.onPrimary}
+                      buttonColor={theme.colors.primary}
+                      textColor={theme.colors.onPrimary}
                       contentStyle={styles.btnContent}
                       style={styles.btn}
                       labelStyle={styles.btnLabel}
@@ -494,7 +488,7 @@ export default function LoginScreen() {
                         setShowForgot(false);
                         setError(null);
                       }}
-                      textColor={paperTheme.colors.onSurfaceVariant}
+                      textColor={theme.colors.onSurfaceVariant}
                     >
                       ← Back to Sign In
                     </Button>
@@ -515,13 +509,13 @@ export default function LoginScreen() {
                 <View style={styles.textGroup}>
                   <Text
                     variant="headlineSmall"
-                    style={[styles.heading, { color: paperTheme.colors.onSurface }]}
+                    style={[styles.heading, { color: theme.colors.onSurface }]}
                   >
                     Check your email
                   </Text>
                   <Text
                     variant="bodyMedium"
-                    style={{ color: paperTheme.colors.onSurfaceVariant, textAlign: "center" }}
+                    style={{ color: theme.colors.onSurfaceVariant, textAlign: "center" }}
                   >
                     {successMsg}
                   </Text>
@@ -546,13 +540,13 @@ export default function LoginScreen() {
                 <View style={styles.textGroup}>
                   <Text
                     variant="headlineMedium"
-                    style={[styles.heading, { color: paperTheme.colors.onSurface }]}
+                    style={[styles.heading, { color: theme.colors.onSurface }]}
                   >
                     Welcome to Analogix
                   </Text>
                   <Text
                     variant="bodyMedium"
-                    style={{ color: paperTheme.colors.onSurfaceVariant, textAlign: "center" }}
+                    style={{ color: theme.colors.onSurfaceVariant, textAlign: "center" }}
                   >
                     Sign in to continue learning
                   </Text>
@@ -567,7 +561,7 @@ export default function LoginScreen() {
                         styles.modeOption,
                         {
                           backgroundColor:
-                            mode === m ? paperTheme.colors.primary : "transparent",
+                            mode === m ? theme.colors.primary : "transparent",
                         },
                       ]}
                       onPress={() => {
@@ -583,8 +577,8 @@ export default function LoginScreen() {
                       <Text
                         style={{
                           color: mode === m
-                            ? paperTheme.colors.onPrimary
-                            : paperTheme.colors.onSurfaceVariant,
+                            ? theme.colors.onPrimary
+                            : theme.colors.onSurfaceVariant,
                           fontWeight: "600",
                           fontSize: 14,
                         }}
@@ -600,12 +594,12 @@ export default function LoginScreen() {
                   <View
                     style={[
                       styles.errorBox,
-                      { backgroundColor: paperTheme.colors.errorContainer },
+                      { backgroundColor: theme.colors.errorContainer },
                     ]}
                   >
                     <Text
                       variant="bodySmall"
-                      style={{ color: paperTheme.colors.onErrorContainer }}
+                      style={{ color: theme.colors.onErrorContainer }}
                     >
                       {error}
                     </Text>
@@ -680,7 +674,7 @@ export default function LoginScreen() {
                     outlineStyle={[
                       styles.inputOutline,
                       confirmPassword && password !== confirmPassword && {
-                        borderColor: paperTheme.colors.error,
+                        borderColor: theme.colors.error,
                       },
                     ]}
                     style={styles.input}
@@ -698,7 +692,7 @@ export default function LoginScreen() {
                 {mode === "signup" && confirmPassword && password !== confirmPassword && (
                   <Text
                     variant="bodySmall"
-                    style={{ color: paperTheme.colors.error, fontWeight: "500" }}
+                    style={{ color: theme.colors.error, fontWeight: "500" }}
                   >
                     Passwords don't match
                   </Text>
@@ -713,8 +707,8 @@ export default function LoginScreen() {
                   onPress={handleSubmit}
                   loading={submitting}
                   disabled={!canSubmit}
-                  buttonColor={paperTheme.colors.primary}
-                  textColor={paperTheme.colors.onPrimary}
+                  buttonColor={theme.colors.primary}
+                  textColor={theme.colors.onPrimary}
                   contentStyle={styles.btnContent}
                   style={styles.btn}
                   labelStyle={styles.btnLabel}
@@ -727,7 +721,7 @@ export default function LoginScreen() {
                   <Text
                     variant="bodySmall"
                     style={{
-                      color: paperTheme.colors.onSurfaceVariant,
+                      color: theme.colors.onSurfaceVariant,
                       textAlign: "center",
                     }}
                     onPress={() => {
@@ -749,13 +743,13 @@ export default function LoginScreen() {
                   <View
                     style={[
                       styles.dividerLine,
-                      { backgroundColor: paperTheme.colors.outlineVariant },
+                      { backgroundColor: theme.colors.outlineVariant },
                     ]}
                   />
                   <Text
                     variant="bodySmall"
                     style={{
-                      color: paperTheme.colors.onSurfaceVariant,
+                      color: theme.colors.onSurfaceVariant,
                       marginHorizontal: 12,
                       fontWeight: "500",
                     }}
@@ -765,7 +759,7 @@ export default function LoginScreen() {
                   <View
                     style={[
                       styles.dividerLine,
-                      { backgroundColor: paperTheme.colors.outlineVariant },
+                      { backgroundColor: theme.colors.outlineVariant },
                     ]}
                   />
                 </View>
@@ -787,7 +781,7 @@ export default function LoginScreen() {
                   variant="bodySmall"
                   style={[
                     styles.legalese,
-                    { color: paperTheme.colors.onSurfaceVariant },
+                    { color: theme.colors.onSurfaceVariant },
                   ]}
                 >
                   By signing in, you agree to our{" "}

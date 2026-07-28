@@ -32,7 +32,7 @@ export default function ProfileScreen() {
   const navigation = useNavigation<any>();
   const { data: meData, loading: meLoading } = useQuery(ME);
   const { data: statsData, loading: statsLoading } = useQuery(USER_STATS);
-  const [updateProfile, { loading: saving }] = useMutation(UPDATE_PROFILE);
+  const [updateProfile] = useMutation(UPDATE_PROFILE);
   const { signOut } = useAuth();
   const me = meData?.me;
   const stats = statsData?.userStats;

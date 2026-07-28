@@ -2,27 +2,20 @@ import React, { useState, useMemo } from "react";
 import { View, StyleSheet, Pressable } from "react-native";
 import { Text, useTheme, ActivityIndicator } from "react-native-paper";
 import { useQuery } from "@apollo/client/react";
-import { useNavigation } from "@react-navigation/native";
 import { useThemeContext } from "../../theme/ThemeContext";
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-  FadeIn,
-  FadeOut,
-} from "react-native-reanimated";
+import { alpha } from "../../theme";
 import Icon from "../../components/Icon";
 import { ExpressiveScreen, ExpressiveEmptyState } from "../../components/expressive";
 import { CURRICULUM_SUBJECTS } from "../../graphql/queries/curriculum";
-import { SHAPE } from "../../theme/tokens";
 
 type Topic = { id: string; strand: string; topic: string; contentDescription: string; elaborations: string[] };
 type Strands = Record<string, Topic[]>;
 type YearLevel = { year: number; strands: Strands; achievementStandard: string };
 type Subject = { subject: string; learningArea: string; yearLevels: Record<string, YearLevel> };
 
-function TopicCard({ topic, colors, brand }: { topic: Topic; colors: any; brand: any }) {
+function TopicCard({ topic, colors }: { topic: Topic; colors: any }) {
   const [expanded, setExpanded] = useState(false);
+  const { theme } = useThemeContext();
 
   return (
     <Pressable
@@ -30,7 +23,7 @@ function TopicCard({ topic, colors, brand }: { topic: Topic; colors: any; brand:
       style={[styles.topicCard, { backgroundColor: colors.surface, borderColor: colors.outlineVariant }]}
     >
       <View style={styles.topicHeader}>
-        <Text style={[styles.topicCode, { color: brand.primary }]}>{topic.id}</Text>
+        <Text style={[styles.topicCode, { color: theme.colors.primary }]}>{topic.id}</Text>
         <Text style={[styles.topicName, { color: colors.onSurface }]}>{topic.topic}</Text>
         <Icon name={expanded ? "chevron-up" : "chevron-down"} size={16} color={colors.onSurfaceVariant} />
       </View>
@@ -41,7 +34,7 @@ function TopicCard({ topic, colors, brand }: { topic: Topic; colors: any; brand:
         <View style={[styles.elabSection, { borderTopColor: colors.outlineVariant }]}>
           {topic.elaborations.map((elab, i) => (
             <View key={i} style={styles.elabRow}>
-              <Text style={[styles.elabBullet, { color: brand.primary }]}>•</Text>
+              <Text style={[styles.elabBullet, { color: theme.colors.primary }]}>•</Text>
               <Text style={[styles.elabText, { color: colors.onSurfaceVariant }]}>{elab}</Text>
             </View>
           ))}
@@ -51,13 +44,14 @@ function TopicCard({ topic, colors, brand }: { topic: Topic; colors: any; brand:
   );
 }
 
-function StrandSection({ strand, topics, colors, brand }: { strand: string; topics: Topic[]; colors: any; brand: any }) {
+function StrandSection({ strand, topics, colors }: { strand: string; topics: Topic[]; colors: any }) {
+  const { theme } = useThemeContext();
   return (
     <View style={styles.strandSection}>
-      <Text style={[styles.strandLabel, { color: brand.primary }]}>{strand}</Text>
+      <Text style={[styles.strandLabel, { color: theme.colors.primary }]}>{strand}</Text>
       <View style={styles.topicList}>
         {topics.map((topic) => (
-          <TopicCard key={topic.id} topic={topic} colors={colors} brand={brand} />
+          <TopicCard key={topic.id} topic={topic} colors={colors} />
         ))}
       </View>
     </View>
@@ -66,8 +60,7 @@ function StrandSection({ strand, topics, colors, brand }: { strand: string; topi
 
 export default function CurriculumBrowserScreen() {
   const paperTheme = useTheme();
-  const { brand } = useThemeContext();
-  const navigation = useNavigation();
+  const { theme } = useThemeContext();
   const { loading, error, data } = useQuery(CURRICULUM_SUBJECTS);
 
   const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
@@ -91,7 +84,7 @@ export default function CurriculumBrowserScreen() {
   if (loading) {
     return (
       <ExpressiveScreen title="Curriculum">
-        <View style={styles.center}><ActivityIndicator size="large" color={brand.primary} /></View>
+        <View style={styles.center}><ActivityIndicator size="large" color={theme.colors.primary} /></View>
       </ExpressiveScreen>
     );
   }
@@ -116,7 +109,7 @@ export default function CurriculumBrowserScreen() {
             >
               <Text style={[styles.subjectName, { color: c.onSurface }]}>{s.subject}</Text>
               <Text style={[styles.subjectArea, { color: c.onSurfaceVariant }]}>{s.learningArea}</Text>
-              <Text style={[styles.yearCount, { color: brand.primary }]}>
+              <Text style={[styles.yearCount, { color: theme.colors.primary }]}>
                 {Object.keys(s.yearLevels).length} year levels
               </Text>
             </Pressable>
@@ -125,8 +118,8 @@ export default function CurriculumBrowserScreen() {
       ) : !selectedYear ? (
         <View style={styles.section}>
           <Pressable onPress={() => setSelectedSubject(null)} style={styles.backRow}>
-            <Icon name="arrow-left" size={18} color={brand.primary} />
-            <Text style={[styles.backText, { color: brand.primary }]}>All subjects</Text>
+            <Icon name="arrow-left" size={18} color={theme.colors.primary} />
+            <Text style={[styles.backText, { color: theme.colors.primary }]}>All subjects</Text>
           </Pressable>
           <Text style={[styles.sectionTitle, { color: c.onSurface }]}>Select Year Level</Text>
           <View style={styles.yearGrid}>
@@ -136,7 +129,7 @@ export default function CurriculumBrowserScreen() {
                 onPress={() => setSelectedYear(year)}
                 style={[styles.yearCard, { backgroundColor: c.surface, borderColor: c.outlineVariant }]}
               >
-                <Text style={[styles.yearNum, { color: brand.primary }]}>Year {year}</Text>
+                <Text style={[styles.yearNum, { color: theme.colors.primary }]}>Year {year}</Text>
                 <Text style={[styles.yearStrands, { color: c.onSurfaceVariant }]}>
                   {Object.keys(subject!.yearLevels[year].strands).length} strands
                 </Text>
@@ -147,21 +140,21 @@ export default function CurriculumBrowserScreen() {
       ) : (
         <View style={styles.section}>
           <Pressable onPress={() => setSelectedYear(null)} style={styles.backRow}>
-            <Icon name="arrow-left" size={18} color={brand.primary} />
-            <Text style={[styles.backText, { color: brand.primary }]}>
+            <Icon name="arrow-left" size={18} color={theme.colors.primary} />
+            <Text style={[styles.backText, { color: theme.colors.primary }]}>
               {subject?.subject} — Year {selectedYear}
             </Text>
           </Pressable>
 
           {yearLevel && (
             <>
-              <View style={[styles.achievementBox, { backgroundColor: brand.primary + "10", borderColor: brand.primary + "30" }]}>
-                <Text style={[styles.achievementLabel, { color: brand.primary }]}>Achievement Standard</Text>
+              <View style={[styles.achievementBox, { backgroundColor: alpha(theme.colors.primary, 0.06), borderColor: alpha(theme.colors.primary, 0.19) }]}>
+                <Text style={[styles.achievementLabel, { color: theme.colors.primary }]}>Achievement Standard</Text>
                 <Text style={[styles.achievementText, { color: c.onSurface }]}>{yearLevel.achievementStandard}</Text>
               </View>
 
               {Object.entries(yearLevel.strands).map(([strand, topics]) => (
-                <StrandSection key={strand} strand={strand} topics={topics} colors={c} brand={brand} />
+                <StrandSection key={strand} strand={strand} topics={topics} colors={c} />
               ))}
             </>
           )}

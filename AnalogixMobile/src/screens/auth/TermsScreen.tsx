@@ -2,7 +2,6 @@ import React from "react";
 import { View, StyleSheet, ScrollView } from "react-native";
 import { Text, useTheme, IconButton } from "react-native-paper";
 import { useNavigation } from "@react-navigation/native";
-import { SHAPE } from "../../theme/tokens";
 
 const SECTIONS = [
   {

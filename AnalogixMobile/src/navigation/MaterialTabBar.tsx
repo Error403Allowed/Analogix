@@ -10,6 +10,7 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import { SHAPE } from "../theme/tokens";
+import { alpha, type ExpressiveColors } from "../theme";
 import Icon from "../components/Icon";
 
 const TAB_CONFIG: Record<string, { icon: string; iconOutline: string; label: string }> = {
@@ -24,7 +25,7 @@ const TAB_CONFIG: Record<string, { icon: string; iconOutline: string; label: str
 export function MaterialTabBar(props: BottomTabBarProps) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
-  const colors = theme.colors as typeof theme.colors & { surfaceContainer: string; surfaceContainerHigh: string };
+  const colors = theme.colors as ExpressiveColors;
 
   const indicatorX = useSharedValue(0);
   const tabPositions = useRef<number[]>([]);
@@ -45,9 +46,6 @@ export function MaterialTabBar(props: BottomTabBarProps) {
     }
   }, [props.state.index, indicatorX]);
 
-  const indicatorStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: indicatorX.value }],
-  }));
 
   return (
     <View
@@ -55,7 +53,7 @@ export function MaterialTabBar(props: BottomTabBarProps) {
         styles.bar,
         {
           paddingBottom: insets.bottom + 4,
-          backgroundColor: colors.surfaceContainer ?? theme.colors.surface,
+          backgroundColor: colors.surfaceContainer,
           borderTopColor: theme.colors.outlineVariant,
         },
       ]}
@@ -125,7 +123,7 @@ function TabItem({
       onLayout={onLayout}
       style={({ pressed }) => [{ opacity: pressed ? 0.72 : 1 }, styles.tab]}
     >
-      <View style={[styles.activeBg, focused && { backgroundColor: theme.colors.primary + "22", borderRadius: SHAPE.pill }]}>
+      <View style={[styles.activeBg, focused && { backgroundColor: alpha(theme.colors.primary, 0.13), borderRadius: SHAPE.pill }]}>
         <Animated.View style={iconAnimStyle}>
           <Icon
             name={focused ? config.icon : config.iconOutline}

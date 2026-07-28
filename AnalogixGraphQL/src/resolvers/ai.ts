@@ -14,7 +14,6 @@ import {
   ExtractTextInput,
   TutorInput,
   SearchResearchInput,
-  SpeakInput,
 } from "@analogix/shared/schemas";
 
 import { safeParseJson } from "../utils/json.js";
@@ -156,7 +155,7 @@ export const aiResolvers = {
         maxTokens: 1500,
         temperature: 0.7,
       });
-      return { text: response, model: "llama-3.3-70b-versatile" };
+      return { text: response, model: "openai/gpt-oss-120b" };
     },
 
     searchResearch: async (_: unknown, args: { input: Record<string, unknown> }, ctx: GraphQLContext) => {
@@ -174,18 +173,6 @@ export const aiResolvers = {
       return { query: parsed.query, total: sources.length, sources };
     },
 
-    speak: async (_: unknown, args: { input: Record<string, unknown> }, ctx: GraphQLContext) => {
-      requireUser(ctx);
-      const parsed = SpeakInput.parse(args.input);
-      logger.warn("[tts] speak mutation called — TTS service not yet wired");
-      return { audioUrl: "", duration: 0 };
-    },
-
-    executePython: async (_: unknown, args: { input: Record<string, unknown> }, ctx: GraphQLContext) => {
-      requireUser(ctx);
-      logger.warn("[executePython] Disabled for security — server-side code execution is not available");
-      return { stdout: "", stderr: "", error: "Code execution is disabled", durationMs: 0 };
-    },
 
     generateBanner: async (_: unknown, args: { input: Record<string, unknown> }, ctx: GraphQLContext) => {
       requireUser(ctx);

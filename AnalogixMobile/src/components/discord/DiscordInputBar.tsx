@@ -2,8 +2,9 @@ import React from "react";
 import { View, TextInput, Pressable, StyleSheet, Platform } from "react-native";
 import { useTheme, ActivityIndicator } from "react-native-paper";
 import Icon from "../Icon";
-import { SHAPE } from "../../theme/tokens";
+
 import { SPACE } from "../../theme/spacing";
+import { alpha } from "../../theme";
 import type { DiscordInputBarProps } from "./types";
 
 export default function DiscordInputBar({
@@ -35,7 +36,7 @@ export default function DiscordInputBar({
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor={theme.colors.onSurfaceVariant + "99"}
+        placeholderTextColor={alpha(theme.colors.onSurfaceVariant, 0.60)}
         multiline={multiline}
         maxLength={maxLength}
         style={[

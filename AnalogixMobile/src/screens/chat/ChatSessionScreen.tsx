@@ -31,7 +31,7 @@ export default function ChatSessionScreen() {
     reExplainMessageId, setReExplainMessageId, reExplainingId,
     researchSources,
     showFormulaPanel, setShowFormulaPanel, formulaSearch, setFormulaSearch,
-    userData, currentSubject, currentSubjectId, filteredSubjects,
+    currentSubject, currentSubjectId, filteredSubjects,
     currentFormulaSheet, allItems, messages, userHobbies,
     handleRunCode, handleRegenerate, handleReExplain,
     handleGenerateFromFiles, handleUploadFile, removeAttachedFile, handleSend,
@@ -83,7 +83,7 @@ export default function ChatSessionScreen() {
         style={{ backgroundColor: "transparent" }}
         ListEmptyComponent={
           <View style={{ transform: [{ scaleY: -1 }], flex: 1 }}>
-            <ChatGreeting name={userData?.me?.name ?? userData?.me?.email ?? ""} />
+            <ChatGreeting />
           </View>
         }
         renderItem={({ item }) => {

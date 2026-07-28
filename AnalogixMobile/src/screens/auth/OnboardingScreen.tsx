@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { View, StyleSheet, ScrollView, Pressable, TextInput, Dimensions } from "react-native";
+import { View, StyleSheet, ScrollView, Pressable, Dimensions } from "react-native";
 import { Text, useTheme, Button, ProgressBar, Card, TextInput as PaperInput } from "react-native-paper";
 import { gql } from "@apollo/client";
 import { useMutation, useQuery, useApolloClient } from "@apollo/client/react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as DocumentPicker from "expo-document-picker";
 import { readAsStringAsync } from "expo-file-system/legacy";
 import ConfettiCannon from "react-native-confetti-cannon";
@@ -10,10 +11,8 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring,
-  withTiming,
   withSequence,
   FadeInDown,
-  FadeOutUp,
 } from "react-native-reanimated";
 import { useAuth } from "../../context/AuthContext";
 import { ME, UPDATE_PROFILE } from "../../graphql/queries/user";
@@ -26,7 +25,6 @@ import { MOTION } from "../../theme/tokens";
 import Icon from "../../components/Icon";
 import { SUBJECT_CATALOG } from "../../data/subjects";
 
-const SUBJECTS = SUBJECT_CATALOG.map((s) => s.label);
 
 type StepKey = "name" | "grade" | "state" | "subjects" | "interests" | "ics" | "done";
 const STEPS: StepKey[] = ["name", "grade", "state", "subjects", "interests", "ics", "done"];
@@ -178,6 +176,7 @@ export default function OnboardingScreen() {
           data: { onboardingComplete: true },
         });
 
+        AsyncStorage.setItem("onboarding_complete", "true");
         if (!confettiFired) {
           setConfettiFired(true);
           setTimeout(() => confettiRef.current?.start(), 200);

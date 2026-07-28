@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { callGroqChat, formatError } from "../_utils";
 import type { QuizAnswerInput, QuizReview } from "@/types/quiz";
-import { requireUser, unauthResponse } from "@/lib/api-auth";
+import { requireUser } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 

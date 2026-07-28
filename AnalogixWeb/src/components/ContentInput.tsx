@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Send, Paperclip, X, FileText, Plus, AtSign, Search, Brain, ChevronUp, Check } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { GROQ_MODELS, type GroqModelId } from "@/types/groq-models";
 
@@ -39,7 +38,6 @@ export default function ContentInput({
   onChange,
   onSend,
   onFilesChange,
-  onToggleContextOptions,
   inputRef,
   placeholder = "Type a message or @mention docs...",
   disabled,
@@ -51,7 +49,6 @@ export default function ContentInput({
     { id: "phys-flashcards", title: "Physics Flashcards", subject: "physics", type: 'doc', preview: "20 cards due today", icon: "💳" },
   ],
   className,
-  height = 'normal',
   agentModelId: externalAgentModelId,
   setAgentModelId: externalSetAgentModelId,
 }: ContentInputProps) {
@@ -74,9 +71,6 @@ export default function ContentInput({
   const modelSelectorRef = useRef<HTMLDivElement>(null);
   const [showModelSelector, setShowModelSelector] = useState(false);
 
-  const safeLocalStorageGet = (key: string) => {
-    try { return localStorage.getItem(key); } catch { return null; }
-  };
   const safeLocalStorageSet = (key: string, value: string) => {
     try { localStorage.setItem(key, value); } catch { /* ignore */ }
   };
@@ -151,8 +145,6 @@ export default function ContentInput({
       e.preventDefault();
     }
   };
-
-  const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
   const removeContext = (item: ContextItem) => {
     setSelectedContext(prev => prev.filter(p => p.id !== item.id));

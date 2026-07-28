@@ -6,7 +6,7 @@ import { sanitizeHtml } from "@/lib/sanitize";
 import {
   Shield, User, Settings, Brain, Database, Lock, Share2,
   Globe, Scale, Cookie, Baby, Clock, FileText, ExternalLink,
-  ChevronDown, ArrowUpRight, GitBranch
+  ChevronDown, GitBranch
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 

@@ -1,7 +1,8 @@
-import React, { useEffect, useState, useRef, useCallback } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { View, StyleSheet, Pressable, AppState, type AppStateStatus } from "react-native";
 import { Text, useTheme, Portal, Modal, TextInput, Button } from "react-native-paper";
 import { useThemeContext } from "../../theme/ThemeContext";
+import { alpha } from "../../theme";
 import { SHAPE } from "../../theme/tokens";
 import Svg, { Circle } from "react-native-svg";
 import * as Haptics from "expo-haptics";
@@ -89,7 +90,7 @@ function saveState(state: TimerState) {
 
 export default function TimerScreen() {
   const paperTheme = useTheme();
-  const { brand } = useThemeContext();
+  const { theme } = useThemeContext();
   const navigation = useNavigation<any>();
   const [timer, setTimer] = useState<TimerState>(defaultState());
   const [loaded, setLoaded] = useState(false);
@@ -213,10 +214,10 @@ export default function TimerScreen() {
   const secs = timer.timeLeft % 60;
   const timerLabel = `${String(minutes).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
   const isFocus = timer.phase === "focus";
-  const phaseColor = isFocus ? brand.primary : "#22c55e";
+  const phaseColor = isFocus ? theme.colors.primary : "#22c55e";
   const phaseIcon = isFocus ? "timer" : "coffee";
   const phaseLabel = isFocus ? "Focus" : "Break";
-  const bgGradient = isFocus ? brand.primary + "08" : "#22c55e08";
+  const bgGradient = isFocus ? alpha(theme.colors.primary, 0.03) : alpha("#22c55e", 0.03);
 
   const settingsIcon = (
     <Pressable onPress={openSettings} style={styles.iconBtn}>
@@ -235,7 +236,7 @@ export default function TimerScreen() {
         actions={settingsIcon}
       >
         <View style={styles.phaseBadge}>
-          <View style={[styles.phasePill, { backgroundColor: phaseColor + "18" }]}>
+          <View style={[styles.phasePill, { backgroundColor: alpha(phaseColor, 0.10) }]}>
             <Icon name={phaseIcon} size={16} color={phaseColor} />
             <Text variant="labelSmall" style={{ color: phaseColor, fontWeight: "800", letterSpacing: 1 }}>{phaseLabel}</Text>
           </View>

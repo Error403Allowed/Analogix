@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from "react";
 import { View, StyleSheet, ScrollView, Pressable } from "react-native";
-import { Text, useTheme, ActivityIndicator, Button, SegmentedButtons } from "react-native-paper";
+import { Text, useTheme, Button, SegmentedButtons } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQuery, useMutation } from "@apollo/client/react";
 import { useNavigation } from "@react-navigation/native";
@@ -25,7 +25,7 @@ interface StudySchedule {
 
 export default function StudyScheduleScreen() {
   const paperTheme = useTheme();
-  const { brand } = useThemeContext();
+  const { theme } = useThemeContext();
   const c = paperTheme.colors as any;
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
@@ -98,7 +98,7 @@ export default function StudyScheduleScreen() {
         {!schedule && (
           <View style={styles.setup}>
             <View style={styles.hero}>
-              <Icon name="calendar-clock" size={48} color={brand.primary} />
+              <Icon name="calendar-clock" size={48} color={theme.colors.primary} />
               <Text variant="titleLarge" style={[styles.heroTitle, { color: paperTheme.colors.onSurface }]}>
                 Generate a study plan
               </Text>
@@ -151,19 +151,19 @@ export default function StudyScheduleScreen() {
             {schedule.days.map((day, i) => (
               <View key={i} style={[styles.dayCard, { backgroundColor: c.surfaceContainerLow ?? paperTheme.colors.surfaceVariant }]}>
                 <View style={styles.dayHeader}>
-                  <Icon name="calendar" size={16} color={brand.primary} />
+                  <Icon name="calendar" size={16} color={theme.colors.primary} />
                   <Text variant="labelLarge" style={{ color: paperTheme.colors.onSurface, fontWeight: "600" }}>
                     Day {day.day} — {formatDate(day.date)}
                   </Text>
                   <View style={styles.durationBadge}>
-                    <Text variant="labelSmall" style={{ color: brand.primary }}>
+                    <Text variant="labelSmall" style={{ color: theme.colors.primary }}>
                       {day.durationMinutes} min
                     </Text>
                   </View>
                 </View>
                 {day.tasks.map((task, j) => (
                   <View key={j} style={styles.taskRow}>
-                    <Icon name="circle-small" size={16} color={brand.primary} />
+                    <Icon name="circle-small" size={16} color={theme.colors.primary} />
                     <Text variant="bodySmall" style={{ color: paperTheme.colors.onSurface, flex: 1 }}>
                       {task}
                     </Text>

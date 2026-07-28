@@ -1,5 +1,4 @@
 import { callGroqChatStream, formatError, classifyTaskType } from "../_utils";
-import { getFormulaSheetContext } from "@/data/formulaSheets";
 import { createClient } from "@/lib/supabase/server";
 import { buildCalendarContext } from "../_calendarContext";
 import { listUserDocuments } from "@/lib/server/documents";
@@ -44,7 +43,6 @@ const truncateWorkspaceDocs = (allDocs, maxTokens) => {
     return { docs: result, truncated };
 };
 const STUDY_GUIDE_PREFIX = "__STUDY_GUIDE_V2__";
-const stripHtml = (html) => html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 const truncate = (text, max) => text.length > max ? text.slice(0, max) + "…" : text;
 const getFirstSentence = (text) => {
     const cleaned = text.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
@@ -100,7 +98,6 @@ const compressToSummary = (msgs) => {
     // Extract key info from user messages: topics, goals, blockers
     const userMsgs = msgs.filter(m => m.role === "user");
     const topics: string[] = [];
-    const goals: string[] = [];
     userMsgs.forEach(m => {
         const content = m.content;
         // Extract short topic markers
@@ -142,21 +139,6 @@ function buildSystemPrompt(userContext, messages, workspaceContext, calendarCont
         : `The student is in Year ${studentGrade} in Australia. Always align explanations to the Australian curriculum for Year ${studentGrade}. Use Australian spelling and terminology.`;
     const interestList = userContext?.hobbies?.filter(Boolean) ?? [];
     const allowedInterests = interestList.length > 0 ? interestList.join(", ") : "General";
-    const findExplicitInterest = (text, interests) => {
-        const lower = text.toLowerCase();
-        let best: { interest: string; index: number } | null = null;
-        for (const interest of interests) {
-            const idx = lower.indexOf(interest.toLowerCase());
-            if (idx >= 0 && (!best || idx < best.index))
-                best = { interest, index: idx };
-        }
-        return best?.interest ?? null;
-    };
-    const latestUser = [...messages].reverse().find(m => m.role === "user")?.content || "";
-    const explicitFromContext = userContext?.analogyAnchor?.trim() || null;
-    const explicitFromMessage = latestUser ? findExplicitInterest(latestUser, interestList) : null;
-    const randomInterest = interestList.length > 0 ? interestList[Math.floor(Math.random() * interestList.length)] : null;
-    const analogyAnchor = explicitFromContext || explicitFromMessage || randomInterest || undefined;
     const analogyGuidance = [
         "SCHOOL MODE: This student wants responses tailored for school/assessment purposes. Be formal, precise, and curriculum-aligned. Use correct subject-specific terminology. Structure answers the way a teacher or marker would expect. No analogies, no personal interests, no casual tone.",
         "SCHOOL MODE: Formal, precise responses for school. Use analogies only if they genuinely clarify a concept — don't force them. Let the explanation dictate the approach.",
@@ -165,9 +147,6 @@ function buildSystemPrompt(userContext, messages, workspaceContext, calendarCont
         "Use analogies as a primary teaching tool. Build an extended analogy from the student's specific interests listed below, and thread it through your entire response. As you explain each part of the concept, show how it maps to the analogy. The analogy must be drawn from the student's actual interests — not generic examples. The analogy should run parallel to the technical explanation, with clear connections throughout.",
         "Maximum analogy integration: Every explanation should be anchored in a vivid, extended analogy drawn from the student's specific interests. Build the analogy from the start and develop it throughout — map concept elements to analogy elements, return to the analogy for each sub-point, and let the parallel story illuminate the concept step by step. NEVER use a generic analogy when the student's interests provide a better one.",
     ][Math.min(analogyIntensity, 5)];
-    const hasExplicitSubject = (userContext?.subjects?.length ?? 0) > 0;
-    const primarySubjectForFormulas = hasExplicitSubject ? userContext.subjects[0] : null;
-    const formulaSheetContext = primarySubjectForFormulas ? getFormulaSheetContext(primarySubjectForFormulas) : "";
     const researchMode = Boolean(userContext?.researchMode);
     const researchSources = Array.isArray(userContext?.researchSources) ? userContext.researchSources : [];
     const researchBlock = researchMode
@@ -225,26 +204,6 @@ You have access to this student's documents for context AND can create, edit, or
 ${workspaceContext}
 ━━━ END WORKSPACE ━━━
 ` : ""}` : "";
-    // Get current time context
-    const now = new Date();
-    const hour = now.getHours();
-    const minute = now.getMinutes();
-    const timeOfDay = hour >= 5 && hour < 12 ? "morning" : hour >= 12 && hour < 14 ? "midday" : hour >= 14 && hour < 18 ? "afternoon" : hour >= 18 && hour < 22 ? "evening" : "night";
-    const timeString = now.toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit", hour12: true });
-    const dayOfWeek = now.toLocaleDateString("en-AU", { weekday: "long" });
-    const dateString = now.toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" });
-    const isSchoolHours = hour >= 8 && hour < 16 && dayOfWeek !== "Saturday" && dayOfWeek !== "Sunday";
-    const isEveningStudy = hour >= 18 && hour < 22;
-    const isWeekend = dayOfWeek === "Saturday" || dayOfWeek === "Sunday";
-    const isLikelyFree = (hour >= 15 && hour < 18) || (hour >= 19 && hour < 21);
-    // Less robotic time awareness — just note if it's a likely study time or not
-    const timeAwareness = [
-        isSchoolHours ? "It's during school hours — so you might be squeezing this in between classes." :
-            isEveningStudy ? "It's evening — good study time." :
-                isWeekend ? "It's the weekend — nice and relaxed." :
-                    "It's outside typical school hours.",
-        isLikelyFree ? "You probably have some time for a thorough explanation." : "Keep things concise — you seem busy.",
-    ].join(" ");
     return `You are "Analogix AI", an AI tutor for Australian students. Your core job is to help students understand concepts and succeed in their studies.
 
 Context: Year ${studentGrade}${stateFullName ? ` in ${stateFullName}` : ""}, Australia. ${curriculumContext}

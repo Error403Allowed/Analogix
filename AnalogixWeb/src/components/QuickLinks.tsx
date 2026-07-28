@@ -10,7 +10,7 @@ import {
 import { cn } from "@/lib/utils";
 import { AnimatePresence, motion } from "framer-motion";
 
-// ── All available pages in the app ─────────────────────────────────────────
+// ── All available pages in the app ─
 
 export const APP_PAGES = [
   { label: "AI Tutor",  path: "/chat",          icon: "MessageCircle"  },
@@ -47,7 +47,7 @@ function saveLinks(links: string[]) {
   localStorage.setItem(LS_KEY, JSON.stringify(links));
 }
 
-// ── Component ───────────────────────────────────────────────────────────────
+// ── Component ───────────────────────
 
 export default function QuickLinks() {
   const router = useRouter();

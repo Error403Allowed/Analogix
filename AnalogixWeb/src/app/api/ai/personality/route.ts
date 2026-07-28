@@ -157,7 +157,8 @@ export async function PUT(request: Request) {
       error.message.toLowerCase().includes("use_section_dividers") &&
       updateData.use_section_dividers !== undefined
     ) {
-      const { use_section_dividers: _usd, ...rest } = updateData;
+      const { use_section_dividers, ...rest } = updateData;
+      void use_section_dividers;
       error = await saveWith(rest);
     }
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { BookOpen, FileText, Plus, ChevronRight } from "lucide-react";
+import { FileText, Plus, ChevronRight } from "lucide-react";
 import { subjectStore } from "@/utils/subjectStore";
 import { SUBJECT_CATALOG } from "@/constants/subjects";
 import { cn } from "@/lib/utils";

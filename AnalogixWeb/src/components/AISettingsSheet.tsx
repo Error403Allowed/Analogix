@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Brain, Sparkles, X, Shield } from "lucide-react";
+import { Brain, Sparkles, Shield } from "lucide-react";
 import {
   Sheet, SheetContent, SheetTitle, SheetDescription,
 } from "@/components/ui/sheet";
@@ -94,7 +94,7 @@ export default function AISettingsSheet({ open, onOpenChange, defaultTab = "pers
                   exit={{ opacity: 0, x: -12 }}
                   transition={{ duration: 0.15 }}
                 >
-                  <PersonalityEditor onClose={() => onOpenChange(false)} />
+                  <PersonalityEditor />
                 </motion.div>
               ) : activeTab === "tools" ? (
                 <motion.div
@@ -104,7 +104,7 @@ export default function AISettingsSheet({ open, onOpenChange, defaultTab = "pers
                   exit={{ opacity: 0, x: -12 }}
                   transition={{ duration: 0.15 }}
                 >
-                  <ToolSettings onClose={() => onOpenChange(false)} />
+                  <ToolSettings />
                 </motion.div>
               ) : (
                 <motion.div
