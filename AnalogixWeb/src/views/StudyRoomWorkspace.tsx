@@ -1,11 +1,7 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
-import { usePathname, useRouter } from "next/navigation";
-import { useApolloClient } from "@apollo/client/react";
-import { gql } from "@apollo/client/core";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Bot,
@@ -30,9 +26,6 @@ import {
   ArrowRight,
   Trash2,
 } from "lucide-react";
-import { toast } from "sonner";
-import { useAuth } from "@/context/AuthContext";
-import * as RoomOps from "@/graphql/queries/room";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -45,16 +38,9 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { useTabs } from "@/context/TabsContext";
-import { useRoomCollaboration } from "@/hooks/useRoomCollaboration";
-import { subjectStore } from "@/utils/subjectStore";
 import MarkdownRenderer from "@/components/MarkdownRenderer";
-import type {
-  RoomSharedDocument,
-  StudyRoom,
-  StudyRoomMember,
-  StudyRoomMessage,
-} from "@/types/rooms";
+import { useStudyRoomWorkspace } from "@/hooks/useStudyRoomWorkspace";
+import { formatClock, parseThinkingContent, ThinkingBlock, sections } from "@/lib/room-utils";
 
 type BlockNoteEditorComponent = typeof import("@/components/BlockNoteEditor").BlockNoteEditor;
 type BlockNoteEditorProps = React.ComponentPropsWithoutRef<BlockNoteEditorComponent>;
@@ -64,604 +50,79 @@ const BlockNoteEditor = dynamic<BlockNoteEditorProps>(
   { ssr: false },
 ) as BlockNoteEditorComponent;
 
-interface RoomCanvasData {
-  title: string;
-  content: string;
-  contentJson: string | null;
-}
-
-interface RoomStateResponse {
-  room: StudyRoom;
-  members: StudyRoomMember[];
-  messages: StudyRoomMessage[];
-  canvas: RoomCanvasData | null;
-  sharedDocuments: RoomSharedDocument[];
-}
-
-interface SharedDocumentRecord {
-  id: string;
-  subject_id: string;
-  title: string;
-  content: string;
-  content_json?: string | null;
-  content_text?: string | null;
-  content_format?: string | null;
-  role?: string | null;
-}
-
-const formatClock = (seconds: number) => {
-  const safe = Math.max(0, seconds);
-  const mins = Math.floor(safe / 60);
-  const secs = safe % 60;
-  return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
-};
-
-const parseThinkingContent = (content: string): { thinking: string | null; response: string } => {
-  const trimmed = content.trimStart();
-  const completeMatch = trimmed.match(/^<think>([\s\S]*?)<\/think>\s*/);
-  if (completeMatch) {
-    const response = trimmed.slice(completeMatch[0].length).trim();
-    if (!response) {
-      return { thinking: completeMatch[1].trim(), response: "" };
-    }
-    return { thinking: completeMatch[1].trim(), response };
-  }
-  const openOnly = trimmed.match(/^<think>([\s\S]*)$/);
-  if (openOnly) {
-    return { thinking: openOnly[1].trim(), response: "" };
-  }
-  return { thinking: null, response: content };
-};
-
-const ThinkingBlock = ({ content }: { content: string }) => {
-  const [open, setOpen] = useState(false);
-  return (
-    <div className="mb-3">
-      <button
-        type="button"
-        onClick={() => setOpen(o => !o)}
-        className="flex items-center gap-1.5 text-muted-foreground/50 hover:text-muted-foreground/80 transition-colors mb-1.5"
-      >
-        <motion.svg
-          animate={{ rotate: open ? 90 : 0 }}
-          transition={{ duration: 0.18 }}
-          width="10" height="10" viewBox="0 0 10 10" fill="currentColor"
-        >
-          <path d="M3 1.5l4 3.5-4 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
-        </motion.svg>
-        <span className="text-[11px] font-medium select-none tracking-wide">
-          {open ? "Hide thinking" : "Show thinking"}
-        </span>
-      </button>
-      <AnimatePresence initial={false}>
-        {open && (
-          <motion.div
-            key="thinking-body"
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="overflow-hidden"
-          >
-            <div className="pl-3 border-l-2 border-border/40">
-              <div className="text-xs text-muted-foreground/55 italic leading-relaxed [&_p]:mb-2 [&_p:last-child]:mb-0">
-                <MarkdownRenderer content={content} className="text-xs" />
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-};
-
-const sections = [
-  { id: "chat" as const, label: "Chat", icon: MessageSquare },
-  { id: "workspace" as const, label: "Workspace", icon: PencilRuler },
-  { id: "documents" as const, label: "Documents", icon: FileText },
-];
-
 export default function StudyRoomWorkspace() {
-  const pathname = usePathname();
-  const router = useRouter();
-  const { user } = useAuth();
-  const apolloClient = useApolloClient();
-  const myUserId = user?.id;
-  const { updateTabLabelByPath } = useTabs();
-  const roomId = pathname?.split("/rooms/")[1] || "";
-
-  const [state, setState] = useState<RoomStateResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [joining, setJoining] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [activeSection, setActiveSection] = useState<"chat" | "workspace" | "documents">("chat");
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [composerMode, setComposerMode] = useState<"chat" | "ai">("chat");
-  const [composer, setComposer] = useState("");
-  const [activeDocumentId, setActiveDocumentId] = useState<string | null>(null);
-  const [selectedDocument, setSelectedDocument] = useState<SharedDocumentRecord | null>(null);
-  const [documentTitle, setDocumentTitle] = useState("");
-  const [documentContent, setDocumentContent] = useState("<p></p>");
-  const [timerMinutes, setTimerMinutes] = useState("25");
-  const [tick, setTick] = useState(Date.now());
-  const [showTimerControls, setShowTimerControls] = useState(false);
-  const [canvasContent, setCanvasContent] = useState("<p></p>");
-  const [showNewDoc, setShowNewDoc] = useState(false);
-  const [newDocTitle, setNewDocTitle] = useState("");
-  const [newDocContent, setNewDocContent] = useState("");
-  const [inRoom, setInRoom] = useState(false);
-  const chatEndRef = useRef<HTMLDivElement>(null);
-  const loadedDocumentIdRef = useRef<string | null>(null);
-  const documentSaveTimerRef = useRef<number | null>(null);
-  const flushDocumentRef = useRef<() => Promise<void>>(async () => {});
-
-  const canvasInitialContent = useMemo(
-    () => state?.canvas?.contentJson || state?.canvas?.content || "<p></p>",
-    [state?.canvas?.contentJson, state?.canvas?.content],
-  );
-
-  const documentCollab = useRoomCollaboration({
+  const {
+    state,
+    loading,
+    joining,
+    submitting,
+    activeSection,
+    sidebarOpen,
+    composerMode,
+    composer,
+    activeDocumentId,
+    selectedDocument,
+    documentTitle,
+    documentContent,
+    timerMinutes,
+    showTimerControls,
+    canvasContent,
+    showNewDoc,
+    newDocTitle,
+    newDocContent,
+    inRoom,
+    myUserId,
+    roomJoined,
+    currentUserName,
+    onlineMembers,
+    canControlTimer,
+    remainingSeconds,
+    canvasInitialContent,
+    documentCollab,
+    canvasCollab,
+    chatEndRef,
+    perms,
+    showDeleteConfirm,
+    showTransferOwnership,
+    showPermissions,
+    setActiveSection,
+    setComposerMode,
+    setComposer,
+    setActiveDocumentId,
+    setDocumentTitle,
+    setDocumentContent,
+    setTimerMinutes,
+    setShowTimerControls,
+    setCanvasContent,
+    setShowNewDoc,
+    setNewDocTitle,
+    setNewDocContent,
+    setShowDeleteConfirm,
+    setShowTransferOwnership,
+    setShowPermissions,
+    setPerms,
+    setSidebarOpen,
+    loadedDocumentIdRef,
     roomId,
-    surfaceType: "document",
-    surfaceId: activeDocumentId || null,
-    displayName: undefined,
-  });
-
-  const canvasCollab = useRoomCollaboration({
-    roomId,
-    surfaceType: "canvas",
-    surfaceId: "room-canvas",
-    displayName: documentCollab.user.name,
-  });
-
-  useEffect(() => {
-    flushDocumentRef.current = documentCollab.flush;
-  }, [documentCollab.flush]);
-
-  useEffect(() => {
-    return () => {
-      flushDocumentRef.current().catch(console.warn);
-    };
-  }, []);
-
-  const loadRoom = useCallback(async () => {
-    if (!roomId) return;
-    try {
-      const result = await apolloClient.query({
-        query: RoomOps.ROOM_DETAIL,
-        variables: { id: roomId },
-        fetchPolicy: "network-only",
-      });
-      const q = (result.data as any)?.room;
-      if (!q) throw new Error("Room not found");
-      setState({
-        room: q,
-        members: q.members,
-        messages: q.messages,
-        canvas: q.canvas,
-        sharedDocuments: q.documents,
-      });
-
-      if (q?.title) {
-        updateTabLabelByPath(`/rooms/${roomId}`, q.title, "👥");
-      }
-    } catch (error) {
-      console.error("[StudyRoomWorkspace] loadRoom failed:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to load room");
-    } finally {
-      setLoading(false);
-    }
-  }, [roomId, updateTabLabelByPath, apolloClient]);
-
-  useEffect(() => {
-    void loadRoom();
-  }, [loadRoom]);
-
-  useEffect(() => {
-    const interval = window.setInterval(() => {
-      void loadRoom();
-    }, 8000);
-    return () => window.clearInterval(interval);
-  }, [loadRoom]);
-
-  useEffect(() => {
-    if (!roomId) return undefined;
-
-    const sendPresence = (online: boolean) =>
-      apolloClient.mutate({
-        mutation: RoomOps.UPDATE_PRESENCE,
-        variables: { roomId, isOnline: online },
-      }).catch(() => undefined);
-
-    void sendPresence(true);
-    const interval = window.setInterval(() => {
-      void sendPresence(true);
-    }, 20000);
-
-    const handlePageHide = () => {
-      void sendPresence(false);
-    };
-
-    window.addEventListener("pagehide", handlePageHide);
-    return () => {
-      window.clearInterval(interval);
-      window.removeEventListener("pagehide", handlePageHide);
-      void sendPresence(false);
-    };
-  }, [roomId, apolloClient]);
-
-  const onlineMembers = useMemo(
-    () => (state?.members || []).filter((member) => member.isOnline),
-    [state?.members],
-  );
-
-  const canControlTimer = Boolean(
-    state?.room?.isOwner ||
-      state?.room?.viewerRole === "host" ||
-      state?.room?.viewerRole === "cohost",
-  );
-
-  const roomJoined = Boolean(state?.room?.isOwner || state?.room?.viewerRole);
-  const currentUserName = documentCollab.user.name;
-
-  useEffect(() => {
-    if (!activeDocumentId || !roomJoined) {
-      setSelectedDocument(null);
-      setDocumentTitle("");
-      setDocumentContent("<p></p>");
-      return;
-    }
-
-    let cancelled = false;
-
-    const loadDocument = async () => {
-      try {
-        const result = await apolloClient.query({
-          query: RoomOps.ROOM_DOCUMENT,
-          variables: { roomId, documentId: activeDocumentId },
-          fetchPolicy: "network-only",
-        });
-        if (cancelled) return;
-        const doc = (result.data as any)?.roomDocument as SharedDocumentRecord;
-        setSelectedDocument(doc);
-        loadedDocumentIdRef.current = activeDocumentId;
-        setDocumentTitle(String(doc.title || "Untitled"));
-        setDocumentContent(String(doc.content || "<p></p>"));
-      } catch (error) {
-        console.error("[StudyRoomWorkspace] loadDocument failed:", error);
-      }
-    };
-
-    void loadDocument();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [activeDocumentId, roomId, roomJoined]);
-
-  useEffect(() => {
-    if (!state?.room || state.room.timerState !== "running") return undefined;
-    const interval = window.setInterval(() => setTick(Date.now()), 1000);
-    return () => window.clearInterval(interval);
-  }, [state?.room?.timerState]);
-
-  useEffect(() => {
-    if (inRoom && state?.messages) {
-      chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [state?.messages, inRoom]);
-
-  useEffect(() => {
-    if (roomJoined && state?.sharedDocuments.length && !activeDocumentId) {
-      setActiveDocumentId(state.sharedDocuments[0].documentId);
-    }
-  }, [roomJoined, state?.sharedDocuments]);
-
-  const elapsedSeconds = useMemo(() => {
-    if (!state?.room) return 0;
-    const base = state.room.timerElapsedSeconds;
-    if (state.room.timerState !== "running" || !state.room.timerStartedAt) return base;
-    const startedAt = new Date(state.room.timerStartedAt).getTime();
-    if (!Number.isFinite(startedAt)) return base;
-    return base + Math.max(0, Math.floor((tick - startedAt) / 1000));
-  }, [state?.room, tick]);
-
-  const remainingSeconds = state?.room
-    ? Math.max(0, state.room.timerDurationSeconds - elapsedSeconds)
-    : 0;
-
-  const queueDocumentSave = useCallback((nextContent: string, nextTitle: string) => {
-    if (!activeDocumentId || !selectedDocument) return;
-    if (documentSaveTimerRef.current) window.clearTimeout(documentSaveTimerRef.current);
-    const subjectId = selectedDocument.subject_id;
-    documentSaveTimerRef.current = window.setTimeout(async () => {
-      try {
-        await apolloClient.mutate({
-          mutation: gql`
-            mutation UpdateRoomDoc($input: JSON!) {
-              updateDocument(input: $input) {
-                id
-                title
-                content
-                contentJson
-              }
-            }
-          `,
-          variables: {
-            input: {
-              documentId: activeDocumentId,
-              subjectId,
-              title: nextTitle,
-              content: nextContent,
-            },
-          },
-        });
-      } catch (error) {
-        console.error("[StudyRoomWorkspace] document save failed:", error);
-      }
-    }, 900);
-  }, [activeDocumentId, selectedDocument, apolloClient]);
-
-  const handleJoinRoom = async () => {
-    setJoining(true);
-    try {
-      await apolloClient.mutate({
-        mutation: RoomOps.JOIN_ROOM,
-        variables: { roomId },
-      });
-      await loadRoom();
-      toast.success("Joined room.");
-    } catch (error) {
-      console.error("[StudyRoomWorkspace] join failed:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to join room");
-    } finally {
-      setJoining(false);
-    }
-  };
-
-  const handleEnterRoom = () => {
-    setInRoom(true);
-  };
-
-  const handleLeaveRoom = () => {
-    setInRoom(false);
-  };
-
-  const sendMessage = async () => {
-    const content = composer.trim();
-    if (!content) return;
-
-    setSubmitting(true);
-    try {
-      if (composerMode === "ai") {
-        const response = await fetch(`/api/rooms/${roomId}/ai`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ prompt: content }),
-        });
-        if (!response.ok) {
-          const payload = await response.json().catch(() => null);
-          throw new Error(payload?.error || "Failed to send message");
-        }
-        const payload = await response.json();
-        setState((current) => current ? {
-          ...current,
-          messages: Array.isArray(payload.messages) ? payload.messages : current.messages,
-        } : current);
-      } else {
-        await apolloClient.mutate({
-          mutation: RoomOps.SEND_ROOM_MESSAGE,
-          variables: { roomId, content },
-        });
-      }
-      setComposer("");
-    } catch (error) {
-      console.error("[StudyRoomWorkspace] sendMessage failed:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to send message");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const updateTimer = async (action: "start" | "pause" | "resume" | "reset") => {
-    try {
-      const durationSeconds = Number(timerMinutes || "25") * 60;
-      let state: string;
-      let elapsedSeconds: number | undefined;
-      if (action === "start") {
-        state = "running";
-        elapsedSeconds = 0;
-      } else if (action === "pause") {
-        state = "paused";
-        elapsedSeconds = remainingSeconds === 0 ? 0 : undefined;
-      } else if (action === "resume") {
-        state = "running";
-        elapsedSeconds = undefined;
-      } else {
-        state = "idle";
-        elapsedSeconds = 0;
-      }
-      const result = await apolloClient.mutate({
-        mutation: RoomOps.UPDATE_ROOM_TIMER,
-        variables: { roomId, state, durationSeconds, elapsedSeconds },
-      });
-      const updated = (result.data as any)?.updateRoomTimer;
-      if (updated) {
-        setState((current) => current ? { ...current, room: { ...current.room, ...updated } } : current);
-      }
-    } catch (error) {
-      console.error("[StudyRoomWorkspace] updateTimer failed:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to update timer");
-    }
-  };
-
-  const updateMemberRole = async (member: StudyRoomMember) => {
-    try {
-      const nextRole = member.role === "cohost" ? "member" : "cohost";
-      await apolloClient.mutate({
-        mutation: RoomOps.UPDATE_ROOM_MEMBER_ROLE,
-        variables: { roomId, userId: member.userId, role: nextRole },
-      });
-      await loadRoom();
-    } catch (error) {
-      console.error("[StudyRoomWorkspace] updateMemberRole failed:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to update member");
-    }
-  };
-
-  const copyJoinCode = async () => {
-    if (!state?.room?.joinCode) return;
-    try {
-      await navigator.clipboard.writeText(state.room.joinCode);
-      toast.success("Join code copied.");
-    } catch {
-      toast.error("Could not copy join code");
-    }
-  };
-
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [showTransferOwnership, setShowTransferOwnership] = useState(false);
-  const [showPermissions, setShowPermissions] = useState(false);
-  const [perms, setPerms] = useState({
-    canShareDocuments: true,
-    canInviteMembers: false,
-    canManageRoles: false,
-    canDeleteMessages: false,
-    canControlTimer: false,
-  });
-
-  useEffect(() => {
-    if (state?.room?.permissions) {
-      setPerms((prev) => ({ ...prev, ...(typeof state.room.permissions === "object" ? state.room.permissions : {}) }));
-    }
-  }, [state?.room?.permissions]);
-
-  const leaveRoom = async () => {
-    try {
-      await apolloClient.mutate({
-        mutation: RoomOps.LEAVE_ROOM,
-        variables: { roomId },
-      });
-      router.push("/rooms");
-    } catch (error) {
-      console.error("[StudyRoomWorkspace] leaveRoom failed:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to leave room");
-    }
-  };
-
-  const deleteRoom = async () => {
-    try {
-      await apolloClient.mutate({
-        mutation: RoomOps.DELETE_ROOM,
-        variables: { roomId },
-      });
-      router.push("/rooms");
-    } catch (error) {
-      console.error("[StudyRoomWorkspace] deleteRoom failed:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to delete room");
-    }
-  };
-
-  const transferOwnership = async (newOwnerUserId: string) => {
-    try {
-      const result = await apolloClient.mutate({
-        mutation: RoomOps.TRANSFER_ROOM_OWNERSHIP,
-        variables: { roomId, newOwnerUserId },
-      });
-      const t = (result.data as any)?.transferRoomOwnership;
-      if (t) {
-        setState((current) => current ? {
-          ...current,
-          room: { ...current.room, ...t, isOwner: false, viewerRole: "cohost" },
-          members: t.members,
-        } : current);
-      }
-      setShowTransferOwnership(false);
-      toast.success("Ownership transferred.");
-    } catch (error) {
-      console.error("[StudyRoomWorkspace] transferOwnership failed:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to transfer ownership");
-    }
-  };
-
-  const savePermissions = async () => {
-    try {
-      await apolloClient.mutate({
-        mutation: RoomOps.CONFIGURE_ROOM_PERMISSIONS,
-        variables: { roomId, input: perms },
-      });
-      setState((current) => current ? { ...current, room: { ...current.room, permissions: perms } } : current);
-      setShowPermissions(false);
-      toast.success("Permissions saved.");
-    } catch (error) {
-      console.error("[StudyRoomWorkspace] savePermissions failed:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to save permissions");
-    }
-  };
-
-  const copyCurrentDocument = async () => {
-    if (!selectedDocument) return;
-    try {
-      const created = await subjectStore.createDocument(
-        selectedDocument.subject_id,
-        `${documentTitle || selectedDocument.title} (Copy)`,
-      );
-      await subjectStore.updateDocument(selectedDocument.subject_id, created.id, {
-        title: `${documentTitle || selectedDocument.title} (Copy)`,
-        content: documentContent,
-      });
-      toast.success("Copied to your personal documents.");
-    } catch (error) {
-      console.error("[StudyRoomWorkspace] copyCurrentDocument failed:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to copy document");
-    }
-  };
-
-  const handleSaveCanvas = async () => {
-    try {
-      const subject = state?.room?.topic || "general";
-      const title = `${state?.room?.title || "Room"} canvas notes`;
-      const created = await subjectStore.createDocument(subject, title);
-      await subjectStore.updateDocument(subject, created.id, {
-        title,
-        content: canvasContent,
-      });
-      toast.success("Canvas saved to your documents.");
-    } catch (error) {
-      console.error("[StudyRoomWorkspace] handleSaveCanvas failed:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to save canvas");
-    }
-  };
-
-  const handleCreateDocument = async () => {
-    const title = newDocTitle.trim() || "Untitled";
-    const content = newDocContent.trim() || "";
-    try {
-      const subject = state?.room?.topic || "general";
-      const created = await subjectStore.createDocument(subject, title);
-      if (content) {
-        await subjectStore.updateDocument(subject, created.id, {
-          title,
-          content: `<p>${content.replace(/\n/g, "<br/>")}</p>`,
-        });
-      }
-      setShowNewDoc(false);
-      setNewDocTitle("");
-      setNewDocContent("");
-      router.push(`/documents/${subject}/${created.id}`);
-      toast.success("Document created.");
-    } catch (error) {
-      console.error("[StudyRoomWorkspace] handleCreateDocument failed:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to create document");
-    }
-  };
-
-  const handleSectionChange = (section: "chat" | "workspace" | "documents") => {
-    setActiveSection(section);
-    if (section === "workspace" && activeDocumentId) {
-      setSidebarOpen(false);
-    }
-  };
+    handleJoinRoom,
+    handleEnterRoom,
+    handleLeaveRoom,
+    sendMessage,
+    updateTimer,
+    updateMemberRole,
+    copyJoinCode,
+    leaveRoom,
+    deleteRoom,
+    transferOwnership,
+    savePermissions,
+    copyCurrentDocument,
+    handleSaveCanvas,
+    handleCreateDocument,
+    handleSectionChange,
+    queueDocumentSave,
+    loadRoom,
+    router,
+  } = useStudyRoomWorkspace();
 
   if (loading) {
     return (

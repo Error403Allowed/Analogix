@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { randomUUID } from "crypto";
+import { createFlashcardSet, createFlashcards } from "@analogix/shared/tools/handlers";
 import { SUBJECT_CATALOG } from "@/constants/subjects";
+
 export const runtime = "nodejs";
+
 const VALID_SUBJECT_IDS = new Set(SUBJECT_CATALOG.map(s => s.id));
+
 export async function POST(request) {
     try {
         const supabase = await createClient();
@@ -16,7 +19,6 @@ export async function POST(request) {
         if (!Array.isArray(actions) || actions.length === 0) {
             return NextResponse.json({ results: [] });
         }
-        // Fetch user's actual subjects from profile
         const { data: profile } = await supabase
             .from("profiles")
             .select("subjects")
@@ -24,7 +26,6 @@ export async function POST(request) {
             .single();
         const userSubjects = profile?.subjects || [];
         const userSubjectSet = new Set(userSubjects);
-        // Resolve the default subject: must be one the user actually picked
         const resolvedDefault = VALID_SUBJECT_IDS.has(defaultSubjectId) && userSubjectSet.has(defaultSubjectId)
             ? defaultSubjectId
             : userSubjects[0] || "math";
@@ -42,14 +43,13 @@ export async function POST(request) {
         return NextResponse.json({ error: "Failed to process actions" }, { status: 500 });
     }
 }
-export async function handleAddFlashcards(supabase, userId, action, defaultSubjectId, userSubjectSet) {
+
+async function handleAddFlashcards(supabase, userId, action, defaultSubjectId, userSubjectSet) {
     try {
-        // Only accept subjectIds the user actually has
         let subjectId = action.subjectId;
         if (!subjectId || !userSubjectSet.has(subjectId)) {
             subjectId = defaultSubjectId;
         }
-        // Final fallback if default subject is also not in user's subjects
         if (!subjectId || !userSubjectSet.has(subjectId)) {
             subjectId = userSubjectSet.values().next().value || "math";
         }
@@ -69,25 +69,17 @@ export async function handleAddFlashcards(supabase, userId, action, defaultSubje
                 message: `Only ${cards.length} card(s) provided — flashcard sets must have at least 5 cards. No cards were saved.`,
             };
         }
-        const setId = randomUUID();
-        const now = new Date().toISOString();
-        const { error: setError } = await supabase
-            .from("flashcard_sets")
-            .insert({
-            id: setId,
-            user_id: userId,
-            subject_id: subjectId,
-            name: setName,
-            created_at: now,
-            updated_at: now,
-        })
-            .select()
-            .single();
-        if (setError) {
-            console.error("[agent-action] Set creation error:", setError);
-            // If the set already exists (duplicate key), try to use existing set
-            if (setError.code === "23505" || setError.message?.includes("duplicate")) {
-                // Fetch the existing set
+        try {
+            const setData = await createFlashcardSet(userId, supabase, { subjectId, name: setName, cards });
+            return {
+                type: "add_flashcards",
+                status: "success",
+                setId: setData.id,
+                setName,
+                cardCount: setData.cardCount,
+            };
+        } catch (setError) {
+            if (setError?.code === "23505" || setError?.message?.includes("duplicate")) {
                 const { data: existingSet } = await supabase
                     .from("flashcard_sets")
                     .select("id")
@@ -98,17 +90,22 @@ export async function handleAddFlashcards(supabase, userId, action, defaultSubje
                     .limit(1)
                     .single();
                 if (existingSet) {
-                    // Use existing set ID and still insert cards
-                    return await insertFlashcards(supabase, userId, existingSet.id, setName, subjectId, cards, now);
+                    const result = await createFlashcards(userId, supabase, { setId: existingSet.id, cards }, 50);
+                    return {
+                        type: "add_flashcards",
+                        status: "success",
+                        setId: existingSet.id,
+                        setName,
+                        cardCount: result.inserted,
+                    };
                 }
             }
             return {
                 type: "add_flashcards",
                 status: "failed",
-                message: `Failed to create set: ${setError.message}`,
+                message: `Failed to create set: ${setError instanceof Error ? setError.message : "Unknown error"}`,
             };
         }
-        return await insertFlashcards(supabase, userId, setId, setName, subjectId, cards, now);
     }
     catch (error) {
         console.error("[handleAddFlashcards] Error:", error);
@@ -119,59 +116,3 @@ export async function handleAddFlashcards(supabase, userId, action, defaultSubje
         };
     }
 }
-async function insertFlashcards(supabase, userId, setId, setName, subjectId, cards, now) {
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const nextReview = tomorrow.toISOString();
-    const cardDocs = cards.map((card) => ({
-        id: randomUUID(),
-        user_id: userId,
-        set_id: setId,
-        subject_id: subjectId,
-        front: card.front.trim(),
-        back: card.back.trim(),
-        next_review: nextReview,
-        interval_days: 1,
-        ease_factor: 2.5,
-        repetitions: 0,
-        created_at: now,
-        updated_at: now,
-    }));
-    // Insert in batches to avoid hitting row limits
-    const BATCH_SIZE = 50;
-    let insertedCount = 0;
-    let lastError = null;
-    for (let i = 0; i < cardDocs.length; i += BATCH_SIZE) {
-        const batch = cardDocs.slice(i, i + BATCH_SIZE);
-        const { error: cardsError } = await supabase
-            .from("flashcards")
-            .insert(batch);
-        if (cardsError) {
-            console.error("[agent-action] Cards insertion error (batch):", cardsError);
-            lastError = cardsError.message;
-            // Continue to next batch anyway
-        }
-        else {
-            insertedCount += batch.length;
-        }
-    }
-    if (insertedCount === 0) {
-        return {
-            type: "add_flashcards",
-            status: "failed",
-            message: `All cards failed to insert: ${lastError}`,
-            setId,
-            setName,
-            cardCount: 0,
-        };
-    }
-    return {
-        type: "add_flashcards",
-        status: insertedCount === cards.length ? "success" : "partial",
-        setId,
-        setName,
-        cardCount: insertedCount,
-        message: `Created "${setName}" with ${insertedCount}/${cards.length} cards`,
-    };
-}
-//# sourceMappingURL=route.js.map

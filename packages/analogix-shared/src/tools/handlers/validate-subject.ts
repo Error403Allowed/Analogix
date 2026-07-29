@@ -1,5 +1,4 @@
-// Known valid subjects from the Australian Curriculum and common variations
-const VALID_SUBJECTS = new Set([
+export const VALID_SUBJECTS = new Set([
   "mathematics", "maths", "math", "english", "science",
   "digital technologies", "digital", "computing", "hass",
   "history", "geography", "economics", "business",
@@ -8,7 +7,6 @@ const VALID_SUBJECTS = new Set([
   "music", "health and physical education", "health", "pe", "pdhpe",
   "languages", "french", "japanese", "mandarin", "chinese",
   "german", "italian", "indonesian", "spanish",
-  // Senior subjects
   "mathematics advanced", "mathematics extension 1", "mathematics extension 2",
   "mathematical methods", "specialist mathematics", "further mathematics",
   "english advanced", "english extension 1", "english extension 2", "english standard",
@@ -16,13 +14,7 @@ const VALID_SUBJECTS = new Set([
   "ancient history", "accounting", "drama", "dance",
 ]);
 
-/**
- * Normalizes a subject ID to the standard short form used by the frontend.
- * "mathematics", "maths", "math" → "math"
- * "biology" → "biology" (already short)
- * "health and physical education", "pe" → "pdhpe"
- */
-const SUBJECT_NORMALIZER: Record<string, string> = {
+export const SUBJECT_NORMALIZER: Record<string, string> = {
   "mathematics": "math", "maths": "math", "math": "math",
   "english": "english",
   "science": "science",
@@ -53,7 +45,6 @@ const SUBJECT_NORMALIZER: Record<string, string> = {
   "engineering": "engineering",
   "medicine": "medicine",
   "commerce": "commerce",
-  // Senior subjects
   "mathematics advanced": "math",
   "mathematics extension 1": "math",
   "mathematics extension 2": "math",
@@ -78,22 +69,13 @@ export function normalizeSubject(subjectId: string): string {
   return SUBJECT_NORMALIZER[lower] || lower;
 }
 
-/**
- * Validates that a subject ID/name is one of the known valid subjects.
- * Returns an error string if invalid, or null if valid.
- */
 export function validateSubject(subjectId: string): string | null {
   const lower = subjectId.toLowerCase().trim();
   if (VALID_SUBJECTS.has(lower)) return null;
-  // Check via normalizer first — if it maps to something, it's valid
   if (SUBJECT_NORMALIZER[lower]) return null;
-  return `"${subjectId}" is not a recognised Australian Curriculum subject. Valid subjects include: Mathematics, English, Science, Biology, Chemistry, Physics, History, Geography, Economics, Business, Digital Technologies, HASS, Visual Arts, Music, PDHPE, Languages, and senior-specific subjects (Mathematics Advanced, English Standard, etc.).`;
+  return `"${subjectId}" is not a recognised Australian Curriculum subject. Valid subjects include: Mathematics, English, Science, Biology, Chemistry, Physics, History, Geography, Economics, Business, Digital Technologies, HASS, Visual Arts, Music, PDHPE, Languages, etc.`;
 }
 
-/**
- * Validates that a provided subject (if present) is a known subject.
- * Returns null if no subject provided (optional fields pass).
- */
 export function validateOptionalSubject(subjectId?: string): string | null {
   if (!subjectId) return null;
   return validateSubject(subjectId);

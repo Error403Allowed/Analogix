@@ -52,10 +52,20 @@
       "import": "./dist/tools/index.js",
       "require": "./dist/tools/index.js"
     },
+    "./tools/handlers": {
+      "types": "./dist/tools/handlers/index.d.ts",
+      "import": "./dist/tools/handlers/index.js",
+      "require": "./dist/tools/handlers/index.js"
+    },
     "./agent-quiz": {
       "types": "./dist/agent-quiz.d.ts",
       "import": "./dist/agent-quiz.js",
       "require": "./dist/agent-quiz.js"
+    },
+    "./resources": {
+      "types": "./dist/data/resources.d.ts",
+      "import": "./dist/data/resources.js",
+      "require": "./dist/data/resources.js"
     }
   },
   "scripts": {

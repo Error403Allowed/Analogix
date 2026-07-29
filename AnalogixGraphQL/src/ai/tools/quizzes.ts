@@ -1,36 +1,17 @@
-import { z, randomUUID, normalizeSubject, validateSubject, type ToolHandler } from "./shared.js";
+import { z, type ToolHandler } from "./shared.js";
+import {
+  listQuizzes, getQuiz, createQuiz, deleteQuiz, getQuizAttempts,
+} from "@analogix/shared/tools/handlers";
 
 export const quizzesHandlers: Record<string, ToolHandler> = {
   async list_quizzes(args, userId, supabase) {
     const subjectId = args.subjectId as string | undefined;
-    let query = supabase
-      .from("quizzes")
-      .select("*")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false });
-    if (subjectId) query = query.eq("subject_id", subjectId);
-    const { data, error } = await query;
-    if (error) throw new Error(error.message);
-    const quizzes = (data ?? []) as any[];
-    return quizzes.map((quiz) => {
-      const rawQuestions = (quiz as any).questions;
-      const questions = typeof rawQuestions === "string"
-        ? JSON.parse(rawQuestions)
-        : (rawQuestions ?? []);
-      return { ...quiz, questionCount: Array.isArray(questions) ? questions.length : 0 };
-    });
+    return await listQuizzes(userId, supabase, subjectId);
   },
 
   async get_quiz(args, userId, supabase) {
     const quizId = z.string().parse(args.quizId);
-    const { data, error } = await supabase
-      .from("quizzes")
-      .select("*")
-      .eq("id", quizId)
-      .eq("user_id", userId)
-      .single();
-    if (error) throw new Error(error.message);
-    return data;
+    return await getQuiz(userId, supabase, quizId);
   },
 
   async create_quiz(args, userId, supabase) {
@@ -40,48 +21,16 @@ export const quizzesHandlers: Record<string, ToolHandler> = {
       difficulty: z.string().optional().default("intermediate"),
       questions: z.array(z.record(z.string(), z.unknown())),
     }).parse(args);
-    const normalizedSubjectId = normalizeSubject(subjectId);
-    const subjectError = validateSubject(normalizedSubjectId);
-    if (subjectError) throw new Error(subjectError);
-    const now = new Date().toISOString();
-    const { data, error } = await supabase
-      .from("quizzes")
-      .insert({
-        id: randomUUID(),
-        user_id: userId,
-        subject_id: normalizedSubjectId,
-        title,
-        difficulty,
-        questions,
-        created_at: now,
-      } as any)
-      .select()
-      .single();
-    if (error) throw new Error(error.message);
-    return data;
+    return await createQuiz(userId, supabase, { subjectId, title, difficulty, questions });
   },
 
   async delete_quiz(args, userId, supabase) {
     const quizId = z.string().parse(args.quizId);
-    const { error } = await supabase
-      .from("quizzes")
-      .delete()
-      .eq("id", quizId)
-      .eq("user_id", userId);
-    if (error) throw new Error(error.message);
-    return { deleted: true };
+    return await deleteQuiz(userId, supabase, quizId);
   },
 
   async get_quiz_attempts(args, userId, supabase) {
     const quizId = args.quizId as string | undefined;
-    let query = supabase
-      .from("quiz_attempts")
-      .select("*")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false });
-    if (quizId) query = query.eq("quiz_id", quizId);
-    const { data, error } = await query;
-    if (error) throw new Error(error.message);
-    return data ?? [];
+    return await getQuizAttempts(userId, supabase, quizId);
   },
 };

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { callGroqChat } from "../_utils";
+import { updateDocument } from "@analogix/shared/tools/handlers";
 
 export const runtime = "nodejs";
 
@@ -54,12 +55,10 @@ Provide a helpful answer based on the material. If the answer isn't in the mater
 
     const responseStr = typeof response === "string" ? response : String(response);
 
-    // Log the interaction if studyPackageId provided
     if (studyPackageId) {
-      await supabase
-        .from("documents")
-        .update({ content: responseStr })
-        .eq("id", `${studyPackageId}_tutor_history`);
+      await updateDocument(user.id, supabase, `${studyPackageId}_tutor_history`, {
+        content: responseStr,
+      });
     }
 
     return NextResponse.json({

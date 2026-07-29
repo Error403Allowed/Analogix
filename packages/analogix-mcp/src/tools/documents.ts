@@ -1,23 +1,8 @@
 import { z } from "zod";
 import { createUserClient, requireUserId } from "../auth.js";
-import { randomUUID } from "crypto";
-import { validateSubject, normalizeSubject } from "../valid-subjects.js";
-
-function stripHtmlToText(html: string): string {
-  if (!html) return "";
-  // Strip all HTML tags, decode common entities
-  return html
-    .replace(/<[^>]*>/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#x27;/g, "'")
-    .replace(/&#x2F;/g, "/")
-    .replace(/&#?\w+;/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
+import {
+  listDocuments, createDocument, getDocument, deleteDocument, updateDocument,
+} from "@analogix/shared/tools/handlers";
 
 export const documentTools = [
   {
@@ -34,15 +19,8 @@ export const documentTools = [
       const userId = requireUserId(args);
       const subjectId = args.subjectId as string | undefined;
       const supabase = createUserClient(args);
-      let query = supabase
-        .from("documents")
-        .select("*")
-        .eq("owner_user_id", userId)
-        .order("updated_at", { ascending: false });
-      if (subjectId) query = query.eq("subject_id", subjectId);
-      const { data, error } = await query;
-      if (error) throw new Error(error.message);
-      return { content: [{ type: "text", text: JSON.stringify(data ?? []) }] };
+      const data = await listDocuments(userId, supabase, subjectId);
+      return { content: [{ type: "text", text: JSON.stringify(data) }] };
     },
   },
   {
@@ -68,28 +46,8 @@ export const documentTools = [
         contentFormat: z.enum(["html", "markdown", "json", "plain"]).optional(),
         role: z.enum(["notes", "study-guide", "shared"]).optional(),
       }).parse(args);
-      const normalizedSubjectId = normalizeSubject(subjectId);
-      const subjectError = validateSubject(normalizedSubjectId);
-      if (subjectError) throw new Error(subjectError);
-      const now = new Date().toISOString();
       const supabase = createUserClient(args);
-      const { data, error } = await supabase
-        .from("documents")
-        .insert({
-          id: randomUUID(),
-          owner_user_id: userId,
-          subject_id: normalizedSubjectId,
-          title,
-          content,
-          content_text: stripHtmlToText(content),
-          content_format: contentFormat ?? "html",
-          role: role ?? "notes",
-          updated_at: now,
-          created_at: now,
-        })
-        .select()
-        .single();
-      if (error) throw new Error(error.message);
+      const data = await createDocument(userId, supabase, { subjectId, title, content, contentFormat, role });
       return { content: [{ type: "text", text: JSON.stringify(data) }] };
     },
   },
@@ -107,13 +65,7 @@ export const documentTools = [
       const userId = requireUserId(args);
       const documentId = z.string().parse(args.documentId);
       const supabase = createUserClient(args);
-      const { data, error } = await supabase
-        .from("documents")
-        .select("*")
-        .eq("id", documentId)
-        .eq("owner_user_id", userId)
-        .single();
-      if (error) throw new Error(error.message);
+      const data = await getDocument(userId, supabase, documentId);
       return { content: [{ type: "text", text: JSON.stringify(data) }] };
     },
   },
@@ -131,13 +83,8 @@ export const documentTools = [
       const userId = requireUserId(args);
       const documentId = z.string().parse(args.documentId);
       const supabase = createUserClient(args);
-      const { error } = await supabase
-        .from("documents")
-        .delete()
-        .eq("id", documentId)
-        .eq("owner_user_id", userId);
-      if (error) throw new Error(error.message);
-      return { content: [{ type: "text", text: JSON.stringify({ deleted: true }) }] };
+      const data = await deleteDocument(userId, supabase, documentId);
+      return { content: [{ type: "text", text: JSON.stringify(data) }] };
     },
   },
   {
@@ -162,21 +109,7 @@ export const documentTools = [
         contentFormat: z.enum(["html", "markdown", "json", "plain"]).optional(),
       }).parse(args);
       const supabase = createUserClient(args);
-      const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
-      if (title !== undefined) update.title = title;
-      if (content !== undefined) {
-        update.content = content;
-        update.content_text = stripHtmlToText(content);
-      }
-      if (contentFormat !== undefined) update.content_format = contentFormat;
-      const { data, error } = await supabase
-        .from("documents")
-        .update(update)
-        .eq("id", documentId)
-        .eq("owner_user_id", userId)
-        .select()
-        .single();
-      if (error) throw new Error(error.message);
+      const data = await updateDocument(userId, supabase, documentId, { title, content, contentFormat });
       return { content: [{ type: "text", text: JSON.stringify(data) }] };
     },
   },

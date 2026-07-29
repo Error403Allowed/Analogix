@@ -1,4 +1,4 @@
- 
+import { listDocuments } from "@analogix/shared/tools/handlers";
 
 export interface ServerDocumentRecord {
   id: string;
@@ -40,18 +40,13 @@ export async function listUserDocuments(
   supabase: { from: (table: string) => any },
   userId: string,
 ) {
-  const { data, error } = await supabase
-    .from("documents")
-    .select("*")
-    .eq("owner_user_id", userId)
-    .order("updated_at", { ascending: false });
-
-  if (error) {
+  try {
+    const data = await listDocuments(userId, supabase as any);
+    return (data ?? []).map((row: Record<string, unknown>) => mapServerDocument(row));
+  } catch (error) {
     console.warn("[documents] listUserDocuments failed:", error);
     return [];
   }
-
-  return (data ?? []).map((row: Record<string, unknown>) => mapServerDocument(row));
 }
 
 export async function listDocumentsByIds(

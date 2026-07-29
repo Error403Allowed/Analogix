@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { createUserClient, requireUserId } from "../auth.js";
-import { normalizeSubject } from "../valid-subjects.js";
+import { listSubjects, getSubject, updateSubjectNotes } from "@analogix/shared/tools/handlers";
 
 export const subjectTools = [
   {
@@ -14,12 +14,8 @@ export const subjectTools = [
     handler: async (args: Record<string, unknown>) => {
       const userId = requireUserId(args);
       const supabase = createUserClient(args);
-      const { data, error } = await supabase
-        .from("subject_data")
-        .select("subject_id, marks, notes")
-        .eq("user_id", userId);
-      if (error) throw new Error(error.message);
-      return { content: [{ type: "text", text: JSON.stringify(data ?? []) }] };
+      const data = await listSubjects(userId, supabase);
+      return { content: [{ type: "text", text: JSON.stringify(data) }] };
     },
   },
   {
@@ -36,14 +32,8 @@ export const subjectTools = [
       const userId = requireUserId(args);
       const subjectId = z.string().parse(args.subjectId);
       const supabase = createUserClient(args);
-      const { data, error } = await supabase
-        .from("subject_data")
-        .select("subject_id, marks, notes")
-        .eq("user_id", userId)
-        .eq("subject_id", subjectId)
-        .maybeSingle();
-      if (error) throw new Error(error.message);
-      return { content: [{ type: "text", text: JSON.stringify(data ?? { subject_id: subjectId, marks: [], notes: {} }) }] };
+      const data = await getSubject(userId, supabase, subjectId);
+      return { content: [{ type: "text", text: JSON.stringify(data) }] };
     },
   },
   {
@@ -65,31 +55,8 @@ export const subjectTools = [
         content: z.string(),
         title: z.string().optional(),
       }).parse(args);
-      const normalizedSubjectId = normalizeSubject(subjectId);
       const supabase = createUserClient(args);
-      const { data: existing } = await supabase
-        .from("subject_data")
-        .select("notes")
-        .eq("user_id", userId)
-        .eq("subject_id", normalizedSubjectId)
-        .maybeSingle();
-      const existingNotes = (existing?.notes as Record<string, unknown>) ?? {};
-      const { data, error } = await supabase
-        .from("subject_data")
-        .upsert({
-          user_id: userId,
-          subject_id: normalizedSubjectId,
-          notes: {
-            ...existingNotes,
-            content,
-            title: title ?? existingNotes.title,
-            lastUpdated: new Date().toISOString(),
-          },
-          updated_at: new Date().toISOString(),
-        }, { onConflict: "user_id,subject_id" })
-        .select("subject_id, notes")
-        .single();
-      if (error) throw new Error(error.message);
+      const data = await updateSubjectNotes(userId, supabase, subjectId, content, title);
       return { content: [{ type: "text", text: JSON.stringify(data) }] };
     },
   },

@@ -1,7 +1,9 @@
 import { z } from "zod";
 import { createUserClient, requireUserId } from "../auth.js";
-import { randomUUID } from "crypto";
-import { validateOptionalSubject, normalizeSubject } from "../valid-subjects.js";
+import {
+  listEvents, createEvent, updateEvent, deleteEvent,
+  listDeadlines, createDeadline,
+} from "@analogix/shared/tools/handlers";
 
 export const calendarTools = [
   {
@@ -22,16 +24,8 @@ export const calendarTools = [
         to: z.string().optional(),
       }).parse(args);
       const supabase = createUserClient(args);
-      let query = supabase
-        .from("events")
-        .select("*")
-        .eq("user_id", userId)
-        .order("date", { ascending: true });
-      if (from) query = query.gte("date", from);
-      if (to) query = query.lte("date", to);
-      const { data, error } = await query;
-      if (error) throw new Error(error.message);
-      return { content: [{ type: "text", text: JSON.stringify(data ?? []) }] };
+      const data = await listEvents(userId, supabase, from, to);
+      return { content: [{ type: "text", text: JSON.stringify(data) }] };
     },
   },
   {
@@ -61,28 +55,8 @@ export const calendarTools = [
         color: z.string().optional(),
         description: z.string().optional(),
       }).parse(args);
-      const subjectError = validateOptionalSubject(subject);
-      if (subjectError) throw new Error(subjectError);
-      const normalizedSubject = subject ? normalizeSubject(subject) : null;
       const supabase = createUserClient(args);
-      const { data, error } = await supabase
-        .from("events")
-        .insert({
-          id: randomUUID(),
-          user_id: userId,
-          title,
-          date,
-          end_date: endDate ?? null,
-          type,
-          subject: normalizedSubject,
-          color: color ?? null,
-          description: description ?? null,
-          source: "manual",
-          created_at: new Date().toISOString(),
-        })
-        .select()
-        .single();
-      if (error) throw new Error(error.message);
+      const data = await createEvent(userId, supabase, { title, date, endDate, type, subject, color, description });
       return { content: [{ type: "text", text: JSON.stringify(data) }] };
     },
   },
@@ -115,27 +89,8 @@ export const calendarTools = [
         color: z.string().optional(),
         description: z.string().optional(),
       }).parse(args);
-      const normalizedSubjectField = fields.subject ? normalizeSubject(fields.subject) : undefined;
-      const subjectError = validateOptionalSubject(normalizedSubjectField);
-      if (subjectError) throw new Error(subjectError);
       const supabase = createUserClient(args);
-      const update: Record<string, unknown> = {};
-      if (fields.title !== undefined) update.title = fields.title;
-      if (fields.date !== undefined) update.date = fields.date;
-      if (fields.endDate !== undefined) update.end_date = fields.endDate;
-      if (fields.type !== undefined) update.type = fields.type;
-      if (normalizedSubjectField !== undefined) update.subject = normalizedSubjectField;
-      if (fields.color !== undefined) update.color = fields.color;
-      if (fields.description !== undefined) update.description = fields.description;
-
-      const { data, error } = await supabase
-        .from("events")
-        .update(update)
-        .eq("id", eventId)
-        .eq("user_id", userId)
-        .select()
-        .single();
-      if (error) throw new Error(error.message);
+      const data = await updateEvent(userId, supabase, eventId, fields as Record<string, unknown>);
       return { content: [{ type: "text", text: JSON.stringify(data) }] };
     },
   },
@@ -153,13 +108,8 @@ export const calendarTools = [
       const userId = requireUserId(args);
       const eventId = z.string().parse(args.eventId);
       const supabase = createUserClient(args);
-      const { error } = await supabase
-        .from("events")
-        .delete()
-        .eq("id", eventId)
-        .eq("user_id", userId);
-      if (error) throw new Error(error.message);
-      return { content: [{ type: "text", text: JSON.stringify({ deleted: true }) }] };
+      const data = await deleteEvent(userId, supabase, eventId);
+      return { content: [{ type: "text", text: JSON.stringify(data) }] };
     },
   },
   {
@@ -173,13 +123,8 @@ export const calendarTools = [
     handler: async (args: Record<string, unknown>) => {
       const userId = requireUserId(args);
       const supabase = createUserClient(args);
-      const { data, error } = await supabase
-        .from("deadlines")
-        .select("*")
-        .eq("user_id", userId)
-        .order("due_date", { ascending: true });
-      if (error) throw new Error(error.message);
-      return { content: [{ type: "text", text: JSON.stringify(data ?? []) }] };
+      const data = await listDeadlines(userId, supabase);
+      return { content: [{ type: "text", text: JSON.stringify(data) }] };
     },
   },
   {
@@ -203,24 +148,8 @@ export const calendarTools = [
         subject: z.string().optional(),
         priority: z.string().optional().default("medium"),
       }).parse(args);
-      const subjectError = validateOptionalSubject(subject);
-      if (subjectError) throw new Error(subjectError);
-      const normalizedSubject = subject ? normalizeSubject(subject) : null;
       const supabase = createUserClient(args);
-      const { data, error } = await supabase
-        .from("deadlines")
-        .insert({
-          id: randomUUID(),
-          user_id: userId,
-          title,
-          due_date: dueDate,
-          subject: normalizedSubject,
-          priority,
-          created_at: new Date().toISOString(),
-        })
-        .select()
-        .single();
-      if (error) throw new Error(error.message);
+      const data = await createDeadline(userId, supabase, { title, dueDate, subject, priority });
       return { content: [{ type: "text", text: JSON.stringify(data) }] };
     },
   },

@@ -1,9 +1,5 @@
-/**
- * _calendarContext.ts
- * Loads a user's calendar events + deadlines from Supabase and formats
- * them as a concise, human-readable string for injection into AI prompts.
- * Used by both /api/groq/agent and /api/groq/chat-stream.
- */
+import { listEvents, listDeadlines } from "@analogix/shared/tools/handlers";
+
 const formatDate = (iso) => {
     try {
         const d = iso instanceof Date ? iso : new Date(iso + (iso.includes("Z") || iso.includes("+") ? "" : "+00:00"));
@@ -34,60 +30,49 @@ export async function buildCalendarContext(supabase, userId) {
     from.setDate(from.getDate() - 180);
     const to = new Date(now);
     to.setDate(to.getDate() + 180);
-    // ── Fetch events ──────────────────
-    const { data: eventRows } = await supabase
-        .from("events")
-        .select("title, date, type, subject, description")
-        .eq("user_id", userId)
-        .gte("date", from.toISOString())
-        .lte("date", to.toISOString())
-        .order("date", { ascending: true });
-    const events = (eventRows ?? []).map((r) => ({
-        title: r.title,
-        date: r.date,
-        type: r.type || "event",
-        subject: r.subject,
-        description: r.description,
-    }));
-    // ── Fetch deadlines ───────────────
-    const { data: deadlineRows } = await supabase
-        .from("deadlines")
-        .select("title, due_date, subject, priority")
-        .eq("user_id", userId)
-        .gte("due_date", from.toISOString())
-        .lte("due_date", to.toISOString())
-        .order("due_date", { ascending: true });
-    const deadlines = (deadlineRows ?? []).map((r) => ({
-        title: r.title,
-        dueDate: r.due_date,
-        subject: r.subject,
-        priority: r.priority || "medium",
-    }));
+    const fromStr = from.toISOString();
+    const toStr = to.toISOString();
+
+    let events: Array<any> = [];
+    let deadlines: Array<any> = [];
+    try {
+        const eventRows = await listEvents(userId, supabase, fromStr, toStr);
+        events = (eventRows ?? []).map((r: any) => ({
+            title: r.title,
+            date: r.date,
+            type: r.type || "event",
+            subject: r.subject,
+            description: r.description,
+        }));
+    } catch {}
+    try {
+        const deadlineRows = await listDeadlines(userId, supabase, fromStr, toStr);
+        deadlines = (deadlineRows ?? []).map((r: any) => ({
+            title: r.title,
+            dueDate: r.due_date,
+            subject: r.subject,
+            priority: r.priority || "medium",
+        }));
+    } catch {}
     if (events.length === 0 && deadlines.length === 0)
         return "";
-    // Find the very next event/deadline for quick reference
     const allItems = [
         ...events.map(e => ({ title: e.title, date: new Date(e.date), type: e.type, kind: "event", subject: e.subject, description: e.description })),
         ...deadlines.map(d => ({ title: d.title, date: new Date(d.dueDate), type: "deadline", kind: "deadline", subject: d.subject })),
     ].filter(i => !isNaN(i.date.getTime())).sort((a, b) => a.date.getTime() - b.date.getTime());
-    // Find what's happening RIGHT NOW
     const currentEvent = allItems.find(i => {
         const eventStart = i.date;
-        const eventEnd = new Date(eventStart.getTime() + 60 * 60 * 1000); // Assume 1 hour duration
+        const eventEnd = new Date(eventStart.getTime() + 60 * 60 * 1000);
         return now >= eventStart && now < eventEnd;
     });
-    // Find next class/lesson specifically
     const nextClass = allItems.find(i => i.date >= now && (i.type === "class" || i.type === "lesson" || i.title.toLowerCase().includes("class") || i.title.toLowerCase().includes("lesson")));
-    // Today's events
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
     const todayEvents = events.filter(e => {
         const d = new Date(e.date);
         return d >= todayStart && d < todayEnd;
     });
-    // Build the context string
     const lines: string[] = [];
-    // === RIGHT NOW SECTION (conversational, not robotic) ===
     const rightNowLines: string[] = [];
     if (currentEvent) {
         const eventEnd = new Date(currentEvent.date.getTime() + 60 * 60 * 1000);
@@ -126,7 +111,6 @@ export async function buildCalendarContext(supabase, userId) {
         lines.push("");
     }
     if (events.length > 0) {
-        // Extract and highlight classes/lessons separately
         const classes = events.filter(e => e.type === "class" || e.type === "lesson" || e.title.toLowerCase().includes("class") || e.title.toLowerCase().includes("lesson"));
         const otherEvents = events.filter(e => !classes.includes(e));
         if (classes.length > 0) {
@@ -171,7 +155,6 @@ export async function buildCalendarContext(supabase, userId) {
         }
         lines.push("");
     }
-    // Days-until summary for imminent items (next 14 days)
     const soon14 = new Date(now);
     soon14.setDate(soon14.getDate() + 14);
     const imminentEvents = events.filter(e => new Date(e.date) <= soon14);
@@ -190,4 +173,3 @@ export async function buildCalendarContext(supabase, userId) {
     }
     return lines.join("\n");
 }
-//# sourceMappingURL=_calendarContext.js.map

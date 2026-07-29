@@ -197,20 +197,20 @@ export function AppSidebar() {
         style={{ background: "hsl(var(--background) / 0.94)" }}
       >
 
-        {/* ── Header: logo (dock toggle on hover) ───────────────── */}
+        {/* ── Header: logo ──────────────────────────────────── */}
         <SidebarHeader className="h-20 shrink-0 flex flex-col justify-center px-4 pb-2 border-b border-muted/15 group-data-[collapsible=icon]:h-auto group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:py-0.5 group-data-[collapsible=icon]:border-b-0">
           <div className="flex items-center w-full justify-between group-data-[collapsible=icon]:justify-center">
             <button
-              onClick={toggleSidebar}
-              className="group/logo flex items-center gap-3.5 rounded-3xl px-3 py-2 hover:bg-muted/30 transition-all active:scale-[0.98] group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:w-8 group-data-[collapsible=icon]:h-8 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:rounded-lg"
+              onClick={state === "expanded" ? () => router.push("/") : toggleSidebar}
+              className="group/logo flex items-center gap-3.5 rounded-3xl px-3 py-2 hover:bg-muted/30 transition-all active:scale-[0.98] group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:w-10 group-data-[collapsible=icon]:h-10 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:rounded-lg"
             >
-              <div className="w-10 h-10 shrink-0 relative group-data-[collapsible=icon]:w-5 group-data-[collapsible=icon]:h-5">
-                <img src="/tab-icon.png" alt="Analogix" className="w-full h-full object-contain group-hover/logo:opacity-0 group-hover/logo:scale-75 transition-all duration-200" />
-                <PanelLeft className="absolute inset-0 w-full h-full p-0 opacity-0 scale-75 group-hover/logo:opacity-100 group-hover/logo:scale-100 transition-all duration-200 text-sidebar-foreground" />
+              <div className="w-10 h-10 shrink-0 relative group-data-[collapsible=icon]:w-6 group-data-[collapsible=icon]:h-6">
+                <img src="/tab-icon.png" alt="Analogix" className="w-full h-full object-contain group-data-[collapsible=icon]:group-hover/logo:opacity-0 group-data-[collapsible=icon]:group-hover/logo:scale-75 transition-all duration-200" />
+                <PanelLeft className="absolute inset-0 w-full h-full p-0 opacity-0 scale-75 group-data-[collapsible=icon]:group-hover/logo:opacity-100 group-data-[collapsible=icon]:group-hover/logo:scale-100 transition-all duration-200 text-primary" />
               </div>
               {state === "expanded" && <span className="text-lg font-black tracking-tight text-foreground">Analogix</span>}
             </button>
-            <SidebarTrigger className={`-mr-1 ${state !== "expanded" ? "hidden" : ""}`} />
+            <SidebarTrigger className="-mr-1 group-data-[collapsible=icon]:hidden" />
           </div>
         </SidebarHeader>
 
@@ -252,7 +252,7 @@ export function AppSidebar() {
                               isActive ? "text-sidebar-accent-foreground" : "text-sidebar-foreground/70"
                             )}
                           />
-                          <span className={`truncate ${state !== "expanded" ? "hidden" : ""}`}>{item.title}</span>
+                          <span className="truncate group-data-[collapsible=icon]:hidden">{item.title}</span>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
                     );
@@ -264,7 +264,7 @@ export function AppSidebar() {
         </SidebarContent>
 
         {/* ── Footer: user profile + streak ────────────────────────── */}
-          <SidebarFooter className="shrink-0 px-4 py-4 space-y-3 border-t border-muted/15 bg-background/90 backdrop-blur-xl group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:py-1.5 group-data-[collapsible=icon]:space-y-1.5">
+          <SidebarFooter className="shrink-0 px-4 py-4 space-y-3 border-t border-muted/15 bg-background/90 backdrop-blur-xl group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:py-1.5 group-data-[collapsible=icon]:space-y-1.5 group-data-[collapsible=icon]:overflow-hidden">
           <SidebarMenu className="gap-2 mb-1 group-data-[collapsible=icon]:gap-1.5 group-data-[collapsible=icon]:items-center">
             {/* Search button */}
             <SidebarMenuItem>
@@ -274,8 +274,8 @@ export function AppSidebar() {
                 className="min-h-[46px] rounded-2xl px-4 text-sm font-semibold text-muted-foreground transition-colors hover:bg-muted/30 group-data-[collapsible=icon]:min-h-0 group-data-[collapsible=icon]:rounded-lg group-data-[collapsible=icon]:px-0"
               >
                 <Search className="w-4 h-4 shrink-0" />
-                <span className={`truncate ${state !== "expanded" ? "hidden" : ""}`}>Search</span>
-                <span className={`ml-auto text-[10px] opacity-50 ${state !== "expanded" ? "hidden" : ""}`}>⌘K</span>
+                <span className="truncate group-data-[collapsible=icon]:hidden">Search</span>
+                <span className="ml-auto text-[10px] opacity-50 group-data-[collapsible=icon]:hidden">⌘K</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
 
@@ -287,7 +287,7 @@ export function AppSidebar() {
                 className="min-h-[46px] rounded-2xl px-4 text-sm font-semibold text-muted-foreground transition-colors hover:bg-muted/30 group-data-[collapsible=icon]:min-h-0 group-data-[collapsible=icon]:rounded-lg group-data-[collapsible=icon]:px-0"
               >
                 <Plus className="w-4 h-4 shrink-0" />
-                <span className={`truncate ${state !== "expanded" ? "hidden" : ""}`}>New page</span>
+                <span className="truncate group-data-[collapsible=icon]:hidden">New page</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
 
@@ -300,7 +300,7 @@ export function AppSidebar() {
                   className="min-h-[46px] rounded-2xl px-4 text-sm font-semibold text-muted-foreground transition-colors hover:bg-muted/30 group-data-[collapsible=icon]:min-h-0 group-data-[collapsible=icon]:rounded-lg group-data-[collapsible=icon]:px-0"
                 >
                   {isDark ? <Sun className="w-4 h-4 shrink-0" /> : <Moon className="w-4 h-4 shrink-0" />}
-                  <span className={`truncate ${state !== "expanded" ? "hidden" : ""}`}>{isDark ? "Light mode" : "Dark mode"}</span>
+                  <span className="truncate group-data-[collapsible=icon]:hidden">{isDark ? "Light mode" : "Dark mode"}</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             )}
@@ -311,8 +311,8 @@ export function AppSidebar() {
                 <PopoverTrigger asChild>
                   <SidebarMenuButton tooltip="Colour scheme" className="min-h-[46px] rounded-2xl px-4 text-sm font-semibold text-muted-foreground transition-colors hover:bg-muted/30 group-data-[collapsible=icon]:min-h-0 group-data-[collapsible=icon]:rounded-lg group-data-[collapsible=icon]:px-0">
                     <Palette className="w-4 h-4 shrink-0" />
-                    <span className={`truncate ${state !== "expanded" ? "hidden" : ""}`}>Colour scheme</span>
-                    <ChevronDown className={cn("w-3 h-3 transition-transform ml-auto", themeOpen && "rotate-180", state !== "expanded" && "hidden")} />
+                    <span className="truncate group-data-[collapsible=icon]:hidden">Colour scheme</span>
+                    <ChevronDown className={cn("w-3 h-3 transition-transform ml-auto", themeOpen && "rotate-180", "group-data-[collapsible=icon]:hidden")} />
                   </SidebarMenuButton>
                 </PopoverTrigger>
                 <PopoverContent side="top" align="start" className="w-64 p-3 glass-card border border-muted/20 shadow-2xl bg-background/95 backdrop-blur-xl">

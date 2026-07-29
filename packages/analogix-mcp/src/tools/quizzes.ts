@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { createUserClient, requireUserId } from "../auth.js";
-import { randomUUID } from "crypto";
-import { validateSubject, normalizeSubject } from "../valid-subjects.js";
+import {
+  listQuizzes, getQuiz, createQuiz, deleteQuiz, getQuizAttempts,
+} from "@analogix/shared/tools/handlers";
 
 export const quizTools = [
   {
@@ -18,29 +19,8 @@ export const quizTools = [
       const userId = requireUserId(args);
       const subjectId = args.subjectId as string | undefined;
       const supabase = createUserClient(args);
-      let query = supabase
-        .from("quizzes")
-        .select("*")
-        .eq("user_id", userId)
-        .order("created_at", { ascending: false });
-      if (subjectId) query = query.eq("subject_id", subjectId);
-      const { data, error } = await query;
-      if (error) throw new Error(error.message);
-
-      const quizzes = (data ?? []) as any[];
-      const withCounts = quizzes.map((quiz) => {
-        const rawQuestions = quiz.questions;
-        let questions;
-        try {
-          questions = typeof rawQuestions === "string"
-            ? JSON.parse(rawQuestions)
-            : (rawQuestions ?? []);
-        } catch {
-          questions = [];
-        }
-        return { ...quiz, questionCount: Array.isArray(questions) ? questions.length : 0 };
-      });
-      return { content: [{ type: "text", text: JSON.stringify(withCounts) }] };
+      const data = await listQuizzes(userId, supabase, subjectId);
+      return { content: [{ type: "text", text: JSON.stringify(data) }] };
     },
   },
   {
@@ -57,14 +37,8 @@ export const quizTools = [
       const userId = requireUserId(args);
       const quizId = z.string().parse(args.quizId);
       const supabase = createUserClient(args);
-      const { data, error } = await supabase
-        .from("quizzes")
-        .select("*")
-        .eq("id", quizId)
-        .eq("user_id", userId)
-        .single();
-      if (error) throw new Error(error.message);
-      return { content: [{ type: "text", text: JSON.stringify(data as any) }] };
+      const data = await getQuiz(userId, supabase, quizId);
+      return { content: [{ type: "text", text: JSON.stringify(data) }] };
     },
   },
   {
@@ -113,27 +87,9 @@ export const quizTools = [
         difficulty: z.enum(["beginner", "intermediate", "advanced"]).optional().default("intermediate"),
         questions: z.array(z.record(z.string(), z.unknown())).max(50),
       }).parse(args);
-      const normalizedSubjectId = normalizeSubject(subjectId);
-      const subjectError = validateSubject(normalizedSubjectId);
-      if (subjectError) throw new Error(subjectError);
       const supabase = createUserClient(args);
-      const now = new Date().toISOString();
-
-      const { data, error } = await supabase
-        .from("quizzes")
-        .insert({
-          id: randomUUID(),
-          user_id: userId,
-          subject_id: normalizedSubjectId,
-          title,
-          difficulty,
-          questions,
-          created_at: now,
-        } as any)
-        .select()
-        .single();
-      if (error) throw new Error(error.message);
-      return { content: [{ type: "text", text: JSON.stringify(data as any) }] };
+      const data = await createQuiz(userId, supabase, { subjectId, title, difficulty, questions });
+      return { content: [{ type: "text", text: JSON.stringify(data) }] };
     },
   },
   {
@@ -150,13 +106,8 @@ export const quizTools = [
       const userId = requireUserId(args);
       const quizId = z.string().parse(args.quizId);
       const supabase = createUserClient(args);
-      const { error } = await supabase
-        .from("quizzes")
-        .delete()
-        .eq("id", quizId)
-        .eq("user_id", userId);
-      if (error) throw new Error(error.message);
-      return { content: [{ type: "text", text: JSON.stringify({ deleted: true }) }] };
+      const data = await deleteQuiz(userId, supabase, quizId);
+      return { content: [{ type: "text", text: JSON.stringify(data) }] };
     },
   },
   {
@@ -173,15 +124,8 @@ export const quizTools = [
       const userId = requireUserId(args);
       const quizId = args.quizId as string | undefined;
       const supabase = createUserClient(args);
-      let query = supabase
-        .from("quiz_attempts")
-        .select("*")
-        .eq("user_id", userId)
-        .order("created_at", { ascending: false });
-      if (quizId) query = query.eq("quiz_id", quizId);
-      const { data, error } = await query;
-      if (error) throw new Error(error.message);
-      return { content: [{ type: "text", text: JSON.stringify(data ?? []) }] };
+      const data = await getQuizAttempts(userId, supabase, quizId);
+      return { content: [{ type: "text", text: JSON.stringify(data) }] };
     },
   },
 ];
