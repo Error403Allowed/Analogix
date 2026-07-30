@@ -116,9 +116,8 @@ const Chat = () => {
   }, [sidebarState, setSidebarOpen]);
 
   const handleToggleSidebar = useCallback(() => {
-    if (sidebarState === "collapsed") return;
     setSidebarOpen(prev => !prev);
-  }, [sidebarState, setSidebarOpen]);
+  }, [setSidebarOpen]);
 
   useEffect(() => {
     if (!sessionsLoading) {
@@ -132,7 +131,7 @@ const Chat = () => {
   }
 
   return (
-    <div className="h-full flex flex-row relative overflow-hidden bg-background">
+    <div className={`h-full flex flex-row relative overflow-hidden bg-background ${sidebarState === "collapsed" ? "pl-3" : ""}`}>
 <ThreadSidebar
         sidebarOpen={sidebarOpen}
         handleStartNewChat={handleStartNewChat}
