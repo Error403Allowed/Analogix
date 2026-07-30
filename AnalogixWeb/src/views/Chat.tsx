@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSidebar } from "@/components/ui/sidebar";
 import type { LucideIcon } from "lucide-react";
@@ -115,6 +115,11 @@ const Chat = () => {
     }
   }, [sidebarState, setSidebarOpen]);
 
+  const handleToggleSidebar = useCallback(() => {
+    if (sidebarState === "collapsed") return;
+    setSidebarOpen(prev => !prev);
+  }, [sidebarState, setSidebarOpen]);
+
   useEffect(() => {
     if (!sessionsLoading) {
       const timer = setTimeout(() => setInitialLoading(false), 300);
@@ -193,8 +198,7 @@ const Chat = () => {
 
       <div className="flex-1 flex flex-col w-full relative overflow-hidden">
 <ChatHeader
-          setSidebarOpen={setSidebarOpen}
-          sidebarOpen={sidebarOpen}
+          onToggleSidebar={handleToggleSidebar}
           router={router}
           selectedSubject={selectedSubject}
           handleNewTopic={handleNewTopic}

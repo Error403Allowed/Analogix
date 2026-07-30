@@ -4,8 +4,7 @@ import { motion } from "framer-motion";
 import { ArrowLeft, Plus, RefreshCw } from "lucide-react";
 
 interface ChatHeaderProps {
-  setSidebarOpen: (open: boolean) => void;
-  sidebarOpen: boolean;
+  onToggleSidebar: () => void;
   router: any;
   selectedSubject: string | null;
   handleNewTopic: () => void;
@@ -14,8 +13,7 @@ interface ChatHeaderProps {
 }
 
 const ChatHeader = ({
-  setSidebarOpen,
-  sidebarOpen,
+  onToggleSidebar,
   router,
   selectedSubject,
   handleNewTopic,
@@ -33,7 +31,7 @@ const ChatHeader = ({
       >
         <div className="flex items-center gap-1">
           <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
+            onClick={onToggleSidebar}
             className="w-8 h-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all"
             title="Toggle chat history"
           >
