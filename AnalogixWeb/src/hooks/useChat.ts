@@ -359,8 +359,8 @@ Title:` }];
     const raw = await generateFlashcards(conversationText, selectedSubject, userPrefs.grade, 10);
     if (raw.length >= 5) {
       const allSets = await flashcardStore.getSets();
-      const subjectSets = allSets.filter(s => s.subjectId === selectedSubject);
-      const existingChatSet = subjectSets.find(s => s.name.toLowerCase().includes("chat"));
+      const subjectSets = allSets.filter((s: any) => s.subjectId === selectedSubject);
+      const existingChatSet = subjectSets.find((s: any) => s.name.toLowerCase().includes("chat"));
 
       let targetSetId: string | null = existingChatSet?.id ?? null;
       if (!targetSetId) {

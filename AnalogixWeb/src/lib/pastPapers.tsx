@@ -77,7 +77,7 @@ const MAX_PDF_BYTES = 8 * 1024 * 1024;
 const FETCH_TIMEOUT_MS = 8000;
 const textCache = new Map();
 const htmlCache = new Map();
-const withTimeout = async (url) => {
+const withTimeout = async (url: string) => {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
     try {
@@ -94,20 +94,20 @@ const withTimeout = async (url) => {
         clearTimeout(timeout);
     }
 };
-const decodeEntities = (text) => text
+const decodeEntities = (text: string) => text
     .replace(/&amp;/g, "&")
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
     .replace(/&nbsp;/g, " ");
-const stripHtml = (html) => {
+const stripHtml = (html: string) => {
     const noScripts = html.replace(/<script[\s\S]*?<\/script>/gi, " ");
     const noStyles = noScripts.replace(/<style[\s\S]*?<\/style>/gi, " ");
     const stripped = noStyles.replace(/<[^>]+>/g, " ");
     return decodeEntities(stripped).replace(/\s+/g, " ").trim();
 };
-const extractPdfLinks = (html, baseUrl) => {
+const extractPdfLinks = (html: string, baseUrl: string) => {
     const links: string[] = [];
     const regex = /href=["']([^"']+\.pdf[^"']*)["']/gi;
     let match: RegExpExecArray | null;
@@ -122,7 +122,7 @@ const extractPdfLinks = (html, baseUrl) => {
     }
     return Array.from(new Set(links));
 };
-const extractSnippets = (text, limit) => {
+const extractSnippets = (text: string, limit: number) => {
     const clean = text.replace(/\s+/g, " ").trim();
     if (!clean)
         return [];
@@ -147,7 +147,7 @@ const extractSnippets = (text, limit) => {
     }
     return unique.slice(0, limit);
 };
-const fetchHtml = async (url) => {
+const fetchHtml = async (url: string) => {
     const cached = htmlCache.get(url);
     if (cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
         return cached.html;
@@ -160,7 +160,7 @@ const fetchHtml = async (url) => {
     htmlCache.set(url, { fetchedAt: Date.now(), html });
     return html;
 };
-const fetchText = async (url, type) => {
+const fetchText = async (url: string, type: string) => {
     const cached = textCache.get(url);
     if (cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
         return cached.text;
@@ -192,7 +192,7 @@ const fetchText = async (url, type) => {
     textCache.set(url, { fetchedAt: Date.now(), text: compacted });
     return compacted;
 };
-const resolveSources = (state, grade, subject) => {
+const resolveSources = (state: any, grade: any, subject: any) => {
     const gradeBand = getGradeBand(grade);
     return SOURCE_LIST.filter((source: any) => {
         const stateOk = source.states === "ALL" ||
@@ -206,7 +206,7 @@ const resolveSources = (state, grade, subject) => {
         return stateOk && gradeOk && subjectOk;
     });
 };
-const collectSourceLinks = async (source) => {
+const collectSourceLinks = async (source: any) => {
     if (source.type === "pdf")
         return [source.url];
     const html = await fetchHtml(source.url);
@@ -215,7 +215,7 @@ const collectSourceLinks = async (source) => {
         return [source.url];
     return links.slice(0, source.maxLinks ?? 2);
 };
-export const getPastPaperSnippets = async (params) => {
+export const getPastPaperSnippets = async (params: any) => {
     const { state = null, grade = null, subject, limit = 6 } = params;
     if (!state)
         return [];

@@ -3,7 +3,7 @@ import { callGroqChatStream, formatError, classifyTaskType } from "../_utils";
 import { getFormulaSheetContext } from "@/data/formulaSheets";
 import { requireUser } from "@/lib/api-auth";
 export const runtime = "nodejs";
-export async function POST(request) {
+export async function POST(request: any) {
     try {
         await requireUser();
         const body = await request.json();
@@ -12,7 +12,7 @@ export async function POST(request) {
         const analogyIntensity = userContext?.analogyIntensity ?? 1;
         const studentGrade = userContext?.grade || "7-12";
         const studentState = userContext?.state || null;
-        const STATE_FULL_NAMES = {
+        const STATE_FULL_NAMES: Record<string, string> = {
             NSW: "New South Wales", VIC: "Victoria", QLD: "Queensland",
             WA: "Western Australia", SA: "South Australia", TAS: "Tasmania",
             ACT: "Australian Capital Territory", NT: "Northern Territory",
@@ -36,7 +36,7 @@ export async function POST(request) {
         const maxTokens = 4096;
         const interestList = userContext?.hobbies?.filter(Boolean) ?? [];
         const allowedInterests = interestList.length > 0 ? interestList.join(", ") : "General";
-        const findExplicitInterest = (text, interests) => {
+        const findExplicitInterest = (text: any, interests: any) => {
             const lower = text.toLowerCase();
             let best: { interest: string; index: number } | null = null;
             for (const interest of interests) {
@@ -108,7 +108,7 @@ ${formulaSheetContext ? `\n--- FORMULA REFERENCE ---\n${formulaSheetContext}\n--
                                 ? `\n\n--- PAGE CONTEXT ---\n${userContext.pageContext}\n--- END PAGE CONTEXT ---`
                                 : ""),
                         },
-                        ...messages.filter(m => m.role !== "system"),
+                        ...messages.filter((m: any) => m.role !== "system"),
                     ],
                     max_tokens: maxTokens,
                     temperature: 0.55,

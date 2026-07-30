@@ -9,7 +9,7 @@ import { createCurriculumRetriever } from "@/lib/retrieval/curriculum";
 import { TOOL_LIST_DESCRIPTION, parseToolCallsFromResponse, buildToolProposal, summarizeToolCall } from "@/lib/tool-descriptions";
 import type { ToolProposal } from "@analogix/shared/types";
 export const runtime = "nodejs";
-export async function POST(request) {
+export async function POST(request: any) {
     try {
         // ========================================================================
         // STEP 0: Get user and fetch personality/memory from database or localStorage
@@ -95,7 +95,7 @@ export async function POST(request) {
         const studentGrade = String(userContext?.grade || "7-12");
         const studentState = userContext?.state || null;
         // Map state codes to full names for the prompt
-        const STATE_FULL_NAMES = {
+        const STATE_FULL_NAMES: Record<string, string> = {
             NSW: "New South Wales",
             VIC: "Victoria",
             QLD: "Queensland",
@@ -142,7 +142,7 @@ export async function POST(request) {
         const allowedInterests = interestList.length > 0
             ? interestList.join(", ")
             : "the student's everyday life, school experiences, or general interests (ask about theirs if unclear)";
-        const findExplicitInterest = (text, interests) => {
+        const findExplicitInterest = (text: any, interests: any) => {
             const lower = text.toLowerCase();
             let best: { interest: string; index: number } | null = null;
             for (const interest of interests) {
@@ -201,9 +201,9 @@ GUIDANCE:
         // STEP 2B: STRUCTURED EXPLANATION PIPELINE
         // ========================================================================
         // Adjust explanation depth based on detail_level
-        const formatResearchSources = (sources) => {
-            const truncateText = (text, max = 360) => text.length > max ? text.slice(0, max).trim() + "…" : text.trim();
-            return sources.map((s, i) => {
+        const formatResearchSources = (sources: any) => {
+            const truncateText = (text: any, max: any = 360) => text.length > max ? text.slice(0, max).trim() + "…" : text.trim();
+            return sources.map((s: any, i: any) => {
                 const authors = s.authors?.slice(0, 4).join(", ") || "Unknown authors";
                 const year = s.year ? String(s.year) : "n.d.";
                 const venue = s.venue ? ` — ${s.venue}` : "";
@@ -442,7 +442,7 @@ ${userSubjectsContext}`;
                     content: finalSystemContent,
                 },
                 // Strip out any system messages the client may have passed — we own the system prompt
-                ...messages.filter(m => m.role !== "system"),
+                ...messages.filter((m: any) => m.role !== "system"),
             ],
             max_tokens: maxTokens,
             temperature: researchMode ? 0.3 : 0.7,

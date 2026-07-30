@@ -29,7 +29,7 @@ export default function SubjectDocumentIndex() {
       }
       const data = await subjectStore.getSubject(subjectId);
       if (!active) return;
-      setDocuments(data.notes.documents || []);
+      setDocuments(data?.notes?.documents || []);
       setStatus("ready");
     };
     load();

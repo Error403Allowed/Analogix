@@ -7,7 +7,7 @@ export const runtime = "nodejs";
 
 const VALID_SUBJECT_IDS = new Set(SUBJECT_CATALOG.map(s => s.id));
 
-export async function POST(request) {
+export async function POST(request: any) {
     try {
         const supabase = await createClient();
         const { data: { user } } = await supabase.auth.getUser();
@@ -44,7 +44,7 @@ export async function POST(request) {
     }
 }
 
-async function handleAddFlashcards(supabase, userId, action, defaultSubjectId, userSubjectSet) {
+async function handleAddFlashcards(supabase: any, userId: any, action: any, defaultSubjectId: any, userSubjectSet: any) {
     try {
         let subjectId = action.subjectId;
         if (!subjectId || !userSubjectSet.has(subjectId)) {
@@ -54,7 +54,7 @@ async function handleAddFlashcards(supabase, userId, action, defaultSubjectId, u
             subjectId = userSubjectSet.values().next().value || "math";
         }
         const setName = (action.setName || `Study Notes – ${new Date().toLocaleDateString()}`).trim();
-        const cards = (action.cards || []).filter((c) => c.front?.trim() && c.back?.trim());
+        const cards = (action.cards || []).filter((c: any) => c.front?.trim() && c.back?.trim());
         if (cards.length === 0) {
             return {
                 type: "add_flashcards",
@@ -79,7 +79,8 @@ async function handleAddFlashcards(supabase, userId, action, defaultSubjectId, u
                 cardCount: setData.cardCount,
             };
         } catch (setError) {
-            if (setError?.code === "23505" || setError?.message?.includes("duplicate")) {
+            const err = setError as { code?: string; message?: string };
+            if (err?.code === "23505" || err?.message?.includes("duplicate")) {
                 const { data: existingSet } = await supabase
                     .from("flashcard_sets")
                     .select("id")

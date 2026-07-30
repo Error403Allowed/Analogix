@@ -99,7 +99,7 @@ export async function gatherAppContext(path?: string, options: ContextOptions = 
       // Gather flashcards info
       const allFlashcards = await flashcardStore.getAll();
       const today = new Date().toISOString().split("T")[0];
-      const dueToday = allFlashcards.filter(fc => {
+      const dueToday = allFlashcards.filter((fc: any) => {
         const nextReview = fc.nextReview?.split("T")[0];
         return nextReview && nextReview <= today;
       }).length;

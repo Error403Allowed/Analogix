@@ -57,7 +57,7 @@ export default function CallbackHandler() {
 
     const supabase = createClient();
 
-    supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
+    supabase.auth.exchangeCodeForSession(code).then(({ error }: { error: any }) => {
       if (error) {
         console.error("Auth callback: exchangeCodeForSession failed", {
           message: error.message,
@@ -71,7 +71,7 @@ export default function CallbackHandler() {
       }
 
       return supabase.auth.getUser();
-    }).then(async (result) => {
+    }).then(async (result: any) => {
       if (!result) return;
       const { data: { user }, error: userError } = result;
       if (userError || !user) {
@@ -95,7 +95,7 @@ export default function CallbackHandler() {
       }
 
       router.replace(next);
-    }).catch((err) => {
+    }).catch((err: any) => {
       console.error("Auth callback: unexpected error", err);
       router.replace(redirectWithError(origin, "unexpected", err?.message ?? null));
     });

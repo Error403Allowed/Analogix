@@ -1,7 +1,9 @@
 import { createClient } from "@/lib/supabase/client";
 import { getAuthUser } from "./authCache";
 // ── SM-2 spaced repetition ────────────
-const sm2 = (card, rating) => {
+interface SM2Card { intervalDays: number; easeFactor: number; repetitions: number; }
+interface SM2Result { intervalDays: number; easeFactor: number; repetitions: number; nextReview: string; }
+const sm2 = (card: SM2Card, rating: number): SM2Result => {
     let { intervalDays, easeFactor, repetitions } = card;
     if (rating < 3) {
         repetitions = 0;
@@ -22,14 +24,17 @@ const sm2 = (card, rating) => {
     return { intervalDays, easeFactor, repetitions, nextReview: nextReview.toISOString() };
 };
 // ── Row mappers ───────────────────────
-const toSet = (row) => ({
+type FlashcardSetRow = Record<string, any>;
+type FlashcardRow = Record<string, any>;
+
+const toSet = (row: FlashcardSetRow) => ({
     id: row.id,
     subjectId: row.subject_id,
     name: row.name,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
 });
-const toCard = (row) => ({
+const toCard = (row: FlashcardRow) => ({
     id: row.id,
     setId: row.set_id ?? "",
     subjectId: row.subject_id,
@@ -82,7 +87,7 @@ export const flashcardStore = {
         }
         return (data ?? []).map(toSet);
     },
-    createSet: async (subjectId, name) => {
+    createSet: async (subjectId: string, name: string) => {
         const user = await getAuthUser();
         if (!user)
             return null;
@@ -99,7 +104,7 @@ export const flashcardStore = {
         broadcastChange();
         return toSet(data);
     },
-    renameSet: async (setId, name) => {
+    renameSet: async (setId: string, name: string) => {
         const user = await getAuthUser();
         if (!user)
             return;
@@ -113,7 +118,7 @@ export const flashcardStore = {
             console.warn("[flashcardStore] renameSet failed:", error);
         broadcastChange();
     },
-    deleteSet: async (setId) => {
+    deleteSet: async (setId: string) => {
         const user = await getAuthUser();
         if (!user)
             return;
@@ -145,7 +150,7 @@ export const flashcardStore = {
         }
         return (data ?? []).map(toCard);
     },
-    getBySet: async (setId) => {
+    getBySet: async (setId: string) => {
         const user = await getAuthUser();
         if (!user)
             return [];
@@ -165,18 +170,18 @@ export const flashcardStore = {
     getDue: async () => {
         const all = await flashcardStore.getAll();
         const now = new Date().toISOString();
-        return all.filter(c => c.nextReview <= now);
+        return all.filter((c: any) => c.nextReview <= now);
     },
-    add: async (cards) => {
+    add: async (cards: any[]) => {
         const user = await getAuthUser();
         if (!user)
             return [];
         const supabase = createClient();
         // Fetch existing cards to deduplicate against
         const existing = await flashcardStore.getAll();
-        const existingKeys = new Set(existing.map(c => `${c.setId}:${c.front.trim().toLowerCase()}:${c.back.trim().toLowerCase()}`));
+        const existingKeys = new Set(existing.map((c: any) => `${c.setId}:${c.front.trim().toLowerCase()}:${c.back.trim().toLowerCase()}`));
         // Filter out duplicates (same set + same front + same back, case-insensitive)
-        const uniqueCards = cards.filter(c => {
+        const uniqueCards = cards.filter((c: any) => {
             const key = `${c.setId}:${c.front.trim().toLowerCase()}:${c.back.trim().toLowerCase()}`;
             if (existingKeys.has(key))
                 return false;
@@ -232,7 +237,7 @@ export const flashcardStore = {
         const seen = new Map();
         const duplicates: any[] = [];
         // Sort by createdAt ascending so we keep the oldest
-        all.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+        all.sort((a: any, b: any) => a.createdAt.localeCompare(b.createdAt));
         for (const card of all) {
             const key = `${card.setId}:${card.front.trim().toLowerCase()}:${card.back.trim().toLowerCase()}`;
             if (seen.has(key)) {
@@ -275,11 +280,11 @@ export const flashcardStore = {
             .from("flashcard_sets")
             .select("id")
             .eq("user_id", user.id);
-        const validSetIds = new Set((sets || []).map((s) => s.id));
+        const validSetIds = new Set((sets || []).map((s: any) => s.id));
         // Get all cards
         const allCards = await flashcardStore.getAll();
         // Find orphans: cards with no set_id or set_id not in valid sets
-        const orphans = allCards.filter(c => !c.setId || !validSetIds.has(c.setId));
+        const orphans = allCards.filter((c: any) => !c.setId || !validSetIds.has(c.setId));
         if (orphans.length === 0)
             return 0;
         // Delete orphans in batches
@@ -289,7 +294,7 @@ export const flashcardStore = {
             const { error } = await supabase
                 .from("flashcards")
                 .delete()
-                .in("id", batch.map(c => c.id))
+                .in("id", batch.map((c: any) => c.id))
                 .eq("user_id", user.id);
             if (error) {
                 console.warn("[flashcardStore] removeOrphans batch failed:", error);
@@ -299,13 +304,13 @@ export const flashcardStore = {
         broadcastChange();
         return orphans.length;
     },
-    review: async (cardId, rating) => {
+    review: async (cardId: string, rating: number) => {
         const user = await getAuthUser();
         if (!user)
             return;
         const supabase = createClient();
         const all = await flashcardStore.getAll();
-        const card = all.find(c => c.id === cardId);
+        const card = all.find((c: any) => c.id === cardId);
         if (!card)
             return;
         const updates = sm2(card, rating);
@@ -320,7 +325,7 @@ export const flashcardStore = {
             console.warn("[flashcardStore] review failed:", error);
         broadcastChange();
     },
-    update: async (cardId, changes) => {
+    update: async (cardId: string, changes: Record<string, any>) => {
         const user = await getAuthUser();
         if (!user)
             return;
@@ -333,7 +338,7 @@ export const flashcardStore = {
             console.warn("[flashcardStore] update failed:", error);
         broadcastChange();
     },
-    delete: async (cardId) => {
+    delete: async (cardId: string) => {
         const user = await getAuthUser();
         if (!user)
             return;

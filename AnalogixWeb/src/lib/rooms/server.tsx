@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-function profileName(profile, fallback = "Student") {
+function profileName(profile: any, fallback = "Student") {
     if (!profile)
         return fallback;
     if (typeof profile.full_name === "string" && profile.full_name.trim())
@@ -8,7 +8,7 @@ function profileName(profile, fallback = "Student") {
         return profile.name;
     return fallback;
 }
-export function mapStudyRoom(row, viewerRole, isOwner) {
+export function mapStudyRoom(row: any, viewerRole: string | null, isOwner: boolean) {
     return {
         id: String(row.id),
         title: String(row.title ?? "Untitled room"),
@@ -35,7 +35,7 @@ export async function requireServerUser() {
     }
     return { supabase, user };
 }
-export async function fetchProfilesMap(supabase, userIds) {
+export async function fetchProfilesMap(supabase: any, userIds: (string | null | undefined)[]) {
     const uniqueIds = [...new Set(userIds.filter(Boolean))];
     if (uniqueIds.length === 0)
         return {};
@@ -44,12 +44,12 @@ export async function fetchProfilesMap(supabase, userIds) {
         console.warn("[rooms] fetchProfilesMap failed:", error);
         return {};
     }
-    return (data ?? []).reduce((acc, row) => {
+    return (data ?? []).reduce((acc: any, row: any) => {
         acc[String(row.id)] = row;
         return acc;
     }, {});
 }
-export async function getRoomAccess(supabase, userId, roomId) {
+export async function getRoomAccess(supabase: any, userId: string, roomId: string) {
     const [{ data: room }, { data: membership }] = await Promise.all([
         supabase.from("study_rooms").select("*").eq("id", roomId).maybeSingle(),
         supabase
@@ -75,7 +75,7 @@ export async function getRoomAccess(supabase, userId, roomId) {
         viewerRole: viewerRole ?? null,
     };
 }
-export async function requireRoomAccess(roomId) {
+export async function requireRoomAccess(roomId: string) {
     const { supabase, user } = await requireServerUser();
     const access = await getRoomAccess(supabase, user.id, roomId);
     if (!access) {
@@ -83,14 +83,14 @@ export async function requireRoomAccess(roomId) {
     }
     return { supabase, user, ...access };
 }
-export async function requireRoomMembership(roomId) {
+export async function requireRoomMembership(roomId: string) {
     const access = await requireRoomAccess(roomId);
     if (!access.isOwner && !access.membership) {
         throw new Error("Room membership required");
     }
     return access;
 }
-export async function requireRoomControl(roomId) {
+export async function requireRoomControl(roomId: string) {
     const access = await requireRoomMembership(roomId);
     const role = access.viewerRole;
     if (!access.isOwner && role !== "host" && role !== "cohost") {
@@ -98,7 +98,7 @@ export async function requireRoomControl(roomId) {
     }
     return access;
 }
-export async function listRoomMembers(supabase, roomId) {
+export async function listRoomMembers(supabase: any, roomId: string) {
     const { data, error } = await supabase
         .from("study_room_members")
         .select("*")
@@ -108,8 +108,8 @@ export async function listRoomMembers(supabase, roomId) {
         console.warn("[rooms] listRoomMembers failed:", error);
         return [];
     }
-    const profiles = await fetchProfilesMap(supabase, (data ?? []).map((row) => String(row.user_id)));
-    return (data ?? []).map((row) => {
+    const profiles = await fetchProfilesMap(supabase, (data ?? []).map((row: any) => String(row.user_id)));
+    return (data ?? []).map((row: any) => {
         const profile = profiles[String(row.user_id)];
         const lastSeen = String(row.last_seen ?? row.joined_at);
         const lastSeenMs = new Date(lastSeen).getTime();
@@ -127,7 +127,7 @@ export async function listRoomMembers(supabase, roomId) {
         };
     });
 }
-export async function listRoomMessages(supabase, roomId, limit = 100) {
+export async function listRoomMessages(supabase: any, roomId: string, limit = 100) {
     const { data, error } = await supabase
         .from("study_room_messages")
         .select("*")
@@ -139,8 +139,8 @@ export async function listRoomMessages(supabase, roomId, limit = 100) {
         console.warn("[rooms] listRoomMessages failed:", error);
         return [];
     }
-    const profiles = await fetchProfilesMap(supabase, (data ?? []).map((row) => String(row.user_id ?? "")).filter(Boolean));
-    return (data ?? []).map((row) => {
+    const profiles = await fetchProfilesMap(supabase, (data ?? []).map((row: any) => String(row.user_id ?? "")).filter(Boolean));
+    return (data ?? []).map((row: any) => {
         const profile = row.user_id ? profiles[String(row.user_id)] : null;
         const metadata = typeof row.metadata === "object" && row.metadata ? row.metadata : null;
         return {
@@ -160,7 +160,7 @@ export async function listRoomMessages(supabase, roomId, limit = 100) {
         };
     });
 }
-export async function getRoomCanvas(supabase, roomId) {
+export async function getRoomCanvas(supabase: any, roomId: string) {
     const { data, error } = await supabase
         .from("study_room_canvas")
         .select("*")
@@ -181,7 +181,7 @@ export async function getRoomCanvas(supabase, roomId) {
         lastEditedBy: data.last_edited_by ? String(data.last_edited_by) : null,
     };
 }
-export async function listRoomSharedDocuments(supabase, roomId) {
+export async function listRoomSharedDocuments(supabase: any, roomId: string) {
     const { data: shareRows, error } = await supabase
         .from("study_room_shared_documents")
         .select("*")
@@ -191,16 +191,16 @@ export async function listRoomSharedDocuments(supabase, roomId) {
         console.warn("[rooms] listRoomSharedDocuments failed:", error);
         return [];
     }
-    const documentIds = [...new Set((shareRows ?? []).map((row) => String(row.document_id)))];
+    const documentIds = [...new Set((shareRows ?? []).map((row: any) => String(row.document_id)))];
     const { data: documents } = documentIds.length === 0
         ? { data: [] }
         : await supabase.from("documents").select("*").in("id", documentIds);
-    const documentMap = (documents ?? []).reduce((acc, row) => {
+    const documentMap = (documents ?? []).reduce((acc: any, row: any) => {
         acc[String(row.id)] = row;
         return acc;
     }, {});
     return (shareRows ?? [])
-        .map((row) => {
+        .map((row: any) => {
         const document = documentMap[String(row.document_id)];
         if (!document)
             return null;
@@ -219,13 +219,13 @@ export async function listRoomSharedDocuments(supabase, roomId) {
             updatedAt: String(document.updated_at ?? new Date().toISOString()),
         };
     })
-        .filter((item) => item !== null);
+        .filter((item: any) => item !== null);
 }
 export function generateJoinCode() {
     const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     return Array.from({ length: 6 }, () => alphabet[Math.floor(Math.random() * alphabet.length)]).join("");
 }
-export async function getRoomState(roomId) {
+export async function getRoomState(roomId: string) {
     const access = await requireRoomAccess(roomId);
     const [members, messages, canvas, sharedDocuments] = await Promise.all([
         listRoomMembers(access.supabase, roomId),

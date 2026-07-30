@@ -307,7 +307,7 @@ export const applyThemeByName = (themeName: string) => {
     createClient().from("user_preferences").upsert(
       { user_id: user.id, theme: themeName, updated_at: new Date().toISOString() },
       { onConflict: "user_id" }
-    ).then(({ error }) => {
+    ).then(({ error }: { error: any }) => {
       if (error) console.error("[theme] Failed to persist theme:", error);
     });
   });

@@ -1,9 +1,9 @@
 import { BlockNoteEditor as CoreBlockNoteEditor } from "@blocknote/core";
 import { createBlockNoteEditorSchema, } from "@/components/blocknote/schema";
 export const BN_PREFIX = "__BN__";
-export const isBNContent = (value) => typeof value === "string" && value.startsWith(BN_PREFIX);
-export const serialiseBN = (blocks) => BN_PREFIX + JSON.stringify(blocks);
-export function parseBNBlocks(raw) {
+export const isBNContent = (value: any) => typeof value === "string" && value.startsWith(BN_PREFIX);
+export const serialiseBN = (blocks: any) => BN_PREFIX + JSON.stringify(blocks);
+export function parseBNBlocks(raw: any) {
     try {
         const parsed = JSON.parse(raw.slice(BN_PREFIX.length));
         return Array.isArray(parsed) && parsed.length > 0
@@ -14,7 +14,7 @@ export function parseBNBlocks(raw) {
         return undefined;
     }
 }
-export function htmlToPlainBlocks(html) {
+export function htmlToPlainBlocks(html: any) {
     if (!html)
         return undefined;
     try {
@@ -35,7 +35,7 @@ export function htmlToPlainBlocks(html) {
             .trim();
         if (!text)
             return undefined;
-        return text.split(/\n{2,}/).filter(Boolean).map((line) => ({
+        return text.split(/\n{2,}/).filter(Boolean).map((line: any) => ({
             type: "paragraph",
             content: [{ type: "text", text: line.trim(), styles: {} }],
         }));
@@ -44,9 +44,9 @@ export function htmlToPlainBlocks(html) {
         return undefined;
     }
 }
-const looksLikeHtml = (raw) => /<\/?[a-z][\s\S]*>/i.test(raw);
+const looksLikeHtml = (raw: any) => /<\/?[a-z][\s\S]*>/i.test(raw);
 // Convert LaTeX to BlockNote math blocks
-function preprocessLatexToBlocks(raw) {
+function preprocessLatexToBlocks(raw: any) {
     const blocks: any[] = [];
     const remaining = raw;
     // Match display math $$...$$ and inline $...$
@@ -57,7 +57,7 @@ function preprocessLatexToBlocks(raw) {
         // Add text before the match
         const textBefore = remaining.slice(lastIndex, match.index).trim();
         if (textBefore) {
-            const textBlocks = textBefore.split(/\n{2,}/).filter(Boolean).map((para) => ({
+            const textBlocks = textBefore.split(/\n{2,}/).filter(Boolean).map((para: any) => ({
                 type: "paragraph",
                 content: [{ type: "text", text: para.trim(), styles: {} }],
             }));
@@ -76,7 +76,7 @@ function preprocessLatexToBlocks(raw) {
     // Add remaining text after last match
     const textAfter = remaining.slice(lastIndex).trim();
     if (textAfter) {
-        const textBlocks = textAfter.split(/\n{2,}/).filter(Boolean).map((para) => ({
+        const textBlocks = textAfter.split(/\n{2,}/).filter(Boolean).map((para: any) => ({
             type: "paragraph",
             content: [{ type: "text", text: para.trim(), styles: {} }],
         }));
@@ -85,7 +85,7 @@ function preprocessLatexToBlocks(raw) {
     return blocks.length > 0 ? blocks : [];
 }
 // Check if string contains LaTeX
-function containsLatex(raw) {
+function containsLatex(raw: any) {
     return /\$\$[\s\S]*?\$\$|\$[^\n]+?\$/.test(raw);
 }
 export function createBlockNoteContentParser() {
@@ -93,7 +93,7 @@ export function createBlockNoteContentParser() {
         schema: createBlockNoteEditorSchema(),
     });
     return {
-        parse(raw) {
+        parse(raw: any) {
             if (!raw?.trim())
                 return undefined;
             if (isBNContent(raw))

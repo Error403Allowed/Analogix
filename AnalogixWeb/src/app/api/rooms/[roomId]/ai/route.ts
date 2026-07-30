@@ -31,12 +31,12 @@ export async function POST(
 
     const sharedDocRows = await listDocumentsByIds(
       supabase,
-      sharedDocuments.map((document) => document.documentId),
+      sharedDocuments.map((document: any) => document.documentId),
     );
 
     const sharedDocContext = sharedDocRows.length > 0
       ? sharedDocRows
-          .map((document) => {
+          .map((document: any) => {
             const preview = getDocumentPreviewText(
               {
                 content: document.content,
@@ -61,7 +61,7 @@ export async function POST(
 
     const recentMessages = messages
       .slice(-12)
-      .map((message) => `${message.name}: ${message.content}`)
+      .map((message: any) => `${message.name}: ${message.content}`)
       .join("\n");
 
     const answer = await callGroqChat(

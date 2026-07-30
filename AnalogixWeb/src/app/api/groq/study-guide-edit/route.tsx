@@ -3,7 +3,7 @@ import { callGroqChat, formatError } from "../_utils";
 import { requireUser } from "@/lib/api-auth";
 export const runtime = "nodejs";
 // ── RFC-6902 patch applier (replace / add / remove) ───────────────────────────
-function applyPatch(guide, edits) {
+function applyPatch(guide: any, edits: any) {
     const result = JSON.parse(JSON.stringify(guide));
     for (const edit of edits) {
         const parts = edit.path.replace(/^\//, "").split("/");
@@ -47,7 +47,7 @@ function applyPatch(guide, edits) {
     }
     return result;
 }
-export async function POST(request) {
+export async function POST(request: any) {
     try {
         await requireUser();
         const body = await request.json();
@@ -112,7 +112,7 @@ Rules:
             return NextResponse.json({ error: "AI returned no edits", raw: rawResponse }, { status: 422 });
         }
         // Safety: reject edits targeting the root
-        const safe = parsed.edits.filter(e => e.path && e.path !== "/" && e.path !== "");
+        const safe = parsed.edits.filter((e: any) => e.path && e.path !== "/" && e.path !== "");
         const updated = applyPatch(guide, safe);
         return NextResponse.json({ guide: updated, edits: safe });
     }

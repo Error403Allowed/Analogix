@@ -1,6 +1,8 @@
+import type { WorkspaceOperation } from '@/types/operations';
+
 export class GuardValidator {
     operations = new Map();
-    validate(operation) {
+    validate(operation: WorkspaceOperation) {
         const errors: { code: string; message: string }[] = [];
         const warnings: { code: string; message: string }[] = [];
         errors.push(...this.validateStructure(operation));
@@ -14,7 +16,7 @@ export class GuardValidator {
             requires_confirmation: requiresConfirmation,
         };
     }
-    validateStructure(operation) {
+    validateStructure(operation: WorkspaceOperation) {
         const errors: { code: string; message: string }[] = [];
         if (!operation.type) {
             errors.push({ code: 'MISSING_TYPE', message: 'Operation type is required' });
@@ -27,7 +29,7 @@ export class GuardValidator {
         }
         return errors;
     }
-    validatePayload(operation) {
+    validatePayload(operation: WorkspaceOperation) {
         const errors: { code: string; message: string }[] = [];
         const payload = operation.payload || {};
         const p = payload;
@@ -85,7 +87,7 @@ export class GuardValidator {
         }
         return errors;
     }
-    validateSafety(operation) {
+    validateSafety(operation: WorkspaceOperation) {
         const warnings: { code: string; message: string }[] = [];
         const payload = operation.payload || {};
         if (operation.type === 'create_document' && payload.content) {
@@ -100,7 +102,7 @@ export class GuardValidator {
         }
         return warnings;
     }
-    determineConfirmation(operation, errors) {
+    determineConfirmation(operation: WorkspaceOperation, errors: { code: string; message: string }[]) {
         if (errors.length > 0)
             return false;
         const destructiveTypes = [
@@ -115,7 +117,7 @@ export class GuardValidator {
         }
         return false;
     }
-    async checkConflicts(operation, concurrent) {
+    async checkConflicts(operation: WorkspaceOperation, concurrent: WorkspaceOperation[]) {
         const conflicts: string[] = [];
         for (const other of concurrent) {
             if (other.id === operation.id)

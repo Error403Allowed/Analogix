@@ -69,7 +69,7 @@ export async function getRelevantMemories(
 
   // Score and sort with semantic relevance to current message
   const now = Date.now();
-  const scored = (memories || []).map(m => {
+  const scored = (memories || []).map((m: any) => {
     const ageMs = now - new Date(m.created_at).getTime();
     const ageDays = ageMs / (1000 * 60 * 60 * 24);
     const recency = Math.max(0, 1 - ageDays / 90);
@@ -88,10 +88,10 @@ export async function getRelevantMemories(
     return { ...m, _score: score, _relevance: relevance };
   });
 
-  scored.sort((a, b) => b._score - a._score);
+  scored.sort((a: any, b: any) => b._score - a._score);
 
   // Filter: relevance must be > 0 if there are keywords, or keep high-importance memories
-  const filtered = scored.filter(m =>
+  const filtered = scored.filter((m: any) =>
     currentKeywords.length === 0 || m._relevance > 0 || (m.importance || 0.5) >= 0.7
   );
 

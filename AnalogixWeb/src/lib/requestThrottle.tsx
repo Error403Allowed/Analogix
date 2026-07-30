@@ -3,11 +3,11 @@
  * Prevents AI API overload by limiting concurrent requests and adding delays between requests.
  */
 class RequestThrottle {
-    maxConcurrent;
-    minDelay;
-    maxRetries;
-    baseDelay;
-    maxDelay;
+    maxConcurrent: number;
+    minDelay: number;
+    maxRetries: number;
+    baseDelay: number;
+    maxDelay: number;
     activeRequests = 0;
     requestQueue: Array<{ resolve: () => void; reject: (reason: any) => void; timestamp: number }> = [];
     lastRequestTime = 0;
@@ -22,7 +22,7 @@ class RequestThrottle {
     /**
      * Execute a request with throttling and automatic retry on rate limit errors.
      */
-    async execute(requestFn, signal?) {
+    async execute(requestFn: any, signal?: any) {
         let lastError: Error | null = null;
         let attempt = 0;
         while (attempt <= this.maxRetries) {
@@ -66,7 +66,7 @@ class RequestThrottle {
     /**
      * Acquire a lock to execute a request, waiting in queue if necessary.
      */
-    acquireLock(signal) {
+    acquireLock(signal?: any) {
         return new Promise<void>((resolve, reject) => {
             const checkAbort = () => {
                 if (signal?.aborted) {
@@ -125,7 +125,7 @@ class RequestThrottle {
     /**
      * Check if an error is a rate limit error.
      */
-    isRateLimitError(error) {
+    isRateLimitError(error: any) {
         if (error instanceof Error) {
             const message = error.message.toLowerCase();
             return (message.includes("rate limit") ||
@@ -141,7 +141,7 @@ class RequestThrottle {
     /**
      * Wait with exponential backoff, checking for abort signal.
      */
-    waitWithBackoff(delay, signal) {
+    waitWithBackoff(delay: number, signal?: any) {
         return new Promise<void>((resolve, reject) => {
             const timeout = setTimeout(() => {
                 signal?.removeEventListener("abort", handleAbort);

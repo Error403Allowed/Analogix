@@ -109,7 +109,7 @@ export default function SubjectDetail() {
         subjectStore.getSubject(subjectId),
         subjectStore.getCustomSubject(subjectId),
       ]);
-      setData(sData);
+      setData(sData as SubjectData);
       setCustomSubject(custom);
       setUserPrefs(JSON.parse(localStorage.getItem("userPreferences") || "{}"));
     };

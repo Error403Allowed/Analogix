@@ -33,7 +33,7 @@ export function shouldAutoApprove(tools: ToolCall[]): boolean {
       if (!writeTools.has(t.name)) return false;
       const subject = (t.args.subjectId || t.args.subject || "") as string;
       if (!subject) return false;
-      return autoApproveSubjects.some(s => subject.toLowerCase().includes(s.toLowerCase()));
+      return autoApproveSubjects.some((s: any) => subject.toLowerCase().includes(s.toLowerCase()));
     });
   }
 

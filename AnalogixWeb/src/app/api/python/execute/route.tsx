@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 
 const math: MathJsInstance = create(all);
 
-const safeFunctions: Record<string, (...args: unknown[]) => unknown> = {
+const safeFunctions: Record<string, (...args: any[]) => unknown> = {
   sin: (x) => math.sin(x as number),
   cos: (x) => math.cos(x as number),
   tan: (x) => math.tan(x as number),

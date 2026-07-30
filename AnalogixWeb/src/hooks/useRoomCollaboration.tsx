@@ -13,7 +13,7 @@ const USER_COLORS = [
     "#8b5cf6",
     "#ec4899",
 ];
-const resolveDisplayName = (fallback) => {
+const resolveDisplayName = (fallback: any) => {
     if (fallback?.trim())
         return fallback.trim();
     if (typeof window === "undefined")
@@ -29,14 +29,14 @@ const resolveDisplayName = (fallback) => {
     }
     return "Student";
 };
-const pickColor = (seed) => {
+const pickColor = (seed: any) => {
     let hash = 0;
     for (let index = 0; index < seed.length; index += 1) {
         hash = (hash * 31 + seed.charCodeAt(index)) >>> 0;
     }
     return USER_COLORS[hash % USER_COLORS.length];
 };
-export function useRoomCollaboration({ roomId, surfaceType, surfaceId, displayName, }) {
+export function useRoomCollaboration({ roomId, surfaceType, surfaceId, displayName }: { roomId: any; surfaceType: any; surfaceId: any; displayName: any }) {
     const [provider, setProvider] = useState<any>(null);
     const [fragment, setFragment] = useState(() => new Y.Doc().getXmlFragment("blocknote"));
     const [status, setStatus] = useState("idle");
@@ -75,7 +75,7 @@ export function useRoomCollaboration({ roomId, surfaceType, surfaceId, displayNa
                 providerRef.current = nextProvider;
                 const manager = new RoomCollabPersistenceManager(roomId, surfaceType, surfaceId, userId, ydoc, latestSeq);
                 managerRef.current = manager;
-                const handleDocUpdate = (update, origin) => {
+                const handleDocUpdate = (update: any, origin: any) => {
                     if (origin === nextProvider || origin === "room-collab-bootstrap")
                         return;
                     manager.onUpdate(update).catch(console.warn);
@@ -103,7 +103,7 @@ export function useRoomCollaboration({ roomId, surfaceType, surfaceId, displayNa
             }
             return undefined;
         };
-        let cleanup;
+        let cleanup: any;
         init().then((dispose) => {
             cleanup = dispose;
         });

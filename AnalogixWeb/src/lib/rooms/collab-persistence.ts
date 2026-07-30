@@ -2,14 +2,14 @@
 import * as Y from "yjs";
 import { createClient } from "@/lib/supabase/client";
 const COMPACT_AFTER = 20;
-const uint8ArrayToBase64 = (bytes) => {
+const uint8ArrayToBase64 = (bytes: Uint8Array) => {
     let binary = "";
     for (let index = 0; index < bytes.byteLength; index += 1) {
         binary += String.fromCharCode(bytes[index]);
     }
     return btoa(binary);
 };
-const base64ToUint8Array = (value) => {
+const base64ToUint8Array = (value: string) => {
     try {
         const binary = atob(value);
         const bytes = new Uint8Array(binary.length);
@@ -22,7 +22,7 @@ const base64ToUint8Array = (value) => {
         return new Uint8Array();
     }
 };
-const toUint8Array = (value) => {
+const toUint8Array = (value: any) => {
     if (value instanceof Uint8Array)
         return value;
     if (value instanceof ArrayBuffer)
@@ -38,7 +38,7 @@ const toUint8Array = (value) => {
     }
     return new Uint8Array();
 };
-export async function loadRoomSurfaceYDoc(roomId, surfaceType, surfaceId) {
+export async function loadRoomSurfaceYDoc(roomId: string, surfaceType: string, surfaceId: string) {
     const supabase = createClient();
     const ydoc = new Y.Doc();
     const { data: snapshot } = await supabase
@@ -75,7 +75,7 @@ export async function loadRoomSurfaceYDoc(roomId, surfaceType, surfaceId) {
     }
     return { ydoc, latestSeq };
 }
-export async function appendRoomSurfaceUpdate(roomId, surfaceType, surfaceId, userId, update) {
+export async function appendRoomSurfaceUpdate(roomId: string, surfaceType: string, surfaceId: string, userId: string, update: Uint8Array) {
     const supabase = createClient();
     const { data: seqData, error: seqError } = await supabase.rpc("next_study_room_collab_seq", {
         p_room_id: roomId,
@@ -98,7 +98,7 @@ export async function appendRoomSurfaceUpdate(roomId, surfaceType, surfaceId, us
     }
     return seqData;
 }
-export async function compactRoomSurfaceYDoc(roomId, surfaceType, surfaceId, userId, ydoc, latestSeq) {
+export async function compactRoomSurfaceYDoc(roomId: string, surfaceType: string, surfaceId: string, userId: string, ydoc: Y.Doc, latestSeq: number) {
     const supabase = createClient();
     const snapshot = uint8ArrayToBase64(Y.encodeStateAsUpdate(ydoc));
     const { error } = await supabase.from("study_room_collab_snapshots").upsert({
@@ -128,7 +128,7 @@ export class RoomCollabPersistenceManager {
     ydoc;
     latestSeq = 0;
     updateCount = 0;
-    constructor(roomId, surfaceType, surfaceId, userId, ydoc, initialSeq) {
+    constructor(roomId: string, surfaceType: string, surfaceId: string, userId: string, ydoc: Y.Doc, initialSeq: number) {
         this.roomId = roomId;
         this.surfaceType = surfaceType;
         this.surfaceId = surfaceId;
@@ -136,7 +136,7 @@ export class RoomCollabPersistenceManager {
         this.ydoc = ydoc;
         this.latestSeq = initialSeq;
     }
-    async onUpdate(update) {
+    async onUpdate(update: Uint8Array) {
         const nextSeq = await appendRoomSurfaceUpdate(this.roomId, this.surfaceType, this.surfaceId, this.userId, update);
         this.latestSeq = Math.max(this.latestSeq, nextSeq);
         this.updateCount += 1;

@@ -44,6 +44,8 @@ export interface SubjectData {
         homework: SubjectHomework[];
         links: SubjectLink[];
         documents: SubjectDocumentItem[];
+        title?: string;
+        assessments?: any[];
     };
 }
 
@@ -64,13 +66,13 @@ export type DocumentRole = "document" | "notes" | "study-guide" | "summary" | "f
 // ── Subject data in-memory cache ─────
 // Keyed by subjectId. Invalidated on every write so data is always fresh after
 // a mutation, but repeat reads within a session are instant (no Supabase RTT).
-const subjectCache = new Map();
-const subjectCachePromise = new Map();
-function invalidateSubjectCache(subjectId) {
+const subjectCache = new Map<string, SubjectData>();
+const subjectCachePromise = new Map<string, Promise<SubjectData>>();
+function invalidateSubjectCache(subjectId: string) {
     subjectCache.delete(subjectId);
     subjectCachePromise.delete(subjectId);
 }
-const emptySubject = (subjectId) => ({
+const emptySubject = (subjectId: string): SubjectData => ({
     id: subjectId,
     marks: [],
     notes: {
@@ -81,11 +83,11 @@ const emptySubject = (subjectId) => ({
         documents: [],
     },
 });
-const normalizeLegacyDocuments = (subjectId, notes) => {
+const normalizeLegacyDocuments = (subjectId: string, notes: any): SubjectDocumentItem[] => {
     if (!notes)
         return [];
     if (Array.isArray(notes.documents) && notes.documents.length > 0) {
-        return notes.documents.map((doc, i) => ({
+        return notes.documents.map((doc: any, i: number) => ({
             id: doc?.id || `legacy-${subjectId}-${i}`,
             subjectId: subjectId,
             title: typeof doc?.title === "string" ? doc.title : "",
@@ -114,7 +116,7 @@ const normalizeLegacyDocuments = (subjectId, notes) => {
     }
     return [];
 };
-const normalizeDocumentRow = (doc) => ({
+const normalizeDocumentRow = (doc: any): SubjectDocumentItem => ({
     id: String(doc.id ?? crypto.randomUUID()),
     subjectId: String(doc.subject_id ?? ""),
     title: typeof doc.title === "string" ? doc.title : "",
@@ -128,7 +130,7 @@ const normalizeDocumentRow = (doc) => ({
     createdAt: typeof doc.created_at === "string" ? doc.created_at : new Date().toISOString(),
     lastUpdated: typeof doc.updated_at === "string" ? doc.updated_at : new Date().toISOString(),
 });
-const normalizeNotes = (subjectId, notes, documents = normalizeLegacyDocuments(subjectId, notes)) => ({
+const normalizeNotes = (subjectId: string, notes: any, documents: SubjectDocumentItem[] = normalizeLegacyDocuments(subjectId, notes)) => ({
     content: notes?.content || "",
     lastUpdated: notes?.lastUpdated || new Date().toISOString(),
     homework: Array.isArray(notes?.homework) ? notes.homework : [],
@@ -137,7 +139,7 @@ const normalizeNotes = (subjectId, notes, documents = normalizeLegacyDocuments(s
     documents,
     assessments: Array.isArray(notes?.assessments) ? notes.assessments : [],
 });
-const serialiseNotesForStorage = (notes) => ({
+const serialiseNotesForStorage = (notes: any) => ({
     content: notes?.content || "",
     lastUpdated: notes?.lastUpdated || new Date().toISOString(),
     homework: Array.isArray(notes?.homework) ? notes.homework : [],
@@ -146,7 +148,7 @@ const serialiseNotesForStorage = (notes) => ({
     documents: [],
     assessments: Array.isArray(notes?.assessments) ? notes.assessments : [],
 });
-async function fetchDocumentsForUser(userId, subjectId?) {
+async function fetchDocumentsForUser(userId: string, subjectId?: string): Promise<SubjectDocumentItem[]> {
     const supabase = createClient();
     let query = supabase
         .from("documents")
@@ -160,13 +162,14 @@ async function fetchDocumentsForUser(userId, subjectId?) {
         console.warn("[subjectStore] fetchDocumentsForUser failed:", error);
         return [];
     }
-    return (data ?? []).map((row) => normalizeDocumentRow(row));
+    return (data ?? []).map((row: any) => normalizeDocumentRow(row));
 }
-function groupDocumentsBySubject(documents) {
-    return documents.reduce((acc, document) => {
-        const bucket = acc[document.subjectId] ?? [];
+function groupDocumentsBySubject(documents: SubjectDocumentItem[]): Record<string, SubjectDocumentItem[]> {
+    return documents.reduce((acc: Record<string, SubjectDocumentItem[]>, document: SubjectDocumentItem) => {
+        const key = document.subjectId!;
+        const bucket = acc[key] ?? [];
         bucket.push(document);
-        acc[document.subjectId] = bucket;
+        acc[key] = bucket;
         return acc;
     }, {});
 }
@@ -189,14 +192,14 @@ export const subjectStore = {
             return {};
         }
         const documentsBySubject = groupDocumentsBySubject(documents);
-        const subjects = (data ?? []).reduce((acc, row) => {
+        const subjects = (data ?? []).reduce((acc: Record<string, SubjectData>, row: any) => {
             acc[row.subject_id] = {
                 id: row.subject_id,
                 marks: row.marks ?? [],
                 notes: normalizeNotes(row.subject_id, row.notes, documentsBySubject[row.subject_id] ?? []),
             };
             return acc;
-        }, {});
+        }, {} as Record<string, SubjectData>);
         for (const [subjectId, docs] of Object.entries(documentsBySubject)) {
             if (!subjects[subjectId]) {
                 subjects[subjectId] = {
@@ -210,7 +213,7 @@ export const subjectStore = {
     },
     // Fetch a single subject row — cached in-memory for instant repeat reads.
     // Writes always invalidate the cache so data stays consistent.
-    getSubject: async (subjectId) => {
+    getSubject: async (subjectId: string) => {
         // 1. Serve from memory if already fetched this session
         if (subjectCache.has(subjectId))
             return subjectCache.get(subjectId);
@@ -249,7 +252,7 @@ export const subjectStore = {
         return fetch;
     },
     // Save directly without a read round-trip — caller provides full data
-    saveSubject: async (subjectId, data, currentData?) => {
+    saveSubject: async (subjectId: string, data: Partial<SubjectData>, currentData?: SubjectData) => {
         const user = await getUser();
         if (!user)
             return;
@@ -271,12 +274,14 @@ export const subjectStore = {
         invalidateSubjectCache(subjectId);
         window.dispatchEvent(new Event("subjectDataUpdated"));
     },
-    addMark: async (subjectId, mark) => {
+    addMark: async (subjectId: string, mark: any) => {
         const current = await subjectStore.getSubject(subjectId);
+        if (!current) return;
         await subjectStore.saveSubject(subjectId, { marks: [...current.marks, { ...mark, id: crypto.randomUUID() }] });
     },
-    updateNotes: async (subjectId, content, title) => {
+    updateNotes: async (subjectId: string, content: string, title?: string) => {
         const current = await subjectStore.getSubject(subjectId);
+        if (!current) return;
         await subjectStore.saveSubject(subjectId, {
             notes: {
                 ...current.notes,
@@ -286,7 +291,7 @@ export const subjectStore = {
             },
         });
     },
-    createDocument: async (subjectId, title) => {
+    createDocument: async (subjectId: string, title: string) => {
         if (!subjectId) {
             console.error("[subjectStore] createDocument called with empty subjectId:", { subjectId, title });
             throw new Error("Cannot create document: subjectId is required");
@@ -295,6 +300,7 @@ export const subjectStore = {
         if (!user)
             throw new Error("Not authenticated");
         const current = await subjectStore.getSubject(subjectId);
+        if (!current) throw new Error("Subject not found");
         await subjectStore.saveSubject(subjectId, current, current);
         const supabase = createClient();
         const now = new Date().toISOString();
@@ -325,7 +331,7 @@ export const subjectStore = {
         window.dispatchEvent(new Event("subjectDataUpdated"));
         return normalizeDocumentRow(data);
     },
-    updateDocument: async (subjectId, docId, updates) => {
+    updateDocument: async (subjectId: string, docId: string, updates: Partial<SubjectDocumentItem>) => {
         const user = await getUser();
         if (!user)
             return;
@@ -363,7 +369,7 @@ export const subjectStore = {
         invalidateSubjectCache(subjectId);
         window.dispatchEvent(new Event("subjectDataUpdated"));
     },
-    removeDocument: async (subjectId, docId) => {
+    removeDocument: async (subjectId: string, docId: string) => {
         const supabase = createClient();
         const { error } = await supabase
             .from("documents")
@@ -377,12 +383,13 @@ export const subjectStore = {
         invalidateSubjectCache(subjectId);
         window.dispatchEvent(new Event("subjectDataUpdated"));
     },
-    duplicateDocument: async (subjectId, docId) => {
+    duplicateDocument: async (subjectId: string, docId: string) => {
         const user = await getUser();
         if (!user)
             throw new Error("Not authenticated");
         const current = await subjectStore.getSubject(subjectId);
-        const target = (current.notes.documents || []).find((d) => d.id === docId);
+        if (!current) throw new Error("Subject not found");
+        const target = (current.notes.documents || []).find((d: SubjectDocumentItem) => d.id === docId);
         if (!target)
             throw new Error("Document not found");
         const supabase = createClient();
@@ -415,30 +422,34 @@ export const subjectStore = {
         window.dispatchEvent(new Event("subjectDataUpdated"));
         return normalizeDocumentRow(data);
     },
-    updateHomework: async (subjectId, homework) => {
+    updateHomework: async (subjectId: string, homework: SubjectHomework[]) => {
         const current = await subjectStore.getSubject(subjectId);
+        if (!current) return;
         await subjectStore.saveSubject(subjectId, { notes: { ...current.notes, homework, lastUpdated: new Date().toISOString() } }, current);
     },
-    updateLinks: async (subjectId, links) => {
+    updateLinks: async (subjectId: string, links: SubjectLink[]) => {
         const current = await subjectStore.getSubject(subjectId);
+        if (!current) return;
         await subjectStore.saveSubject(subjectId, { notes: { ...current.notes, links, lastUpdated: new Date().toISOString() } }, current);
     },
-    addAssessment: async (subjectId, assessment) => {
+    addAssessment: async (subjectId: string, assessment: any) => {
         const current = await subjectStore.getSubject(subjectId);
+        if (!current) return;
         const existing = current.notes.assessments || [];
         await subjectStore.saveSubject(subjectId, {
             notes: { ...current.notes, assessments: [assessment, ...existing], lastUpdated: new Date().toISOString() },
         });
     },
-    removeAssessment: async (subjectId, assessmentId) => {
+    removeAssessment: async (subjectId: string, assessmentId: string) => {
         const current = await subjectStore.getSubject(subjectId);
-        const filtered = (current.notes.assessments || []).filter(a => a.id !== assessmentId);
+        if (!current) return;
+        const filtered = (current.notes.assessments || []).filter((a: any) => a.id !== assessmentId);
         await subjectStore.saveSubject(subjectId, {
             notes: { ...current.notes, assessments: filtered, lastUpdated: new Date().toISOString() },
         });
     },
     // Custom subject appearance methods
-    getCustomSubject: async (subjectId) => {
+    getCustomSubject: async (subjectId: string) => {
         const user = await getUser();
         if (!user)
             return null;
@@ -453,7 +464,7 @@ export const subjectStore = {
             return null;
         return data;
     },
-    saveCustomSubject: async (subjectId, updates) => {
+    saveCustomSubject: async (subjectId: string, updates: Partial<CustomSubject>) => {
         const user = await getUser();
         if (!user)
             return;
@@ -499,7 +510,7 @@ export const subjectStore = {
             console.warn("[subjectStore] getAllCustomSubjects failed:", error);
             return {};
         }
-        return (data ?? []).reduce((acc, row) => {
+        return (data ?? []).reduce((acc: Record<string, any>, row: any) => {
             acc[row.subject_id] = row;
             return acc;
         }, {});

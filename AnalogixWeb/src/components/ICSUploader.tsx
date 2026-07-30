@@ -40,7 +40,7 @@ const ICSUploader = ({ allTypes }: ICSUploaderProps) => {
       const events: any = await parseICS(pendingFile);
       if (events.length === 0) { toast.error("No events found in that calendar file"); return; }
       // Override the type on every imported event with the chosen tag
-      const tagged = events.map(ev => ({ ...ev, type: selectedTag }));
+      const tagged = events.map((ev: any) => ({ ...ev, type: selectedTag }));
       eventStore.addMultiple(tagged);
       toast.success(`Imported ${tagged.length} events as "${allTypes[selectedTag]?.label ?? selectedTag}"!`);
       setPendingFile(null);

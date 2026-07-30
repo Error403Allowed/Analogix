@@ -1,6 +1,6 @@
 import { listEvents, listDeadlines } from "@analogix/shared/tools/handlers";
 
-const formatDate = (iso) => {
+const formatDate = (iso: any) => {
     try {
         const d = iso instanceof Date ? iso : new Date(iso + (iso.includes("Z") || iso.includes("+") ? "" : "+00:00"));
         if (isNaN(d.getTime()))
@@ -13,7 +13,7 @@ const formatDate = (iso) => {
         return String(iso);
     }
 };
-const formatTime = (iso) => {
+const formatTime = (iso: any) => {
     try {
         const d = iso instanceof Date ? iso : new Date(iso + (iso.includes("Z") || iso.includes("+") ? "" : "+00:00"));
         if (d.getHours() === 0 && d.getMinutes() === 0)
@@ -24,7 +24,7 @@ const formatTime = (iso) => {
         return null;
     }
 };
-export async function buildCalendarContext(supabase, userId) {
+export async function buildCalendarContext(supabase: any, userId: string) {
     const now = new Date();
     const from = new Date(now);
     from.setDate(from.getDate() - 180);

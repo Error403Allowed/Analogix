@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { callGroqChat, formatError } from "../_utils";
 import { requireUser } from "@/lib/api-auth";
 export const runtime = "nodejs";
-export async function POST(request) {
+export async function POST(request: any) {
     try {
         await requireUser();
         const body = await request.json();

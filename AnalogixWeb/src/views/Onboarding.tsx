@@ -502,7 +502,7 @@ const Onboarding = () => {
         .select("onboarding_complete, name, grade, state, subjects, hobbies, hobby_ids, hobby_details")
         .eq("id", authUser.id)
         .maybeSingle()
-        .then(({ data: profile }) => {
+        .then(({ data: profile }: { data: any }) => {
           const hasProfileData = profile?.onboarding_complete 
             || profile?.name 
             || profile?.grade 

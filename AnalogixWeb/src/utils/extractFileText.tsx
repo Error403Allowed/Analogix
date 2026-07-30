@@ -16,11 +16,11 @@ const SERVER_TYPES = new Set([
     "application/vnd.openxmlformats-officedocument.presentationml.presentation",
     "application/msword",
 ]);
-function ext(name) {
+function ext(name: any) {
     const dot = name.lastIndexOf(".");
     return dot >= 0 ? name.slice(dot).toLowerCase() : "";
 }
-export async function extractFileText(file) {
+export async function extractFileText(file: any) {
     const MAX_BYTES = 10 * 1024 * 1024; // 10 MB
     if (file.size > MAX_BYTES) {
         throw new Error("File is too large (max 10 MB). Try compressing it first.");

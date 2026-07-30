@@ -1,9 +1,9 @@
 import { format } from "date-fns";
 import { getEventDurationMinutes } from "@/views/calendar/timeGridUtils";
-function layoutSingleDayEvents(items) {
+function layoutSingleDayEvents(items: any) {
     const result: any[] = [];
     const groups: any[] = [];
-    const sortedItems = [...items].sort((a, b) => {
+    const sortedItems = [...items].sort((a: any, b: any) => {
         if (a.startMin !== b.startMin)
             return a.startMin - b.startMin;
         return b.endMin - a.endMin;
@@ -26,7 +26,7 @@ function layoutSingleDayEvents(items) {
         const columns: any[] = [];
         const itemColumns = new Map();
         for (const item of group) {
-            let columnIndex = columns.findIndex((column) => {
+            let columnIndex = columns.findIndex((column: any) => {
                 const last = column[column.length - 1];
                 return last.endMin <= item.startMin;
             });
@@ -41,7 +41,7 @@ function layoutSingleDayEvents(items) {
             const col = itemColumns.get(item.event.id) ?? 0;
             let span = 1;
             for (let nextColumn = col + 1; nextColumn < columns.length; nextColumn += 1) {
-                const blocked = columns[nextColumn].some((candidate) => item.startMin < candidate.endMin && item.endMin > candidate.startMin);
+                const blocked = columns[nextColumn].some((candidate: any) => item.startMin < candidate.endMin && item.endMin > candidate.startMin);
                 if (blocked)
                     break;
                 span += 1;
@@ -58,17 +58,17 @@ function layoutSingleDayEvents(items) {
     }
     return result;
 }
-export function layoutEvents(events, hourH) {
+export function layoutEvents(events: any, hourH: any) {
     const itemsByDay = new Map();
     const eventsByDay = new Map();
-    for (const event of [...events].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())) {
+    for (const event of [...events].sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime())) {
         const dayKey = format(new Date(event.date), "yyyy-MM-dd");
         if (!eventsByDay.has(dayKey))
             eventsByDay.set(dayKey, []);
         eventsByDay.get(dayKey).push(event);
     }
     for (const [dayKey, dayEvents] of eventsByDay) {
-        const items = dayEvents.map((event) => {
+        const items = dayEvents.map((event: any) => {
             const start = new Date(event.date);
             const startMin = start.getHours() * 60 + start.getMinutes();
             const durationMin = getEventDurationMinutes(event, 60, dayEvents);

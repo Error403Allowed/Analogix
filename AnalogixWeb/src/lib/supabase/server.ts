@@ -24,7 +24,7 @@ export const createClient = async (): Promise<any> => {
       setAll(cookiesToSet) {
         try {
           cookiesToSet.forEach(({ name, value, options }) =>
-            cookieStore.set(name, value, options)
+            cookieStore.set(name, value, { ...options, sameSite: "lax", secure: true, path: "/" })
           );
         } catch (err) {
           console.error("[supabase/server] Failed to set cookies:", err);

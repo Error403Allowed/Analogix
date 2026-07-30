@@ -27,20 +27,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!cancelled) setLoading(false);
     }, 8000);
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session } }: { data: { session: any } }) => {
       if (cancelled) return;
       clearTimeout(timeout);
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
-    }).catch((err) => {
+    }).catch((err: any) => {
       if (cancelled) return;
       clearTimeout(timeout);
       console.error("AuthContext: getSession error", err);
       setLoading(false);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: any, session: any) => {
       if (cancelled) return;
       clearTimeout(timeout);
       setSession(session);

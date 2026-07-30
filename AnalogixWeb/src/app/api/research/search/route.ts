@@ -119,7 +119,7 @@ const fetchCrossref = async (query: string, limit: number): Promise<ResearchSour
       venue: venue || undefined,
       abstract: abstract ? truncate(abstract) : undefined,
       doi: item.DOI || undefined,
-      openAccess: item["license"]?.length ? true : undefined,
+      openAccess: (item as Record<string, any>)["license"]?.length ? true : undefined,
       source: "crossref",
     } satisfies ResearchSource;
   }).filter(isAcademic);

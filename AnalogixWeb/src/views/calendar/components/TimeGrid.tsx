@@ -261,7 +261,7 @@ export function TimeGrid({ days, events, allTypes, now, onDelete, onSelect, onCr
                   </div>
                 </div>
               )}
-              {laid.map(({ event, top, height, col, totalCols, span }) => (
+              {laid.map(({ event, top, height, col, totalCols, span }: { event: any; top: any; height: any; col: any; totalCols: any; span: any }) => (
                 <div key={event.id} className="absolute left-0 right-0" style={{ top: top + HOUR_H / 2, height }}>
                   <TimeBlock event={event} allTypes={allTypes} col={col} totalCols={totalCols} span={span} height={height}
                     onDelete={() => onDelete(event.id)}

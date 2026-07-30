@@ -22,13 +22,13 @@ const BLOCK_BREAK_TYPES = new Set([
     "detailsSummary",
     "detailsContent",
 ]);
-const normaliseWhitespace = (text) => text
+const normaliseWhitespace = (text: string) => text
     .replace(/\u00a0/g, " ")
     .replace(/[ \t]+\n/g, "\n")
     .replace(/\n{3,}/g, "\n\n")
     .replace(/[ \t]{2,}/g, " ")
     .trim();
-export const stripHtml = (value) => normaliseWhitespace(value
+export const stripHtml = (value: string) => normaliseWhitespace(value
     .replace(/<style[\s\S]*?<\/style>/gi, " ")
     .replace(/<script[\s\S]*?<\/script>/gi, " ")
     .replace(/<\/(p|div|h1|h2|h3|h4|h5|h6|li|blockquote|pre|tr|table|section|article)>/gi, "\n")
@@ -40,7 +40,7 @@ export const stripHtml = (value) => normaliseWhitespace(value
     .replace(/&gt;/g, ">")
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'"));
-export const parseTipTapContentJson = (value) => {
+export const parseTipTapContentJson = (value: string) => {
     if (typeof value !== "string" || !value.trim())
         return null;
     try {
@@ -53,7 +53,7 @@ export const parseTipTapContentJson = (value) => {
     }
     return null;
 };
-const collectText = (node, parts) => {
+const collectText = (node: any, parts: string[]) => {
     if (!node)
         return;
     if (Array.isArray(node)) {
@@ -76,29 +76,29 @@ const collectText = (node, parts) => {
         parts.push("\n");
     }
 };
-export const tiptapJsonToPlainText = (content) => {
-    const parts = [];
+export const tiptapJsonToPlainText = (content: any) => {
+    const parts: string[] = [];
     collectText(content, parts);
     return normaliseWhitespace(parts.join(""));
 };
-export const blockNoteToPlainText = (content) => {
+export const blockNoteToPlainText = (content: string) => {
     if (typeof content !== "string" || !content.startsWith("__BN__"))
         return "";
     try {
         const blocks = JSON.parse(content.slice(6));
         if (!Array.isArray(blocks))
             return "";
-        const extractText = (blocks) => {
+        const extractText = (blocks: any) => {
             return blocks
-                .map((block) => {
+                .map((block: any) => {
                 let text = "";
                 if (Array.isArray(block.content)) {
                     text = block.content
-                        .map((item) => {
+                        .map((item: any) => {
                         if (item.type === "text")
                             return item.text;
                         if (item.type === "link")
-                            return item.content?.map((t) => t.text).join("") || "";
+                            return item.content?.map((t: any) => t.text).join("") || "";
                         return "";
                     })
                         .join("");
@@ -116,7 +116,7 @@ export const blockNoteToPlainText = (content) => {
         return "";
     }
 };
-export const getDocumentPlainText = (document) => {
+export const getDocumentPlainText = (document: any) => {
     if (!document)
         return "";
     if (typeof document.contentText === "string" && document.contentText.trim()) {
@@ -137,12 +137,12 @@ export const getDocumentPlainText = (document) => {
     }
     return "";
 };
-export const isStudyGuideDocument = (document) => {
+export const isStudyGuideDocument = (document: any) => {
     if (!document?.role)
         return false;
     return document.role.trim().toLowerCase() === "study-guide";
 };
-export const getDocumentPreviewText = (document, maxChars = 180) => {
+export const getDocumentPreviewText = (document: any, maxChars: number = 180) => {
     const text = getDocumentPlainText(document);
     if (text.length <= maxChars)
         return text;

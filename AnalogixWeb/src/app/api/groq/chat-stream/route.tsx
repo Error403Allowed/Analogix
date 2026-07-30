@@ -9,10 +9,10 @@ import { TOOL_LIST_DESCRIPTION } from "@/lib/tool-descriptions";
 import { createCurriculumRetriever } from "@/lib/retrieval/curriculum";
 export const runtime = "nodejs";
 // Token estimation: ~4 chars per token for English text
-const estimateTokens = (text) => Math.ceil(text.length / 4);
+const estimateTokens = (text: string) => Math.ceil(text.length / 4);
 // Truncate workspace documents to fit within token budget
-const truncateWorkspaceDocs = (allDocs, maxTokens) => {
-    const totalTokens = allDocs.reduce((sum, d) => sum + estimateTokens(d.preview + d.title + d.subjectId), 0);
+const truncateWorkspaceDocs = (allDocs: any[], maxTokens: number) => {
+    const totalTokens = allDocs.reduce((sum: number, d: any) => sum + estimateTokens(d.preview + d.title + d.subjectId), 0);
     if (totalTokens <= maxTokens) {
         return { docs: allDocs, truncated: false };
     }
@@ -43,8 +43,8 @@ const truncateWorkspaceDocs = (allDocs, maxTokens) => {
     return { docs: result, truncated };
 };
 const STUDY_GUIDE_PREFIX = "__STUDY_GUIDE_V2__";
-const truncate = (text, max) => text.length > max ? text.slice(0, max) + "…" : text;
-const getFirstSentence = (text) => {
+const truncate = (text: string, max: number) => text.length > max ? text.slice(0, max) + "…" : text;
+const getFirstSentence = (text: string) => {
     const cleaned = text.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
     const firstPeriod = cleaned.indexOf(". ");
     if (firstPeriod > 0 && firstPeriod < 200) {
@@ -52,7 +52,7 @@ const getFirstSentence = (text) => {
     }
     return truncate(cleaned, 200);
 };
-const studyGuideToContext = (raw) => {
+const studyGuideToContext = (raw: string) => {
     try {
         const json = raw.slice(STUDY_GUIDE_PREFIX.length);
         const guide = JSON.parse(json);
@@ -62,26 +62,26 @@ const studyGuideToContext = (raw) => {
         if (guide.overview)
             parts.push(`Overview: ${guide.overview}`);
         if (Array.isArray(guide.keyPoints) && guide.keyPoints.length)
-            parts.push(`Key Points:\n${guide.keyPoints.map(p => `  • ${p}`).join("\n")}`);
+            parts.push(`Key Points:\n${guide.keyPoints.map((p: any) => `  • ${p}`).join("\n")}`);
         if (Array.isArray(guide.keyConcepts) && guide.keyConcepts.length)
-            parts.push(`Key Concepts:\n${guide.keyConcepts.map(c => `  • ${c.title}: ${c.content}`).join("\n")}`);
+            parts.push(`Key Concepts:\n${guide.keyConcepts.map((c: any) => `  • ${c.title}: ${c.content}`).join("\n")}`);
         if (guide.keyTable && Array.isArray(guide.keyTable.rows)) {
             const kt = guide.keyTable;
-            parts.push(`Key Table headers: ${kt.headers.join(", ")}\n  rows:\n${kt.rows.map(r => "    " + r.join(" | ")).join("\n")}`);
+            parts.push(`Key Table headers: ${kt.headers.join(", ")}\n  rows:\n${kt.rows.map((r: any) => "    " + r.join(" | ")).join("\n")}`);
         }
         if (Array.isArray(guide.practiceQuestions) && guide.practiceQuestions.length)
-            parts.push(`Practice Questions:\n${guide.practiceQuestions.map((q, i) => `  Q${i + 1}: ${q.question}`).join("\n")}`);
+            parts.push(`Practice Questions:\n${guide.practiceQuestions.map((q: any, i: number) => `  Q${i + 1}: ${q.question}`).join("\n")}`);
         if (Array.isArray(guide.tips) && guide.tips.length)
-            parts.push(`Tips:\n${guide.tips.map(t => `  • ${t}`).join("\n")}`);
+            parts.push(`Tips:\n${guide.tips.map((t: any) => `  • ${t}`).join("\n")}`);
         return parts.join("\n\n");
     }
     catch {
         return "(study guide — unreadable)";
     }
 };
-const formatResearchSources = (sources) => {
-    const truncateText = (text, max = 360) => text.length > max ? text.slice(0, max).trim() + "…" : text.trim();
-    return sources.map((s, i) => {
+const formatResearchSources = (sources: any[]) => {
+    const truncateText = (text: string, max = 360) => text.length > max ? text.slice(0, max).trim() + "…" : text.trim();
+    return sources.map((s: any, i: number) => {
         const authors = s.authors?.slice(0, 4).join(", ") || "Unknown authors";
         const year = s.year ? String(s.year) : "n.d.";
         const venue = s.venue ? ` — ${s.venue}` : "";
@@ -92,13 +92,13 @@ const formatResearchSources = (sources) => {
     }).join("\n\n");
 };
 // Simple client-side summary compression for older messages
-const compressToSummary = (msgs) => {
+const compressToSummary = (msgs: any[]) => {
     if (msgs.length === 0)
         return "";
     // Extract key info from user messages: topics, goals, blockers
-    const userMsgs = msgs.filter(m => m.role === "user");
+    const userMsgs = msgs.filter((m: any) => m.role === "user");
     const topics: string[] = [];
-    userMsgs.forEach(m => {
+    userMsgs.forEach((m: any) => {
         const content = m.content;
         // Extract short topic markers
         if (content.length < 30) {
@@ -124,7 +124,7 @@ const compressToSummary = (msgs) => {
         return "";
     return `[Earlier] ${summaryParts.join(" | ")}`;
 };
-function buildSystemPrompt(userContext, messages, workspaceContext, calendarContext) {
+function buildSystemPrompt(userContext: any, messages: any, workspaceContext: any, calendarContext: any) {
     const analogyIntensity = userContext?.analogyIntensity ?? 1;
     const studentGrade = userContext?.grade || "7-12";
     const studentState = userContext?.state || null;
@@ -133,7 +133,7 @@ function buildSystemPrompt(userContext, messages, workspaceContext, calendarCont
         WA: "Western Australia", SA: "South Australia", TAS: "Tasmania",
         ACT: "Australian Capital Territory", NT: "Northern Territory",
     };
-    const stateFullName = studentState ? (STATE_FULL_NAMES[studentState] || studentState) : null;
+    const stateFullName = studentState ? ((STATE_FULL_NAMES as Record<string, string>)[studentState] || studentState) : null;
     const curriculumContext = stateFullName
         ? `The student is in Year ${studentGrade} in ${stateFullName} (${studentState}), Australia. Always align explanations, examples, terminology, and curriculum references to the ${stateFullName} syllabus and Australian educational standards for Year ${studentGrade}. Use Australian spelling and terminology (e.g. "maths" not "math", "Year" not "Grade").`
         : `The student is in Year ${studentGrade} in Australia. Always align explanations to the Australian curriculum for Year ${studentGrade}. Use Australian spelling and terminology.`;
@@ -321,7 +321,7 @@ Visualisations — you have THREE tools to make concepts visual and memorable:
 IMPORTANT: If the user asks for a visual, diagram, or graph — use the right tool. Math functions → Desmos. Data/statistics → Recharts. Concepts/structures → Three.js. Don't just describe it — SHOW it.
 — Analogix`;
 }
-export async function POST(request) {
+export async function POST(request: Request) {
     try {
         const body = await request.json();
         const messages = body.messages || [];
@@ -398,7 +398,7 @@ export async function POST(request) {
         }
         // Detect simple/greeting messages early — skip workspace loading entirely for speed
         const isSimpleGreeting = (() => {
-            const userMsgs = messages.filter(m => m.role === "user");
+            const userMsgs = messages.filter((m: any) => m.role === "user");
             if (userMsgs.length !== 1)
                 return false;
             const c = userMsgs[0].content.toLowerCase().trim();
@@ -446,8 +446,8 @@ export async function POST(request) {
                             if (truncated) {
                                 console.log(`[chat-stream] Workspace truncated: ${allDocs.length} → ${truncatedDocs.length} docs to fit token budget`);
                             }
-                            const docContext = truncatedDocs.map(d => `[${d.subjectId.toUpperCase()} — ${d.type}: "${d.title}"]\n${d.preview}`).join("\n\n---\n\n");
-                            const docIndex = truncatedDocs.map(d => `  • "${d.title}" [${d.type}] subjectId="${d.subjectId}"`).join("\n");
+                            const docContext = truncatedDocs.map((d: any) => `[${d.subjectId.toUpperCase()} — ${d.type}: "${d.title}"]\n${d.preview}`).join("\n\n---\n\n");
+                            const docIndex = truncatedDocs.map((d: any) => `  • "${d.title}" [${d.type}] subjectId="${d.subjectId}"`).join("\n");
                             workspaceContext = `Document Index:\n${docIndex}\n\nDocument Contents:\n${docContext}`;
                         }
                     }
@@ -543,7 +543,7 @@ export async function POST(request) {
         // Build initial messages
         const finalMessages = [
             { role: "system", content: fullSystemPrompt },
-            ...recentMsgs.filter(m => m.role !== "system"),
+            ...recentMsgs.filter((m: any) => m.role !== "system"),
         ];
         const finalTotal = finalMessages.reduce((sum, m) => sum + m.content.length, 0);
         const finalEst = Math.ceil(finalTotal / 3.5) + targetMaxTokens;

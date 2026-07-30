@@ -132,13 +132,13 @@ export class MemorySystem {
     if (query) {
       const keywords = query.toLowerCase().split(/\s+/).filter(k => k.length > 3);
       results = results
-        .map(r => {
+        .map((r: any) => {
           const contentLower = r.fragment.content.toLowerCase();
           const relevance = keywords.filter(k => contentLower.includes(k)).length / Math.max(keywords.length, 1);
           return { ...r, relevance_score: r.relevance_score * (0.5 + relevance * 0.5) };
         })
-        .filter(r => r.relevance_score > min_importance)
-        .sort((a, b) => b.relevance_score - a.relevance_score);
+        .filter((r: any) => r.relevance_score > min_importance)
+        .sort((a: any, b: any) => b.relevance_score - a.relevance_score);
     }
 
     return results.slice(0, limit);

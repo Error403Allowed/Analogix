@@ -16,7 +16,7 @@ const ThemeSync = () => {
         .select("theme")
         .eq("user_id", user.id)
         .maybeSingle()
-        .then(({ data }) => {
+        .then(({ data }: { data: any }) => {
           if (data?.theme) {
             applyThemeByName(data.theme);
           }

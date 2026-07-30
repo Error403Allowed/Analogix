@@ -9,12 +9,12 @@ export const generateBlockId = () => {
     return `block_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 };
 /** Convert HTML to structured blocks (basic implementation) */
-export const htmlToBlocks = (html, title) => {
+export const htmlToBlocks = (html: any, title: any) => {
     const blocks: any[] = [];
     // Simple HTML parsing - in production, use a proper parser
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, "text/html");
-    const processNode = (node, parentBlock?) => {
+    const processNode = (node: any, parentBlock?: any) => {
         if (node.nodeType === Node.TEXT_NODE) {
             const text = node.textContent?.trim();
             if (text && parentBlock) {
@@ -56,7 +56,7 @@ export const htmlToBlocks = (html, title) => {
                 break;
             case "ul": {
                 const bulletItems: string[] = [];
-                el.querySelectorAll("li").forEach(li => {
+                el.querySelectorAll("li").forEach((li: any) => {
                     bulletItems.push(li.textContent?.trim() || "");
                 });
                 if (bulletItems.length > 0) {
@@ -71,7 +71,7 @@ export const htmlToBlocks = (html, title) => {
             }
             case "ol": {
                 const numberedItems: string[] = [];
-                el.querySelectorAll("li").forEach(li => {
+                el.querySelectorAll("li").forEach((li: any) => {
                     numberedItems.push(li.textContent?.trim() || "");
                 });
                 if (numberedItems.length > 0) {
@@ -103,7 +103,7 @@ export const htmlToBlocks = (html, title) => {
             }
         }
         // Process children
-        el.childNodes.forEach(child => processNode(child));
+        el.childNodes.forEach((child: any) => processNode(child));
     };
     doc.body.childNodes.forEach(node => processNode(node));
     return {
@@ -116,8 +116,8 @@ export const htmlToBlocks = (html, title) => {
     };
 };
 /** Convert structured blocks back to HTML */
-export const blocksToHtml = (blocks) => {
-    return blocks.map(block => {
+export const blocksToHtml = (blocks: any) => {
+    return blocks.map((block: any) => {
         switch (block.type) {
             case "heading1":
                 return `<h1>${escapeHtml(block.content)}</h1>`;
@@ -128,11 +128,11 @@ export const blocksToHtml = (blocks) => {
             case "paragraph":
                 return `<p>${escapeHtml(block.content)}</p>`;
             case "bulletList":
-                return `<ul>${block.items?.map(item => `<li>${escapeHtml(item)}</li>`).join("") || ""}</ul>`;
+                return `<ul>${block.items?.map((item: any) => `<li>${escapeHtml(item)}</li>`).join("") || ""}</ul>`;
             case "numberedList":
-                return `<ol>${block.items?.map(item => `<li>${escapeHtml(item)}</li>`).join("") || ""}</ol>`;
+                return `<ol>${block.items?.map((item: any) => `<li>${escapeHtml(item)}</li>`).join("") || ""}</ol>`;
             case "checklist":
-                return `<ul>${block.items?.map((item, i) => `<li class="task-list-item ${block.checked?.[i] ? 'checked' : ''}">${escapeHtml(item)}</li>`).join("") || ""}</ul>`;
+                return `<ul>${block.items?.map((item: any, i: number) => `<li class="task-list-item ${block.checked?.[i] ? 'checked' : ''}">${escapeHtml(item)}</li>`).join("") || ""}</ul>`;
             case "quote":
                 return `<blockquote>${escapeHtml(block.content)}</blockquote>`;
             case "code":
@@ -142,7 +142,7 @@ export const blocksToHtml = (blocks) => {
         }
     }).join("\n");
 };
-const escapeHtml = (text) => {
+const escapeHtml = (text: string) => {
     return text
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
@@ -150,7 +150,7 @@ const escapeHtml = (text) => {
         .replace(/"/g, "&quot;");
 };
 /** Apply a patch to a document */
-export const applyPatch = (doc, patch) => {
+export const applyPatch = (doc: any, patch: any) => {
     const newDoc = {
         ...doc,
         blocks: [...doc.blocks],
@@ -159,7 +159,7 @@ export const applyPatch = (doc, patch) => {
             updatedAt: new Date().toISOString(),
         },
     };
-    patch.edits.forEach(edit => {
+    patch.edits.forEach((edit: any) => {
         switch (edit.op) {
             case "replace": {
                 const parts = edit.path.split("/").filter(Boolean);
@@ -198,14 +198,14 @@ export const applyPatch = (doc, patch) => {
                 break;
             }
             case "insert_block": {
-                const afterIndex = newDoc.blocks.findIndex(b => b.id === edit.afterBlockId);
+                const afterIndex = newDoc.blocks.findIndex((b: any) => b.id === edit.afterBlockId);
                 if (afterIndex !== -1) {
                     newDoc.blocks.splice(afterIndex + 1, 0, edit.block);
                 }
                 break;
             }
             case "delete_block": {
-                const index = newDoc.blocks.findIndex(b => b.id === edit.blockId);
+                const index = newDoc.blocks.findIndex((b: any) => b.id === edit.blockId);
                 if (index !== -1) {
                     newDoc.blocks.splice(index, 1);
                 }
@@ -216,11 +216,11 @@ export const applyPatch = (doc, patch) => {
     return newDoc;
 };
 /** Find blocks by ID */
-export const findBlocks = (doc, blockIds) => {
-    return doc.blocks.filter(block => blockIds.includes(block.id));
+export const findBlocks = (doc: any, blockIds: any) => {
+    return doc.blocks.filter((block: any) => blockIds.includes(block.id));
 };
 /** Get block index by ID */
-export const getBlockIndex = (doc, blockId) => {
-    return doc.blocks.findIndex(b => b.id === blockId);
+export const getBlockIndex = (doc: any, blockId: any) => {
+    return doc.blocks.findIndex((b: any) => b.id === blockId);
 };
 //# sourceMappingURL=document-structure.js.map

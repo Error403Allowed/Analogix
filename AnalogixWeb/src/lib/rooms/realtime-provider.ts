@@ -2,7 +2,7 @@
 import * as Y from "yjs";
 import { applyAwarenessUpdate, encodeAwarenessUpdate, removeAwarenessStates, } from "y-protocols/awareness";
 import { createClient } from "@/lib/supabase/client";
-const base64ToUint8Array = (value) => {
+const base64ToUint8Array = (value: string) => {
     try {
         const binary = atob(value);
         const bytes = new Uint8Array(binary.length);
@@ -15,7 +15,7 @@ const base64ToUint8Array = (value) => {
         return new Uint8Array();
     }
 };
-const toUint8Array = (value) => {
+const toUint8Array = (value: any) => {
     if (!value)
         return new Uint8Array();
     if (value instanceof Uint8Array)
@@ -47,7 +47,7 @@ export class RoomRealtimeProvider {
     sessionId;
     channel: any = null;
     destroyed = false;
-    constructor(roomName, ydoc, awareness, sessionId) {
+    constructor(roomName: string, ydoc: Y.Doc, awareness: any, sessionId: string) {
         this.roomName = roomName;
         this.ydoc = ydoc;
         this.awareness = awareness;
@@ -59,17 +59,17 @@ export class RoomRealtimeProvider {
         this.channel = supabase.channel(this.roomName, {
             config: { broadcast: { self: false } },
         });
-        this.channel.on("broadcast", { event: "doc-update" }, ({ payload }) => {
+        this.channel.on("broadcast", { event: "doc-update" }, ({ payload }: { payload: any }) => {
             if (!payload?.update)
                 return;
             Y.applyUpdate(this.ydoc, toUint8Array(payload.update), this);
         });
-        this.channel.on("broadcast", { event: "awareness-update" }, ({ payload }) => {
+        this.channel.on("broadcast", { event: "awareness-update" }, ({ payload }: { payload: any }) => {
             if (!payload?.update)
                 return;
             applyAwarenessUpdate(this.awareness, toUint8Array(payload.update), this);
         });
-        this.channel.subscribe((status) => {
+        this.channel.subscribe((status: string) => {
             if (status === "SUBSCRIBED" && !this.destroyed) {
                 this.channel?.send({
                     type: "broadcast",
@@ -89,17 +89,17 @@ export class RoomRealtimeProvider {
         this.ydoc.on("update", this.handleDocUpdate);
         this.awareness.on("update", this.handleAwarenessUpdate);
     }
-    broadcast(event, payload) {
+    broadcast(event: string, payload: any) {
         if (this.destroyed || !this.channel)
             return;
         this.channel.send({ type: "broadcast", event, payload });
     }
-    handleDocUpdate = (update, origin) => {
+    handleDocUpdate = (update: Uint8Array, origin: any) => {
         if (origin === this)
             return;
         this.broadcast("doc-update", { update: Array.from(update) });
     };
-    handleAwarenessUpdate = ({ added, updated, removed, }, origin) => {
+    handleAwarenessUpdate = ({ added, updated, removed, }: { added: number[]; updated: number[]; removed: number[] }, origin: any) => {
         if (origin === this)
             return;
         const changed = [...added, ...updated, ...removed];

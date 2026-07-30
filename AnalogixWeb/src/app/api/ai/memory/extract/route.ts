@@ -161,7 +161,7 @@ ${transcript}`;
       .eq("user_id", user.id)
       .limit(100);
 
-    const existingContents = (existing || []).map(m => m.content.toLowerCase());
+    const existingContents = (existing || []).map((m: any) => m.content.toLowerCase());
 
     // Helper: compute word-level Jaccard similarity for deduplication
     const wordOverlap = (a: string, b: string): number => {
@@ -183,7 +183,7 @@ ${transcript}`;
       const importance = Math.max(0.3, Math.min(1.0, Number(mem.importance) || 0.6));
 
       // Deduplication: skip if similar content already exists (word-level overlap)
-      const matchIndex = existingContents.findIndex(ec =>
+      const matchIndex = existingContents.findIndex((ec: string) =>
         wordOverlap(ec, content.toLowerCase()) >= DEDUP_THRESHOLD
       );
       const isDuplicate = matchIndex >= 0;
@@ -240,7 +240,7 @@ ${transcript}`;
         await supabase
           .from("ai_memory_fragments")
           .delete()
-          .in("id", lowPriority.map(m => m.id));
+          .in("id", lowPriority.map((m: any) => m.id));
       }
     }
 

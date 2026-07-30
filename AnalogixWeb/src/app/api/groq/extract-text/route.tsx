@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 // Vision-capable model for image reading
 const VISION_MODEL = "qwen/qwen3.6-27b";
-export async function POST(request) {
+export async function POST(request: any) {
     console.log("[extract-text] POST request received");
     try {
         await requireUser();
@@ -109,7 +109,7 @@ export async function POST(request) {
                     break; // Success
                 }
                 catch (error) {
-                    lastError = error;
+                    lastError = error as Error;
                     console.warn(`[extract-text] Vision API ❌ key #${i + 1} failed`);
                 }
             }

@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "target": "ES2017",
+    "target": "ES2022",
     "lib": [
       "dom",
       "dom.iterable",
@@ -8,8 +8,7 @@
     ],
     "allowJs": true,
     "skipLibCheck": true,
-    "strict": false,
-    "noImplicitAny": false,
+    "strict": true,
     "noEmit": true,
     "esModuleInterop": true,
     "module": "esnext",
@@ -23,7 +22,6 @@
         "./src/*"
       ]
     },
-    "strictNullChecks": true,
     "forceConsistentCasingInFileNames": true
   },
   "include": [
@@ -37,8 +35,6 @@
   "exclude": [
     "node_modules",
     "dist",
-    ".next",
-    ".next 2",
-    ".next 4"
+    ".next"
   ]
 }

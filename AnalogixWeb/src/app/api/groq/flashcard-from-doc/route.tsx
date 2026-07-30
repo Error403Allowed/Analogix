@@ -3,7 +3,7 @@ import { callGroqChat, formatError } from "../_utils";
 import { requireUser } from "@/lib/api-auth";
 export const runtime = "nodejs";
 // Chunk text into smaller pieces for processing
-const chunkText = (text, maxChunkSize) => {
+const chunkText = (text: any, maxChunkSize: any) => {
     const chunks: string[] = [];
     let start = 0;
     while (start < text.length) {
@@ -22,7 +22,7 @@ const chunkText = (text, maxChunkSize) => {
     }
     return chunks;
 };
-export async function POST(request) {
+export async function POST(request: any) {
     try {
         await requireUser();
         const body = await request.json();
@@ -112,7 +112,7 @@ Return ONLY valid JSON — no markdown, no preamble:
                     chunkFlashcards = chunkFlashcards.filter((fc) => fc.front?.trim() && fc.back?.trim());
                     allFlashcards.push(...chunkFlashcards);
                 }
-                catch (chunkError) {
+                catch (chunkError: any) {
                     console.warn(`[flashcard-from-doc] Chunk ${i + 1} failed:`, formatError(chunkError));
                     // Continue with next chunk
                 }

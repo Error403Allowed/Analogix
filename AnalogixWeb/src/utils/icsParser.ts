@@ -1,8 +1,8 @@
 import ICAL from "ical.js";
-export const parseICS = async (file) => {
+export const parseICS = async (file: any) => {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
-        reader.onload = (e) => {
+        reader.onload = (e: any) => {
             try {
     const content = e.target?.result?.toString() ?? "";
     const jcalData = ICAL.parse(content);
@@ -19,7 +19,7 @@ export const parseICS = async (file) => {
                 const rangeStart = ICAL.Time.fromJSDate(rangeStartJs, false);
                 const rangeEnd = ICAL.Time.fromJSDate(rangeEndJs, false);
                 const events: any[] = [];
-                const pushEvent = (event, startTime, endTime, title, description) => {
+                const pushEvent = (event: any, startTime: any, endTime: any, title: any, description: any) => {
                     const combined = (title + " " + description).toLowerCase();
                     const isExam = academicKeywords.some((kw) => combined.includes(kw));
                     const isAssignment = assignmentKeywords.some((kw) => combined.includes(kw));
@@ -42,7 +42,7 @@ export const parseICS = async (file) => {
                         source: "import",
                     });
                 };
-                vevents.forEach((vevent) => {
+                vevents.forEach((vevent: any) => {
                     const event = new ICAL.Event(vevent);
                     if (!event.startDate)
                         return;

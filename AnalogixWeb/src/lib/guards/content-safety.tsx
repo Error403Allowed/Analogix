@@ -1,3 +1,4 @@
+import type { WorkspaceOperation } from '@/types/operations';
 import { createGuardValidator } from './validator';
 const DANGEROUS_PATTERNS = [
     /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
@@ -8,7 +9,7 @@ const BLOCKED_CONTENT = [
     '___grecaptcha_loaded',
     'grecaptcha.render',
 ];
-export function validateContentSafety(content) {
+export function validateContentSafety(content: any) {
     const errors: { code: string; message: string }[] = [];
     const warnings: { code: string; message: string }[] = [];
     if (!content || typeof content !== 'string') {
@@ -42,7 +43,7 @@ export function validateContentSafety(content) {
         warnings,
     };
 }
-export function validatePermissions(userId, operation, entityOwnerId) {
+export function validatePermissions(userId: string, operation: WorkspaceOperation, entityOwnerId: string) {
     const errors: { code: string; message: string }[] = [];
     if (userId !== entityOwnerId) {
         errors.push({
