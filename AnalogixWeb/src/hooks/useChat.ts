@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { getGroqCompletion, getGroqStream, getReExplanation, generateFlashcards } from "@/services/groq";
+import { getGroqCompletion, getGroqStream, getReExplanation, generateFlashcards, generateChatTitle } from "@/services/groq";
 import { searchAcademicSources } from "@/services/research";
 import { flashcardStore } from "@/utils/flashcardStore";
 import { statsStore } from "@/utils/statsStore";
@@ -196,7 +196,6 @@ export function useChat() {
     allMessages: { id: string; role: string; content: string; isWelcome?: boolean }[],
     userInput: string,
     sessionId: string,
-    contextBuilder: (anchor?: string | null) => any,
   ) => {
     const realUserMessages = newHistory.filter(m => m.role === "user");
     const previousUserMessages = realUserMessages.length;
@@ -211,15 +210,8 @@ export function useChat() {
         .map(m => `${m.role === "user" ? "Student" : "Tutor"}: ${stripToolCalls(m.content).slice(0, 250)}`)
         .join("\n");
       const currentUserMsg = userInput.slice(0, 400);
-      const titlePrompt = [{ role: "user" as const, content: `You are naming a study chat session. Read the conversation so far and the latest student message, then write a short 3–6 word title capturing the SPECIFIC topic being studied. Be concrete — not "Math Help" or "Question Asked", but things like "Quadratic Formula Confusion", "WW2 Causes Breakdown", "Python List Indexing Bug", "Mitosis vs Meiosis". No quotes, no punctuation at the end, just the title.
-
-Conversation so far:
-${realExchanges}
-Student (latest): ${currentUserMsg}
-
-Title:` }];
-      const titleResponse = await getGroqCompletion(titlePrompt, contextBuilder(null));
-      let chatTitle = (titleResponse.content || "")
+      const titleResponse = await generateChatTitle(realExchanges, currentUserMsg);
+      let chatTitle = (titleResponse || "")
         .replace(/^<think>[\s\S]*?<\/think>\s*/i, "")
         .replace(/^<think>[\s\S]*$/i, "")
         .trim();
@@ -670,11 +662,11 @@ Title:` }];
       let accumulated = "";
       let streamError: Error | null;
 
-      try {
-        const abort = new AbortController();
-        abortRef.current = abort;
+      const abort = new AbortController();
+      abortRef.current = abort;
 
-        const stream = getGroqStream(newHistory, context, localStorageData);
+      try {
+        const stream = getGroqStream(newHistory, context, localStorageData, abort.signal);
         for await (const token of stream) {
           if (abort.signal.aborted) break;
           accumulated += token;
@@ -682,6 +674,11 @@ Title:` }];
         }
 
         if (abort.signal.aborted) {
+          // Finalise (or remove) the streaming placeholder so an empty
+          // "isStreaming" bubble never lingers after the user hits stop.
+          setMessages(prev => accumulated.trim()
+            ? prev.map(m => m.id === responseId ? { ...m, isStreaming: false, content: cleanForDisplay(accumulated) } : m)
+            : prev.filter(m => m.id !== responseId));
           setStreamingId(null);
           setStreamingContent("");
           setIsTyping(false);
@@ -689,6 +686,19 @@ Title:` }];
           return;
         }
       } catch (err) {
+        // A user-initiated abort surfaces here as an AbortError from reader.read().
+        // Finalise (or remove) the streaming placeholder and stop without wasting a
+        // non-streaming fallback call.
+        if (abort.signal.aborted) {
+          setMessages(prev => accumulated.trim()
+            ? prev.map(m => m.id === responseId ? { ...m, isStreaming: false, content: cleanForDisplay(accumulated) } : m)
+            : prev.filter(m => m.id !== responseId));
+          setStreamingId(null);
+          setStreamingContent("");
+          setIsTyping(false);
+          abortRef.current = null;
+          return;
+        }
         streamError = err instanceof Error ? err : new Error(String(err));
         console.warn("[Chat] Stream failed, falling back to non-streaming:", streamError.message);
       }
@@ -732,7 +742,7 @@ Title:` }];
             [...prev.map(s => s.id === activeSessionId ? { ...s, updatedAt: new Date().toISOString() } : s)]
               .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
           );
-          await generateChatTitleIfNeeded(newHistory, messages, input, activeSessionId, buildContext);
+          await generateChatTitleIfNeeded(newHistory, messages, input, activeSessionId);
         }
         return;
       }
@@ -744,12 +754,17 @@ Title:` }];
         if (result.proposal) {
           const proposalId = (Date.now() + 2).toString();
           const proposalContent = result.content || "";
-          setMessages(prev => [...prev, {
-            id: proposalId,
-            role: "assistant",
-            content: proposalContent,
-            isStreaming: true,
-          }]);
+          // Drop the empty streaming placeholder (it never finalised) and show the
+          // tool proposal message in its place.
+          setMessages(prev => [
+            ...prev.filter(m => m.id !== responseId),
+            {
+              id: proposalId,
+              role: "assistant",
+              content: proposalContent,
+              isStreaming: true,
+            },
+          ]);
 
           if (activeSessionId) {
             chatStore.addMessage(activeSessionId, "assistant", proposalContent).catch(e => console.error("[Chat] addMessage assistant:", e));
@@ -814,7 +829,7 @@ Title:` }];
               }
             }, 100);
             if (activeSessionId) {
-              generateChatTitleIfNeeded(newHistory, messages, input, activeSessionId, buildContext);
+              generateChatTitleIfNeeded(newHistory, messages, input, activeSessionId);
             }
             setIsTyping(false);
             return;
@@ -847,7 +862,7 @@ Title:` }];
             requestAnimationFrame(reveal);
           }
           if (activeSessionId) {
-            generateChatTitleIfNeeded(newHistory, messages, input, activeSessionId, buildContext);
+            generateChatTitleIfNeeded(newHistory, messages, input, activeSessionId);
           }
           setIsTyping(false);
           return;
@@ -866,7 +881,7 @@ Title:` }];
             [...prev.map(s => s.id === activeSessionId ? { ...s, updatedAt: new Date().toISOString() } : s)]
               .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
           );
-          await generateChatTitleIfNeeded(newHistory, messages, input, activeSessionId, buildContext);
+          await generateChatTitleIfNeeded(newHistory, messages, input, activeSessionId);
         }
         setIsTyping(false);
         abortRef.current = null;

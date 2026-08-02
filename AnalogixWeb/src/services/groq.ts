@@ -132,6 +132,7 @@ export async function* getGroqStream(
   messages: ChatMessage[],
   userContext?: Partial<UserContext> & { analogyIntensity?: number; analogyAnchor?: string },
   localStorageData?: GroqStreamClientData | null,
+  signal?: AbortSignal,
 ): AsyncGenerator<string> {
   // ── CLASSIFY TASK and BUDGET ──
   const userMessage = messages[messages.length - 1]?.content || "";
@@ -154,6 +155,7 @@ export async function* getGroqStream(
     method: "POST",
     headers,
     body: JSON.stringify({ messages: budgetedMessages, userContext }),
+    signal,
   });
 
   if (!response.ok) {
@@ -277,6 +279,42 @@ const fetchJson = async <T>(
 export interface GroqCompletionResult extends ChatMessage {
   proposal?: ToolProposal;
 }
+
+/**
+ * LIGHTWEIGHT SUBJECT DETECTION: Classifies a first message into a subject ID.
+ * Uses a tiny system prompt + small model so it stays fast and never trips the
+ * provider's per-minute token limit (unlike the full /api/groq/chat pipeline).
+ */
+export const detectSubject = async (userMessage: string) => {
+  try {
+    const data = await fetchJson<{ subject: string | null }>(
+      "/api/groq/detect-subject",
+      { message: userMessage.slice(0, 300) },
+      15000,
+    );
+    return data.subject ?? null;
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * LIGHTWEIGHT CHAT TITLE GENERATION: Names a study session from the conversation.
+ * Uses the dedicated /api/groq/title endpoint (small prompt, tiny output budget)
+ * instead of the full chat pipeline, so it never times out or hits 413s.
+ */
+export const generateChatTitle = async (conversation: string, latestMessage: string) => {
+  try {
+    const data = await fetchJson<{ title: string }>(
+      "/api/groq/title",
+      { conversation, latestMessage },
+      15000,
+    );
+    return data.title || null;
+  } catch {
+    return null;
+  }
+};
 
 /**
  * THE MAIN FUNCTION: This is what we call when we want the AI to think.

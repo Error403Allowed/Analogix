@@ -2,7 +2,7 @@
 
 const LAYERS = [3, 4, 4, 3];
 
-function generateConnections() {
+const connections = (() => {
   const conns: { x1: number; y1: number; x2: number; y2: number; delay: number }[] = [];
   for (let l = 0; l < LAYERS.length - 1; l++) {
     for (let i = 0; i < LAYERS[l]; i++) {
@@ -12,20 +12,21 @@ function generateConnections() {
           y1: ((i + 0.5) / LAYERS[l]) * 100,
           x2: ((l + 1) / (LAYERS.length - 1)) * 100,
           y2: ((j + 0.5) / LAYERS[l + 1]) * 100,
-          delay: Math.random() * 2,
+          delay: ((i * LAYERS[l + 1] + j) % 4) * 0.4,
         });
       }
     }
   }
   return conns;
-}
+})();
 
-const connections = generateConnections();
+const getNodeDelay = (layer: number, index: number, count: number): string =>
+  `${(index / count) * 1.6 + layer * 0.1}s`;
 
 export function NeuralNetworkLoader() {
   return (
-    <div className="flex items-center gap-3">
-      <div className="relative w-20 h-12">
+    <div className="flex items-center gap-2.5">
+      <div className="relative w-16 h-10">
         <svg
           viewBox="0 0 100 60"
           className="w-full h-full"
@@ -74,9 +75,7 @@ export function NeuralNetworkLoader() {
                 r="2.5"
                 fill="hsl(var(--primary) / 0.3)"
                 className="neural-node"
-                style={{
-                  animationDelay: `${Math.random() * 2}s`,
-                }}
+                style={{ animationDelay: getNodeDelay(l, i, count) }}
               />
             ))
           )}

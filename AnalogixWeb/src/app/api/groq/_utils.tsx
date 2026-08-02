@@ -145,10 +145,12 @@ const refillTokens = (bucket: any) => {
     bucket.tokens = Math.min(RATE_LIMIT_CONFIG.tpmPerKey, bucket.tokens + elapsedMs * tokensPerMs);
     bucket.lastRefill = now;
 };
+const MAX_TOKEN_WAIT_MS = 10000;
 const waitForToken = async (keyIndex: number, requiredTokens: number) => {
     const bucket = getOrCreateBucket(keyIndex);
     // Block until tokens are available
     const tokensPerMs = RATE_LIMIT_CONFIG.tpmPerKey / 60000;
+    const startedAt = Date.now();
     while (true) {
         refillTokens(bucket);
         const effectiveRequired = Math.min(requiredTokens, RATE_LIMIT_CONFIG.tpmPerKey * 0.85);
@@ -156,10 +158,17 @@ const waitForToken = async (keyIndex: number, requiredTokens: number) => {
             bucket.tokens -= effectiveRequired;
             break;
         }
+        // Give up waiting after a hard cap so requests never hang for a minute+
+        // (the client aborts at 60s, and a large request can otherwise stall here
+        // for 50s+. Groq's own 429 handling + backoff take over if we're limited.)
+        if (Date.now() - startedAt >= MAX_TOKEN_WAIT_MS) {
+            console.warn(`[Groq] Token bucket wait exceeded ${MAX_TOKEN_WAIT_MS}ms (need ${Math.ceil(effectiveRequired)}t, have ${Math.ceil(bucket.tokens)}t) — proceeding without reserving tokens`);
+            break;
+        }
         // Wait for enough tokens to accumulate
         const deficit = effectiveRequired - bucket.tokens;
         const waitMs = Math.ceil(deficit / tokensPerMs) + 50;
-        await delay(Math.min(waitMs, 5000));
+        await delay(Math.min(waitMs, 2000));
     }
     bucket.concurrentRequests++;
     return true;
@@ -186,6 +195,7 @@ const enqueueRequest = () => {
 // ============================================================================
 // ERROR HANDLING
 // ============================================================================
+const TOKEN_LIMIT_HINT = "Request too large — this request exceeds the AI provider's per-minute token limit. Try shortening your question, attaching fewer files, or starting a new chat.";
 const parseErrorMessage = async (response: Response) => {
     try {
         const raw = await response.text();
@@ -199,7 +209,7 @@ const parseErrorMessage = async (response: Response) => {
                 if (typeof parsed.error === "string") {
                     // Enhance token limit error messages with explanation
                     if (response.status !== 429 && (parsed.error.toLowerCase().includes("token") || parsed.error.toLowerCase().includes("length"))) {
-                        return "Response limit reached - I'm capped at ~1900 tokens per response due to API rate limits (Groq's free tier allows ~6000 tokens/minute). This keeps responses fast and reliable. For longer content, try breaking your question into parts or ask me to continue in a follow-up message.";
+                        return TOKEN_LIMIT_HINT;
                     }
                     return parsed.error;
                 }
@@ -207,7 +217,7 @@ const parseErrorMessage = async (response: Response) => {
                     // Enhance token limit error messages with explanation
                     const msg = parsed.error.message.toLowerCase();
                     if (response.status !== 429 && (msg.includes("token") || msg.includes("length") || msg.includes("maximum"))) {
-                        return "Response limit reached - I'm capped at ~1900 tokens per response due to API rate limits (Groq's free tier allows ~6000 tokens/minute). This keeps responses fast and reliable. For longer content, try breaking your question into parts or ask me to continue in a follow-up message.";
+                        return TOKEN_LIMIT_HINT;
                     }
                     return parsed.error.message;
                 }

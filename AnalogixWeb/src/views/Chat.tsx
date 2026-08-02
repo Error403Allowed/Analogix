@@ -366,11 +366,33 @@ const Chat = () => {
                                     message.isStreaming ? streamingContent : message.content,
                                     !message.isStreaming
                                   );
+                                  const emptyStream = message.isStreaming && !parsed.response.trim();
                                   return (
-                                    <StreamingMessage
-                                      content={parsed.response}
-                                      isStreaming={!!message.isStreaming}
-                                    />
+                                    <AnimatePresence mode="wait" initial={false}>
+                                      {emptyStream ? (
+                                        <motion.div
+                                          key="stream-loader"
+                                          initial={{ opacity: 0 }}
+                                          animate={{ opacity: 1 }}
+                                          exit={{ opacity: 0 }}
+                                          transition={{ duration: 0.18 }}
+                                        >
+                                          <NeuralNetworkLoader />
+                                        </motion.div>
+                                      ) : (
+                                        <motion.div
+                                          key="stream-content"
+                                          initial={{ opacity: 0 }}
+                                          animate={{ opacity: 1 }}
+                                          transition={{ duration: 0.22 }}
+                                        >
+                                          <StreamingMessage
+                                            content={parsed.response}
+                                            isStreaming={!!message.isStreaming}
+                                          />
+                                        </motion.div>
+                                      )}
+                                    </AnimatePresence>
                                   );
                                 })()}
                                 {message.sources && message.sources.length > 0 && (
@@ -525,16 +547,20 @@ const Chat = () => {
                     })}
                   </AnimatePresence>
 
-                  {isTyping && (
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ duration: 0.3, ease: "easeOut" }}
-                      className="flex justify-start"
-                    >
-                      <NeuralNetworkLoader />
-                    </motion.div>
-                  )}
+                  <AnimatePresence>
+                    {isTyping && !messages.some(m => m.isStreaming) && (
+                      <motion.div
+                        key="standalone-loader"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0, y: -6 }}
+                        transition={{ duration: 0.25, ease: "easeOut" }}
+                        className="flex justify-start"
+                      >
+                        <NeuralNetworkLoader />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
 
                   {pendingProposal && (
                     <ToolProposalCard

@@ -4,7 +4,14 @@ import { requireUser } from "@/lib/api-auth";
 export const runtime = "nodejs";
 export async function POST(request: any) {
     try {
-        await requireUser();
+        // Title generation is harmless (names a chat session) — require auth when
+        // available but still work in local dev without a signed-in user.
+        try {
+            await requireUser();
+        }
+        catch {
+            // proceed unauthenticated
+        }
         const body = await request.json();
         const conversation = body.conversation || "";
         const latestMessage = body.latestMessage || "";

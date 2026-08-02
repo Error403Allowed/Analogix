@@ -1,5 +1,17 @@
 import { describe, it, expect } from 'vitest';
 import { validateContentSafety, validatePermissions } from '@/lib/guards/content-safety';
+import type { WorkspaceOperation } from '@/types/operations';
+
+const makeOperation = (ownerId: string): WorkspaceOperation => ({
+  id: 'op-1',
+  type: 'update_document',
+  user_id: ownerId,
+  entity_type: 'document',
+  entity_id: 'doc-1',
+  payload: {},
+  status: 'pending',
+  created_at: new Date().toISOString(),
+});
 
 describe('validateContentSafety', () => {
   it('allows safe content', () => {
@@ -51,12 +63,12 @@ describe('validateContentSafety', () => {
 
 describe('validatePermissions', () => {
   it('allows when user owns the entity', () => {
-    const result = validatePermissions('user_1', {}, 'user_1');
+    const result = validatePermissions('user_1', makeOperation('user_1'), 'user_1');
     expect(result.allowed).toBe(true);
   });
 
   it('denies when user does not own the entity', () => {
-    const result = validatePermissions('user_1', {}, 'user_2');
+    const result = validatePermissions('user_1', makeOperation('user_1'), 'user_2');
     expect(result.allowed).toBe(false);
     expect(result.errors.some(e => e.code === 'PERMISSION_DENIED')).toBe(true);
   });

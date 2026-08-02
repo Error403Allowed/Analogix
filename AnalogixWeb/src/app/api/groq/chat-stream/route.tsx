@@ -626,7 +626,7 @@ export async function POST(request: Request) {
         }
         else if (message.toLowerCase().includes("token") || message.toLowerCase().includes("length")) {
             statusCode = 400;
-            userMessage = "Response limit reached - I'm capped at ~1900 tokens per response due to API rate limits (Groq's free tier allows ~6000 tokens/minute). This keeps responses fast and reliable. For longer content, try breaking your question into parts or ask me to continue in a follow-up message.";
+            userMessage = "Request too large — this request exceeds the AI provider's per-minute token limit. Try shortening your question, attaching fewer files, or starting a new chat.";
         }
         return new Response(`data: ${JSON.stringify({ error: userMessage, code: statusCode })}\n\n`, { status: statusCode, headers: { "Content-Type": "text/event-stream" } });
     }

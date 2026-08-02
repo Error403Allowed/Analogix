@@ -435,15 +435,32 @@ ${userSubjectsContext}`;
         // ========================================================================
         // STEP 4: Send to AI and return the response
         // ========================================================================
+        // Trim the conversation to fit the provider's per-request token budget.
+        // Oversized requests hit 413 "Request too large" (tokens-per-minute) errors
+        // from Groq's free tier, so drop the oldest turns while always keeping the
+        // system prompt and the latest user message.
+        const TOTAL_BUDGET = 12000;
+        const aiMessages: { role: string; content: string }[] = [
+            {
+                role: "system",
+                content: finalSystemContent,
+            },
+            ...messages.filter((m: any) => m.role !== "system"),
+        ];
+        let totalChars = aiMessages.reduce((sum, m) => sum + m.content.length, 0);
+        let estTokens = Math.ceil(totalChars / 3.5) + maxTokens;
+        let droppedMessages = 0;
+        while (estTokens > TOTAL_BUDGET && aiMessages.length > 2) {
+            aiMessages.splice(1, 1);
+            droppedMessages += 1;
+            totalChars = aiMessages.reduce((sum, m) => sum + m.content.length, 0);
+            estTokens = Math.ceil(totalChars / 3.5) + maxTokens;
+        }
+        if (droppedMessages > 0) {
+            console.log(`[chat] Dropped ${droppedMessages} old message(s) to fit token budget (${estTokens}t / ${TOTAL_BUDGET}t)`);
+        }
         const rawContent = await callGroqChat({
-            messages: [
-                {
-                    role: "system",
-                    content: finalSystemContent,
-                },
-                // Strip out any system messages the client may have passed — we own the system prompt
-                ...messages.filter((m: any) => m.role !== "system"),
-            ],
+            messages: aiMessages,
             max_tokens: maxTokens,
             temperature: researchMode ? 0.3 : 0.7,
         }, taskType, userContext?.selectedModel || null);

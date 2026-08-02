@@ -1,6 +1,6 @@
 import type { ToolCall } from "@analogix/shared/types";
 import type { SubjectId } from "@/constants/subjects";
-import { getGroqCompletion } from "@/services/groq";
+import { detectSubject } from "@/services/groq";
 
 export function getToolAutoApproval() {
   if (typeof window === "undefined") return { autoApproveAll: false, autoApproveRead: false, autoApproveSubjects: [] as string[] };
@@ -93,21 +93,7 @@ export function getLocalStorageData() {
 }
 
 export async function detectSubjectFromMessage(userMessage: string): Promise<SubjectId | null> {
-  try {
-    const prompt = [
-      { role: "user" as const, content:
-        `You are a subject classifier for an Australian secondary school app. ` +
-        `Given this student message, return ONLY the most appropriate subject ID from this list: ` +
-        `math, biology, history, physics, chemistry, english, computing, economics, business, commerce, pdhpe, geography, engineering, medicine, languages. ` +
-        `Student message: "${userMessage.slice(0, 300)}" ` +
-        `Respond with ONLY the subject ID, nothing else. If unsure, return the closest match.`
-      }
-    ];
-    const res = await getGroqCompletion(prompt, { analogyIntensity: 0 });
-    const raw = (res.content || "").trim().toLowerCase().replace(/[^a-z]/g, "");
-    const valid: SubjectId[] = ["math","biology","history","physics","chemistry","english","computing","economics","business","commerce","pdhpe","geography","engineering","medicine","languages"];
-    return valid.find(s => s === raw) ?? null;
-  } catch {
-    return null;
-  }
+  const detected = await detectSubject(userMessage);
+  if (detected) return detected as SubjectId;
+  return null;
 }
