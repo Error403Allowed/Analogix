@@ -19,14 +19,13 @@ interface AssistantMessageProps {
   reExplainingId: string | null;
   researchSources: any[];
   sending: boolean;
-  onRunCode: (code: string) => void;
   onRegenerate: () => void;
   onReExplainRequest: (messageId: string) => void;
 }
 
 export function AssistantMessage({
   content, createdAt, id, messages, isLastAssistant, hasStreaming,
-  reExplainingId, researchSources, sending, onRunCode, onRegenerate, onReExplainRequest,
+  reExplainingId, researchSources, sending, onRegenerate, onReExplainRequest,
 }: AssistantMessageProps) {
   const theme = useTheme();
   const parsed = parseThinkingBlock(content, true);
@@ -49,7 +48,7 @@ export function AssistantMessage({
       <View style={styles.msgContent}>
         {parsed.thinking && <ThinkingBlock content={parsed.thinking} />}
         {parsed.response ? (
-          <MarkdownWithGraphs content={parsed.response} onRunCode={onRunCode} />
+          <MarkdownWithGraphs content={parsed.response} />
         ) : null}
       </View>
       <View style={styles.actions}>

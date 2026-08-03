@@ -4,7 +4,7 @@ import { MarkdownRenderer } from "../../../components/MarkdownRenderer";
 import { GraphPlotter } from "../../../components/GraphPlotter";
 import { desmosBlocks } from "../utils/desmosBlocks";
 
-export function MarkdownWithGraphs({ content, onRunCode }: { content: string; onRunCode?: (code: string) => void }) {
+export function MarkdownWithGraphs({ content }: { content: string }) {
   const blocks = useMemo(() => desmosBlocks(content), [content]);
   return (
     <View>
@@ -12,7 +12,7 @@ export function MarkdownWithGraphs({ content, onRunCode }: { content: string; on
         block.expressions.length > 0 ? (
           <GraphPlotter key={`g-${i}`} expressions={block.expressions} height={250} />
         ) : (
-          block.text ? <MarkdownRenderer key={`m-${i}`} content={block.text} onRunCode={onRunCode} /> : null
+          block.text ? <MarkdownRenderer key={`m-${i}`} content={block.text} /> : null
         )
       )}
     </View>

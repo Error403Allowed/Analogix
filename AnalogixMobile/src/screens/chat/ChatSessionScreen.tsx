@@ -33,7 +33,7 @@ export default function ChatSessionScreen() {
     showFormulaPanel, setShowFormulaPanel, formulaSearch, setFormulaSearch,
     currentSubject, currentSubjectId, filteredSubjects,
     currentFormulaSheet, allItems, messages, userHobbies,
-    handleRunCode, handleRegenerate, handleReExplain,
+    handleRegenerate, handleReExplain,
     handleGenerateFromFiles, handleUploadFile, removeAttachedFile, handleSend,
   } = useChatSession(route, navigation);
 
@@ -88,7 +88,7 @@ export default function ChatSessionScreen() {
         }
         renderItem={({ item }) => {
           if ("_pending" in item) return <PendingMessage content={item.content} />;
-          if ("_streaming" in item) return <StreamingMessage content={item.content} onRunCode={handleRunCode} />;
+          if ("_streaming" in item) return <StreamingMessage content={item.content} />;
           if (item.role === "user") return <UserMessage content={item.content} createdAt={item.createdAt} />;
           const isLast = messages.length > 0 && messages[0]?.id === item.id;
           return (
@@ -96,7 +96,7 @@ export default function ChatSessionScreen() {
               content={item.content} createdAt={item.createdAt} id={item.id}
               messages={messages} isLastAssistant={isLast} hasStreaming={hasStreaming}
               reExplainingId={reExplainingId} researchSources={researchSources} sending={sending}
-              onRunCode={handleRunCode} onRegenerate={handleRegenerate}
+              onRegenerate={handleRegenerate}
               onReExplainRequest={setReExplainMessageId}
             />
           );

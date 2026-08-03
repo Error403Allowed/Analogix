@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback, useRef, useEffect, useState } from "react";
+import React, { useMemo, useRef, useEffect, useState } from "react";
 import { View, Text, StyleSheet, Dimensions, Platform } from "react-native";
 import { useTheme } from "react-native-paper";
 
@@ -11,7 +11,6 @@ interface Props {
   content: string;
   maxWidth?: number;
   style?: any;
-  onRunCode?: (code: string) => void;
 }
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -51,7 +50,7 @@ function renderMath(math: string, display: boolean): string {
     : `<span class="math-inline">\\(${escaped}\\)</span>`;
 }
 
-function renderMarkdownToHtml(markdown: string, blockIndex: { current: number }): string {
+function renderMarkdownToHtml(markdown: string): string {
   const lines = markdown.split("\n");
   let html = "";
   let inCodeBlock = false;
@@ -62,15 +61,9 @@ function renderMarkdownToHtml(markdown: string, blockIndex: { current: number })
     if (line.startsWith("```")) {
       if (inCodeBlock) {
         const lang = codeLang.toLowerCase();
-        const isPython = lang === "python" || lang === "py";
-        const idx = blockIndex.current++;
-        const runBtn = isPython
-          ? `<button class="run-btn" data-code-idx="${idx}" onclick="event.stopPropagation(); window.ReactNativeWebView.postMessage(JSON.stringify({type:'run-code', index:${idx}}))">\u25B6 Run</button>`
-          : "";
-        html += `<div class="code-wrapper" data-code-idx="${idx}">
+        html += `<div class="code-wrapper">
           <div class="code-header">
             <span class="code-lang">${escapeHtml(codeLang)}</span>
-            ${runBtn}
           </div>
           <pre><code class="language-${escapeHtml(codeLang)}">${escapeHtml(codeContent)}</code></pre>
         </div>`;
@@ -118,15 +111,9 @@ function renderMarkdownToHtml(markdown: string, blockIndex: { current: number })
 
   if (inCodeBlock && codeContent) {
     const lang = codeLang.toLowerCase();
-    const isPython = lang === "python" || lang === "py";
-    const idx = blockIndex.current++;
-    const runBtn = isPython
-      ? `<button class="run-btn" data-code-idx="${idx}" onclick="event.stopPropagation(); window.ReactNativeWebView.postMessage(JSON.stringify({type:'run-code', index:${idx}}))">\u25B6 Run</button>`
-      : "";
-    html += `<div class="code-wrapper" data-code-idx="${idx}">
+    html += `<div class="code-wrapper">
       <div class="code-header">
         <span class="code-lang">${escapeHtml(codeLang)}</span>
-        ${runBtn}
       </div>
       <pre><code class="language-${escapeHtml(codeLang)}">${escapeHtml(codeContent)}</code></pre>
     </div>`;
@@ -136,9 +123,7 @@ function renderMarkdownToHtml(markdown: string, blockIndex: { current: number })
 }
 
 function buildHtml(markdown: string, isDark: boolean): { html: string } {
-  const blockIndex = { current: 0 };
-
-  const body = renderMarkdownToHtml(markdown, blockIndex);
+  const body = renderMarkdownToHtml(markdown);
 
   const scripts = `
     document.addEventListener("DOMContentLoaded", function() {
@@ -258,19 +243,6 @@ function buildHtml(markdown: string, isDark: boolean): { html: string } {
           text-transform: uppercase;
           letter-spacing: 0.5px;
         }
-        .run-btn {
-          background: #6366f1;
-          color: #fff;
-          border: none;
-          border-radius: 4px;
-          padding: 3px 10px;
-          font-size: 11px;
-          font-weight: 600;
-          cursor: pointer;
-          transition: background 0.15s;
-        }
-        .run-btn:hover { background: #4f46e5; }
-        .run-btn:active { background: #4338ca; }
       </style>
     </head>
     <body>${body}</body>
@@ -279,42 +251,18 @@ function buildHtml(markdown: string, isDark: boolean): { html: string } {
   return { html };
 }
 
-function extractCodes(markdown: string): string[] {
-  const codes: string[] = [];
-  const regex = /```(?:python|py)\s*\n([\s\S]*?)```/g;
-  let match;
-  while ((match = regex.exec(markdown)) !== null) {
-    codes.push(match[1].trim());
-  }
-  return codes;
-}
-
-export function MarkdownRenderer({ content, maxWidth, style, onRunCode }: Props) {
-  const codesRef = useRef<string[]>([]);
+export function MarkdownRenderer({ content, maxWidth, style }: Props) {
   const paperTheme = useTheme();
   const isDark = paperTheme.dark;
 
   const { html } = useMemo(() => {
     const normalised = normaliseLatex(content);
-    codesRef.current = extractCodes(content);
     return buildHtml(normalised, isDark);
   }, [content, isDark]);
 
   const width = maxWidth ?? Math.min(SCREEN_WIDTH - 80, 400);
 
   const [webViewError, setWebViewError] = useState(false);
-
-  const handleMessage = useCallback((event: any) => {
-    try {
-      const msg = JSON.parse(event.nativeEvent?.data ?? event.data);
-      if (msg.type === "run-code" && typeof msg.index === "number") {
-        const code = codesRef.current[msg.index];
-        if (code && onRunCode) {
-          onRunCode(code);
-        }
-      }
-    } catch { /* noop */ }
-  }, [onRunCode]);
 
   if (webViewError) {
     return (
@@ -336,7 +284,6 @@ export function MarkdownRenderer({ content, maxWidth, style, onRunCode }: Props)
           showsVerticalScrollIndicator={false}
           javaScriptEnabled={true}
           domStorageEnabled={false}
-          onMessage={handleMessage}
           onError={() => setWebViewError(true)}
           onHttpError={() => setWebViewError(true)}
           originWhitelist={[]}

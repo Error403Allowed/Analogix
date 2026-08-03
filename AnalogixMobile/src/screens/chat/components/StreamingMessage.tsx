@@ -5,14 +5,14 @@ import { parseThinkingBlock } from "../../../utils/parseThinkingBlock";
 import { ThinkingBlock } from "../../../components/ThinkingBlock";
 import { MarkdownWithGraphs } from "./MarkdownWithGraphs";
 
-export function StreamingMessage({ content, onRunCode }: { content: string; onRunCode?: (code: string) => void }) {
+export function StreamingMessage({ content }: { content: string }) {
   const theme = useTheme();
   const parsed = parseThinkingBlock(content, false);
   return (
     <View style={styles.container}>
       {parsed.thinking && <ThinkingBlock content={parsed.thinking} />}
       {parsed.response ? (
-        <MarkdownWithGraphs content={parsed.response} onRunCode={onRunCode} />
+        <MarkdownWithGraphs content={parsed.response} />
       ) : null}
       <View style={styles.indicator}>
         <View style={[styles.dot, { backgroundColor: theme.colors.primary }]}>

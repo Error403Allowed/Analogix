@@ -11,7 +11,6 @@ import { GENERATE_QUIZ } from "../../../graphql/queries/quiz";
 import { SUBJECTS } from "../../../graphql/queries/subject";
 import { ME } from "../../../graphql/queries/user";
 import { FORMULA_SHEETS } from "../../../graphql/queries/misc";
-import { usePythonExecution } from "../../../hooks/usePythonExecution";
 import { GroqModelId, getGroqModelString } from "../../../types/groq-models";
 
 interface AttachedFile {
@@ -85,8 +84,6 @@ export function useChatSession(route: any, navigation: any) {
 
   const messages = [...(data?.chatMessages ?? [])].reverse();
 
-  const pyExec = usePythonExecution();
-
   useSubscription(CHAT_STREAM, {
     variables: { sessionId: activeSessionId },
     skip: !realSessionId,
@@ -113,28 +110,6 @@ export function useChatSession(route: any, navigation: any) {
     const matched = userHobbyIds.find((h) => lower.includes(h.toLowerCase()));
     return matched || null;
   }, [analogyModeEnabled, userHobbyIds]);
-
-  const handleRunCode = useCallback((code: string) => {
-    Alert.alert("Execute Python", "Run this code?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Run",
-        onPress: async () => {
-          const result = await pyExec.executeCode(code);
-          if (result) {
-            let msg = "";
-            if (result.stdout) msg += `Stdout:\n${result.stdout}\n\n`;
-            if (result.stderr) msg += `Stderr:\n${result.stderr}\n\n`;
-            if (result.error) msg += `Error:\n${result.error}\n\n`;
-            msg += `Duration: ${result.durationMs}ms`;
-            Alert.alert("Execution Result", msg.trim());
-          } else if (pyExec.error) {
-            Alert.alert("Execution Error", pyExec.error);
-          }
-        },
-      },
-    ]);
-  }, [pyExec]);
 
   const handleRegenerate = useCallback(async () => {
     if (sending) return;
@@ -394,7 +369,6 @@ export function useChatSession(route: any, navigation: any) {
     userHobbies,
     userHobbyIds,
     // Handlers
-    handleRunCode,
     handleRegenerate,
     handleReExplain,
     handleGenerateFromFiles,
