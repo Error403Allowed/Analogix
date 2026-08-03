@@ -64,8 +64,6 @@
 
 These are just a few of the features! Visit <a href="https://analogix.vercel.app" target="_blank" rel="noopener noreferrer">Analogix</a> for the full experience!
 
-These are just a few of the features! Visit [Analogix](https://analogix.vercel.app) for the full experience! 
-
 ---
 
 ## Features
@@ -88,28 +86,28 @@ These are just a few of the features! Visit [Analogix](https://analogix.vercel.a
 
 ```
                     ┌───────────────────────┐
-                    │    AnalogixWeb         │
-                    │  Next.js 16 + Turbopack │
-                    │  REST + GraphQL client  │
+                    │    AnalogixWeb        │
+                    │ Next.js 16 + Turbopack│
+                    │ REST + GraphQL client │
                     └────────┬──────────────┘
                              │ HTTP/WS
                     ┌────────▼──────────────┐
                     │   AnalogixGraphQL     │
                     │  Apollo Server v5     │◄──── Supabase Auth (JWT)
-                    │  Express 5 + graphql-ws│      Groq AI, OpenAlex
+                    │ Express 5 + graphql-ws│      Groq AI, OpenAlex
                     │  Redis PubSub         │      Supabase DB/Storage
                     └────────┬──────────────┘
                              │ HTTP/WS
                     ┌────────▼──────────────┐
-                    │    AnalogixMobile      │
-                    │  Expo SDK 54 + RN 0.81 │
-                    │  Material 3 Expressive │
+                    │    AnalogixMobile     │
+                    │ Expo SDK 54 + RN 0.81 │
+                    │ Material 3 Expressive│
                     └───────────────────────┘
 ```
 
 Key design decisions:
 
-- Web and mobile share the same GraphQL API — no duplicate endpoints.
+- Web and mobile share the same GraphQL API - no duplicate endpoints.
 - Auth is handled server-side via Supabase JWT verification.
 - Redis PubSub manages subscriptions for room sync and chat streaming (falls back to in-process in dev).
 - Both clients share types and schemas from `@analogix/shared`. Change a Zod schema and the rest follows.
@@ -187,9 +185,9 @@ npm run dev:mobile   # Expo dev server
 
 Refer to the individual READMEs in each package for details:
 
-- [`AnalogixGraphQL/README.md`](./AnalogixGraphQL/README.md) — schema, resolvers, deployment.
-- [`AnalogixMobile/README.md`](./AnalogixMobile/README.md) — screenshots, theming, EAS builds, auth.
-- [`AnalogixWeb/README.md`](./AnalogixWeb/README.md) — setup, pages, troubleshooting.
+- [`AnalogixGraphQL/README.md`](./AnalogixGraphQL/README.md) - schema, resolvers, deployment.
+- [`AnalogixMobile/README.md`](./AnalogixMobile/README.md) - screenshots, theming, EAS builds, auth.
+- [`AnalogixWeb/README.md`](./AnalogixWeb/README.md) - setup, pages, troubleshooting.
 
 ---
 
