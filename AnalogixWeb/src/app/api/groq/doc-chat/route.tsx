@@ -112,7 +112,7 @@ ${formulaSheetContext ? `\n--- FORMULA REFERENCE ---\n${formulaSheetContext}\n--
                     ],
                     max_tokens: maxTokens,
                     temperature: 0.55,
-                }, taskType);
+                }, taskType, userContext?.selectedModel || null);
                 const reader = stream!.getReader();
                 while (true) {
                     const { done, value } = await reader.read();

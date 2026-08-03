@@ -1,4 +1,4 @@
-import { callGroqChatStream, formatError, classifyTaskType } from "../_utils";
+import { callGroqChatStream, formatError, classifyTaskType, resolveModelForUser } from "../_utils";
 import { createClient } from "@/lib/supabase/server";
 import { buildCalendarContext } from "../_calendarContext";
 import { listUserDocuments } from "@/lib/server/documents";
@@ -206,6 +206,12 @@ ${workspaceContext}
 ` : ""}` : "";
     return `You are "Analogix AI", an AI tutor for Australian students. Your core job is to help students understand concepts and succeed in their studies.
 
+VOICE & STYLE:
+- Be a friendly, knowledgeable Australian tutor: warm, direct, and encouraging, never robotic or clinical.
+- Vary your structure and wording between replies. Don't force the same section headers or bullet pattern onto every answer. Match the shape of the response to the question — a quick question gets a tight answer, a hard concept gets a proper breakdown.
+- DO NOT overuse decorative dividers like "━━━", "---", "***", "====", or horizontal rules. Use them at most once (or not at all); prefer clear paragraphs and short headers instead. Heavy divider spam makes replies look machine-written.
+- Keep prose natural and readable. Short paragraphs over walls of text, but still go deep where the question deserves it.
+
 Context: Year ${studentGrade}${stateFullName ? ` in ${stateFullName}` : ""}, Australia. ${curriculumContext}
 ${calendarContext ? `When the user asks about their schedule, events, deadlines, or what's coming up, use the CALENDAR & DEADLINES section below to give accurate, specific answers. Keep it conversational — just tell them what's next naturally.` : ''}
 
@@ -221,7 +227,7 @@ Rules:
 - CHARTS: If the user asks for a graph, chart, or visualisation of data, use the Recharts format described at the end of this prompt to create an interactive chart. Make sure this chart can render accurately and properly on the frontend. 
 - DESMOS: If the user asks for a graph of a mathematical function, equation, or inequality, you MUST output a \`\`\`desmos code block with the equation(s). NEVER output a URL or just describe the graph.
 - 3D VISUALISATIONS: For complex concepts, structures, systems, or relationships (e.g. solar system, atomic structure, biological processes, networks), use the Three.js format described at the end of this prompt to create an interactive 3D scene that illustrates the concept.
-- NOTE: If asked to write something very long (essays, reports, etc.), explain that responses are capped at ~${isQwenModel ? '4000' : '1900'} tokens due to API rate limits, but offer to continue in a follow-up message.${workspaceSection}${toolCapabilitiesSection}
+- NOTE: If asked to write something very long (essays, reports, etc.), explain that responses are capped at roughly ${isQwenModel ? '8000' : '4000'} tokens per reply, but offer to continue in a follow-up message.${workspaceSection}${toolCapabilitiesSection}
 ${researchBlock}
 
 Visualisations — you have THREE tools to make concepts visual and memorable:
@@ -533,13 +539,16 @@ export async function POST(request: Request) {
             : classifyTaskType(recentMsgs, primarySubject);
         // Token budgets — use model-specific limits for Qwen which supports longer outputs
         const selectedModelStr = userContext?.selectedModel || "";
-        const isQwenModel = chatTaskType === "reasoning" || selectedModelStr.toLowerCase().includes("qwen");
-        const OUTPUT_HARD_CAP = isQwenModel ? 4096 : 3000;
-        const TOTAL_BUDGET = isQwenModel ? 16000 : 12000;
+        const resolvedModel = resolveModelForUser(selectedModelStr || null);
+        // Qwen is a reasoning model: its <think> block and the final answer share the
+        // output budget, so give it room (8k) or the answer gets truncated mid-thought.
+        const isQwenModel = chatTaskType === "reasoning" || resolvedModel.toLowerCase().includes("qwen");
+        const OUTPUT_HARD_CAP = isQwenModel ? 8192 : 4096;
+        const TOTAL_BUDGET = isQwenModel ? 20000 : 16000;
         const wantsLongResponse = isResearchMode || isFormalRequest ||
             /\b(detailed|comprehensive|essay|report|study guide|lesson plan|long answer)\b/i.test(latestUserMsg);
         const SYSTEM_BUDGET = 2200;
-        const targetMaxTokens = isSimpleGreeting ? 300 : wantsLongResponse ? OUTPUT_HARD_CAP : (isQwenModel ? 4000 : 3000);
+        const targetMaxTokens = isSimpleGreeting ? 300 : wantsLongResponse ? OUTPUT_HARD_CAP : (isQwenModel ? 8000 : 4096);
         // Build initial messages
         const finalMessages = [
             { role: "system", content: fullSystemPrompt },

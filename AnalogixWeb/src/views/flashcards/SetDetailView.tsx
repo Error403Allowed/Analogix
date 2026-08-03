@@ -3,7 +3,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Brain, Check, ChevronLeft, ChevronRight, CheckCircle2, XCircle,
-  Edit3, Eye, EyeOff, Loader2, Plus, RotateCcw, Trash2, Trophy, Zap,
+  Edit3, Loader2, Plus, RotateCcw, Trash2, Trophy, Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";

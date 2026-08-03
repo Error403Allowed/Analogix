@@ -42,24 +42,31 @@ export const setUserSelectedModel = (model: string | null) => {
 export const getUserSelectedModel = () => {
     return userSelectedModel;
 };
+// Resolve a user-facing model id (e.g. "llama-4-scout") to the real Groq model
+// string. Falls back to the default model for "auto"/unknown values.
+export const resolveModelForUser = (modelId?: string | null): string => {
+    if (!modelId || modelId === "auto")
+        return DEFAULT_MODEL;
+    return normalizeModelId(modelId);
+};
 // Model-specific token limits - capped to stay under Groq's rate limits
 // Qwen3-32B supports longer outputs for math/science reasoning
 const MODEL_OUTPUT_LIMITS = {
     "openai/gpt-oss-20b": 4096,
     "openai/gpt-oss-120b": 4096,
-    "qwen/qwen3.6-27b": 4096,
+    "qwen/qwen3.6-27b": 8192,
 };
 const MODEL_CONTEXT_LIMITS = {
     "openai/gpt-oss-20b": 131072,
     "openai/gpt-oss-120b": 131072,
     "qwen/qwen3.6-27b": 131072,
 };
-// Conservative per-request caps based on Groq free-tier ~6k TPM
+// Conservative per-request caps based on Groq free-tier limits
 // Qwen gets a higher budget for detailed math/science reasoning
 const MODEL_REQUEST_TOKEN_BUDGETS = {
-    "openai/gpt-oss-20b": 12000,
-    "openai/gpt-oss-120b": 12000,
-    "qwen/qwen3.6-27b": 16000,
+    "openai/gpt-oss-20b": 16000,
+    "openai/gpt-oss-120b": 16000,
+    "qwen/qwen3.6-27b": 20000,
 };
 const MIN_COMPLETION_TOKENS = 256;
 const getSafeMaxTokens = (model: string, requested: number, estimatedInputTokens = 0): number => {
@@ -101,15 +108,38 @@ const apiKeys = [
     process.env.GROQ_API_KEY,
     process.env.GROQ_API_KEY_2,
 ].filter((key) => Boolean(key));
-// Simple round-robin: get next key index, wrapping around
+// Keys that recently failed authentication are skipped for a cooldown window
+// instead of burning a failed round-trip on every subsequent request.
+const DEAD_KEY_COOLDOWN_MS = 5 * 60 * 1000;
+const deadKeysUntil = new Map<number, number>();
+const isKeyDead = (keyIndex: number): boolean => {
+    const deadUntil = deadKeysUntil.get(keyIndex);
+    if (!deadUntil)
+        return false;
+    if (Date.now() >= deadUntil) {
+        deadKeysUntil.delete(keyIndex);
+        return false;
+    }
+    return true;
+};
+const markKeyDead = (keyIndex: number) => {
+    deadKeysUntil.set(keyIndex, Date.now() + DEAD_KEY_COOLDOWN_MS);
+    console.error(`[Groq] Marking key #${keyIndex + 1} as dead for ${DEAD_KEY_COOLDOWN_MS / 60000}min (auth failure)`);
+};
+// Simple round-robin: get next live key index, wrapping around
 const getNextApiKeyIndex = (() => {
     let index = 0;
     return () => {
         if (apiKeys.length === 0)
             return 0;
-        const currentIndex = index % apiKeys.length;
-        index = (index + 1) % apiKeys.length;
-        return currentIndex;
+        for (let attempt = 0; attempt < apiKeys.length; attempt++) {
+            const currentIndex = index % apiKeys.length;
+            index = (index + 1) % apiKeys.length;
+            if (!isKeyDead(currentIndex))
+                return currentIndex;
+        }
+        // All keys are dead right now — fall back to the first one anyway
+        return 0;
     };
 })();
 const getApiKeyAtIndex = (index: number) => {
@@ -121,9 +151,12 @@ const getApiKeyAtIndex = (index: number) => {
 // RATE LIMITER: Token bucket to prevent API overload
 // ============================================================================
 // Groq free tier limits (adjust if you have different limits)
+// Set from observed throughput: consecutive ~5-7k token streaming requests
+// succeed back-to-back, so a conservative 18k TPM per key avoids artificial
+// 10s stalls while still leaving headroom under Groq's real per-minute cap.
 const RATE_LIMIT_CONFIG = {
     rpmPerKey: 6,
-    tpmPerKey: 6000,
+    tpmPerKey: 18000,
     minDelayMs: 200,
     maxConcurrentPerKey: 2,
 };
@@ -145,7 +178,10 @@ const refillTokens = (bucket: any) => {
     bucket.tokens = Math.min(RATE_LIMIT_CONFIG.tpmPerKey, bucket.tokens + elapsedMs * tokensPerMs);
     bucket.lastRefill = now;
 };
-const MAX_TOKEN_WAIT_MS = 10000;
+// A short cap so the bucket can smooth bursts without stalling replies.
+// Once Groq's real per-minute limit is hit, the 429 retry/backoff path below
+// takes over and uses the server's retry-after window instead of our estimate.
+const MAX_TOKEN_WAIT_MS = 2000;
 const waitForToken = async (keyIndex: number, requiredTokens: number) => {
     const bucket = getOrCreateBucket(keyIndex);
     // Block until tokens are available
@@ -376,9 +412,13 @@ const getModelsForTaskType = (taskType: string, userModel?: string, estimatedTok
 // ============================================================================
 // FAST PATH: For simple messages like greetings - no queue, lightweight model
 // ============================================================================
-const callFastChat = async (payload: any) => {
+const callFastChat = async (payload: any, userModel?: any) => {
     assertApiKeys();
-    const availableModels = filterBlockedModels([LIGHTWEIGHT_MODEL, DEFAULT_FALLBACK_MODEL, LAST_RESORT_MODEL]);
+    // Honour an explicit user-selected model on the fast path too — only fall
+    // back to the lightweight model when the user hasn't picked one.
+    const availableModels = userModel && userModel !== "auto"
+        ? filterBlockedModels([normalizeModelId(userModel), LIGHTWEIGHT_MODEL, DEFAULT_FALLBACK_MODEL, LAST_RESORT_MODEL])
+        : filterBlockedModels([LIGHTWEIGHT_MODEL, DEFAULT_FALLBACK_MODEL, LAST_RESORT_MODEL]);
     const model = availableModels[0] || LAST_RESORT_MODEL;
     const keyIndex = getNextApiKeyIndex();
     const apiKey = getApiKeyAtIndex(keyIndex);
@@ -439,7 +479,7 @@ export const callGroqChat = async (payload: any, taskType = "default", userSelec
     // FAST PATH: Simple messages like "hi" skip the queue and use lightweight model only
     if (isSimpleMessage(payload.messages)) {
         try {
-            return await callFastChat(payload);
+            return await callFastChat(payload, userSelectedModel);
         }
         catch {
             // Fast path failed (e.g., request too large), fall through to normal path
@@ -472,6 +512,10 @@ export const callGroqChat = async (payload: any, taskType = "default", userSelec
         for (let retryRound = 0; retryRound < MAX_RETRY_ROUNDS_PER_MODEL && !tryNextModel; retryRound++) {
             for (let keyOffset = 0; keyOffset < apiKeys.length; keyOffset++) {
                 const keyIndex = (startingKeyIndex + keyOffset) % apiKeys.length;
+                if (isKeyDead(keyIndex)) {
+                    console.log(`[Groq] Skipping dead key #${keyIndex + 1}`);
+                    continue;
+                }
                 const apiKey = getApiKeyAtIndex(keyIndex);
                 if (!apiKey)
                     continue;
@@ -541,6 +585,7 @@ export const callGroqChat = async (payload: any, taskType = "default", userSelec
                         if (statusCode === 401 || statusCode === 403) {
                             lastError = new GroqUpstreamError(503, `Groq API Error: ${statusCode} - ${errorMessage}`);
                             console.error(`[Groq] ${model} authentication failed on key #${keyIndex + 1} - check API key`);
+                            markKeyDead(keyIndex);
                             continue; // Try next key
                         }
                         // On 5xx errors, Groq has an issue - try next key
@@ -610,6 +655,10 @@ export const callGroqChatStream = async (payload: any, taskType = "default", use
         for (let retryRound = 0; retryRound < MAX_RETRY_ROUNDS_PER_MODEL && !tryNextModel; retryRound++) {
             for (let keyOffset = 0; keyOffset < apiKeys.length; keyOffset++) {
                 const keyIndex = (startingKeyIndex + keyOffset) % apiKeys.length;
+                if (isKeyDead(keyIndex)) {
+                    console.log(`[Groq] Skipping dead key #${keyIndex + 1}`);
+                    continue;
+                }
                 const apiKey = getApiKeyAtIndex(keyIndex);
                 if (!apiKey)
                     continue;
@@ -679,6 +728,7 @@ export const callGroqChatStream = async (payload: any, taskType = "default", use
                         if (statusCode === 401 || statusCode === 403) {
                             lastError = new GroqUpstreamError(503, `Groq API Error: ${statusCode} - ${errorMessage}`);
                             console.error(`[Groq] ${model} authentication failed on key #${keyIndex + 1} - check API key`);
+                            markKeyDead(keyIndex);
                             continue;
                         }
                         // On 5xx errors, Groq has an issue - try next key

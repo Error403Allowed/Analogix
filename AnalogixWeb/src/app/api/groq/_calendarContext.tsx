@@ -44,7 +44,9 @@ export async function buildCalendarContext(supabase: any, userId: string) {
             subject: r.subject,
             description: r.description,
         }));
-    } catch {}
+    } catch {
+        // listEvents failed; events stays empty
+    }
     try {
         const deadlineRows = await listDeadlines(userId, supabase, fromStr, toStr);
         deadlines = (deadlineRows ?? []).map((r: any) => ({
@@ -53,7 +55,9 @@ export async function buildCalendarContext(supabase: any, userId: string) {
             subject: r.subject,
             priority: r.priority || "medium",
         }));
-    } catch {}
+    } catch {
+        // listDeadlines failed; deadlines stays empty
+    }
     if (events.length === 0 && deadlines.length === 0)
         return "";
     const allItems = [

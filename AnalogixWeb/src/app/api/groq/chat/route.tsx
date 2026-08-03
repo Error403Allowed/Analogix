@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { callGroqChat, formatError, classifyTaskType } from "../_utils";
+import { callGroqChat, formatError, classifyTaskType, resolveModelForUser } from "../_utils";
 import { getFormulaSheetContext } from "@/data/formulaSheets";
 import { createClient } from "@/lib/supabase/server";
 import { getUserAIPersonality, getRelevantMemories, buildMemoryContext, buildPersonalityInstructions } from "@/lib/aiMemory";
@@ -117,13 +117,14 @@ export async function POST(request: any) {
             ? getFormulaSheetContext(primarySubjectForFormulas)
             : "";
         const selectedModel = userContext?.selectedModel || null;
-        const isQwenModel = selectedModel ? selectedModel.toLowerCase().includes("qwen") : false;
+        const resolvedModel = resolveModelForUser(selectedModel);
+        const isQwenModel = resolvedModel.toLowerCase().includes("qwen");
         const researchMode = Boolean(userContext?.researchMode);
-        // Token budget — respect user's detail_level preference but hard cap at 1900
-        // due to Groq's ~6k TPM rate limit (leaving ~4000 for input)
+        // Token budget — respect user's detail_level preference. Qwen needs extra room
+        // because its <think> block and the answer share the output budget.
         const detailLevel = aiPersonality?.detail_level ?? 50;
-        const HARD_CAP = isQwenModel ? 4000 : 3000;
-        let maxTokens = isQwenModel ? 2500 : 1500; // Default
+        const HARD_CAP = isQwenModel ? 8192 : 4096;
+        let maxTokens = isQwenModel ? 4096 : 2048; // Default
         if (researchMode) {
             maxTokens = HARD_CAP;
         }
@@ -134,7 +135,7 @@ export async function POST(request: any) {
             maxTokens = 800; // Brief
         }
         else {
-            maxTokens = isQwenModel ? 2500 : 1500; // Balanced
+            maxTokens = isQwenModel ? 4096 : 2048; // Balanced
         }
         // Get the user's hobbies/interests for making analogies
         const interestList = userContext?.hobbies?.filter(Boolean) ?? [];
@@ -250,6 +251,12 @@ ${researchSources.length > 0 ? `ACADEMIC SOURCES:\n${formatResearchSources(resea
             console.warn("[chat] curriculum RAG failed:", curriculumErr instanceof Error ? curriculumErr.message : curriculumErr);
         }
         const systemPrompt = `You are "Analogix AI", an expert tutor. Provide clear, thorough, well-structured explanations.
+
+VOICE & STYLE:
+- Be a friendly, knowledgeable Australian tutor: warm, direct, and encouraging, never robotic or clinical.
+- Vary your structure and wording between replies. Don't force the same section headers or bullet pattern onto every answer. Match the shape of the response to the question — a quick question gets a tight answer, a hard concept gets a proper breakdown.
+- DO NOT overuse decorative dividers like "━━━", "---", "***", "====", or horizontal rules. Use them at most once (or not at all); prefer clear paragraphs and short headers instead. Heavy divider spam makes replies look machine-written.
+- Keep prose natural and readable. Short paragraphs over walls of text, but still go deep where the question deserves it.
 
 ${curriculumRagSection}
 ${curriculumRagSection ? `CURRICULUM INTEGRATION (MANDATORY): The curriculum content above is the official ACARA content for this topic. You MUST weave it naturally into your explanation alongside the student's interests and analogies — do NOT add a separate "Curriculum" or "Australian Curriculum" section. Use analogies and the student's interests to teach the curriculum outcome. For example: "The ACARA curriculum (AC9M8G03) says students should apply Pythagoras' theorem — it's like finding the direct distance across a football field instead of walking around the edges." The ACARA code MUST appear in your answer, integrated naturally into the teaching, with the explanation framed through analogies and the student's interests.
@@ -439,7 +446,7 @@ ${userSubjectsContext}`;
         // Oversized requests hit 413 "Request too large" (tokens-per-minute) errors
         // from Groq's free tier, so drop the oldest turns while always keeping the
         // system prompt and the latest user message.
-        const TOTAL_BUDGET = 12000;
+        const TOTAL_BUDGET = isQwenModel ? 20000 : 16000;
         const aiMessages: { role: string; content: string }[] = [
             {
                 role: "system",
