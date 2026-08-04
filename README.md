@@ -62,24 +62,22 @@
   </tr>
 </table>
 
-These are just a few of the features! Visit <a href="https://analogix.vercel.app" target="_blank" rel="noopener noreferrer">Analogix</a> for the full experience!
+For more, visit <a href="https://analogix.vercel.app" target="_blank" rel="noopener noreferrer">Analogix</a>.
 
 ---
 
 ## Features
 
-- **AI Tutor:** Backed by Groq. Explains concepts, generates quizzes and flashcards from your material.
-- **Flashcards:** SM-2 spaced repetition. Create your own or let AI build a set from an uploaded file or chat session.
+- **AI Tutor:** Powered with Groq API, utilising RAG to stay connected to the curriculum, and using user's interests to explain concepts better.
+- **Flashcards:** Harnesses SM-2 spaced repetition. You can create you own flashcards or upload files/paste text and let AI do the work!
 - **Quizzes:** Multiple choice, essay, or mixed. Timed or untimed. AI-generated from your content.
-- **Calendar:** Day, week, or month view. Auto-calculates term dates for every Australian state, imports ICS from school portals.
-- **Timer:** Configurable Pomodoro with session and streak tracking.
-- **Study Schedule:** AI generates a weekly plan from your subjects and deadlines. Editable.
-- **Subjects:** Track marks, homework, syllabus, with a built-in document editor.
-- **Rooms:** Real-time group work with shared chat, documents, and a synced timer.
-- **Formulas:** Subject-based formula sheets rendered in LaTeX. Searchable.
-- **Achievements:** XP and badges to make the grind more palatable.
-- **Assessment Guide:** Hand the AI an assessment PDF and it drafts a study plan.
-
+- **Calendar:** Daily, weekly, or monthly view. Auto-calculates term dates for every Australian state, and can use imported ICS files from school portals.
+- **Timer:** Configurable Pomodoro with session and break timers.
+- **Subjects:** Track marks, homework, syllabus, and use Analogix's proprietary built-in document editor.
+- **Rooms:** Real-time group work with shared chat, documents, and a synced timer. Optional integrated AI for accelerated work/studying.
+- **Formulas:** Subject-based formula sheets rendered in LaTeX. Search and filter for any formula from and subject and topic. 
+- **Achievements:** XP and badges to make it all worth it.
+  
 ---
 
 ## Architecture
@@ -101,16 +99,16 @@ These are just a few of the features! Visit <a href="https://analogix.vercel.app
                     ┌────────▼──────────────┐
                     │    AnalogixMobile     │
                     │ Expo SDK 54 + RN 0.81 │
-                    │ Material 3 Expressive│
+                    │ Material 3 Expressive │
                     └───────────────────────┘
 ```
 
 Key design decisions:
 
-- Web and mobile share the same GraphQL API - no duplicate endpoints.
+- Web and mobile share the same GraphQL API to avoid duplicate endpoints.
 - Auth is handled server-side via Supabase JWT verification.
 - Redis PubSub manages subscriptions for room sync and chat streaming (falls back to in-process in dev).
-- Both clients share types and schemas from `@analogix/shared`. Change a Zod schema and the rest follows.
+- Both clients share types and schemas from `@analogix/shared`. Change a schema and the rest follows.
 
 ---
 
@@ -129,10 +127,10 @@ Key design decisions:
 ## Getting started
 
 ```bash
-# 1. Install root and workspace dependencies
+# 1. Install all required dependencies at root
 npm install
 
-# 2. Copy environment templates and add your secrets
+# 2. Copy environment templates and add your own secrets
 cp AnalogixGraphQL/.env.example AnalogixGraphQL/.env
 cp AnalogixMobile/.env.example AnalogixMobile/.env
 
@@ -142,10 +140,10 @@ npm run build:shared
 # 4. Start the API (terminal 1)
 npm run dev:api      # http://localhost:4000/graphql
 
-# 5. Start the web client (terminal 2)
+# 5. Start the web client (seperate terminal 2)
 npm run dev:web      # http://localhost:3000
 
-# 6. Start the mobile app (terminal 3)
+# 6. Start the mobile app (seperate terminal 3)
 npm run dev:mobile   # Expo dev server
 ```
 
@@ -185,9 +183,8 @@ npm run dev:mobile   # Expo dev server
 
 Refer to the individual READMEs in each package for details:
 
-- [`AnalogixGraphQL/README.md`](./AnalogixGraphQL/README.md) - schema, resolvers, deployment.
-- [`AnalogixMobile/README.md`](./AnalogixMobile/README.md) - screenshots, theming, EAS builds, auth.
-- [`AnalogixWeb/README.md`](./AnalogixWeb/README.md) - setup, pages, troubleshooting.
+- [`AnalogixGraphQL/README.md`](./AnalogixGraphQL/README.md): schema, resolvers, deployment.
+- [`AnalogixWeb/README.md`](./AnalogixWeb/README.md): setup, pages, troubleshooting.
 
 ---
 
