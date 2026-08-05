@@ -10,6 +10,7 @@ import { makeExecutableSchema } from "@graphql-tools/schema";
 import { ApolloServer } from "@apollo/server";
 import { ApolloServerPluginLandingPageLocalDefault } from "@apollo/server/plugin/landingPage/default";
 import { expressMiddleware } from "@as-integrations/express5";
+import { GraphQLError, type DocumentNode } from "graphql";
 import { typeDefs } from "./schema/index.js";
 import { resolvers } from "./resolvers/index.js";
 import { buildContext, type GraphQLContext } from "./context.js";
@@ -110,7 +111,7 @@ async function main() {
   // Apollo Server
   // GraphQL query depth limit — prevents deeply nested malicious queries
   const depthLimit = (await import("graphql-depth-limit")).default;
-  const { createComplexityRule, simpleEstimator, fieldExtensionsEstimator } = await import("graphql-query-complexity");
+  const { getComplexity, simpleEstimator, fieldExtensionsEstimator } = await import("graphql-query-complexity");
 
   const apollo = new ApolloServer<GraphQLContext>({
     schema,
@@ -118,15 +119,42 @@ async function main() {
     csrfPrevention: false,
     validationRules: [
       depthLimit(7),
-      createComplexityRule({
-        estimators: [fieldExtensionsEstimator(), simpleEstimator({ defaultComplexity: 1 })],
-        maximumComplexity: 1000,
-      }),
     ],
     plugins: [
       isProd
         ? undefined
         : ApolloServerPluginLandingPageLocalDefault({ embed: true }),
+      {
+        async requestDidStart() {
+          return {
+            async didResolveOperation({ request, document }: { request: { operationName?: string | null; variables?: Record<string, unknown> }; document: DocumentNode }) {
+              // Query complexity guard. Runs after variable coercion so the
+              // estimator can see real argument values (validationRules have no
+              // access to request variables, which breaks every variable query).
+              try {
+                const complexity = getComplexity({
+                  schema,
+                  operationName: request.operationName ?? undefined,
+                  query: document,
+                  variables: request.variables,
+                  estimators: [fieldExtensionsEstimator(), simpleEstimator({ defaultComplexity: 1 })],
+                });
+                if (complexity > 1000) {
+                  throw new GraphQLError(
+                    `The query exceeds the maximum complexity of 1000. Actual complexity is ${complexity}`
+                  );
+                }
+              } catch (err) {
+                if (err instanceof GraphQLError && /exceeds the maximum complexity/.test(err.message)) {
+                  throw err;
+                }
+                // Ignore variable-coercion noise from getComplexity; real
+                // missing-variable errors are surfaced during execution.
+              }
+            },
+          };
+        },
+      },
       {
         async serverWillStart() {
           return {
