@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Analytics } from "@vercel/analytics/react";
 import AppProviders from "@/components/AppProviders";
+import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
 import "@/index.css";
 import "katex/dist/katex.min.css";
 
@@ -62,11 +63,17 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         <link rel="icon" href="/tab-icon.png" type="image/png" />
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="Analogix" />
       </head>
       <body>
         <AppProviders>
           <DashLayout>{children}</DashLayout>
         </AppProviders>
+        <ServiceWorkerRegistration />
         <Analytics />
       </body>
     </html>

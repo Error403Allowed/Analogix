@@ -64,6 +64,8 @@ const nextConfig = {
               "object-src 'none'",
               "base-uri 'self'",
               "form-action 'self' https://ffezpchxhxmxlkzkahha.supabase.co",
+              "worker-src 'self'",
+              "manifest-src 'self'",
             ].join('; '),
           },
         ],
