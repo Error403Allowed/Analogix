@@ -17,3 +17,32 @@ export function useIsMobile() {
 
   return !!isMobile;
 }
+
+export type Breakpoint = "sm" | "md" | "lg" | "xl" | "2xl";
+
+const BREAKPOINTS: Record<Breakpoint, number> = {
+  sm: 640,
+  md: 768,
+  lg: 1024,
+  xl: 1280,
+  "2xl": 1536,
+};
+
+export function useMediaQuery(query: string) {
+  const [matches, setMatches] = React.useState<boolean | undefined>(undefined);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mql = window.matchMedia(query);
+    const onChange = () => setMatches(mql.matches);
+    mql.addEventListener("change", onChange);
+    setMatches(mql.matches);
+    return () => mql.removeEventListener("change", onChange);
+  }, [query]);
+
+  return !!matches;
+}
+
+export function useBreakpoint(breakpoint: Breakpoint) {
+  return useMediaQuery(`(min-width: ${BREAKPOINTS[breakpoint]}px)`);
+}

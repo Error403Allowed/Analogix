@@ -6,7 +6,9 @@ import { usePathname, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { TabsProvider, useTabs, pathMeta } from "@/context/TabsContext";
 import TabBar from "@/components/TabBar";
-import { useEffect, useRef, Suspense } from "react";
+import MobileBottomNav from "@/components/MobileBottomNav";
+import MobileAppBar from "@/components/MobileAppBar";
+import { useEffect, useRef, useState, Suspense } from "react";
 import { PageLoader, ChatSkeleton, DashboardSkeleton, FlashcardsSkeleton, QuizSkeleton, RoomsSkeleton, CalendarSkeleton, AchievementsSkeleton, SubjectsSkeleton, FormulasSkeleton, ResourcesSkeleton } from "@/components/PageSkeleton";
 import dynamic from "next/dynamic";
 
@@ -28,11 +30,13 @@ export default function DashLayout({ children: _ }: { children?: React.ReactNode
   return (
     <TabsProvider initialPathname={pathname}>
       <SidebarProvider defaultOpen={true}>
-        <div className="flex h-screen w-full bg-background overflow-hidden">
+        <RouteProgress />
+        <div className="flex h-dvh w-full bg-background overflow-hidden">
           <AppSidebar />
           <SidebarInset className="flex flex-col flex-1 min-w-0 min-h-0">
             <DashContent isChatLike={isChatLike} pathname={pathname} />
           </SidebarInset>
+          <MobileBottomNav />
         </div>
       </SidebarProvider>
     </TabsProvider>
@@ -44,6 +48,39 @@ const LazyDashboardPage = dynamic(() => import("@/app/dashboard/page"), {
   ssr: false,
   loading: () => <DashboardSkeleton />,
 });
+
+// Thin top progress bar shown while a tab/page is loading after navigation,
+// so the app never looks frozen during route transitions.
+function RouteProgress() {
+  const pathname = usePathname();
+  const prevPath = useRef(pathname);
+  const [visible, setVisible] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (prevPath.current === pathname) return;
+    prevPath.current = pathname;
+    setVisible(true);
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => setVisible(false), 650);
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, [pathname]);
+
+  if (!visible) return null;
+  return (
+    <div className="fixed inset-x-0 top-0 z-[70] h-0.5 overflow-hidden pointer-events-none">
+      <motion.div
+        initial={{ width: "0%" }}
+        animate={{ width: "100%" }}
+        transition={{ duration: 0.6, ease: "easeInOut" }}
+        className="h-full bg-primary"
+      />
+    </div>
+  );
+}
+
 const LazyChatPage = dynamic(() => import("@/app/chat/page"), {
   ssr: false,
   loading: () => <ChatSkeleton />,
@@ -92,6 +129,14 @@ const LazyAchievementsPage = dynamic(() => import("@/app/achievements/page"), {
   ssr: false,
   loading: () => <AchievementsSkeleton />,
 });
+const LazyStudyPage = dynamic(() => import("@/app/study/page"), {
+  ssr: false,
+  loading: () => <PageLoader message="Loading study hub..." />,
+});
+const LazyProfilePage = dynamic(() => import("@/app/profile/page"), {
+  ssr: false,
+  loading: () => <PageLoader message="Loading profile..." />,
+});
 
 const LazyStudyRoomWorkspace = dynamic(() => import("@/views/StudyRoomWorkspace"), {
   ssr: false,
@@ -113,6 +158,8 @@ function getPageForPath(path: string) {
   if (/^\/subjects\/[^/]+$/.test(path)) return LazySubjectDetail;
   if (path === "/calendar") return LazyCalendarPage;
   if (path === "/achievements") return LazyAchievementsPage;
+  if (path === "/study") return LazyStudyPage;
+  if (path === "/profile") return LazyProfilePage;
   return LazyDashboardPage;
 }
 
@@ -156,6 +203,7 @@ function DashContent({ isChatLike, pathname }: { isChatLike: boolean; pathname: 
 
   return (
     <>
+      <MobileAppBar />
       <TabBar onNavigate={handleNavigate} />
       <div className="flex-1 min-h-0 relative">
         {tabs.map((tab) => {
@@ -168,7 +216,7 @@ function DashContent({ isChatLike, pathname }: { isChatLike: boolean; pathname: 
               initial={false}
               animate={isActive ? { opacity: 1, y: 0 } : { opacity: 0, y: 3 }}
               transition={{ duration: 0.15, ease: "easeOut" }}
-              className="absolute inset-0"
+              className="absolute inset-0 pb-14 md:pb-0"
               style={{
                 height: "100%",
                 overflow: isChatLike ? "hidden" : "auto",

@@ -24,6 +24,7 @@ import {
   Check,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
 import type { SubjectId } from "@/constants/subjects";
 import { SUBJECT_CATALOG } from "@/constants/subjects";
 import { IconPicker } from "@/components/IconPicker";
@@ -59,6 +60,7 @@ export function SubjectCustomizationSheet({
   onCustomizationChange,
 }: SubjectCustomizationSheetProps) {
   const subject = SUBJECT_CATALOG.find((s) => s.id === subjectId);
+  const isMobile = useIsMobile();
   const [customData, setCustomData] = useState<CustomSubject | null>(null);
   const [iconPickerOpen, setIconPickerOpen] = useState(false);
   const [colorPickerOpen, setColorPickerOpen] = useState(false);
@@ -113,7 +115,13 @@ export function SubjectCustomizationSheet({
   return (
     <>
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent className="w-full sm:max-w-md p-0 flex flex-col">
+        <SheetContent
+          side={isMobile ? "bottom" : "right"}
+          className={cn(
+            "p-0 flex flex-col",
+            isMobile ? "max-h-[85vh] w-full" : "w-full sm:max-w-md"
+          )}
+        >
           {/* Cover Preview */}
           <div className={cn(
             "h-32 w-full transition-all",

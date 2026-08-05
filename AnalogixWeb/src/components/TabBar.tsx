@@ -234,7 +234,7 @@ export default function TabBar({ onNavigate }: TabBarProps) {
           <CommandMenu open={newTabOpen} onClose={() => setNewTabOpen(false)} onNavigate={handleOpenShortcut} />
         )}
       </AnimatePresence>
-      <div className="relative h-11 shrink-0 border-b border-border/20 bg-background/80 px-3 py-1.5 backdrop-blur-lg">
+      <div className="relative h-11 shrink-0 border-b border-border/20 bg-background/80 px-3 py-1.5 backdrop-blur-lg hidden md:block">
         <div className="flex h-full items-center">
         <div
           ref={scrollRef}

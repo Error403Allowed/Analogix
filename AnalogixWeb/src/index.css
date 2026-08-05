@@ -59,6 +59,11 @@
 
 @layer base {
   :root {
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-right: env(safe-area-inset-right, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-left: env(safe-area-inset-left, 0px);
+
     --background: 210 20% 98%;
     --foreground: 222 47% 11%;
 
@@ -277,6 +282,24 @@
   .dark .dashboard-panel {
     box-shadow: 0 1px 3px 1px rgba(0, 0, 0, 0.2), 0 1px 2px rgba(0, 0, 0, 0.12);
   }
+
+  .pressable {
+    transition: transform 150ms ease;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  .pressable:active {
+    transform: scale(0.97);
+  }
+
+  .safe-top {
+    padding-top: var(--safe-top);
+  }
+
+  .safe-bottom {
+    padding-bottom: var(--safe-bottom);
+  }
 }
 
 .notion-ui {
@@ -387,6 +410,15 @@
 .scrollbar-none {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+/* Prevent KaTeX display formulas from overflowing their container */
+.katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  max-width: 100%;
+  padding: 0.25em 0;
+  -webkit-overflow-scrolling: touch;
 }
 
 @keyframes blink {

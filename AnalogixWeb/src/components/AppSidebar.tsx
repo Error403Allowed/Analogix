@@ -4,7 +4,7 @@ import {
   LayoutDashboard, MessageCircle, Calendar,
   GraduationCap, Trophy, ChevronDown, Palette,
   Sun, Moon, User, Flame, Library, SigmaIcon, SquareStack, ClipboardList,
-  Plus, Search, Sparkles, Users, PanelLeft,
+  Plus, Search, Sparkles, Users, PanelLeft, X,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarHeader,
@@ -143,6 +143,7 @@ export function AppSidebar() {
       const created = await subjectStore.createDocument(subjectId, title);
       toast.success(`Page "${title}" created!`);
       setIsNewPageModalOpen(false);
+      setOpenMobile(false);
       // Force refresh sidebar state
       const data = await subjectStore.getAll();
       setSubjects(data);
@@ -181,7 +182,7 @@ export function AppSidebar() {
 
   const name      = userData?.name || "Student";
   const avatarUrl = userData?.avatarUrl || "";
-  const { toggleSidebar, state } = useSidebar();
+  const { toggleSidebar, setOpenMobile, isMobile, state } = useSidebar();
 
 
   return (
@@ -201,7 +202,14 @@ export function AppSidebar() {
         <SidebarHeader className="h-20 shrink-0 flex flex-col justify-center px-4 pb-2 border-b border-muted/15 group-data-[collapsible=icon]:h-auto group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:py-0.5 group-data-[collapsible=icon]:border-b-0">
           <div className="flex items-center w-full justify-between group-data-[collapsible=icon]:justify-center">
             <button
-              onClick={state === "expanded" ? () => router.push("/") : toggleSidebar}
+              onClick={() => {
+                if (state === "expanded") {
+                  router.push("/");
+                  setOpenMobile(false);
+                } else {
+                  toggleSidebar();
+                }
+              }}
               className="group/logo flex items-center gap-3.5 rounded-3xl px-3 py-2 hover:bg-muted/30 transition-all active:scale-[0.98] group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:w-10 group-data-[collapsible=icon]:h-10 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:rounded-lg"
             >
               <div className="w-10 h-10 shrink-0 relative group-data-[collapsible=icon]:w-6 group-data-[collapsible=icon]:h-6">
@@ -210,7 +218,18 @@ export function AppSidebar() {
               </div>
               {state === "expanded" && <span className="text-lg font-black tracking-tight text-foreground">Analogix</span>}
             </button>
-            <SidebarTrigger className="-mr-1 group-data-[collapsible=icon]:hidden" />
+            {isMobile ? (
+              <button
+                type="button"
+                onClick={() => setOpenMobile(false)}
+                aria-label="Close sidebar"
+                className="-mr-1 flex h-10 w-10 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted/30 active:scale-95"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            ) : (
+              <SidebarTrigger className="-mr-1 group-data-[collapsible=icon]:hidden" />
+            )}
           </div>
         </SidebarHeader>
 
@@ -238,6 +257,7 @@ export function AppSidebar() {
                             const meta = pathMeta(item.url);
                             openTab(item.url, meta.label, meta.emoji);
                             router.push(item.url);
+                            setOpenMobile(false);
                           }}
                           className={cn(
                             "min-h-[46px] rounded-xl px-4 transition-all duration-200 font-semibold text-sidebar-foreground/80 group-data-[collapsible=icon]:min-h-0 group-data-[collapsible=icon]:rounded-lg group-data-[collapsible=icon]:px-0",
@@ -404,6 +424,7 @@ export function AppSidebar() {
             onClose={() => setIsCommandMenuOpen(false)}
             onNavigate={(path) => {
               setIsCommandMenuOpen(false);
+              setOpenMobile(false);
               if (path === "new-event") {
                 router.push("/calendar");
                 setTimeout(() => window.dispatchEvent(new CustomEvent("openAddEvent")), 300);

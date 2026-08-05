@@ -7,6 +7,7 @@ import {
   Sheet, SheetContent, SheetTitle, SheetDescription,
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { PersonalityEditor } from "@/components/PersonalityEditor";
 import { ToolSettings } from "@/components/ToolSettings";
 import { MemoryManager } from "@/components/MemoryManager";
@@ -22,12 +23,17 @@ interface AISettingsSheetProps {
 
 export default function AISettingsSheet({ open, onOpenChange, defaultTab = "personality" }: AISettingsSheetProps) {
   const [activeTab, setActiveTab] = useState<AITab>(defaultTab);
+  const isMobile = useIsMobile();
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
-        side="right"
-        className="w-full sm:max-w-[420px] flex flex-col p-0 bg-background border-l border-border"
+        side={isMobile ? "bottom" : "right"}
+        className={
+          isMobile
+            ? "flex max-h-[85vh] flex-col p-0 bg-background border-t border-border"
+            : "w-full sm:max-w-[420px] flex flex-col p-0 bg-background border-l border-border"
+        }
         aria-describedby="ai-settings-description"
       >
         <SheetDescription id="ai-settings-description" className="sr-only">

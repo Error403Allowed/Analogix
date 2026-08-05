@@ -7,6 +7,7 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import ThemeSync from "@/components/ThemeSync";
+import { ReleasePointerCaptureGuard } from "@/components/ReleasePointerCaptureGuard";
 import { AuthProvider } from "@/context/AuthContext";
 import { TourProvider } from "@/context/TourContext";
 import PageTour from "@/components/PageTour";
@@ -44,6 +45,7 @@ export default function AppProviders({ children }: { children: React.ReactNode }
             <TooltipProvider>
               <TourSyncProvider>
                 <ThemeSync />
+                <ReleasePointerCaptureGuard />
                 <TourAutoTrigger />
                 <PageTour />
                 {children}

@@ -3,8 +3,12 @@
 import React from "react";
 import { Brain, Check } from "lucide-react";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
-} from "@/components/ui/dialog";
+  ResponsiveSheet,
+  ResponsiveSheetContent,
+  ResponsiveSheetHeader,
+  ResponsiveSheetTitle,
+  ResponsiveSheetDescription,
+} from "@/components/ui/responsive-sheet";
 import { GROQ_MODELS, type GroqModelId } from "@/types/groq-models";
 
 interface ModelSelectorSheetProps {
@@ -16,24 +20,24 @@ interface ModelSelectorSheetProps {
 
 export default function ModelSelectorSheet({ open, onOpenChange, selectedModel, onSelectModel }: ModelSelectorSheetProps) {
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="glass p-0 border-border sm:max-w-[500px] shadow-2xl rounded-2xl overflow-hidden">
-        <DialogDescription className="sr-only">
+    <ResponsiveSheet open={open} onOpenChange={onOpenChange}>
+      <ResponsiveSheetContent className="glass p-0 border-border sm:max-w-[500px] shadow-2xl rounded-2xl overflow-hidden">
+        <ResponsiveSheetDescription className="sr-only">
           Select the AI model to use for this chat
-        </DialogDescription>
+        </ResponsiveSheetDescription>
 
         {/* Header */}
-        <DialogHeader className="px-5 pt-5 pb-3 border-b border-border shrink-0">
+        <ResponsiveSheetHeader className="px-5 pt-5 pb-3 border-b border-border shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
               <Brain className="w-4 h-4 text-primary" />
             </div>
             <div>
-              <DialogTitle className="text-base font-black tracking-tight">AI Model</DialogTitle>
+              <ResponsiveSheetTitle className="text-base font-black tracking-tight">AI Model</ResponsiveSheetTitle>
               <p className="text-[11px] text-muted-foreground/60 mt-0.5">Choose which model powers this chat</p>
             </div>
           </div>
-        </DialogHeader>
+        </ResponsiveSheetHeader>
 
         {/* Model list */}
         <div className="p-2 space-y-1 max-h-[60vh] overflow-y-auto">
@@ -70,7 +74,7 @@ export default function ModelSelectorSheet({ open, onOpenChange, selectedModel, 
             <span className="font-semibold">Auto</span> mode picks the best model for your query automatically.
           </p>
         </div>
-      </DialogContent>
-    </Dialog>
+      </ResponsiveSheetContent>
+    </ResponsiveSheet>
   );
 }
