@@ -1,6 +1,6 @@
-/* eslint-disable react-hooks/exhaustive-deps */
 "use client";
 
+import { useState } from "react";
 import dynamic from "next/dynamic";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -18,7 +18,6 @@ import {
   Send,
   ShieldCheck,
   Users,
-  MessageSquare,
   PencilRuler,
   FileText,
   ChevronRight,
@@ -32,12 +31,12 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
+  ResponsiveSheet,
+  ResponsiveSheetContent,
+  ResponsiveSheetHeader,
+  ResponsiveSheetTitle,
+  ResponsiveSheetDescription,
+} from "@/components/ui/responsive-sheet";
 import MarkdownRenderer from "@/components/MarkdownRenderer";
 import { useStudyRoomWorkspace } from "@/hooks/useStudyRoomWorkspace";
 import { formatClock, parseThinkingContent, ThinkingBlock, sections } from "@/lib/room-utils";
@@ -66,7 +65,6 @@ export default function StudyRoomWorkspace() {
     documentContent,
     timerMinutes,
     showTimerControls,
-    canvasContent,
     showNewDoc,
     newDocTitle,
     newDocContent,
@@ -123,6 +121,8 @@ export default function StudyRoomWorkspace() {
     loadRoom,
     router,
   } = useStudyRoomWorkspace();
+
+  const [showDocsSheet, setShowDocsSheet] = useState(false);
 
   if (loading) {
     return (
@@ -396,12 +396,41 @@ export default function StudyRoomWorkspace() {
         </div>
       )}
 
+      {/* Mobile section pills */}
+      <div className="md:hidden shrink-0 flex items-center gap-1 overflow-x-auto scrollbar-none border-b border-border/30 px-3 py-2 dark:border-border/60">
+        {sections.map(({ id, label, icon: Icon }) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => handleSectionChange(id)}
+            className={`flex shrink-0 items-center gap-1.5 rounded-full px-3 py-2 min-h-11 text-xs font-semibold transition ${
+              activeSection === id
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground bg-muted/40 hover:bg-muted hover:text-foreground"
+            }`}
+          >
+            <Icon className="h-4 w-4 shrink-0" />
+            {label}
+          </button>
+        ))}
+        {(activeSection === "workspace" || activeSection === "documents") && (
+          <button
+            type="button"
+            onClick={() => setShowDocsSheet(true)}
+            className="flex shrink-0 items-center gap-1.5 rounded-full px-3 py-2 min-h-11 text-xs font-semibold text-primary bg-primary/10 hover:bg-primary/20 transition"
+          >
+            <FileText className="h-4 w-4 shrink-0" />
+            Documents
+          </button>
+        )}
+      </div>
+
       <div className="flex flex-1 min-h-0 overflow-hidden">
         {/* Sidebar */}
         <motion.aside
           initial={false}
           animate={{ width: sidebarOpen ? 200 : 56 }}
-          className="shrink-0 border-r border-border/30 bg-muted/20 dark:border-border/60 dark:bg-muted/10 flex flex-col overflow-hidden"
+          className="hidden md:flex shrink-0 border-r border-border/30 bg-muted/20 dark:border-border/60 dark:bg-muted/10 flex-col overflow-hidden"
         >
           {/* Section nav */}
           <div className="flex flex-col gap-1 p-2">
@@ -668,7 +697,7 @@ export default function StudyRoomWorkspace() {
 
               <div className="flex flex-1 min-h-0 overflow-hidden">
                 {/* Document list */}
-                <div className="w-64 shrink-0 border-r border-border/30 overflow-y-auto dark:border-border/60">
+                <div className="hidden md:block w-64 shrink-0 border-r border-border/30 overflow-y-auto dark:border-border/60">
                   {state.sharedDocuments.length === 0 ? (
                     <div className="flex h-full items-center justify-center p-4 text-center flex-col gap-3">
                       <p className="text-xs text-muted-foreground">No documents shared yet</p>
@@ -754,14 +783,14 @@ export default function StudyRoomWorkspace() {
         </div>
       </div>
 
-      <Dialog open={showNewDoc} onOpenChange={setShowNewDoc}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>New document</DialogTitle>
-            <DialogDescription>
+      <ResponsiveSheet open={showNewDoc} onOpenChange={setShowNewDoc}>
+        <ResponsiveSheetContent>
+          <ResponsiveSheetHeader>
+            <ResponsiveSheetTitle>New document</ResponsiveSheetTitle>
+            <ResponsiveSheetDescription>
               Create a personal document. It will be saved to your subject documents.
-            </DialogDescription>
-          </DialogHeader>
+            </ResponsiveSheetDescription>
+          </ResponsiveSheetHeader>
           <div className="space-y-4 pt-2">
             <Input
               placeholder="Document title"
@@ -784,17 +813,17 @@ export default function StudyRoomWorkspace() {
               </Button>
             </div>
           </div>
-        </DialogContent>
-      </Dialog>
+        </ResponsiveSheetContent>
+      </ResponsiveSheet>
 
-      <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete room?</DialogTitle>
-            <DialogDescription>
+      <ResponsiveSheet open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <ResponsiveSheetContent>
+          <ResponsiveSheetHeader>
+            <ResponsiveSheetTitle>Delete room?</ResponsiveSheetTitle>
+            <ResponsiveSheetDescription>
               This will permanently delete the room and all its messages and documents. This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
+            </ResponsiveSheetDescription>
+          </ResponsiveSheetHeader>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" onClick={() => setShowDeleteConfirm(false)}>
               Cancel
@@ -803,19 +832,19 @@ export default function StudyRoomWorkspace() {
               Delete room
             </Button>
           </div>
-        </DialogContent>
-      </Dialog>
+        </ResponsiveSheetContent>
+      </ResponsiveSheet>
 
       {/* Transfer ownership dialog */}
-      <Dialog open={showTransferOwnership} onOpenChange={setShowTransferOwnership}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Transfer ownership</DialogTitle>
-            <DialogDescription>
+      <ResponsiveSheet open={showTransferOwnership} onOpenChange={setShowTransferOwnership}>
+        <ResponsiveSheetContent>
+          <ResponsiveSheetHeader>
+            <ResponsiveSheetTitle>Transfer ownership</ResponsiveSheetTitle>
+            <ResponsiveSheetDescription>
               Choose a new host. You will become a co-host.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2 pt-2 max-h-64 overflow-y-auto">
+            </ResponsiveSheetDescription>
+          </ResponsiveSheetHeader>
+          <div className="space-y-2 pt-2">
             {state?.members?.filter((m) => m.userId !== myUserId).map((member) => (
               <button
                 key={member.id}
@@ -831,18 +860,18 @@ export default function StudyRoomWorkspace() {
               Cancel
             </Button>
           </div>
-        </DialogContent>
-      </Dialog>
+        </ResponsiveSheetContent>
+      </ResponsiveSheet>
 
       {/* Permissions dialog */}
-      <Dialog open={showPermissions} onOpenChange={setShowPermissions}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Room permissions</DialogTitle>
-            <DialogDescription>
+      <ResponsiveSheet open={showPermissions} onOpenChange={setShowPermissions}>
+        <ResponsiveSheetContent>
+          <ResponsiveSheetHeader>
+            <ResponsiveSheetTitle>Room permissions</ResponsiveSheetTitle>
+            <ResponsiveSheetDescription>
               Configure what members can do in this room.
-            </DialogDescription>
-          </DialogHeader>
+            </ResponsiveSheetDescription>
+          </ResponsiveSheetHeader>
           <div className="space-y-3 pt-2">
             {([
               { key: "canShareDocuments", label: "Share documents" },
@@ -870,8 +899,58 @@ export default function StudyRoomWorkspace() {
               Save
             </Button>
           </div>
-        </DialogContent>
-      </Dialog>
+        </ResponsiveSheetContent>
+      </ResponsiveSheet>
+
+      {/* Mobile documents bottom sheet */}
+      <ResponsiveSheet open={showDocsSheet} onOpenChange={setShowDocsSheet}>
+        <ResponsiveSheetContent>
+          <ResponsiveSheetHeader>
+            <ResponsiveSheetTitle>Shared documents</ResponsiveSheetTitle>
+            <ResponsiveSheetDescription>
+              Select a document to view and collaborate
+            </ResponsiveSheetDescription>
+          </ResponsiveSheetHeader>
+          <div className="space-y-1 pt-2">
+            {state.sharedDocuments.length === 0 ? (
+              <div className="flex flex-col items-center justify-center p-6 text-center gap-3">
+                <p className="text-sm text-muted-foreground">No documents shared yet</p>
+                <Button size="sm" variant="outline" onClick={() => { setShowDocsSheet(false); setShowNewDoc(true); }}>
+                  <Plus className="mr-1 h-3 w-3" />
+                  New document
+                </Button>
+              </div>
+            ) : (
+              state.sharedDocuments.map((doc) => (
+                <button
+                  key={doc.documentId}
+                  onClick={() => {
+                    setActiveDocumentId(doc.documentId);
+                    if (activeSection === "documents") setActiveSection("workspace");
+                    setShowDocsSheet(false);
+                  }}
+                  className={`w-full rounded-lg px-3 py-3 text-left transition ${
+                    activeDocumentId === doc.documentId
+                      ? "bg-muted dark:bg-muted/70"
+                      : "hover:bg-muted/40"
+                  }`}
+                >
+                  <p className="truncate text-sm font-medium">{doc.title}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{doc.role === "study-guide" ? "Study guide" : "Notes"}</p>
+                </button>
+              ))
+            )}
+            {state.sharedDocuments.length > 0 && (
+              <div className="pt-2">
+                <Button size="sm" variant="outline" className="w-full" onClick={() => setShowNewDoc(true)}>
+                  <Plus className="mr-1 h-3 w-3" />
+                  New
+                </Button>
+              </div>
+            )}
+          </div>
+        </ResponsiveSheetContent>
+      </ResponsiveSheet>
     </div>
   );
 }

@@ -42,7 +42,7 @@ const groupByTopic = (formulas: Formula[], query: string, state: string | null) 
 };
 
 const FormulaCard = ({ formula, isFavorite, onToggleFavorite }: { formula: Formula; isFavorite?: boolean; onToggleFavorite?: () => void }) => (
-  <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+  <div className="min-w-0 rounded-2xl border border-border bg-card p-4 shadow-sm">
     <div className="flex items-start justify-between gap-3">
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold text-foreground">{formula.name}</p>
@@ -60,7 +60,7 @@ const FormulaCard = ({ formula, isFavorite, onToggleFavorite }: { formula: Formu
         </Badge>
       </div>
     </div>
-    <div className="mt-3 rounded-xl border border-border/60 bg-background/40 px-3 py-2">
+    <div className="mt-3 rounded-xl border border-border/60 bg-background/40 px-3 py-2 overflow-hidden">
       <MarkdownRenderer content={`$$${formula.latex}$$`} className="text-base" />
     </div>
   </div>
@@ -189,7 +189,6 @@ export default function FormulasPage() {
               <Sigma className="w-4 h-4" />
             </div>
             <div>
-              <p className="text-xs uppercase tracking-widest text-muted-foreground">Formula Vault</p>
               <h1 className="text-lg font-semibold">Formula Sheets</h1>
             </div>
           </div>
@@ -309,7 +308,7 @@ export default function FormulasPage() {
           </div>
 
           {/* Main content */}
-          <div className="space-y-5">
+          <div className="min-w-0 space-y-5">
 
             {/* Search bar */}
             <div className="rounded-2xl border border-border bg-card p-4">
@@ -346,22 +345,26 @@ export default function FormulasPage() {
 
             {/* Topic pills — only shown in single-subject mode */}
             {!isCrossSearch && (
-              <div className="flex flex-wrap gap-2">
-                {["All", ...topicList].map(topic => (
-                  <button
-                    key={topic}
-                    type="button"
-                    onClick={() => setActiveTopic(topic)}
-                    className={cn(
-                      "rounded-full border px-3 py-1.5 text-xs font-semibold transition",
-                      activeTopic === topic
-                        ? "bg-primary text-primary-foreground border-primary"
-                        : "border-border bg-card text-muted-foreground hover:text-foreground hover:border-primary/40"
-                    )}
-                  >
-                    {topic}
-                  </button>
-                ))}
+              <div className="relative -mx-4">
+                <div className="px-4 flex gap-2 overflow-x-auto scrollbar-none py-1">
+                  {["All", ...topicList].map(topic => (
+                    <button
+                      key={topic}
+                      type="button"
+                      onClick={() => setActiveTopic(topic)}
+                      className={cn(
+                        "shrink-0 rounded-full border px-4 py-2 min-h-11 text-xs font-semibold transition",
+                        activeTopic === topic
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "border-border bg-card text-muted-foreground hover:text-foreground hover:border-primary/40"
+                      )}
+                    >
+                      {topic}
+                    </button>
+                  ))}
+                </div>
+                <div className="pointer-events-none absolute inset-y-0 left-0 w-6 bg-gradient-to-r from-background to-transparent" />
+                <div className="pointer-events-none absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-background to-transparent" />
               </div>
             )}
 

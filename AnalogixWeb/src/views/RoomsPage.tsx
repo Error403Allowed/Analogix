@@ -11,15 +11,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import MobileFAB from "@/components/MobileFAB";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+  ResponsiveSheet,
+  ResponsiveSheetContent,
+  ResponsiveSheetFooter,
+  ResponsiveSheetHeader,
+  ResponsiveSheetTitle,
+  ResponsiveSheetDescription,
+} from "@/components/ui/responsive-sheet";
 import {
   Select,
   SelectContent,
@@ -121,20 +121,18 @@ export default function RoomsPage() {
             Create a study room, bring the group into one shared timer and workspace, and keep AI in the same conversation as the rest of the room.
           </p>
           <div className="flex flex-wrap gap-2">
-            <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-              <DialogTrigger asChild>
-                <Button>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Create room
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-lg">
-                <DialogHeader>
-                  <DialogTitle>Create study room</DialogTitle>
-                  <DialogDescription>
+            <ResponsiveSheet open={createOpen} onOpenChange={setCreateOpen}>
+              <Button className="hidden md:inline-flex">
+                <Plus className="mr-2 h-4 w-4" />
+                Create room
+              </Button>
+              <ResponsiveSheetContent className="sm:max-w-lg">
+                <ResponsiveSheetHeader>
+                  <ResponsiveSheetTitle>Create study room</ResponsiveSheetTitle>
+                  <ResponsiveSheetDescription>
                     Pick a topic, choose whether the room is public or private, and start the shared workspace.
-                  </DialogDescription>
-                </DialogHeader>
+                  </ResponsiveSheetDescription>
+                </ResponsiveSheetHeader>
 
                 <div className="space-y-4">
                   <div className="space-y-2">
@@ -173,16 +171,16 @@ export default function RoomsPage() {
                   </div>
                 </div>
 
-                <DialogFooter>
+                <ResponsiveSheetFooter>
                   <Button variant="secondary" onClick={() => setCreateOpen(false)}>
                     Cancel
                   </Button>
                   <Button disabled={creating} onClick={() => void handleCreate()}>
                     {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create room"}
                   </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+                </ResponsiveSheetFooter>
+              </ResponsiveSheetContent>
+            </ResponsiveSheet>
 
             <Button variant="secondary" onClick={() => void refetch()}>
               <RefreshCw className="mr-2 h-4 w-4" />
@@ -281,6 +279,8 @@ export default function RoomsPage() {
           </section>
         </div>
       )}
+
+      <MobileFAB label="New room" onClick={() => setCreateOpen(true)} />
     </div>
   );
 }

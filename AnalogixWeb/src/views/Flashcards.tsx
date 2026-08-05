@@ -5,9 +5,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft, BookOpen, Plus, Target,
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import MobileFAB from "@/components/MobileFAB";
 import { SUBJECT_CATALOG } from "@/constants/subjects";
 import { flashcardStore, type Flashcard, type FlashcardRating } from "@/utils/flashcardStore";
 import { generateFlashcardsFromDocument, generateQuiz, generateQuizFromDocument } from "@/services/groq";
@@ -791,6 +791,13 @@ export default function Flashcards() {
           )}
         </AnimatePresence>
       </div>
+
+      {topView === "library" && (
+        <MobileFAB label="Create set" onClick={() => setTopView("create-set")} />
+      )}
+      {topView === "subject-detail" && activeSubjectId && (
+        <MobileFAB label="New set" onClick={() => { setNewSetSubject(activeSubjectId); setTopView("create-set"); }} />
+      )}
     </div>
   );
 }

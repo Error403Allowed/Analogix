@@ -229,14 +229,14 @@ export default function SubjectDetail() {
           <div className="flex h-24 w-24 items-center justify-center rounded-2xl border-4 border-background bg-card text-4xl shadow-xl">
             <DynamicIcon name={appearance.icon} />
           </div>
-          <div className="mt-6 flex items-end justify-between gap-4">
-            <div>
-              <h1 className="text-4xl font-bold tracking-tight">{appearance.title}</h1>
+          <div className="mt-6 flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
+            <div className="min-w-0">
+              <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">{appearance.title}</h1>
               <p className="mt-2 text-sm text-muted-foreground/60">
                 {getSubjectDescription(subjectId as any, userPrefs.grade)}
               </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               <Button variant="outline" size="sm" onClick={() => setCustomizeOpen(true)} className="rounded-lg h-9">
                 <Palette className="mr-2 h-4 w-4" />
                 Customise

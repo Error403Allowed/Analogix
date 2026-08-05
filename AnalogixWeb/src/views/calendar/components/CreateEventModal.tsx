@@ -5,6 +5,11 @@ import { X, ChevronDown, Check, Tag, Pencil } from "lucide-react";
 import { format, addMinutes } from "date-fns";
 import { cn } from "@/lib/utils";
 import {
+  ResponsiveSheet,
+  ResponsiveSheetContent,
+  ResponsiveSheetClose,
+} from "@/components/ui/responsive-sheet";
+import {
   DEFAULT_EVENT_DURATION_MINUTES, TIME_GRID_SNAP_MINUTES, formatMinutesForTimeInput,
 } from "@/views/calendar/timeGridUtils";
 import { PRESET_COLORS } from "../constants";
@@ -61,17 +66,15 @@ export function CreateEventModal({ defaultDate, defaultStartMin, defaultEndMin, 
   const meta = allTypes[type] ?? { color: "#3b82f6", label: type, icon: "📌" };
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
-      <motion.div initial={{ scale: 0.95, y: 12 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 12 }}
-        className="relative w-full max-w-md rounded-2xl bg-card border border-border shadow-2xl overflow-hidden z-10"
-        onClick={e => e.stopPropagation()}>
+    <ResponsiveSheet open onOpenChange={(open) => { if (!open) onClose(); }}>
+      <ResponsiveSheetContent className="sm:max-w-md p-0">
+        <ResponsiveSheetClose className="md:hidden absolute right-3 top-3 z-20 rounded-lg p-1.5 text-muted-foreground hover:bg-muted">
+          <X className="w-4 h-4" />
+        </ResponsiveSheetClose>
         <div className="h-1 w-full transition-colors duration-300" style={{ backgroundColor: meta.color }} />
         <div className="p-6">
           <div className="flex items-center justify-between mb-5">
             <h3 className="text-sm font-bold text-foreground">New Event</h3>
-            <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground"><X className="w-4 h-4" /></button>
           </div>
           <div className="space-y-3">
             <input ref={inputRef} value={title} onChange={e => setTitle(e.target.value)}
@@ -174,7 +177,7 @@ export function CreateEventModal({ defaultDate, defaultStartMin, defaultEndMin, 
               className="text-xs font-bold px-5 py-2 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 transition-all">Save</button>
           </div>
         </div>
-      </motion.div>
-    </motion.div>
+      </ResponsiveSheetContent>
+    </ResponsiveSheet>
   );
 }
