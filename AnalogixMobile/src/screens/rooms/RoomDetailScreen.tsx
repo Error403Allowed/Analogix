@@ -148,12 +148,9 @@ export default function RoomDetailScreen() {
         const { data } = await tutorMutation({
           variables: {
             input: {
-              subject: room?.subject ?? "General",
-              topic: content,
-              learningStyle: "balanced",
-              difficultyLevel: "intermediate",
-              responseFormat: "balanced",
-              history,
+              question: content,
+              subjectId: room?.subject ?? "General",
+              contextText: history.map((h) => `${h.role}: ${h.content}`).join("\n"),
             },
           },
         });
