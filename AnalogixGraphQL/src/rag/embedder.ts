@@ -7,7 +7,7 @@ let embedFn: EmbedFn | null = null;
 export async function getEmbedder(): Promise<EmbedFn> {
   if (embedFn) return embedFn;
 
-  const { pipeline } = await import("@xenova/transformers");
+  const { pipeline } = await import("@huggingface/transformers");
   embedFn = await (pipeline as unknown as (task: string, model: string) => Promise<EmbedFn>)(
     "feature-extraction",
     "Xenova/bge-base-en-v1.5"

@@ -104,7 +104,7 @@ const BlockNoteEditor = forwardRef<BlockNoteHandle, Props>(
     );
 
     const collabConfig = useMemo(() => {
-      if (!collaboration) return undefined;
+      if (!collaboration?.fragment) return undefined;
       return {
         fragment: collaboration.fragment,
         user: {
@@ -113,7 +113,7 @@ const BlockNoteEditor = forwardRef<BlockNoteHandle, Props>(
         },
         provider: collaboration.provider ?? undefined,
       };
-    }, [collaboration?.fragment, collaboration?.user.name, collaboration?.user.color, collaboration?.provider]);
+    }, [collaboration?.fragment, collaboration?.user?.name, collaboration?.user?.color, collaboration?.provider]);
 
     const editor = useCreateBlockNote({
       schema: editorSchema,
@@ -142,7 +142,7 @@ const BlockNoteEditor = forwardRef<BlockNoteHandle, Props>(
     const hasSeededRef = useRef(false);
     // Handle seeding when collaborating and the doc is empty
     useEffect(() => {
-      if (!collaboration || !editor || !initialBlocks || initialBlocks.length === 0 || hasSeededRef.current) return;
+      if (!collaboration?.fragment || !editor || !initialBlocks || initialBlocks.length === 0 || hasSeededRef.current) return;
 
       // If the shared document is empty (one default paragraph with no text), seed it
       const isDocEmpty =

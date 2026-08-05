@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Settings, User, Layers, Sigma, Sparkles, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -75,7 +75,7 @@ const Header = ({ userName = "Student", streak = 0 }: HeaderProps) => {
   const [interestSelections, setInterestSelections] = useState<Record<string, string[]>>({});
   const [customInterest, setCustomInterest] = useState<Record<string, string>>({});
 
-  const loadPreferences = () => {
+  const loadPreferences = useCallback(() => {
     let prefs: any;
     try {
       prefs = JSON.parse(localStorage.getItem("userPreferences") || "{}");
@@ -117,11 +117,11 @@ const Header = ({ userName = "Student", streak = 0 }: HeaderProps) => {
     setSelectedHobbies(derivedHobbyIds);
     setInterestSelections(detailSelections);
     setCustomInterest({});
-  };
+  }, [userName]);
 
   useEffect(() => {
     if (showProfile) loadPreferences();
-  }, [showProfile]);
+  }, [showProfile, loadPreferences]);
 
   const toggleSubject = (id: string) => {
     setSelectedSubjects((prev) =>

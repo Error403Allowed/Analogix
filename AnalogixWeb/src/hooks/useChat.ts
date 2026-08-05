@@ -82,14 +82,23 @@ export function useChat() {
 
   const [chatSessionId, setChatSessionId] = useState<string | null>(null);
 
-  const userPrefs =
-    typeof window !== "undefined"
-      ? JSON.parse(localStorage.getItem("userPreferences") || "{}")
-      : {};
+  const userPrefs = useMemo(
+    () =>
+      typeof window !== "undefined"
+        ? JSON.parse(localStorage.getItem("userPreferences") || "{}")
+        : {},
+    [],
+  );
   const [hydratedUserName, setHydratedUserName] = useState<string>("");
   const userName = hydratedUserName || userPrefs.name || "";
-  const userHobbies = buildInterestList(userPrefs, ["gaming", "sports"]);
-  const userSubjects = Array.isArray(userPrefs.subjects) ? userPrefs.subjects : [];
+  const userHobbies = useMemo(
+    () => buildInterestList(userPrefs, ["gaming", "sports"]),
+    [userPrefs],
+  );
+  const userSubjects = useMemo(
+    () => (Array.isArray(userPrefs.subjects) ? userPrefs.subjects : []),
+    [userPrefs],
+  );
   const availableSubjects = useMemo(
     () => allSubjects.filter((subject) => userSubjects.includes(subject.id)),
     [userSubjects],
@@ -107,6 +116,7 @@ export function useChat() {
     setStreamingId, setStreamingContent, abortRef, allSubjects, userName,
     chatSessionId,
   });
+  const { setAllSessions } = sessions;
 
   const scroll = useChatScroll(messages.length);
 
@@ -153,16 +163,17 @@ export function useChat() {
     return () => document.removeEventListener("mousedown", handleClick);
   }, [showSubjectPicker]);
 
+  const sessionParam = searchParams.get("session");
+  const subjectParam = searchParams.get("subject") as SubjectId | null;
+
   useEffect(() => {
-    const sessionId = searchParams.get("session");
-    const subjectParam = searchParams.get("subject") as SubjectId | null;
-    if (!sessionId || !subjectParam) return;
+    if (!sessionParam || !subjectParam) return;
     if (!allSubjects.find(s => s.id === subjectParam)) return;
 
     (async () => {
-      const msgs = await chatStore.getMessages(sessionId);
+      const msgs = await chatStore.getMessages(sessionParam);
       setSelectedSubject(subjectParam);
-      setChatSessionId(sessionId);
+      setChatSessionId(sessionParam);
 
       if (msgs.length === 0) {
         const subject = allSubjects.find(s => s.id === subjectParam);
@@ -183,7 +194,7 @@ export function useChat() {
         })));
       }
     })();
-  }, [buildWelcomeMessage, userName]);
+  }, [userName, sessionParam, subjectParam]);
 
   useEffect(() => {
     return () => {
@@ -224,17 +235,17 @@ export function useChat() {
       }
       chatTitle = chatTitle.slice(0, 50);
       await chatStore.updateSessionTitle(sessionId, chatTitle);
-      sessions.setAllSessions(prev => prev.map(s => s.id === sessionId ? { ...s, title: chatTitle } : s));
+      setAllSessions(prev => prev.map(s => s.id === sessionId ? { ...s, title: chatTitle } : s));
     } catch (err) {
       console.warn("[Chat] Failed to generate title:", err);
       const words = userInput.trim().split(/\s+/).slice(0, 4).join(" ");
       if (words) {
         const fallbackTitle = words.slice(0, 50);
         await chatStore.updateSessionTitle(sessionId, fallbackTitle);
-        sessions.setAllSessions(prev => prev.map(s => s.id === sessionId ? { ...s, title: fallbackTitle } : s));
+        setAllSessions(prev => prev.map(s => s.id === sessionId ? { ...s, title: fallbackTitle } : s));
       }
     }
-  }, [sessions.setAllSessions]);
+  }, [setAllSessions]);
 
   const buildContext = useCallback((overrideAnchor?: string | null) => ({
     subjects: selectedSubject ? [selectedSubject] : [],
@@ -247,7 +258,7 @@ export function useChat() {
     memoryManagement: false,
     selectedModel,
   }), [
-    selectedSubject, userSubjects, userHobbies,
+    selectedSubject, userHobbies,
     userPrefs.grade, userPrefs.state, userPrefs.learningStyle,
     analogyModeEnabled, selectedModel,
   ]);
@@ -334,8 +345,9 @@ export function useChat() {
       setIsTyping(false);
     }
   }, [
-    isInputLocked, messages, allSubjects, selectedSubject,
+    isInputLocked, messages, selectedSubject,
     latestAssistantId, buildContext, userName, analogyModeEnabled,
+    userHobbies,
   ]);
 
   const handleSaveAsFlashcards = useCallback(async () => {

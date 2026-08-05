@@ -60,7 +60,6 @@ function renderMarkdownToHtml(markdown: string): string {
   for (const line of lines) {
     if (line.startsWith("```")) {
       if (inCodeBlock) {
-        const lang = codeLang.toLowerCase();
         html += `<div class="code-wrapper">
           <div class="code-header">
             <span class="code-lang">${escapeHtml(codeLang)}</span>
@@ -110,7 +109,6 @@ function renderMarkdownToHtml(markdown: string): string {
   }
 
   if (inCodeBlock && codeContent) {
-    const lang = codeLang.toLowerCase();
     html += `<div class="code-wrapper">
       <div class="code-header">
         <span class="code-lang">${escapeHtml(codeLang)}</span>

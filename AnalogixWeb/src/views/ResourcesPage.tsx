@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft, BookOpen, ExternalLink, FileText,
@@ -94,22 +94,22 @@ export default function ResourcesPage() {
   // Cross-subject search
   const isCrossSearch = query.trim().length > 0;
 
-  const matchesQuery = (link: ResourceLink) => {
+  const matchesQuery = useCallback((link: ResourceLink) => {
     if (!query) return true;
     const q = query.toLowerCase();
     return (
       link.title.toLowerCase().includes(q) ||
       (link.description?.toLowerCase().includes(q) ?? false)
     );
-  };
+  }, [query]);
 
   // Past papers: show user's state first (prioritised), then all untagged ones.
   // If no state set, show everything. Textbooks are never state-filtered — they're universal.
-  const paperMatchesState = (link: ResourceLink) => {
+  const paperMatchesState = useCallback((link: ResourceLink) => {
     if (!userState) return true;
     if (!link.states || link.states.length === 0) return true;
     return link.states.includes(userState) || link.states.includes("ALL");
-  };
+  }, [userState]);
 
   const crossResults = useMemo(() => {
     if (!isCrossSearch) return [];
@@ -123,7 +123,7 @@ export default function ResourcesPage() {
       }
     }
     return results;
-  }, [isCrossSearch, subjectResources, query, userState, matchesQuery, paperMatchesState]);
+  }, [isCrossSearch, subjectResources, matchesQuery, paperMatchesState]);
 
   const visiblePapers = activeResource?.pastPapers.filter(l => matchesQuery(l) && paperMatchesState(l)) ?? [];
   const visibleTextbooks = activeResource?.textbooks.filter(l => matchesQuery(l)) ?? [];

@@ -15,7 +15,7 @@ const nextConfig = {
   },
   // Never bundle these on the server — they rely on native bindings or
   // load files from disk at require-time which breaks under Next.js bundling.
-  serverExternalPackages: ['pdf-parse', 'pdfjs-dist'],
+  serverExternalPackages: ['@huggingface/transformers', 'pdf-parse', 'pdfjs-dist'],
   // Increase body size limit for file uploads (default is 1MB)
   experimental: {
     serverActions: {

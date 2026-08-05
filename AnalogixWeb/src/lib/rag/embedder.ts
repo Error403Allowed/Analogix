@@ -5,7 +5,7 @@ let embedFn: ((texts: string[], options: { pooling: string; normalize: boolean }
 export async function getEmbedder() {
   if (embedFn) return embedFn;
 
-  const { pipeline: pipe } = await import('@xenova/transformers');
+  const { pipeline: pipe } = await import('@huggingface/transformers');
   pipeline = pipe as typeof pipeline;
   embedFn = await (pipeline as NonNullable<typeof pipeline>)('feature-extraction', 'Xenova/bge-base-en-v1.5');
   return embedFn as NonNullable<typeof embedFn>;

@@ -14,8 +14,11 @@
     "start": "node dist/index.js"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@hono/node-server": "^2.1.0",
+    "@modelcontextprotocol/sdk": "^1.30.0",
     "@supabase/supabase-js": "^2.110.5",
+    "fast-uri": "^3.1.5",
+    "hono": "^4.12.34",
     "zod": "^4.4.3"
   },
   "devDependencies": {

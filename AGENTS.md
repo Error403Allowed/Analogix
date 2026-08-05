@@ -33,6 +33,7 @@ Monorepo (npm workspaces + Turborepo) for an AI study platform. Four workspaces 
 - Do not go with quick fixes, make fixes that work in the long-term and produce less errors over time
 - When asked to commit and push changes, make sure all local changes are pushed neatly so that commits can be referred in a neat and structured manner
 - Before committing and pushing, ALWAYS run "npm run build". npm run build MUST PASS before pushing in order to create a valid vercel deployment. 
+- When creating a plan, always complete a risk assessment and present it to the user transparently and with no bias whatsoever. 
 
 ## Testing
 
@@ -42,6 +43,8 @@ Monorepo (npm workspaces + Turborepo) for an AI study platform. Four workspaces 
 - When creating new components, always create tests
     -> Playwright for extensive e2e testing
     -> Vitest for simple unit testing
+
+- Use snyk cli to run codebase-wide tests on the repo to identify vulnerabilities. If any are found, fix them as easily as you can without putting anything at risk of more vulnerabilities.
 
 ## Workspace specifics
 

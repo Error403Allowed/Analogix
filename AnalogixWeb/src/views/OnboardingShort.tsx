@@ -225,7 +225,7 @@ const Onboarding = () => {
 
       loadProfile();
     }
-  }, [authUser, authLoading]);
+  }, [authUser, authLoading, router]);
 
   const getExistingPrefs = () => {
     try {

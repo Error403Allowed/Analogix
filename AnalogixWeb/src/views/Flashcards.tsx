@@ -237,6 +237,8 @@ export default function Flashcards() {
   }, [userSubjects, setsBySubject]);
 
   const activeSet = sets.find(s => s.set.id === activeSetId);
+  const activeSetRef = useRef(activeSet);
+  activeSetRef.current = activeSet;
   const totalCards = cards.length;
 
   const openSubject = (subjectId: string) => {
@@ -256,22 +258,24 @@ export default function Flashcards() {
   const resetLearn = () => { setLearnReady(false); setLearnComplete(false); setLearnIndex(0); setLearnFlipped(false); setLearnAnswers([]); };
 
   useEffect(() => {
-    if (topView !== "set-detail" || activeSetTab !== "flashcards" || !activeSet) return;
+    const currentSet = activeSetRef.current;
+    if (topView !== "set-detail" || activeSetTab !== "flashcards" || !currentSet) return;
     if (!hasRecordedActivityRef.current) {
       hasRecordedActivityRef.current = true;
       statsStore.recordActivity();
     }
     const now = new Date().toISOString();
-    const due = activeSet.cards.filter(c => c.nextReview <= now);
-    setReviewCards(due.length > 0 ? due : activeSet.cards);
+    const due = currentSet.cards.filter(c => c.nextReview <= now);
+    setReviewCards(due.length > 0 ? due : currentSet.cards);
     setReviewIndex(0);
     setFlipped(false);
     setReviewComplete(false);
   }, [topView, activeSetId, activeSetTab]);
 
   useEffect(() => {
-    if (topView !== "set-detail" || activeSetTab !== "learn" || !activeSet) return;
-    const shuffled = [...activeSet.cards].sort(() => Math.random() - 0.5);
+    const currentSet = activeSetRef.current;
+    if (topView !== "set-detail" || activeSetTab !== "learn" || !currentSet) return;
+    const shuffled = [...currentSet.cards].sort(() => Math.random() - 0.5);
     setLearnCards(shuffled);
     setLearnIndex(0);
     setLearnFlipped(false);

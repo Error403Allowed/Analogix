@@ -1,0 +1,88 @@
+# Snyk (https://snyk.io) policy file, patches or ignores known vulnerabilities.
+version: v1.25.1
+# ignores vulnerabilities until expiry date; change duration by modifying expiry date
+ignore:
+  SNYK-JS-SHARP-18184259:
+    - '*':
+        reason: >-
+          sharp is a hard dep of @huggingface/transformers pinned to ^0.34.x
+          (0.x caret blocks 0.35.0+, the only patched line). snyk reports
+          isUpgradable:false/isPatchable:false. Dormant in our usage: image
+          pipelines only, never the feature-extraction embeddings used here.
+          Tracked upstream until a transformers release allows sharp ^0.35.
+        expires: 2027-08-05T00:00:00.000Z
+        created: 2026-08-05T08:16:58.018Z
+  SNYK-JS-SHARP-18184262:
+    - '*':
+        reason: >-
+          sharp is a hard dep of @huggingface/transformers pinned to ^0.34.x
+          (0.x caret blocks 0.35.0+, the only patched line). snyk reports
+          isUpgradable:false/isPatchable:false. Dormant in our usage: image
+          pipelines only, never the feature-extraction embeddings used here.
+          Tracked upstream until a transformers release allows sharp ^0.35.
+        expires: 2027-08-05T00:00:00.000Z
+        created: 2026-08-05T08:17:00.801Z
+  SNYK-JS-SHARP-18184416:
+    - '*':
+        reason: >-
+          sharp is a hard dep of @huggingface/transformers pinned to ^0.34.x
+          (0.x caret blocks 0.35.0+, the only patched line). snyk reports
+          isUpgradable:false/isPatchable:false. Dormant in our usage: image
+          pipelines only, never the feature-extraction embeddings used here.
+          Tracked upstream until a transformers release allows sharp ^0.35.
+        expires: 2027-08-05T00:00:00.000Z
+        created: 2026-08-05T08:17:04.590Z
+  SNYK-JS-SHARP-18184418:
+    - '*':
+        reason: >-
+          sharp is a hard dep of @huggingface/transformers pinned to ^0.34.x
+          (0.x caret blocks 0.35.0+, the only patched line). snyk reports
+          isUpgradable:false/isPatchable:false. Dormant in our usage: image
+          pipelines only, never the feature-extraction embeddings used here.
+          Tracked upstream until a transformers release allows sharp ^0.35.
+        expires: 2027-08-05T00:00:00.000Z
+        created: 2026-08-05T08:17:07.811Z
+  SNYK-JS-IMAGESIZE-17295814:
+    - '*':
+        reason: >-
+          Dev-time-only mobile tooling. image-size@1.2.1: metro@latest still
+          pins image-size ^1.0.2 and 1.2.1 is the last 1.x (fix only in 2.0.x,
+          outside metro's range). uuid@7.0.3: xcode@3.0.1 (latest) pins uuid
+          ^7.0.3; next fixed versions 11.1.1/14.0.0 are ESM-only and break
+          xcode's CJS require. Neither ships inside the app bundle (metro
+          bundler + expo prebuild only). Tracked upstream for a patched
+          image-size 1.x / metro range change and a CJS-compatible uuid or xcode
+          dep update.
+        expires: 2027-08-05T00:00:00.000Z
+        created: 2026-08-05T08:34:36.974Z
+  SNYK-JS-IMAGESIZE-17295816:
+    - '*':
+        reason: >-
+          Dev-time-only mobile tooling. image-size@1.2.1: metro@latest still
+          pins image-size ^1.0.2 and 1.2.1 is the last 1.x (fix only in 2.0.x,
+          outside metro's range). uuid@7.0.3: xcode@3.0.1 (latest) pins uuid
+          ^7.0.3; next fixed versions 11.1.1/14.0.0 are ESM-only and break
+          xcode's CJS require. Neither ships inside the app bundle (metro
+          bundler + expo prebuild only). Tracked upstream for a patched
+          image-size 1.x / metro range change and a CJS-compatible uuid or xcode
+          dep update.
+        expires: 2027-08-05T00:00:00.000Z
+        created: 2026-08-05T08:34:39.648Z
+  SNYK-JS-UUID-16133035:
+    - '*':
+        reason: >-
+          Dev-time-only mobile tooling. image-size@1.2.1: metro@latest still
+          pins image-size ^1.0.2 and 1.2.1 is the last 1.x (fix only in 2.0.x,
+          outside metro's range). uuid@7.0.3: xcode@3.0.1 (latest) pins uuid
+          ^7.0.3; next fixed versions 11.1.1/14.0.0 are ESM-only and break
+          xcode's CJS require. Neither ships inside the app bundle (metro
+          bundler + expo prebuild only). Tracked upstream for a patched
+          image-size 1.x / metro range change and a CJS-compatible uuid or xcode
+          dep update.
+        expires: 2027-08-05T00:00:00.000Z
+        created: 2026-08-05T08:34:42.258Z
+patch: {}
+exclude:
+  global:
+    - .next
+    - .opencode
