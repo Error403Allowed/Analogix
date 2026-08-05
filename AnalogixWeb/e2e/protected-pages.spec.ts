@@ -9,6 +9,8 @@ const protectedRoutes = [
   { path: '/chat', name: 'Chat' },
   { path: '/dashboard', name: 'Dashboard' },
   { path: '/study-map', name: 'Study Map' },
+  { path: '/study', name: 'Study Hub' },
+  { path: '/profile', name: 'Profile' },
   { path: '/subjects', name: 'Subjects' },
   { path: '/study-map/subj-1', name: 'Study Map Subject (dynamic)' },
 ];
