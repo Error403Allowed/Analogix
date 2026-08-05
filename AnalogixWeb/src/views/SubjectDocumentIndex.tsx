@@ -23,7 +23,8 @@ export default function SubjectDocumentIndex() {
   useEffect(() => {
     let active = true;
     const load = async () => {
-      if (!subjectId || !subject) {
+      if (!subjectId) return; // wait for params to populate
+      if (!subject) {
         if (active) setStatus("missing");
         return;
       }

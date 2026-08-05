@@ -8,6 +8,10 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { documentId, action } = body;
 
+    if (!documentId) {
+      return NextResponse.json({ error: "Invalid documentId" }, { status: 400 });
+    }
+
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
@@ -47,15 +51,18 @@ export async function POST(request: Request) {
     }
 
     if (action === "status") {
-      const { data: doc } = await supabase
+      const { data: doc, error } = await supabase
         .from("documents")
         .select("id, content_backup, last_reverted_at")
         .eq("id", documentId)
         .eq("owner_user_id", user.id)
-        .single();
+        .maybeSingle();
 
-      if (!doc) {
-        return NextResponse.json({ error: "Document not found" }, { status: 404 });
+      // Documents can be stored outside the `documents` table (legacy/local).
+      // Treat "not found" as "no backup available" instead of a hard 404 so the
+      // client's status probe doesn't spam the console with failed requests.
+      if (error || !doc) {
+        return NextResponse.json({ canRevert: false });
       }
 
       return NextResponse.json({

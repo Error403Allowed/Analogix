@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { staggerContainer, fadeInUp } from "@/utils/animations";
 import {
@@ -112,7 +113,7 @@ function CustomisePanel({ open, enabled, onSave, onClose }: {
   const toggle = (id: WidgetId) =>
     setLocal(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
 
-  return (
+  return createPortal(
     <AnimatePresence>
       {open && (
         <>
@@ -129,7 +130,7 @@ function CustomisePanel({ open, enabled, onSave, onClose }: {
                   <p className="text-[11px] text-muted-foreground/60">Toggle widgets on or off</p>
                 </div>
               </div>
-              <button onClick={onClose} className="w-7 h-7 rounded-lg hover:bg-muted/50 flex items-center justify-center transition-colors">
+              <button onClick={onClose} aria-label="Close customise panel" className="w-9 h-9 rounded-lg hover:bg-muted/50 flex items-center justify-center transition-colors">
                 <X className="w-4 h-4 text-muted-foreground" />
               </button>
             </div>
@@ -168,7 +169,8 @@ function CustomisePanel({ open, enabled, onSave, onClose }: {
           </motion.div>
         </>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }
 
@@ -533,7 +535,7 @@ function MiniTimer() {
   const filledDots = cycleCount === 0 && sessionsCompleted > 0 ? sessionsTarget : cycleCount;
 
   return (
-    <div className="flex items-center gap-4">
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
       {/* Mini ring */}
       <div className="relative w-12 h-12 shrink-0">
         <svg width="48" height="48" viewBox="0 0 48 48" className="-rotate-90">
@@ -546,38 +548,37 @@ function MiniTimer() {
         </div>
       </div>
 
-      {/* Phase + time + dots */}
-      <div className="flex-1 min-w-0 flex items-center gap-3">
-        <div>
-          <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground/50">
-            {phase === "study" ? "Focus" : "Break"}
-          </p>
-          <p className="text-xl font-black text-foreground tabular-nums tracking-tighter leading-none">
-            {fmt(mins)}:{fmt(secs)}
-          </p>
-        </div>
-        {/* Session dots - next to numbers */}
-        <div className="flex items-center gap-1.5 shrink-0">
-          {Array.from({ length: sessionsTarget }, (_, i) => (
-            <div
-              key={i}
-              className={cn(
-                "w-2 h-2 rounded-full transition-all",
-                i < filledDots ? "bg-blue-500 scale-110" : "bg-muted-foreground/20"
-              )}
-              title={i < filledDots ? "Session completed" : "Session pending"}
-            />
-          ))}
-        </div>
+      {/* Phase + time */}
+      <div className="flex-1 min-w-[72px]">
+        <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground/50">
+          {phase === "study" ? "Focus" : "Break"}
+        </p>
+        <p className="text-xl font-black text-foreground tabular-nums tracking-tighter leading-none whitespace-nowrap">
+          {fmt(mins)}:{fmt(secs)}
+        </p>
+      </div>
+
+      {/* Session dots */}
+      <div className="flex items-center gap-1.5 shrink-0">
+        {Array.from({ length: sessionsTarget }, (_, i) => (
+          <div
+            key={i}
+            className={cn(
+              "w-2 h-2 rounded-full transition-all",
+              i < filledDots ? "bg-blue-500 scale-110" : "bg-muted-foreground/20"
+            )}
+            title={i < filledDots ? "Session completed" : "Session pending"}
+          />
+        ))}
       </div>
 
       {/* Controls */}
       <div className="flex items-center gap-1.5 shrink-0">
-        <button onClick={reset} className="w-7 h-7 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all">
-          <RotateCcw className="w-3.5 h-3.5" />
+        <button onClick={reset} aria-label="Reset pomodoro" className="w-9 h-9 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all">
+          <RotateCcw className="w-4 h-4" />
         </button>
         <button onClick={() => setIsActive(a => !a)}
-          className={cn("h-8 px-4 rounded-full text-[11px] font-black uppercase tracking-wider transition-all",
+          className={cn("h-10 px-4 rounded-full text-[11px] font-black uppercase tracking-wider transition-all",
             isActive ? "bg-destructive/80 text-white" : "bg-primary text-primary-foreground")}>
           {isActive ? "Pause" : "Start"}
         </button>

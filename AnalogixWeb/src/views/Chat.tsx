@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSidebar } from "@/components/ui/sidebar";
 import type { LucideIcon } from "lucide-react";
@@ -20,6 +21,11 @@ import {
 import { Button } from "@/components/ui/button";
 import AISettingsSheet from "@/components/AISettingsSheet";
 import ModelSelectorSheet from "@/components/ModelSelectorSheet";
+import {
+  ResponsiveSheet,
+  ResponsiveSheetContent,
+} from "@/components/ui/responsive-sheet";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { ToolProposalCard } from "@/components/chat/ToolProposalCard";
 import { ThinkingBlock } from "@/components/chat/ThinkingBlock";
 import { StreamingMessage } from "@/components/chat/StreamingMessage";
@@ -108,6 +114,7 @@ const Chat = () => {
 
   const [initialLoading, setInitialLoading] = useState(true);
   const { state: sidebarState } = useSidebar();
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     if (sidebarState === "collapsed") {
@@ -115,9 +122,25 @@ const Chat = () => {
     }
   }, [sidebarState, setSidebarOpen]);
 
+  useEffect(() => {
+    if (isMobile) {
+      setSidebarOpen(false);
+    }
+  }, [isMobile, setSidebarOpen]);
+
   const handleToggleSidebar = useCallback(() => {
     setSidebarOpen(prev => !prev);
   }, [setSidebarOpen]);
+
+  const handleMobileStartNewChat = useCallback(() => {
+    setSidebarOpen(false);
+    handleStartNewChat();
+  }, [setSidebarOpen, handleStartNewChat]);
+
+  const handleMobileSwitchThread = useCallback((session: any) => {
+    setSidebarOpen(false);
+    handleSwitchThread(session);
+  }, [setSidebarOpen, handleSwitchThread]);
 
   useEffect(() => {
     if (!sessionsLoading) {
@@ -132,6 +155,29 @@ const Chat = () => {
 
   return (
     <div className={`h-full flex flex-row relative overflow-hidden bg-background ${sidebarState === "collapsed" ? "pl-3" : ""}`}>
+{isMobile ? (
+  <ResponsiveSheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+    <ResponsiveSheetContent className="p-0">
+      <ThreadSidebar
+        variant="mobile"
+        sidebarOpen={sidebarOpen}
+        handleStartNewChat={handleMobileStartNewChat}
+        threadSearch={threadSearch}
+        setThreadSearch={setThreadSearch}
+        sessionsLoading={sessionsLoading}
+        allSessions={allSessions}
+        chatSessionId={chatSessionId}
+        handleSwitchThread={handleMobileSwitchThread}
+        renamingThreadId={renamingThreadId}
+        renamingThreadName={renamingThreadName}
+        setRenamingThreadName={setRenamingThreadName}
+        handleRenameThread={handleRenameThread}
+        setRenamingThreadId={setRenamingThreadId}
+        setContextMenu={setContextMenu}
+      />
+    </ResponsiveSheetContent>
+  </ResponsiveSheet>
+) : (
 <ThreadSidebar
         sidebarOpen={sidebarOpen}
         handleStartNewChat={handleStartNewChat}
@@ -148,8 +194,10 @@ const Chat = () => {
         setRenamingThreadId={setRenamingThreadId}
         setContextMenu={setContextMenu}
       />
+)}
 
       {/* Context Menu for Thread Actions */}
+      {createPortal(
       <AnimatePresence>
         {contextMenu && (
           <motion.div
@@ -193,7 +241,9 @@ const Chat = () => {
             </div>
           </motion.div>
         )}
-      </AnimatePresence>
+      </AnimatePresence>,
+      document.body
+      )}
 
       <div className="flex-1 flex flex-col w-full relative overflow-hidden">
 <ChatHeader
@@ -230,21 +280,22 @@ const Chat = () => {
                 onScroll={updateScrollButton}
                 className="absolute inset-0 overflow-y-auto min-h-0 chat-scroll"
               >
-                <div className="mx-auto max-w-4xl w-full px-4 flex flex-col space-y-6 pb-56 sm:pb-44 pt-4 sm:pt-4">
+                <div className={`mx-auto max-w-4xl w-full px-4 flex flex-col pt-4 sm:pt-4 ${messages.length === 0 && !isTyping ? "min-h-full" : "space-y-6 pb-44 sm:pb-40"}`}>
                   {/* Empty state — shown before any messages */}
                   {messages.length === 0 && !isTyping && (
                     <motion.div
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       transition={{ duration: 0.5 }}
-                      className="flex flex-col items-center justify-center min-h-[55vh] px-6 pt-8 sm:pt-12"
+                      className="flex flex-1 flex-col items-center min-h-0 px-6 pt-2 sm:pt-2"
                     >
+                      <div className="w-full flex flex-col items-center my-auto mb-[clamp(1.5rem,4.5vh,3.5rem)]">
                       {/* Greeting */}
                       <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.05, duration: 0.5, ease: "easeOut" }}
-                        className="text-center mb-8"
+                        className="text-center mb-5"
                       >
                         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground/90 mb-2">
                           {userName ? `What are you studying, ${userName.split(" ")[0]}?` : "What are you studying?"}
@@ -257,7 +308,7 @@ const Chat = () => {
                           initial={{ opacity: 0, y: 12 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ delay: 0.15, duration: 0.4 }}
-                          className="flex flex-wrap items-center justify-center gap-1.5 mb-8"
+                          className="flex flex-wrap items-center justify-center gap-1.5 mb-5"
                         >
                           <span className="text-[11px] text-muted-foreground/40 font-medium mr-1">Your interests:</span>
                           {userHobbies.slice(0, 5).map((hobby) => (
@@ -281,7 +332,7 @@ const Chat = () => {
                         initial={{ opacity: 0, y: 12 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.25, duration: 0.4 }}
-                        className="w-full max-w-xl mb-12"
+                        className="w-full max-w-xl mb-6"
                       >
                         <p className="text-[11px] font-semibold text-muted-foreground/40 uppercase tracking-widest text-center mb-3">
                           Try asking about
@@ -314,6 +365,7 @@ const Chat = () => {
                           ))}
                         </div>
                       </motion.div>
+                      </div>
                     </motion.div>
                   )}
                   <AnimatePresence>

@@ -11,7 +11,7 @@ import * as RoomOps from "@/graphql/queries/room";
 import { useTabs } from "@/context/TabsContext";
 import { useRoomCollaboration } from "@/hooks/useRoomCollaboration";
 import { subjectStore } from "@/utils/subjectStore";
-import type { StudyRoom, StudyRoomMember } from "@/types/rooms";
+import type { StudyRoomMember } from "@/types/rooms";
 import type { RoomStateResponse, SharedDocumentRecord } from "@/lib/room-utils";
 
 export function useStudyRoomWorkspace() {

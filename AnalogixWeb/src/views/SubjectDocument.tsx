@@ -17,20 +17,8 @@ import {
   Wand2,
   MoreHorizontal,
   ChevronRight,
-  Plus,
   RotateCcw,
-  Target,
-  ListChecks,
-  GraduationCap,
-  Lightbulb,
-  Puzzle,
-  AlertCircle,
-  Layers,
-  Trash2,
-  Edit3,
-  AlignLeft,
-  BookMarked,
-  PenTool,
+  Share2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -51,6 +39,14 @@ import { getDocumentPlainText } from "@/lib/document-content";
 import type { DocumentRole } from "@/utils/subjectStore";
 import { EmojiPicker } from "@/components/EmojiPicker";
 import { ShareToRoomDialog } from "@/components/ShareToRoomDialog";
+import AIStudioPanel from "@/components/document/AIStudioPanel";
+import {
+  ResponsiveSheet,
+  ResponsiveSheetContent,
+  ResponsiveSheetHeader,
+  ResponsiveSheetTitle,
+} from "@/components/ui/responsive-sheet";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { statsStore } from "@/utils/statsStore";
 
 type BlockNoteEditorComponent = typeof import("@/components/BlockNoteEditor").BlockNoteEditor;
@@ -96,26 +92,36 @@ export default function SubjectDocument() {
   
   // If not in catalog, we'll load user-created subject dynamically
   const [userSubject, setUserSubject] = useState<{ id: string; label: string } | null>(null);
-  const [subjectLoading, setSubjectLoading] = useState(!subject); // Only load if not in catalog
-  
+  const [subjectLoading, setSubjectLoading] = useState(true);
+
   // Load user-created subject if not in catalog
   useEffect(() => {
-    if (subject || !subjectId || !subjectLoading) return;
-    
+    if (subject) {
+      // Params may not be ready on first render — clear the loading state
+      // as soon as the catalog subject resolves so we never get stuck.
+      setSubjectLoading(false);
+      return;
+    }
+    if (!subjectId) return; // wait for params to populate
+
+    let cancelled = false;
     const loadUserSubject = async () => {
       try {
         await subjectStore.getSubject(subjectId);
-        // For user subjects, use the subject ID as the label
-        setUserSubject({ id: subjectId, label: subjectId });
+        if (!cancelled) {
+          // For user subjects, use the subject ID as the label
+          setUserSubject({ id: subjectId, label: subjectId });
+        }
       } catch (error) {
         console.error("Failed to load user subject:", error);
       } finally {
-        setSubjectLoading(false);
+        if (!cancelled) setSubjectLoading(false);
       }
     };
-    
+
     loadUserSubject();
-  }, [subject, subjectId, subjectLoading]);
+    return () => { cancelled = true; };
+  }, [subject, subjectId]);
   
   // Resolve final subject for display - use user subject as fallback
   const displaySubject = subject || userSubject;
@@ -145,6 +151,7 @@ export default function SubjectDocument() {
   const [stats, setStats] = useState({ text: "", words: 0, characters: 0 });
   const [sidebarBusy, setSidebarBusy] = useState<string | null>(null);
   const [customInstruction, setCustomInstruction] = useState("");
+  const isMobile = useIsMobile();
   const { updateTabLabelByPath } = useTabs();
   const { isSpeaking, isPaused, supported: ttsOk, speak, pause, resume } = useTextToSpeech();
 
@@ -232,19 +239,21 @@ export default function SubjectDocument() {
     loadDocument(false);
 
     // Check revert status
-    fetch(`/api/documents/revert`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ documentId: docId, action: "status" }),
-    })
-      .then((res) => {
-        if (!res.ok) return;
-        return res.json();
+    if (docId) {
+      fetch(`/api/documents/revert`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ documentId: docId, action: "status" }),
       })
-      .then((data) => {
-        if (data) setCanRevert(data.canRevert === true);
-      })
-      .catch(() => {});
+        .then((res) => {
+          if (!res.ok) return;
+          return res.json();
+        })
+        .then((data) => {
+          if (data) setCanRevert(data.canRevert === true);
+        })
+        .catch(() => {});
+    }
 
     const handler = (event: Event) => {
       const detail = (event as CustomEvent<SubjectDataUpdatedDetail>).detail;
@@ -473,7 +482,7 @@ export default function SubjectDocument() {
         </div>
 
         <div className="flex items-center gap-1 shrink-0">
-          <div className="mr-2 flex items-center gap-3">
+          <div className="mr-2 hidden sm:flex items-center gap-3">
             {isSaving ? (
               <span className="text-[11px] text-muted-foreground/50 animate-pulse">Saving...</span>
             ) : (
@@ -498,6 +507,7 @@ export default function SubjectDocument() {
 
           <button
             onClick={() => setIsAiPanelOpen(!isAiPanelOpen)}
+            aria-label="AI Studio"
             className={cn(
               "notion-btn-minimal",
               isAiPanelOpen && "bg-primary/10 text-primary hover:bg-primary/20"
@@ -510,7 +520,12 @@ export default function SubjectDocument() {
           <ShareToRoomDialog
             documentId={docId}
             documentTitle={title || "Untitled"}
-            trigger={<button className="notion-btn-minimal">Share to room</button>}
+            trigger={
+              <button className="notion-btn-minimal" aria-label="Share to room">
+                <Share2 className="h-4 w-4 md:hidden" />
+                <span className="hidden md:inline">Share to room</span>
+              </button>
+            }
           />
 
           <button className="notion-btn-minimal">
@@ -519,7 +534,7 @@ export default function SubjectDocument() {
         </div>
       </header>
 
-      <main className="document-content-area flex relative">
+      <main className="flex-1 flex relative min-h-0 overflow-hidden">
         <div className="flex-1 overflow-y-auto custom-scrollbar">
           <div className="document-container">
             {/* Document Icon & Title */}
@@ -551,8 +566,9 @@ export default function SubjectDocument() {
             {/* Editor Area */}
             <div className="min-h-[70vh]">
               {initialContent === null ? (
-                <div className="flex h-32 items-center justify-center">
-                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground/30" />
+                <div className="flex h-48 items-center justify-center gap-3">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground/40" />
+                  <span className="text-sm text-muted-foreground/60">Loading document…</span>
                 </div>
               ) : (
                 <BlockNoteEditor
@@ -567,7 +583,7 @@ export default function SubjectDocument() {
             </div>
 
             {/* Footer Stats */}
-            <div className="mt-24 pt-8 border-t border-border/50 flex items-center justify-between text-[11px] text-muted-foreground/40 font-medium tracking-wide uppercase">
+            <div className="mt-24 pt-8 border-t border-border/50 flex flex-wrap items-center justify-between gap-3 text-[11px] text-muted-foreground/40 font-medium tracking-wide uppercase">
               <div className="flex items-center gap-6">
                 <span>{stats.words} words</span>
                 <span>{stats.characters} characters</span>
@@ -594,7 +610,7 @@ export default function SubjectDocument() {
               animate={{ x: 0, opacity: 1 }}
               exit={{ x: 300, opacity: 0 }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="w-80 border-l border-border bg-sidebar-background overflow-y-auto custom-scrollbar"
+              className="hidden md:block w-80 border-l border-border bg-sidebar-background overflow-y-auto custom-scrollbar"
             >
               <div className="p-4 border-b border-border/50">
                 <div className="flex items-center justify-between">
@@ -612,127 +628,44 @@ export default function SubjectDocument() {
                 <p className="text-[11px] text-muted-foreground/60 mt-1">Transform your notes with AI</p>
               </div>
 
-              <div className="p-4 space-y-6">
-                {/* Quick Actions */}
-                <div className="space-y-2">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50">Quick Actions</span>
-                  <div className="grid grid-cols-2 gap-2">
-                    {[
-                      { id: "summarise", label: "Summarise", desc: "Bullet summary", icon: ListChecks, shortcut: "S" },
-                      { id: "quiz", label: "Quiz Me", desc: "Practice questions", icon: Target, shortcut: "Q" },
-                      { id: "explain", label: "Explain", desc: "Simple explanation", icon: Lightbulb, shortcut: "E" },
-                      { id: "fill-gaps", label: "Find Gaps", desc: "What's missing", icon: AlertCircle, shortcut: "G" },
-                    ].map((action) => {
-                      const Icon = action.icon;
-
-                      return (
-                      <button
-                        key={action.id}
-                        disabled={sidebarBusy !== null}
-                        onClick={() => runSidebarAction(action.id, action.label)}
-                        className="flex flex-col items-start p-3 rounded-lg border border-border/50 bg-background/50 hover:bg-muted/50 hover:border-primary/20 transition-all text-left group disabled:opacity-50"
-                      >
-                        <div className="flex items-center justify-between w-full">
-                          <Icon className="h-4 w-4 text-primary/70 group-hover:text-primary transition-colors" />
-                          <kbd className="text-[9px] px-1.5 py-0.5 rounded bg-muted/50 text-muted-foreground/50 font-mono">{action.shortcut}</kbd>
-                        </div>
-                        <span className="text-xs font-medium mt-2">{action.label}</span>
-                        <span className="text-[10px] text-muted-foreground/60">{action.desc}</span>
-                      </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Transform */}
-                <div className="space-y-2">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50">Transform</span>
-                  <div className="space-y-1.5">
-                    {[
-                      { id: "simplify", label: "Simplify", desc: "Easier language", icon: Edit3 },
-                      { id: "expand", label: "Expand", desc: "More details", icon: AlignLeft },
-                      { id: "shorten", label: "Shorten", desc: "More concise", icon: Trash2 },
-                      { id: "rewrite", label: "Rewrite", desc: "Better flow", icon: PenTool },
-                    ].map((action) => {
-                      const Icon = action.icon;
-
-                      return (
-                      <button
-                        key={action.id}
-                        disabled={sidebarBusy !== null}
-                        onClick={() => runSidebarAction(action.id, action.label)}
-                        className="flex items-center gap-3 w-full p-2.5 rounded-lg text-sm font-medium text-foreground/70 hover:bg-muted transition-colors text-left disabled:opacity-50"
-                      >
-                        <Icon className="h-4 w-4 text-muted-foreground" />
-                        <div className="flex flex-col items-start">
-                          <span>{action.label}</span>
-                          <span className="text-[10px] text-muted-foreground/50">{action.desc}</span>
-                        </div>
-                        {sidebarBusy === action.id && <Loader2 className="ml-auto h-3.5 w-3.5 animate-spin" />}
-                      </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Study Tools */}
-                <div className="space-y-2">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50">Study Tools</span>
-                  <div className="space-y-1.5">
-                    {[
-                      { id: "flashcards", label: "Flashcards", desc: "Create flashcards from notes", icon: Layers },
-                      { id: "key-terms", label: "Key Terms", desc: "Glossary of important terms", icon: BookMarked },
-                      { id: "practice-problems", label: "Practice Problems", desc: "Worked solutions", icon: Puzzle },
-                      { id: "add-examples", label: "Add Examples", desc: "Concrete examples", icon: GraduationCap },
-                    ].map((action) => {
-                      const Icon = action.icon;
-
-                      return (
-                      <button
-                        key={action.id}
-                        disabled={sidebarBusy !== null}
-                        onClick={() => runSidebarAction(action.id, action.label)}
-                        className="flex items-center gap-3 w-full p-2.5 rounded-lg text-sm font-medium text-foreground/70 hover:bg-muted transition-colors text-left disabled:opacity-50"
-                      >
-                        <Icon className="h-4 w-4 text-muted-foreground" />
-                        <div className="flex flex-col items-start">
-                          <span>{action.label}</span>
-                          <span className="text-[10px] text-muted-foreground/50">{action.desc}</span>
-                        </div>
-                        {sidebarBusy === action.id && <Loader2 className="ml-auto h-3.5 w-3.5 animate-spin" />}
-                      </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Custom Command */}
-                <div className="space-y-3 pt-4 border-t border-border/50">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50">Custom Command</span>
-                  </div>
-                  <textarea
-                    value={customInstruction}
-                    onChange={(event) => setCustomInstruction(event.target.value)}
-                    placeholder="e.g. Turn these notes into a rapid-recall checklist..."
-                    rows={4}
-                    className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2.5 text-xs outline-none focus:ring-1 focus:ring-primary/20 transition-all placeholder:text-muted-foreground/30"
-                  />
-                  <Button
-                    variant="secondary"
-                    className="w-full h-9 text-xs font-semibold rounded-lg"
-                    disabled={sidebarBusy !== null || !customInstruction.trim()}
-                    onClick={() => runSidebarAction("custom", "AI Output", customInstruction)}
-                  >
-                    {sidebarBusy === "custom" ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Plus className="mr-2 h-3.5 w-3.5" />}
-                    Run Instruction
-                  </Button>
-                </div>
-              </div>
+              <AIStudioPanel
+                sidebarBusy={sidebarBusy}
+                customInstruction={customInstruction}
+                setCustomInstruction={setCustomInstruction}
+                onRunAction={runSidebarAction}
+              />
             </motion.aside>
           )}
         </AnimatePresence>
       </main>
+
+      {isMobile && (
+        <ResponsiveSheet open={isAiPanelOpen} onOpenChange={setIsAiPanelOpen}>
+          <ResponsiveSheetContent>
+            <ResponsiveSheetHeader>
+              <ResponsiveSheetTitle className="flex items-center justify-between gap-2 pr-1">
+                <span className="flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  AI Studio
+                </span>
+                <button
+                  onClick={() => setIsAiPanelOpen(false)}
+                  aria-label="Close AI Studio"
+                  className="md:hidden p-2 -mr-1 rounded-lg hover:bg-muted transition-colors"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </ResponsiveSheetTitle>
+            </ResponsiveSheetHeader>
+            <AIStudioPanel
+              sidebarBusy={sidebarBusy}
+              customInstruction={customInstruction}
+              setCustomInstruction={setCustomInstruction}
+              onRunAction={runSidebarAction}
+            />
+          </ResponsiveSheetContent>
+        </ResponsiveSheet>
+      )}
 
       <EmojiPicker
         open={emojiPickerOpen}

@@ -1,10 +1,10 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  BookOpen, Check, FolderOpen, Loader2, Plus, Sparkles,
-  Upload, X,
+  Check, FolderOpen, Loader2, Sparkles,
+  Upload,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
