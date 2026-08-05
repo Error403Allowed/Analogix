@@ -19,7 +19,9 @@ let cachedClient: ReturnType<typeof createBrowserClient> | null = null;
 
 export const createClient = (): any => {
   if (!cachedClient) {
-    cachedClient = createBrowserClient(browserSupabaseUrl, browserSupabaseAnonKey, {
+  const secureCookies = process.env.NODE_ENV === "production";
+
+  return createBrowserClient(browserSupabaseUrl, browserSupabaseAnonKey, {
       auth: {
         detectSessionInUrl: false,
         persistSession: true,
@@ -29,7 +31,7 @@ export const createClient = (): any => {
         name: "sb-auth-token",
         path: "/",
         sameSite: "lax",
-        secure: true,
+        secure: secureCookies,
         maxAge: 7 * 24 * 60 * 60,
       },
     });

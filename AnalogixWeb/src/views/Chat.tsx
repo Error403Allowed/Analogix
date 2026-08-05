@@ -154,7 +154,7 @@ const Chat = () => {
   }
 
   return (
-    <div className={`h-full flex flex-row relative overflow-hidden bg-background ${sidebarState === "collapsed" ? "pl-3" : ""}`}>
+    <div className={`min-h-screen flex flex-row relative overflow-hidden bg-background ${sidebarState === "collapsed" ? "pl-3" : ""}`}>
 {isMobile ? (
   <ResponsiveSheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
     <ResponsiveSheetContent className="p-0">

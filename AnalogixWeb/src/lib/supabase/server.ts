@@ -16,6 +16,8 @@ export const createClient = async (): Promise<any> => {
     );
   }
 
+  const secureCookies = process.env.NODE_ENV === "production";
+
   return createServerClient(serverSupabaseUrl, serverSupabaseAnonKey, {
     cookies: {
       getAll() {
@@ -24,7 +26,7 @@ export const createClient = async (): Promise<any> => {
       setAll(cookiesToSet) {
         try {
           cookiesToSet.forEach(({ name, value, options }) =>
-            cookieStore.set(name, value, { ...options, sameSite: "lax", secure: true, path: "/" })
+            cookieStore.set(name, value, { ...options, sameSite: "lax", secure: secureCookies, path: "/" })
           );
         } catch (err) {
           console.error("[supabase/server] Failed to set cookies:", err);

@@ -59,7 +59,10 @@ const nextConfig = {
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "font-src 'self' data: https:",
               "img-src 'self' data: blob: https:",
-               `connect-src 'self' https: wss:${process.env.NODE_ENV === 'development' ? " http://localhost:4000 ws://localhost:4000" : ''}`,
+              (() => {
+                const allowLocalGraphql = process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_GRAPHQL_HTTP_URL?.includes('localhost');
+                return `connect-src 'self' https: wss:${allowLocalGraphql ? ' http://localhost:4000 ws://localhost:4000' : ''}`;
+              })(),
               "frame-src https://vercel.live",
               "object-src 'none'",
               "base-uri 'self'",

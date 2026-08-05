@@ -23,26 +23,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let cancelled = false;
-    const timeout = setTimeout(() => {
-      if (!cancelled) setLoading(false);
-    }, 8000);
 
-    supabase.auth.getSession().then(({ data: { session } }: { data: { session: any } }) => {
-      if (cancelled) return;
-      clearTimeout(timeout);
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    }).catch((err: any) => {
-      if (cancelled) return;
-      clearTimeout(timeout);
-      console.error("AuthContext: getSession error", err);
-      setLoading(false);
-    });
+    supabase.auth.getSession()
+      .then(({ data: { session } }: { data: { session: any } }) => {
+        if (cancelled) return;
+        setSession(session);
+        setUser(session?.user ?? null);
+        setLoading(false);
+      })
+      .catch((err: any) => {
+        if (cancelled) return;
+        console.error("AuthContext: getSession error", err);
+        setSession(null);
+        setUser(null);
+        setLoading(false);
+      });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: any, session: any) => {
       if (cancelled) return;
-      clearTimeout(timeout);
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
@@ -50,7 +48,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       cancelled = true;
-      clearTimeout(timeout);
       subscription.unsubscribe();
     };
   }, [supabase]);
