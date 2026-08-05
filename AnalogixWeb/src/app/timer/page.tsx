@@ -139,7 +139,7 @@ export default function TimerPage() {
 
   return (
     <div className={cn(
-      "min-h-screen flex flex-col items-center justify-center relative p-8 transition-colors duration-700",
+      "min-h-dvh flex flex-col items-center justify-center relative px-4 py-6 sm:p-8 transition-colors duration-700",
       phase === "study" ? "bg-background" : "bg-emerald-950/5"
     )}>
       {/* Ambient gradient */}
@@ -168,7 +168,7 @@ export default function TimerPage() {
       )}
 
       {/* Phase label with icon */}
-      <div className="flex items-center gap-3 mb-8 z-10">
+      <div className="flex items-center gap-3 mb-6 sm:mb-8 z-10">
         <div className={cn(
           "w-8 h-8 rounded-full flex items-center justify-center",
           phase === "study" ? "bg-primary/15" : "bg-emerald-500/15"
@@ -186,8 +186,8 @@ export default function TimerPage() {
       </div>
 
       {/* Ring */}
-      <div className="relative flex items-center justify-center mb-8 z-10">
-        <svg width="360" height="360" viewBox="0 0 360 360" className="-rotate-90 drop-shadow-lg">
+      <div className="relative flex items-center justify-center mb-6 sm:mb-8 z-10 w-[min(360px,74vw)] aspect-square max-h-[52dvh]">
+        <svg width="360" height="360" viewBox="0 0 360 360" className="-rotate-90 drop-shadow-lg w-full h-full">
           <circle cx="180" cy="180" r={RING_R} fill="none" stroke="currentColor"
             strokeWidth="6" className="text-muted/10" />
           <circle cx="180" cy="180" r={RING_R} fill="none" stroke={color}
@@ -233,7 +233,7 @@ export default function TimerPage() {
       </div>
 
       {/* Session dots with labels */}
-      <div className="flex flex-col items-center gap-3 mb-8 z-10">
+      <div className="flex flex-col items-center gap-3 mb-6 sm:mb-8 z-10">
         <div className="flex items-center gap-2.5">
           {Array.from({ length: sessionsTarget }, (_, i) => (
             <div
@@ -317,7 +317,7 @@ export default function TimerPage() {
 
       {/* Settings row */}
       {!isActive && (
-        <div className="mt-10 flex items-center gap-6 z-10">
+        <div className="mt-6 sm:mt-10 flex items-center gap-6 z-10">
           <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/40">
             <span>Study</span>
             <button onClick={() => { setEditingPhase("study"); setEditMins(String(Math.floor(settings.study / 60)).padStart(2, "0")); setEditSecs(String(settings.study % 60).padStart(2, "0")); setEditing(true); }}
