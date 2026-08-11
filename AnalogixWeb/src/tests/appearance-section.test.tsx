@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, act } from "@testing-library/react";
-import AppearanceSection from "@/components/AppearanceSection";
+import AppearanceSection from "@/components/settings/AppearanceSection";
 
 const mocks = vi.hoisted(() => ({
   setTheme: vi.fn(),
@@ -13,7 +13,7 @@ vi.mock("next-themes", () => ({
   useTheme: () => ({ setTheme: mocks.setTheme, resolvedTheme: mocks.theme.resolvedTheme }),
 }));
 
-vi.mock("@/components/ThemeSelector", () => ({
+vi.mock("@/components/theme/ThemeSelector", () => ({
   themes: [
     { name: "Classic Blue", g: ["#2563eb", "#4f46e5", "#4338ca"] },
     { name: "Forest Glow", g: ["#16a34a", "#22c55e", "#15803d"] },

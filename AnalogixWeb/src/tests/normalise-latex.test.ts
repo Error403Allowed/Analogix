@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from "vitest";
-import { normaliseLatex } from "@/components/MarkdownRenderer";
+import { normaliseLatex } from "@/components/shared/MarkdownRenderer";
 
 describe("normaliseLatex", () => {
   it("normalises \\[ \\] display delimiters to $$", () => {

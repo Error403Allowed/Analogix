@@ -2,7 +2,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { Pen } from "lucide-react";
-import MobileFAB from "@/components/MobileFAB";
+import MobileFAB from "@/components/nav/MobileFAB";
 
 describe("MobileFAB", () => {
   it("renders a labeled action button with an accessible label", () => {

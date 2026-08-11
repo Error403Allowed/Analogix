@@ -14,7 +14,7 @@ import {
   isSameDay, isToday, format,
   addDays, subDays,
 } from "date-fns";
-import MobileFAB from "@/components/MobileFAB";
+import MobileFAB from "@/components/nav/MobileFAB";
 import {
   ResponsiveSheet,
   ResponsiveSheetContent,

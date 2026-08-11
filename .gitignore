@@ -50,5 +50,11 @@ test-results/
 # bun lock (npm is the package manager)
 bun.lock
 
+# AI coding tool artifacts — local only, not for version control
+.home/
+.npm-cache/
+.qwen/
+.opencode/
+
 AUTH_FIX_NOTES.md
 .vercel

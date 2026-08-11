@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { DynamicIcon } from "@/components/IconPicker";
+import { DynamicIcon } from "@/components/shared/IconPicker";
 import { FlipCard, StudyCardContent } from "./card-components";
 import { subjectLabel, subjectIconName, type CardSet, type SetTab } from "./types";
 import type { Flashcard, FlashcardRating } from "@/utils/flashcardStore";

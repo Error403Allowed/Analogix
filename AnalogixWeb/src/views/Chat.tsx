@@ -19,8 +19,8 @@ import {
   Calculator,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import AISettingsSheet from "@/components/AISettingsSheet";
-import ModelSelectorSheet from "@/components/ModelSelectorSheet";
+import AISettingsSheet from "@/components/settings/AISettingsSheet";
+import ModelSelectorSheet from "@/components/settings/ModelSelectorSheet";
 import {
   ResponsiveSheet,
   ResponsiveSheetContent,
@@ -32,9 +32,9 @@ import { StreamingMessage } from "@/components/chat/StreamingMessage";
 import { ReExplainMenu } from "@/components/chat/ReExplainMenu";
 import { ResearchSourceCard } from "@/components/chat/ResearchSourceCard";
 import { parseThinkingContent } from "@/utils/parse-thinking-content";
-import { NeuralNetworkLoader } from "@/components/NeuralNetworkLoader";
+import { NeuralNetworkLoader } from "@/components/shared/NeuralNetworkLoader";
 import { useChat } from "@/hooks/useChat";
-import { ChatSkeleton } from "@/components/PageSkeleton";
+import { ChatSkeleton } from "@/components/layout/PageSkeleton";
 import ThreadSidebar from "@/components/chat/ThreadSidebar";
 import ChatHeader from "@/components/chat/ChatHeader";
 import ChatInput from "@/components/chat/ChatInput";
@@ -297,7 +297,11 @@ const Chat = () => {
                 onScroll={updateScrollButton}
                 className="absolute inset-0 overflow-y-auto min-h-0 chat-scroll"
               >
-                <div className={`mx-auto max-w-4xl w-full px-4 flex flex-col pt-4 sm:pt-4 pb-44 sm:pb-40 ${messages.length === 0 && !isTyping ? "min-h-full" : "space-y-6"}`}>
+                <div className={`mx-auto max-w-4xl w-full px-4 flex flex-col pt-4 sm:pt-4 ${
+                  messages.length === 0 && !isTyping
+                    ? "min-h-full pb-6"
+                    : "pb-44 sm:pb-40 space-y-6"
+                }`}>
                   {/* Empty state - shown before any messages */}
                   {messages.length === 0 && !isTyping && (
                     <motion.div
@@ -318,31 +322,6 @@ const Chat = () => {
                           {userName ? `What are you studying, ${userName.split(" ")[0]}?` : "What are you studying?"}
                         </h1>
                       </motion.div>
-
-                      {/* Interest badges */}
-                      {userHobbies.length > 0 && (
-                        <motion.div
-                          initial={{ opacity: 0, y: 12 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: 0.15, duration: 0.4 }}
-                          className="flex flex-wrap items-center justify-center gap-1.5 mb-5"
-                        >
-                          <span className="text-[11px] text-muted-foreground/40 font-medium mr-1">Your interests:</span>
-                          {userHobbies.slice(0, 5).map((hobby) => (
-                            <span
-                              key={hobby}
-                              className="px-2.5 py-1 rounded-full bg-gradient-to-r from-primary/8 to-primary/5 border border-primary/12 text-[11px] font-medium text-primary/65 cursor-default"
-                            >
-                              {hobby}
-                            </span>
-                          ))}
-                          {userHobbies.length > 5 && (
-                            <span className="text-[11px] text-muted-foreground/40 font-medium">
-                              +{userHobbies.length - 5}
-                            </span>
-                          )}
-                        </motion.div>
-                      )}
 
                       {/* Suggested prompts */}
                       <motion.div

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { NeuralNetworkLoader } from "@/components/NeuralNetworkLoader";
+import { NeuralNetworkLoader } from "@/components/shared/NeuralNetworkLoader";
 
 describe("NeuralNetworkLoader", () => {
   it("renders the thinking label", () => {

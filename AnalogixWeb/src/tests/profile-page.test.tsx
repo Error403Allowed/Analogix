@@ -19,11 +19,11 @@ vi.mock("@/context/AuthContext", () => ({
   }),
 }));
 
-vi.mock("@/components/ProfileSheet", () => ({
+vi.mock("@/components/settings/ProfileSheet", () => ({
   default: () => null,
 }));
 
-vi.mock("@/components/AppearanceSection", () => ({
+vi.mock("@/components/settings/AppearanceSection", () => ({
   default: () => null,
 }));
 

@@ -8,7 +8,7 @@ import {
   Upload,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import ICSUploader from "@/components/ICSUploader";
+import ICSUploader from "@/components/shared/ICSUploader";
 import type { AppEvent } from "@/types/events";
 import { MiniCalendar } from "./MiniCalendar";
 

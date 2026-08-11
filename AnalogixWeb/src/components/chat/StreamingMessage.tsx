@@ -1,6 +1,6 @@
 "use client";
 
-import MarkdownRenderer from "@/components/MarkdownRenderer";
+import MarkdownRenderer from "@/components/shared/MarkdownRenderer";
 
 export function StreamingMessage({ content, isStreaming }: { content: string; isStreaming: boolean }) {
   return (

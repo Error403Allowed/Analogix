@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import MarkdownRenderer from "@/components/MarkdownRenderer";
+import MarkdownRenderer from "@/components/shared/MarkdownRenderer";
 
 export function ThinkingBlock({ content }: { content: string }) {
   const [open, setOpen] = useState(false);

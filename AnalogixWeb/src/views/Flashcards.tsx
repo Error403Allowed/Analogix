@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import MobileFAB from "@/components/MobileFAB";
+import MobileFAB from "@/components/nav/MobileFAB";
 import { SUBJECT_CATALOG } from "@/constants/subjects";
 import { flashcardStore, type Flashcard, type FlashcardRating } from "@/utils/flashcardStore";
 import { generateFlashcardsFromDocument, generateQuiz, generateQuizFromDocument } from "@/services/groq";

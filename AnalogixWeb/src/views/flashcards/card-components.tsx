@@ -3,7 +3,7 @@
 import { Eye, EyeOff } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
-import MarkdownRenderer from "@/components/MarkdownRenderer";
+import MarkdownRenderer from "@/components/shared/MarkdownRenderer";
 
 function cardTextSize(text: string): string {
   const len = text.length;

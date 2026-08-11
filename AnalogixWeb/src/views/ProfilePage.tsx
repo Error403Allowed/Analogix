@@ -20,8 +20,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import ProfileSheet from "@/components/ProfileSheet";
-import AppearanceSection from "@/components/AppearanceSection";
+import ProfileSheet from "@/components/settings/ProfileSheet";
+import AppearanceSection from "@/components/settings/AppearanceSection";
 import { cn } from "@/lib/utils";
 
 type MenuRow = {

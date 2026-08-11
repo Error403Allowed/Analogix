@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import QuizCard from "@/components/QuizCard";
+import QuizCard from "@/components/shared/QuizCard";
 import { subjectLabel } from "./types";
 import type { QuizQuestion } from "@/types/quiz";
 import type { QuizAnswerInput } from "@/types/quiz";

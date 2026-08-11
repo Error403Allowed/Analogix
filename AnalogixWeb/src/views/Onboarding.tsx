@@ -13,7 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useRouter, useSearchParams } from "next/navigation";
-import Confetti from "@/components/Confetti";
+import Confetti from "@/components/shared/Confetti";
 import { achievementStore } from "@/utils/achievementStore";
 import { HOBBY_OPTIONS, POPULAR_INTERESTS } from "@/utils/interests";
 import { parseICS } from "@/utils/icsParser";
@@ -23,7 +23,7 @@ import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/context/AuthContext";
 import { signInWithGoogle, signInWithEmail, signUpWithEmail, getEmailError, validatePassword } from "@/lib/auth-client";
-import OnboardingBackdrop from "@/components/OnboardingBackdrop";
+import OnboardingBackdrop from "@/components/onboarding/OnboardingBackdrop";
 
 // ── Friendly auth error mapper ───────
 // Translates Supabase auth / OAuth error codes into actionable messages a real

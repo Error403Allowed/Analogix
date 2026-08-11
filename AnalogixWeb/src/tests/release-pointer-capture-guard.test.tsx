@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render } from "@testing-library/react";
-import { ReleasePointerCaptureGuard } from "@/components/ReleasePointerCaptureGuard";
+import { ReleasePointerCaptureGuard } from "@/components/layout/ReleasePointerCaptureGuard";
 
 const makeError = (name: string) => {
   const error = new Error(name);

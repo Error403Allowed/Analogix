@@ -12,12 +12,12 @@ import {
   Send, ArrowRight, RotateCcw,
   BookOpen, Plus,
 } from "lucide-react";
-import UpcomingEvents from "@/components/UpcomingEvents";
-import QuickLinks from "@/components/QuickLinks";
+import UpcomingEvents from "@/components/dashboard/UpcomingEvents";
+import QuickLinks from "@/components/dashboard/QuickLinks";
 import { useQuery } from "@apollo/client/react";
 import { USER_STATS, ACTIVITY_LOG } from "@/graphql/queries/user";
 import { useAchievementChecker } from "@/hooks/useAchievementChecker";
-import TutorialOverlay from "@/components/TutorialOverlay";
+import TutorialOverlay from "@/components/onboarding/TutorialOverlay";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { useTabs } from "@/context/TabsContext";

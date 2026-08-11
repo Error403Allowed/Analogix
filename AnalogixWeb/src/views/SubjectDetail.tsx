@@ -35,9 +35,9 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useTabs } from "@/context/TabsContext";
-import { SUBJECT_COLORS } from "@/components/ColorPicker";
-import { DynamicIcon } from "@/components/IconPicker";
-import { SubjectCustomizationSheet } from "@/components/SubjectCustomizationSheet";
+import { SUBJECT_COLORS } from "@/components/shared/ColorPicker";
+import { DynamicIcon } from "@/components/shared/IconPicker";
+import { SubjectCustomizationSheet } from "@/components/settings/SubjectCustomizationSheet";
 import RESOURCES from "@/data/resources";
 import { ACARA_CURRICULUM } from "@/data/curriculum";
 import {

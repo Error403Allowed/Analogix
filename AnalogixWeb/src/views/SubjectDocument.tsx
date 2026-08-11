@@ -27,8 +27,8 @@ import { useTabs } from "@/context/TabsContext";
 import { useTextToSpeech } from "@/hooks/useTextToSpeech";
 import { subjectStore } from "@/utils/subjectStore";
 
-import type { BlockNoteHandle } from "@/components/BlockNoteEditor";
-import { isBNContent } from "@/components/BlockNoteEditor";
+import type { BlockNoteHandle } from "@/components/shared/BlockNoteEditor";
+import { isBNContent } from "@/components/shared/BlockNoteEditor";
 import {
   createBlockNoteContentParser,
 } from "@/components/blocknote/content";
@@ -37,8 +37,8 @@ import {
 } from "@/components/blocknote/schema";
 import { getDocumentPlainText } from "@/lib/document-content";
 import type { DocumentRole } from "@/utils/subjectStore";
-import { EmojiPicker } from "@/components/EmojiPicker";
-import { ShareToRoomDialog } from "@/components/ShareToRoomDialog";
+import { EmojiPicker } from "@/components/shared/EmojiPicker";
+import { ShareToRoomDialog } from "@/components/shared/ShareToRoomDialog";
 import AIStudioPanel from "@/components/document/AIStudioPanel";
 import {
   ResponsiveSheet,
@@ -49,11 +49,11 @@ import {
 import { useIsMobile } from "@/hooks/use-mobile";
 import { statsStore } from "@/utils/statsStore";
 
-type BlockNoteEditorComponent = typeof import("@/components/BlockNoteEditor").BlockNoteEditor;
+type BlockNoteEditorComponent = typeof import("@/components/shared/BlockNoteEditor").BlockNoteEditor;
 type BlockNoteEditorProps = React.ComponentPropsWithoutRef<BlockNoteEditorComponent>;
 
 const BlockNoteEditor = dynamic<BlockNoteEditorProps>(
-  () => import("@/components/BlockNoteEditor").then((module) => module.BlockNoteEditor),
+  () => import("@/components/shared/BlockNoteEditor").then((module) => module.BlockNoteEditor),
   { ssr: false },
 ) as BlockNoteEditorComponent;
 

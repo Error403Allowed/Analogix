@@ -4,7 +4,7 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import MobileBottomNav, {
   MOBILE_NAV_ITEMS,
   getActiveTabForPath,
-} from "@/components/MobileBottomNav";
+} from "@/components/nav/MobileBottomNav";
 
 const pushMock = vi.fn();
 

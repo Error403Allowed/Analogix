@@ -12,7 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useRouter, useSearchParams } from "next/navigation";
-import Confetti from "@/components/Confetti";
+import Confetti from "@/components/shared/Confetti";
 import { achievementStore } from "@/utils/achievementStore";
 import { HOBBY_OPTIONS } from "@/utils/interests";
 import { AustralianState, STATE_LABELS } from "@/utils/termData";
@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/context/AuthContext";
 import { signInWithGoogle } from "@/lib/auth-client";
-import OnboardingBackdrop from "@/components/OnboardingBackdrop";
+import OnboardingBackdrop from "@/components/onboarding/OnboardingBackdrop";
 
 // ── Auth Step ─────────────────────────
 function AuthStep({ onAuthed, externalError }: { onAuthed: () => void; externalError?: string | null }) {

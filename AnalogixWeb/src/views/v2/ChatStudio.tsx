@@ -2,11 +2,11 @@
 
 import { useMemo, useState } from "react";
 import { ArrowUp, BookOpen, ClipboardList, Layers, Loader2 } from "lucide-react";
-import { WorkspaceScaffold, Panel } from "@/components/v2/WorkspaceScaffold";
+import { WorkspaceScaffold, Panel } from "@/components/layout/WorkspaceScaffold";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { getGroqCompletion } from "@/services/groq";
-import MarkdownRenderer from "@/components/MarkdownRenderer";
+import MarkdownRenderer from "@/components/shared/MarkdownRenderer";
 import { useRouter } from "next/navigation";
 import type { ChatMessage } from "@/types/chat";
 

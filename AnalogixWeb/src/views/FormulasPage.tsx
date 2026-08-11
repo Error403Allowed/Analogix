@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, Search, Sigma, Star, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import MarkdownRenderer from "@/components/MarkdownRenderer";
+import MarkdownRenderer from "@/components/shared/MarkdownRenderer";
 import { FORMULA_SHEETS, type Formula, type FormulaSheet } from "@/data/formulaSheets";
 import { SUBJECT_CATALOG } from "@/constants/subjects";
 import { cn } from "@/lib/utils";

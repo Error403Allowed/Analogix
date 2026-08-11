@@ -1,8 +1,8 @@
 "use client";
 
-import ProtectedRoute from "@/components/ProtectedRoute";
+import ProtectedRoute from "@/components/layout/ProtectedRoute";
 import dynamic from "next/dynamic";
-import { PageLoader } from "@/components/PageSkeleton";
+import { PageLoader } from "@/components/layout/PageSkeleton";
 
 const ProfilePage = dynamic(() => import("@/views/ProfilePage"), {
   ssr: false,

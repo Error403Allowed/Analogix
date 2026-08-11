@@ -1,11 +1,11 @@
 import type { Metadata, Viewport } from "next";
 import { Analytics } from "@vercel/analytics/react";
-import AppProviders from "@/components/AppProviders";
-import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
+import AppProviders from "@/components/layout/AppProviders";
+import { ServiceWorkerRegistration } from "@/components/layout/ServiceWorkerRegistration";
 import "@/index.css";
 import "katex/dist/katex.min.css";
 
-import DashLayout from "@/components/DashLayout";
+import DashLayout from "@/components/layout/DashLayout";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://analogix.vercel.app"),

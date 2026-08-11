@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { BookOpen, ExternalLink, Filter, MessageCircle, SquareStack } from "lucide-react";
-import { WorkspaceScaffold, Panel } from "@/components/v2/WorkspaceScaffold";
+import { WorkspaceScaffold, Panel } from "@/components/layout/WorkspaceScaffold";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import RESOURCES from "@/data/resources";

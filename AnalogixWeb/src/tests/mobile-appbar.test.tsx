@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
-import MobileAppBar from "@/components/MobileAppBar";
+import MobileAppBar from "@/components/nav/MobileAppBar";
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/subjects/maths",

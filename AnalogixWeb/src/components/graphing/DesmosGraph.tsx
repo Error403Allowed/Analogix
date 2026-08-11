@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import { Loader2, RefreshCw, Edit2, X, Plus, Maximize2, Minimize2, Download, Eye, EyeOff, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import MarkdownRenderer from "@/components/MarkdownRenderer";
+import MarkdownRenderer from "@/components/shared/MarkdownRenderer";
 
 interface DesmosGraphProps {
   expressions: string; // raw desmos block content - one expression per line

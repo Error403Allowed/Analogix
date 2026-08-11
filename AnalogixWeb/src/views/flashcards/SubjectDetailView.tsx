@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import { BookOpen, FolderOpen, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { DynamicIcon } from "@/components/IconPicker";
+import { DynamicIcon } from "@/components/shared/IconPicker";
 import { subjectIconName, subjectLabel, type CardSet } from "./types";
 
 export interface SubjectDetailViewProps {

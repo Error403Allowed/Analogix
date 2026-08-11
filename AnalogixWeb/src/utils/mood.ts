@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/client";
 import { getAuthUser } from "./authCache";
-import { applyThemeByName } from "@/components/ThemeSelector";
+import { applyThemeByName } from "@/components/theme/ThemeSelector";
 
 export type MoodProfile = {
   label: string;

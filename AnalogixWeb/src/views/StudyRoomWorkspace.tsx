@@ -37,15 +37,15 @@ import {
   ResponsiveSheetTitle,
   ResponsiveSheetDescription,
 } from "@/components/ui/responsive-sheet";
-import MarkdownRenderer from "@/components/MarkdownRenderer";
+import MarkdownRenderer from "@/components/shared/MarkdownRenderer";
 import { useStudyRoomWorkspace } from "@/hooks/useStudyRoomWorkspace";
 import { formatClock, parseThinkingContent, ThinkingBlock, sections } from "@/lib/room-utils";
 
-type BlockNoteEditorComponent = typeof import("@/components/BlockNoteEditor").BlockNoteEditor;
+type BlockNoteEditorComponent = typeof import("@/components/shared/BlockNoteEditor").BlockNoteEditor;
 type BlockNoteEditorProps = React.ComponentPropsWithoutRef<BlockNoteEditorComponent>;
 
 const BlockNoteEditor = dynamic<BlockNoteEditorProps>(
-  () => import("@/components/BlockNoteEditor").then((module) => module.BlockNoteEditor),
+  () => import("@/components/shared/BlockNoteEditor").then((module) => module.BlockNoteEditor),
   { ssr: false },
 ) as BlockNoteEditorComponent;
 

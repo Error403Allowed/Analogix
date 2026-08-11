@@ -17,10 +17,10 @@ import {
 import { motion } from "framer-motion";
 import { staggerContainer, fadeInUp } from "@/utils/animations";
 import { statsStore } from "@/utils/statsStore";
-import { SubjectCustomizationSheet } from "@/components/SubjectCustomizationSheet";
+import { SubjectCustomizationSheet } from "@/components/settings/SubjectCustomizationSheet";
 import { subjectStore, type CustomSubject } from "@/utils/subjectStore";
-import { SUBJECT_COLORS } from "@/components/ColorPicker";
-import { DynamicIcon } from "@/components/IconPicker";
+import { SUBJECT_COLORS } from "@/components/shared/ColorPicker";
+import { DynamicIcon } from "@/components/shared/IconPicker";
 
 type SubjectPagePrefs = {
   subjects?: string[];
