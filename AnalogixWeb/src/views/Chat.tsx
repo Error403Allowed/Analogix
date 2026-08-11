@@ -29,6 +29,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { ToolProposalCard } from "@/components/chat/ToolProposalCard";
 import { ThinkingBlock } from "@/components/chat/ThinkingBlock";
 import { StreamingMessage } from "@/components/chat/StreamingMessage";
+import { ReExplainMenu } from "@/components/chat/ReExplainMenu";
 import { ResearchSourceCard } from "@/components/chat/ResearchSourceCard";
 import { parseThinkingContent } from "@/utils/parse-thinking-content";
 import { NeuralNetworkLoader } from "@/components/NeuralNetworkLoader";
@@ -502,40 +503,14 @@ const Chat = () => {
                                             <Shuffle className="w-3 h-3" />
                                           )}
                                           Explain differently
-                                          <ChevronDown className="w-2.5 h-2.5 opacity-50" />
+                                          <ChevronDown className={`w-2.5 h-2.5 opacity-50 transition-transform ${reExplainOpenId === message.id ? "rotate-180" : ""}`} />
                                         </Button>
-                                        <AnimatePresence>
-                                          {reExplainOpenId === message.id && (
-                                            <motion.div
-                                              initial={{ opacity: 0, y: -6, scale: 0.97 }}
-                                              animate={{ opacity: 1, y: 0, scale: 1 }}
-                                              exit={{ opacity: 0, y: -6, scale: 0.97 }}
-                                              transition={{ duration: 0.15 }}
-                                              className="absolute left-0 top-9 z-50 w-56 rounded-xl border border-border bg-card shadow-xl p-2"
-                                            >
-                                              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-2 py-1">
-                                                Anchor to interest
-                                              </p>
-                                              <button
-                                                type="button"
-                                                onClick={() => handleReExplain(message.id)}
-                                                className="w-full text-left text-xs px-2 py-1.5 rounded-lg hover:bg-muted/60 text-foreground font-medium"
-                                              >
-                                                🎲 Surprise me
-                                              </button>
-                                              {userHobbies.map(interest => (
-                                                <button
-                                                  key={interest}
-                                                  type="button"
-                                                  onClick={() => handleReExplain(message.id, interest)}
-                                                  className="w-full text-left text-xs px-2 py-1.5 rounded-lg hover:bg-muted/60 text-foreground truncate"
-                                                >
-                                                  {interest}
-                                                </button>
-                                              ))}
-                                            </motion.div>
-                                          )}
-                                        </AnimatePresence>
+                                        <ReExplainMenu
+                                          open={reExplainOpenId === message.id}
+                                          hobbies={userHobbies}
+                                          onSelect={(anchor) => handleReExplain(message.id, anchor)}
+                                          onClose={() => setReExplainOpenId(null)}
+                                        />
                                       </div>
 
                                       <div className="flex items-center opacity-70 hover:opacity-100 transition-opacity">

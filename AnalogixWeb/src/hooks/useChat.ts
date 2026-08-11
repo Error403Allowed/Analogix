@@ -897,12 +897,21 @@ export function useChat() {
         }
         setIsTyping(false);
         abortRef.current = null;
-      } catch {
-        setMessages(prev => [...prev, {
-          id: (Date.now() + 3).toString(),
-          role: "assistant",
-          content: "I couldn't reach the AI service, you've either hit the rate limit of 1000 requests per day or you need to check your internet.",
-        }]);
+      } catch (err) {
+        // Both streaming and the non-streaming fallback failed. Drop the empty
+        // streaming placeholder (it never finalised) so the loader can't linger,
+        // and surface the real provider error when we have one.
+        const detail = err instanceof Error && err.message
+          ? err.message
+          : "you've either hit the rate limit of 1000 requests per day or you need to check your internet.";
+        setMessages(prev => [
+          ...prev.filter(m => m.id !== responseId),
+          {
+            id: (Date.now() + 3).toString(),
+            role: "assistant",
+            content: `I couldn't reach the AI service. ${detail}`,
+          },
+        ]);
         setStreamingId(null);
         setStreamingContent("");
         setIsTyping(false);

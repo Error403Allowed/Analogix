@@ -52,4 +52,46 @@ test.describe("Chat layout (desktop)", () => {
     expect(box!.y + box!.height).toBeLessThanOrEqual(await page.evaluate(() => window.innerHeight));
     expect(box!.y).toBeGreaterThanOrEqual(0);
   });
+
+  test("neural loader shows while the assistant response is streaming", async ({ page }) => {
+    await page.goto("/chat", { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(1200);
+
+    // Hold the stream open with empty content chunks (never send [DONE]) so the
+    // assistant message stays in the "thinking" state and the loader must render.
+    await page.route("**/api/groq/chat-stream", (route) => {
+      const encoder = new TextEncoder();
+      let closed = false;
+      const stream = new ReadableStream({
+        start(controller) {
+          const tick = () => {
+            if (closed) return;
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ choices: [{ delta: { content: "" } }] })}\n\n`));
+          };
+          tick();
+          const interval = setInterval(tick, 250);
+          (stream as any)._interval = interval;
+        },
+        cancel() {
+          closed = true;
+          clearInterval((stream as any)._interval);
+        },
+      });
+      route.fulfill({
+        status: 200,
+        contentType: "text/event-stream",
+        response: new Response(stream),
+      });
+    });
+
+    const input = page.getByPlaceholder("Ask me anything...");
+    await input.fill("Tell me about photosynthesis");
+    await page.keyboard.press("Enter");
+
+    const loader = page.getByText(/Thinking/).first();
+    await expect(loader).toBeVisible({ timeout: 15000 });
+    const loaderBox = loader.locator("xpath=..");
+    await expect(loaderBox.locator("svg")).toBeVisible();
+    await expect(loader.locator('span[aria-hidden] span')).toHaveCount(3);
+  });
 });
