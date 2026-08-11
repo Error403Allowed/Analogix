@@ -1,4 +1,17 @@
+import { env } from "@huggingface/transformers";
 import { logger } from "../logger.js";
+
+// In serverless runtimes node_modules is read-only, so the model cache must live
+// somewhere writable. Downloads are shared per-instance there.
+const writableCacheDir =
+  process.env.TRANSFORMERS_CACHE_DIR ||
+  (process.env.NODE_ENV === "production"
+    ? "/tmp/transformers-cache"
+    : undefined);
+
+if (writableCacheDir) {
+  env.cacheDir = writableCacheDir;
+}
 
 type EmbedFn = (texts: string[], options: { pooling: string; normalize: boolean }) => Promise<{ data: Float32Array; dims: number[] }>;
 

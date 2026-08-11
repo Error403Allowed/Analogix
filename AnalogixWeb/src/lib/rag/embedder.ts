@@ -1,3 +1,17 @@
+import { env } from '@huggingface/transformers';
+
+// In serverless runtimes (Vercel, etc.) node_modules is read-only, so the model
+// cache must live somewhere writable. Downloads are shared per-instance there.
+const writableCacheDir =
+  process.env.TRANSFORMERS_CACHE_DIR ||
+  (process.env.NODE_ENV === 'production'
+    ? '/tmp/transformers-cache'
+    : undefined);
+
+if (writableCacheDir) {
+  env.cacheDir = writableCacheDir;
+}
+
 let pipeline: ((task: string, model: string) => Promise<{ (texts: string[], options: { pooling: string; normalize: boolean }): Promise<{ data: Float32Array; dims: number[] }> }>) | null = null;
 
 let embedFn: ((texts: string[], options: { pooling: string; normalize: boolean }) => Promise<{ data: Float32Array; dims: number[] }>) | null = null;

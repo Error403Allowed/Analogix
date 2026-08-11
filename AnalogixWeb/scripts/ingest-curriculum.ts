@@ -1,4 +1,4 @@
-import { createToolsClient } from '@/lib/supabase/tools-client';
+import { createServiceRoleClient } from '@/lib/supabase/service-role-client';
 import { CURRICULUM_DATA } from '@analogix/shared/curriculum';
 import { chunkCurriculum } from '@analogix/shared/curriculum';
 import { generateEmbeddings } from '@/lib/rag/embedder';
@@ -10,7 +10,7 @@ async function ingestCurriculum() {
   const chunks = chunkCurriculum(CURRICULUM_DATA);
   console.log(`Generated ${chunks.length} curriculum chunks`);
 
-  const supabase = createToolsClient();
+  const supabase = createServiceRoleClient();
 
   const BATCH_SIZE = 10;
   let inserted = 0;

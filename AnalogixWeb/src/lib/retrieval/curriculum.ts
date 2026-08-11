@@ -1,4 +1,4 @@
-import { createToolsClient } from '@/lib/supabase/tools-client';
+import { createServiceRoleClient } from '@/lib/supabase/service-role-client';
 import { generateEmbedding } from '@/lib/rag/embedder';
 
 export interface CurriculumSearchFilter {
@@ -38,7 +38,18 @@ export class CurriculumRetriever {
     if (!query || query.trim().length === 0) return [];
 
     const embedding = await generateEmbedding(query);
-    const supabase = createToolsClient();
+    let supabase;
+    try {
+      // Curriculum content is public-domain reference data. Use the service role
+      // so RLS (which only grants SELECT to authenticated users) doesn't hide it
+      // from the server-side RAG path where no end-user session is attached.
+      supabase = createServiceRoleClient();
+    } catch {
+      // No service role available - fall back to the shared client. An
+      // authenticated session (e.g. a logged-in user request) will still work.
+      const { createToolsClient } = await import('@/lib/supabase/tools-client');
+      supabase = createToolsClient();
+    }
 
     const embeddingStr = `[${embedding.join(',')}]`;
 
