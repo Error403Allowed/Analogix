@@ -1,7 +1,7 @@
 /**
  * Centralized runtime config for AnalogixMobile.
  * All values come from `process.env.EXPO_PUBLIC_*` (inlined into the bundle
- * at build time by Expo). NEVER read process.env directly in feature code —
+ * at build time by Expo). NEVER read process.env directly in feature code -
  * always import from here.
  */
 import Constants from "expo-constants";

@@ -1,4 +1,4 @@
-# Render Blueprint — https://render.com/docs/blueprint-spec
+# Render Blueprint - https://render.com/docs/blueprint-spec
 # Deploys the GraphQL BFF as a Web Service.
 #
 # Steps:
@@ -8,8 +8,8 @@
 #      SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY,
 #      GROQ_API_KEY, GROQ_API_KEY_2,
 #      GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
-#   4. (Optional) Add REDIS_URL for horizontal scaling — free at upstash.com
-#   5. Deploy — Render runs the build & start commands automatically
+#   4. (Optional) Add REDIS_URL for horizontal scaling - free at upstash.com
+#   5. Deploy - Render runs the build & start commands automatically
 #
 services:
   - type: web

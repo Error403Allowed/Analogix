@@ -93,12 +93,12 @@ describe('getEmailError', () => {
 
   it('returns correct message for email not confirmed', () => {
     const result = getEmailError('email_not_confirmed', null);
-    expect(result).toBe('Please confirm your email address first — check your inbox for a confirmation link.');
+    expect(result).toBe('Please confirm your email address first - check your inbox for a confirmation link.');
   });
 
   it('returns correct message when message contains "email not confirmed"', () => {
     const result = getEmailError(null, 'Email not confirmed');
-    expect(result).toBe('Please confirm your email address first — check your inbox for a confirmation link.');
+    expect(result).toBe('Please confirm your email address first - check your inbox for a confirmation link.');
   });
 
   it('returns correct message for user not found', () => {

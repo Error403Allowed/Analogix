@@ -4,7 +4,7 @@ import { requireUser } from "@/lib/api-auth";
 export const runtime = "nodejs";
 export async function POST(request: any) {
     try {
-        // Title generation is harmless (names a chat session) — require auth when
+        // Title generation is harmless (names a chat session) - require auth when
         // available but still work in local dev without a signed-in user.
         try {
             await requireUser();
@@ -15,7 +15,7 @@ export async function POST(request: any) {
         const body = await request.json();
         const conversation = body.conversation || "";
         const latestMessage = body.latestMessage || "";
-        const systemPrompt = `You are naming a study chat session. Write a short 3-6 word title capturing the SPECIFIC topic being studied. Be concrete — not "Math Help" but "Quadratic Formula Confusion", "WW2 Causes Breakdown", "Python List Indexing". No quotes, no punctuation, just the title.`;
+        const systemPrompt = `You are naming a study chat session. Write a short 3-6 word title capturing the SPECIFIC topic being studied. Be concrete - not "Math Help" but "Quadratic Formula Confusion", "WW2 Causes Breakdown", "Python List Indexing". No quotes, no punctuation, just the title.`;
         const content = await callGroqChat({
             messages: [
                 { role: "system", content: systemPrompt },

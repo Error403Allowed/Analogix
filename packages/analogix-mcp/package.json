@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Analogix MCP server — exposes app data tools via Model Context Protocol",
+  "description": "Analogix MCP server - exposes app data tools via Model Context Protocol",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {

@@ -126,7 +126,7 @@ export function getEmailError(code: string | null, message: string | null): stri
     return "Invalid email or password. Maybe you signed in using Google.";
   }
   if (c === "email_not_confirmed" || m.includes("email not confirmed")) {
-    return "Please confirm your email address first — check your inbox for a confirmation link.";
+    return "Please confirm your email address first - check your inbox for a confirmation link.";
   }
   if (c === "user_not_found" || m.includes("user not found")) {
     return "No account found with this email.";

@@ -91,7 +91,7 @@ export async function POST(request: any) {
         else if (personalityUseAnalogies === true) {
             analogyIntensity = Math.max(analogyIntensity, personalityAnalogyFreq); // Use higher of both
         }
-        // Student's grade and Australian state — used to tailor curriculum context
+        // Student's grade and Australian state - used to tailor curriculum context
         const studentGrade = String(userContext?.grade || "7-12");
         const studentState = userContext?.state || null;
         // Map state codes to full names for the prompt
@@ -111,7 +111,7 @@ export async function POST(request: any) {
         // STEP 2: Build AI instructions based on user preferences
         // ========================================================================
         // Instructions for how much to use analogies - AI uses judgment
-        // Formula sheet context — injected into prompt for formula-bearing subjects
+        // Formula sheet context - injected into prompt for formula-bearing subjects
         const primarySubjectForFormulas = userContext?.subjects?.[0] || null;
         const formulaSheetContext = primarySubjectForFormulas
             ? getFormulaSheetContext(primarySubjectForFormulas)
@@ -120,7 +120,7 @@ export async function POST(request: any) {
         const resolvedModel = resolveModelForUser(selectedModel);
         const isQwenModel = resolvedModel.toLowerCase().includes("qwen");
         const researchMode = Boolean(userContext?.researchMode);
-        // Token budget — respect user's detail_level preference. Qwen needs extra room
+        // Token budget - respect user's detail_level preference. Qwen needs extra room
         // because its <think> block and the answer share the output budget.
         const detailLevel = aiPersonality?.detail_level ?? 50;
         const HARD_CAP = isQwenModel ? 8192 : 4096;
@@ -159,7 +159,7 @@ export async function POST(request: any) {
             ? findExplicitInterest(latestUserMessage, interestList)
             : null;
         const explicitFromContext = userContext?.analogyAnchor?.trim() || null;
-        // Pick a random interest as fallback — no extra AI call needed
+        // Pick a random interest as fallback - no extra AI call needed
         // If no interests set, use general relatable anchors (everyday life, school, sports, gaming, etc.)
         const randomInterest = interestList.length > 0
             ? interestList[Math.floor(Math.random() * interestList.length)]
@@ -172,28 +172,28 @@ export async function POST(request: any) {
         const analogyInstructions = analogyIntensity === 0
             ? `ANALOGY MODE: OFF\nUse no analogies. Explain directly, factually, and clearly. Do not reference hobbies or comparisons.`
             : analogyIntensity >= 4
-                ? `ANALOGY MODE: EXTENDED — Analogies are your primary teaching method.
+                ? `ANALOGY MODE: EXTENDED - Analogies are your primary teaching method.
     
 HOW TO WEAVE ANALOGIES:
 1. Pick ONE relatable scenario (from "${analogyAnchor}" or everyday life) that parallels the concept.
-2. As you explain each part of the concept, map it to a corresponding part of the analogy. For example, if explaining a function using a recipe: "The inputs are your ingredients, the function body is the cooking process — you mix, heat, transform — and the output is the finished dish."
+2. As you explain each part of the concept, map it to a corresponding part of the analogy. For example, if explaining a function using a recipe: "The inputs are your ingredients, the function body is the cooking process - you mix, heat, transform - and the output is the finished dish."
 3. Keep returning to the analogy throughout your response. When you introduce a new sub-concept, show how it fits into the analogy you've already established.
 4. The analogy should feel like a parallel story running alongside the technical explanation, with clear connections drawn between the two.
 5. NEVER just say "Think of it like X" and then drop the analogy. Extend it, develop it, and use it to illuminate each piece of the concept.`
                 : analogyIntensity >= 3
-                    ? `ANALOGY MODE: FREQUENT — Use analogies regularly and weave them into your explanations.
+                    ? `ANALOGY MODE: FREQUENT - Use analogies regularly and weave them into your explanations.
     
 HOW TO WEAVE ANALOGIES:
 1. Choose a familiar scenario from "${analogyAnchor}" that parallels the concept.
 2. As you explain each part of the concept, map it to a corresponding part of the analogy.
 3. Return to the analogy as you cover different aspects. Let it run alongside your technical explanation.
 4. The goal is for the student to see how each piece of the concept corresponds to something they already understand.`
-                    : `ANALOGY MODE: OPTIONAL — Use an analogy only when it genuinely helps clarify.
+                    : `ANALOGY MODE: OPTIONAL - Use an analogy only when it genuinely helps clarify.
     
 GUIDANCE:
 - Use analogies to make abstract concepts concrete, but skip if the concept is already clear
-- When you do use an analogy, weave it in — map parts of the concept to parts of the analogy
-- Natural paragraphs only — no "Step 1:" structures`;
+- When you do use an analogy, weave it in - map parts of the concept to parts of the analogy
+- Natural paragraphs only - no "Step 1:" structures`;
         // Core teaching philosophy
         // TEACHING METHODOLOGY
         // How to layer complexity in explanations
@@ -207,7 +207,7 @@ GUIDANCE:
             return sources.map((s: any, i: any) => {
                 const authors = s.authors?.slice(0, 4).join(", ") || "Unknown authors";
                 const year = s.year ? String(s.year) : "n.d.";
-                const venue = s.venue ? ` — ${s.venue}` : "";
+                const venue = s.venue ? ` - ${s.venue}` : "";
                 const link = s.url || s.pdfUrl || "No link";
                 const abstract = s.abstract ? `\nAbstract: ${truncateText(s.abstract)}` : "";
                 const localNote = s.source === "local" ? "\nNote: Full text is included in the user's attached files." : "";
@@ -236,7 +236,7 @@ ${researchSources.length > 0 ? `ACADEMIC SOURCES:\n${formatResearchSources(resea
         const primarySubject = subjects[0] || null;
         const validSubjectsPrompt = buildValidSubjectsPrompt();
         const userSubjectsContext = subjects.length > 0
-            ? `\n\n${validSubjectsPrompt}\n\nCRITICAL — USER'S ENROLLED SUBJECTS:\nThe user's subjects are: ${subjects.join(", ")}.\nYou MUST use ONLY these subject IDs when calling any tool that requires a subject_id. Never create new subjects or use subject IDs not in this list. If the user asks for something in a subject not in this list, respond conversationally and explain they need to add that subject first.`
+            ? `\n\n${validSubjectsPrompt}\n\nCRITICAL - USER'S ENROLLED SUBJECTS:\nThe user's subjects are: ${subjects.join(", ")}.\nYou MUST use ONLY these subject IDs when calling any tool that requires a subject_id. Never create new subjects or use subject IDs not in this list. If the user asks for something in a subject not in this list, respond conversationally and explain they need to add that subject first.`
             : `\n\n${validSubjectsPrompt}`;
         // ── Curriculum RAG (semantic search) ─────────────────────────────
         let curriculumRagSection = "";
@@ -254,14 +254,14 @@ ${researchSources.length > 0 ? `ACADEMIC SOURCES:\n${formatResearchSources(resea
 
 VOICE & STYLE:
 - Be a friendly, knowledgeable Australian tutor: warm, direct, and encouraging, never robotic or clinical.
-- Vary your structure and wording between replies. Don't force the same section headers or bullet pattern onto every answer. Match the shape of the response to the question — a quick question gets a tight answer, a hard concept gets a proper breakdown.
+- Vary your structure and wording between replies. Don't force the same section headers or bullet pattern onto every answer. Match the shape of the response to the question - a quick question gets a tight answer, a hard concept gets a proper breakdown.
 - DO NOT overuse decorative dividers like "━━━", "---", "***", "====", or horizontal rules. Use them at most once (or not at all); prefer clear paragraphs and short headers instead. Heavy divider spam makes replies look machine-written.
 - Keep prose natural and readable. Short paragraphs over walls of text, but still go deep where the question deserves it.
 
 ${curriculumRagSection}
-${curriculumRagSection ? `CURRICULUM INTEGRATION (MANDATORY): The curriculum content above is the official ACARA content for this topic. You MUST weave it naturally into your explanation alongside the student's interests and analogies — do NOT add a separate "Curriculum" or "Australian Curriculum" section. Use analogies and the student's interests to teach the curriculum outcome. For example: "The ACARA curriculum (AC9M8G03) says students should apply Pythagoras' theorem — it's like finding the direct distance across a football field instead of walking around the edges." The ACARA code MUST appear in your answer, integrated naturally into the teaching, with the explanation framed through analogies and the student's interests.
+${curriculumRagSection ? `CURRICULUM INTEGRATION (MANDATORY): The curriculum content above is the official ACARA content for this topic. You MUST weave it naturally into your explanation alongside the student's interests and analogies - do NOT add a separate "Curriculum" or "Australian Curriculum" section. Use analogies and the student's interests to teach the curriculum outcome. For example: "The ACARA curriculum (AC9M8G03) says students should apply Pythagoras' theorem - it's like finding the direct distance across a football field instead of walking around the edges." The ACARA code MUST appear in your answer, integrated naturally into the teaching, with the explanation framed through analogies and the student's interests.
 
-GRADE LEVEL: The student is in Year ${studentGrade}. However, the curriculum content above is the AUTHORITATIVE source for what to teach — if a curriculum entry exists for the topic, teach it at the level described in that entry, regardless of the general grade guidelines below. As a general guide only: Year 7-8 → foundational concepts, simple algebra, basic geometry, arithmetic. Year 9-10 → intermediate algebra, introductory trigonometry, probability, advanced geometry. Year 11-12 → advanced algebra, calculus, complex analysis, statistics.
+GRADE LEVEL: The student is in Year ${studentGrade}. However, the curriculum content above is the AUTHORITATIVE source for what to teach - if a curriculum entry exists for the topic, teach it at the level described in that entry, regardless of the general grade guidelines below. As a general guide only: Year 7-8 → foundational concepts, simple algebra, basic geometry, arithmetic. Year 9-10 → intermediate algebra, introductory trigonometry, probability, advanced geometry. Year 11-12 → advanced algebra, calculus, complex analysis, statistics.
 ` : `GRADE LEVEL: The student is in Year ${studentGrade}. As a general guide: Year 7-8 → foundational concepts, simple algebra, basic geometry, arithmetic. Year 9-10 → intermediate algebra, introductory trigonometry, probability, advanced geometry. Year 11-12 → advanced algebra, calculus, complex analysis, statistics.`}
 Student Context: Year ${studentGrade}${stateFullName ? ` in ${stateFullName}, Australia` : ", Australia"}. Use Australian curriculum terminology.
 ${memoryContext ? `\nMemory: ${memoryContext}` : ""}
@@ -294,13 +294,13 @@ EXAMPLES of non-explicit requests (just respond conversationally, no TOOL_CALLS)
 - "I have to do homework" → ask what subject
 - "explain logarithms to me" → teach the concept
 
-NEGATIVE EXAMPLES — what you MUST NOT do:
+NEGATIVE EXAMPLES - what you MUST NOT do:
 - User says "quiz me on algebra" → You DO NOT write quiz questions in the chat
 - User says "create flashcards about mitosis" → You DO NOT list flashcards in the chat
 - User says "make a quiz about polynomials" → You DO NOT make up questions and answers in the chat
 - In all these cases, output ONLY TOOL_CALLS and let the tool create the actual content
 
-YOUR TEXT RESPONSE: Before TOOL_CALLS, output a SHORT acknowledgment (1–8 words, no explanation or teaching). Examples: "Creating those now!" "Sure, here you go:" "Let me look that up." "Here's what I found:" Then TOOL_CALLS. Do NOT teach the concept. Do NOT explain what you're doing. Do NOT write any quiz questions, flashcard content, or study material in your response — the tool handles that.
+YOUR TEXT RESPONSE: Before TOOL_CALLS, output a SHORT acknowledgment (1–8 words, no explanation or teaching). Examples: "Creating those now!" "Sure, here you go:" "Let me look that up." "Here's what I found:" Then TOOL_CALLS. Do NOT teach the concept. Do NOT explain what you're doing. Do NOT write any quiz questions, flashcard content, or study material in your response - the tool handles that.
 
 CRITICAL: Use the EXACT tool name. Wrong names fail silently.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -312,7 +312,7 @@ Response Guidelines:
 - Use markdown headings (## for sections, ### for subsections)
 - Format key points as bullet lists; steps as numbered lists
 - Use \`code\` for technical terms, \`\`\`language for code blocks
-- LATEX FOR ALL MATHEMATICAL CONTENT: Use LaTeX ($...$ for inline, $$...$$ for display) for ALL mathematical expressions, equations, formulas, numbers used in calculations, mathematical operations, symbols, and scientific notation. This applies to EVERY subject — maths, physics, chemistry, biology, economics, engineering, and any other subject where numbers, formulas, or mathematical symbols appear. Examples: write $25$ not 25 when it's a value in a calculation, $x = 5$ not x = 5, $\\frac{1}{2}$ not 1/2, $\\times$ for multiplication, $\\div$ for division, $\\pm$, $\\approx$, $\\leq$, $\\geq$, $\\degree$C, $\\text{pH} = 7$, $E = mc^2$, $n = 3$ moles, $v = 30\\,\\text{m/s}$. ANY number that is part of a formula, equation, measurement, calculation, or mathematical relationship MUST be wrapped in $...$. Chemical equations, physics formulas, statistical values, percentages, ratios — all use LaTeX.
+- LATEX FOR ALL MATHEMATICAL CONTENT: Use LaTeX ($...$ for inline, $$...$$ for display) for ALL mathematical expressions, equations, formulas, numbers used in calculations, mathematical operations, symbols, and scientific notation. This applies to EVERY subject - maths, physics, chemistry, biology, economics, engineering, and any other subject where numbers, formulas, or mathematical symbols appear. Examples: write $25$ not 25 when it's a value in a calculation, $x = 5$ not x = 5, $\\frac{1}{2}$ not 1/2, $\\times$ for multiplication, $\\div$ for division, $\\pm$, $\\approx$, $\\leq$, $\\geq$, $\\degree$C, $\\text{pH} = 7$, $E = mc^2$, $n = 3$ moles, $v = 30\\,\\text{m/s}$. ANY number that is part of a formula, equation, measurement, calculation, or mathematical relationship MUST be wrapped in $...$. Chemical equations, physics formulas, statistical values, percentages, ratios - all use LaTeX.
 - Be comprehensive - explain thoroughly with examples
 - Never give one-sentence answers to complex topics
 
@@ -328,7 +328,7 @@ Math Requirements:
 ${formulaSheetContext ? `\nFormulas: ${formulaSheetContext}` : ""}
 ${researchBlock}
 
-Visualisations — you have THREE tools to make concepts visual and memorable:
+Visualisations - you have THREE tools to make concepts visual and memorable:
 
   1. DESMOS GRAPHS (for any math visualisation):
     When the user asks to graph, plot, or visualise ANY equation, function, inequality, or mathematical concept, you MUST output a code block with language "desmos". Desmos supports:
@@ -349,7 +349,7 @@ Visualisations — you have THREE tools to make concepts visual and memorable:
     [bounds: -10, 10, -5, 15]
     \`\`\`
     Rules:
-    - Put ONLY the expression(s) inside the code block — one per line.
+    - Put ONLY the expression(s) inside the code block - one per line.
     - Use * for multiplication (e.g. 2*x not 2x, 4*x^2 not 4x^2).
     - Use ^ for exponentiation, / for division.
     - Math functions: sin, cos, tan, arcsin, arccos, arctan, sinh, cosh, tanh, sqrt, ln, log, abs, floor, ceil, exp, sign, nthroot.
@@ -375,7 +375,7 @@ Visualisations — you have THREE tools to make concepts visual and memorable:
      }
      \`\`\`
      Rules:
-     - The block MUST be valid JSON only — NO imports, NO React components, NO JSX, NO chart.js, NO function definitions.
+     - The block MUST be valid JSON only - NO imports, NO React components, NO JSX, NO chart.js, NO function definitions.
      - "type" must be one of: "line", "bar", "pie", "area".
      - "xKey" is the data key for the x-axis (e.g. "name", "year", "label").
      - "categories" is an array of data keys for the y-axis values to plot.
@@ -422,7 +422,7 @@ Visualisations — you have THREE tools to make concepts visual and memorable:
    - Use meaningful, distinct colours
    - Keep labels short (2-3 words max)
 
-IMPORTANT: If the user asks for a visual, diagram, or graph — use the right tool. Math functions → Desmos. Data/statistics → Recharts. Concepts/structures → Three.js. Don't just describe it — SHOW it.
+IMPORTANT: If the user asks for a visual, diagram, or graph - use the right tool. Math functions → Desmos. Data/statistics → Recharts. Concepts/structures → Three.js. Don't just describe it - SHOW it.
 ${userSubjectsContext}`;
         // ========================================================================
         // STEP 3: Detect what type of question this is (coding/reasoning/general)

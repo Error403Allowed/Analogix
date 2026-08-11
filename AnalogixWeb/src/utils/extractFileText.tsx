@@ -1,5 +1,5 @@
 /**
- * extractFileText — browser-side utility
+ * extractFileText - browser-side utility
  * Handles: .txt .md .csv .rtf  →  read directly
  *          .pdf .docx .pptx    →  send to /api/groq/extract-text
  * Returns the extracted string, or throws with a user-friendly message.
@@ -48,7 +48,7 @@ export async function extractFileText(file: any) {
             throw new Error("Couldn't extract text from this file. Try a .txt or .pdf.");
         return json.text;
     }
-    // ── Image — send to server vision API ──────────────────────────────────────
+    // ── Image - send to server vision API ──────────────────────────────────────
     if (mimeType.startsWith("image/") || /\.(png|jpe?g|webp|gif|heic|heif|bmp|tiff?)$/i.test(file.name)) {
         const form = new FormData();
         form.append("file", file);

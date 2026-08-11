@@ -3,9 +3,9 @@
 Shared types, Zod schemas, and data manifests for the Analogix monorepo.
 
 Consumed by:
-- `AnalogixWeb` (Next.js) — can be migrated incrementally
-- `AnalogixGraphQL` (Apollo Server BFF) — primary consumer
-- `AnalogixMobile` (Expo) — primary consumer
+- `AnalogixWeb` (Next.js) - can be migrated incrementally
+- `AnalogixGraphQL` (Apollo Server BFF) - primary consumer
+- `AnalogixMobile` (Expo) - primary consumer
 
 ## Exports
 
@@ -19,7 +19,7 @@ The package exposes a root barrel and several subpath exports (defined in
 | `@analogix/shared/schemas` | `src/schemas/` | Zod input/output schemas (chat, quiz, flashcard, …) |
 | `@analogix/shared/curriculum` | `src/curriculum/` | ACARA curriculum manifest + types |
 | `@analogix/shared/formulas` | `src/formulas/` | Formula sheets + `getFormulaSheetContext()` helper |
-| `@analogix/shared/achievements` | `src/achievements/` | Achievement definitions (subpath only — not re-exported from root) |
+| `@analogix/shared/achievements` | `src/achievements/` | Achievement definitions (subpath only - not re-exported from root) |
 
 ```ts
 import type { ChatMessage, AIPersonality, QuizData } from "@analogix/shared/types";
@@ -35,7 +35,7 @@ import { ACHIEVEMENTS } from "@analogix/shared/achievements";
 npm run build      # emits dist/
 npm run watch      # rebuild on change
 npm run typecheck
-npm run lint       # placeholder — no linter configured yet
+npm run lint       # placeholder - no linter configured yet
 npm run clean      # removes dist/
 ```
 
@@ -62,5 +62,5 @@ package directly. A code-gen step will eventually unify the two locations.
 
 ## Versioning
 
-This is a workspace package — no publishing. It is consumed by the other
+This is a workspace package - no publishing. It is consumed by the other
 workspaces through npm workspaces' `file:` resolution.

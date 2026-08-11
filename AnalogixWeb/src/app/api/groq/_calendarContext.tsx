@@ -81,7 +81,7 @@ export async function buildCalendarContext(supabase: any, userId: string) {
     if (currentEvent) {
         const eventEnd = new Date(currentEvent.date.getTime() + 60 * 60 * 1000);
         const minsUntilEnd = Math.round((eventEnd.getTime() - now.getTime()) / 60000);
-        rightNowLines.push(`Right now: ${currentEvent.title}${currentEvent.subject ? ` (${currentEvent.subject})` : ""}${minsUntilEnd > 0 ? ` — ends in ${minsUntilEnd} mins` : ""}`);
+        rightNowLines.push(`Right now: ${currentEvent.title}${currentEvent.subject ? ` (${currentEvent.subject})` : ""}${minsUntilEnd > 0 ? ` - ends in ${minsUntilEnd} mins` : ""}`);
     }
     if (todayEvents.length > 0 && !currentEvent) {
         const upcomingToday = todayEvents.filter(e => new Date(e.date) > now).slice(0, 1);
@@ -89,7 +89,7 @@ export async function buildCalendarContext(supabase: any, userId: string) {
             const nextToday = upcomingToday[0];
             const timeUntil = Math.round((new Date(nextToday.date).getTime() - now.getTime()) / 60000);
             const timeStr = timeUntil < 60 ? `in ${timeUntil} mins` : `at ${formatTime(nextToday.date)}`;
-            rightNowLines.push(`Next: ${nextToday.title}${nextToday.subject ? ` (${nextToday.subject})` : ""} — ${timeStr}`);
+            rightNowLines.push(`Next: ${nextToday.title}${nextToday.subject ? ` (${nextToday.subject})` : ""} - ${timeStr}`);
         }
     }
     if (nextClass && !currentEvent && !rightNowLines.some(l => l.includes(nextClass.title))) {
@@ -108,7 +108,7 @@ export async function buildCalendarContext(supabase: any, userId: string) {
         else {
             when = `${formatDate(nextClass.date.toISOString())}`;
         }
-        rightNowLines.push(`You've got ${nextClass.title}${nextClass.subject ? ` (${nextClass.subject})` : ""} — ${when}`);
+        rightNowLines.push(`You've got ${nextClass.title}${nextClass.subject ? ` (${nextClass.subject})` : ""} - ${when}`);
     }
     if (rightNowLines.length > 0) {
         lines.push(...rightNowLines);
@@ -124,8 +124,8 @@ export async function buildCalendarContext(supabase: any, userId: string) {
                 const dateStr = formatDate(c.date);
                 const timeStr = time ? ` at ${time}` : "";
                 const subjectStr = c.subject ? ` [${c.subject}]` : "";
-                const descStr = c.description ? ` — ${c.description}` : "";
-                lines.push(`  • "${c.title}"${subjectStr} — ${dateStr}${timeStr}${descStr}`);
+                const descStr = c.description ? ` - ${c.description}` : "";
+                lines.push(`  • "${c.title}"${subjectStr} - ${dateStr}${timeStr}${descStr}`);
             }
             if (classes.length > 10) {
                 lines.push(`  ... and ${classes.length - 10} more classes`);
@@ -139,9 +139,9 @@ export async function buildCalendarContext(supabase: any, userId: string) {
                 const dateStr = formatDate(e.date);
                 const timeStr = time ? ` at ${time}` : "";
                 const subjectStr = e.subject ? ` [${e.subject}]` : "";
-                const descStr = e.description ? ` — ${e.description}` : "";
+                const descStr = e.description ? ` - ${e.description}` : "";
                 const typeLabel = e.type.charAt(0).toUpperCase() + e.type.slice(1);
-                lines.push(`  • ${typeLabel}: "${e.title}"${subjectStr} — ${dateStr}${timeStr}${descStr}`);
+                lines.push(`  • ${typeLabel}: "${e.title}"${subjectStr} - ${dateStr}${timeStr}${descStr}`);
             }
             if (otherEvents.length > 10) {
                 lines.push(`  ... and ${otherEvents.length - 10} more events`);
@@ -155,7 +155,7 @@ export async function buildCalendarContext(supabase: any, userId: string) {
             const dateStr = formatDate(d.dueDate);
             const subjectStr = d.subject ? ` [${d.subject}]` : "";
             const priorityStr = d.priority !== "medium" ? ` (${d.priority} priority)` : "";
-            lines.push(`  • "${d.title}"${subjectStr} — due ${dateStr}${priorityStr}`);
+            lines.push(`  • "${d.title}"${subjectStr} - due ${dateStr}${priorityStr}`);
         }
         lines.push("");
     }
@@ -172,7 +172,7 @@ export async function buildCalendarContext(supabase: any, userId: string) {
         for (const item of combined) {
             const daysUntil = Math.ceil((item.date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
             const when = daysUntil === 0 ? "TODAY" : daysUntil === 1 ? "tomorrow" : `in ${daysUntil} days`;
-            lines.push(`  • ${item.kind.toUpperCase()}: "${item.title}" — ${when} (${formatDate(item.date.toISOString())})`);
+            lines.push(`  • ${item.kind.toUpperCase()}: "${item.title}" - ${when} (${formatDate(item.date.toISOString())})`);
         }
     }
     return lines.join("\n");

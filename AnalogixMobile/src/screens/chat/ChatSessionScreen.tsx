@@ -33,6 +33,7 @@ export default function ChatSessionScreen() {
     showFormulaPanel, setShowFormulaPanel, formulaSearch, setFormulaSearch,
     currentSubject, currentSubjectId, filteredSubjects,
     currentFormulaSheet, allItems, messages, userHobbies,
+    suggestions, handleSuggestionSelect,
     handleRegenerate, handleReExplain,
     handleGenerateFromFiles, handleUploadFile, removeAttachedFile, handleSend,
   } = useChatSession(route, navigation);
@@ -83,7 +84,7 @@ export default function ChatSessionScreen() {
         style={{ backgroundColor: "transparent" }}
         ListEmptyComponent={
           <View style={{ transform: [{ scaleY: -1 }], flex: 1 }}>
-            <ChatGreeting />
+            <ChatGreeting suggestions={suggestions} onSelect={handleSuggestionSelect} />
           </View>
         }
         renderItem={({ item }) => {

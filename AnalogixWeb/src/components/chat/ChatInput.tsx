@@ -243,7 +243,7 @@ const ChatInput = ({
                 {researchLoading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Atom className="w-3.5 h-3.5" />}
               </button>
 
-              {/* Formula sheet — only if subject has formulas */}
+              {/* Formula sheet - only if subject has formulas */}
               {getFormulaSheet(selectedSubject || "") && (
                 <button
                   type="button"

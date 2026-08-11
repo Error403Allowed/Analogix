@@ -45,7 +45,7 @@ export interface TourConfig {
 }
 
 /**
- * Page-specific tours — Premium, engaging, contextual
+ * Page-specific tours - Premium, engaging, contextual
  */
 export const PAGE_TOURS: Record<string, TourConfig> = {
   dashboard: {
@@ -57,7 +57,7 @@ export const PAGE_TOURS: Record<string, TourConfig> = {
       {
         id: "welcome",
         title: "Welcome to Analogix",
-        content: "Your personal study OS. Notes, flashcards, quizzes, and AI tutoring — all in one place. Let's take a quick tour.",
+        content: "Your personal study OS. Notes, flashcards, quizzes, and AI tutoring - all in one place. Let's take a quick tour.",
         position: "center",
         icon: "🎯",
         pulse: true,
@@ -65,7 +65,7 @@ export const PAGE_TOURS: Record<string, TourConfig> = {
       {
         id: "subjects",
         title: "Your Subjects",
-        content: "Tap any subject to open your notes. Each one has its own flashcards, quizzes, and AI chat — all auto-organized.",
+        content: "Tap any subject to open your notes. Each one has its own flashcards, quizzes, and AI chat - all auto-organized.",
         targetSelector: "[data-tour='subjects-section']",
         position: "bottom",
         icon: "📖",
@@ -75,7 +75,7 @@ export const PAGE_TOURS: Record<string, TourConfig> = {
       {
         id: "quick-actions",
         title: "Quick Actions",
-        content: "Jump straight into studying. Start an AI chat, generate flashcards, or launch a quiz — one tap away.",
+        content: "Jump straight into studying. Start an AI chat, generate flashcards, or launch a quiz - one tap away.",
         targetSelector: "[data-tour='quick-actions']",
         position: "top",
         icon: "⚡",
@@ -103,7 +103,7 @@ export const PAGE_TOURS: Record<string, TourConfig> = {
       {
         id: "welcome",
         title: "Your AI Tutor",
-        content: "Ask anything — explain a concept, quiz you on a topic, or summarize your notes. It adapts to your level and interests.",
+        content: "Ask anything - explain a concept, quiz you on a topic, or summarize your notes. It adapts to your level and interests.",
         position: "center",
         icon: "💬",
         pulse: true,
@@ -141,7 +141,7 @@ export const PAGE_TOURS: Record<string, TourConfig> = {
       {
         id: "input",
         title: "Try It Out",
-        content: "Type any question below. The more specific you are, the better the answer. Go ahead — ask something.",
+        content: "Type any question below. The more specific you are, the better the answer. Go ahead - ask something.",
         targetSelector: "[data-tour='chat-input']",
         position: "top",
         icon: "✍️",
@@ -205,7 +205,7 @@ export const PAGE_TOURS: Record<string, TourConfig> = {
       {
         id: "welcome",
         title: "Flashcards & Spaced Repetition",
-        content: "The most efficient way to memorize. Cards are scheduled using SM-2 algorithm — you see each one right before you'd forget it.",
+        content: "The most efficient way to memorize. Cards are scheduled using SM-2 algorithm - you see each one right before you'd forget it.",
         position: "center",
         icon: "🧠",
         pulse: true,

@@ -1,5 +1,5 @@
 /**
- * Premium Tour System — Billion Dollar Company Level
+ * Premium Tour System - Billion Dollar Company Level
  * 
  * Features:
  * - Cinematic spotlight with gradient glow and particle effects
@@ -363,7 +363,7 @@ export const PageTour: React.FC = () => {
 };
 
 /**
- * Spotlight Component — Premium gradient glow around target
+ * Spotlight Component - Premium gradient glow around target
  */
 const Spotlight: React.FC<{ rect: DOMRect; pulse?: boolean }> = ({ rect, pulse = true }) => {
   const padding = 8;
@@ -468,7 +468,7 @@ const Spotlight: React.FC<{ rect: DOMRect; pulse?: boolean }> = ({ rect, pulse =
 };
 
 /**
- * Hint Badge — Animated pointer near target
+ * Hint Badge - Animated pointer near target
  */
 const HintBadge: React.FC<{ element: Element; hint: string }> = ({ element, hint }) => {
   const [pos, setPos] = useState({ top: 0, left: 0 });

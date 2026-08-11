@@ -87,7 +87,7 @@ export function TimerWidget({ compact = false }: { compact?: boolean }) {
     setPhase(next);
     setIsActive(current === "study");
     setTimeLeft(settingsRef.current[next]);
-    toast.success(next === "study" ? "Break done — back to studying! 🎯" : "Study session done! Time for a break 🌿");
+    toast.success(next === "study" ? "Break done - back to studying! 🎯" : "Study session done! Time for a break 🌿");
   }, []);
 
   useEffect(() => {

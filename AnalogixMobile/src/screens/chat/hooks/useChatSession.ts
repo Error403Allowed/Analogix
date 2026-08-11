@@ -12,6 +12,7 @@ import { SUBJECTS } from "../../../graphql/queries/subject";
 import { ME } from "../../../graphql/queries/user";
 import { FORMULA_SHEETS } from "../../../graphql/queries/misc";
 import { GroqModelId, getGroqModelString } from "../../../types/groq-models";
+import { buildPromptSuggestions } from "@analogix/shared/prompts";
 
 interface AttachedFile {
   name: string;
@@ -66,6 +67,27 @@ export function useChatSession(route: any, navigation: any) {
   const filteredSubjects = subjectSearch
     ? allSubjects.filter(s => s.name.toLowerCase().includes(subjectSearch.toLowerCase()))
     : allSubjects;
+
+  const [suggestionSeed] = useState(() => Math.floor(Math.random() * 0x7fffffff));
+
+  const suggestions = useMemo(
+    () => buildPromptSuggestions(
+      {
+        subjects: userData?.me?.subjects ?? [],
+        grade: userData?.me?.grade,
+        hobbies: userHobbies,
+      },
+      {
+        currentSubject: currentSubjectId === "general" ? null : currentSubject?.name,
+        seed: suggestionSeed,
+      },
+    ),
+    [userData, userHobbies, currentSubjectId, currentSubject, suggestionSeed],
+  );
+
+  const handleSuggestionSelect = useCallback((prompt: string) => {
+    setText(prompt);
+  }, []);
 
   const [reExplainMessageId, setReExplainMessageId] = useState<string | null>(null);
   const [reExplainingId, setReExplainingId] = useState<string | null>(null);
@@ -368,6 +390,8 @@ export function useChatSession(route: any, navigation: any) {
     allItems,
     userHobbies,
     userHobbyIds,
+    suggestions,
+    handleSuggestionSelect,
     // Handlers
     handleRegenerate,
     handleReExplain,

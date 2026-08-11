@@ -48,7 +48,7 @@ function describeAuthError(code: string | null, raw: string | null): string {
     return "Google sign-in was cancelled. Tap Continue with Google to try again.";
   }
   if (c.includes("exchange_failed") || c === "missing_code") {
-    return "We couldn't finish signing you in. The auth code was missing or expired — please try again.";
+    return "We couldn't finish signing you in. The auth code was missing or expired - please try again.";
   }
 
   // Email/password errors
@@ -56,7 +56,7 @@ function describeAuthError(code: string | null, raw: string | null): string {
     return "Invalid email or password. Maybe you signed in using Google.";
   }
   if (c === "email_not_confirmed" || r.includes("email not confirmed")) {
-    return "Please confirm your email address first — check your inbox for a confirmation link.";
+    return "Please confirm your email address first - check your inbox for a confirmation link.";
   }
   if (c === "user_not_found" || r.includes("user not found")) {
     return "No account found with this email.";
@@ -430,7 +430,7 @@ function IcsStep({ importing, imported, count, error, onFile }:
         )}
       </div>
       {error && <p className="text-sm text-destructive font-bold text-center">{error}</p>}
-      <p className="text-xs text-muted-foreground text-center">This is completely optional — you can always import from the Calendar page later.</p>
+      <p className="text-xs text-muted-foreground text-center">This is completely optional - you can always import from the Calendar page later.</p>
     </div>
   );
 }
@@ -457,7 +457,7 @@ const Onboarding = () => {
     );
   });
 
-  // Always start on step 1 — the gate below moves us forward once auth resolves.
+  // Always start on step 1 - the gate below moves us forward once auth resolves.
   // This prevents ?step=2 in the URL from skipping auth for unauthenticated users.
   const [step, setStep] = useState(1);
 
@@ -656,7 +656,7 @@ const Onboarding = () => {
             <motion.div key={`step-${step}`} initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }}
               className="glass-card p-8 md:p-10 shadow-2xl border-white/20">
 
-              {/* Progress bar — only show from step 2 onwards */}
+              {/* Progress bar - only show from step 2 onwards */}
               {step > 1 && (
                 <div className="flex items-center gap-2 mb-10">
                   {Array.from({ length: TOTAL_STEPS - 1 }).map((_, i) => (
@@ -665,10 +665,10 @@ const Onboarding = () => {
                 </div>
               )}
 
-              {/* Step 1 — Auth */}
+              {/* Step 1 - Auth */}
               {step === 1 && <AuthStep onAuthed={() => setStep(2)} externalError={authError} />}
 
-              {/* Step 2 — Name */}
+              {/* Step 2 - Name */}
               {step === 2 && (
                 <div className="space-y-8">
                   <div>
@@ -684,7 +684,7 @@ const Onboarding = () => {
                 </div>
               )}
 
-              {/* Step 3 — Year */}
+              {/* Step 3 - Year */}
               {step === 3 && (
                 <div className="space-y-8">
                   <div>
@@ -704,7 +704,7 @@ const Onboarding = () => {
                 </div>
               )}
 
-              {/* Step 4 — State */}
+              {/* Step 4 - State */}
               {step === 4 && (
                 <div className="space-y-8">
                   <div>
@@ -724,7 +724,7 @@ const Onboarding = () => {
                 </div>
               )}
 
-              {/* Step 5 — Subjects */}
+              {/* Step 5 - Subjects */}
               {step === 5 && (
                 <div className="space-y-8">
                   <div>
@@ -750,7 +750,7 @@ const Onboarding = () => {
                 </div>
               )}
 
-              {/* Step 6 — Hobbies */}
+              {/* Step 6 - Hobbies */}
               {step === 6 && (
                 <div className="space-y-8">
                   <div>
@@ -814,12 +814,12 @@ const Onboarding = () => {
                 </div>
               )}
 
-              {/* Step 7 — ICS */}
+              {/* Step 7 - ICS */}
               {step === 7 && (
                 <IcsStep importing={icsImporting} imported={icsImported} count={icsCount} error={icsError} onFile={handleIcsFile} />
               )}
 
-              {/* Footer buttons — hidden on auth step since it handles its own flow */}
+              {/* Footer buttons - hidden on auth step since it handles its own flow */}
               {step > 1 && (
                 <div className="flex justify-between items-center mt-10">
                   <Button variant="ghost" onClick={() => setStep(s => s - 1)} className="px-6 rounded-xl">Back</Button>

@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 const TIMEOUT = 20000;
 
-// Pages that wrap content in <ProtectedRoute> — redirect to /login → /onboarding
+// Pages that wrap content in <ProtectedRoute> - redirect to /login → /onboarding
 const protectedRoutes = [
   { path: '/achievements', name: 'Achievements' },
   { path: '/calendar', name: 'Calendar' },
@@ -21,7 +21,7 @@ const protectedDynamicRoutes = [
   { path: '/subjects/maths/document/doc-1', name: 'Subject Document Detail (dynamic)' },
 ];
 
-// Pages without ProtectedRoute — should render content even when not authenticated
+// Pages without ProtectedRoute - should render content even when not authenticated
 const unprotectedRoutes = [
   { path: '/flashcards', name: 'Flashcards' },
   { path: '/formulas', name: 'Formulas' },
@@ -30,7 +30,7 @@ const unprotectedRoutes = [
   { path: '/rooms', name: 'Rooms' },
 ];
 
-test.describe('Protected Pages — Redirect to Onboarding', () => {
+test.describe('Protected Pages - Redirect to Onboarding', () => {
   for (const { path, name } of protectedRoutes) {
     test(`redirects ${name} to onboarding`, async ({ page }) => {
       const response = await page.goto(path, {
@@ -44,7 +44,7 @@ test.describe('Protected Pages — Redirect to Onboarding', () => {
   }
 });
 
-test.describe('Unprotected Pages — Render Content Without Auth', () => {
+test.describe('Unprotected Pages - Render Content Without Auth', () => {
   for (const { path, name } of unprotectedRoutes) {
     test(`${name} renders without crashing`, async ({ page }) => {
       const response = await page.goto(path, {
@@ -66,7 +66,7 @@ test.describe('Rooms Page', () => {
   });
 });
 
-test.describe('Protected Dynamic Routes — Render Without Crashing', () => {
+test.describe('Protected Dynamic Routes - Render Without Crashing', () => {
   for (const { path, name } of protectedDynamicRoutes) {
     test(`${name} does not crash`, async ({ page }) => {
       const response = await page.goto(path, {
@@ -79,7 +79,7 @@ test.describe('Protected Dynamic Routes — Render Without Crashing', () => {
   }
 });
 
-test.describe('Protected Pages — Do Not Crash on Dynamic Routes', () => {
+test.describe('Protected Pages - Do Not Crash on Dynamic Routes', () => {
   test('handles missing subject gracefully', async ({ page }) => {
     const response = await page.goto('/subjects/nonexistent-subject', {
       waitUntil: 'domcontentloaded',

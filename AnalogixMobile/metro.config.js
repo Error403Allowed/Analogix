@@ -20,7 +20,7 @@ config.resolver.nodeModulesPaths = [
   path.resolve(monorepoRoot, "node_modules"),
 ];
 
-// 3. Don't follow symlinks — keep paths rooted at AnalogixMobile so
+// 3. Don't follow symlinks - keep paths rooted at AnalogixMobile so
 //    node_modules/expo/AppEntry.js's `import "../../App"` resolves
 //    to AnalogixMobile/App.tsx (one level up from node_modules/expo),
 //    not the monorepo root.

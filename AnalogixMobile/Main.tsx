@@ -1,5 +1,5 @@
 /**
- * App entry point — wraps the entire app in:
+ * App entry point - wraps the entire app in:
  *   - Apollo (HTTP + WS + persisted cache)
  *   - Supabase Auth
  *   - SafeArea + GestureHandler root

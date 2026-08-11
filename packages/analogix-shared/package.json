@@ -66,6 +66,11 @@
       "types": "./dist/data/resources.d.ts",
       "import": "./dist/data/resources.js",
       "require": "./dist/data/resources.js"
+    },
+    "./prompts": {
+      "types": "./dist/prompts/index.d.ts",
+      "import": "./dist/prompts/index.js",
+      "require": "./dist/prompts/index.js"
     }
   },
   "scripts": {

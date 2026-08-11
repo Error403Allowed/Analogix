@@ -34,14 +34,14 @@ Your job: Create a practical, day-by-day study schedule leading up to their upco
 
 Rules:
 - Generate study sessions for the next 14 days only.
-- Spread study across multiple days — don't cram everything the night before.
+- Spread study across multiple days - don't cram everything the night before.
 - Prioritise closer deadlines and higher-stakes exams first.
-- Include rest days — don't schedule study every single day.
+- Include rest days - don't schedule study every single day.
 - Keep each session focused: one subject per session, 45-90 minutes max.
 - Use Australian English and curriculum terminology.
 - Be encouraging but realistic.
 
-Return ONLY valid JSON — no markdown, no preamble:
+Return ONLY valid JSON - no markdown, no preamble:
 {
   "schedule": [
     {
@@ -50,7 +50,7 @@ Return ONLY valid JSON — no markdown, no preamble:
         {
           "subject": "Mathematics",
           "duration": "60 min",
-          "focus": "Quadratic equations — practice past paper questions",
+          "focus": "Quadratic equations - practice past paper questions",
           "tip": "Use the formula sheet and time yourself"
         }
       ]

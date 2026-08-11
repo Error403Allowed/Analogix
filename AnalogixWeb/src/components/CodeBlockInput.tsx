@@ -100,7 +100,7 @@ export default function CodeBlockInput({ onInsert, onClose, initialCode = "" }: 
         </div>
       </div>
 
-      {/* Code editor area — styled like a terminal / VS Code */}
+      {/* Code editor area - styled like a terminal / VS Code */}
       <div className="rounded-xl border border-border/40 overflow-hidden">
         {/* Fake window chrome */}
         <div className="flex items-center gap-2 px-3 py-2 bg-muted/50 border-b border-border/40">

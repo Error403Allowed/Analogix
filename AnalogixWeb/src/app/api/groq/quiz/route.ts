@@ -51,7 +51,7 @@ For each question:
 - Include an "analogy" field: a short, relatable analogy that helps students connect the concept to everyday experiences (use student hobbies/interests when available)
 - Include a "hint" field: a brief hint to guide students toward the answer without giving it away
 
-Return ONLY valid JSON — no markdown, no preamble:
+Return ONLY valid JSON - no markdown, no preamble:
 {
   "quiz": {
     "title": "Quiz on ${topic}",

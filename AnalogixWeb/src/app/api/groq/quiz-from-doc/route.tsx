@@ -50,7 +50,7 @@ Generate a ${numberOfQuestions}-question quiz:
 - Cover all major topics from the document
 - Use Australian English spelling
 
-Return ONLY valid JSON — no markdown, no preamble:
+Return ONLY valid JSON - no markdown, no preamble:
 {
   "quiz": {
     "title": "Quiz Title Based on Document",

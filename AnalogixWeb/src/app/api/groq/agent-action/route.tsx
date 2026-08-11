@@ -66,7 +66,7 @@ async function handleAddFlashcards(supabase: any, userId: any, action: any, defa
             return {
                 type: "add_flashcards",
                 status: "failed",
-                message: `Only ${cards.length} card(s) provided — flashcard sets must have at least 5 cards. No cards were saved.`,
+                message: `Only ${cards.length} card(s) provided - flashcard sets must have at least 5 cards. No cards were saved.`,
             };
         }
         try {

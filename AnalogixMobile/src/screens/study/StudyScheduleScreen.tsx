@@ -153,7 +153,7 @@ export default function StudyScheduleScreen() {
                 <View style={styles.dayHeader}>
                   <Icon name="calendar" size={16} color={theme.colors.primary} />
                   <Text variant="labelLarge" style={{ color: paperTheme.colors.onSurface, fontWeight: "600" }}>
-                    Day {day.day} — {formatDate(day.date)}
+                    Day {day.day} - {formatDate(day.date)}
                   </Text>
                   <View style={styles.durationBadge}>
                     <Text variant="labelSmall" style={{ color: theme.colors.primary }}>

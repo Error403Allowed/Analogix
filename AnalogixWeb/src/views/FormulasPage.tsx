@@ -322,7 +322,7 @@ export default function FormulasPage() {
                   <p className="text-xs text-muted-foreground">
                     {isCrossSearch
                       ? "Results across every subject."
-                      : "Search names, topics, and descriptions — or type to search all subjects."}
+                      : "Search names, topics, and descriptions - or type to search all subjects."}
                   </p>
                 </div>
                 <div className="relative w-full sm:max-w-sm">
@@ -343,7 +343,7 @@ export default function FormulasPage() {
               </div>
             </div>
 
-            {/* Topic pills — only shown in single-subject mode */}
+            {/* Topic pills - only shown in single-subject mode */}
             {!isCrossSearch && (
               <div className="relative -mx-4">
                 <div className="px-4 flex gap-2 overflow-x-auto scrollbar-none py-1">

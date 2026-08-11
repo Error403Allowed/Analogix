@@ -59,7 +59,7 @@ export async function POST(request: any) {
             return NextResponse.json({ error: "guide and request are required" }, { status: 400 });
         }
         const guideSnapshot = JSON.stringify(guide, null, 2).slice(0, 8000);
-        const systemPrompt = `You are a JSON patch generator for a study guide editor. Output ONLY a JSON object — no prose, no markdown, no explanation.
+        const systemPrompt = `You are a JSON patch generator for a study guide editor. Output ONLY a JSON object - no prose, no markdown, no explanation.
 
 Study guide fields:
   title(string), overview(string), assessmentDate(string), assessmentType(string),
@@ -70,7 +70,7 @@ Study guide fields:
   formulaSheet([{formula,description,variables?,example?}]),
   gradeExpectations([{grade,criteria[]}])
 
-Output shape — nothing else:
+Output shape - nothing else:
 {"edits":[{"op":"replace|add|remove","path":"/field/index","value":<new value>}]}
 
 Path rules:

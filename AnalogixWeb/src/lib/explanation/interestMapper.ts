@@ -256,7 +256,7 @@ export function buildMappingSection(
   lines.push("For example, instead of listing 'slope ↔ speed: both measure rate of change', write:");
   lines.push(`"Just like speed tells you how fast a car is moving, the slope tells you how fast the output changes as the input shifts."`);
   lines.push("Map each concept element to its analogy counterpart within the flow of your explanation.");
-  lines.push("Return to the analogy repeatedly — let it run parallel to the technical explanation throughout your response.");
+  lines.push("Return to the analogy repeatedly - let it run parallel to the technical explanation throughout your response.");
 
   return lines.join("\n");
 }

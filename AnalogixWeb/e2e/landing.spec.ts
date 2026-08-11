@@ -23,7 +23,7 @@ test.describe('Landing Page', () => {
     await expect(page).toHaveURL(/\/onboarding/, { timeout: 15000 });
   });
 
-  test('"Get Started — It\'s Free" button in footer navigates to onboarding', async ({ page }) => {
+  test('"Get Started - It\'s Free" button in footer navigates to onboarding', async ({ page }) => {
     const bottomCta = page.getByRole('button', { name: /Get Started.*It.*Free/i });
     await bottomCta.scrollIntoViewIfNeeded();
     await expect(bottomCta).toBeVisible({ timeout: 10000 });

@@ -85,7 +85,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     checkAuth();
   }, [user, loading, router]);
 
-  // Deferred DB sync — runs after page is visible
+  // Deferred DB sync - runs after page is visible
   const syncPrefsFromProfileDeferred = async (userId: string) => {
     try {
       const supabase = createClient();
@@ -99,7 +99,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
         syncPrefsFromProfile(profile, userId);
       }
     } catch {
-      // Silently fail — localStorage is our source of truth for now
+      // Silently fail - localStorage is our source of truth for now
     }
   };
 

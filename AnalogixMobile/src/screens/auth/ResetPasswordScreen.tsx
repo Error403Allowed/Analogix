@@ -160,7 +160,7 @@ export default function ResetPasswordScreen() {
                       textAlign: "center",
                     }}
                   >
-                    At least 6 characters — make it a good one!
+                    At least 6 characters - make it a good one!
                   </Text>
                 </View>
 

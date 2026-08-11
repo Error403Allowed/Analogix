@@ -70,7 +70,7 @@ export function ToolProposalCard({ proposal, onAllow, onDeny }: ToolProposalCard
         <div className="flex items-center gap-2 rounded-xl border border-green-500/20 bg-green-500/5 px-4 py-2">
           <Check className="w-4 h-4 text-green-500" />
           <span className="text-sm text-green-700 dark:text-green-400 font-medium">
-            Done — {proposal.summary}
+            Done - {proposal.summary}
           </span>
         </div>
       </motion.div>

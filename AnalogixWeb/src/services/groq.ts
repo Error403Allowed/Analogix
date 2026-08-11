@@ -211,7 +211,7 @@ export async function* getGroqStream(
         const token: string = parsed?.choices?.[0]?.delta?.content ?? "";
         if (token) yield token;
       } catch {
-        // malformed chunk — skip
+        // malformed chunk - skip
       }
     }
   }

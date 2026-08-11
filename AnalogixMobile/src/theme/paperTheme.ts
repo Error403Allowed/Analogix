@@ -7,8 +7,8 @@
  * ─────────────────────────
  * Each BrandTheme supplies a `primary` seed hex.  ThemeContext feeds
  * that seed into generateDynamicScheme() (Material Color Utilities) which
- * derives the FULL M3 palette — primary, secondary, tertiary, neutral,
- * surface containers, everything — from that single hue.
+ * derives the FULL M3 palette - primary, secondary, tertiary, neutral,
+ * surface containers, everything - from that single hue.
  *
  * The M3 algorithm always targets:
  *   • primary     → HCT chroma 48,  tone 40  (light) / 80  (dark)
@@ -17,7 +17,7 @@
  *   • neutral     → same hue, chroma ~4  → subtle tint on surfaces
  *
  * This means the seed's EXACT saturation/lightness matters less than
- * its HUE — the algorithm normalises it.  Seeds are chosen so their
+ * its HUE - the algorithm normalises it.  Seeds are chosen so their
  * hue sits at good perceptual positions in the HCT space.
  *
  * COLOUR PSYCHOLOGY NOTES (research-backed)
@@ -125,9 +125,9 @@ export const darkTheme: MD3Theme = {
 // ─── Brand themes ─────────────────────
 
 /**
- * BrandThemeId — one ID per theme.
+ * BrandThemeId - one ID per theme.
  * preview[0] + preview[1] are the two swatch colours shown in the theme picker.
- * `primary`   is the M3 seed — its HUE determines the whole generated palette.
+ * `primary`   is the M3 seed - its HUE determines the whole generated palette.
  * `secondary` / `tertiary` are display-only (shown in picker, not fed to M3).
  */
 export type BrandThemeId =

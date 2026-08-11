@@ -250,7 +250,7 @@ const mathGrade12: GradeCurriculum = {
 };
 
 // ──────
-// Raw data — full curriculum tree
+// Raw data - full curriculum tree
 // ──────
 
 export const CURRICULUM_DATA: CurriculumSubject[] = [

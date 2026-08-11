@@ -4,7 +4,7 @@
  *  - Auth state observation (onAuthStateChange)
  *  - Direct RLS-respecting reads when the user is on-device
  *
- * The BFF does NOT proxy auth — it validates the access token in the
+ * The BFF does NOT proxy auth - it validates the access token in the
  * Authorization header against the same Supabase JWKS.
  */
 import { Platform } from "react-native";

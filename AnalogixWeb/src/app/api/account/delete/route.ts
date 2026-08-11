@@ -20,7 +20,7 @@ export async function DELETE() {
     console.error("[account/delete] Profile delete error:", profileError);
   }
 
-  // Sign out locally — full auth user deletion requires admin API
+  // Sign out locally - full auth user deletion requires admin API
   // which should be done via a Supabase Edge Function with the service role.
   await sessionClient.auth.signOut();
 

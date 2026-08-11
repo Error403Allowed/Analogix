@@ -172,7 +172,7 @@ export default function PrivacyPage() {
           className="p-8 rounded-2xl border border-border bg-card mb-12"
         >
           <p className="text-base text-muted-foreground leading-relaxed">
-            Analogix is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our web application and services. We believe you deserve to know exactly what data we collect and why — no hidden surprises.
+            Analogix is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our web application and services. We believe you deserve to know exactly what data we collect and why - no hidden surprises.
           </p>
         </motion.div>
 

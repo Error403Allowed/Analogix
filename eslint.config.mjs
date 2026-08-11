@@ -83,7 +83,7 @@ export default [
   },
 
   // The codebase has extensive dead imports/variables accumulated over time.
-  // Warn but don't block — treat as an aspirational cleanup list.
+  // Warn but don't block - treat as an aspirational cleanup list.
   {
     rules: {
       "@typescript-eslint/no-unused-vars": "warn",
@@ -112,7 +112,7 @@ export default [
     },
   },
 
-  // Node.js config files — set globals so `require`, `module`, `process` etc. are recognized
+  // Node.js config files - set globals so `require`, `module`, `process` etc. are recognized
   {
     files: ["AnalogixWeb/*.config.*", "AnalogixMobile/*.config.*", "AnalogixWeb/scripts/**", "AnalogixMobile/scripts/**", "AnalogixMobile/e2e/**"],
     languageOptions: {

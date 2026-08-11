@@ -4,7 +4,7 @@ import dynamic from "next/dynamic";
 import { Loader2 } from "lucide-react";
 
 // Dynamically import with ssr:false so localStorage/client-only code
-// never runs during server rendering — kills the hydration mismatch (React #418).
+// never runs during server rendering - kills the hydration mismatch (React #418).
 const FormulasPage = dynamic(() => import("@/views/FormulasPage"), {
   ssr: false,
   loading: () => (

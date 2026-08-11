@@ -44,7 +44,7 @@ for (const { pkg, old } of wrapperTargets) {
 
 // ── Fix react-native-math-view build.gradle for Gradle 9.x ──────────────
 // jcenter() was removed in Gradle 9, so replace it with mavenCentral().
-// The pinned AGP classpath (3.3.2) is also incompatible — the root project
+// The pinned AGP classpath (3.3.2) is also incompatible - the root project
 // provides a compatible AGP version.
 
 const mathViewBuildGradle = path.join(
@@ -67,7 +67,7 @@ try {
     changed = true;
   }
 
-  // The pinned AGP 3.3.2 is incompatible with Gradle 8+/AGP 8+ — let root provide it
+  // The pinned AGP 3.3.2 is incompatible with Gradle 8+/AGP 8+ - let root provide it
   if (content.includes("com.android.tools.build:gradle:3.3.2")) {
     content = content.replace(
       /classpath\s+'com\.android\.tools\.build:gradle:3\.3\.2'/,
@@ -88,7 +88,7 @@ try {
 }
 
 // ── Fix react-native-math-view SVGShadowNode.java for RN 0.86 ────────────
-// UIManagerModuleListener was removed in RN 0.86 — the import is unused.
+// UIManagerModuleListener was removed in RN 0.86 - the import is unused.
 
 const svgShadowNode = path.join(
   root,

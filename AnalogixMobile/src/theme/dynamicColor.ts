@@ -63,7 +63,7 @@ const ROLE_TO_PALETTE: Record<string, PaletteKey> = {
   outlineVariant: "neutralVariant",
 };
 
-// Light tones — standard M3 spec
+// Light tones - standard M3 spec
 const TONES: Record<string, number> = {
   primary: 40,
   onPrimary: 100,
@@ -101,7 +101,7 @@ const TONES: Record<string, number> = {
   surfaceContainerHighest: 90,
 };
 
-// Dark tones — surfaces pushed higher so cards stand out; primaries
+// Dark tones - surfaces pushed higher so cards stand out; primaries
 // bumped to tone 75–78 so they look vibrant rather than washed-out pastel.
 const DARK_TONES: Record<string, number> = {
   primary: 78,
@@ -219,9 +219,9 @@ export function generateDynamicScheme(seedHex: string): DynamicColorScheme {
   const theme = themeFromSourceColor(source);
 
   // Extract the seed hue + chroma so we can build a custom neutral palette.
-  // M3's default neutral has chroma ~4 — barely any colour, making all
+  // M3's default neutral has chroma ~4 - barely any colour, making all
   // surfaces look grey regardless of theme. We use chroma 8 to give
-  // surfaces a subtle, clean tint of the brand colour — noticeable without
+  // surfaces a subtle, clean tint of the brand colour - noticeable without
   // overwhelming the background.
   // For true monochrome themes (Slate / Notion-like), the seed has near-zero
   // chroma, so we keep chroma 0 to preserve a pure black-and-white feel.
@@ -233,7 +233,7 @@ export function generateDynamicScheme(seedHex: string): DynamicColorScheme {
   // neutralVariant controls onSurfaceVariant, surfaceVariant, outline.
   // For colour themes, keep chroma high so text contrasts well against
   // surfaces. For monochrome themes, use a modest chroma (8) so grey
-  // text has enough warmth to read comfortably — pure chroma-0 grey
+  // text has enough warmth to read comfortably - pure chroma-0 grey
   // washes out and feels flat.
   const variantChroma = isMonochrome ? 8 : 18;
   const tintedNeutral = TonalPalette.fromHueAndChroma(seedHue, neutralChroma);

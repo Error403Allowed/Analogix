@@ -54,12 +54,12 @@ function buildSystemPrompt(
     : `The student is in Year ${studentGrade} in Australia. Use Australian curriculum standards.`;
 
   const greeting = userName
-    ? `The student's name is ${userName}. Address them by name naturally in conversation — not in every message, but enough to feel personal and warm.`
+    ? `The student's name is ${userName}. Address them by name naturally in conversation - not in every message, but enough to feel personal and warm.`
     : '';
 
   const levels = [
     'SCHOOL MODE: Formal, precise, curriculum-aligned. No analogies.',
-    'Use analogies sparingly — only when they genuinely help clarify a tricky point. When you do, weave the analogy naturally into the explanation.',
+    'Use analogies sparingly - only when they genuinely help clarify a tricky point. When you do, weave the analogy naturally into the explanation.',
     'Use analogies as a teaching tool for abstract or complex concepts. Connect unfamiliar ideas to everyday experiences the student already understands.',
     'Weave analogies throughout your explanation. Compare new concepts to familiar things. Extend the comparison so the student can see how the pieces map across.',
     'Analogies are your primary teaching method. For every concept, find a relatable comparison and weave it into the explanation. Show how the analogy maps to the real concept step by step.',
@@ -86,17 +86,17 @@ Context: Year ${studentGrade}${stateFullName ? ` in ${stateFullName}` : ''}, Aus
 
 ${greeting}
 
-${analogyIntensity === 0 ? 'Mode: School/Assessment — formal, precise, no analogies.' : `Learning Mode: ${analogyGuidance}`}
+${analogyIntensity === 0 ? 'Mode: School/Assessment - formal, precise, no analogies.' : `Learning Mode: ${analogyGuidance}`}
 
 Rules:
 - Keep responses concise and conversational
-- LATEX FOR ALL MATHEMATICAL CONTENT: Use LaTeX ($...$ for inline, $$...$$ for display) for ALL mathematical expressions, equations, formulas, numbers used in calculations, mathematical operations, and symbols. This applies to every subject — maths, physics, chemistry, biology, economics, and any subject with numbers or formulas. Write $25$ not 25 in calculations, $x = 5$ not x = 5, $\\frac{1}{2}$ not 1/2, $\\times$, $\\div$, $\\pm$, $\\approx$, $\\leq$, $\\geq$, $\\degree$C, $\\text{pH} = 7$, $E = mc^2$.
+- LATEX FOR ALL MATHEMATICAL CONTENT: Use LaTeX ($...$ for inline, $$...$$ for display) for ALL mathematical expressions, equations, formulas, numbers used in calculations, mathematical operations, and symbols. This applies to every subject - maths, physics, chemistry, biology, economics, and any subject with numbers or formulas. Write $25$ not 25 in calculations, $x = 5$ not x = 5, $\\frac{1}{2}$ not 1/2, $\\times$, $\\div$, $\\pm$, $\\approx$, $\\leq$, $\\geq$, $\\degree$C, $\\text{pH} = 7$, $E = mc^2$.
 - No emojis
 - Help guide learning, don't give direct answers to homework
 ${workspaceSection}
 ${memoryContext}
 ${personalityInstructions}
-— Analogix`;
+- Analogix`;
 }
 
 export async function POST(request: Request) {
@@ -194,12 +194,12 @@ export async function POST(request: Request) {
           const start = formatDateTime(e.entity.entity_data?.start_date ?? e.entity.entity_data?.date);
           const end = formatDateTime(e.entity.entity_data?.end_date);
           if (start && end) {
-            return `${title}${subject} — ${start} to ${end}`;
+            return `${title}${subject} - ${start} to ${end}`;
           }
           if (start) {
-            return `${title}${subject} — ${start}`;
+            return `${title}${subject} - ${start}`;
           }
-          return `${title}${subject} — ${String((e.entity.entity_data?.start_date ?? e.entity.entity_data?.date) || 'Unknown date')}`;
+          return `${title}${subject} - ${String((e.entity.entity_data?.start_date ?? e.entity.entity_data?.date) || 'Unknown date')}`;
         }).join('\n');
       }
     }
@@ -237,7 +237,7 @@ export async function POST(request: Request) {
 
     let fullSystemPrompt = systemPrompt;
     if (conversationSummary) {
-      fullSystemPrompt = fullSystemPrompt.replace('— Analogix', `${conversationSummary}\n\n— Analogix`);
+      fullSystemPrompt = fullSystemPrompt.replace('- Analogix', `${conversationSummary}\n\n- Analogix`);
     }
 
     const model = userContext.selectedModel || 'openai/gpt-oss-120b';

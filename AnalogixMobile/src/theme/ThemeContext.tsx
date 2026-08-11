@@ -1,9 +1,9 @@
 /**
- * ThemeContext — current theme + brand picker + mode (light/dark/system/dynamic).
+ * ThemeContext - current theme + brand picker + mode (light/dark/system/dynamic).
  * Persists to MMKV; the user's pick survives app restarts.
  *
  * "Dynamic" mode generates a full M3 color scheme from a user-chosen seed color
- * using Material Color Utilities — no native code required.
+ * using Material Color Utilities - no native code required.
  */
 import React, { createContext, useContext, useMemo, useState, useCallback } from "react";
 import { useColorScheme } from "react-native";

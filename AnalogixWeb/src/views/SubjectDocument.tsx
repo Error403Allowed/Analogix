@@ -97,7 +97,7 @@ export default function SubjectDocument() {
   // Load user-created subject if not in catalog
   useEffect(() => {
     if (subject) {
-      // Params may not be ready on first render — clear the loading state
+      // Params may not be ready on first render - clear the loading state
       // as soon as the catalog subject resolves so we never get stuck.
       setSubjectLoading(false);
       return;

@@ -88,7 +88,7 @@ export function LibraryView(props: LibraryViewProps) {
           </div>
           <div>
             <p className="text-sm font-black">Generate from content</p>
-            <p className="text-xs text-muted-foreground">Upload a file or paste text — AI builds a flashcard set.</p>
+            <p className="text-xs text-muted-foreground">Upload a file or paste text - AI builds a flashcard set.</p>
           </div>
         </div>
 

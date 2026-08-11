@@ -142,7 +142,7 @@ export default function CurriculumBrowserScreen() {
           <Pressable onPress={() => setSelectedYear(null)} style={styles.backRow}>
             <Icon name="arrow-left" size={18} color={theme.colors.primary} />
             <Text style={[styles.backText, { color: theme.colors.primary }]}>
-              {subject?.subject} — Year {selectedYear}
+              {subject?.subject} - Year {selectedYear}
             </Text>
           </Pressable>
 

@@ -138,7 +138,7 @@ export default function OnboardingScreen() {
       setError(null);
       const hobbyData = buildHobbyDetails(hobbyIds, subtopics);
 
-      // ICS import is optional — don't block profile update if it fails.
+      // ICS import is optional - don't block profile update if it fails.
       if (icsFile && !icsFile.canceled && icsFile.assets?.[0]?.uri) {
         try {
           const icsContent = await readAsStringAsync(icsFile.assets[0].uri);
@@ -161,7 +161,7 @@ export default function OnboardingScreen() {
           },
         });
         if (!result.data?.updateProfile) {
-          setError("Failed to save profile — no data returned");
+          setError("Failed to save profile - no data returned");
           setSaving(false);
           return;
         }

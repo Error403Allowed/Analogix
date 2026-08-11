@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSidebar } from "@/components/ui/sidebar";
@@ -38,13 +38,9 @@ import ThreadSidebar from "@/components/chat/ThreadSidebar";
 import ChatHeader from "@/components/chat/ChatHeader";
 import ChatInput from "@/components/chat/ChatInput";
 import FormulaPanel from "@/components/chat/FormulaPanel";
+import { buildPromptSuggestions, type PromptSuggestion } from "@analogix/shared/prompts";
 
-const SUGGESTED_PROMPTS: { label: string; prompt: string; icon: LucideIcon }[] = [
-  { label: "Break down a concept", prompt: "Explain the Pythagorean theorem like I'm into gaming", icon: Lightbulb },
-  { label: "Study with analogies", prompt: "Explain photosynthesis using analogies from gaming", icon: Beaker },
-  { label: "Understand a formula", prompt: "Walk me through the quadratic formula step by step", icon: Calculator },
-  { label: "Prepare for a topic", prompt: "What are the key things I need to know about cell division for Year 9 Science?", icon: BookOpen },
-];
+const SUGGESTION_ICONS: LucideIcon[] = [Lightbulb, Beaker, Calculator, BookOpen];
 
 const Chat = () => {
   const {
@@ -88,6 +84,9 @@ const Chat = () => {
     scrollContainerRef,
     userName,
     userHobbies,
+    userPrefs,
+    availableSubjects,
+    allSubjects,
     isInputLocked,
     latestAssistantId,
     router,
@@ -115,6 +114,23 @@ const Chat = () => {
   const [initialLoading, setInitialLoading] = useState(true);
   const { state: sidebarState } = useSidebar();
   const isMobile = useIsMobile();
+
+  const [suggestionSeed] = useState(() => Math.floor(Math.random() * 0x7fffffff));
+
+  const suggestedPrompts = useMemo<PromptSuggestion[]>(
+    () => {
+      const currentSubjectLabel = allSubjects.find((s) => s.id === selectedSubject)?.label;
+      return buildPromptSuggestions(
+        {
+          subjects: availableSubjects.map((s) => s.label),
+          grade: userPrefs.grade,
+          hobbies: userHobbies,
+        },
+        { currentSubject: currentSubjectLabel, seed: suggestionSeed },
+      );
+    },
+    [allSubjects, availableSubjects, selectedSubject, userPrefs.grade, userHobbies, suggestionSeed],
+  );
 
   useEffect(() => {
     if (sidebarState === "collapsed") {
@@ -154,7 +170,7 @@ const Chat = () => {
   }
 
   return (
-    <div className={`min-h-screen flex flex-row relative overflow-hidden bg-background ${sidebarState === "collapsed" ? "pl-3" : ""}`}>
+    <div className={`h-full flex flex-row relative overflow-hidden bg-background ${sidebarState === "collapsed" ? "pl-3" : ""}`}>
 {isMobile ? (
   <ResponsiveSheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
     <ResponsiveSheetContent className="p-0">
@@ -255,7 +271,7 @@ const Chat = () => {
           handleStartNewChat={handleStartNewChat}
         />
 
-          {/* Chat always visible — subject auto-detected from first message */}
+          {/* Chat always visible - subject auto-detected from first message */}
           <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
             {/* ── TAB CONTENT ─────────────────────────────── */}
             <div className="flex-1 flex gap-4 min-h-0">
@@ -280,8 +296,8 @@ const Chat = () => {
                 onScroll={updateScrollButton}
                 className="absolute inset-0 overflow-y-auto min-h-0 chat-scroll"
               >
-                <div className={`mx-auto max-w-4xl w-full px-4 flex flex-col pt-4 sm:pt-4 ${messages.length === 0 && !isTyping ? "min-h-full" : "space-y-6 pb-44 sm:pb-40"}`}>
-                  {/* Empty state — shown before any messages */}
+                <div className={`mx-auto max-w-4xl w-full px-4 flex flex-col pt-4 sm:pt-4 pb-44 sm:pb-40 ${messages.length === 0 && !isTyping ? "min-h-full" : "space-y-6"}`}>
+                  {/* Empty state - shown before any messages */}
                   {messages.length === 0 && !isTyping && (
                     <motion.div
                       initial={{ opacity: 0 }}
@@ -289,7 +305,7 @@ const Chat = () => {
                       transition={{ duration: 0.5 }}
                       className="flex flex-1 flex-col items-center min-h-0 px-6 pt-2 sm:pt-2"
                     >
-                      <div className="w-full flex flex-col items-center my-auto mb-[clamp(1.5rem,4.5vh,3.5rem)]">
+                      <div className="w-full flex flex-col items-center m-auto">
                       {/* Greeting */}
                       <motion.div
                         initial={{ opacity: 0, y: 20 }}
@@ -338,9 +354,11 @@ const Chat = () => {
                           Try asking about
                         </p>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                          {SUGGESTED_PROMPTS.map((prompt, i) => (
+                          {suggestedPrompts.map((prompt, i) => {
+                            const PromptIcon = SUGGESTION_ICONS[i % SUGGESTION_ICONS.length];
+                            return (
                             <motion.button
-                              key={prompt.label}
+                              key={prompt.prompt}
                               initial={{ opacity: 0, y: 10 }}
                               animate={{ opacity: 1, y: 0 }}
                               transition={{ delay: 0.3 + i * 0.05, duration: 0.3 }}
@@ -351,7 +369,7 @@ const Chat = () => {
                               className="group flex items-start gap-3 p-3.5 rounded-xl border border-border/40 bg-card/50 hover:bg-card hover:border-border/70 transition-all text-left hover:shadow-sm"
                             >
                               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary/12 to-primary/5 flex items-center justify-center shrink-0 group-hover:from-primary/18 group-hover:to-primary/8 transition-all">
-                                <prompt.icon className="w-4 h-4 text-primary/60" />
+                                <PromptIcon className="w-4 h-4 text-primary/60" />
                               </div>
                               <div className="min-w-0">
                                 <p className="text-xs font-medium text-foreground/80 group-hover:text-foreground transition-colors">
@@ -362,7 +380,8 @@ const Chat = () => {
                                 </p>
                               </div>
                             </motion.button>
-                          ))}
+                            );
+                          })}
                         </div>
                       </motion.div>
                       </div>

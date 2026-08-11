@@ -1,5 +1,5 @@
 /**
- * alpha — safely apply opacity to any hex colour.
+ * alpha - safely apply opacity to any hex colour.
  *
  * Handles 3‑, 4‑, 6‑ and 8‑digit hex strings and returns
  * an `rgba()` string.  Throws on obviously invalid input.

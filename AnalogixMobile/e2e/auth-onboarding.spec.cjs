@@ -63,7 +63,7 @@ const mockUser = {
 
 // ─── Auth / Login Screen ───────
 
-test.describe("Auth — Login Screen", () => {
+test.describe("Auth - Login Screen", () => {
   test.beforeEach(async ({ page }) => {
     await mockAllGraphQL(page, {});
     await loadPage(page);

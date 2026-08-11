@@ -180,7 +180,7 @@ export function TabsProvider({ children, initialPathname }: { children: React.Re
   const [hydrated, setHydrated] = useState(false);
 
   // After mount, overwrite with persisted tabs from localStorage.
-  // This runs only on the client, after React has reconciled — no mismatch.
+  // This runs only on the client, after React has reconciled - no mismatch.
   useEffect(() => {
     const persisted = loadPersistedTabs();
     if (persisted.tabs.length > 0) {

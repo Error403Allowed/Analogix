@@ -55,8 +55,8 @@ async function ensureConnected(): Promise<Client> {
   if (client) return client;
 
   const env = buildEnv();
-  if (!env.SUPABASE_URL) throw new Error("SUPABASE_URL not set — MCP server cannot start");
-  if (!env.SUPABASE_ANON_KEY) throw new Error("SUPABASE_ANON_KEY not set — MCP server cannot start");
+  if (!env.SUPABASE_URL) throw new Error("SUPABASE_URL not set - MCP server cannot start");
+  if (!env.SUPABASE_ANON_KEY) throw new Error("SUPABASE_ANON_KEY not set - MCP server cannot start");
 
   const mcpArgs = [...args];
 

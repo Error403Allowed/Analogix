@@ -228,7 +228,7 @@ export default function ResourcesScreen() {
         </View>
       ) : null}
 
-      {/* Tabs — not in search mode */}
+      {/* Tabs - not in search mode */}
       {!isSearching ? (
         <View style={styles.tabRow}>
           {tabs.map((tab) => {

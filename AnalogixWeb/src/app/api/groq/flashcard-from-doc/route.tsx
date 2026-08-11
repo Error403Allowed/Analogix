@@ -40,13 +40,13 @@ Your job: Create effective, educational flashcards based on the provided documen
 
 The student is in Year ${grade}${subject ? ` studying ${subject}` : ""}.
 
-CRITICAL RULES — READ CAREFULLY:
+CRITICAL RULES - READ CAREFULLY:
 - ONLY extract flashcards about actual educational topics, concepts, theories, formulas, definitions, and subject matter.
 - NEVER create flashcards about administrative details such as: due dates, assessment notifications, task deadlines, assignment instructions, submission guidelines, class schedules, room numbers, teacher names, or any logistical/administrative information.
 - If the document contains mixed content (e.g., a notification that also includes topic content), IGNORE the administrative parts and ONLY create flashcards from the educational/subject matter.
-- Focus on helping the student LEARN and UNDERSTAND the subject — not memorise dates or administrative details.
+- Focus on helping the student LEARN and UNDERSTAND the subject - not memorise dates or administrative details.
 - You MUST create at least 5 flashcards. Do NOT create fewer than 5.
-- Do NOT default to maths-only flashcards. Cover a diverse range of topics from the document — include definitions, concepts, processes, relationships, and factual knowledge. Only include maths flashcards if the document is specifically about mathematics.
+- Do NOT default to maths-only flashcards. Cover a diverse range of topics from the document - include definitions, concepts, processes, relationships, and factual knowledge. Only include maths flashcards if the document is specifically about mathematics.
 
 Generate ${count} high-quality flashcards:
 - Front: Clear, specific question or term (concise)
@@ -56,7 +56,7 @@ Generate ${count} high-quality flashcards:
 - Use Australian English spelling
 - IMPORTANT: Use LaTeX notation for ALL mathematical expressions. Wrap inline maths in $...$ and display equations in $$...$$. For example: "The quadratic formula is $$x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$$" or "The gradient is $m = \\frac{rise}{run}$". Never write maths as plain text.
 
-Return ONLY valid JSON — no markdown, no preamble:
+Return ONLY valid JSON - no markdown, no preamble:
 {
   "flashcards": [
     {

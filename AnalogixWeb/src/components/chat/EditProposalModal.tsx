@@ -433,7 +433,7 @@ export function EditProposalModal({
     if (tool.name.startsWith("list_")) {
       return (
         <div className="space-y-3">
-          <div className="text-xs text-muted-foreground">View data — optional filters below</div>
+          <div className="text-xs text-muted-foreground">View data - optional filters below</div>
           {renderSubjectFilter(toolIndex)}
           {tool.name === "list_flashcards" && (
             <>
@@ -505,7 +505,7 @@ export function EditProposalModal({
     return (
       <div>
         <Label className="text-xs text-muted-foreground">
-          Arguments (JSON) — {Object.keys(tool.args).length === 0 ? "no arguments provided" : ""}
+          Arguments (JSON) - {Object.keys(tool.args).length === 0 ? "no arguments provided" : ""}
         </Label>
         <Textarea
           value={JSON.stringify(tool.args, null, 2)}

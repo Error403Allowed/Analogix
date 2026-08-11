@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import MarkdownRenderer from "@/components/MarkdownRenderer";
 
 interface DesmosGraphProps {
-  expressions: string; // raw desmos block content — one expression per line
+  expressions: string; // raw desmos block content - one expression per line
   height?: number;
   showEditor?: boolean;
 }
@@ -34,7 +34,7 @@ interface DesmosCalculator {
 }
 
 // ---------------------------------------------------------------------------
-// sanitiseLatex — auto-fix common AI mistakes before handing to Desmos.
+// sanitiseLatex - auto-fix common AI mistakes before handing to Desmos.
 // ---------------------------------------------------------------------------
 function sanitiseLatex(raw: string): string {
   let s = raw.trim();
@@ -438,7 +438,7 @@ function DesmosGraph({ expressions, height = DEFAULT_HEIGHT, showEditor = false 
                   style={{ backgroundColor: hasError ? "#ef4444" : color, opacity: isHidden ? 0.3 : 1 }}
                 />
 
-                {/* Expression — click to copy */}
+                {/* Expression - click to copy */}
                 <button
                   onClick={() => handleCopyExpr(expr, i)}
                   className="leading-none max-w-[160px] truncate"
@@ -454,7 +454,7 @@ function DesmosGraph({ expressions, height = DEFAULT_HEIGHT, showEditor = false 
                 {hasError && <span className="text-[9px]">⚠</span>}
                 {wasCorrected && !hasError && <span className="text-[9px] opacity-40">✓</span>}
 
-                {/* Action buttons — visible on hover */}
+                {/* Action buttons - visible on hover */}
                 <div className="hidden group-hover:flex items-center gap-0.5 ml-0.5">
                   <button
                     onClick={() => handleToggleHidden(i)}
@@ -493,7 +493,7 @@ function DesmosGraph({ expressions, height = DEFAULT_HEIGHT, showEditor = false 
               value={editLatex}
               onChange={(e) => setEditLatex(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") handleAddExpression(); if (e.key === "Escape") { setEditingIndex(null); setEditLatex(""); } }}
-              placeholder={editingIndex !== null ? `Editing expr ${editingIndex + 1} — press Enter to save` : "Add equation (e.g. y=\\sin(x), a=2)…"}
+              placeholder={editingIndex !== null ? `Editing expr ${editingIndex + 1} - press Enter to save` : "Add equation (e.g. y=\\sin(x), a=2)…"}
               className="flex-1 px-2.5 py-1.5 text-xs bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/40 font-mono"
             />
             {editingIndex !== null && (

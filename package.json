@@ -2,7 +2,7 @@
   "name": "analogix-monorepo",
   "version": "0.1.0",
   "private": true,
-  "description": "Analogix monorepo — web, GraphQL BFF, and mobile",
+  "description": "Analogix monorepo - web, GraphQL BFF, and mobile",
   "workspaces": [
     "packages/*",
     "AnalogixWeb",
@@ -34,6 +34,8 @@
   },
   "packageManager": "npm@12.0.1",
   "dependencies": {
+    "@ai-sdk/react": "^3.0.248",
+    "@huggingface/transformers": "3.8.1",
     "expo": "^57.0.10",
     "graphql-ws": "^6.2.0",
     "pg": "^8.22.0",
@@ -53,6 +55,9 @@
     "yjs": "^13.6.32",
     "@huggingface/transformers": {
       "sharp": "0.35.3"
+    },
+    "@ai-sdk/provider-utils": {
+      "undici": "7.29.0"
     }
   },
   "optionalDependencies": {
@@ -62,8 +67,11 @@
   "allowScripts": {
     "sharp@0.34.5": true,
     "sharp@0.35.3": true,
-    "esbuild@0.28.1": true,
     "onnxruntime-node@1.21.0": true,
-    "protobufjs@7.6.5": true
+    "protobufjs@7.6.5": true,
+    "@apollo/protobufjs@1.2.8": true,
+    "esbuild@0.28.2": true,
+    "fsevents@2.3.2": true,
+    "fsevents@2.3.3": true
   }
 }

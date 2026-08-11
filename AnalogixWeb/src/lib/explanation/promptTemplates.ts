@@ -58,7 +58,7 @@ function buildHookInstruction(required: boolean, interest: string, concept: stri
    - Start with a relatable analogy from ${interest}
    - NEVER begin with definitions like "${concept} is defined as..." or "The definition of ${concept}..."
    - ALWAYS use this format: "Think of ${concept} like [familiar thing from ${interest}]..."
-   - Example GOOD: "Think of slopes like the speedometer in an F1 car — they tell you how fast you're going."
+   - Example GOOD: "Think of slopes like the speedometer in an F1 car - they tell you how fast you're going."
    - Example BAD: "A slope is the measure of the steepness of a line."` : `
    - Start naturally with a brief hook if helpful, or directly if cleaner.`}`;
 }
@@ -68,7 +68,7 @@ function buildIntuitionInstruction(required: boolean, studentYear: string = "10"
    ${required ? `
    - Explain what's actually happening, not just what it is
    - Use simple words a Year ${studentYear} student would use
-   - Skip jargon — if you need it, explain it first
+   - Skip jargon - if you need it, explain it first
    - Build understanding from what they know to what they're learning` : ""}`;
 }
 
@@ -76,7 +76,7 @@ function buildCoreIdeaInstruction(required: boolean, maxLength: number): string 
   return `3. CORE IDEA (1 sentence, bold the key takeaway)
    ${required ? `
    - This is THE single most important thing to remember
-   - Keep it under ${maxLength} words — tweet-length
+   - Keep it under ${maxLength} words - tweet-length
    - Format: "The key idea is: [one sentence that captures everything]"
    - This should be memorable and something they can repeat to a friend` : ""}`;
 }
@@ -87,7 +87,7 @@ function buildFormalInstruction(required: boolean): string {
    - Only if genuinely needed for accuracy
    - Keep it 1-2 sentences maximum
    - Use this lead-in: "Here's the formal way to say it:"
-   - Prefer intuition over formal — if Hook + Intuition + Core Idea are clear, skip this` : ""}`;
+   - Prefer intuition over formal - if Hook + Intuition + Core Idea are clear, skip this` : ""}`;
 }
 
 function buildWorkedExampleInstruction(
@@ -106,7 +106,7 @@ function buildWorkedExampleInstruction(
    - NEVER use: decimals like 7.34, 0.007, or 3.14159
    - NEVER use: large numbers like 1000+ unless genuinely needed
    - Steps must be EXPLICIT: "Step 1: [do this], Step 2: [do this], Step 3: [do this]"
-   - No logical jumps — a classmate should be able to follow each step
+   - No logical jumps - a classmate should be able to follow each step
    - Show the ANSWER at the end clearly
    - Example format:
      Equation: y = 2x + 1
@@ -129,7 +129,7 @@ function buildQuickCheckInstruction(required: boolean): string {
 function buildQualityCheckSection(): string {
   return `
 
-QUALITY VERIFICATION (MANDATORY — do this BEFORE outputting):
+QUALITY VERIFICATION (MANDATORY - do this BEFORE outputting):
 □ HOOK exists AND starts with an analogy from [their interest]
 □ Hook does NOT start with "The definition" or "[concept] is..."
 □ INTUITION explains what's happening, not just what it is
@@ -140,7 +140,7 @@ QUALITY VERIFICATION (MANDATORY — do this BEFORE outputting):
 
 IF ANY CHECK FAILS:
 - Regenerate with corrections
-- "Clarity over cleverness" — always choose clarity`;
+- "Clarity over cleverness" - always choose clarity`;
 }
 
 export function getSectionTemplate(section: string): string {

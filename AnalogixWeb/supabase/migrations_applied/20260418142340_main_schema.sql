@@ -1,5 +1,5 @@
 -- ============================================================
--- Analogix — Supabase Schema
+-- Analogix - Supabase Schema
 -- Run this in the Supabase SQL Editor (Dashboard → SQL Editor)
 -- ============================================================
 
@@ -304,6 +304,6 @@ CREATE POLICY "Users manage their own flashcard sets"
 
 CREATE INDEX IF NOT EXISTS idx_flashcard_sets_user_id ON public.flashcard_sets(user_id);
 
--- Add set_id to flashcards (nullable — existing cards have no set)
+-- Add set_id to flashcards (nullable - existing cards have no set)
 ALTER TABLE public.flashcards ADD COLUMN IF NOT EXISTS set_id UUID REFERENCES public.flashcard_sets(id) ON DELETE CASCADE;
 CREATE INDEX IF NOT EXISTS idx_flashcards_set_id ON public.flashcards(set_id);

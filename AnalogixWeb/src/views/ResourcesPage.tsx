@@ -104,7 +104,7 @@ export default function ResourcesPage() {
   }, [query]);
 
   // Past papers: show user's state first (prioritised), then all untagged ones.
-  // If no state set, show everything. Textbooks are never state-filtered — they're universal.
+  // If no state set, show everything. Textbooks are never state-filtered - they're universal.
   const paperMatchesState = useCallback((link: ResourceLink) => {
     if (!userState) return true;
     if (!link.states || link.states.length === 0) return true;
@@ -258,7 +258,7 @@ export default function ResourcesPage() {
               </div>
             </div>
 
-            {/* Tabs — only shown in single-subject mode */}
+            {/* Tabs - only shown in single-subject mode */}
             {!isCrossSearch && (
               <div className="relative -mx-4">
                 <div className="px-4 flex gap-2 overflow-x-auto scrollbar-none">

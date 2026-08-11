@@ -299,7 +299,7 @@ const ALL_VALID_SUBJECTS = [...new Set(ACARA_SUBJECTS)].sort();
  * This tells the AI exactly which subjects exist so it never invents one.
  */
 export function buildValidSubjectsPrompt(): string {
-  const allSenior = SENIOR_SUBJECTS.map(s => `  • "${s.label}" (${s.states.includes("ALL") ? "All states" : s.states.join(", ")} — Years ${s.years.join("-")})`).join("\n");
+  const allSenior = SENIOR_SUBJECTS.map(s => `  • "${s.label}" (${s.states.includes("ALL") ? "All states" : s.states.join(", ")} - Years ${s.years.join("-")})`).join("\n");
   return `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 VALID SUBJECTS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

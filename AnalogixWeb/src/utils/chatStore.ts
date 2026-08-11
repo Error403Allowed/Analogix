@@ -18,10 +18,10 @@ export interface ChatSession {
   messages?: ChatMessage[];
 }
 
-/** Quick health check — call once on mount to surface any Supabase issues in console */
+/** Quick health check - call once on mount to surface any Supabase issues in console */
 export const checkChatStoreHealth = async (): Promise<void> => {
   const user = await getAuthUser();
-  if (!user) { console.warn("[chatStore:health] No user logged in — chat history will not save"); return; }
+  if (!user) { console.warn("[chatStore:health] No user logged in - chat history will not save"); return; }
   const supabase = createClient();
 
   // Test read access to chat_sessions

@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Shared auth user cache — single source of truth for all stores.
+ * Shared auth user cache - single source of truth for all stores.
  *
  * Supabase's getUser() acquires an exclusive Navigator LockManager lock on the
  * auth token key. When multiple stores call it concurrently (page load, etc.)
@@ -25,7 +25,7 @@ export async function getAuthUser(): Promise<AuthUser | null> {
 
   inFlight = (async () => {
     try {
-      // getSession() reads from localStorage synchronously — no lock needed.
+      // getSession() reads from localStorage synchronously - no lock needed.
       // Only falls back to getUser() (network round-trip + lock) when there's no
       // session at all, which means the user isn't logged in anyway.
       const supabase = createClient();

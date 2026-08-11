@@ -150,7 +150,7 @@ const normaliseLatex = (text: string | undefined | null): string => {
   if (!text) return "";
   let result = text;
   
-  // Handle \begin{...}...\end{...} environments — wrap in $$ for display math
+  // Handle \begin{...}...\end{...} environments - wrap in $$ for display math
   result = result.replace(
     /\\begin\{(aligned|align|gather|gathered|matrix|pmatrix|bmatrix|vmatrix|cases|equation|eqnarray)\*?\}([\s\S]*?)\\end\{\1\*?\}/g,
     (_m, _env, body) => `$$\n${body.trim()}\n$$`
@@ -168,7 +168,7 @@ const normaliseLatex = (text: string | undefined | null): string => {
 
 // Close any unclosed markdown fences/delimiters so partial content mid-stream
 // doesn't cause KaTeX or ReactMarkdown to throw or render garbage.
-// Think of it like auto-saving — we always keep the doc valid even mid-sentence.
+// Think of it like auto-saving - we always keep the doc valid even mid-sentence.
 const closePartialMarkdown = (text: string | undefined | null): string => {
   if (!text) return "";
   // Close unclosed triple-backtick code fences
@@ -273,7 +273,7 @@ const MarkdownRenderer = ({ content, className, streaming = false }: MarkdownRen
               {children}
             </blockquote>
           ),
-          // pre wraps block code — intercept plotly/graph blocks
+          // pre wraps block code - intercept plotly/graph blocks
           pre: ({ children }) => {
               // Dig out the <code> child to check language
               const codeEl = (children as React.ReactElement<any>);
@@ -344,7 +344,7 @@ const MarkdownRenderer = ({ content, className, streaming = false }: MarkdownRen
               </pre>
             );
           },
-          // code is inline when NOT wrapped in a pre — the pre override handles block code
+          // code is inline when NOT wrapped in a pre - the pre override handles block code
           code: ({ children, className: codeClassName }) => {
             // If className has a language- prefix, it's a block code element inside <pre>
             const isBlock = codeClassName?.startsWith("language-");

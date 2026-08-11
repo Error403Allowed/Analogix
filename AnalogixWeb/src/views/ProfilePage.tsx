@@ -125,7 +125,7 @@ const ProfilePage = () => {
         {[
           { value: streak, label: "Streak", icon: Flame },
           { value: quizzes, label: "Quizzes", icon: ListChecks },
-          { value: name ? name[0]?.toUpperCase() : "—", label: "Student", icon: User },
+          { value: name ? name[0]?.toUpperCase() : "-", label: "Student", icon: User },
         ].map((stat) => {
           const Icon = stat.icon;
           return (

@@ -111,7 +111,7 @@ const Quiz = () => {
   const currentAnswer = answerRecords[currentQuestion] || null;
 
   useEffect(() => {
-    document.title = showConfig ? "Quiz — Analogix" : `${topicValue} Quiz — Analogix`;
+    document.title = showConfig ? "Quiz - Analogix" : `${topicValue} Quiz - Analogix`;
   }, [showConfig, topicValue]);
 
   useEffect(() => {

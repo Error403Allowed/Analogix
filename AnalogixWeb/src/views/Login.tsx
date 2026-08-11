@@ -409,7 +409,7 @@ export default function LoginView() {
                   />
                 </div>
 
-                {/* Password fields — slide in when step >= 2 */}
+                {/* Password fields - slide in when step >= 2 */}
                 <AnimatePresence>
                   {step >= 2 && (
                     <motion.div

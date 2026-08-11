@@ -153,7 +153,7 @@ export class ContextAssembler {
     if (personality) {
       const analogyLevel = personality.analogy_intensity;
       if (analogyLevel === 0) {
-        parts.push('Mode: School/Assessment — formal, precise, no analogies.');
+        parts.push('Mode: School/Assessment - formal, precise, no analogies.');
       } else if (analogyLevel >= 3) {
         parts.push('Learning Mode: Use analogies frequently to explain concepts.');
       }

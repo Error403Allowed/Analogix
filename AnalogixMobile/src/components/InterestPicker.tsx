@@ -36,7 +36,7 @@ export default function InterestPicker({
         Your interests
       </Text>
       <Text variant="bodyLarge" style={styles.subheading}>
-        Pick what you're into — we'll tailor your AI tutor to you.
+        Pick what you're into - we'll tailor your AI tutor to you.
       </Text>
 
       <View style={styles.topics}>

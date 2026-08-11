@@ -194,4 +194,4 @@ Analogix is a private project. All rights reserved.
 
 ---
 
-*Disclaimer: While AI has been of assistance in putting together portions of the code, it has all been fact and bug-checked to provide the best experience.*
+- *Disclaimer: While AI has been of assistance in putting together portions of the code, it has all been fact and bug-checked to provide the best experience.*

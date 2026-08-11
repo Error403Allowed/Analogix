@@ -82,7 +82,7 @@ const ENCOURAGEMENTS = [
 
 const ENCOURAGEMENTS_WRONG = [
   "Close. Keep going.",
-  "Not quite — learn from it!",
+  "Not quite - learn from it!",
   "Keep pushing!",
   "Almost there!",
   "Don't give up!",

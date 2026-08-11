@@ -73,7 +73,7 @@ const features = [
     icon: BookOpen,
     label: "Subject Workspace",
     headline: "Your notes, organised by subject",
-    desc: "Create rich documents, AI-generated study guides, and flashcard sets — all organised by subject.",
+    desc: "Create rich documents, AI-generated study guides, and flashcard sets - all organised by subject.",
     tags: ["AI study guides", "Rich editor", "Subject-organised"],
   },
   {
@@ -89,7 +89,7 @@ const features = [
     icon: Calculator,
     label: "Formula Sheets",
     headline: "Every formula, searchable, always ready",
-    desc: "Instant access to formula sheets for Maths, Physics, Chemistry and more — all rendered in proper LaTeX.",
+    desc: "Instant access to formula sheets for Maths, Physics, Chemistry and more - all rendered in proper LaTeX.",
     tags: ["LaTeX rendering", "In-chat access", "All subjects"],
   },
   {
@@ -105,7 +105,7 @@ const features = [
     icon: Trophy,
     label: "Achievements",
     headline: "Get recognised for your hard work",
-    desc: "Earn badges and build streaks as you study. An achievement system that rewards consistency — not just raw scores.",
+    desc: "Earn badges and build streaks as you study. An achievement system that rewards consistency - not just raw scores.",
     tags: ["Badges", "Streaks", "XP system"],
   },
 ];
@@ -302,7 +302,7 @@ const Landing = () => {
               Every tool you need to level up.
             </h2>
             <p className="text-muted-foreground max-w-lg mx-auto">
-              Not just an AI chat. Flashcards, quizzes, a calendar, study guides, resources, formula sheets — all working together.
+              Not just an AI chat. Flashcards, quizzes, a calendar, study guides, resources, formula sheets - all working together.
             </p>
           </div>
 
@@ -352,12 +352,12 @@ const Landing = () => {
                   {
                     icon: Sparkles, color: "blue",
                     title: "Personalised for your interests",
-                    desc: "Your hobbies power the analogies. Football, gaming, art — the AI adapts every explanation to something you already understand."
+                    desc: "Your hobbies power the analogies. Football, gaming, art - the AI adapts every explanation to something you already understand."
                   },
                   {
                     icon: Check, color: "emerald",
                     title: "ACARA curriculum aligned",
-                    desc: "Every subject, every year level, mapped directly to the Australian curriculum. No fluff — just what's in your exams."
+                    desc: "Every subject, every year level, mapped directly to the Australian curriculum. No fluff - just what's in your exams."
                   },
                   {
                     icon: Trophy, color: "amber",
@@ -367,7 +367,7 @@ const Landing = () => {
                   {
                     icon: Zap, color: "violet",
                     title: "Everything is free",
-                    desc: "No subscriptions, no paywalls, no ads. Every single feature — AI tutor, flashcards, quizzes, all of it — completely free."
+                    desc: "No subscriptions, no paywalls, no ads. Every single feature - AI tutor, flashcards, quizzes, all of it - completely free."
                   },
                 ].map((item) => {
                   const Icon = item.icon;
@@ -459,7 +459,7 @@ const Landing = () => {
               <Button size="lg" variant="secondary"
                 className="h-14 px-12 text-lg font-bold rounded-xl hover:scale-105 transition-transform"
                 onClick={() => handleNav("/onboarding")}>
-                Get Started — It's Free
+                Get Started - It's Free
                 <ArrowRight className="ml-2 w-5 h-5" />
               </Button>
             </div>

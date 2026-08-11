@@ -43,9 +43,9 @@ Rules:
 - Do NOT repeat the same analogies, examples, or framing from the previous explanation.
 - ${anchorInstruction}
 - Start with a completely different hook or entry point into the concept.
-- Use natural paragraphs — no headings or bullet points.
+- Use natural paragraphs - no headings or bullet points.
 - Match vocabulary to Year ${studentGrade}.
-- Be warm, conversational, and curious — like a smart friend finding a new angle.
+- Be warm, conversational, and curious - like a smart friend finding a new angle.
 - Use LaTeX for all maths: inline $x$ and display $$\\frac{a}{b}$$.
 
 Previous explanation (DO NOT repeat this approach):

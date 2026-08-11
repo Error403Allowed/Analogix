@@ -32,12 +32,12 @@ export async function POST(request: Request) {
     const today = new Date().toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric" });
     const fourWeeksOut = new Date(Date.now() + 28 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
 
-    const systemPrompt = `You are an expert Australian high school study planner. Return ONLY valid JSON — no markdown, no backticks, no explanation whatsoever.
+    const systemPrompt = `You are an expert Australian high school study planner. Return ONLY valid JSON - no markdown, no backticks, no explanation whatsoever.
 
 The JSON must follow this exact structure:
 {
   "title": "Assessment title extracted from the text",
-  "dueDate": "YYYY-MM-DD — extract from text, if not found use ${fourWeeksOut}",
+  "dueDate": "YYYY-MM-DD - extract from text, if not found use ${fourWeeksOut}",
   "rawText": "Brief 2-3 sentence summary of what the assessment requires",
   "studyGuide": [
     {
@@ -53,7 +53,7 @@ The JSON must follow this exact structure:
 }
 
 Rules:
-- studyGuide must cover from today (${today}) to the due date — minimum 2 weeks, maximum 8 weeks
+- studyGuide must cover from today (${today}) to the due date - minimum 2 weeks, maximum 8 weeks
 - Each week must have 3-5 specific actionable tasks tailored to THIS assessment
 - Tasks must reference actual topics/requirements from the notification
 - Final week must focus on review, proofreading, and submission prep

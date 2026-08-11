@@ -1,4 +1,4 @@
-/* Analogix service worker — app-shell cache with network-first pages. */
+/* Analogix service worker - app-shell cache with network-first pages. */
 /* global self:false, caches:false, URL:false, fetch:false */
 const VERSION = "v1";
 const APP_SHELL = [

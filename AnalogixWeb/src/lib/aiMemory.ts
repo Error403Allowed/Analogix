@@ -162,7 +162,7 @@ export function buildMemoryContext(
     return "";
   }
 
-  return `STUDENT MEMORY — Use these facts about the student in your responses:\n${contextParts.join("\n")}`;
+  return `STUDENT MEMORY - Use these facts about the student in your responses:\n${contextParts.join("\n")}`;
 }
 
 /**
@@ -192,11 +192,11 @@ export function buildPersonalityInstructions(personality: AIPersonality, analogy
     ].join(" ")
   );
 
-  // Tone and style — concrete behavioral instructions, not vague descriptions
+  // Tone and style - concrete behavioral instructions, not vague descriptions
   const toneRules: string[] = [];
   
   if (personality.friendliness >= 70) {
-    toneRules.push("Start responses warmly — use phrases like 'Great question!' or 'Let's work through this together'. Address the student naturally.");
+    toneRules.push("Start responses warmly - use phrases like 'Great question!' or 'Let's work through this together'. Address the student naturally.");
   } else if (personality.friendliness <= 30) {
     toneRules.push("Keep a professional, measured tone. No casual greetings or warm-up phrases. Get straight to the content.");
   }
@@ -208,7 +208,7 @@ export function buildPersonalityInstructions(personality: AIPersonality, analogy
   }
   
   if (personality.humor >= 70) {
-    toneRules.push("Add light humor or witty remarks where appropriate — a clever observation, playful comparison, or dry joke related to the topic.");
+    toneRules.push("Add light humor or witty remarks where appropriate - a clever observation, playful comparison, or dry joke related to the topic.");
   } else if (personality.humor <= 30) {
     toneRules.push("Stay serious and focused. No jokes or playful remarks.");
   }
@@ -217,7 +217,7 @@ export function buildPersonalityInstructions(personality: AIPersonality, analogy
     instructions.push(`TONE RULES:\n${toneRules.map(r => `- ${r}`).join("\n")}`);
   }
 
-  // Detail level — concrete instructions with examples
+  // Detail level - concrete instructions with examples
   if (personality.detail_level >= 80) {
     instructions.push("DEPTH: Give thorough, comprehensive explanations. Cover the concept from multiple angles. Include background context, edge cases, and connections to related topics. No need to be brief.");
   } else if (personality.detail_level >= 60) {
@@ -228,20 +228,20 @@ export function buildPersonalityInstructions(personality: AIPersonality, analogy
     instructions.push("DEPTH: Keep it short and direct. One or two sentences for the core answer, maybe one example. No elaboration unless asked.");
   }
 
-  // Patience — how to handle follow-ups and confusion
+  // Patience - how to handle follow-ups and confusion
   if (personality.patience >= 80) {
     instructions.push("PATIENCE: If the student seems confused, re-explain from a completely different angle. Offer multiple approaches. Never imply they should already know something.");
   } else if (personality.patience <= 30) {
     instructions.push("PATIENCE: Give one clear explanation. If they ask again, restate it more concisely. Assume they can connect the dots themselves.");
   }
 
-  // Encouragement — how to react to answers and progress
+  // Encouragement - how to react to answers and progress
   if (personality.encouragement >= 80) {
     instructions.push("ENCOURAGEMENT: Actively celebrate correct answers and effort. Use phrases like 'Exactly right!', 'You're getting this!', 'Nice work on that one'.");
   } else if (personality.encouragement >= 60) {
     instructions.push("ENCOURAGEMENT: Acknowledge good answers with brief positive feedback like 'Correct' or 'Good thinking'.");
   } else if (personality.encouragement <= 30) {
-    instructions.push("ENCOURAGEMENT: No praise or cheerleading. Just give factual feedback — correct or incorrect, and why.");
+    instructions.push("ENCOURAGEMENT: No praise or cheerleading. Just give factual feedback - correct or incorrect, and why.");
   }
 
   // Teaching methods
@@ -265,16 +265,16 @@ export function buildPersonalityInstructions(personality: AIPersonality, analogy
   if (effectiveAnalogyIntensity === 0) {
     instructions.push("ANALOGIES: Do NOT use analogies. Give direct, literal explanations only.");
   } else if (effectiveAnalogyIntensity >= 4) {
-    instructions.push(`ANALOGIES: Analogies are your primary teaching method. For every concept, build an extended analogy and WEAVE it through your entire explanation — do not just state an analogy and abandon it.
+    instructions.push(`ANALOGIES: Analogies are your primary teaching method. For every concept, build an extended analogy and WEAVE it through your entire explanation - do not just state an analogy and abandon it.
 
 HOW TO WEAVE ANALOGIES:
 1. Pick ONE relatable scenario (from the student's interests or everyday life) that parallels the concept.
-2. As you explain each part of the concept, map it to a corresponding part of the analogy. For example, if explaining a function using a recipe: "The inputs are your ingredients, the function body is the cooking process — you mix, heat, transform — and the output is the finished dish."
+2. As you explain each part of the concept, map it to a corresponding part of the analogy. For example, if explaining a function using a recipe: "The inputs are your ingredients, the function body is the cooking process - you mix, heat, transform - and the output is the finished dish."
 3. Keep returning to the analogy throughout your response. When you introduce a new sub-concept, show how it fits into the analogy you've already established.
 4. The analogy should feel like a parallel story running alongside the technical explanation, with clear connections drawn between the two.
 5. NEVER just say "Think of it like X" and then drop the analogy. Extend it, develop it, and use it to illuminate each piece of the concept.`);
   } else if (effectiveAnalogyIntensity >= 3) {
-    instructions.push(`ANALOGIES: Use analogies regularly and weave them into your explanations. Don't just state an analogy at the start or tack one on at the end — integrate it throughout.
+    instructions.push(`ANALOGIES: Use analogies regularly and weave them into your explanations. Don't just state an analogy at the start or tack one on at the end - integrate it throughout.
 
 HOW TO WEAVE ANALOGIES:
 1. Choose a familiar scenario that parallels the concept you're explaining.
@@ -282,7 +282,7 @@ HOW TO WEAVE ANALOGIES:
 3. Return to the analogy as you cover different aspects of the concept. Let it run alongside your technical explanation.
 4. The goal is for the student to see how each piece of the concept corresponds to something they already understand.`);
   } else if (effectiveAnalogyIntensity >= 2) {
-    instructions.push(`ANALOGIES: Use an analogy when the concept is tricky or abstract. Don't force one for straightforward topics. When you do use an analogy, weave it into the explanation — map parts of the concept to parts of the analogy so the student can see the connection throughout, not just in a single sentence.`);
+    instructions.push(`ANALOGIES: Use an analogy when the concept is tricky or abstract. Don't force one for straightforward topics. When you do use an analogy, weave it into the explanation - map parts of the concept to parts of the analogy so the student can see the connection throughout, not just in a single sentence.`);
   } else {
     instructions.push("ANALOGIES: Almost never use analogies. Only in rare cases where no direct explanation would work.");
   }

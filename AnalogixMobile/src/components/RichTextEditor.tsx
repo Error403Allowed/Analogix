@@ -118,7 +118,7 @@ function slashItems(q){
     {id:'ordered',icon:'1.',label:'Numbered List',desc:'Create a numbered list',cmd:'insertOrderedList'},
     {id:'quote',icon:'"',label:'Blockquote',desc:'Insert a quote block',cmd:'formatBlock',val:'<blockquote>'},
     {id:'code',icon:'<>',label:'Code Block',desc:'Insert a code block',cmd:'insertHTML',val:'<pre><code></code></pre>'},
-    {id:'divider',icon:'—',label:'Divider',desc:'Insert a horizontal divider',cmd:'insertHTML',val:'<hr style="margin:16px 0;border:none;border-top:1px solid ${border}">'},
+    {id:'divider',icon:'-',label:'Divider',desc:'Insert a horizontal divider',cmd:'insertHTML',val:'<hr style="margin:16px 0;border:none;border-top:1px solid ${border}">'},
   ];
   if(!q)return all;
   const l=q.toLowerCase();

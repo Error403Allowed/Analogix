@@ -17,8 +17,8 @@ export async function POST(request: Request) {
 
 Your job: Extract EXACTLY ${count} key concepts from the conversation and turn them into clear, concise flashcards.
 
-NUMBER REQUIREMENT — THIS IS CRITICAL:
-- You MUST generate EXACTLY ${count} flashcards. Not 1, not 2, not 5 — EXACTLY ${count}.
+NUMBER REQUIREMENT - THIS IS CRITICAL:
+- You MUST generate EXACTLY ${count} flashcards. Not 1, not 2, not 5 - EXACTLY ${count}.
 - Each flashcard in the JSON array counts as one. You need ${count} entries in the array.
 - If the conversation is short, create flashcards covering every concept mentioned, then supplement with related concepts from the same subject area.
 - NEVER return fewer than ${count} flashcards.
@@ -26,7 +26,7 @@ NUMBER REQUIREMENT — THIS IS CRITICAL:
 CONTENT RULES:
 - ONLY create flashcards about actual educational topics, concepts, theories, formulas, definitions, and subject matter.
 - NEVER create flashcards about administrative details (due dates, deadlines, schedules, etc.).
-- Do NOT default to maths-only flashcards. Cover diverse topics — definitions, concepts, processes, relationships, factual knowledge.
+- Do NOT default to maths-only flashcards. Cover diverse topics - definitions, concepts, processes, relationships, factual knowledge.
 - Each flashcard tests ONE specific concept, term, formula, or fact.
 - Front: a clear question or term (max 20 words).
 - Back: a concise but complete answer (2-4 sentences). Use plain English for Year ${grade}.

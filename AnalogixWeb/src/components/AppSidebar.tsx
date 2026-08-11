@@ -186,14 +186,14 @@ export function AppSidebar() {
 
 
   return (
-    /* Outer container — cleaner dark-friendly glass panel */
+    /* Outer container - cleaner dark-friendly glass panel */
     <Sidebar
       collapsible="icon"
       data-tutorial="sidebar"
       className="!border-r-0 !border-l-0 !border-none rounded-xl border border-white/10 bg-background/95 shadow-[0_40px_120px_-60px_rgba(15,23,42,0.9)] backdrop-blur-xl dark:border-slate-800/60 group-data-[collapsible=icon]:rounded-lg"
       style={{ background: "hsl(var(--background) / 0.95)" }}
     >
-      {/* Inner container — clearer spacing and soft backdrop */}
+      {/* Inner container - clearer spacing and soft backdrop */}
       <div className="flex flex-col h-full px-3 py-3 overflow-hidden space-y-3 group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:py-1.5 group-data-[collapsible=icon]:space-y-1.5"
         style={{ background: "hsl(var(--background) / 0.94)" }}
       >
@@ -386,7 +386,7 @@ export function AppSidebar() {
                       </div>
                     )}
                   </div>
-                  {/* Streak badge — like the inspiration's percentage badge */}
+                  {/* Streak badge - like the inspiration's percentage badge */}
                   {streak > 0 && (
                     <div className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] rounded-full bg-amber-500 flex items-center justify-center px-1 shadow-md group-data-[collapsible=icon]:-top-1 group-data-[collapsible=icon]:-right-1 group-data-[collapsible=icon]:min-w-[14px] group-data-[collapsible=icon]:h-[14px] group-data-[collapsible=icon]:px-0.5">
                       <span className="text-[8px] font-black text-white leading-none flex items-center gap-0.5 group-data-[collapsible=icon]:text-[6px]">

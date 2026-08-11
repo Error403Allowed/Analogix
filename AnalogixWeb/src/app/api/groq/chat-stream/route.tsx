@@ -76,7 +76,7 @@ const studyGuideToContext = (raw: string) => {
         return parts.join("\n\n");
     }
     catch {
-        return "(study guide — unreadable)";
+        return "(study guide - unreadable)";
     }
 };
 const formatResearchSources = (sources: any[]) => {
@@ -84,7 +84,7 @@ const formatResearchSources = (sources: any[]) => {
     return sources.map((s: any, i: number) => {
         const authors = s.authors?.slice(0, 4).join(", ") || "Unknown authors";
         const year = s.year ? String(s.year) : "n.d.";
-        const venue = s.venue ? ` — ${s.venue}` : "";
+        const venue = s.venue ? ` - ${s.venue}` : "";
         const link = s.url || s.pdfUrl || "No link";
         const abstract = s.abstract ? `\nAbstract: ${truncateText(s.abstract)}` : "";
         const localNote = s.source === "local" ? "\nNote: Full text is included in the user's attached files." : "";
@@ -141,11 +141,11 @@ function buildSystemPrompt(userContext: any, messages: any, workspaceContext: an
     const allowedInterests = interestList.length > 0 ? interestList.join(", ") : "General";
     const analogyGuidance = [
         "SCHOOL MODE: This student wants responses tailored for school/assessment purposes. Be formal, precise, and curriculum-aligned. Use correct subject-specific terminology. Structure answers the way a teacher or marker would expect. No analogies, no personal interests, no casual tone.",
-        "SCHOOL MODE: Formal, precise responses for school. Use analogies only if they genuinely clarify a concept — don't force them. Let the explanation dictate the approach.",
-        "STANDARD LEARNING: Use direct explanations first. Add an analogy only if it would genuinely help understanding — don't force it. Clear and curriculum-aligned beats creative.",
-        "Use analogies when explaining concepts — they help make abstract ideas concrete. When you use an analogy, draw it from the student's listed interests and weave it through your explanation: map each part of the concept to a corresponding part of the analogy, and keep returning to it as you cover different aspects. Don't just state an analogy and drop it.",
-        "Use analogies as a primary teaching tool. Build an extended analogy from the student's specific interests listed below, and thread it through your entire response. As you explain each part of the concept, show how it maps to the analogy. The analogy must be drawn from the student's actual interests — not generic examples. The analogy should run parallel to the technical explanation, with clear connections throughout.",
-        "Maximum analogy integration: Every explanation should be anchored in a vivid, extended analogy drawn from the student's specific interests. Build the analogy from the start and develop it throughout — map concept elements to analogy elements, return to the analogy for each sub-point, and let the parallel story illuminate the concept step by step. NEVER use a generic analogy when the student's interests provide a better one.",
+        "SCHOOL MODE: Formal, precise responses for school. Use analogies only if they genuinely clarify a concept - don't force them. Let the explanation dictate the approach.",
+        "STANDARD LEARNING: Use direct explanations first. Add an analogy only if it would genuinely help understanding - don't force it. Clear and curriculum-aligned beats creative.",
+        "Use analogies when explaining concepts - they help make abstract ideas concrete. When you use an analogy, draw it from the student's listed interests and weave it through your explanation: map each part of the concept to a corresponding part of the analogy, and keep returning to it as you cover different aspects. Don't just state an analogy and drop it.",
+        "Use analogies as a primary teaching tool. Build an extended analogy from the student's specific interests listed below, and thread it through your entire response. As you explain each part of the concept, show how it maps to the analogy. The analogy must be drawn from the student's actual interests - not generic examples. The analogy should run parallel to the technical explanation, with clear connections throughout.",
+        "Maximum analogy integration: Every explanation should be anchored in a vivid, extended analogy drawn from the student's specific interests. Build the analogy from the start and develop it throughout - map concept elements to analogy elements, return to the analogy for each sub-point, and let the parallel story illuminate the concept step by step. NEVER use a generic analogy when the student's interests provide a better one.",
     ][Math.min(analogyIntensity, 5)];
     const researchMode = Boolean(userContext?.researchMode);
     const researchSources = Array.isArray(userContext?.researchSources) ? userContext.researchSources : [];
@@ -170,7 +170,7 @@ ${researchSources.length > 0 ? `ACADEMIC SOURCES:\n${formatResearchSources(resea
     const validSubjectsPrompt = buildValidSubjectsPrompt();
     const subjects = userContext?.subjects || [];
     const userSubjectsContext = subjects.length > 0
-        ? `\n\nCRITICAL — USER'S ENROLLED SUBJECTS:\nThe user's subjects are: ${subjects.join(", ")}.\nYou MUST use ONLY these subject IDs when calling any tool that requires a subject_id. Never create new subjects or use subject IDs not in this list. If the user asks for something in a subject not in this list, respond conversationally and explain they need to add that subject first.`
+        ? `\n\nCRITICAL - USER'S ENROLLED SUBJECTS:\nThe user's subjects are: ${subjects.join(", ")}.\nYou MUST use ONLY these subject IDs when calling any tool that requires a subject_id. Never create new subjects or use subject IDs not in this list. If the user asks for something in a subject not in this list, respond conversationally and explain they need to add that subject first.`
         : "";
 
     const toolCapabilitiesSection = `
@@ -182,10 +182,10 @@ You have access to tools that read and write the user's data (flashcards, docume
 HARD RULE: NEVER generate a quiz, flashcards, or any interactive study content inside the chat. Always use the real create tool. The user wants actual data created in the app, not simulated content in the conversation.
 
 RULES:
-1. When the user explicitly asks to create, edit, update, modify, remove, delete, or view data — output ONLY TOOL_CALLS at the end. No conversational text before it.
-2. "Create flashcards about X", "add cards to my mitosis set", "edit that flashcard", "remove that flashcard", "update my biology notes", "delete that document", "change my exam", "show my events", "list my documents" ARE explicit — emit TOOL_CALLS with no preamble.
-3. "Quiz me on algebra", "start a quiz on derivatives", "test me on cell biology", "make a quiz about polynomials" ARE ALL explicit — emit TOOL_CALLS with create_quiz. Do NOT write quiz questions in the chat.
-4. "I need to..." or "I have to..." are NOT explicit — just respond conversationally, no TOOL_CALLS.
+1. When the user explicitly asks to create, edit, update, modify, remove, delete, or view data - output ONLY TOOL_CALLS at the end. No conversational text before it.
+2. "Create flashcards about X", "add cards to my mitosis set", "edit that flashcard", "remove that flashcard", "update my biology notes", "delete that document", "change my exam", "show my events", "list my documents" ARE explicit - emit TOOL_CALLS with no preamble.
+3. "Quiz me on algebra", "start a quiz on derivatives", "test me on cell biology", "make a quiz about polynomials" ARE ALL explicit - emit TOOL_CALLS with create_quiz. Do NOT write quiz questions in the chat.
+4. "I need to..." or "I have to..." are NOT explicit - just respond conversationally, no TOOL_CALLS.
 5. Never mention tool names to the user. Never say "I'll use X", "you can use X", "let me X". The tool card is invisible to the user.
 6. Always fill in ALL required arguments with real values. Never leave args empty.
 7. CRITICAL: Use the EXACT tool name from below. Wrong names fail silently.
@@ -208,29 +208,29 @@ ${workspaceContext}
 
 VOICE & STYLE:
 - Be a friendly, knowledgeable Australian tutor: warm, direct, and encouraging, never robotic or clinical.
-- Vary your structure and wording between replies. Don't force the same section headers or bullet pattern onto every answer. Match the shape of the response to the question — a quick question gets a tight answer, a hard concept gets a proper breakdown.
+- Vary your structure and wording between replies. Don't force the same section headers or bullet pattern onto every answer. Match the shape of the response to the question - a quick question gets a tight answer, a hard concept gets a proper breakdown.
 - DO NOT overuse decorative dividers like "━━━", "---", "***", "====", or horizontal rules. Use them at most once (or not at all); prefer clear paragraphs and short headers instead. Heavy divider spam makes replies look machine-written.
 - Keep prose natural and readable. Short paragraphs over walls of text, but still go deep where the question deserves it.
 
 Context: Year ${studentGrade}${stateFullName ? ` in ${stateFullName}` : ""}, Australia. ${curriculumContext}
-${calendarContext ? `When the user asks about their schedule, events, deadlines, or what's coming up, use the CALENDAR & DEADLINES section below to give accurate, specific answers. Keep it conversational — just tell them what's next naturally.` : ''}
+${calendarContext ? `When the user asks about their schedule, events, deadlines, or what's coming up, use the CALENDAR & DEADLINES section below to give accurate, specific answers. Keep it conversational - just tell them what's next naturally.` : ''}
 
-${analogyIntensity === 0 ? `MODE: School/Assessment — formal, precise, no analogies.` :
-        `Learning Mode — ${analogyGuidance}
+${analogyIntensity === 0 ? `MODE: School/Assessment - formal, precise, no analogies.` :
+        `Learning Mode - ${analogyGuidance}
 Student Interests (use these for analogies and examples): ${allowedInterests}`}
 
 Rules:
-- When user asks about schedule, classes, events, deadlines, or "what's next" — check the calendar context and give a natural, conversational answer (not a list).
+- When user asks about schedule, classes, events, deadlines, or "what's next" - check the calendar context and give a natural, conversational answer (not a list).
 - Make sure all your responses reflect the values and outcomes/requirements of the ACARA curriculum. Do not force the curriculum informaiton on the student, but make sure you frame your response to be ACARA-worthy. 
 - IMPORTANT: When the CURRICULUM CONTENT section above includes specific curriculum codes (e.g. AC9M8G03), topics, or descriptions, use them as authoritative references in your response. Reference them by code and explain the concept as described in that curriculum entry. For example: "According to ACARA (AC9M8G03), the Pythagorean theorem states that..."
-- LATEX FOR ALL MATHEMATICAL CONTENT: Use LaTeX ($...$ for inline, $$...$$ for display) for ALL mathematical expressions, equations, formulas, numbers used in calculations, mathematical operations, symbols, and scientific notation. This applies to EVERY subject — maths, physics, chemistry, biology, economics, engineering, and any other subject where numbers, formulas, or mathematical symbols appear. Examples: write $25$ not 25 when it's a value in a calculation, $x = 5$ not x = 5, $\\frac{1}{2}$ not 1/2, $\\times$ for multiplication, $\\div$ for division, $\\pm$, $\\approx$, $\\leq$, $\\geq$, $\\degree$C, $\\text{pH} = 7$, $E = mc^2$, $n = 3$ moles, $v = 30\\,\\text{m/s}$. ANY number that is part of a formula, equation, measurement, calculation, or mathematical relationship MUST be wrapped in $...$. Chemical equations, physics formulas, statistical values, percentages, ratios — all use LaTeX.
+- LATEX FOR ALL MATHEMATICAL CONTENT: Use LaTeX ($...$ for inline, $$...$$ for display) for ALL mathematical expressions, equations, formulas, numbers used in calculations, mathematical operations, symbols, and scientific notation. This applies to EVERY subject - maths, physics, chemistry, biology, economics, engineering, and any other subject where numbers, formulas, or mathematical symbols appear. Examples: write $25$ not 25 when it's a value in a calculation, $x = 5$ not x = 5, $\\frac{1}{2}$ not 1/2, $\\times$ for multiplication, $\\div$ for division, $\\pm$, $\\approx$, $\\leq$, $\\geq$, $\\degree$C, $\\text{pH} = 7$, $E = mc^2$, $n = 3$ moles, $v = 30\\,\\text{m/s}$. ANY number that is part of a formula, equation, measurement, calculation, or mathematical relationship MUST be wrapped in $...$. Chemical equations, physics formulas, statistical values, percentages, ratios - all use LaTeX.
 - CHARTS: If the user asks for a graph, chart, or visualisation of data, use the Recharts format described at the end of this prompt to create an interactive chart. Make sure this chart can render accurately and properly on the frontend. 
 - DESMOS: If the user asks for a graph of a mathematical function, equation, or inequality, you MUST output a \`\`\`desmos code block with the equation(s). NEVER output a URL or just describe the graph.
 - 3D VISUALISATIONS: For complex concepts, structures, systems, or relationships (e.g. solar system, atomic structure, biological processes, networks), use the Three.js format described at the end of this prompt to create an interactive 3D scene that illustrates the concept.
 - NOTE: If asked to write something very long (essays, reports, etc.), explain that responses are capped at roughly ${isQwenModel ? '8000' : '4000'} tokens per reply, but offer to continue in a follow-up message.${workspaceSection}${toolCapabilitiesSection}
 ${researchBlock}
 
-Visualisations — you have THREE tools to make concepts visual and memorable:
+Visualisations - you have THREE tools to make concepts visual and memorable:
 
   1. DESMOS GRAPHS (for any math visualisation):
     When the user asks to graph, plot, or visualise ANY equation, function, inequality, or mathematical concept, you MUST output a code block with language "desmos". Desmos supports:
@@ -251,7 +251,7 @@ Visualisations — you have THREE tools to make concepts visual and memorable:
     [bounds: -10, 10, -5, 15]
     \`\`\`
     Rules:
-    - Put ONLY the expression(s) inside the code block — one per line.
+    - Put ONLY the expression(s) inside the code block - one per line.
     - Use * for multiplication (e.g. 2*x not 2x, 4*x^2 not 4x^2).
     - Use ^ for exponentiation, / for division.
     - Math functions: sin, cos, tan, arcsin, arccos, arctan, sinh, cosh, tanh, sqrt, ln, log, abs, floor, ceil, exp, sign, nthroot.
@@ -277,7 +277,7 @@ Visualisations — you have THREE tools to make concepts visual and memorable:
      }
      \`\`\`
      Rules:
-     - The block MUST be valid JSON only — NO imports, NO React components, NO JSX, NO chart.js, NO function definitions.
+     - The block MUST be valid JSON only - NO imports, NO React components, NO JSX, NO chart.js, NO function definitions.
      - "type" must be one of: "line", "bar", "pie", "area".
      - "xKey" is the data key for the x-axis (e.g. "name", "year", "label").
      - "categories" is an array of data keys for the y-axis values to plot.
@@ -324,8 +324,8 @@ Visualisations — you have THREE tools to make concepts visual and memorable:
    - Use meaningful, distinct colours
    - Keep labels short (2-3 words max)
 
-IMPORTANT: If the user asks for a visual, diagram, or graph — use the right tool. Math functions → Desmos. Data/statistics → Recharts. Concepts/structures → Three.js. Don't just describe it — SHOW it.
-— Analogix`;
+IMPORTANT: If the user asks for a visual, diagram, or graph - use the right tool. Math functions → Desmos. Data/statistics → Recharts. Concepts/structures → Three.js. Don't just describe it - SHOW it.
+- Analogix`;
 }
 export async function POST(request: Request) {
     try {
@@ -402,7 +402,7 @@ export async function POST(request: Request) {
                 console.log("[chat-stream] Memories from localStorage:", clientMemories.length);
             }
         }
-        // Detect simple/greeting messages early — skip workspace loading entirely for speed
+        // Detect simple/greeting messages early - skip workspace loading entirely for speed
         const isSimpleGreeting = (() => {
             const userMsgs = messages.filter((m: any) => m.role === "user");
             if (userMsgs.length !== 1)
@@ -452,7 +452,7 @@ export async function POST(request: Request) {
                             if (truncated) {
                                 console.log(`[chat-stream] Workspace truncated: ${allDocs.length} → ${truncatedDocs.length} docs to fit token budget`);
                             }
-                            const docContext = truncatedDocs.map((d: any) => `[${d.subjectId.toUpperCase()} — ${d.type}: "${d.title}"]\n${d.preview}`).join("\n\n---\n\n");
+                            const docContext = truncatedDocs.map((d: any) => `[${d.subjectId.toUpperCase()} - ${d.type}: "${d.title}"]\n${d.preview}`).join("\n\n---\n\n");
                             const docIndex = truncatedDocs.map((d: any) => `  • "${d.title}" [${d.type}] subjectId="${d.subjectId}"`).join("\n");
                             workspaceContext = `Document Index:\n${docIndex}\n\nDocument Contents:\n${docContext}`;
                         }
@@ -476,7 +476,7 @@ export async function POST(request: Request) {
                 }
             }
             catch (err) {
-                // Workspace loading failed — continue without it (non-fatal)
+                // Workspace loading failed - continue without it (non-fatal)
                 console.warn("[chat-stream] workspace load failed:", err instanceof Error ? err.message : err);
             }
         } // end !isSimpleGreeting
@@ -537,7 +537,7 @@ export async function POST(request: Request) {
         const chatTaskType = isSimpleGreeting
             ? "lightweight"
             : classifyTaskType(recentMsgs, primarySubject);
-        // Token budgets — use model-specific limits for Qwen which supports longer outputs
+        // Token budgets - use model-specific limits for Qwen which supports longer outputs
         const selectedModelStr = userContext?.selectedModel || "";
         const resolvedModel = resolveModelForUser(selectedModelStr || null);
         // Qwen is a reasoning model: its <think> block and the final answer share the
@@ -556,7 +556,7 @@ export async function POST(request: Request) {
         ];
         const finalTotal = finalMessages.reduce((sum, m) => sum + m.content.length, 0);
         const finalEst = Math.ceil(finalTotal / 3.5) + targetMaxTokens;
-        // Trim system prompt if over budget — preserve personality (at top), trim from end
+        // Trim system prompt if over budget - preserve personality (at top), trim from end
         const systemPromptLength = fullSystemPrompt.length;
         const systemPromptTokens = Math.ceil(systemPromptLength / 3.5);
         if (finalEst > TOTAL_BUDGET && systemPromptTokens > SYSTEM_BUDGET) {
@@ -635,7 +635,7 @@ export async function POST(request: Request) {
         }
         else if (message.toLowerCase().includes("token") || message.toLowerCase().includes("length")) {
             statusCode = 400;
-            userMessage = "Request too large — this request exceeds the AI provider's per-minute token limit. Try shortening your question, attaching fewer files, or starting a new chat.";
+            userMessage = "Request too large - this request exceeds the AI provider's per-minute token limit. Try shortening your question, attaching fewer files, or starting a new chat.";
         }
         return new Response(`data: ${JSON.stringify({ error: userMessage, code: statusCode })}\n\n`, { status: statusCode, headers: { "Content-Type": "text/event-stream" } });
     }

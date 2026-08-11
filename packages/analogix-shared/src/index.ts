@@ -6,3 +6,4 @@ export * from "./formulas/index.js";
 export * from "./tools/index.js";
 export * from "./agent-quiz.js";
 export * from "./data/resources.js";
+export * from "./prompts/index.js";

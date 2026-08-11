@@ -10,7 +10,7 @@ export interface AppEvent {
   description?: string;
   source: 'manual' | 'import';
   repeat?: RepeatRule;
-  repeatEnd?: string; // ISO date string — last date to generate occurrences
+  repeatEnd?: string; // ISO date string - last date to generate occurrences
 }
 
 export type EventType = AppEvent['type'];

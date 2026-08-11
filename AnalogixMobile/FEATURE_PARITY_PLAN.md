@@ -1,4 +1,4 @@
-# AnalogixMobile — Full Feature Parity with AnalogixWeb
+# AnalogixMobile - Full Feature Parity with AnalogixWeb
 
 Web is the source of truth. Mobile mirrors all behaviour; only the UI layer is adapted for touch.
 
@@ -10,7 +10,7 @@ After a line-by-line audit of both codebases, the following features are **truly
 
 ---
 
-## Phase 1 — Remove Mobile-Only Features
+## Phase 1 - Remove Mobile-Only Features
 
 | # | Task | Files |
 |---|------|-------|
@@ -21,7 +21,7 @@ After a line-by-line audit of both codebases, the following features are **truly
 
 ---
 
-## Phase 2 — Chat Parity (Critical)
+## Phase 2 - Chat Parity (Critical)
 
 The chat screen is the highest-traffic feature. Six capabilities exist in web but not mobile.
 
@@ -39,7 +39,7 @@ The chat screen is the highest-traffic feature. Six capabilities exist in web bu
 
 ### 2.3 Re-explain with Anchor Picker
 - **Web:** Per-message button opens an anchor picker populated from user hobbies. Sends chosen anchor to `getReExplanation()`.
-- **Mobile:** Long-press triggers a simple Alert with "Re-explain" that sends `style: "simpler"` — no anchor selection.
+- **Mobile:** Long-press triggers a simple Alert with "Re-explain" that sends `style: "simpler"` - no anchor selection.
 - **Implementation:** Replace the Alert with a bottom sheet listing the user's interests (from `me.hobbies` on the `ME` query). Each interest is a tappable chip. On tap, call `REEXPLAIN` with the selected anchor text.
 - **Files:** `ChatSessionScreen.tsx`
 
@@ -63,7 +63,7 @@ The chat screen is the highest-traffic feature. Six capabilities exist in web bu
 
 ---
 
-## Phase 3 — Dashboard Parity (High)
+## Phase 3 - Dashboard Parity (High)
 
 ### 3.1 Time-of-Day Greeting
 - **Web:** `greeting()` returns "Good morning/afternoon/evening" + user name + full date.
@@ -79,7 +79,7 @@ The chat screen is the highest-traffic feature. Six capabilities exist in web bu
 
 ### 3.3 Empty State
 - **Web:** When all widgets are off, shows icon + message + "Customise dashboard" button.
-- **Mobile:** No handling — just empty sections.
+- **Mobile:** No handling - just empty sections.
 - **Implementation:** After rendering widget sections, check if `enabled.length === 0`. If so, render `ExpressiveEmptyState` with a "Customise" action.
 - **Files:** `DashboardScreen.tsx`
 
@@ -103,7 +103,7 @@ The chat screen is the highest-traffic feature. Six capabilities exist in web bu
 
 ---
 
-## Phase 4 — Calendar Parity (High)
+## Phase 4 - Calendar Parity (High)
 
 ### 4.1 Custom Event Types
 - **Web:** Users can create/edit/delete custom event types with custom colours and icons. Stored in localStorage.
@@ -131,7 +131,7 @@ The chat screen is the highest-traffic feature. Six capabilities exist in web bu
 
 ---
 
-## Phase 5 — Quiz Parity (Medium)
+## Phase 5 - Quiz Parity (Medium)
 
 ### 5.1 Grade-Aware Difficulty Labels
 - **Web:** Difficulty options change based on year level: Junior (Foundational / Building / Developing), Middle (Consolidating / Extending / Mastering), Senior (Refining / Analysing / Evaluating).
@@ -153,7 +153,7 @@ The chat screen is the highest-traffic feature. Six capabilities exist in web bu
 
 ---
 
-## Phase 6 — Rooms Parity (Medium)
+## Phase 6 - Rooms Parity (Medium)
 
 ### 6.1 Workspace Tab with Document Editing
 - **Web:** 3 tabs: Chat, Workspace (BlockNote editor), Documents. Workspace has a full rich-text editor.
@@ -169,7 +169,7 @@ The chat screen is the highest-traffic feature. Six capabilities exist in web bu
 
 ---
 
-## Phase 7 — Subjects Parity (Medium)
+## Phase 7 - Subjects Parity (Medium)
 
 ### 7.1 Grid / List View Toggle
 - **Web:** Toggle between grid and list views in `SubjectsOverview`.
@@ -191,7 +191,7 @@ The chat screen is the highest-traffic feature. Six capabilities exist in web bu
 
 ---
 
-## Phase 8 — Achievements Parity (Medium)
+## Phase 8 - Achievements Parity (Medium)
 
 ### 8.1 Category Tabs
 - **Web:** Category filter tabs (All, Starter, Streak, Mastery, Social).
@@ -219,7 +219,7 @@ The chat screen is the highest-traffic feature. Six capabilities exist in web bu
 
 ---
 
-## Phase 9 — Formulas Parity (Medium)
+## Phase 9 - Formulas Parity (Medium)
 
 ### 9.1 Cross-Subject Search
 - **Web:** Search across all formula fields (name, description, topic, LaTeX, tags) with cross-subject results.
@@ -235,7 +235,7 @@ The chat screen is the highest-traffic feature. Six capabilities exist in web bu
 
 ---
 
-## Phase 10 — Settings Parity (Medium)
+## Phase 10 - Settings Parity (Medium)
 
 ### 10.1 Reset All Data
 - **Web:** "Reset all data" button clears localStorage, resets achievements, reloads.
@@ -250,7 +250,7 @@ The chat screen is the highest-traffic feature. Six capabilities exist in web bu
 
 ---
 
-## Phase 11 — Onboarding Polish (Medium)
+## Phase 11 - Onboarding Polish (Medium)
 
 ### 11.1 Typewriter Text
 - **Web:** `TypewriterText` component types out "Hi there! I'm Analogix AI." character by character on the name step.
@@ -266,7 +266,7 @@ The chat screen is the highest-traffic feature. Six capabilities exist in web bu
 
 ### 11.3 Step Transitions
 - **Web:** `AnimatePresence` with slide transitions between steps. Staggered children animation.
-- **Mobile:** No transitions — ScrollView with progress bar.
+- **Mobile:** No transitions - ScrollView with progress bar.
 - **Implementation:** Wrap step content in `Animated.View` with `slideInRight`/`slideOutLeft` transitions using `react-native-reanimated` `LinearTransition`.
 - **Files:** `OnboardingScreen.tsx`
 
@@ -278,7 +278,7 @@ The chat screen is the highest-traffic feature. Six capabilities exist in web bu
 
 ---
 
-## Phase 12 — Cross-Cutting Polish (Low)
+## Phase 12 - Cross-Cutting Polish (Low)
 
 ### 12.1 Material 3 Expressive Consistency
 - Audit all screens for consistent use of `ExpressiveScreen`, `ExpressiveCard`, `ExpressiveListRow`, `ExpressiveSection`.

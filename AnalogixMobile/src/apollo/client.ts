@@ -2,7 +2,7 @@
  * Apollo Client setup for AnalogixMobile.
  *
  * - HTTP link for queries/mutations (forwards Supabase access token in
- *   `Authorization: Bearer ...` header — matches the BFF's auth module)
+ *   `Authorization: Bearer ...` header - matches the BFF's auth module)
  * - WebSocket link (graphql-ws) for subscriptions (chatStream, room events)
  * - MMKV-backed cache persistence via apollo3-cache-persist
  * - Error link that surfaces a friendly toast on auth errors
@@ -28,7 +28,7 @@ const cacheStorage = new MMKV({ id: "analogix.apollo" });
 const CACHE_KEY = "apolloCache";
 
 async function getAccessToken(): Promise<string | null> {
-  // Defer to Supabase's session manager — it handles refresh automatically.
+  // Defer to Supabase's session manager - it handles refresh automatically.
   const supabase = getSupabase();
   const { data } = await supabase.auth.getSession();
   return data.session?.access_token ?? null;
@@ -136,7 +136,7 @@ export async function hydrateApolloCache(client: ApolloClient) {
     try {
       await client.cache.restore(JSON.parse(persisted));
     } catch {
-      // Bad cache — wipe it.
+      // Bad cache - wipe it.
       cacheStorage.delete(CACHE_KEY);
     }
   }
@@ -147,7 +147,7 @@ export function persistApolloCache(client: ApolloClient) {
   cacheStorage.set(CACHE_KEY, JSON.stringify(client.cache.extract()));
 }
 
-/** Wipes the cache — call on sign-out. */
+/** Wipes the cache - call on sign-out. */
 export function clearApolloCache(client: ApolloClient) {
   client.cache.reset();
   cacheStorage.delete(CACHE_KEY);

@@ -9,7 +9,7 @@ CREATE POLICY "Authenticated users can read curriculum_chunks" ON public.curricu
   TO authenticated
   USING (true);
 
--- No INSERT/UPDATE/DELETE policies — only service role can write via ingestion scripts
+-- No INSERT/UPDATE/DELETE policies - only service role can write via ingestion scripts
 
 -- ai_agents: system-defined agent registry, read-only for all authenticated users
 ALTER TABLE public.ai_agents ENABLE ROW LEVEL SECURITY;
@@ -20,4 +20,4 @@ CREATE POLICY "Anyone can read ai_agents" ON public.ai_agents
   TO authenticated
   USING (true);
 
--- No INSERT/UPDATE/DELETE policies — only service role can manage agent definitions
+-- No INSERT/UPDATE/DELETE policies - only service role can manage agent definitions

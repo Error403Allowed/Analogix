@@ -21,7 +21,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const messages: { role: string; content: string }[] = body.messages || [];
 
-    // Only look at the last 6 messages (3 exchanges) — enough context, not too expensive
+    // Only look at the last 6 messages (3 exchanges) - enough context, not too expensive
     const recent = messages.slice(-6);
     if (recent.length < 2) return NextResponse.json({ ok: true, extracted: 0, reason: "too_few_messages" });
 
@@ -35,12 +35,12 @@ export async function POST(request: Request) {
     const hasPersonalInfoKeywords = /(i am|i'm|my|i like|i don't|i don't like|i hate|i love|i prefer|always|never|usually|sometimes|my favorite|i use|i use in|i live|i've been|i've been doing|i'm taking|i'm doing|i'm studying|i'll|i need|my goal|my aim|i want|my question|help me understand|explain me|can you explain|find me|show me|tell me|what is|how do|why is)/.test(userMessagesText);
 
     if (!hasPersonalInfoKeywords) {
-      console.log("[memory/extract] SKIPPED — no personal info keywords detected");
+      console.log("[memory/extract] SKIPPED - no personal info keywords detected");
       return NextResponse.json({ ok: true, extracted: 0, skipped: "no_personal_info" });
     }
 
     if (!user) {
-      console.log("[memory/extract] SKIPPED — user not authenticated");
+      console.log("[memory/extract] SKIPPED - user not authenticated");
       return NextResponse.json({ ok: false, error: "not_authenticated" });
     }
 
@@ -52,19 +52,19 @@ export async function POST(request: Request) {
 Read this conversation excerpt and extract facts, preferences, and context about the REAL student.
 
 CRITICAL RULES:
-1. NEVER extract from hypothetical/pretend scenarios — if student said "pretend", "imagine", "what if", it's NOT a real fact
-2. NEVER extract questions the student asked — "solve log x" is a QUESTION, not a fact about the student
-3. NEVER extract content the tutor explained — that's knowledge, not student info
+1. NEVER extract from hypothetical/pretend scenarios - if student said "pretend", "imagine", "what if", it's NOT a real fact
+2. NEVER extract questions the student asked - "solve log x" is a QUESTION, not a fact about the student
+3. NEVER extract content the tutor explained - that's knowledge, not student info
 4. Only extract ACTUAL facts about the student themselves
-5. Be PROACTIVE — even subtle hints about the student should be captured. If they mention studying late, they might be a night owl. If they reference a specific exam board, note it.
+5. Be PROACTIVE - even subtle hints about the student should be captured. If they mention studying late, they might be a night owl. If they reference a specific exam board, note it.
 
-FRAMING RULES — VERY IMPORTANT:
+FRAMING RULES - VERY IMPORTANT:
 - Frame memories NEUTRALLY or POSITIVELY. NEVER use negative or deficit-based language.
-- BAD: "struggles with calculus" — GOOD: "currently learning calculus"
-- BAD: "doesn't understand velocity" — GOOD: "studying velocity concepts"
-- BAD: "bad at maths" — GOOD: "working on maths skills"
-- BAD: "failed last test" — GOOD: "recently completed a maths assessment"
-- Frame areas of focus as "learning", "studying", "exploring", or "working on" — never "struggles with", "bad at", "doesn't understand", "can't do"
+- BAD: "struggles with calculus" - GOOD: "currently learning calculus"
+- BAD: "doesn't understand velocity" - GOOD: "studying velocity concepts"
+- BAD: "bad at maths" - GOOD: "working on maths skills"
+- BAD: "failed last test" - GOOD: "recently completed a maths assessment"
+- Frame areas of focus as "learning", "studying", "exploring", or "working on" - never "struggles with", "bad at", "doesn't understand", "can't do"
 - Only extract genuinely useful information for personalising future tutoring. Skip trivial details.
 
 EXTRACT these types of information:
@@ -143,7 +143,7 @@ ${transcript}`;
       return NextResponse.json({ ok: true, extracted: 0 });
     }
 
-    // Skip the expensive second-pass verification step — our cheap pre-filter catches most noise
+    // Skip the expensive second-pass verification step - our cheap pre-filter catches most noise
     // Use all extracted memories (the LLM already filtered based on the prompt instructions)
     const accurateMemories = extracted.memories;
 
@@ -189,7 +189,7 @@ ${transcript}`;
       const isDuplicate = matchIndex >= 0;
 
       if (isDuplicate) {
-        // Reinforce existing — bump importance + reinforcement_count
+        // Reinforce existing - bump importance + reinforcement_count
         const match = (existing || [])[matchIndex];
         if (match) {
           const newCount = (match.reinforcement_count || 0) + 1;
@@ -244,7 +244,7 @@ ${transcript}`;
       }
     }
 
-    console.log(`[memory/extract] Done — saved ${savedCount} new memories`);
+    console.log(`[memory/extract] Done - saved ${savedCount} new memories`);
     return NextResponse.json({ ok: true, extracted: savedCount });
   } catch (err) {
     console.error("[memory/extract] Error:", err);

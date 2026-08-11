@@ -138,7 +138,7 @@ export default function EventDetailScreen() {
             )}
             <Text variant="bodyMedium" style={{ color: paperTheme.colors.onSurfaceVariant, marginTop: 8 }}>
               {new Date(event.date).toLocaleDateString("en-AU", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
-              {event.endDate && ` — ${new Date(event.endDate).toLocaleDateString()}`}
+              {event.endDate && ` - ${new Date(event.endDate).toLocaleDateString()}`}
             </Text>
             {event.location && (
               <Text variant="bodyMedium" style={{ color: paperTheme.colors.onSurfaceVariant, marginTop: 4 }}>

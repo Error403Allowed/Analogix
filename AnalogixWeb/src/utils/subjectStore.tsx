@@ -211,7 +211,7 @@ export const subjectStore = {
         }
         return subjects;
     },
-    // Fetch a single subject row — cached in-memory for instant repeat reads.
+    // Fetch a single subject row - cached in-memory for instant repeat reads.
     // Writes always invalidate the cache so data stays consistent.
     getSubject: async (subjectId: string) => {
         // 1. Serve from memory if already fetched this session
@@ -251,7 +251,7 @@ export const subjectStore = {
         subjectCachePromise.set(subjectId, fetch);
         return fetch;
     },
-    // Save directly without a read round-trip — caller provides full data
+    // Save directly without a read round-trip - caller provides full data
     saveSubject: async (subjectId: string, data: Partial<SubjectData>, currentData?: SubjectData) => {
         const user = await getUser();
         if (!user)

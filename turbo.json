@@ -1,5 +1,7 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  "cacheMaxSize": "5GB",
+  "cacheMaxAge": "14d",
   "globalDependencies": ["**/.env.*local", "tsconfig.base.json"],
   "globalEnv": [
     "GROQ_API_KEY",
@@ -12,7 +14,7 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**", ".next/**"],
+      "outputs": ["dist/**", ".next/**", "!.next/cache/**", "!.next/dev/**"],
       "env": [
         "GROQ_API_KEY",
         "GROQ_API_KEY_2",

@@ -199,7 +199,7 @@ function AiChatWidget() {
       setReply(ans);
       setHistory([...next, { role: "assistant" as const, content: ans }]);
     } catch {
-      setReply("Couldn't reach the AI — try the full chat.");
+      setReply("Couldn't reach the AI - try the full chat.");
     }
     setBusy(false);
   };
@@ -224,7 +224,7 @@ function AiChatWidget() {
         </button>
       </div>
 
-      {/* Response bubble — animates in after first message */}
+      {/* Response bubble - animates in after first message */}
       <AnimatePresence>
         {hasResponse && (
           <motion.div
@@ -255,7 +255,7 @@ function AiChatWidget() {
         )}
       </AnimatePresence>
 
-      {/* Input — M3 Expressive styling */}
+      {/* Input - M3 Expressive styling */}
       <div className="flex gap-2">
         <textarea
           ref={textareaRef}
@@ -289,7 +289,7 @@ function AiChatWidget() {
   );
 }
 
-// ── DocCard — square card for horizontal scroll ───────────────────────────────
+// ── DocCard - square card for horizontal scroll ───────────────────────────────
 const STUDY_GUIDE_PREFIX = "__STUDY_GUIDE_V2__";
 
 interface DocEntry {
@@ -381,7 +381,7 @@ function DocScrollRow() {
   );
 }
 
-// ── FlashcardWidget — live flashcard summary ──────────────────────────────────
+// ── FlashcardWidget - live flashcard summary ──────────────────────────────────
 function FlashcardWidget() {
   const [setsCount, setSetsCount] = useState(0);
   const [totalCards, setTotalCards] = useState(0);
@@ -451,7 +451,7 @@ function FlashcardWidget() {
   );
 }
 
-// ── MiniTimer — compact horizontal pomodoro ───────────────────────────────────
+// ── MiniTimer - compact horizontal pomodoro ───────────────────────────────────
 function MiniTimer() {
   const router = useRouter();
   const initialState = getDefaultTimerState();
@@ -731,7 +731,7 @@ export default function Dashboard() {
           )}
           </motion.div>
 
-          {/* AI Tutor — full width */}
+          {/* AI Tutor - full width */}
           <motion.div variants={fadeInUp}>
             {on("chat") && (
               <div className="dashboard-panel p-5" data-tour="ai-chat-widget">
@@ -740,7 +740,7 @@ export default function Dashboard() {
             )}
           </motion.div>
 
-          {/* Docs — full width horizontal scroll */}
+          {/* Docs - full width horizontal scroll */}
           <motion.div variants={fadeInUp}>
             {on("docs") && (
               <div className="dashboard-panel p-5" data-tour="recent-docs">
@@ -749,7 +749,7 @@ export default function Dashboard() {
             )}
           </motion.div>
 
-          {/* Events — full width, timer embedded as a footer strip inside */}
+          {/* Events - full width, timer embedded as a footer strip inside */}
           <motion.div variants={fadeInUp}>
             {(on("events") || on("timer")) && (
               <div className="dashboard-panel p-5 flex flex-col" data-tour="calendar-widget">

@@ -134,9 +134,9 @@ Full route param list in `src/navigation/types.ts`.
 
 All data flows through `AnalogixGraphQL` at `http://localhost:4000/graphql`:
 
-- **Queries** — `me`, `subjects`, `chatSessions`, `chatMessages`, `flashcards`, `quizzes`, `events`, `deadlines`, `rooms`, `formulaSheets`, `achievements`, `userStats`, `documents`, `resources`
-- **Mutations** — `streamChatMessage` (triggers AI stream), `createChatSession`, `createFlashcardSet`, `generateFlashcards`, `generateQuiz`, `createEvent`, `addDeadline`, `createRoom`, etc.
-- **Subscriptions** — `chatStream` (real-time AI tokens), `roomMessagesStream`, `roomPresenceStream`, `roomTimerStream`
+- **Queries** - `me`, `subjects`, `chatSessions`, `chatMessages`, `flashcards`, `quizzes`, `events`, `deadlines`, `rooms`, `formulaSheets`, `achievements`, `userStats`, `documents`, `resources`
+- **Mutations** - `streamChatMessage` (triggers AI stream), `createChatSession`, `createFlashcardSet`, `generateFlashcards`, `generateQuiz`, `createEvent`, `addDeadline`, `createRoom`, etc.
+- **Subscriptions** - `chatStream` (real-time AI tokens), `roomMessagesStream`, `roomPresenceStream`, `roomTimerStream`
 
 See [`AnalogixGraphQL/README.md`](../AnalogixGraphQL/README.md) for the full schema.
 
@@ -274,8 +274,8 @@ Build profiles (from `eas.json`): `development` (dev client), `preview` (interna
 
 ## Troubleshooting
 
-- **"Network request failed"** — GraphQL URL unreachable. Verify `EXPO_PUBLIC_GRAPHQL_HTTP_URL` and the BFF is running. On Android emulator, use `10.0.2.2` instead of `localhost`.
-- **"Invalid login credentials"** — Web client ID mismatch between Google Cloud and Supabase.
-- **Subscription never fires** — Ensure `EXPO_PUBLIC_GRAPHQL_WS_URL` is `wss://` in production, and CORS origins allow your client.
-- **Stale data** — Apollo cache is persisted to MMKV; clear app data to reset.
-- **Dev build can't load bundle** — Run `npx expo start --dev-client --tunnel --clear` (requires `@expo/ngrok`). Metro may not be reachable over LAN.
+- **"Network request failed"** - GraphQL URL unreachable. Verify `EXPO_PUBLIC_GRAPHQL_HTTP_URL` and the BFF is running. On Android emulator, use `10.0.2.2` instead of `localhost`.
+- **"Invalid login credentials"** - Web client ID mismatch between Google Cloud and Supabase.
+- **Subscription never fires** - Ensure `EXPO_PUBLIC_GRAPHQL_WS_URL` is `wss://` in production, and CORS origins allow your client.
+- **Stale data** - Apollo cache is persisted to MMKV; clear app data to reset.
+- **Dev build can't load bundle** - Run `npx expo start --dev-client --tunnel --clear` (requires `@expo/ngrok`). Metro may not be reachable over LAN.

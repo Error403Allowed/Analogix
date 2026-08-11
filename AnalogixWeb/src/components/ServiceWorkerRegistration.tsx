@@ -10,7 +10,7 @@ export function ServiceWorkerRegistration() {
 
     const timer = window.setTimeout(() => {
       navigator.serviceWorker.register("/sw.js").catch(() => {
-        /* SW registration is best-effort — never break the app over it. */
+        /* SW registration is best-effort - never break the app over it. */
       });
     }, 2000);
 

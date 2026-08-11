@@ -9,7 +9,7 @@ const FAQS = [
   { q: "How do I reset my streak?", a: "Streaks auto-reset after 48 hours of inactivity." },
   { q: "Can I use Analogix offline?", a: "Caching keeps recent content available; chat needs a connection." },
   { q: "How do I share a flashcard deck?", a: "Open the deck, tap the share icon, and choose an option." },
-  { q: "Is my data private?", a: "Yes — your data is yours. See Privacy for details." },
+  { q: "Is my data private?", a: "Yes - your data is yours. See Privacy for details." },
 ];
 
 export default function SupportScreen() {

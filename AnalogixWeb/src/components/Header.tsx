@@ -48,12 +48,12 @@ const Header = ({ userName = "Student", streak = 0 }: HeaderProps) => {
   const [greeting, setGreeting] = useState(`Welcome back, ${userName}.`);
   const [hydrated, setHydrated] = useState(false);
 
-  // Wait for hydration before firing any API calls — avoids Turbopack cold-start races
+  // Wait for hydration before firing any API calls - avoids Turbopack cold-start races
   useEffect(() => { setHydrated(true); }, []);
 
   useEffect(() => {
     if (!hydrated) return;
-    // Check session cache first — no need to hit the API if we already have one
+    // Check session cache first - no need to hit the API if we already have one
     const cacheKey = `greeting_${userName}`;
     const cached = sessionStorage.getItem(cacheKey);
     if (cached) { setGreeting(cached); return; }

@@ -1,5 +1,5 @@
 /**
- * AuthContext — wraps Supabase auth state for the React tree.
+ * AuthContext - wraps Supabase auth state for the React tree.
  * Session persistence is handled by Supabase (localStorage on web, MMKV via
  * storage adapter on native). The SecureStore here is a fast cache for the user
  * object so the UI can render immediately on cold start.

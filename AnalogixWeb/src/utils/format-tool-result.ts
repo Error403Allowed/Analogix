@@ -8,14 +8,14 @@ export function formatToolResult(r: { toolName: string; success: boolean; data?:
       const events = Array.isArray(d) ? d : [];
       if (events.length === 0) return "📅 No events found.";
       return `📅 **Events** (${events.length}):\n${events.map((e: any) =>
-        `- **${e.title}** — ${new Date(e.date).toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}${e.type ? ` (${e.type})` : ""}`
+        `- **${e.title}** - ${new Date(e.date).toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}${e.type ? ` (${e.type})` : ""}`
       ).join("\n")}`;
     }
     case "list_deadlines": {
       const deadlines = Array.isArray(d) ? d : [];
       if (deadlines.length === 0) return "📋 No deadlines found.";
       return `📋 **Deadlines** (${deadlines.length}):\n${deadlines.map((e: any) =>
-        `- **${e.title}** — due ${new Date(e.due_date).toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short" })}${e.priority ? ` (${e.priority})` : ""}`
+        `- **${e.title}** - due ${new Date(e.due_date).toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short" })}${e.priority ? ` (${e.priority})` : ""}`
       ).join("\n")}`;
     }
     case "list_documents": {
@@ -31,7 +31,7 @@ export function formatToolResult(r: { toolName: string; success: boolean; data?:
       const sets = Array.isArray(d) ? d : [];
       if (sets.length === 0) return "📇 No flashcard sets found.";
       return `📇 **Flashcard Sets** (${sets.length}):\n${sets.map((e: any) =>
-        `- **${e.name}**${e.subject_id ? ` (${e.subject_id})` : ""}${e.card_count ? ` — ${e.card_count} cards` : ""}`
+        `- **${e.name}**${e.subject_id ? ` (${e.subject_id})` : ""}${e.card_count ? ` - ${e.card_count} cards` : ""}`
       ).join("\n")}`;
     }
     case "list_flashcards": {
@@ -45,7 +45,7 @@ export function formatToolResult(r: { toolName: string; success: boolean; data?:
       const quizzes = Array.isArray(d) ? d : [];
       if (quizzes.length === 0) return "❓ No quizzes found.";
       return `❓ **Quizzes** (${quizzes.length}):\n${quizzes.map((e: any) =>
-        `- **${e.title}**${e.subject_id ? ` (${e.subject_id})` : ""}${e.questionCount ? ` — ${e.questionCount} questions` : ""}`
+        `- **${e.title}**${e.subject_id ? ` (${e.subject_id})` : ""}${e.questionCount ? ` - ${e.questionCount} questions` : ""}`
       ).join("\n")}`;
     }
     case "get_quiz":
@@ -54,7 +54,7 @@ export function formatToolResult(r: { toolName: string; success: boolean; data?:
       const subjects = Array.isArray(d) ? d : [];
       if (subjects.length === 0) return "📚 No subjects found.";
       return `📚 **Subjects** (${subjects.length}):\n${subjects.map((e: any) =>
-        `- **${e.name || e.id}**${e.notes ? ` — ${e.notes.slice(0, 80)}` : ""}`
+        `- **${e.name || e.id}**${e.notes ? ` - ${e.notes.slice(0, 80)}` : ""}`
       ).join("\n")}`;
     }
     case "get_subject":
@@ -83,7 +83,7 @@ export function formatToolResult(r: { toolName: string; success: boolean; data?:
       const attempts = Array.isArray(d) ? d : [];
       if (attempts.length === 0) return "📊 No quiz attempts found.";
       return `📊 **Quiz Attempts** (${attempts.length}):\n${attempts.map((e: any) =>
-        `- ${new Date(e.created_at).toLocaleDateString("en-Au")} — ${e.score ?? "?"}/${e.total ?? "?"} (${e.percentage ?? "?"}%)`
+        `- ${new Date(e.created_at).toLocaleDateString("en-Au")} - ${e.score ?? "?"}/${e.total ?? "?"} (${e.percentage ?? "?"}%)`
       ).join("\n")}`;
     }
     default:

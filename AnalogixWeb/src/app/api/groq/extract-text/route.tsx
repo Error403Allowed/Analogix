@@ -56,12 +56,12 @@ export async function POST(request: any) {
             const xmlStr = buffer.toString("utf-8", 0, buffer.length);
             const matches = xmlStr.match(/<a:t[^>]*>([^<]*)<\/a:t>/g) || [];
             text = matches.map((m) => m.replace(/<[^>]+>/g, "").trim()).filter(Boolean).join(" ").replace(/\s+/g, " ").trim();
-            // ── Images (PNG, JPG, WEBP, GIF, HEIC etc.) — send to vision model ─────
+            // ── Images (PNG, JPG, WEBP, GIF, HEIC etc.) - send to vision model ─────
         }
         else if (mimeType.startsWith("image/") || /\.(png|jpe?g|webp|gif|heic|heif|bmp|tiff?)$/i.test(fileName)) {
             const buffer = Buffer.from(await file.arrayBuffer());
             const base64 = buffer.toString("base64");
-            // Normalise MIME — Groq vision doesn't accept heic/heif directly, treat as jpeg
+            // Normalise MIME - Groq vision doesn't accept heic/heif directly, treat as jpeg
             const safeMime = (mimeType === "image/heic" || mimeType === "image/heif" || !mimeType.startsWith("image/"))
                 ? "image/jpeg"
                 : mimeType;

@@ -379,7 +379,7 @@ export function useChat() {
       setTimeout(() => setFlashcardsSaved(false), 3000);
       router.push(`/flashcards?subjectId=${selectedSubject}`);
     } else if (raw.length > 0) {
-      toast.error(`Only ${raw.length} flashcards generated — need at least 5. Try a longer conversation.`);
+      toast.error(`Only ${raw.length} flashcards generated - need at least 5. Try a longer conversation.`);
     }
     setSavingFlashcards(false);
   }, [selectedSubject, messages, savingFlashcards, userPrefs.grade, router]);
@@ -471,7 +471,7 @@ export function useChat() {
 
       const resultText = result.results?.map(formatToolResult).filter(Boolean).join("\n\n") || "";
       const combinedContent = failCount > 0
-        ? `${originalText}\n\n⚠️ ${failCount} operation(s) failed — ${pendingProposal.summary}${resultText ? `\n\n${resultText}` : ""}`
+        ? `${originalText}\n\n⚠️ ${failCount} operation(s) failed - ${pendingProposal.summary}${resultText ? `\n\n${resultText}` : ""}`
         : `${originalText}\n\n✅ ${pendingProposal.summary}${resultText ? `\n\n${resultText}` : ""}`;
 
       setMessages(prev => prev.map(m =>
@@ -525,7 +525,7 @@ export function useChat() {
     if (!pendingProposal || !pendingProposalMessageId) return;
     setMessages(prev => prev.map(m =>
       m.id === pendingProposalMessageId
-        ? { ...m, content: `✕ Cancelled — let me know if you need something else.` }
+        ? { ...m, content: `✕ Cancelled - let me know if you need something else.` }
         : m
     ));
     setPendingProposal(null);
@@ -924,7 +924,7 @@ export function useChat() {
     const anchorText = "";
     const aiPrompt = [{
       role: "user" as const,
-      content: `Introduce a NEW, interesting concept in ${subjectLabel} using an analogy that references a specific moment, scene, or character from my interests (${userHobbies.join(", ")})—not generic settings. ${anchorText} ${avoidText}`
+      content: `Introduce a NEW, interesting concept in ${subjectLabel} using an analogy that references a specific moment, scene, or character from my interests (${userHobbies.join(", ")})-not generic settings. ${anchorText} ${avoidText}`
     }];
 
     try {

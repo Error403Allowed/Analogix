@@ -362,10 +362,10 @@ const Onboarding = () => {
                 </div>
               )}
 
-              {/* Step 1 — Auth */}
+              {/* Step 1 - Auth */}
               {step === 1 && <AuthStep onAuthed={() => setStep(2)} externalError={authError} />}
 
-              {/* Step 2 — Name, Year, State (combined for speed) */}
+              {/* Step 2 - Name, Year, State (combined for speed) */}
               {step === 2 && (
                 <div className="space-y-6">
                   <div>
@@ -423,7 +423,7 @@ const Onboarding = () => {
                 </div>
               )}
 
-              {/* Step 3 — Subjects */}
+              {/* Step 3 - Subjects */}
               {step === 3 && (
                 <div className="space-y-6">
                   <div>
@@ -453,7 +453,7 @@ const Onboarding = () => {
                 </div>
               )}
 
-              {/* Step 4 — Hobbies */}
+              {/* Step 4 - Hobbies */}
               {step === 4 && (
                 <div className="space-y-6">
                   <div>

@@ -28,5 +28,26 @@ test.describe("Chat mobile", () => {
     const greeting = page.getByText(/What are you studying/);
     await expect(greeting).toBeInViewport();
     await assertNoHorizontalOverflow(page);
+
+    // Regression: the empty state used to be bottom-aligned, pushing the
+    // greeting far down the screen. It must sit in the upper half.
+    const greetingBox = await greeting.boundingBox();
+    const viewportHeight = await page.evaluate(() => window.innerHeight);
+    expect(greetingBox).not.toBeNull();
+    expect(greetingBox!.y).toBeLessThan(viewportHeight / 2);
+  });
+
+  test("chat input stays fully visible on a short viewport", async ({ page }) => {
+    await page.setViewportSize({ width: 360, height: 640 });
+    await page.goto("/chat", { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(1200);
+
+    const input = page.locator('[data-tour="chat-input"]');
+    await expect(input).toBeVisible();
+
+    const box = await input.boundingBox();
+    expect(box).not.toBeNull();
+    expect(box!.y).toBeGreaterThanOrEqual(0);
+    expect(box!.y + box!.height).toBeLessThanOrEqual(await page.evaluate(() => window.innerHeight));
   });
 });

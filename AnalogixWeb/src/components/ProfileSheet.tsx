@@ -393,7 +393,7 @@ const ProfileSheet = ({ open, onOpenChange }: ProfileSheetProps) => {
                     <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
                       <User className="w-5 h-5 text-primary" />
                     </div>
-                    <span className="text-sm font-bold text-foreground">{name || "—"}</span>
+                    <span className="text-sm font-bold text-foreground">{name || "-"}</span>
                   </div>
                 )}
                 <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl shrink-0"

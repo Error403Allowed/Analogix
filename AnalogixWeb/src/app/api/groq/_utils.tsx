@@ -18,7 +18,7 @@ const normalizeModelId = (modelId: string): string => {
     }
     return (modelMap as Record<string, string>)[modelId] || modelId;
 };
-// Groq model lineup — using verified working model IDs from Groq API
+// Groq model lineup - using verified working model IDs from Groq API
 // Last verified: May 2025
 const DEFAULT_MODEL = "openai/gpt-oss-120b";
 const DEFAULT_FALLBACK_MODEL = "openai/gpt-oss-20b";
@@ -27,7 +27,7 @@ const LIGHTWEIGHT_MODEL = "openai/gpt-oss-20b";
 const REASONING_MODEL = "qwen/qwen3.6-27b";
 const CODING_MODEL = "openai/gpt-oss-120b";
 const LAST_RESORT_MODEL = "openai/gpt-oss-20b";
-// User-selected model (from client) — if provided, use this instead of auto-selection
+// User-selected model (from client) - if provided, use this instead of auto-selection
 let userSelectedModel: string | null = null;
 /**
  * Set the user-selected model
@@ -138,7 +138,7 @@ const getNextApiKeyIndex = (() => {
             if (!isKeyDead(currentIndex))
                 return currentIndex;
         }
-        // All keys are dead right now — fall back to the first one anyway
+        // All keys are dead right now - fall back to the first one anyway
         return 0;
     };
 })();
@@ -198,7 +198,7 @@ const waitForToken = async (keyIndex: number, requiredTokens: number) => {
         // (the client aborts at 60s, and a large request can otherwise stall here
         // for 50s+. Groq's own 429 handling + backoff take over if we're limited.)
         if (Date.now() - startedAt >= MAX_TOKEN_WAIT_MS) {
-            console.warn(`[Groq] Token bucket wait exceeded ${MAX_TOKEN_WAIT_MS}ms (need ${Math.ceil(effectiveRequired)}t, have ${Math.ceil(bucket.tokens)}t) — proceeding without reserving tokens`);
+            console.warn(`[Groq] Token bucket wait exceeded ${MAX_TOKEN_WAIT_MS}ms (need ${Math.ceil(effectiveRequired)}t, have ${Math.ceil(bucket.tokens)}t) - proceeding without reserving tokens`);
             break;
         }
         // Wait for enough tokens to accumulate
@@ -222,7 +222,7 @@ const exponentialBackoff = async (attempt: number, baseMs = 500) => {
 };
 // Global request queue to serialize requests when rate limited
 const enqueueRequest = () => {
-    // Don't queue at all — let requests run concurrently.
+    // Don't queue at all - let requests run concurrently.
     // The token bucket and Groq's own 429s handle actual overload.
     // The old serialisation was the primary cause of "can't reach AI service"
     // on second messages (message 2 would queue behind message 1's stream).
@@ -231,7 +231,7 @@ const enqueueRequest = () => {
 // ============================================================================
 // ERROR HANDLING
 // ============================================================================
-const TOKEN_LIMIT_HINT = "Request too large — this request exceeds the AI provider's per-minute token limit. Try shortening your question, attaching fewer files, or starting a new chat.";
+const TOKEN_LIMIT_HINT = "Request too large - this request exceeds the AI provider's per-minute token limit. Try shortening your question, attaching fewer files, or starting a new chat.";
 const parseErrorMessage = async (response: Response) => {
     try {
         const raw = await response.text();
@@ -414,7 +414,7 @@ const getModelsForTaskType = (taskType: string, userModel?: string, estimatedTok
 // ============================================================================
 const callFastChat = async (payload: any, userModel?: any) => {
     assertApiKeys();
-    // Honour an explicit user-selected model on the fast path too — only fall
+    // Honour an explicit user-selected model on the fast path too - only fall
     // back to the lightweight model when the user hasn't picked one.
     const availableModels = userModel && userModel !== "auto"
         ? filterBlockedModels([normalizeModelId(userModel), LIGHTWEIGHT_MODEL, DEFAULT_FALLBACK_MODEL, LAST_RESORT_MODEL])
@@ -554,12 +554,12 @@ export const callGroqChat = async (payload: any, taskType = "default", userSelec
                     if (!response.ok) {
                         const errorMessage = await parseErrorMessage(response);
                         const statusCode = response.status;
-                        // On 429 (rate limit) — detect TPD vs per-minute limits
+                        // On 429 (rate limit) - detect TPD vs per-minute limits
                         if (statusCode === 429) {
                             lastError = new GroqUpstreamError(429, `Groq API Error: 429 - ${errorMessage}`);
                             const isDaily = errorMessage.includes("per day") || errorMessage.includes("tokens per day") || errorMessage.includes("TPD");
                             if (isDaily) {
-                                // Daily limit hit — no other key can help, skip to next model entirely
+                                // Daily limit hit - no other key can help, skip to next model entirely
                                 console.warn(`[Groq] ${model} daily token limit exhausted, skipping to next model...`);
                                 tryNextModel = true;
                                 break;
@@ -698,7 +698,7 @@ export const callGroqChatStream = async (payload: any, taskType = "default", use
                     if (!response.ok) {
                         const errorMessage = await parseErrorMessage(response);
                         const statusCode = response.status;
-                        // On 429 (rate limit) — detect TPD vs per-minute limits
+                        // On 429 (rate limit) - detect TPD vs per-minute limits
                         if (statusCode === 429) {
                             lastError = new GroqUpstreamError(429, `Groq API Error: 429 - ${errorMessage}`);
                             const isDaily = errorMessage.includes("per day") || errorMessage.includes("tokens per day") || errorMessage.includes("TPD");
