@@ -145,23 +145,42 @@ const useCleanCopy = (ref: React.RefObject<HTMLDivElement | null>) => {
 
 // Normalise LaTeX delimiters so remark-math always sees $...$ / $$...$$
 // Models often output \(...\) for inline and \[...\] for display math.
-// Also handles \begin{aligned}...\end{aligned} environments.
-const normaliseLatex = (text: string | undefined | null): string => {
+// Also handles \begin{...}...\end{...} environments - kept INTACT so that
+// & alignment and \\ line breaks stay inside a real environment (KaTeX
+// rejects them in a bare $$ block), and unsupported environments like
+// "align" are rewritten to their *ed form which KaTeX supports inside $$.
+export const normaliseLatex = (text: string | undefined | null): string => {
   if (!text) return "";
   let result = text;
   
-  // Handle \begin{...}...\end{...} environments - wrap in $$ for display math
+  // Wrap \begin{...} environments in $$ display math, keeping the environment
+  // tag and rewriting non-KaTeX environments to their supported *ed variants.
+  const ENV_MAP: Record<string, string> = {
+    align: "aligned",
+    alignat: "aligned",
+    equation: "aligned",
+    eqnarray: "aligned",
+    gather: "gathered",
+    multiline: "aligned",
+    array: "aligned",
+  };
   result = result.replace(
-    /\\begin\{(aligned|align|gather|gathered|matrix|pmatrix|bmatrix|vmatrix|cases|equation|eqnarray)\*?\}([\s\S]*?)\\end\{\1\*?\}/g,
-    (_m, _env, body) => `$$\n${body.trim()}\n$$`
+    /\\begin\{([a-zA-Z*]+)\}([\s\S]*?)\\end\{\1\}/g,
+    (_m, env, body) => {
+      const name = (env as string).replace(/\*$/, "");
+      const katexEnv = ENV_MAP[name] || name;
+      return `$$\n\\begin{${katexEnv}}\n${body}\n\\end{${katexEnv}}\n$$`;
+    }
   );
   
   // Normalize LaTeX delimiters
+  // NOTE: use function replacements - in a .replace() replacement string "$$"
+  // is an escape that emits a single "$", so "$$\n" would silently become "$\n".
   result = result
-    .replace(/\\\[\s*/g, "$$\n")      // \[ → $$
-    .replace(/\s*\\\]/g, "\n$$")      // \] → $$
-    .replace(/\\\(/g, "$")            // \( → $
-    .replace(/\\\)/g, "$");           // \) → $
+    .replace(/\\\[\s*/g, () => "$$\n")      // \[ → $$
+    .replace(/\s*\\\]/g, () => "\n$$")      // \] → $$
+    .replace(/\\\(/g, () => "$")            // \( → $
+    .replace(/\\\)/g, () => "$");           // \) → $
   
   return result;
 };

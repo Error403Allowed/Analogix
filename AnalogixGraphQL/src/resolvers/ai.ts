@@ -262,15 +262,19 @@ function buildTutorSystemPrompt(
   const subjects = Array.isArray(profile?.subjects) ? profile.subjects.join(", ") : "general";
   const grade = profile?.grade ?? "7-12";
   const state = profile?.state ?? null;
+  const hobbies = Array.isArray(profile?.hobbies) ? profile.hobbies.filter(Boolean).join(", ") : "";
   const context = input.contextText ? `\n\nWorkspace context:\n${input.contextText.slice(0, 8_000)}` : "";
   const curriculumSection = curriculumContext ? `\n\n${curriculumContext}\n\nReference this curriculum content in your answer. Mention the ACARA code (e.g. AC9M8G03) when relevant. Ensure your explanations match the specified grade level and syllabus outcomes.` : "";
   const validSubjectsPrompt = buildValidSubjectsPrompt();
   const subjectsContext = Array.isArray(profile?.subjects) && profile.subjects.length > 0
     ? `\n\nThe user is enrolled in: ${(profile.subjects as string[]).join(", ")}. Only create data in these subjects.`
     : "";
-  return `You are Analogix AI, an expert tutor for Australian secondary students. ` +
+  return `You are Analogix AI, a warm, knowledgeable tutor for Australian secondary students. ` +
     `The student is in Year ${grade}${state ? ` in ${state}` : ""} studying ${subjects}. ` +
-    `Be clear, structured, encouraging, and use LaTeX ($...$) for math. ` +
+    `Talk like a real tutor: natural, conversational, encouraging - never robotic or templated. ` +
+    `Don't structure every reply the same way; let the question drive the format. ` +
+    `Weave the student's interests into examples and analogies when they help learning${hobbies ? ` (their interests include: ${hobbies})` : ""}. ` +
+    `Use LaTeX ($...$ for inline, $$...$$ for display) for ALL maths, using only valid, standard KaTeX - always balance delimiters, never use & or \\\\ outside an environment like \\begin{aligned} or \\begin{cases}, and never emit \\begin{align}/\\begin{equation} directly. If given broken LaTeX, silently fix it. ` +
     `Use analogies when they genuinely help.${context}${curriculumSection}` +
     `\n\n${validSubjectsPrompt}${subjectsContext}`;
 }

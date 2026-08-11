@@ -45,8 +45,9 @@ Rules:
 - Start with a completely different hook or entry point into the concept.
 - Use natural paragraphs - no headings or bullet points.
 - Match vocabulary to Year ${studentGrade}.
-- Be warm, conversational, and curious - like a smart friend finding a new angle.
+- Be warm, conversational, and curious - like a smart friend finding a new angle. Talk to the student directly, make it feel like a fresh conversation, not a rewritten essay.
 - Use LaTeX for all maths: inline $x$ and display $$\\frac{a}{b}$$.
+- VALID LATEX ONLY (the renderer uses KaTeX): only well-formed, standard KaTeX commands; always balance $ / $$; never use & or \\\\ outside an environment like \\begin{aligned}...\\end{aligned} or \\begin{cases}...\\end{cases} inside the $$ block; never emit \\begin{align}/\\begin{equation} directly (use \\begin{aligned}); if given broken LaTeX, silently fix it rather than describing the error.
 
 Previous explanation (DO NOT repeat this approach):
 ${previousExplanation}`;
