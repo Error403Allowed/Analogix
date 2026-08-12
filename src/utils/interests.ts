@@ -98,3 +98,51 @@ export const buildInterestList = (
         : fallback;
   return dedupe(result);
 };
+
+export interface InterestObject {
+  tags: string[];
+  byCategory: Record<string, string[]>;
+}
+
+/**
+ * Build a structured interests object (category -> concrete details) rather than
+ * a flat plain-text list. This is sent to the AI as real structured data so it
+ * can pick a specific interest to explain through.
+ */
+export const buildInterestsObject = (prefs: unknown): InterestObject => {
+  if (!prefs || typeof prefs !== "object") {
+    return { tags: [], byCategory: {} };
+  }
+  const prefsRecord = prefs as Record<string, unknown>;
+  const hobbyIds = Array.isArray(prefsRecord.hobbyIds)
+    ? (prefsRecord.hobbyIds as string[]).filter(Boolean)
+    : [];
+  const hobbyDetails =
+    prefsRecord.hobbyDetails && typeof prefsRecord.hobbyDetails === "object"
+      ? (prefsRecord.hobbyDetails as Record<string, string>)
+      : {};
+
+  const byCategory: Record<string, string[]> = {};
+  for (const id of hobbyIds) {
+    const label =
+      HOBBY_OPTIONS.find((hobby) => hobby.id === id)?.label || id;
+    let details = splitDetails(hobbyDetails[id] || "");
+    if (id === "gaming") details = ensureGamingSuffix(details);
+    const items = [...details];
+    if (items.length === 0) items.push(label);
+    byCategory[label] = items;
+  }
+
+  // Merge any flattened hobbies that aren't otherwise represented.
+  const flat = buildInterestList(prefs);
+  for (const item of flat) {
+    const seen = Object.values(byCategory).flat().some(
+      (existing) => existing.toLowerCase() === item.toLowerCase()
+    );
+    if (!seen) {
+      byCategory.General = [...(byCategory.General || []), item];
+    }
+  }
+
+  return { tags: flat, byCategory };
+};

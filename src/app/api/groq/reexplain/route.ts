@@ -25,13 +25,20 @@ export async function POST(request: Request) {
     };
     const stateFullName = studentState ? (STATE_FULL_NAMES[studentState] || studentState) : null;
 
-    const interestList = userContext?.hobbies?.filter(Boolean) ?? [];
+    const rawInterests =
+      (userContext?.interests && typeof userContext.interests === "object")
+        ? userContext.interests.byCategory ?? {}
+        : {};
+    const interestPool = [
+      ...Object.values(rawInterests).flat(),
+      ...(userContext?.hobbies?.filter(Boolean) ?? []),
+    ].filter((v, i, arr) => v && arr.indexOf(v) === i);
     const chosenAnchor = userContext?.chosenAnchor?.trim() || null;
     const previousExplanation = userContext?.previousExplanation || "";
 
     const anchorInstruction = chosenAnchor
-      ? `You MUST anchor your entire explanation to: "${chosenAnchor}". Every concept must be explained through that specific lens.`
-      : `Choose a DIFFERENT analogy anchor from this list: ${interestList.join(", ")}. Do NOT use the same anchor as the previous explanation.`;
+      ? `You MUST build your entire explanation around the student's actual interest: "${chosenAnchor}". Every concept must be explained through that specific lens.`
+      : `Choose ONE interest from this list and explain the concept through it: ${interestPool.join(", ")}. Do NOT use the same framing as the previous explanation.`;
 
     const systemPrompt = `You are "Analogix AI", a brilliant AI tutor who can explain any concept in multiple creative ways.
 

@@ -94,4 +94,62 @@ test.describe("Chat layout (desktop)", () => {
     await expect(loaderBox.locator("svg")).toBeVisible();
     await expect(loader.locator('span[aria-hidden] span')).toHaveCount(3);
   });
+
+  test("neural loader is animated, not a static image", async ({ page }) => {
+    await page.goto("/chat", { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(1200);
+
+    await page.route("**/api/groq/chat-stream", (route) => {
+      const encoder = new TextEncoder();
+      let closed = false;
+      let interval: ReturnType<typeof setInterval> | null = null;
+      const stream = new ReadableStream({
+        start(controller) {
+          const tick = () => {
+            if (closed) return;
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ choices: [{ delta: { content: "" } }] })}\n\n`));
+          };
+          tick();
+          interval = setInterval(tick, 250);
+        },
+        cancel() {
+          closed = true;
+          if (interval) clearInterval(interval);
+        },
+      });
+      route.fulfill({
+        status: 200,
+        contentType: "text/event-stream",
+        response: new Response(stream),
+      });
+    });
+
+    const input = page.getByPlaceholder("Ask me anything...");
+    await input.fill("Tell me about photosynthesis");
+    await page.keyboard.press("Enter");
+
+    const loader = page.getByText(/Thinking/).first();
+    await expect(loader).toBeVisible({ timeout: 15000 });
+
+    // Sample the SMIL-driven pulse position twice; it must move. getCTM() returns
+    // the current transform of a circle inside [data-pulse] as it travels the path.
+    const samplePulseX = async () => {
+      const sample = await page.evaluate(() => {
+        const circle = document.querySelector("[data-pulse] > circle");
+        if (!circle) return null;
+        const ctm = circle.getCTM;
+        if (!ctm) return null;
+        return (circle as SVGGraphicsElement).getCTM()?.e ?? null;
+      });
+      return sample;
+    };
+
+    const t0 = await samplePulseX();
+    await page.waitForTimeout(450);
+    const t1 = await samplePulseX();
+
+    expect(t0).not.toBeNull();
+    expect(t1).not.toBeNull();
+    expect(Math.abs((t1 as number) - (t0 as number))).toBeGreaterThan(0.01);
+  });
 });

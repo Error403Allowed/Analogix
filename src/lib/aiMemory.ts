@@ -287,12 +287,12 @@ HOW TO WEAVE ANALOGIES:
     instructions.push("ANALOGIES: Almost never use analogies. Only in rare cases where no direct explanation would work.");
   }
 
-  // Formatting
-  if (personality.use_section_dividers) {
-    instructions.push("FORMATTING: Use --- (markdown horizontal rule) between sections of your response to keep things organized.");
-  } else {
-    instructions.push("FORMATTING: No horizontal dividers. Use natural paragraph breaks only.");
-  }
+  // Formatting - the product decision is: NO markdown dividers, ever.
+  // Larger responses may use short, plain headers if genuinely needed, but
+  // the default is natural conversational paragraphs.
+  instructions.push(
+    "FORMATTING: NEVER use --- (horizontal rules) or other decorative dividers between sections. Use natural paragraph breaks. If a longer response genuinely needs light organisation, use one short, plain header (e.g. \"## The idea\") max - never a divider line."
+  );
 
   if (personality.use_emojis) {
     instructions.push("EMOJIS: Use emojis naturally in your responses to add warmth and visual interest.");

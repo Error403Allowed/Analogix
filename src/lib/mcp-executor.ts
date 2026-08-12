@@ -6,21 +6,27 @@ import type { ToolCall, ToolResult, ToolExecutionResult } from "@analogix/shared
 
 const IS_DEV = process.env.NODE_ENV !== "production";
 
+// Resolved once, lazily, on first use. Kept out of module scope so Turbopack
+// doesn't need to trace the filesystem at build time (which causes "Dynamic
+// filesystem access causes tracing of the whole project").
+function tryExists(dir: string): boolean {
+  try {
+    return fs.existsSync(dir);
+  } catch {
+    return false;
+  }
+}
+
 function findMcpDir(): string {
   const candidates = [
     path.resolve(process.cwd(), "vendor/analogix-mcp"),
     path.resolve(process.cwd(), "../vendor/analogix-mcp"),
   ];
   for (const dir of candidates) {
-    if (fs.existsSync(dir)) return dir;
+    if (tryExists(dir)) return dir;
   }
   return candidates[0];
 }
-
-const MCP_PACKAGE_DIR = findMcpDir();
-const MCP_SRC = path.join(MCP_PACKAGE_DIR, "src/index.ts");
-const MCP_DIST = path.join(MCP_PACKAGE_DIR, "dist/index.js");
-const MCP_SCRIPT_PATH = process.env.MCP_SERVER_PATH || (IS_DEV ? MCP_SRC : MCP_DIST);
 
 function findRunner(): string | null {
   if (!IS_DEV) return null;
@@ -30,14 +36,36 @@ function findRunner(): string | null {
     path.resolve(process.cwd(), "../../node_modules/.bin/tsx"),
   ];
   for (const p of paths) {
-    if (fs.existsSync(p)) return p;
+    if (tryExists(p)) return p;
   }
   return null;
 }
 
-const TSX_PATH = findRunner();
-const command = process.env.MCP_RUNNER || (IS_DEV && TSX_PATH ? TSX_PATH : "node");
-const args = [MCP_SCRIPT_PATH];
+let resolvedLaunch: { command: string; args: string[] } | null = null;
+
+function resolveLaunch(): { command: string; args: string[] } {
+  if (resolvedLaunch) return resolvedLaunch;
+
+  if (process.env.MCP_SERVER_PATH) {
+    resolvedLaunch = {
+      command: process.env.MCP_RUNNER || "node",
+      args: [process.env.MCP_SERVER_PATH],
+    };
+    return resolvedLaunch;
+  }
+
+  const mcpDir = findMcpDir();
+  const script = path.join(mcpDir, IS_DEV ? "src/index.ts" : "dist/index.js");
+
+  let command = "node";
+  if (IS_DEV) {
+    const runner = findRunner();
+    if (runner) command = runner;
+  }
+
+  resolvedLaunch = { command, args: [script] };
+  return resolvedLaunch;
+}
 
 let client: Client | null = null;
 let transport: StdioClientTransport | null = null;
@@ -58,11 +86,11 @@ async function ensureConnected(): Promise<Client> {
   if (!env.SUPABASE_URL) throw new Error("SUPABASE_URL not set - MCP server cannot start");
   if (!env.SUPABASE_ANON_KEY) throw new Error("SUPABASE_ANON_KEY not set - MCP server cannot start");
 
-  const mcpArgs = [...args];
+  const { command, args } = resolveLaunch();
 
   transport = new StdioClientTransport({
     command,
-    args: mcpArgs,
+    args,
     env,
     stderr: "pipe",
   });

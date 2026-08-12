@@ -1,3 +1,5 @@
+import type { InterestObject } from "@/utils/interests";
+
 export interface ChatMessage {
   role: "system" | "user" | "assistant";
   content: string;
@@ -7,6 +9,7 @@ export interface ChatMessage {
 export interface UserContext {
   subjects: string[];
   hobbies: string[];
+  interests?: InterestObject;
   grade?: string;
   state?: string;
   learningStyle: string;

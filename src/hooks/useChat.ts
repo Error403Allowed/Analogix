@@ -7,7 +7,7 @@ import { flashcardStore } from "@/utils/flashcardStore";
 import { statsStore } from "@/utils/statsStore";
 import { chatStore, ChatSession, checkChatStoreHealth } from "@/utils/chatStore";
 import { SUBJECT_CATALOG, SubjectId } from "@/constants/subjects";
-import { buildInterestList } from "@/utils/interests";
+import { buildInterestList, buildInterestsObject } from "@/utils/interests";
 import type { ResearchSource } from "@/types/research";
 import type { GroqModelId } from "@/types/groq-models";
 import type { ToolProposal, ToolCall } from "@analogix/shared/types";
@@ -93,6 +93,10 @@ export function useChat() {
   const userName = hydratedUserName || userPrefs.name || "";
   const userHobbies = useMemo(
     () => buildInterestList(userPrefs, ["gaming", "sports"]),
+    [userPrefs],
+  );
+  const interestObject = useMemo(
+    () => buildInterestsObject(userPrefs),
     [userPrefs],
   );
   const userSubjects = useMemo(
@@ -250,6 +254,7 @@ export function useChat() {
   const buildContext = useCallback((overrideAnchor?: string | null) => ({
     subjects: selectedSubject ? [selectedSubject] : [],
     hobbies: userHobbies,
+    interests: interestObject,
     grade: userPrefs.grade,
     state: userPrefs.state,
     learningStyle: userPrefs.learningStyle,
@@ -258,7 +263,7 @@ export function useChat() {
     memoryManagement: false,
     selectedModel,
   }), [
-    selectedSubject, userHobbies,
+    selectedSubject, userHobbies, interestObject,
     userPrefs.grade, userPrefs.state, userPrefs.learningStyle,
     analogyModeEnabled, selectedModel,
   ]);

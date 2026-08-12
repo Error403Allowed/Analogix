@@ -78,6 +78,13 @@ export function cleanForDisplay(text: string) {
     .replace(/<internal\s*>[\s\S]*?<\/internal\s*>/gi, "")
     .replace(/<internal\s*>[\s\S]*/gi, "")
     .replace(/\n\s*Actions\s*$/gi, "")
+    // Strip decorative divider lines (---, ***, ===, ━━━...) used purely as
+    // section separators. Table separator rows still contain "|", so they are
+    // left intact.
+    .replace(/^[ \t]*([-=*_])\1{2,}[ \t]*$/gm, "")
+    .replace(/^[ \t]*━{3,}[ \t]*$/gm, "")
+    .replace(/^[ \t]*[│┃┆┊]{2,}[ \t]*$/gm, "")
+    .replace(/\n\s*\n\s*\n+/g, "\n\n")
     .replace(/\n\s*\n\s*$/g, "\n")
     .trim();
 }

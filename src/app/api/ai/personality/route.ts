@@ -18,7 +18,7 @@ function getDefaultPersonality() {
     use_emojis: true,
     use_analogies: true,
     analogy_frequency: 3,
-    use_section_dividers: true,
+    use_section_dividers: false,
     auto_approve_tools: false,
     auto_approve_read_tools: false,
     auto_approve_write_subjects: [],
