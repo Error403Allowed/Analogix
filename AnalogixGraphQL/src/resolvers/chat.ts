@@ -181,7 +181,7 @@ export const chatResolvers = {
       // Inject personality-driven system prompt if none exists yet.
       const { data: profile } = await ctx.supabase!
         .from("profiles")
-        .select("ai_personality, subjects, grade, state")
+        .select("ai_personality, subjects, grade, state, name")
         .eq("id", user.id)
         .maybeSingle();
 
@@ -210,7 +210,7 @@ export const chatResolvers = {
 
         const toneMap: Record<string, string> = {
           friendly: "Be warm, encouraging, and approachable. Use positive reinforcement.",
-          professional: "Be formal, precise, and structured. Use academic language.",
+          professional: "Be clear and structured, but stay human and approachable - don't sound like a textbook or a formal report.",
           socratic: "Guide the student to discover answers through probing questions rather than giving direct answers.",
           playful: "Be fun, light-hearted, and use humor and emojis to keep the student engaged.",
           concise: "Be direct and efficient. Give short, focused answers without extra elaboration.",
@@ -223,19 +223,23 @@ export const chatResolvers = {
         };
         const verbosityGuide =
           (personality.verbosity ?? 50) < 30
-            ? "Keep answers extremely brief."
+            ? "Keep answers brief and conversational."
             : (personality.verbosity ?? 50) > 70
-              ? "Provide detailed, thorough explanations."
-              : "Provide moderately detailed answers.";
+              ? "Provide thorough explanations, but keep them readable and matched to the student's year level - depth without walls of equations."
+              : "Provide clear, moderately detailed answers without overcomplicating.";
         const creativityGuide =
           (personality.creativity ?? 50) < 30
             ? "Stick to well-established facts. Avoid speculation."
             : (personality.creativity ?? 50) > 70
               ? "Feel free to use creative examples and analogies."
               : "";
+        const studentName = profile?.name || null;
+        const nameContext = studentName
+          ? `You know the student's name is ${studentName} - greet and address them by name when it feels natural, so the conversation feels personal.`
+          : "";
 
         const curriculumSection = curriculumContext
-          ? `\n\n${curriculumContext}\n\nReference this curriculum content in your answer. Mention the ACARA code (e.g. AC9M8G03) when relevant. Ensure your explanations match the specified grade level and syllabus outcomes.`
+          ? `\n\n${curriculumContext}\n\nUse this curriculum content to guide the level and terminology of your answer, referencing the ACARA code (e.g. AC9M8G03) naturally and sparingly - only where it genuinely helps. Match your explanations to the student's grade level (Year ${profile?.grade ?? "7-12"}).`
           : "";
 
         const profileSubjects = (profile?.subjects ?? []) as string[];
@@ -246,6 +250,9 @@ export const chatResolvers = {
 
         const systemContent = [
           "You are Analogix — a personalized AI study companion for the user.",
+          "Talk like a real, friendly tutor helping them one-on-one: natural, conversational, encouraging - never robotic or templated. Don't structure every reply the same way; let the question drive the format. A quick question gets a quick, friendly answer, a hard concept gets a calm walkthrough.",
+          "Keep it simple and matched to the student's level: plain language, no university-level formalism, no walls of equations, no multi-stage formulas unless the student asks for that depth. Use LaTeX with judgement - genuine equations get math notation, but conversational numbers like 25% or times like 8:30am stay in plain text.",
+          nameContext,
           toneMap[personality.tone ?? "friendly"] ?? toneMap.friendly,
           focusMap[personality.focus ?? "balanced"] ?? focusMap.balanced,
           verbosityGuide,

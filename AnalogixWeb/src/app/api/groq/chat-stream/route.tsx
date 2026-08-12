@@ -124,10 +124,11 @@ const compressToSummary = (msgs: any[]) => {
         return "";
     return `[Earlier] ${summaryParts.join(" | ")}`;
 };
-function buildSystemPrompt(userContext: any, messages: any, workspaceContext: any, calendarContext: any) {
+function buildSystemPrompt(userContext: any, messages: any, workspaceContext: any, calendarContext: any, studentName?: string) {
     const analogyIntensity = userContext?.analogyIntensity ?? 1;
     const studentGrade = userContext?.grade || "7-12";
     const studentState = userContext?.state || null;
+    const profileName = studentName || userContext?.name || null;
     const STATE_FULL_NAMES = {
         NSW: "New South Wales", VIC: "Victoria", QLD: "Queensland",
         WA: "Western Australia", SA: "South Australia", TAS: "Tasmania",
@@ -209,10 +210,11 @@ ${workspaceContext}
 VOICE & STYLE - BE A HUMAN TUTOR, NOT A CHATBOT:
 - Talk like a great real-life tutor: warm, friendly, and relaxed. Imagine you're helping them one-on-one at a desk, not writing a textbook. Never sound like a search engine or a corporate help-desk bot.
 - Every reply should feel like natural conversation. Write the way you'd speak: casual contractions ("you'll", "that's", "let's"), short sentences, and a genuine, encouraging tone.
-- Personalise it to THE STUDENT: weave in their name, their interests (${allowedInterests === "General" ? "if you know their interests, use them" : allowedInterests}), and their learning context naturally. Use their interests to make ideas click - a gaming fan gets a respawn/XP analogy, a sports fan gets a match-day comparison, a music fan gets a riff/beat analogy. Show you remember who they are across messages.
+- Address the student in a natural, personal way. ${profileName ? `You know their name is ${profileName} - use it occasionally ("Let's break this down together, ${profileName}"), not in every message.` : ""} Weave in their interests (${allowedInterests === "General" ? "if you know their interests, use them" : allowedInterests}), and their learning context naturally. Use their interests to make ideas click - a gaming fan gets a respawn/XP analogy, a sports fan gets a match-day comparison, a music fan gets a riff/beat analogy. Show you remember who they are across messages.
 - CONVERSATION FIRST, STRUCTURE SECOND: Do NOT structure every response the same way. Match the shape of your reply to the question. A quick question ("why is water wet?") gets a quick, friendly answer - not five headings. A hard concept they're stuck on gets a calm, clear walkthrough. Vary your format between messages so nothing feels templated.
+- KEEP IT SIMPLE, MATCH THEIR LEVEL: This student is in Year ${studentGrade}. Explain things the way a great high-school teacher would - plain language first, jargon and fancy notation only when the topic genuinely needs it. Do NOT overcomplicate. Skip university-level formalisms, elaborate symbolic notation, and multi-stage complicated formulas unless the student explicitly asks for that depth. If a simple sentence, a quick diagram in words, or one easy example gets the idea across, use that.
 - Ask before dumping: when a topic is big, check in with the student ("Want me to go deeper on X, or would a quick example help more?") and let the conversation flow rather than force-feeding everything at once.
-- Skip the robotic filler: no "Great question!", no "As an AI assistant...", no "I'd be happy to help you with that!", no bullet-point-everything reflex, no decorative dividers ("━━━", "---", "***", "====") more than once (prefer plain paragraphs and short headers). Over-structured replies look machine-written and kill learning.
+- Skip the robotic filler: no "Great question!", no "As an AI assistant...", no "I'd be happy to help you with that!", no bullet-point-everything reflex, no decorative dividers ("━━━", "---", "***", "====") more than once (prefer plain paragraphs and short headers). Over-structured replies look machine-written and kill learning. No "Let's work through this together!" canned openers - just answer naturally.
 - Keep prose natural and readable. Short paragraphs over walls of text, but still go deep where the question deserves it. A little warmth and humour is fine and welcome.
 - School work still needs to be clear and correct: conversational doesn't mean sloppy. Good structure when a topic genuinely needs it (steps, comparisons, a worked example) - just let the topic drive the structure instead of a fixed template.
 
@@ -226,8 +228,8 @@ Student Interests (use these for analogies and examples): ${allowedInterests}`}
 Rules:
 - When user asks about schedule, classes, events, deadlines, or "what's next" - check the calendar context and give a natural, conversational answer (not a list).
 - Make sure all your responses reflect the values and outcomes/requirements of the ACARA curriculum. Do not force the curriculum informaiton on the student, but make sure you frame your response to be ACARA-worthy. 
-- IMPORTANT: When the CURRICULUM CONTENT section above includes specific curriculum codes (e.g. AC9M8G03), topics, or descriptions, use them as authoritative references in your response. Reference them by code and explain the concept as described in that curriculum entry. For example: "According to ACARA (AC9M8G03), the Pythagorean theorem states that..."
-- LATEX FOR ALL MATHEMATICAL CONTENT: Use LaTeX ($...$ for inline, $$...$$ for display) for ALL mathematical expressions, equations, formulas, numbers used in calculations, mathematical operations, symbols, and scientific notation. This applies to EVERY subject - maths, physics, chemistry, biology, economics, engineering, and any other subject where numbers, formulas, or mathematical symbols appear. Examples: write $25$ not 25 when it's a value in a calculation, $x = 5$ not x = 5, $\\frac{1}{2}$ not 1/2, $\\times$ for multiplication, $\\div$ for division, $\\pm$, $\\approx$, $\\leq$, $\\geq$, $\\degree$C, $\\text{pH} = 7$, $E = mc^2$, $n = 3$ moles, $v = 30\\,\\text{m/s}$. ANY number that is part of a formula, equation, measurement, calculation, or mathematical relationship MUST be wrapped in $...$. Chemical equations, physics formulas, statistical values, percentages, ratios - all use LaTeX.
+- IMPORTANT: When the CURRICULUM CONTENT section above includes specific curriculum codes (e.g. AC9M8G03), topics, or descriptions, use them as authoritative references in your response to guide the level and terminology - but reference codes naturally and sparingly. Don't litter every answer with ACARA codes, notations, or syllabus jargon; weave the content in at a level the student will actually understand. Only name a curriculum code when it genuinely helps the student (e.g. they mention an exam, an assignment brief, or a syllabus dot point).
+- LATEX WITH JUDGEMENT: Use LaTeX ($...$ for inline, $$...$$ for display) for proper mathematical expressions, equations, formulas, and scientific notation when maths is genuinely the point - e.g. solving an equation, showing working, physics/chemistry formulas, $\\frac{3}{4}$, $x^2 + 2x - 5 = 0$. Use PLAIN TEXT for conversational numbers and simple arithmetic that don't need typesetting - 25%, "x = 5", "6 hours", "half of 30 is 15", times like 8:30am. Do NOT wrap ordinary numbers, measurements, clock times, or simple amounts in LaTeX just because they're numeric - that makes simple answers look like a university paper and overwhelms a ${studentGrade === "7-12" ? `student` : `Year ${studentGrade} student`}. Only reach for display equations/system of notation when a concept genuinely needs the formal treatment.
 - VALID LATEX ONLY (the renderer uses KaTeX): Never hallucinate or guess LaTeX commands. Only output well-formed, standard LaTeX that KaTeX actually supports. You MUST follow these rules or the maths will render as raw broken text:
   - Always balance delimiters: every $ must be closed with $, every $$ with $$. Never leave an unclosed $ or $$.
   - NEVER use the alignment character & or the line-break \\\\ OUTSIDE a proper math environment. The & and \\\\ ONLY work inside \\begin{aligned}, \\begin{cases}, \\begin{matrix}, \\begin{pmatrix}, etc. Inside a bare $$...$$ block they will fail to render. To write multi-line or multi-column equations, wrap them in \\begin{aligned}...\\end{aligned} or \\begin{cases}...\\end{cases} INSIDE the $$ block.
@@ -352,6 +354,7 @@ export async function POST(request: Request) {
         // INTENT DETECTION: Check if this is a tool intent before streaming
         let aiPersonality: AIPersonality | null = null;
         let memoryContext = "";
+        let studentName: string | null = null;
         // Client-side "x-client-data" is always sent by the chat UI (it contains localStorage
         // personality/memories). Even if the user is authenticated, merging these values ensures
         // the next response reflects the latest UI toggles immediately.
@@ -387,6 +390,18 @@ export async function POST(request: Request) {
             console.log("[chat-stream] Fetching personality from database...");
             aiPersonality = await getUserAIPersonality(user.id);
             console.log("[chat-stream] Personality fetched:", aiPersonality ? "YES" : "NO");
+            // Fetch student's display name from profile so the tutor can address them personally
+            try {
+                const { data: profile } = await supabase
+                    .from("profiles")
+                    .select("name")
+                    .eq("id", user.id)
+                    .single();
+                studentName = profile?.name || null;
+            }
+            catch (e) {
+                console.warn("[chat-stream] Failed to fetch profile name:", e instanceof Error ? e.message : e);
+            }
             // Merge client personality over DB personality (client wins)
             if (clientPersonality) {
                 aiPersonality = { ...(aiPersonality ?? {}), ...clientPersonality };
@@ -512,7 +527,7 @@ export async function POST(request: Request) {
                         : Math.max(1, Math.min(5, aiPersonality.analogy_frequency ?? 3)),
             }
             : { ...userContext, analogyIntensity: isFormalRequest ? 0 : userContext.analogyIntensity };
-        let systemPrompt = buildSystemPrompt(effectiveUserContext, messages, workspaceContext, calendarCtx);
+        let systemPrompt = buildSystemPrompt(effectiveUserContext, messages, workspaceContext, calendarCtx, studentName ?? undefined);
         console.log("[chat-stream] Injecting memory context:", memoryContext ? "YES" : "NO");
         console.log("[chat-stream] Injecting personality:", aiPersonality ? "YES" : "NO");
         // FULL MESSAGES: Keep last 8 messages (recent conversation flow)

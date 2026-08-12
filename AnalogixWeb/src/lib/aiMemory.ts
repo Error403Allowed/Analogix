@@ -196,13 +196,13 @@ export function buildPersonalityInstructions(personality: AIPersonality, analogy
   const toneRules: string[] = [];
   
   if (personality.friendliness >= 70) {
-    toneRules.push("Start responses warmly - use phrases like 'Great question!' or 'Let's work through this together'. Address the student naturally.");
+    toneRules.push("Be warm and approachable, but sound natural - not like a scripted chatbot. Skip canned openers like 'Great question!' or 'Let's work through this together!'. Just answer the student like a friendly tutor having a chat, with a bit of genuine warmth.");
   } else if (personality.friendliness <= 30) {
     toneRules.push("Keep a professional, measured tone. No casual greetings or warm-up phrases. Get straight to the content.");
   }
   
   if (personality.formality >= 70) {
-    toneRules.push("Use formal academic language. Avoid contractions (use 'do not' not 'don't'). Structure responses like a textbook or lecture.");
+    toneRules.push("Use formal academic language. Avoid contractions (use 'do not' not 'don't'). Structure responses clearly, but don't let structure make them robotic - keep them readable and human.");
   } else if (personality.formality <= 30) {
     toneRules.push("Use casual, conversational language. Contractions are fine. Talk like a helpful study buddy, not a textbook. Use phrases like 'Here's the thing' or 'Think of it this way'.");
   }
@@ -219,7 +219,7 @@ export function buildPersonalityInstructions(personality: AIPersonality, analogy
 
   // Detail level - concrete instructions with examples
   if (personality.detail_level >= 80) {
-    instructions.push("DEPTH: Give thorough, comprehensive explanations. Cover the concept from multiple angles. Include background context, edge cases, and connections to related topics. No need to be brief.");
+    instructions.push("DEPTH: Give thorough explanations, but stay approachable. Cover the concept from a couple of helpful angles with real examples, and keep it readable - depth doesn't mean walls of equations or university-level formalism. Match notation and complexity to the student's year level.");
   } else if (personality.detail_level >= 60) {
     instructions.push("DEPTH: Give solid explanations with moderate detail. Cover the main concept and one example. Don't over-explain, but don't skip important context either.");
   } else if (personality.detail_level >= 40) {
@@ -252,7 +252,7 @@ export function buildPersonalityInstructions(personality: AIPersonality, analogy
   if (personality.step_by_step === false) {
     instructions.push("WORKING: Show only the key steps. Skip obvious algebra or trivial intermediate steps. Jump to the important parts.");
   } else {
-    instructions.push("WORKING: Show every single step. Never skip algebra, even simple rearrangements. Write out each transformation explicitly.");
+    instructions.push("WORKING: Break the working into clear, easy-to-follow steps, but keep it light. Only show the steps that matter - don't copy out every single rearrangement or calculation when a simpler 'then we just...' carries the idea. Over-detailed working is overwhelming; each step should move the understanding forward.");
   }
 
   if (personality.real_world_examples) {
