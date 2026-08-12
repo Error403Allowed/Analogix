@@ -1,28 +1,28 @@
-# AGENTS.md - Analogix Monorepo
+# AGENTS.md - Analogix
 
 ## Overview
 
-Monorepo (npm workspaces + Turborepo) for an AI study platform. Four workspaces under `AnalogixWeb/`, `AnalogixMobile/`, `AnalogixGraphQL/`, `packages/analogix-shared/`, and `packages/analogix-mcp/`.
+Single Next.js app (Next.js 16 App Router, Turbopack) for an AI study platform, backed directly by Supabase. The old GraphQL BFF and native mobile app have been removed. `@analogix/shared` (types, curriculum, formulas, Zod schemas) and `@analogix/mcp` (MCP server) are vendored under `vendor/` and wired in as `file:` dependencies.
 
 ## Required setup order
 
-1. `npm install`
-2. Copy `.env.example` → `.env` / `.env.local` per workspace
-3. **`npm run build:shared`** - must run first; all other workspaces depend on `@analogix/shared/dist/`
-4. `npm run dev:api` (terminal 1), `npm run dev:web` (terminal 2), `npm run dev:mobile` (terminal 3)
+1. `npm install` (install scripts run prebuild automatically)
+2. Copy `.env.example` → `.env` / `.env.local`
+3. `npm run dev` (Next.js on `:3000`)
 
 ## Key commands
 
 | Command | What |
 |---|---|
-| `npm run dev:shared` | Watches `@analogix/shared` for changes |
-| `npm run dev:api` | Hot-reloads the GraphQL BFF on `:4000` |
-| `npm run dev:web` | Next.js 16 Turbopack on `:3000` |
-| `npm run dev:mobile` | Expo dev client on `:8081` |
-| `npm run typecheck` | Turbo runs `tsc --noEmit` across all workspaces (depends on `^build`) |
-| `npm run lint` | Root ESLint flat config with per-workspace tsconfig overrides |
-| `npm run build` | Turbo builds all workspaces in dependency order |
-| `npm run clean` | Clears `dist/`, `.next/`, etc. |
+| `npm run dev` | Next.js 16 Turbopack on `:3000` |
+| `npm run build` | Runs `prebuild` (builds `vendor/analogix-shared` + `vendor/analogix-mcp`) then `next build` |
+| `npm run start` | Runs the production build |
+| `npm run typecheck` | `tsc --noEmit --project tsconfig.typecheck.json` (run `npm run build --prefix vendor/analogix-shared` first) |
+| `npm run lint` | Root ESLint flat config (single project) |
+| `npm run test:unit` | Vitest unit tests |
+| `npm run test:e2e` | Playwright e2e tests (starts dev server) |
+| `npm run build --prefix vendor/analogix-shared` | Builds the vendored shared package |
+| `npm run build --prefix vendor/analogix-mcp` | Builds the vendored MCP server |
 
 ## MUST-FOLLOW Instructions
 
@@ -37,64 +37,30 @@ Monorepo (npm workspaces + Turborepo) for an AI study platform. Four workspaces 
 
 ## Testing
 
-- **AnalogixWeb only**: Vitest for unit (`npm run test:unit`), Playwright for e2e (`npm run test:e2e`)
-- Other workspaces have no tests configured
-- Web custom test runner: `node --import tsx scripts/run-tests.ts` (list/filter/tag flags)
+- Vitest for unit (`npm run test:unit`), Playwright for e2e (`npm run test:e2e`)
+- Custom test runner: `node --import tsx scripts/run-tests.ts` (list/filter/tag flags)
 - When creating new components, always create tests
     -> Playwright for extensive e2e testing
     -> Vitest for simple unit testing
 
 - Use snyk cli to run codebase-wide tests on the repo to identify vulnerabilities. If any are found, fix them as easily as you can without putting anything at risk of more vulnerabilities.
 
-## Workspace specifics
+## Project structure
 
-- **`AnalogixWeb/`** - Next.js 16 App Router, REST + GraphQL (Apollo Client). Tailwind + shadcn/ui. Vercel-deployed via `vercel.json`.
-- **`AnalogixMobile/`** - Expo SDK 54, RN 0.81 (New Architecture), react-native-paper M3. EAS build profiles in `eas.json`. GraphQL codegen: `npm run codegen` (in workspace).
-- **`AnalogixGraphQL/`** - Apollo Server v5 + Express 5 + `graphql-ws`. Redis PubSub for subscriptions (falls back to in-process when `REDIS_URL` unset). Dev mode: `tsx watch src/server.ts`. Apollo Sandbox at `/graphql` in dev only.
-- **`@analogix/shared`** - Types, Zod schemas, curriculum, formulas, achievements. Subpath exports: `@analogix/shared/{curriculum,formulas,achievements,types,schemas,tools,agent-quiz}`. Build first, always.
-- **`@analogix/mcp`** - MCP server exposing app data via Model Context Protocol. Built with `npm run build:mcp`.
+- **App** - This repo root. Next.js 16 App Router (Turbopack), REST + Supabase (direct). Tailwind + shadcn/ui. Vercel-deployed via `vercel.json`.
+- **`src/app/api/`** - Route handlers: auth, rooms (incl. `[roomId]/transfer`, `[roomId]/permissions`), documents, tutor, chat, subjects, quiz, profile, achievements, dashboard, mcp-proxy.
+- **`src/lib/`** - `supabase/` (client/server/admin), `rooms/` (mappers + permission defaults), `stores/`, `mcp-executor.ts`, `ai/` (Vercel AI SDK v6 + `@ai-sdk/groq`).
+- **`supabase/migrations/`** - SQL migrations (RLS policies, SECURITY DEFINER RPCs, seed data).
+- **`@analogix/shared`** - Vendored at `vendor/analogix-shared/`. Types, Zod schemas, curriculum, formulas, achievements. Subpath exports: `@analogix/shared/{curriculum,formulas,achievements,types,schemas,tools,agent-quiz}`. Build first, always.
+- **`@analogix/mcp`** - Vendored at `vendor/analogix-mcp/`. MCP server exposing app data via Model Context Protocol.
 
 ## Important constraints
 
-## Migration Work Summary (brand.primary → theme.colors.primary + alpha())
-
-All 28+ files in AnalogixMobile have been migrated. The migration replaced:
-- `brand.primary` → `theme.colors.primary` (from `useThemeContext()`) across all screens/components, except where `brand` is intentionally kept for decorative/auth UI (LoginScreen orbs, Expressive decorative elements).
-- Hex color suffix patterns → `alpha()` function calls using the configured opacity table.
-- `paperTheme.colors.X` → `theme.colors.X` in files where `useThemeContext` was already imported.
-- Added `alpha` import to 20+ files where suffix patterns existed.
-
-Key mapping applied:
-| Hex suffix | Opacity |
-|---|---|
-| `"08"` | `0.03` |
-| `"10"` | `0.06` |
-| `"12"` | `0.07` |
-| `"14"` | `0.08` |
-| `"15"` | `0.09` |
-| `"16"` | `0.10` |
-| `"18"` | `0.10` |
-| `"1A"` | `0.10` |
-| `"20"` | `0.13` |
-| `"22"` | `0.13` |
-| `"30"` | `0.19` |
-| `"40"` | `0.25` |
-| `"44"` | `0.27` |
-| `"60"` | `0.38` |
-| `"66"` | `0.40` |
-| `"80"` | `0.50` |
-| `"99"` | `0.60` |
-| `"aa"` | `0.67` |
-
-Build verified: `npm run build` passes.
-
 - Node.js >=22 <27, npm >=11
-- `tsc --noEmit` requires `^build` (shared must be built first). Run `npm run build:shared` before `npm run typecheck`.
-- ESLint config lives at root `eslint.config.mjs` - do NOT add per-workspace eslint config files
-- GraphQL files marked as generated in `.gitignore`: `src/graphql/generated/`
-- No CI/CD config present (no `.github/` directory)
-- Supabase local only has `.temp/` - migrations are not in this repo
-- Android native code in `android/` (generated by Expo)
-- Mobile tabs: Home, Tutor, Study, Subjects, Rooms, Profile
-- Web uses Vercel AI SDK v6 + `@ai-sdk/groq` v3 for AI features
-- Shared package data is migrating from `AnalogixWeb/src/data/` - canonical source is still web for now
+- `tsc --noEmit` requires the shared package to be built first: `npm run build --prefix vendor/analogix-shared` before `npm run typecheck`
+- ESLint config lives at root `eslint.config.mjs` - do NOT add per-workspace eslint config files (single project)
+- Vendored packages are wired as `file:` deps in `package.json`; `prebuild` compiles `vendor/analogix-shared` then `vendor/analogix-mcp` (shared must build first — mcp imports its dist)
+- `node_modules/@analogix/{shared,mcp}` are symlinks into `vendor/`; run `npm install` after changing vendored versions or `file:` specs
+- Supabase migrations are applied manually against the remote/local DB; `.env` holds `SUPABASE_SERVICE_ROLE_KEY` + URL for server-side admin access
+- Room ownership transfer and permission changes use SECURITY DEFINER RPCs (direct `study_rooms` UPDATE would fail RLS `WITH CHECK`)
+- App data migration: legacy `src/data/` (web) is the canonical source until fully moved into `@analogix/shared`
