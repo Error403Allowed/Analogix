@@ -7,6 +7,14 @@ import type { AIPersonality } from "@/types/ai-personality";
 import { buildValidSubjectsPrompt } from "@/lib/curriculum";
 import { TOOL_LIST_DESCRIPTION } from "@/lib/tool-descriptions";
 import { createCurriculumRetriever } from "@/lib/retrieval/curriculum";
+import {
+    detectContextIntents,
+    fetchEnrolledSubjects,
+    buildPerformanceContext,
+    buildAchievementsContext,
+    buildFlashcardContext,
+    buildStudyStatsContext,
+} from "@/lib/context/userContext";
 export const runtime = "nodejs";
 // Token estimation: ~4 chars per token for English text
 const estimateTokens = (text: string) => Math.ceil(text.length / 4);
@@ -133,7 +141,7 @@ function wantsVisualisation(messages: any): boolean {
     const latestUserMsg = [...messages].reverse().find((m: any) => m.role === "user")?.content || "";
     return VISUAL_INTENT_RE.test(latestUserMsg);
 }
-function buildSystemPrompt(userContext: any, messages: any, workspaceContext: any, calendarContext: any, studentName?: string) {
+function buildSystemPrompt(userContext: any, messages: any, workspaceContext: any, calendarContext: any, studentName?: string, extraDataContext?: string) {
     const analogyIntensity = userContext?.analogyIntensity ?? 1;
     const studentGrade = userContext?.grade || "7-12";
     const studentState = userContext?.state || null;
@@ -232,8 +240,14 @@ ${validSubjectsPrompt}
 ${userSubjectsContext}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 `;
-    const workspaceSection = workspaceContext || calendarContext ? `
+    const workspaceSection = workspaceContext || calendarContext || extraDataContext ? `
 ${calendarContext ? `━━━ CALENDAR & DEADLINES ━━━\n${calendarContext}\n━━━ END CALENDAR ━━━\n` : ""}
+${extraDataContext ? `━━━ YOUR DATA (from your Analogix workspace) ━━━
+This is real data from the student's account. Use it to answer instead of asking them for information you can look up. Do not invent numbers that aren't listed here; if the data doesn't cover the question, say so or ask only for what's genuinely missing.
+ 
+${extraDataContext}
+━━━ END YOUR DATA ━━━
+` : ""}
 ${workspaceContext ? `━━━ YOUR WORKSPACE ━━━
 You have access to this student's documents for context AND can create, edit, or delete documents when the student asks.
 
@@ -389,7 +403,7 @@ export async function POST(request: Request) {
     try {
         const body = await request.json();
         const messages = body.messages || [];
-        const userContext = body.userContext || {};
+        let userContext = body.userContext || {};
 
         // Get personality and memory from database or localStorage
         const supabase = await createClient();
@@ -484,50 +498,82 @@ export async function POST(request: Request) {
             return /^(hi|hello|hey|sup|yo|g'day|howdy|hiya|heya|thanks?|bye|good\s?(morning|evening|afternoon)|what'?s up|how are you)[\s!?.]*$/.test(c);
         })();
         // ── Load workspace context from Supabase (same as agent route) ──────────
+        // Context is loaded ON DEMAND: we classify the latest user message and only
+        // fetch the data scopes it actually needs (calendar, documents, quiz
+        // performance, achievements, flashcards). The student's enrolled subjects
+        // are always resolved so the tutor never has to ask what they study.
         let workspaceContext;
         let calendarCtx;
+        let extraDataContext = "";
+        let enrolledSubjects: string[] = [];
         if (!isSimpleGreeting) {
             try {
                 const supabase = await createClient();
                 const { data: { user } } = await supabase.auth.getUser();
                 if (user) {
-                    // Load calendar in parallel with workspace docs
-                    const [calendarResult, documents] = await Promise.all([
-                        buildCalendarContext(supabase, user.id).catch(() => ""),
-                        listUserDocuments(supabase, user.id),
-                    ]);
-                    if (calendarResult)
-                        calendarCtx = calendarResult;
-                    if (documents.length > 0) {
-                        const allDocs: any[] = [];
-                        for (const doc of documents) {
-                            const isGuide = doc.content?.startsWith(STUDY_GUIDE_PREFIX);
-                            if (isGuide) {
-                                const readable = studyGuideToContext(doc.content);
-                                allDocs.push({ subjectId: doc.subject_id, title: doc.title, type: "DOC", preview: readable });
+                    const intents = detectContextIntents(latestUserMsg);
+                    // Always resolve the full enrolled subject list so the prompt's
+                    // "USER'S ENROLLED SUBJECTS" block reflects reality, not just the
+                    // chat's currently-selected subject.
+                    try {
+                        const clientSubjects = Array.isArray(userContext?.subjects) ? userContext.subjects : [];
+                        enrolledSubjects = await fetchEnrolledSubjects(supabase, user.id, clientSubjects);
+                    }
+                    catch (e) {
+                        console.warn("[chat-stream] Failed to resolve enrolled subjects:", e instanceof Error ? e.message : e);
+                    }
+                    // Calendar only when the message is about schedule/events/deadlines
+                    if (intents.calendar) {
+                        calendarCtx = await buildCalendarContext(supabase, user.id).catch(() => "");
+                    }
+                    // Documents only when the message references their notes/workspace
+                    if (intents.documents) {
+                        const documents = await listUserDocuments(supabase, user.id);
+                        if (documents.length > 0) {
+                            const allDocs: any[] = [];
+                            for (const doc of documents) {
+                                const isGuide = doc.content?.startsWith(STUDY_GUIDE_PREFIX);
+                                if (isGuide) {
+                                    const readable = studyGuideToContext(doc.content);
+                                    allDocs.push({ subjectId: doc.subject_id, title: doc.title, type: "DOC", preview: readable });
+                                }
+                                else {
+                                    const summary = getFirstSentence(doc.content || "");
+                                    allDocs.push({
+                                        subjectId: doc.subject_id,
+                                        title: doc.title,
+                                        type: "DOC",
+                                        preview: summary + " (Full doc available on request)",
+                                    });
+                                }
                             }
-                            else {
-                                const summary = getFirstSentence(doc.content || "");
-                                allDocs.push({
-                                    subjectId: doc.subject_id,
-                                    title: doc.title,
-                                    type: "DOC",
-                                    preview: summary + " (Full doc available on request)",
-                                });
+                            if (allDocs.length > 0) {
+                                // Token budget for workspace context (leave room for system prompt, messages, and response)
+                                const WORKSPACE_TOKEN_BUDGET = 2000;
+                                const { docs: truncatedDocs, truncated } = truncateWorkspaceDocs(allDocs, WORKSPACE_TOKEN_BUDGET);
+                                if (truncated) {
+                                    console.log(`[chat-stream] Workspace truncated: ${allDocs.length} → ${truncatedDocs.length} docs to fit token budget`);
+                                }
+                                const docContext = truncatedDocs.map((d: any) => `[${d.subjectId.toUpperCase()} - ${d.type}: "${d.title}"]\n${d.preview}`).join("\n\n---\n\n");
+                                const docIndex = truncatedDocs.map((d: any) => `  • "${d.title}" [${d.type}] subjectId="${d.subjectId}"`).join("\n");
+                                workspaceContext = `Document Index:\n${docIndex}\n\nDocument Contents:\n${docContext}`;
                             }
-                        }
-                        if (allDocs.length > 0) {
-                            // Token budget for workspace context (leave room for system prompt, messages, and response)
-                            const WORKSPACE_TOKEN_BUDGET = 2000;
-                            const { docs: truncatedDocs, truncated } = truncateWorkspaceDocs(allDocs, WORKSPACE_TOKEN_BUDGET);
-                            if (truncated) {
-                                console.log(`[chat-stream] Workspace truncated: ${allDocs.length} → ${truncatedDocs.length} docs to fit token budget`);
-                            }
-                            const docContext = truncatedDocs.map((d: any) => `[${d.subjectId.toUpperCase()} - ${d.type}: "${d.title}"]\n${d.preview}`).join("\n\n---\n\n");
-                            const docIndex = truncatedDocs.map((d: any) => `  • "${d.title}" [${d.type}] subjectId="${d.subjectId}"`).join("\n");
-                            workspaceContext = `Document Index:\n${docIndex}\n\nDocument Contents:\n${docContext}`;
                         }
                     }
+                    // On-demand data blocks: quiz performance, achievements, flashcards,
+                    // study stats. Each is built ONLY when the message needs it.
+                    const dataParts: string[] = [];
+                    const [performanceCtx, achievementsCtx, flashcardsCtx, statsCtx] = await Promise.all([
+                        intents.performance ? buildPerformanceContext(supabase, user.id).catch(() => "") : Promise.resolve(""),
+                        intents.achievements ? buildAchievementsContext(supabase, user.id).catch(() => "") : Promise.resolve(""),
+                        intents.flashcards ? buildFlashcardContext(supabase, user.id).catch(() => "") : Promise.resolve(""),
+                        (intents.performance || intents.achievements) ? buildStudyStatsContext(supabase, user.id).catch(() => "") : Promise.resolve(""),
+                    ]);
+                    if (performanceCtx) dataParts.push(performanceCtx);
+                    if (achievementsCtx) dataParts.push(achievementsCtx);
+                    if (flashcardsCtx) dataParts.push(flashcardsCtx);
+                    if (statsCtx) dataParts.push(statsCtx);
+                    extraDataContext = dataParts.join("\n\n");
                     // ── Curriculum RAG ───────────────────────────────────────
                     try {
                         console.log("[chat-stream] curriculum RAG: retrieving for query:", latestUserMsg.slice(0, 60));
@@ -557,6 +603,18 @@ export async function POST(request: Request) {
             latestUserMsg.toLowerCase().includes("write an") ||
             latestUserMsg.toLowerCase().includes("assign") ||
             latestUserMsg.toLowerCase().includes("composition");
+        // Subjects sent from the user's enrolled list (onboarding + client-selected)
+        // power the "USER'S ENROLLED SUBJECTS" block below. Merge the full enrolled
+        // list (resolved server-side) with the chat's currently-selected subject so
+        // the tutor knows everything the student studies, while keeping the active
+        // chat subject first for task classification.
+        if (enrolledSubjects.length > 0) {
+            const clientSubjects = Array.isArray(userContext.subjects) ? userContext.subjects : [];
+            const merged = [...clientSubjects, ...enrolledSubjects.filter((s: string) => !clientSubjects.includes(s))];
+            if (merged.length > 0) {
+                userContext = { ...userContext, subjects: merged };
+            }
+        }
         // Build system prompt with personality and memory
         // Use client-side analogy intensity if set, otherwise fall back to personality
         // Prioritise the user's explicit setting over personality defaults
@@ -572,7 +630,7 @@ export async function POST(request: Request) {
                         : Math.max(1, Math.min(5, aiPersonality.analogy_frequency ?? 3)),
             }
             : { ...userContext, analogyIntensity: isFormalRequest ? 0 : userContext.analogyIntensity };
-        let systemPrompt = buildSystemPrompt(effectiveUserContext, messages, workspaceContext, calendarCtx, studentName ?? undefined);
+        let systemPrompt = buildSystemPrompt(effectiveUserContext, messages, workspaceContext, calendarCtx, studentName ?? undefined, extraDataContext);
         console.log("[chat-stream] Injecting memory context:", memoryContext ? "YES" : "NO");
         console.log("[chat-stream] Injecting personality:", aiPersonality ? "YES" : "NO");
         // FULL MESSAGES: Keep last 8 messages (recent conversation flow)
