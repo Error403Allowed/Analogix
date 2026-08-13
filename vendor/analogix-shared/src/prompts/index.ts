@@ -5,7 +5,7 @@ export interface PromptSuggestion {
 
 export interface PromptSuggestionProfile {
   subjects?: string[];
-  grade?: string | null;
+  grade?: string | number | null;
   hobbies?: string[];
 }
 
@@ -95,7 +95,17 @@ export function buildPromptSuggestions(
 
   const subjects = seededShuffle((profile.subjects ?? []).filter(Boolean), rand);
   const hobbies = seededShuffle((profile.hobbies ?? []).filter(Boolean), rand);
-  const grade = profile.grade?.trim() ? profile.grade.trim() : undefined;
+  const rawGrade = profile.grade;
+  // Grade can arrive as a string or a number (older localStorage / DB rows).
+  // Coerce to a trimmed string so `.trim()` never throws on a non-string, and
+  // treat falsy/reserved values like "0" or "" as "no grade".
+  const grade =
+    typeof rawGrade === "number"
+      ? String(rawGrade)
+      : typeof rawGrade === "string"
+        ? rawGrade.trim()
+        : "";
+  const hasGrade = grade !== "" && grade !== "0";
   const topic = (options.currentSubject ?? "").trim() || subjects[0] || "";
   const hobby = hobbies[0] ? cleanHobby(hobbies[0]) : undefined;
 
@@ -104,7 +114,7 @@ export function buildPromptSuggestions(
   const candidates: PromptSuggestion[] = [
     { label: "Break down a concept", prompt: pick(EXPLAIN(topic || "a concept")) },
     { label: "Test your knowledge", prompt: pick(QUIZ(topic || "today's topics")) },
-    { label: "Study plan", prompt: pick(STUDY_PLAN(grade)) },
+    { label: "Study plan", prompt: pick(STUDY_PLAN(hasGrade ? grade : undefined)) },
     hobby
       ? { label: `Learn with ${hobby}`, prompt: pick(HOBBY(topic || "a concept", hobby)) }
       : { label: "Practice questions", prompt: pick(PRACTICE(topic || "your current topics")) },

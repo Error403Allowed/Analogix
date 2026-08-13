@@ -62,8 +62,22 @@ describe("buildPromptSuggestions", () => {
     expect(suggestions.find((s) => s.label === "Study plan")!.prompt).toContain("Year 12");
   });
 
+  it("accepts a numeric grade without throwing", () => {
+    const suggestions = buildPromptSuggestions({ grade: 12 }, { seed: 5 });
+    expect(suggestions.find((s) => s.label === "Study plan")!.prompt).toContain("Year 12");
+  });
+
   it("falls back to a generic study plan without a grade", () => {
     const suggestions = buildPromptSuggestions({}, { seed: 5 });
     expect(suggestions.find((s) => s.label === "Study plan")!.prompt).toContain("study");
+  });
+
+  it("treats a whitespace-or-zero grade as no grade", () => {
+    for (const falsy of ["", "   ", 0]) {
+      const suggestions = buildPromptSuggestions({ grade: falsy as never }, { seed: 5 });
+      const studyPlan = suggestions.find((s) => s.label === "Study plan")!.prompt;
+      expect(studyPlan).toContain("study");
+      expect(studyPlan).not.toContain("Year");
+    }
   });
 });
