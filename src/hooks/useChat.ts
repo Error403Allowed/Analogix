@@ -122,7 +122,7 @@ export function useChat() {
   });
   const { setAllSessions } = sessions;
 
-  const scroll = useChatScroll(messages.length);
+  const scroll = useChatScroll(messages.length, streamingContent.length);
 
   const latestAssistantId = [...messages].reverse().find((m) => m.role === "assistant")?.id;
 
@@ -565,7 +565,7 @@ export function useChat() {
     setMessages(prev => [...prev, userMessage]);
     setInput("");
     fileAttach.setAttachedFiles([]);
-    scroll.lockedToBottomRef.current = false;
+    scroll.lockedToBottomRef.current = true;
     requestAnimationFrame(() => scroll.scrollToBottom("smooth"));
     setIsTyping(true);
 
@@ -674,7 +674,7 @@ export function useChat() {
       }]);
       setStreamingId(responseId);
       setStreamingContent("");
-      scroll.lockedToBottomRef.current = false;
+      scroll.lockedToBottomRef.current = true;
 
       let accumulated = "";
       let streamError: Error | null;

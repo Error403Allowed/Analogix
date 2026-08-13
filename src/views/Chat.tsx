@@ -83,6 +83,8 @@ const Chat = () => {
     isDraggingFiles,
     messagesEndRef,
     scrollContainerRef,
+    showScrollToBottom,
+    scrollToBottom,
     userName,
     userHobbies,
     userPrefs,
@@ -598,6 +600,18 @@ const Chat = () => {
                   <div ref={messagesEndRef} />
                 </div>
               </div>
+
+              {showScrollToBottom && (
+                <Button
+                  onClick={() => scrollToBottom("smooth")}
+                  size="icon"
+                  variant="secondary"
+                  aria-label="Scroll to bottom"
+                  className="absolute bottom-24 right-6 z-30 h-9 w-9 rounded-full shadow-lg hover:bg-background"
+                >
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+              )}
 
 <ChatInput
               attachedFiles={attachedFiles}
