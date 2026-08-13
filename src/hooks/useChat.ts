@@ -9,7 +9,7 @@ import { chatStore, ChatSession, checkChatStoreHealth } from "@/utils/chatStore"
 import { SUBJECT_CATALOG, SubjectId } from "@/constants/subjects";
 import { buildInterestList, buildInterestsObject } from "@/utils/interests";
 import type { ResearchSource } from "@/types/research";
-import type { GroqModelId } from "@/types/groq-models";
+import { normalizeGroqModelId, type GroqModelId } from "@/types/groq-models";
 import type { ToolProposal, ToolCall } from "@analogix/shared/types";
 import type { Message } from "@/types/chat-message";
 import { formatToolResult } from "@/utils/format-tool-result";
@@ -60,7 +60,7 @@ export function useChat() {
 
   const [selectedModel, setSelectedModel] = useState<GroqModelId>(() => {
     if (typeof window === "undefined") return "auto";
-    return (localStorage.getItem("selectedGroqModel") as GroqModelId) || "auto";
+    return normalizeGroqModelId(localStorage.getItem("selectedGroqModel"));
   });
 
   const [showModelSelector, setShowModelSelector] = useState(false);

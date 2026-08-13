@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createRetriever } from '@/lib/retrieval/retriever';
 import { buildMemoryContext } from '@/lib/memory/layers';
 import { getUserAIPersonality, buildPersonalityInstructions } from '@/lib/aiMemory';
+import { resolveModelForUser } from '@/app/api/groq/_utils';
 
 const GROQ_API_URL = process.env.GROQ_CHAT_URL || 'https://api.groq.com/openai/v1/chat/completions';
 const GROQ_API_KEY = process.env.GROQ_API_KEY || process.env.GROQ_API_KEY_2;
@@ -248,7 +249,7 @@ export async function POST(request: Request) {
       fullSystemPrompt = fullSystemPrompt.replace('- Analogix', `${conversationSummary}\n\n- Analogix`);
     }
 
-    const model = userContext.selectedModel || 'openai/gpt-oss-120b';
+    const model = resolveModelForUser(userContext.selectedModel || null);
 
     if (!GROQ_API_KEY) {
       return NextResponse.json({ error: 'GROQ_API_KEY not configured' }, { status: 500 });

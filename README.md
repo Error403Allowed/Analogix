@@ -145,15 +145,16 @@ Analogix is an AI-powered study platform for Australian secondary students (Year
 ## AI Models
 
 ### Groq API
-Analogix uses Groq API with task-based routing:
+Analogix uses Groq API with task-based routing. The model lineup is verified against the live Groq API (August 2026) — all models below are active production models:
 
 | Model | Use Case |
 |-------|----------|
 | `auto` | Auto-routes to best model for query |
-| `llama-4-scout-17b-16e-instruct` | All-round model, specialized in maths, coding and chatting |
-| `llama-3.3-70b-versatile` | Reliable and versatile for complex tasks |
-| `qwen-3-32b` | Reasoning model for mathematics and science |
-| `llama-3.1-8b-instant` | Lightweight model for quick questions |
+| `openai/gpt-oss-120b` | Flagship model — reliable and versatile for complex tasks, coding and STEM |
+| `qwen/qwen3.6-27b` | Reasoning model for mathematics and science (also powers image/vision extraction) |
+| `openai/gpt-oss-20b` | Lightweight model for quick questions |
+
+Deprecated Groq models (`llama-3.1-8b-instant`, `llama-3.3-70b-versatile`, `llama-4-scout`, `qwen-3-32b`, etc.) have been replaced by the models above; legacy saved model IDs are migrated automatically. RAG embeddings use `Xenova/bge-base-en-v1.5` via `@huggingface/transformers` (serverless-safe, lazily imported).
 
 ### AI Frameworks
 - **Vercel AI SDK** - Core AI integration (`ai` v6, `@ai-sdk/groq` v3, `@ai-sdk/react`)

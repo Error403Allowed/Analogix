@@ -4,6 +4,11 @@
 const GROQ_CHAT_URL = process.env.GROQ_CHAT_URL || "https://api.groq.com/openai/v1/chat/completions";
 const normalizeModelId = (modelId: string): string => {
     const modelMap = {
+        // Current production lineup (verified Aug 2026)
+        "gpt-oss-120b": "openai/gpt-oss-120b",
+        "gpt-oss-20b": "openai/gpt-oss-20b",
+        "qwen-3.6-27b": "qwen/qwen3.6-27b",
+        // Legacy IDs retained so previously-saved selections keep resolving
         "llama-3.1-8b": "openai/gpt-oss-20b",
         "llama-3.1-70b": "openai/gpt-oss-120b",
         "llama-3.3-70b": "openai/gpt-oss-120b",
@@ -11,15 +16,15 @@ const normalizeModelId = (modelId: string): string => {
         "llama3-70b": "openai/gpt-oss-120b",
         "llama-4-scout": "qwen/qwen3.6-27b",
         "qwen-3-32b": "qwen/qwen3.6-27b",
-        "qwen-3.6-27b": "qwen/qwen3.6-27b",
     };
     if (modelId.includes("/")) {
         return modelId;
     }
     return (modelMap as Record<string, string>)[modelId] || modelId;
 };
-// Groq model lineup - using verified working model IDs from Groq API
-// Last verified: May 2025
+// Groq model lineup - using verified production model IDs from Groq API
+// Last verified: August 2026 (deprecated llama-3.1/3.3/qwen-3-32b/llama-4
+// models replaced by gpt-oss-120b, gpt-oss-20b and qwen/qwen3.6-27b)
 const DEFAULT_MODEL = "openai/gpt-oss-120b";
 const DEFAULT_FALLBACK_MODEL = "openai/gpt-oss-20b";
 const HIGH_THROUGHPUT_MODEL = "qwen/qwen3.6-27b";
@@ -31,7 +36,7 @@ const LAST_RESORT_MODEL = "openai/gpt-oss-20b";
 let userSelectedModel: string | null = null;
 /**
  * Set the user-selected model
- * @param model The model string to use (e.g., "llama-3.3-70b-versatile"), or null to use auto-selection
+ * @param model The model string to use (e.g., "openai/gpt-oss-120b"), or null to use auto-selection
  */
 export const setUserSelectedModel = (model: string | null) => {
     userSelectedModel = model;
@@ -42,7 +47,7 @@ export const setUserSelectedModel = (model: string | null) => {
 export const getUserSelectedModel = () => {
     return userSelectedModel;
 };
-// Resolve a user-facing model id (e.g. "llama-4-scout") to the real Groq model
+// Resolve a user-facing model id (e.g. "gpt-oss-120b") to the real Groq model
 // string. Falls back to the default model for "auto"/unknown values.
 export const resolveModelForUser = (modelId?: string | null): string => {
     if (!modelId || modelId === "auto")
@@ -50,7 +55,7 @@ export const resolveModelForUser = (modelId?: string | null): string => {
     return normalizeModelId(modelId);
 };
 // Model-specific token limits - capped to stay under Groq's rate limits
-// Qwen3-32B supports longer outputs for math/science reasoning
+// Qwen3.6-27B supports longer outputs for math/science reasoning
 const MODEL_OUTPUT_LIMITS = {
     "openai/gpt-oss-20b": 4096,
     "openai/gpt-oss-120b": 4096,
@@ -392,20 +397,20 @@ const getModelsForTaskType = (taskType: string, userModel?: string, estimatedTok
     let models;
     switch (taskType) {
         case "coding":
-            // Use 70B for coding, fallback to 8B if rate limited
+            // Use GPT-OSS 120B for coding, fallback to Qwen3.6-27B then GPT-OSS 20B
             models = [CODING_MODEL, HIGH_THROUGHPUT_MODEL, DEFAULT_FALLBACK_MODEL];
             break;
         case "reasoning":
-            // Use Qwen3 for math/science reasoning, fallback to 70B then 8B
+            // Use Qwen3.6 for math/science reasoning, fallback to 120B then 20B
             models = [REASONING_MODEL, DEFAULT_MODEL, DEFAULT_FALLBACK_MODEL];
             break;
         case "lightweight":
-            // Fast 8B model for simple queries
+            // Fast GPT-OSS 20B model for simple queries
             models = [LIGHTWEIGHT_MODEL, DEFAULT_FALLBACK_MODEL, LAST_RESORT_MODEL];
             break;
         case "default":
         default:
-            // General purpose: 70B first, then fallbacks
+            // General purpose: 120B first, then fallbacks
             models = [DEFAULT_MODEL, HIGH_THROUGHPUT_MODEL, DEFAULT_FALLBACK_MODEL];
     }
     return filterBlockedModels(models);
