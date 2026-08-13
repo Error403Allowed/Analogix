@@ -245,56 +245,71 @@ export const themes = [
   }),
 ];
 
+const applyThemeVars = (theme: Theme, target: HTMLElement) => {
+  const pickForeground = (l: string) => (parseFloat(l) >= 62 ? "222.2 47.4% 11.2%" : "210 40% 98%");
+
+  target.style.setProperty("--p-h", theme.p.h);
+  target.style.setProperty("--p-s", theme.p.s);
+  target.style.setProperty("--p-l", theme.p.l);
+  target.style.setProperty("--primary-foreground", pickForeground(theme.p.l));
+
+  target.style.setProperty("--g-1", theme.g[0]);
+  target.style.setProperty("--g-2", theme.g[1]);
+  target.style.setProperty("--g-3", theme.g[2]);
+
+  target.style.setProperty("--accent", hslValue(theme.accent));
+  target.style.setProperty("--accent-2", hslValue(theme.accent2));
+  target.style.setProperty("--accent-foreground", pickForeground(theme.accent.l));
+
+  target.style.setProperty("--success", hslValue(theme.success));
+  target.style.setProperty("--success-foreground", pickForeground(theme.success.l));
+  target.style.setProperty("--warning", hslValue(theme.warning));
+  target.style.setProperty("--warning-foreground", pickForeground(theme.warning.l));
+  target.style.setProperty("--destructive", hslValue(theme.danger));
+  target.style.setProperty("--destructive-foreground", pickForeground(theme.danger.l));
+
+  target.style.setProperty("--muted-light", hslValue(theme.muted));
+  target.style.setProperty("--muted-foreground-light", hslValue(theme.mutedFg));
+  target.style.setProperty("--muted-dark", hslValue({ ...theme.muted, l: "20%" }));
+  target.style.setProperty("--muted-foreground-dark", hslValue({ ...theme.mutedFg, l: "78%" }));
+
+  target.style.setProperty("--bg-1", theme.bg?.[0] || "");
+  target.style.setProperty("--bg-2", theme.bg?.[1] || "");
+  target.style.setProperty("--bg-3", theme.bg?.[2] || "");
+  target.style.setProperty("--bg-1-dark", theme.bgDark?.[0] || "");
+  target.style.setProperty("--bg-2-dark", theme.bgDark?.[1] || "");
+  target.style.setProperty("--bg-3-dark", theme.bgDark?.[2] || "");
+
+  target.style.setProperty("--glass-bg-light", theme.glass?.bg || "");
+  target.style.setProperty("--glass-tint-light", theme.glass?.tint || "");
+  target.style.setProperty("--glass-border-light", theme.glass?.border || "");
+  target.style.setProperty("--glass-bg-dark", theme.glass?.darkBg || "");
+  target.style.setProperty("--glass-tint-dark", theme.glass?.darkTint || "");
+  target.style.setProperty("--glass-border-dark", theme.glass?.darkBorder || "");
+
+  (theme.charts || []).forEach((color, idx) => {
+    target.style.setProperty(`--chart-${idx + 1}`, color);
+  });
+};
+
+/**
+ * Apply a theme's CSS variables to `target` WITHOUT persisting anything.
+ * Used for scoped, throwaway theming (e.g. the landing page colour cycle)
+ * so the visitor's saved app theme is never touched.
+ */
+export const applyThemeScoped = (themeName: string, target: HTMLElement) => {
+  const theme = themes.find(t => t.name === themeName);
+  if (!theme) return;
+  applyThemeVars(theme, target);
+};
+
 export const applyThemeByName = (themeName: string) => {
   const theme = themes.find(t => t.name === themeName);
   if (!theme) return;
 
   const root = document.documentElement;
 
-  const pickForeground = (l: string) => (parseFloat(l) >= 62 ? "222.2 47.4% 11.2%" : "210 40% 98%");
-
-  root.style.setProperty("--p-h", theme.p.h);
-  root.style.setProperty("--p-s", theme.p.s);
-  root.style.setProperty("--p-l", theme.p.l);
-  root.style.setProperty("--primary-foreground", pickForeground(theme.p.l));
-
-  root.style.setProperty("--g-1", theme.g[0]);
-  root.style.setProperty("--g-2", theme.g[1]);
-  root.style.setProperty("--g-3", theme.g[2]);
-
-  root.style.setProperty("--accent", hslValue(theme.accent));
-  root.style.setProperty("--accent-2", hslValue(theme.accent2));
-  root.style.setProperty("--accent-foreground", pickForeground(theme.accent.l));
-
-  root.style.setProperty("--success", hslValue(theme.success));
-  root.style.setProperty("--success-foreground", pickForeground(theme.success.l));
-  root.style.setProperty("--warning", hslValue(theme.warning));
-  root.style.setProperty("--warning-foreground", pickForeground(theme.warning.l));
-  root.style.setProperty("--destructive", hslValue(theme.danger));
-  root.style.setProperty("--destructive-foreground", pickForeground(theme.danger.l));
-
-  root.style.setProperty("--muted-light", hslValue(theme.muted));
-  root.style.setProperty("--muted-foreground-light", hslValue(theme.mutedFg));
-  root.style.setProperty("--muted-dark", hslValue({ ...theme.muted, l: "20%" }));
-  root.style.setProperty("--muted-foreground-dark", hslValue({ ...theme.mutedFg, l: "78%" }));
-
-  root.style.setProperty("--bg-1", theme.bg?.[0] || "");
-  root.style.setProperty("--bg-2", theme.bg?.[1] || "");
-  root.style.setProperty("--bg-3", theme.bg?.[2] || "");
-  root.style.setProperty("--bg-1-dark", theme.bgDark?.[0] || "");
-  root.style.setProperty("--bg-2-dark", theme.bgDark?.[1] || "");
-  root.style.setProperty("--bg-3-dark", theme.bgDark?.[2] || "");
-
-  root.style.setProperty("--glass-bg-light", theme.glass?.bg || "");
-  root.style.setProperty("--glass-tint-light", theme.glass?.tint || "");
-  root.style.setProperty("--glass-border-light", theme.glass?.border || "");
-  root.style.setProperty("--glass-bg-dark", theme.glass?.darkBg || "");
-  root.style.setProperty("--glass-tint-dark", theme.glass?.darkTint || "");
-  root.style.setProperty("--glass-border-dark", theme.glass?.darkBorder || "");
-
-  (theme.charts || []).forEach((color, idx) => {
-    root.style.setProperty(`--chart-${idx + 1}`, color);
-  });
+  applyThemeVars(theme, root);
 
   localStorage.setItem("app-theme", themeName);
 
