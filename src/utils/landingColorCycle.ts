@@ -1,8 +1,8 @@
 "use client";
 
-import { applyThemeByName, themes } from "@/components/theme/ThemeSelector";
+import { applyThemeScoped, themes } from "@/components/theme/ThemeSelector";
 
-export { applyThemeByName };
+export { applyThemeScoped };
 
 // The colour schemes users can pick from, in the order the picker shows them.
 // "Paper" is excluded because it is a monochrome / distraction-free mode, not
@@ -24,16 +24,18 @@ export function getNextLandingColorIndex(): number {
 }
 
 /**
- * Advance the landing-page colour cycle and apply the new theme. Returns the
- * applied theme name, or null when paper mode is active (that preference wins).
+ * Advance the landing-page colour cycle and apply the new colour to `target`.
+ * The theme is applied ONLY to the given element so the visitor's saved app
+ * theme (localStorage + DB) is never touched. Returns the applied theme name,
+ * or null when paper mode is active (that preference wins).
  */
-export function cycleLandingColor(): string | null {
+export function cycleLandingColor(target: HTMLElement | null): string | null {
   if (typeof window === "undefined") return null;
   if (localStorage.getItem("paper-mode") === "true") return null;
 
   const index = getNextLandingColorIndex();
   localStorage.setItem(LANDING_COLOR_KEY, String(index));
   const name = LANDING_COLOR_THEMES[index];
-  applyThemeByName(name);
+  if (target) applyThemeScoped(name, target);
   return name;
 }

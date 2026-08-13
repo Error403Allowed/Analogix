@@ -49,11 +49,11 @@ test.describe('Landing Page', () => {
   test('cycles the landing page main colour on each refresh', async ({ page }) => {
     const primaryHue = () =>
       page.evaluate(() =>
-        getComputedStyle(document.documentElement).getPropertyValue('--p-h').trim()
+        getComputedStyle(document.querySelector('[data-landing-root]')).getPropertyValue('--p-h').trim()
       );
 
     await page.goto('/', { waitUntil: 'domcontentloaded', timeout: 15000 });
-    // Give the colour-cycle effect (and its re-apply timer) time to run.
+    // Give the colour-cycle effect time to run.
     await page.waitForTimeout(1200);
     const first = await primaryHue();
 
@@ -64,5 +64,22 @@ test.describe('Landing Page', () => {
     expect(first).toBeTruthy();
     expect(second).toBeTruthy();
     expect(second).not.toBe(first);
+  });
+
+  test('does not touch the saved app theme when cycling the landing colour', async ({ page }) => {
+    await page.evaluate(() => {
+      localStorage.setItem('app-theme', 'Oceanic Blue');
+      localStorage.removeItem('landing-color-cycle');
+    });
+    await page.reload({ waitUntil: 'domcontentloaded', timeout: 15000 });
+    await page.waitForTimeout(1200);
+
+    const savedTheme = await page.evaluate(() => localStorage.getItem('app-theme'));
+    const docHue = await page.evaluate(() =>
+      getComputedStyle(document.documentElement).getPropertyValue('--p-h').trim()
+    );
+
+    expect(savedTheme).toBe('Oceanic Blue');
+    expect(docHue).toBeTruthy();
   });
 });

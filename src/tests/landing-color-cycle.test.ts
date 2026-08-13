@@ -6,7 +6,7 @@ import {
   cycleLandingColor,
 } from "@/utils/landingColorCycle";
 
-const mocks = vi.hoisted(() => ({ applyThemeByName: vi.fn() }));
+const mocks = vi.hoisted(() => ({ applyThemeScoped: vi.fn() }));
 
 vi.mock("@/components/theme/ThemeSelector", () => ({
   themes: [
@@ -15,15 +15,17 @@ vi.mock("@/components/theme/ThemeSelector", () => ({
     { name: "Forest Glow", p: {} },
     { name: "Paper", p: {} },
   ],
-  applyThemeByName: (name: string) => {
-    mocks.applyThemeByName(name);
+  applyThemeScoped: (name: string, target: HTMLElement) => {
+    mocks.applyThemeScoped(name, target);
   },
 }));
 
 describe("landingColorCycle", () => {
+  const target = () => document.createElement("div");
+
   beforeEach(() => {
     localStorage.clear();
-    mocks.applyThemeByName.mockClear();
+    mocks.applyThemeScoped.mockClear();
   });
 
   it("excludes the monochrome Paper theme from the cycle", () => {
@@ -40,25 +42,38 @@ describe("landingColorCycle", () => {
     expect(getNextLandingColorIndex()).toBe(0);
   });
 
-  it("applies the cycled theme and persists the index", () => {
-    cycleLandingColor();
-    expect(mocks.applyThemeByName).toHaveBeenLastCalledWith("Classic Blue");
+  it("applies the cycled theme to the given element only and persists the index", () => {
+    const el = target();
+    cycleLandingColor(el);
+    expect(mocks.applyThemeScoped).toHaveBeenLastCalledWith("Classic Blue", el);
+    expect(localStorage.getItem("app-theme")).toBeNull();
 
-    cycleLandingColor();
-    expect(mocks.applyThemeByName).toHaveBeenLastCalledWith("Oceanic Blue");
+    cycleLandingColor(el);
+    expect(mocks.applyThemeScoped).toHaveBeenLastCalledWith("Oceanic Blue", el);
     expect(localStorage.getItem("landing-color-cycle")).toBe("1");
+    expect(localStorage.getItem("app-theme")).toBeNull();
   });
 
   it("resumes the cycle from where it left off", () => {
+    const el = target();
     localStorage.setItem("landing-color-cycle", "1");
-    cycleLandingColor();
-    expect(mocks.applyThemeByName).toHaveBeenLastCalledWith("Forest Glow");
+    cycleLandingColor(el);
+    expect(mocks.applyThemeScoped).toHaveBeenLastCalledWith("Forest Glow", el);
     expect(localStorage.getItem("landing-color-cycle")).toBe("2");
+    expect(localStorage.getItem("app-theme")).toBeNull();
+  });
+
+  it("does nothing to the saved app theme when no element is given", () => {
+    localStorage.setItem("app-theme", "Oceanic Blue");
+    cycleLandingColor(null);
+    expect(mocks.applyThemeScoped).not.toHaveBeenCalled();
+    expect(localStorage.getItem("app-theme")).toBe("Oceanic Blue");
   });
 
   it("does not cycle when paper mode is active", () => {
+    const el = target();
     localStorage.setItem("paper-mode", "true");
-    expect(cycleLandingColor()).toBeNull();
-    expect(mocks.applyThemeByName).not.toHaveBeenCalled();
+    expect(cycleLandingColor(el)).toBeNull();
+    expect(mocks.applyThemeScoped).not.toHaveBeenCalled();
   });
 });

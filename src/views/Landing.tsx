@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion } from "framer-motion";
 import {
   ArrowRight, Sparkles, BookOpen, MessageCircle, Trophy,
@@ -13,7 +13,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
-import { applyThemeByName, cycleLandingColor } from "@/utils/landingColorCycle";
+import { cycleLandingColor } from "@/utils/landingColorCycle";
 
 const accentColors: Record<string, { bg: string; text: string; border: string; tag: string }> = {
   blue:   { bg: "bg-blue-500/8",   text: "text-blue-600",   border: "hover:border-blue-300", tag: "bg-blue-500/10 text-blue-600" },
@@ -133,6 +133,7 @@ const Landing = () => {
   const { user, loading } = useAuth();
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+  const landingRoot = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     try {
@@ -174,15 +175,10 @@ const Landing = () => {
     syncOnboardingFromDb();
   }, [syncOnboardingFromDb]);
 
-  // Cycle the site's main colour on every visit/refresh. Re-apply a beat later
-  // so ThemeSync's async DB-theme load can't override the freshly-cycled colour
-  // on first paint for logged-in users.
+  // Cycle the site's main colour on every visit/refresh, scoped to the landing
+  // page root so the visitor's saved app theme (localStorage + DB) is untouched.
   useEffect(() => {
-    const applied = cycleLandingColor();
-    const t = setTimeout(() => {
-      if (applied) applyThemeByName(applied);
-    }, 800);
-    return () => clearTimeout(t);
+    cycleLandingColor(landingRoot.current);
   }, []);
 
   const handleNav = (path?: string, sectionId?: string) => {
@@ -203,7 +199,7 @@ const Landing = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground selection:bg-primary/30">
+    <div ref={landingRoot} data-landing-root className="min-h-screen bg-background text-foreground selection:bg-primary/30">
       {/* ── Nav ── */}
       <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border/30 bg-background">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
