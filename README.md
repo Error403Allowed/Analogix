@@ -412,8 +412,10 @@ Run `npm run lint` and fix issues before deploying.
 
 ## Contributing
 
-Issues and PRs welcome!
+Copyright (c) 2026 Analogix
 
-## Future Projects?
+All rights reserved.
 
-The Analogix mobile app (React Native + Expo) is available under [`AnalogixMobile/`](../AnalogixMobile/).
+This software and associated documentation files (the "Software") may not be 
+reproduced, distributed, modified, or sublicensed in any form or by any means 
+without the express written permission of the copyright holder.
