@@ -223,7 +223,7 @@ Deprecated Groq models (`llama-3.1-8b-instant`, `llama-3.3-70b-versatile`, `llam
 ## File Uploads
 
 - **Supported**: PDF, DOCX/DOC, PPTX/PPT, TXT, MD, CSV, RTF, images (JPG, PNG, WEBP)
-- **Max size**: 50 MB per file
+- **Max size**: 50 MB per file (most files will be perfectly fine to upload)
 - **Used for**: Chat attachments, study guides, quizzes, flashcards, resources
 
 ---
@@ -260,77 +260,6 @@ Deprecated Groq models (`llama-3.1-8b-instant`, `llama-3.3-70b-versatile`, `llam
 - dataloader for batching/caching
 - rxjs for reactive programming
 - Vercel Analytics + Speed Insights
-
----
-
-## Getting Started
-
-### Prerequisites
-- Node.js >=22
-- npm or bun
-- Groq API key
-- Supabase project
-
-### Setup
-
-1. Clone and install:
-```bash
-git clone https://github.com/Error403Allowed/Analogix.git
-cd Analogix
-npm install
-```
-
-2. Set up Supabase:
-```bash
-# Create project at supabase.com
-# Run migrations from supabase/migrations/
-# Enable Google Auth in Authentication → Providers
-```
-
-3. Create `.env.local`:
-```env
-# Groq (required)
-GROQ_API_KEY=your_groq_api_key
-GROQ_API_KEY_2=optional_secondary_key
-
-# Supabase
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
-
-# Google OAuth
-GOOGLE_CLIENT_ID=your_google_client_id
-GOOGLE_CLIENT_SECRET=your_google_client_secret
-
-# App
-NEXT_PUBLIC_SITE_URL=http://localhost:3000
-NEXT_PUBLIC_REALTIME_URL=       # Optional for production
-
-# Optional
-DESMOS_API_KEY=your_desmos_api_key
-ALLOW_DEV_API=true               # Development API flag
-```
-
-4. Run:
-```bash
-npm run dev
-```
-Open `http://localhost:3000`
-
----
-
-## Scripts
-
-| Command | Description |
-|--------|-------------|
-| `npm run dev` | Development server |
-| `npm run build` | Production build |
-| `npm run start` | Production server |
-| `npm run lint` | ESLint check |
-| `npm run tests` | Run test suite |
-| `npm run tests:list` | List available tests |
-| `npm run tests:filter` | Run tests matching filter |
-| `npm run tests:tag` | Run tests by tag |
 
 ---
 
@@ -372,41 +301,11 @@ src/
 
 ---
 
-## Configuration
-
 ### Next.js Configuration (next.config.mjs)
 - **Server External Packages**: `pdf-parse`, `pdfjs-dist`
 - **Server Actions Body Size Limit**: 50MB
 - **Package Import Optimization**: lucide-react, Radix packages, recharts, date-fns, framer-motion
 - **Image Formats**: AVIF, WebP
-
----
-
-## Deployment
-
-Vercel (recommended):
-```bash
-npm install -g vercel
-vercel
-```
-
-Add environment variables in Vercel project settings.
-
----
-
-## Troubleshooting
-
-### Missing GROQ_API_KEY
-Add to `.env.local` and restart server.
-
-### Auth Redirect Errors
-Set `NEXT_PUBLIC_SITE_URL` and whitelist in Supabase Auth.
-
-### File Upload Fails
-Check file size (50MB max) and format.
-
-### TypeScript/ESLint Errors
-Run `npm run lint` and fix issues before deploying.
 
 ---
 
