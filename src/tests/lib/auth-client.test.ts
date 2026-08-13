@@ -78,17 +78,27 @@ describe('validatePassword', () => {
 describe('getEmailError', () => {
   it('returns correct message for invalid credentials', () => {
     const result = getEmailError('invalid_credentials', null);
-    expect(result).toBe('Invalid email or password. Maybe you signed in using Google.');
+    expect(result).toBe('Invalid email or password. If you signed up with Google, use Continue with Google instead.');
   });
 
   it('returns correct message for wrong password', () => {
     const result = getEmailError('wrong_password', null);
-    expect(result).toBe('Invalid email or password. Maybe you signed in using Google.');
+    expect(result).toBe('Invalid email or password. If you signed up with Google, use Continue with Google instead.');
   });
 
   it('returns correct message when message contains "invalid login credentials"', () => {
     const result = getEmailError(null, 'Invalid login credentials');
-    expect(result).toBe('Invalid email or password. Maybe you signed in using Google.');
+    expect(result).toBe('Invalid email or password. If you signed up with Google, use Continue with Google instead.');
+  });
+
+  it('tells Google-only accounts to sign in with Google', () => {
+    const result = getEmailError('google_account_required', 'This email uses Google sign-in. Please sign in with Google to continue.');
+    expect(result).toBe('This email uses Google sign-in. Please sign in with Google to continue.');
+  });
+
+  it('prioritises google_account_required over the raw message', () => {
+    const result = getEmailError('google_account_required', 'Invalid login credentials');
+    expect(result).toBe('This email uses Google sign-in. Please sign in with Google to continue.');
   });
 
   it('returns correct message for email not confirmed', () => {
@@ -158,7 +168,7 @@ describe('getEmailError', () => {
 
   it('is case-insensitive when matching codes', () => {
     const result = getEmailError('INVALID_CREDENTIALS', null);
-    expect(result).toBe('Invalid email or password. Maybe you signed in using Google.');
+    expect(result).toBe('Invalid email or password. If you signed up with Google, use Continue with Google instead.');
   });
 
   it('is case-insensitive when matching messages', () => {

@@ -39,10 +39,10 @@ function describeAuthError(code: string | null, raw: string | null): string {
     r.includes("unexpected_failure") ||
     c === "unexpected_failure"
   ) {
-    return "Google sign-in isn't fully wired up on the server yet. The Supabase project's Google provider needs the same Client ID and Secret that are in AnalogixWeb/.env. See AUTH_FIX_NOTES.md for the 5-minute fix, then try again.";
+    return "Google sign-in couldn't be completed. Please try again - if you registered with Google, keep using Continue with Google.";
   }
   if (c.includes("redirect_uri_mismatch") || r.includes("redirect_uri_mismatch")) {
-    return "The redirect URL isn't whitelisted. Add http://localhost:3000/auth/callback to Supabase → Authentication → URL Configuration → Redirect URLs.";
+    return "The Google sign-in redirect isn't configured for this site address yet. Please try again in a moment or use email & password.";
   }
   if (c.includes("access_denied") || r.includes("access_denied")) {
     return "Google sign-in was cancelled. Tap Continue with Google to try again.";
@@ -52,8 +52,11 @@ function describeAuthError(code: string | null, raw: string | null): string {
   }
 
   // Email/password errors
+  if (c === "google_account_required") {
+    return "This email uses Google sign-in. Please sign in with Google to continue.";
+  }
   if (c === "invalid_credentials" || c === "wrong_password" || r.includes("invalid login credentials")) {
-    return "Invalid email or password. Maybe you signed in using Google.";
+    return "Invalid email or password. If you signed up with Google, use Continue with Google instead.";
   }
   if (c === "email_not_confirmed" || r.includes("email not confirmed")) {
     return "Please confirm your email address first - check your inbox for a confirmation link.";

@@ -42,7 +42,7 @@ Analogix is an AI-powered study platform for Australian secondary students (Year
 
 ### Study Planning & Progress
 ![Screenshot](./public/calendar.png)
-- **Study Map** - v2 workspace for subject overview with pending tasks, document counts, and momentum scores
+- **Study Map** - Workspace for subject overview with pending tasks, document counts, and momentum scores
 - **Calendar** - Day/week/month views, .ics import from school calendars
 - **Deadlines** - Assignment tracking with priority levels
 - **Study Timer** - Pomodoro-style sessions with goals
@@ -84,7 +84,7 @@ Analogix is an AI-powered study platform for Australian secondary students (Year
 
 | Route | Page | Description |
 |-------|------|-------------|
-| `/` | Landing | Public landing page (v2 redesign) |
+| `/` | Landing | Public landing page |
 | `/login` | Login | Google authentication |
 | `/onboarding` | Onboarding | Initial subject/grade setup |
 | `/dashboard` | Dashboard | Home with stats, deadlines, streak |
@@ -93,15 +93,15 @@ Analogix is an AI-powered study platform for Australian secondary students (Year
 | `/subjects/:id/document/:docId` | Document Editor | Rich text editor |
 | `/study-map` | Study Map Home | Subject overview with pending tasks, document counts, and momentum scores |
 | `/study-map/[subjectId]` | Study Map Subject | Per-subject workspace with homework/task management |
-| `/chat` | Chat | AI tutor conversation (v2 ChatStudio) |
-| `/flashcards` | Flashcards | Flashcard review (v2 FlashcardsStudio) |
-| `/quiz` | Quiz | Quiz practice (v2 QuizStudio) |
+| `/chat` | Chat | AI tutor conversation |
+| `/flashcards` | Flashcards | Flashcard review |
+| `/quiz` | Quiz | Quiz practice |
 | `/calendar` | Calendar | Event calendar |
 | `/timer` | Timer | Study timer |
 | `/rooms` | Rooms | Study rooms |
 | `/rooms/:roomId` | Room Workspace | Collaborative room |
 | `/achievements` | Achievements | Badges and milestones |
-| `/resources` | Resources | File library (v2 ResourcesStudio) |
+| `/resources` | Resources | File library |
 | `/formulas` | Formulas | Formula reference |
 | `/support` | Support | FAQ page with quick links to GitHub issues, bug reports, and feature requests |
 | `/privacy` | Privacy Policy | Detailed privacy policy |

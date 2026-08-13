@@ -2,13 +2,60 @@
 
 import { createClient } from "@/lib/supabase/client";
 
+export type AccountAuthProvider = "google" | "email" | "both" | null;
+
+/**
+ * Look up how an account with the given email was registered. Returns "google"
+ * for Google-only accounts (which have no password and can never sign in with
+ * email/password), "email" for password accounts, "both" when linked, or null
+ * when no account exists or the lookup fails.
+ */
+export async function getAccountAuthProvider(email: string): Promise<AccountAuthProvider> {
+  try {
+    const res = await fetch(
+      `/api/auth/account-provider?email=${encodeURIComponent(email)}`,
+      { cache: "no-store" }
+    );
+    if (!res.ok) return null;
+    const data = (await res.json()) as { provider?: AccountAuthProvider };
+    return data.provider ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function isInvalidCredentials(error: { code?: string; message?: string }): boolean {
+  const c = (error.code || "").toLowerCase();
+  const m = (error.message || "").toLowerCase();
+  return (
+    c === "invalid_credentials" ||
+    c === "wrong_password" ||
+    m.includes("invalid login credentials")
+  );
+}
+
+/**
+ * Canonical origin used for OAuth / email redirect targets. Falls back to the
+ * current tab's origin so dev (localhost) and any live alias keep working,
+ * but in production it pins auth callbacks to the real site (NEXT_PUBLIC_SITE_URL)
+ * so a visit from a Vercel deployment alias never strands the user on a
+ * throwaway domain like analogix-analogix.vercel.app.
+ */
+function getAuthRedirectOrigin(): string {
+  const configured = process.env.NEXT_PUBLIC_SITE_URL;
+  if (configured && !/^http:\/\/localhost(?::\d+)?$/.test(configured)) {
+    return configured.replace(/\/$/, "");
+  }
+  return window.location.origin;
+}
+
 export async function signInWithGoogle(next = "/onboarding") {
   const supabase = createClient();
   
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
-      redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
+      redirectTo: `${getAuthRedirectOrigin()}/auth/callback?next=${encodeURIComponent(next)}`,
     },
   });
 
@@ -25,7 +72,21 @@ export async function signInWithGoogle(next = "/onboarding") {
 export async function signInWithEmail(email: string, password: string) {
   const supabase = createClient();
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) throw error;
+  if (error) {
+    // A Google-only account has no password, so this always fails with
+    // "invalid login credentials". Tell the user to use Google instead.
+    if (isInvalidCredentials(error)) {
+      const provider = await getAccountAuthProvider(email);
+      if (provider === "google") {
+        const hint = new Error(
+          "This email uses Google sign-in. Please sign in with Google to continue."
+        );
+        (hint as Error & { code?: string }).code = "google_account_required";
+        throw hint;
+      }
+    }
+    throw error;
+  }
   return data;
 }
 
@@ -35,7 +96,7 @@ export async function signUpWithEmail(email: string, password: string) {
     email,
     password,
     options: {
-      emailRedirectTo: `${window.location.origin}/auth/callback?next=/dashboard`,
+      emailRedirectTo: `${getAuthRedirectOrigin()}/auth/callback?next=/dashboard`,
     },
   });
   if (error) throw error;
@@ -50,7 +111,7 @@ export async function signOut() {
 export async function resetPasswordForEmail(email: string) {
   const supabase = createClient();
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${window.location.origin}/auth/reset-password`,
+    redirectTo: `${getAuthRedirectOrigin()}/auth/reset-password`,
   });
   if (error) throw error;
 }
@@ -82,8 +143,11 @@ export function getEmailError(code: string | null, message: string | null): stri
   const c = (code || "").toLowerCase();
   const m = (message || "").toLowerCase();
 
+  if (c === "google_account_required") {
+    return "This email uses Google sign-in. Please sign in with Google to continue.";
+  }
   if (c === "invalid_credentials" || c === "wrong_password" || m.includes("invalid login credentials")) {
-    return "Invalid email or password. Maybe you signed in using Google.";
+    return "Invalid email or password. If you signed up with Google, use Continue with Google instead.";
   }
   if (c === "email_not_confirmed" || m.includes("email not confirmed")) {
     return "Please confirm your email address first - check your inbox for a confirmation link.";
