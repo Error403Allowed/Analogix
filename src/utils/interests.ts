@@ -121,6 +121,15 @@ export const buildInterestsObject = (prefs: unknown): InterestObject => {
     prefsRecord.hobbyDetails && typeof prefsRecord.hobbyDetails === "object"
       ? (prefsRecord.hobbyDetails as Record<string, string>)
       : {};
+  const flatHobbies = Array.isArray(prefsRecord.hobbies)
+    ? (prefsRecord.hobbies as string[]).filter(Boolean)
+    : [];
+  // No recorded hobbies at all - the structured object must be genuinely empty.
+  // Do NOT fall back to the demo interest list here; an empty object tells the
+  // AI the student has no hobbies to pull from.
+  if (hobbyIds.length === 0 && Object.keys(hobbyDetails).length === 0 && flatHobbies.length === 0) {
+    return { tags: [], byCategory: {} };
+  }
 
   const byCategory: Record<string, string[]> = {};
   for (const id of hobbyIds) {

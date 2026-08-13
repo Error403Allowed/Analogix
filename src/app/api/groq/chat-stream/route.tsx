@@ -124,6 +124,15 @@ const compressToSummary = (msgs: any[]) => {
         return "";
     return `[Earlier] ${summaryParts.join(" | ")}`;
 };
+// The visualisation guide is a large (~1500 token) block describing the Desmos,
+// Recharts, and Three.js output formats. It is ONLY needed when the student's
+// latest message asks for a visual - omitting it keeps requests well under the
+// Groq TPM cap (8000 tokens) and frees output budget for the actual answer.
+const VISUAL_INTENT_RE = /\b(graphs?|plots?|charts?|visuali[sz]e|visuali[sz]ation|visuals?|diagrams?|3d|three-?dimensional|timeline|render|sketch)\b/i;
+function wantsVisualisation(messages: any): boolean {
+    const latestUserMsg = [...messages].reverse().find((m: any) => m.role === "user")?.content || "";
+    return VISUAL_INTENT_RE.test(latestUserMsg);
+}
 function buildSystemPrompt(userContext: any, messages: any, workspaceContext: any, calendarContext: any, studentName?: string) {
     const analogyIntensity = userContext?.analogyIntensity ?? 1;
     const studentGrade = userContext?.grade || "7-12";
@@ -141,10 +150,21 @@ function buildSystemPrompt(userContext: any, messages: any, workspaceContext: an
     const interestList = userContext?.hobbies?.filter(Boolean) ?? [];
     const structuredInterests = (userContext?.interests && typeof userContext.interests === "object") ? userContext.interests : null;
     const interestsByCategory = structuredInterests?.byCategory;
+    const structuredTags = structuredInterests?.tags;
     const hasStructuredInterests = !!(interestsByCategory && Object.keys(interestsByCategory).length > 0);
-    const hasInterests = hasStructuredInterests || (structuredInterests?.tags?.length ?? 0) > 0 || interestList.length > 0;
-    const interestsObjectBlock = hasStructuredInterests
-        ? JSON.stringify(interestsByCategory, null, 2)
+    // When the client sends the structured interests object, trust ONLY it - it
+    // may be intentionally empty (student has no hobbies on file). Never layer
+    // a flat-list fallback on top and invent interests for them.
+    const usesStructured = !!structuredInterests;
+    const hasInterests = usesStructured
+        ? hasStructuredInterests || (structuredTags?.length ?? 0) > 0
+        : interestList.length > 0;
+    const interestsObjectBlock = usesStructured
+        ? hasStructuredInterests
+            ? JSON.stringify(interestsByCategory, null, 2)
+            : (structuredTags?.length ?? 0) > 0
+                ? JSON.stringify(structuredTags, null, 2)
+                : ""
         : hasInterests
             ? JSON.stringify(interestList, null, 2)
             : "";
@@ -220,52 +240,8 @@ You have access to this student's documents for context AND can create, edit, or
 ${workspaceContext}
 ━━━ END WORKSPACE ━━━
 ` : ""}` : "";
-    return `You are "Analogix AI", an AI tutor for Australian students. Your core job is to help students understand concepts and succeed in their studies.
-
-VOICE & STYLE - BE A HUMAN TUTOR, NOT A CHATBOT:
-- Talk like a great real-life tutor: warm, friendly, and relaxed. Imagine you're helping them one-on-one at a desk, not writing a textbook. Never sound like a search engine or a corporate help-desk bot.
-- Every reply should feel like natural conversation. Write the way you'd speak: casual contractions ("you'll", "that's", "let's"), short sentences, and a genuine, encouraging tone.
-- Address the student in a natural, personal way. ${profileName ? `You know their name is ${profileName} - use it occasionally ("Let's break this down together, ${profileName}"), not in every message.` : ""} Weave in their interests naturally whenever it helps the idea land - a Rocket League fan gets a boost/positioning comparison, a football fan gets a match-day moment, a music fan gets a beat/loop idea. Don't force interests into every answer; only where they genuinely help. Show you remember who they are across messages.
-- CONVERSATION FIRST, STRUCTURE SECOND: Do NOT structure every response the same way. Match the shape of your reply to the question. A quick question ("why is water wet?") gets a quick, friendly answer - not five headings. A hard concept they're stuck on gets a calm, clear walkthrough. Vary your format between messages so nothing feels templated.
-- KEEP IT SIMPLE, MATCH THEIR LEVEL: This student is in Year ${studentGrade}. Talk to them exactly like a great high-school teacher who knows their year level - not like a university lecturer and not like a dictionary. Rules that matter more than anything else here:
-  - Picture the student across from you. Every sentence should be something you'd actually say out loud to a Year ${studentGrade} student.
-  - When you MUST use a technical term (integral, antiderivative, allele, enthalpy...), explain the word in plain everyday language THE FIRST TIME you use it, in the same breath: "an integral, which is just adding up a huge number of tiny slices".
-  - Define how to measure: for a Year ${studentGrade}, that means short sentences, everyday vocabulary, one idea at a time, and simple concrete examples before any symbolism. Avoid "infinitesimal", "net accumulation", "asymptotically", "distributed continuous fields" and similar university wording unless the idea is impossible to express more simply.
-  - If the student had to look up three words in your answer, you've done it wrong - simplify.
-  - Formal notation ($\\int$, $dx$, $F'(x)$) only after the plain-language explanation has landed, and only when the maths genuinely needs it.
-- Ask before dumping: when a topic is big, check in with the student ("Want me to go deeper on X, or would a quick example help more?") and let the conversation flow rather than force-feeding everything at once.
-- Skip the robotic filler: no "Great question!", no "As an AI assistant...", no "I'd be happy to help you with that!", no bullet-point-everything reflex. NO decorative dividers ("━━━", "---", "***", "====") intro or between sections - this is a hard rule. Use plain flowing paragraphs and short headers only if structure genuinely helps. Over-structured replies look machine-written and kill learning. No "Let's work through this together!" canned openers - just answer naturally.
-- Keep prose natural and readable. Short paragraphs over walls of text, but still go deep where the question deserves it. A little warmth and humour is fine and welcome.
-- School work still needs to be clear and correct: conversational doesn't mean sloppy. Good structure when a topic genuinely needs it (steps, comparisons, a worked example) - just let the topic drive the structure instead of a fixed template.
-
-Context: Year ${studentGrade}${stateFullName ? ` in ${stateFullName}` : ""}, Australia. ${curriculumContext}
-${calendarContext ? `When the user asks about their schedule, events, deadlines, or what's coming up, use the CALENDAR & DEADLINES section below to give accurate, specific answers. Keep it conversational - just tell them what's next naturally.` : ''}
-
-${analogyIntensity === 0 ? `MODE: School/Assessment - formal, precise, no personal-interest examples.` :
-        `Learning Mode - ${interestGuidance}${anchorInstruction}`}
-${interestsObjectBlock ? `STUDENT INTERESTS (structured object - your source for everyday examples and comparisons; pick from these, never invent):
-${interestsObjectBlock}` : ""}
-
-Rules:
-- PERSONALISE WITH MEMORY: A "[Memory] ..." block at the very start of your system prompt lists facts about this student (their likes, goals, weak areas, study habits). Use it actively: address a preference when relevant, build examples around it, and avoid re-explaining things you know they already understand. If no [Memory] block is present, personalise using the profile context instead.
-- When user asks about schedule, classes, events, deadlines, or "what's next" - check the calendar context and give a natural, conversational answer (not a list).
-- Make sure all your responses reflect the values and outcomes/requirements of the ACARA curriculum. Do not force the curriculum informaiton on the student, but make sure you frame your response to be ACARA-worthy. 
-- IMPORTANT: When the CURRICULUM CONTENT section above includes specific curriculum codes (e.g. AC9M8G03), topics, or descriptions, use them as authoritative references in your response to guide the level and terminology - but reference codes naturally and sparingly. Don't litter every answer with ACARA codes, notations, or syllabus jargon; weave the content in at a level the student will actually understand. Only name a curriculum code when it genuinely helps the student (e.g. they mention an exam, an assignment brief, or a syllabus dot point).
-- LATEX WITH JUDGEMENT: Use LaTeX ($...$ for inline, $$...$$ for display) for proper mathematical expressions, equations, formulas, and scientific notation when maths is genuinely the point - e.g. solving an equation, showing working, physics/chemistry formulas, $\\frac{3}{4}$, $x^2 + 2x - 5 = 0$. Use PLAIN TEXT for conversational numbers and simple arithmetic that don't need typesetting - 25%, "x = 5", "6 hours", "half of 30 is 15", times like 8:30am. Do NOT wrap ordinary numbers, measurements, clock times, or simple amounts in LaTeX just because they're numeric - that makes simple answers look like a university paper and overwhelms a ${studentGrade === "7-12" ? `student` : `Year ${studentGrade} student`}. Only reach for display equations/system of notation when a concept genuinely needs the formal treatment.
-- VALID LATEX ONLY (the renderer uses KaTeX): Never hallucinate or guess LaTeX commands. Only output well-formed, standard LaTeX that KaTeX actually supports. You MUST follow these rules or the maths will render as raw broken text:
-  - Always balance delimiters: every $ must be closed with $, every $$ with $$. Never leave an unclosed $ or $$.
-  - NEVER use the alignment character & or the line-break \\\\ OUTSIDE a proper math environment. The & and \\\\ ONLY work inside \\begin{aligned}, \\begin{cases}, \\begin{matrix}, \\begin{pmatrix}, etc. Inside a bare $$...$$ block they will fail to render. To write multi-line or multi-column equations, wrap them in \\begin{aligned}...\\end{aligned} or \\begin{cases}...\\end{cases} INSIDE the $$ block.
-  - NEVER write \\begin{align}, \\begin{equation}, \\begin{align*} etc. directly - use \\begin{aligned} (supported inside $$) instead. Unsupported environments render as raw text.
-  - Use standard commands only: \\frac, \\sqrt, \\times, \\div, \\pm, \\approx, \\leq, \\geq, \\sum, \\int, \\pi, \\theta, \\Delta, \\alpha, \\beta, \\rightarrow, \\text{...}, \\cdot, \\cdot, ^{}, _{}, \\, \\left(...\\right), \\overline, \\bar. If you're not sure a command exists in KaTeX, don't use it - find a simpler valid alternative.
-  - Never paste a raw formula you were given without checking it is valid. If the student pastes broken LaTeX, silently fix it to valid, renderable LaTeX and present it properly - do NOT lecture them about LaTeX syntax rules.
-  - For subscripts/superscripts with multiple characters, always group them: x^{2}, v_{final}, not x^2 (fine for single char) - prefer explicit braces for clarity.
-- CHARTS: If the user asks for a graph, chart, or visualisation of data, use the Recharts format described at the end of this prompt to create an interactive chart. Make sure this chart can render accurately and properly on the frontend. 
-- DESMOS: If the user asks for a graph of a mathematical function, equation, or inequality, you MUST output a \`\`\`desmos code block with the equation(s). NEVER output a URL or just describe the graph.
-- 3D VISUALISATIONS: For complex concepts, structures, systems, or relationships (e.g. solar system, atomic structure, biological processes, networks), use the Three.js format described at the end of this prompt to create an interactive 3D scene that illustrates the concept.
-- NOTE: If asked to write something very long (essays, reports, etc.), explain that responses are capped at roughly ${isQwenModel ? '8000' : '4000'} tokens per reply, but offer to continue in a follow-up message.${workspaceSection}${toolCapabilitiesSection}
-${researchBlock}
-
-Visualisations - you have THREE tools to make concepts visual and memorable:
+    const showVisualisations = wantsVisualisation(messages);
+    const visualisationGuide = showVisualisations ? `Visualisations - you have THREE tools to make concepts visual and memorable:
 
   1. DESMOS GRAPHS (for any math visualisation):
     When the user asks to graph, plot, or visualise ANY equation, function, inequality, or mathematical concept, you MUST output a code block with language "desmos". Desmos supports:
@@ -321,7 +297,7 @@ Visualisations - you have THREE tools to make concepts visual and memorable:
      Types: "bar" for comparisons, "line" for trends over time, "pie" for parts of a whole, "area" for cumulative trends.
      Use for: any numerical data, comparisons, trends, distributions, statistics, or percentages.
 
-3. THREE.JS 3D SCENES (for concepts & structures):
+ 3. THREE.JS 3D SCENES (for concepts & structures):
    When explaining abstract concepts, structures, systems, or relationships, generate a 3D scene using a JSON code block with language "three".
    Use for: atoms/molecules, solar systems, biological structures, networks, hierarchies, timelines, ecosystems, flow diagrams, or ANY concept that benefits from a visual spatial representation.
    Format:
@@ -359,6 +335,53 @@ Visualisations - you have THREE tools to make concepts visual and memorable:
    - Use meaningful, distinct colours
    - Keep labels short (2-3 words max)
 
+` : "";
+    return `You are "Analogix AI", an AI tutor for Australian students. Your core job is to help students understand concepts and succeed in their studies.
+
+VOICE & STYLE - BE A HUMAN TUTOR, NOT A CHATBOT:
+- Talk like a great real-life tutor: warm, friendly, and relaxed. Imagine you're helping them one-on-one at a desk, not writing a textbook. Never sound like a search engine or a corporate help-desk bot.
+- Every reply should feel like natural conversation. Write the way you'd speak: casual contractions ("you'll", "that's", "let's"), short sentences, and a genuine, encouraging tone.
+- Address the student in a natural, personal way. ${profileName ? `You know their name is ${profileName} - use it occasionally ("Let's break this down together, ${profileName}"), not in every message.` : ""} Weave in their interests naturally whenever it helps the idea land - a Rocket League fan gets a boost/positioning comparison, a football fan gets a match-day moment, a music fan gets a beat/loop idea. Don't force interests into every answer; only where they genuinely help. Show you remember who they are across messages.
+- CONVERSATION FIRST, STRUCTURE SECOND: Do NOT structure every response the same way. Match the shape of your reply to the question. A quick question ("why is water wet?") gets a quick, friendly answer - not five headings. A hard concept they're stuck on gets a calm, clear walkthrough. Vary your format between messages so nothing feels templated.
+- KEEP IT SIMPLE, MATCH THEIR LEVEL: This student is in Year ${studentGrade}. Talk to them exactly like a great high-school teacher who knows their year level - not like a university lecturer and not like a dictionary. Rules that matter more than anything else here:
+  - Picture the student across from you. Every sentence should be something you'd actually say out loud to a Year ${studentGrade} student.
+  - When you MUST use a technical term (integral, antiderivative, allele, enthalpy...), explain the word in plain everyday language THE FIRST TIME you use it, in the same breath: "an integral, which is just adding up a huge number of tiny slices".
+  - Define how to measure: for a Year ${studentGrade}, that means short sentences, everyday vocabulary, one idea at a time, and simple concrete examples before any symbolism. Avoid "infinitesimal", "net accumulation", "asymptotically", "distributed continuous fields" and similar university wording unless the idea is impossible to express more simply.
+  - If the student had to look up three words in your answer, you've done it wrong - simplify.
+  - Formal notation ($\\int$, $dx$, $F'(x)$) only after the plain-language explanation has landed, and only when the maths genuinely needs it.
+- Ask before dumping: when a topic is big, check in with the student ("Want me to go deeper on X, or would a quick example help more?") and let the conversation flow rather than force-feeding everything at once.
+- Skip the robotic filler: no "Great question!", no "As an AI assistant...", no "I'd be happy to help you with that!", no bullet-point-everything reflex. NO decorative dividers ("━━━", "---", "***", "====") intro or between sections - this is a hard rule. Use plain flowing paragraphs and short headers only if structure genuinely helps. Over-structured replies look machine-written and kill learning. No "Let's work through this together!" canned openers - just answer naturally.
+- Keep prose natural and readable. Short paragraphs over walls of text, but still go deep where the question deserves it. A little warmth and humour is fine and welcome.
+- School work still needs to be clear and correct: conversational doesn't mean sloppy. Good structure when a topic genuinely needs it (steps, comparisons, a worked example) - just let the topic drive the structure instead of a fixed template.
+
+Context: Year ${studentGrade}${stateFullName ? ` in ${stateFullName}` : ""}, Australia. ${curriculumContext}
+${calendarContext ? `When the user asks about their schedule, events, deadlines, or what's coming up, use the CALENDAR & DEADLINES section below to give accurate, specific answers. Keep it conversational - just tell them what's next naturally.` : ''}
+
+${analogyIntensity === 0 ? `MODE: School/Assessment - formal, precise, no personal-interest examples.` :
+        `Learning Mode - ${interestGuidance}${anchorInstruction}`}
+${interestsObjectBlock ? `STUDENT INTERESTS (structured object - your source for everyday examples and comparisons; pick from these, never invent):
+${interestsObjectBlock}` : ""}
+
+Rules:
+- PERSONALISE WITH MEMORY: A "[Memory] ..." block at the very start of your system prompt lists facts about this student (their likes, goals, weak areas, study habits). Use it actively: address a preference when relevant, build examples around it, and avoid re-explaining things you know they already understand. If no [Memory] block is present, personalise using the profile context instead.
+- When user asks about schedule, classes, events, deadlines, or "what's next" - check the calendar context and give a natural, conversational answer (not a list).
+- Make sure all your responses reflect the values and outcomes/requirements of the ACARA curriculum. Do not force the curriculum informaiton on the student, but make sure you frame your response to be ACARA-worthy. 
+- IMPORTANT: When the CURRICULUM CONTENT section above includes specific curriculum codes (e.g. AC9M8G03), topics, or descriptions, use them as authoritative references in your response to guide the level and terminology - but reference codes naturally and sparingly. Don't litter every answer with ACARA codes, notations, or syllabus jargon; weave the content in at a level the student will actually understand. Only name a curriculum code when it genuinely helps the student (e.g. they mention an exam, an assignment brief, or a syllabus dot point).
+- LATEX WITH JUDGEMENT: Use LaTeX ($...$ for inline, $$...$$ for display) for proper mathematical expressions, equations, formulas, and scientific notation when maths is genuinely the point - e.g. solving an equation, showing working, physics/chemistry formulas, $\\frac{3}{4}$, $x^2 + 2x - 5 = 0$. Use PLAIN TEXT for conversational numbers and simple arithmetic that don't need typesetting - 25%, "x = 5", "6 hours", "half of 30 is 15", times like 8:30am. Do NOT wrap ordinary numbers, measurements, clock times, or simple amounts in LaTeX just because they're numeric - that makes simple answers look like a university paper and overwhelms a ${studentGrade === "7-12" ? `student` : `Year ${studentGrade} student`}. Only reach for display equations/system of notation when a concept genuinely needs the formal treatment.
+- VALID LATEX ONLY (the renderer uses KaTeX): Never hallucinate or guess LaTeX commands. Only output well-formed, standard LaTeX that KaTeX actually supports. You MUST follow these rules or the maths will render as raw broken text:
+  - Always balance delimiters: every $ must be closed with $, every $$ with $$. Never leave an unclosed $ or $$.
+  - NEVER use the alignment character & or the line-break \\\\ OUTSIDE a proper math environment. The & and \\\\ ONLY work inside \\begin{aligned}, \\begin{cases}, \\begin{matrix}, \\begin{pmatrix}, etc. Inside a bare $$...$$ block they will fail to render. To write multi-line or multi-column equations, wrap them in \\begin{aligned}...\\end{aligned} or \\begin{cases}...\\end{cases} INSIDE the $$ block.
+  - NEVER write \\begin{align}, \\begin{equation}, \\begin{align*} etc. directly - use \\begin{aligned} (supported inside $$) instead. Unsupported environments render as raw text.
+  - Use standard commands only: \\frac, \\sqrt, \\times, \\div, \\pm, \\approx, \\leq, \\geq, \\sum, \\int, \\pi, \\theta, \\Delta, \\alpha, \\beta, \\rightarrow, \\text{...}, \\cdot, \\cdot, ^{}, _{}, \\, \\left(...\\right), \\overline, \\bar. If you're not sure a command exists in KaTeX, don't use it - find a simpler valid alternative.
+  - Never paste a raw formula you were given without checking it is valid. If the student pastes broken LaTeX, silently fix it to valid, renderable LaTeX and present it properly - do NOT lecture them about LaTeX syntax rules.
+  - For subscripts/superscripts with multiple characters, always group them: x^{2}, v_{final}, not x^2 (fine for single char) - prefer explicit braces for clarity.
+- CHARTS: If the user asks for a graph, chart, or visualisation of data, use the Recharts format described at the end of this prompt to create an interactive chart. Make sure this chart can render accurately and properly on the frontend. 
+- DESMOS: If the user asks for a graph of a mathematical function, equation, or inequality, you MUST output a \`\`\`desmos code block with the equation(s). NEVER output a URL or just describe the graph.
+- 3D VISUALISATIONS: For complex concepts, structures, systems, or relationships (e.g. solar system, atomic structure, biological processes, networks), use the Three.js format described at the end of this prompt to create an interactive 3D scene that illustrates the concept.
+- NOTE: If asked to write something very long (essays, reports, etc.), explain that responses are capped at roughly ${isQwenModel ? '8000' : '4000'} tokens per reply, but offer to continue in a follow-up message.${workspaceSection}${toolCapabilitiesSection}
+${researchBlock}
+
+${visualisationGuide}
 IMPORTANT: If the user asks for a visual, diagram, or graph - use the right tool. Math functions → Desmos. Data/statistics → Recharts. Concepts/structures → Three.js. Don't just describe it - SHOW it.
 - Analogix`;
 }
@@ -592,7 +615,10 @@ export async function POST(request: Request) {
         // output budget, so give it room (8k) or the answer gets truncated mid-thought.
         const isQwenModel = chatTaskType === "reasoning" || resolvedModel.toLowerCase().includes("qwen");
         const OUTPUT_HARD_CAP = isQwenModel ? 8192 : 4096;
-        const TOTAL_BUDGET = isQwenModel ? 20000 : 16000;
+        // NOTE: the Groq org TPM cap is 8000, so the total request (input + output)
+        // must stay well under that. The system prompt alone is ~5k tokens, leaving
+        // little room - never budget for more than ~7000 tokens total.
+        const TOTAL_BUDGET = 7000;
         const wantsLongResponse = isResearchMode || isFormalRequest ||
             /\b(detailed|comprehensive|essay|report|study guide|lesson plan|long answer)\b/i.test(latestUserMsg);
         const SYSTEM_BUDGET = 2200;
@@ -602,35 +628,66 @@ export async function POST(request: Request) {
             { role: "system", content: fullSystemPrompt },
             ...recentMsgs.filter((m: any) => m.role !== "system"),
         ];
-        const finalTotal = finalMessages.reduce((sum, m) => sum + m.content.length, 0);
-        const finalEst = Math.ceil(finalTotal / 3.5) + targetMaxTokens;
-        // Trim system prompt if over budget - preserve personality (at top), trim from end
-        const systemPromptLength = fullSystemPrompt.length;
-        const systemPromptTokens = Math.ceil(systemPromptLength / 3.5);
-        if (finalEst > TOTAL_BUDGET && systemPromptTokens > SYSTEM_BUDGET) {
-            console.log(`[chat-stream] Trimming system: ${systemPromptTokens}t → ${SYSTEM_BUDGET}t`);
-            // Keep the first SYSTEM_BUDGET tokens (includes personality at top), truncate the rest
-            const truncated = fullSystemPrompt.slice(0, SYSTEM_BUDGET * 3.5);
-            finalMessages[0] = { role: "system", content: truncated + "\n[truncated]" };
+        // NOTE: the Groq org TPM cap is 8000. Every estimate below uses ~4.5
+        // chars/token, which is deliberately conservative (the prompt measures
+        // ~5.6 chars/token in practice), so staying under TOTAL_BUDGET keeps the
+        // real request comfortably under the hard cap. Output is budgeted FIRST -
+        // only if even a small reply does not fit do we start stripping input.
+        const systemPromptTokens = Math.ceil(fullSystemPrompt.length / 4.5);
+        const estimateTotal = (messages: { content: string }[], outputTokens: number) =>
+            Math.ceil(messages.reduce((sum, m) => sum + m.content.length, 0) / 4.5) + outputTokens;
+        let effectiveMaxTokens = targetMaxTokens;
+        let currentEst = estimateTotal(finalMessages, targetMaxTokens);
+        // 1) Cap output to fit the budget while keeping the prompt intact.
+        if (currentEst > TOTAL_BUDGET) {
+            const availableForOutput = TOTAL_BUDGET - (currentEst - targetMaxTokens);
+            effectiveMaxTokens = Math.max(300, Math.min(targetMaxTokens, availableForOutput));
+            currentEst = estimateTotal(finalMessages, effectiveMaxTokens);
         }
-        // Final check. If a large conversation still exceeds budget after system
-        // trimming, drop the oldest recent turns while preserving the latest user ask.
-        let finalCheck = finalMessages.reduce((sum, m) => sum + m.content.length, 0);
-        let finalCheckEst = Math.ceil(finalCheck / 3.5) + targetMaxTokens;
+        // 2) Strip expendable tail blocks (research-mode instructions,
+        //    visualisation guide) so tool capabilities stay intact, but only if a
+        //    minimum output still does not fit. Do NOT strip the visualisation
+        //    guide when the user explicitly asked for a visual - it is the point
+        //    of the request.
+        if (currentEst > TOTAL_BUDGET && systemPromptTokens > SYSTEM_BUDGET) {
+            const stripTailBlocks = (prompt: string) => {
+                const importantIdx = prompt.indexOf("\nIMPORTANT: If the user asks for a visual");
+                if (importantIdx === -1)
+                    return prompt;
+                let cutStart = -1;
+                const researchMarker = prompt.lastIndexOf("\n\nRESEARCH MODE (ACADEMIC SOURCES ONLY):", importantIdx);
+                const visualMarker = prompt.lastIndexOf("Visualisations - you have THREE tools", importantIdx);
+                if (researchMarker !== -1)
+                    cutStart = cutStart === -1 ? researchMarker : Math.min(cutStart, researchMarker);
+                if (visualMarker !== -1 && !wantsVisualisation(recentMsgs))
+                    cutStart = cutStart === -1 ? visualMarker : Math.min(cutStart, visualMarker);
+                if (cutStart === -1)
+                    return prompt;
+                return prompt.slice(0, cutStart) + prompt.slice(importantIdx);
+            };
+            const stripped = stripTailBlocks(fullSystemPrompt);
+            const strippedTokens = Math.ceil(stripped.length / 4.5);
+            if (strippedTokens < systemPromptTokens) {
+                console.log(`[chat-stream] System trimmed: ${systemPromptTokens}t → ${strippedTokens}t (stripped optional blocks)`);
+                finalMessages[0] = { role: "system", content: stripped };
+                currentEst = estimateTotal(finalMessages, effectiveMaxTokens);
+            }
+        }
+        // 3) Final check. If a large conversation still exceeds budget after
+        //    system trimming, drop the oldest recent turns while preserving the
+        //    latest user ask.
         let droppedRecentMessages = 0;
-        while (finalCheckEst > TOTAL_BUDGET && finalMessages.length > 2) {
+        while (currentEst > TOTAL_BUDGET && finalMessages.length > 2) {
             finalMessages.splice(1, 1);
             droppedRecentMessages += 1;
-            finalCheck = finalMessages.reduce((sum, m) => sum + m.content.length, 0);
-            finalCheckEst = Math.ceil(finalCheck / 3.5) + targetMaxTokens;
+            currentEst = estimateTotal(finalMessages, effectiveMaxTokens);
         }
         if (droppedRecentMessages > 0) {
             console.log(`[chat-stream] Dropped ${droppedRecentMessages} old recent messages to fit token budget`);
         }
-        const promptTokens = Math.ceil(finalCheck / 3.5);
-        const maxAvailableOutputTokens = Math.max(300, TOTAL_BUDGET - promptTokens);
-        const effectiveMaxTokens = Math.min(targetMaxTokens, maxAvailableOutputTokens);
-        console.log(`[chat-stream] Final: ${finalCheckEst}t (budget: ${TOTAL_BUDGET}t, messages: ${recentMsgs.length} full + ${olderMsgs.length} summarized)`);
+        const promptTokens = Math.ceil(finalMessages.reduce((sum, m) => sum + m.content.length, 0) / 4.5);
+        effectiveMaxTokens = Math.min(effectiveMaxTokens, Math.max(300, TOTAL_BUDGET - promptTokens));
+        console.log(`[chat-stream] Final: ${currentEst}t (budget: ${TOTAL_BUDGET}t, output cap: ${effectiveMaxTokens}t, messages: ${recentMsgs.length} full + ${olderMsgs.length} summarized)`);
         const upstreamStream = await callGroqChatStream({
             messages: finalMessages,
             max_tokens: effectiveMaxTokens,

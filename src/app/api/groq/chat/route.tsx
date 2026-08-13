@@ -9,6 +9,7 @@ import { createCurriculumRetriever } from "@/lib/retrieval/curriculum";
 import { TOOL_LIST_DESCRIPTION, parseToolCallsFromResponse, buildToolProposal, summarizeToolCall } from "@/lib/tool-descriptions";
 import type { ToolProposal } from "@analogix/shared/types";
 export const runtime = "nodejs";
+const VISUAL_INTENT_RE = /\b(graphs?|plots?|charts?|visuali[sz]e|visuali[sz]ation|visuals?|diagrams?|3d|three-?dimensional|timeline|render|sketch)\b/i;
 export async function POST(request: any) {
     try {
         // ========================================================================
@@ -231,6 +232,102 @@ GUIDANCE:
 
 ${researchSources.length > 0 ? `ACADEMIC SOURCES:\n${formatResearchSources(researchSources)}` : "ACADEMIC SOURCES: (none found)"}`
             : "";
+        const showVisualisations = VISUAL_INTENT_RE.test(latestUserMessage);
+        const visualisationGuide = showVisualisations ? `Visualisations - you have THREE tools to make concepts visual and memorable:
+
+  1. DESMOS GRAPHS (for any math visualisation):
+    When the user asks to graph, plot, or visualise ANY equation, function, inequality, or mathematical concept, you MUST output a code block with language "desmos". Desmos supports:
+    ─ Functions: y = x^2 - 4*x + 3, y = sin(x), y = 3*cos(2*x)
+    ─ Implicit equations: x^2 + y^2 = 25
+    ─ Inequalities: y > 2*x, x^2 + y^2 < 16, y >= x^2
+    ─ Parametric: (cos(t), sin(t))  (Desmos auto-uses variable t for parametrics)
+    ─ Points: (1, 2), (-3, 5)
+    ─ Regression: y1 ~ m*x1 + b  (use x1/y1 or x2/y2 pattern for table regression)
+    ─ Sliders: a = 3  (Defining a variable with no function creates an interactive slider)
+    ─ Tables / lists: a = [1, 2, 3, 4, 5], plot: (n, n^2) for n=[1..10]  (Use [1..10] range syntax)
+    ─ Drag points: DraggablePoint((h, k)) creates a draggable point on the graph
+    ─ For any expression you write, you can assign it to a variable and reuse it later: f(x) = x^2, g(x) = f(x) + 5
+    ─ Viewport: add [bounds: left, right, bottom, top] on its own line to zoom to a specific range
+    Format: \`\`\`desmos
+    y = x^2 - 4*x + 3
+    y = 2*x + 1
+    [bounds: -10, 10, -5, 15]
+    \`\`\`
+    Rules:
+    - Put ONLY the expression(s) inside the code block - one per line.
+    - Use * for multiplication (e.g. 2*x not 2x, 4*x^2 not 4x^2).
+    - Use ^ for exponentiation, / for division.
+    - Math functions: sin, cos, tan, arcsin, arccos, arctan, sinh, cosh, tanh, sqrt, ln, log, abs, floor, ceil, exp, sign, nthroot.
+    - ALL expressions use Desmos syntax, NOT LaTeX. Write "1/2" not "\\frac{1}{2}", "sqrt(x)" not "\\sqrt{x}".
+    - NEVER output a desmos.com URL. NEVER say "copy this link". NEVER describe the graph instead of showing it.
+    - After the code block, you may briefly describe key features (vertex, intercepts, domain/range, etc.).
+    Use for: any math function, equation, inequality, system of equations, transformation, parametric, conic sections, statistics plots.
+
+ 2. RECHARTS (for data & statistics):
+     When the user asks for a chart, graph, or visualisation of NUMERICAL DATA or STATISTICS, you MUST output a code block with language "recharts" containing a JSON object.
+     Format: \`\`\`recharts
+     {
+       "type": "line",
+       "title": "World Population (billions)",
+       "xKey": "name",
+       "categories": ["population"],
+       "data": [
+         {"name": "1950", "population": 2.5},
+         {"name": "1975", "population": 4.0},
+         {"name": "2000", "population": 6.1},
+         {"name": "2020", "population": 7.8}
+       ]
+     }
+     \`\`\`
+     Rules:
+     - The block MUST be valid JSON only - NO imports, NO React components, NO JSX, NO chart.js, NO function definitions.
+     - "type" must be one of: "line", "bar", "pie", "area".
+     - "xKey" is the data key for the x-axis (e.g. "name", "year", "label").
+     - "categories" is an array of data keys for the y-axis values to plot.
+     - "data" is an array of objects where each object has the xKey field and one field per category.
+     - NEVER output JavaScript, React code, or chart.js code. The frontend expects ONLY JSON.
+     Types: "bar" for comparisons, "line" for trends over time, "pie" for parts of a whole, "area" for cumulative trends.
+     Use for: any numerical data, comparisons, trends, distributions, statistics, or percentages.
+
+ 3. THREE.JS 3D SCENES (for concepts & structures):
+   When explaining abstract concepts, structures, systems, or relationships, generate a 3D scene using a JSON code block with language "three".
+   Use for: atoms/molecules, solar systems, biological structures, networks, hierarchies, timelines, ecosystems, flow diagrams, or ANY concept that benefits from a visual spatial representation.
+   Format:
+   \`\`\`three
+   {
+     "title": "Short display title",
+     "description": "1-2 sentence explanation",
+     "sceneType": "atom" | "solar" | "molecule" | "wave" | "dna" | "cell" | "graph" | "geometry" | "network" | "timeline" | "hierarchy" | "flow" | "ecosystem" | "generic",
+     "primaryColor": "#hexcolor",
+     "secondaryColor": "#hexcolor",
+     "objects": [
+       {
+         "id": "unique_id",
+         "shape": "sphere" | "torus" | "box" | "cylinder" | "cone" | "helix" | "ring" | "pyramid",
+         "label": "short label",
+         "color": "#hexcolor",
+         "size": 1.0,
+         "position": {"x": 0, "y": 0, "z": 0},
+         "orbitRadius": null,
+         "orbitSpeed": null,
+         "pulsates": false
+       }
+     ],
+     "connections": [
+       {"from": "object_id", "to": "object_id", "color": "#hexcolor"}
+     ],
+     "analogyHint": "A fun one-liner analogy or memory tip"
+   }
+   \`\`\`
+   Rules for 3D scenes:
+   - Include 4-10 objects spread across the full position range (x: -3 to 3, y: -2 to 2, z: -2 to 2)
+   - Layout should reflect the concept's structure (timeline = left to right, hierarchy = top to bottom)
+   - Use orbitRadius/orbitSpeed for objects that should animate (electrons, planets)
+   - Use pulsates: true for living things, energy, or active processes
+   - Use meaningful, distinct colours
+   - Keep labels short (2-3 words max)
+
+` : "";
         // Build the complete system prompt for the AI
         const subjects = userContext?.subjects || [];
         const primarySubject = subjects[0] || null;
@@ -329,100 +426,7 @@ Math Requirements:
 ${formulaSheetContext ? `\nFormulas: ${formulaSheetContext}` : ""}
 ${researchBlock}
 
-Visualisations - you have THREE tools to make concepts visual and memorable:
-
-  1. DESMOS GRAPHS (for any math visualisation):
-    When the user asks to graph, plot, or visualise ANY equation, function, inequality, or mathematical concept, you MUST output a code block with language "desmos". Desmos supports:
-    ─ Functions: y = x^2 - 4*x + 3, y = sin(x), y = 3*cos(2*x)
-    ─ Implicit equations: x^2 + y^2 = 25
-    ─ Inequalities: y > 2*x, x^2 + y^2 < 16, y >= x^2
-    ─ Parametric: (cos(t), sin(t))  (Desmos auto-uses variable t for parametrics)
-    ─ Points: (1, 2), (-3, 5)
-    ─ Regression: y1 ~ m*x1 + b  (use x1/y1 or x2/y2 pattern for table regression)
-    ─ Sliders: a = 3  (Defining a variable with no function creates an interactive slider)
-    ─ Tables / lists: a = [1, 2, 3, 4, 5], plot: (n, n^2) for n=[1..10]  (Use [1..10] range syntax)
-    ─ Drag points: DraggablePoint((h, k)) creates a draggable point on the graph
-    ─ For any expression you write, you can assign it to a variable and reuse it later: f(x) = x^2, g(x) = f(x) + 5
-    ─ Viewport: add [bounds: left, right, bottom, top] on its own line to zoom to a specific range
-    Format: \`\`\`desmos
-    y = x^2 - 4*x + 3
-    y = 2*x + 1
-    [bounds: -10, 10, -5, 15]
-    \`\`\`
-    Rules:
-    - Put ONLY the expression(s) inside the code block - one per line.
-    - Use * for multiplication (e.g. 2*x not 2x, 4*x^2 not 4x^2).
-    - Use ^ for exponentiation, / for division.
-    - Math functions: sin, cos, tan, arcsin, arccos, arctan, sinh, cosh, tanh, sqrt, ln, log, abs, floor, ceil, exp, sign, nthroot.
-    - ALL expressions use Desmos syntax, NOT LaTeX. Write "1/2" not "\\frac{1}{2}", "sqrt(x)" not "\\sqrt{x}".
-    - NEVER output a desmos.com URL. NEVER say "copy this link". NEVER describe the graph instead of showing it.
-    - After the code block, you may briefly describe key features (vertex, intercepts, domain/range, etc.).
-    Use for: any math function, equation, inequality, system of equations, transformation, parametric, conic sections, statistics plots.
-
- 2. RECHARTS (for data & statistics):
-     When the user asks for a chart, graph, or visualisation of NUMERICAL DATA or STATISTICS, you MUST output a code block with language "recharts" containing a JSON object.
-     Format: \`\`\`recharts
-     {
-       "type": "line",
-       "title": "World Population (billions)",
-       "xKey": "name",
-       "categories": ["population"],
-       "data": [
-         {"name": "1950", "population": 2.5},
-         {"name": "1975", "population": 4.0},
-         {"name": "2000", "population": 6.1},
-         {"name": "2020", "population": 7.8}
-       ]
-     }
-     \`\`\`
-     Rules:
-     - The block MUST be valid JSON only - NO imports, NO React components, NO JSX, NO chart.js, NO function definitions.
-     - "type" must be one of: "line", "bar", "pie", "area".
-     - "xKey" is the data key for the x-axis (e.g. "name", "year", "label").
-     - "categories" is an array of data keys for the y-axis values to plot.
-     - "data" is an array of objects where each object has the xKey field and one field per category.
-     - NEVER output JavaScript, React code, or chart.js code. The frontend expects ONLY JSON.
-     Types: "bar" for comparisons, "line" for trends over time, "pie" for parts of a whole, "area" for cumulative trends.
-     Use for: any numerical data, comparisons, trends, distributions, statistics, or percentages.
-
-3. THREE.JS 3D SCENES (for concepts & structures):
-   When explaining abstract concepts, structures, systems, or relationships, generate a 3D scene using a JSON code block with language "three".
-   Use for: atoms/molecules, solar systems, biological structures, networks, hierarchies, timelines, ecosystems, flow diagrams, or ANY concept that benefits from a visual spatial representation.
-   Format:
-   \`\`\`three
-   {
-     "title": "Short display title",
-     "description": "1-2 sentence explanation",
-     "sceneType": "atom" | "solar" | "molecule" | "wave" | "dna" | "cell" | "graph" | "geometry" | "network" | "timeline" | "hierarchy" | "flow" | "ecosystem" | "generic",
-     "primaryColor": "#hexcolor",
-     "secondaryColor": "#hexcolor",
-     "objects": [
-       {
-         "id": "unique_id",
-         "shape": "sphere" | "torus" | "box" | "cylinder" | "cone" | "helix" | "ring" | "pyramid",
-         "label": "short label",
-         "color": "#hexcolor",
-         "size": 1.0,
-         "position": {"x": 0, "y": 0, "z": 0},
-         "orbitRadius": null,
-         "orbitSpeed": null,
-         "pulsates": false
-       }
-     ],
-     "connections": [
-       {"from": "object_id", "to": "object_id", "color": "#hexcolor"}
-     ],
-     "analogyHint": "A fun one-liner analogy or memory tip"
-   }
-   \`\`\`
-   Rules for 3D scenes:
-   - Include 4-10 objects spread across the full position range (x: -3 to 3, y: -2 to 2, z: -2 to 2)
-   - Layout should reflect the concept's structure (timeline = left to right, hierarchy = top to bottom)
-   - Use orbitRadius/orbitSpeed for objects that should animate (electrons, planets)
-   - Use pulsates: true for living things, energy, or active processes
-   - Use meaningful, distinct colours
-   - Keep labels short (2-3 words max)
-
+${visualisationGuide}
 IMPORTANT: If the user asks for a visual, diagram, or graph - use the right tool. Math functions → Desmos. Data/statistics → Recharts. Concepts/structures → Three.js. Don't just describe it - SHOW it.
 ${userSubjectsContext}`;
         // ========================================================================
@@ -447,7 +451,9 @@ ${userSubjectsContext}`;
         // Oversized requests hit 413 "Request too large" (tokens-per-minute) errors
         // from Groq's free tier, so drop the oldest turns while always keeping the
         // system prompt and the latest user message.
-        const TOTAL_BUDGET = isQwenModel ? 20000 : 16000;
+        // NOTE: the org TPM cap is 8000, so the total request (input + output) must
+        // stay well under that - never budget for more than ~7000 tokens.
+        const TOTAL_BUDGET = 7000;
         const aiMessages: { role: string; content: string }[] = [
             {
                 role: "system",
@@ -455,21 +461,30 @@ ${userSubjectsContext}`;
             },
             ...messages.filter((m: any) => m.role !== "system"),
         ];
-        let totalChars = aiMessages.reduce((sum, m) => sum + m.content.length, 0);
-        let estTokens = Math.ceil(totalChars / 3.5) + maxTokens;
+        // Output is budgeted FIRST - only if even a minimum reply cannot fit do we
+        // start dropping input. This keeps the prompt intact (incl. the
+        // visualisation guide when the user asked for a visual) whenever possible.
+        const estimateTotal = (msgs: { content: string }[], outputTokens: number) =>
+            Math.ceil(msgs.reduce((sum, m) => sum + m.content.length, 0) / 4.5) + outputTokens;
+        let effectiveMaxTokens = maxTokens;
+        let currentEst = estimateTotal(aiMessages, maxTokens);
+        if (currentEst > TOTAL_BUDGET) {
+            const availableForOutput = TOTAL_BUDGET - (currentEst - maxTokens);
+            effectiveMaxTokens = Math.max(256, Math.min(maxTokens, availableForOutput));
+            currentEst = estimateTotal(aiMessages, effectiveMaxTokens);
+        }
         let droppedMessages = 0;
-        while (estTokens > TOTAL_BUDGET && aiMessages.length > 2) {
+        while (currentEst > TOTAL_BUDGET && aiMessages.length > 2) {
             aiMessages.splice(1, 1);
             droppedMessages += 1;
-            totalChars = aiMessages.reduce((sum, m) => sum + m.content.length, 0);
-            estTokens = Math.ceil(totalChars / 3.5) + maxTokens;
+            currentEst = estimateTotal(aiMessages, effectiveMaxTokens);
         }
         if (droppedMessages > 0) {
-            console.log(`[chat] Dropped ${droppedMessages} old message(s) to fit token budget (${estTokens}t / ${TOTAL_BUDGET}t)`);
+            console.log(`[chat] Dropped ${droppedMessages} old message(s) to fit token budget (${currentEst}t / ${TOTAL_BUDGET}t)`);
         }
         const rawContent = await callGroqChat({
             messages: aiMessages,
-            max_tokens: maxTokens,
+            max_tokens: effectiveMaxTokens,
             temperature: researchMode ? 0.3 : 0.7,
         }, taskType, userContext?.selectedModel || null);
 

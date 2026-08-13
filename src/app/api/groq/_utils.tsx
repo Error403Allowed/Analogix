@@ -61,12 +61,15 @@ const MODEL_CONTEXT_LIMITS = {
     "openai/gpt-oss-120b": 131072,
     "qwen/qwen3.6-27b": 131072,
 };
-// Conservative per-request caps based on Groq free-tier limits
-// Qwen gets a higher budget for detailed math/science reasoning
+// Conservative per-request caps based on Groq free-tier limits.
+// IMPORTANT: The account (org_01jv397r1kf1gstffd2f0vyfv3) is capped at 8000
+// TPM. A request whose input + max_tokens exceeds 8000 is rejected by Groq
+// with 413 "Request too large", so the budgets below MUST keep every request
+// comfortably under that hard cap (input + requested output together).
 const MODEL_REQUEST_TOKEN_BUDGETS = {
-    "openai/gpt-oss-20b": 16000,
-    "openai/gpt-oss-120b": 16000,
-    "qwen/qwen3.6-27b": 20000,
+    "openai/gpt-oss-20b": 7000,
+    "openai/gpt-oss-120b": 7000,
+    "qwen/qwen3.6-27b": 7000,
 };
 const MIN_COMPLETION_TOKENS = 256;
 const getSafeMaxTokens = (model: string, requested: number, estimatedInputTokens = 0): number => {
@@ -427,7 +430,7 @@ const callFastChat = async (payload: any, userModel?: any) => {
     }
     // Estimate token size - skip fast path if request is too large
     const messageText = payload.messages.map((m: any) => m.content).join(" ");
-    const estimatedTokens = Math.ceil(messageText.length / 3.5);
+    const estimatedTokens = Math.ceil(messageText.length / 4.5);
     const FAST_PATH_TOKEN_LIMIT = 5000; // Leave room for response tokens
     if (estimatedTokens > FAST_PATH_TOKEN_LIMIT) {
         console.log(`[Groq] FAST PATH skipped: request too large (${estimatedTokens} tokens)`);
@@ -488,7 +491,7 @@ export const callGroqChat = async (payload: any, taskType = "default", userSelec
     }
     // Estimate tokens BEFORE model selection
     const messageText = payload.messages.map((m: any) => m.content).join(" ");
-    const estimatedInputTokens = Math.ceil(messageText.length / 3.5);
+    const estimatedInputTokens = Math.ceil(messageText.length / 4.5);
     const estimatedTokens = estimatedInputTokens + payload.max_tokens;
     const taskModels = getModelsForTaskType(taskType, userSelectedModel, estimatedTokens);
     const modelsToTry = [...new Set([...taskModels, DEFAULT_MODEL])];
@@ -632,7 +635,7 @@ export const callGroqChatStream = async (payload: any, taskType = "default", use
     assertApiKeys();
     // Estimate tokens BEFORE model selection
     const messageText = payload.messages.map((m: any) => m.content).join(" ");
-    const estimatedInputTokens = Math.ceil(messageText.length / 3.5);
+    const estimatedInputTokens = Math.ceil(messageText.length / 4.5);
     const estimatedTokens = estimatedInputTokens + payload.max_tokens;
     const taskModels = getModelsForTaskType(taskType, userSelectedModel, estimatedTokens);
     const modelsToTry = [...new Set([...taskModels, DEFAULT_MODEL])];
