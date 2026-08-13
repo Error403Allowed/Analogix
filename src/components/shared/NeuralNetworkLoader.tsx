@@ -1,7 +1,5 @@
 "use client";
 
-import { motion } from "framer-motion";
-
 const INPUTS = [
   { x: 7, y: 7 },
   { x: 7, y: 17 },
@@ -92,25 +90,7 @@ export function NeuralNetworkLoader() {
           ))}
         </svg>
       </div>
-      <span className="text-xs text-muted-foreground/60 font-medium">
-        Thinking
-        <span className="inline-flex ml-1.5 items-end" aria-hidden>
-          {[0, 1, 2].map(i => (
-            <motion.span
-              key={i}
-              className="inline-block w-[3px] h-[3px] rounded-full bg-current"
-              initial={{ opacity: 0.15 }}
-              animate={{ opacity: [0.15, 1, 0.15] }}
-              transition={{
-                duration: 1.2,
-                repeat: Infinity,
-                ease: "easeInOut",
-                delay: i * 0.2,
-              }}
-            />
-          ))}
-        </span>
-      </span>
+      <span className="text-xs text-muted-foreground/60 font-medium">Thinking</span>
     </div>
   );
 }

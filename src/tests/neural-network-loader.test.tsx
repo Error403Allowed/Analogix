@@ -46,9 +46,9 @@ describe("NeuralNetworkLoader", () => {
     }
   });
 
-  it("renders three animated dots", () => {
+  it("does not render animated dots after the label", () => {
     render(<NeuralNetworkLoader />);
     const dots = document.querySelectorAll("span[aria-hidden] span");
-    expect(dots.length).toBe(3);
+    expect(dots.length).toBe(0);
   });
 });
