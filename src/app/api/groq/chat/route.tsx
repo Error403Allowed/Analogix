@@ -114,8 +114,12 @@ export async function POST(request: any) {
         // Instructions for how much to use analogies - AI uses judgment
         // Formula sheet context - injected into prompt for formula-bearing subjects
         const primarySubjectForFormulas = userContext?.subjects?.[0] || null;
+        // The full formula sheet can be ~20k chars (~4.5k tokens) for Maths, which
+        // alone can exceed Groq's 8000 TPM per-request cap. Bound it so the system
+        // prompt always fits, keeping only the highest-priority formulas (~1k
+        // tokens). The full sheet is still available on-demand via the formulas UI.
         const formulaSheetContext = primarySubjectForFormulas
-            ? getFormulaSheetContext(primarySubjectForFormulas)
+            ? getFormulaSheetContext(primarySubjectForFormulas, 4400)
             : "";
         const selectedModel = userContext?.selectedModel || null;
         const resolvedModel = resolveModelForUser(selectedModel);

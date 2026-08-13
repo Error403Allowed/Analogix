@@ -31,7 +31,7 @@ export async function POST(request: any) {
         ][analogyIntensity];
         const primarySubjectForFormulas = userContext?.subjects?.[0] || null;
         const formulaSheetContext = primarySubjectForFormulas
-            ? getFormulaSheetContext(primarySubjectForFormulas)
+            ? getFormulaSheetContext(primarySubjectForFormulas, 4400)
             : "";
         const maxTokens = 4096;
         const interestList = userContext?.hobbies?.filter(Boolean) ?? [];

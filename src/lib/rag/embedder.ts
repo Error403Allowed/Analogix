@@ -1,4 +1,8 @@
-import { env } from '@huggingface/transformers';
+// NOTE: @huggingface/transformers is intentionally imported LAZILY (dynamic
+// import) and never statically. Its native onnxruntime binding does not exist
+// on serverless runtimes (Vercel Lambda), so any static import would throw
+// "cannot open shared object file" at module-evaluation time and crash every
+// route that reaches here — even ones that never perform RAG.
 
 // In serverless runtimes (Vercel, etc.) node_modules is read-only, so the model
 // cache must live somewhere writable. Downloads are shared per-instance there.
@@ -8,23 +12,23 @@ const writableCacheDir =
     ? '/tmp/transformers-cache'
     : undefined);
 
-if (writableCacheDir) {
-  env.cacheDir = writableCacheDir;
-}
+type EmbedFn = (texts: string[], options: { pooling: string; normalize: boolean }) => Promise<{ data: Float32Array; dims: number[] }>;
 
-let pipeline: ((task: string, model: string, options?: { dtype?: string }) => Promise<{ (texts: string[], options: { pooling: string; normalize: boolean }): Promise<{ data: Float32Array; dims: number[] }> }>) | null = null;
+let embedFn: EmbedFn | null = null;
 
-let embedFn: ((texts: string[], options: { pooling: string; normalize: boolean }) => Promise<{ data: Float32Array; dims: number[] }>) | null = null;
-
-export async function getEmbedder() {
+export async function getEmbedder(): Promise<EmbedFn> {
   if (embedFn) return embedFn;
 
-  const { pipeline: pipe } = await import('@huggingface/transformers');
-  pipeline = pipe as typeof pipeline;
-  embedFn = await (pipeline as NonNullable<typeof pipeline>)('feature-extraction', 'Xenova/bge-base-en-v1.5', {
-    dtype: 'fp32',
-  });
-  return embedFn as NonNullable<typeof embedFn>;
+  const { env, pipeline } = await import('@huggingface/transformers');
+  if (writableCacheDir) {
+    env.cacheDir = writableCacheDir;
+  }
+  embedFn = (await (pipeline as (task: string, model: string, options?: { dtype?: string }) => Promise<EmbedFn>)(
+    'feature-extraction',
+    'Xenova/bge-base-en-v1.5',
+    { dtype: 'fp32' }
+  )) as EmbedFn;
+  return embedFn;
 }
 
 export async function generateEmbedding(text: string): Promise<number[]> {

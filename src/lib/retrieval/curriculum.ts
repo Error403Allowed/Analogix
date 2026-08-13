@@ -37,7 +37,16 @@ export class CurriculumRetriever {
   ): Promise<CurriculumSearchResult[]> {
     if (!query || query.trim().length === 0) return [];
 
-    const embedding = await generateEmbedding(query);
+    let embedding: number[];
+    try {
+      embedding = await generateEmbedding(query);
+    } catch (embedErr) {
+      console.warn(
+        '[CurriculumRetriever] Embedding unavailable, skipping curriculum RAG:',
+        embedErr instanceof Error ? embedErr.message : embedErr
+      );
+      return [];
+    }
     let supabase;
     try {
       // Curriculum content is public-domain reference data. Use the service role

@@ -527,7 +527,11 @@ if (process.env.NODE_ENV === "development") {
     });
 }
 export const getFormulaSheet = (subjectId: string) => FORMULA_SHEETS.find(s => s.subjectId === subjectId) || null;
-export const getFormulaSheetContext = (subjectId: string) => {
+// Build the human-readable sheet. `maxChars` (optional) caps the returned
+// string so oversized formula sheets cannot blow an AI provider's per-request
+// token budget. When capped, the highest-priority formulas (the full sheet is
+// already ordered most-useful first) are kept and the rest dropped.
+export const getFormulaSheetContext = (subjectId: string, maxChars?: number) => {
     const sheet = getFormulaSheet(subjectId);
     if (!sheet)
         return "";
@@ -542,6 +546,15 @@ export const getFormulaSheetContext = (subjectId: string) => {
         const extra = parts.length ? ` [${parts.join("; ")}]` : "";
         return `• ${f.name} (${f.topic})${extra}: ${f.description}`;
     });
-    return `Formula sheet for ${sheet.label}:\n${lines.join("\n")}`;
+    const header = `Formula sheet for ${sheet.label}:\n`;
+    if (!maxChars)
+        return `${header}${lines.join("\n")}`;
+    let content = header;
+    for (const line of lines) {
+        if (content.length + line.length + 1 > maxChars)
+            break;
+        content += line + "\n";
+    }
+    return content.trimEnd();
 };
 export default FORMULA_SHEETS;
