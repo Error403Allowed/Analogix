@@ -13,6 +13,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
+import { applyThemeByName, cycleLandingColor } from "@/utils/landingColorCycle";
 
 const accentColors: Record<string, { bg: string; text: string; border: string; tag: string }> = {
   blue:   { bg: "bg-blue-500/8",   text: "text-blue-600",   border: "hover:border-blue-300", tag: "bg-blue-500/10 text-blue-600" },
@@ -172,6 +173,17 @@ const Landing = () => {
   useEffect(() => {
     syncOnboardingFromDb();
   }, [syncOnboardingFromDb]);
+
+  // Cycle the site's main colour on every visit/refresh. Re-apply a beat later
+  // so ThemeSync's async DB-theme load can't override the freshly-cycled colour
+  // on first paint for logged-in users.
+  useEffect(() => {
+    const applied = cycleLandingColor();
+    const t = setTimeout(() => {
+      if (applied) applyThemeByName(applied);
+    }, 800);
+    return () => clearTimeout(t);
+  }, []);
 
   const handleNav = (path?: string, sectionId?: string) => {
     if (!isMounted || loading) return;

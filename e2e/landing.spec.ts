@@ -45,4 +45,24 @@ test.describe('Landing Page', () => {
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
     await expect(page.getByRole('heading', { name: 'AI Tutor' })).toBeVisible({ timeout: 10000 });
   });
+
+  test('cycles the landing page main colour on each refresh', async ({ page }) => {
+    const primaryHue = () =>
+      page.evaluate(() =>
+        getComputedStyle(document.documentElement).getPropertyValue('--p-h').trim()
+      );
+
+    await page.goto('/', { waitUntil: 'domcontentloaded', timeout: 15000 });
+    // Give the colour-cycle effect (and its re-apply timer) time to run.
+    await page.waitForTimeout(1200);
+    const first = await primaryHue();
+
+    await page.reload({ waitUntil: 'domcontentloaded', timeout: 15000 });
+    await page.waitForTimeout(1200);
+    const second = await primaryHue();
+
+    expect(first).toBeTruthy();
+    expect(second).toBeTruthy();
+    expect(second).not.toBe(first);
+  });
 });
