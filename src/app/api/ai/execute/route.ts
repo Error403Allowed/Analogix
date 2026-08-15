@@ -114,7 +114,7 @@ export async function POST(request: Request) {
     const lastMessage = messages[messages.length - 1]?.content || '';
     const retrievalResult = await retriever.retrieve({
       userId: userId,
-      query: lastMessage.includes('search') || lastMessage.includes('find') ? lastMessage : undefined,
+      query: lastMessage,
       scopes,
       subjectId: userContext.subjects?.[0],
     });

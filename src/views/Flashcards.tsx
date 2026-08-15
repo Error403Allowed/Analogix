@@ -30,6 +30,44 @@ type QuizAnswerRecord = QuizAnswerInput & {
   feedback?: string;
 };
 
+const persistCompletedQuiz = async (args: {
+  subjectId: string;
+  title: string;
+  difficulty: string;
+  questions: QuizQuestion[];
+  score: number;
+}) => {
+  try {
+    const { createClient } = await import("@/lib/supabase/client");
+    const { getAuthUser } = await import("@/utils/authCache");
+    const { clientIndexEntity } = await import("@/lib/rag/client-index");
+    const supabase = createClient();
+    const user = await getAuthUser();
+    if (!user) return;
+    const { data, error } = await supabase.from("quizzes").insert({
+      user_id: user.id,
+      subject_id: args.subjectId || "general",
+      title: args.title,
+      difficulty: args.difficulty || "intermediate",
+      questions: args.questions,
+      created_at: new Date().toISOString(),
+    }).select("id").single();
+    if (error) {
+      console.warn("[persistCompletedQuiz] save failed:", error);
+      return;
+    }
+    void clientIndexEntity({
+      entityType: "quiz",
+      entityId: String(data?.id ?? ""),
+      subjectId: args.subjectId || "general",
+      content: `${args.title}\n${args.questions.map(q => `Q: ${q.question}\n${q.options?.map(o => o.text).join(" | ") ?? ""}\nA: ${q.correctAnswer ?? ""}`).join("\n\n")}`,
+      metadata: { title: args.title, difficulty: args.difficulty, score: String(args.score) },
+    });
+  } catch (err) {
+    console.warn("[persistCompletedQuiz] failed:", err);
+  }
+};
+
 const clampQuizInteger = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, Math.round(value)));
 
@@ -495,6 +533,13 @@ export default function Flashcards() {
         ...quizQuestions.map(q => q.question),
       ].slice(-40);
       setQuizComplete(true);
+      void persistCompletedQuiz({
+        subjectId: quizSubject,
+        title: `Quiz: ${quizTopics || quizSubject}`,
+        difficulty: quizDifficulty,
+        questions: quizQuestions,
+        score,
+      });
     } else {
       setQuizCurrentQ(i => i + 1);
     }

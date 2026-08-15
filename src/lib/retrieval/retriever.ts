@@ -4,6 +4,7 @@ import { getRelatedEntities } from './graph';
 import { createToolsClient } from '@/lib/supabase/tools-client';
 import { createCurriculumRetriever } from './curriculum';
 import { generateEmbedding } from '@/lib/rag/embedder';
+import { searchEntities } from '@/lib/rag/indexer';
 import type { EntityType, RetrievedEntity, DocumentContext } from '@/types/workspace';
 
 interface EntityData {
@@ -94,7 +95,7 @@ export class WorkspaceRetriever {
       case 'calendar':
         return this.retrieveCalendarEvents(options, maxResults);
       case 'subjects':
-        return this.retrieveSubjects(maxResults);
+        return this.retrieveSubjects(options, maxResults);
       case 'memory':
         return this.retrieveMemory(options, maxResults);
       case 'curriculum':
@@ -155,7 +156,33 @@ export class WorkspaceRetriever {
     }));
   }
 
-  private async retrieveFlashcards(options: { subjectId?: string }, limit: number): Promise<RetrievedEntity[]> {
+  private async retrieveFlashcards(options: { query?: string; subjectId?: string }, limit: number): Promise<RetrievedEntity[]> {
+    if (options.query) {
+      const results = await searchEntities(options.query, this.userId, {
+        entityTypes: ['flashcard'],
+        subjectId: options.subjectId,
+        limit,
+      });
+      if (results.length > 0) {
+        return results.map((r) => ({
+          entity: {
+            id: r.entityId,
+            entity_type: 'flashcard_set' as EntityType,
+            workspace_id: this.userId,
+            entity_id: r.entityId,
+            entity_data: { title: r.title || 'Flashcards', content: r.content },
+            metadata: { title: r.title || 'Flashcards', subject_id: r.subjectId },
+            relationships: [],
+            tags: [],
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+          relevance_score: r.score,
+          highlight: r.content.slice(0, 200),
+        }));
+      }
+    }
+
     const filterResult = await filterByMetadata(this.userId, {
       subjectId: options.subjectId,
       entityTypes: ['flashcard_set'],
@@ -179,7 +206,33 @@ export class WorkspaceRetriever {
     }));
   }
 
-  private async retrieveQuizzes(options: { subjectId?: string }, limit: number): Promise<RetrievedEntity[]> {
+  private async retrieveQuizzes(options: { query?: string; subjectId?: string }, limit: number): Promise<RetrievedEntity[]> {
+    if (options.query) {
+      const results = await searchEntities(options.query, this.userId, {
+        entityTypes: ['quiz'],
+        subjectId: options.subjectId,
+        limit,
+      });
+      if (results.length > 0) {
+        return results.map((r) => ({
+          entity: {
+            id: r.entityId,
+            entity_type: 'quiz' as EntityType,
+            workspace_id: this.userId,
+            entity_id: r.entityId,
+            entity_data: { title: r.title || 'Quiz', content: r.content },
+            metadata: { title: r.title || 'Quiz', subject_id: r.subjectId },
+            relationships: [],
+            tags: [],
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+          relevance_score: r.score,
+          highlight: r.content.slice(0, 200),
+        }));
+      }
+    }
+
     const filterResult = await filterByMetadata(this.userId, {
       subjectId: options.subjectId,
       entityTypes: ['quiz'],
@@ -203,7 +256,33 @@ export class WorkspaceRetriever {
     }));
   }
 
-  private async retrieveFormulas(options: { subjectId?: string }, limit: number): Promise<RetrievedEntity[]> {
+  private async retrieveFormulas(options: { query?: string; subjectId?: string }, limit: number): Promise<RetrievedEntity[]> {
+    if (options.query) {
+      const results = await searchEntities(options.query, null, {
+        entityTypes: ['formula'],
+        subjectId: options.subjectId,
+        limit,
+      });
+      if (results.length > 0) {
+        return results.map((r) => ({
+          entity: {
+            id: r.entityId,
+            entity_type: 'formula' as EntityType,
+            workspace_id: '',
+            entity_id: r.entityId,
+            entity_data: { title: r.title || 'Formula', content: r.content },
+            metadata: { title: r.title || 'Formula', subject_id: r.subjectId },
+            relationships: [],
+            tags: [],
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+          relevance_score: r.score,
+          highlight: r.content.slice(0, 200),
+        }));
+      }
+    }
+
     const filterResult = await filterByMetadata(this.userId, {
       subjectId: options.subjectId,
       entityTypes: ['formula'],
@@ -227,7 +306,33 @@ export class WorkspaceRetriever {
     }));
   }
 
-  private async retrieveCalendarEvents(options: { subjectId?: string }, limit: number): Promise<RetrievedEntity[]> {
+  private async retrieveCalendarEvents(options: { query?: string; subjectId?: string }, limit: number): Promise<RetrievedEntity[]> {
+    if (options.query) {
+      const results = await searchEntities(options.query, this.userId, {
+        entityTypes: ['calendar'],
+        subjectId: options.subjectId,
+        limit,
+      });
+      if (results.length > 0) {
+        return results.map((r) => ({
+          entity: {
+            id: r.entityId,
+            entity_type: 'calendar_event' as EntityType,
+            workspace_id: this.userId,
+            entity_id: r.entityId,
+            entity_data: { title: r.title || 'Event', content: r.content },
+            metadata: { title: r.title || 'Event', subject_id: r.subjectId },
+            relationships: [],
+            tags: [],
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+          relevance_score: r.score,
+          highlight: r.content.slice(0, 200),
+        }));
+      }
+    }
+
     const filterResult = await filterByMetadata(this.userId, {
       subjectId: options.subjectId,
       entityTypes: ['calendar_event'],
@@ -251,7 +356,32 @@ export class WorkspaceRetriever {
     }));
   }
 
-  private async retrieveSubjects(limit: number): Promise<RetrievedEntity[]> {
+  private async retrieveSubjects(options: { query?: string }, limit: number): Promise<RetrievedEntity[]> {
+    if (options.query) {
+      const results = await searchEntities(options.query, this.userId, {
+        entityTypes: ['subject'],
+        limit,
+      });
+      if (results.length > 0) {
+        return results.map((r) => ({
+          entity: {
+            id: r.entityId,
+            entity_type: 'subject' as EntityType,
+            workspace_id: this.userId,
+            entity_id: r.entityId,
+            entity_data: { name: r.title || r.entityId, content: r.content },
+            metadata: { title: r.title || r.entityId },
+            relationships: [],
+            tags: [],
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+          relevance_score: r.score,
+          highlight: r.content.slice(0, 200),
+        }));
+      }
+    }
+
     const subjects = await getSubjects(this.userId);
 
     return subjects.slice(0, limit).map(s => ({
@@ -318,6 +448,30 @@ export class WorkspaceRetriever {
   }
 
   private async retrieveMemory(options: { query?: string }, limit: number): Promise<RetrievedEntity[]> {
+    if (options.query) {
+      const results = await searchEntities(options.query, this.userId, {
+        entityTypes: ['memory'],
+        limit,
+      });
+      if (results.length > 0) {
+        return results.map((r) => ({
+          entity: {
+            id: r.entityId,
+            entity_type: 'user_memory' as EntityType,
+            workspace_id: this.userId,
+            entity_id: r.entityId,
+            entity_data: { content: r.content, memory_type: r.metadata?.memory_type || 'fact' },
+            metadata: { title: r.title || 'Memory' },
+            relationships: [],
+            tags: [],
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+          relevance_score: r.score,
+        }));
+      }
+    }
+
     const supabase = createToolsClient();
 
     const { data: memories } = await supabase

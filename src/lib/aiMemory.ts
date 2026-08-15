@@ -357,15 +357,30 @@ export async function extractMemoriesFromConversation(
 
   // Save high-confidence memories
   for (const memory of potentialMemories.slice(0, 3)) {
-    const { error } = await supabase.from("ai_memory_fragments").insert({
+    const { data, error } = await supabase.from("ai_memory_fragments").insert({
       user_id: userId,
       content: memory.content,
       memory_type: memory.type,
       importance: 0.6,
       session_id: null,
-    });
+    }).select("id").single();
     if (error) {
       console.error("[aiMemory] Failed to save memory:", error.message);
+      continue;
+    }
+
+    // Index for semantic retrieval (synchronous, best-effort).
+    try {
+      const { indexEntity } = await import("@/lib/rag/indexer");
+      await indexEntity({
+        ownerUserId: userId,
+        entityType: "memory",
+        entityId: String(data?.id ?? ""),
+        content: memory.content,
+        metadata: { title: memory.type, memory_type: memory.type },
+      });
+    } catch (err) {
+      console.warn("[aiMemory] Index failed:", err);
     }
   }
 }

@@ -40,6 +40,21 @@ export async function storeMemory(
       }
     }
 
+    // Index for semantic retrieval (synchronous, best-effort).
+    try {
+      const { indexEntity } = await import('@/lib/rag/indexer');
+      await indexEntity({
+        ownerUserId: userId,
+        entityType: 'memory',
+        entityId: data?.id ?? '',
+        subjectId: params.subjectId,
+        content: params.content,
+        metadata: { title: params.memoryType, memory_type: params.memoryType },
+      });
+    } catch (err) {
+      console.warn('[storeMemory] Index failed:', err);
+    }
+
     return { success: true, memoryId: data?.id };
   } catch (err) {
     console.error('[storeMemory] Exception:', err);

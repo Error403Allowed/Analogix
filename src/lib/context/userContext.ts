@@ -85,7 +85,7 @@ export async function buildPerformanceContext(
 ): Promise<string> {
     const parts: string[] = [];
 
-    let recent: Array<{ subject_id: string; topic: string; score: number; total_questions: number; created_at: string }> = [];
+    let recent: Array<{ subject_id: string; topic: string; score: number; total_questions: number; created_at: string }>;
     try {
         const { data } = await supabase
             .from("quiz_performance")
@@ -111,8 +111,8 @@ export async function buildPerformanceContext(
         parts.push("RECENT QUIZ RESULTS:\n" + rows.join("\n"));
     }
 
-    let weakAreas: Array<{ subject_id: string; content: string }> = [];
-    let strengths: Array<{ subject_id: string; content: string }> = [];
+    let weakAreas: Array<{ subject_id: string; content: string }>;
+    let strengths: Array<{ subject_id: string; content: string }>;
     try {
         const { data: edu } = await supabase
             .from("educational_memory")
@@ -151,7 +151,7 @@ export async function buildAchievementsContext(
     userId: string,
     limit = 8,
 ): Promise<string> {
-    let rows: Array<{ achievement_id: string; unlocked_at: string }> = [];
+    let rows: Array<{ achievement_id: string; unlocked_at: string }>;
     try {
         const { data } = await supabase
             .from("achievements")
@@ -180,7 +180,7 @@ export async function buildFlashcardContext(
     supabase: { from: (table: string) => any },
     userId: string,
 ): Promise<string> {
-    let sets: Array<{ id: string; name: string; subject_id: string }> = [];
+    let sets: Array<{ id: string; name: string; subject_id: string }>;
     try {
         sets = (await listFlashcardSets(userId, supabase)) ?? [];
     }
@@ -188,7 +188,7 @@ export async function buildFlashcardContext(
         sets = [];
     }
     if (sets.length === 0) return "";
-    let dueNow = 0;
+    let dueNow: number;
     try {
         const { count } = await supabase
             .from("flashcards")
@@ -213,7 +213,7 @@ export async function buildStudyStatsContext(
     supabase: { from: (table: string) => any },
     userId: string,
 ): Promise<string> {
-    let stats: { current_streak: number; accuracy: number; quizzes_done: number; top_subject?: string } | null = null;
+    let stats: { current_streak: number; accuracy: number; quizzes_done: number; top_subject?: string } | null;
     try {
         const { data } = await supabase
             .from("user_stats")

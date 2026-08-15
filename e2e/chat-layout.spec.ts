@@ -62,6 +62,7 @@ test.describe("Chat layout (desktop)", () => {
     await page.route("**/api/groq/chat-stream", (route) => {
       const encoder = new TextEncoder();
       let closed = false;
+      let interval: ReturnType<typeof setInterval> | null = null;
       const stream = new ReadableStream({
         start(controller) {
           const tick = () => {
@@ -69,12 +70,11 @@ test.describe("Chat layout (desktop)", () => {
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ choices: [{ delta: { content: "" } }] })}\n\n`));
           };
           tick();
-          const interval = setInterval(tick, 250);
-          (stream as any)._interval = interval;
+          interval = setInterval(tick, 250);
         },
         cancel() {
           closed = true;
-          clearInterval((stream as any)._interval);
+          if (interval) clearInterval(interval);
         },
       });
       route.fulfill({
@@ -92,7 +92,8 @@ test.describe("Chat layout (desktop)", () => {
     await expect(loader).toBeVisible({ timeout: 15000 });
     const loaderBox = loader.locator("xpath=..");
     await expect(loaderBox.locator("svg")).toBeVisible();
-    await expect(loader.locator('span[aria-hidden] span')).toHaveCount(3);
+    await expect(loaderBox.locator("[data-node]")).toHaveCount(4);
+    await expect(loaderBox.locator("[data-pulse]")).toHaveCount(2);
   });
 
   test("neural loader is animated, not a static image", async ({ page }) => {

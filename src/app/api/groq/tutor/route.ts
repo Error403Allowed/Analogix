@@ -59,6 +59,19 @@ Provide a helpful answer based on the material. If the answer isn't in the mater
       await updateDocument(user.id, supabase, `${studyPackageId}_tutor_history`, {
         content: responseStr,
       });
+      // Index the tutor history doc for semantic retrieval (best-effort).
+      try {
+        const { indexEntity } = await import("@/lib/rag/indexer");
+        await indexEntity({
+          ownerUserId: user.id,
+          entityType: "document",
+          entityId: `${studyPackageId}_tutor_history`,
+          content: responseStr,
+          metadata: { title: "Tutor History" },
+        });
+      } catch (err) {
+        console.warn("[/api/groq/tutor] Index failed:", err);
+      }
     }
 
     return NextResponse.json({

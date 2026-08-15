@@ -104,19 +104,24 @@ export async function filterByMetadata(
     promises.push(
       (async () => {
         const { data } = await supabase
-          .from('documents')
-          .select('id, subject_id, title, created_at')
-          .eq('owner_user_id', userId)
-          .eq('role', 'quiz') as { data: DocumentRow[] | null };
+          .from('quizzes')
+          .select('id, subject_id, title, questions, difficulty, created_at')
+          .eq('user_id', userId) as { data: Array<{ id: string; subject_id: string; title: string; questions: unknown; difficulty?: string; created_at: string }> | null };
         let filtered = data || [];
         if (subjectId) filtered = filtered.filter((d) => d.subject_id === subjectId);
-        results.quizzes = filtered.map((d) => ({
-          id: d.id,
-          subject_id: d.subject_id,
-          title: d.title || 'Quiz',
-          question_count: 0,
-          difficulty: 'intermediate' as const,
-        }));
+        results.quizzes = filtered.map((d) => {
+          const rawQuestions = d.questions;
+          const questions = typeof rawQuestions === "string"
+            ? (JSON.parse(rawQuestions) as unknown[])
+            : (Array.isArray(rawQuestions) ? rawQuestions : []);
+          return {
+            id: d.id,
+            subject_id: d.subject_id,
+            title: d.title || 'Quiz',
+            question_count: questions.length,
+            difficulty: (d.difficulty as QuizContext['difficulty']) || 'intermediate' as const,
+          };
+        });
       })()
     );
   }

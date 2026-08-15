@@ -202,18 +202,37 @@ case 'create_quiz': {
 
   private async executeOperation(operation: WorkspaceOperation): Promise<void> {
     const supabase = this.getClient();
-    const payload = operation.payload;
+    const payload = operation.payload as Record<string, any>;
 
     switch ((operation as any).operation_type) {
-      case 'create_document':
+      case 'create_document': {
+        const now = new Date().toISOString();
+        const docId = `doc_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
         await supabase.from('documents').insert({
+          id: docId,
           owner_user_id: this.userId,
           title: payload.title || 'Untitled',
           content: payload.content || '',
           subject_id: payload.subjectId || 'general',
           role: payload.role || 'document',
+          created_at: now,
+          updated_at: now,
         } as any);
+        try {
+          const { indexEntity } = await import('@/lib/rag/indexer');
+          await indexEntity({
+            ownerUserId: this.userId,
+            entityType: 'document',
+            entityId: docId,
+            subjectId: payload.subjectId || 'general',
+            content: payload.title ? `${payload.title}\n${payload.content || ''}` : (payload.content || ''),
+            metadata: { title: payload.title || 'Untitled' },
+          });
+        } catch (err) {
+          console.warn('[MutationEngine] Document index failed:', err);
+        }
         break;
+      }
 
       case 'create_flashcards': {
         const now = new Date().toISOString();
@@ -228,20 +247,56 @@ case 'create_quiz': {
           updated_at: now,
         }));
         await supabase.from('documents').insert(cards as any);
+        try {
+          const { indexEntity } = await import('@/lib/rag/indexer');
+          const setId = `set_${Date.now()}`;
+          const cardText = (payload.cards || []).map((c: { front: string; back: string }) => `Q: ${c.front}\nA: ${c.back}`).join('\n\n');
+          await indexEntity({
+            ownerUserId: this.userId,
+            entityType: 'flashcard',
+            entityId: setId,
+            subjectId: payload.subjectId,
+            content: `${payload.setName || 'Flashcards'}\n${cardText}`,
+            metadata: { title: payload.setName || 'Flashcards' },
+          });
+        } catch (err) {
+          console.warn('[MutationEngine] Flashcard index failed:', err);
+        }
         break;
       }
 
-      case 'store_memory':
+      case 'store_memory': {
+        const now = new Date().toISOString();
+        const memId = `mem_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
         await supabase.from('ai_memory_fragments').insert({
+          id: memId,
           user_id: this.userId,
           content: payload.content,
           memory_type: payload.memoryType || 'fact',
           importance: payload.importance || 0.5,
+          created_at: now,
         } as any);
+        try {
+          const { indexEntity } = await import('@/lib/rag/indexer');
+          await indexEntity({
+            ownerUserId: this.userId,
+            entityType: 'memory',
+            entityId: memId,
+            subjectId: payload.subjectId,
+            content: payload.content,
+            metadata: { title: payload.memoryType || 'fact', memory_type: payload.memoryType || 'fact' },
+          });
+        } catch (err) {
+          console.warn('[MutationEngine] Memory index failed:', err);
+        }
         break;
+      }
 
-      case 'add_calendar_event':
+      case 'add_calendar_event': {
+        const now = new Date().toISOString();
+        const evtId = `evt_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
         await supabase.from('events').insert({
+          id: evtId,
           user_id: this.userId,
           title: payload.title,
           date: payload.date,
@@ -249,8 +304,23 @@ case 'create_quiz': {
           type: payload.type || 'event',
           subject: payload.subject,
           description: payload.description,
+          created_at: now,
         } as any);
+        try {
+          const { indexEntity } = await import('@/lib/rag/indexer');
+          await indexEntity({
+            ownerUserId: this.userId,
+            entityType: 'calendar',
+            entityId: evtId,
+            subjectId: payload.subject,
+            content: [payload.title, payload.description].filter(Boolean).join('\n'),
+            metadata: { title: payload.title },
+          });
+        } catch (err) {
+          console.warn('[MutationEngine] Calendar index failed:', err);
+        }
         break;
+      }
 
       default:
         console.log(`[MutationEngine] Executing ${(operation as any).operation_type} - using tool handlers instead`);

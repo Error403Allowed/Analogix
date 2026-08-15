@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/client";
 import { getAuthUser } from "./authCache";
 import { AppEvent } from "@/types/events";
 import { toast } from "sonner";
+import { clientIndexEntity, clientUnindexEntity } from "@/lib/rag/client-index";
 
 export const eventStore = {
   getAll: async (): Promise<AppEvent[]> => {
@@ -38,7 +39,7 @@ export const eventStore = {
     const supabase = createClient();
     if (!user) return;
 
-    const { error } = await supabase.from("events").insert({
+    const { data, error } = await supabase.from("events").insert({
       user_id: user.id,
       title: event.title,
       date: event.date,
@@ -47,13 +48,20 @@ export const eventStore = {
       subject: event.subject,
       description: event.description,
       source: event.source,
-    });
+    }).select("id").single();
     if (error) {
       console.warn("[eventStore] add failed:", error);
       toast.error("Failed to add event");
       return;
     }
     window.dispatchEvent(new Event("eventsUpdated"));
+    void clientIndexEntity({
+      entityType: "calendar",
+      entityId: String(data?.id ?? ""),
+      subjectId: event.subject,
+      content: [event.title, event.description].filter(Boolean).join("\n"),
+      metadata: { title: event.title },
+    });
   },
 
   addMultiple: async (newEvents: AppEvent[]): Promise<void> => {
@@ -61,7 +69,7 @@ export const eventStore = {
     const supabase = createClient();
     if (!user) return;
 
-    const { error } = await supabase.from("events").insert(
+    const { data, error } = await supabase.from("events").insert(
       newEvents.map(e => ({
         user_id: user.id,
         title: e.title,
@@ -72,13 +80,25 @@ export const eventStore = {
         description: e.description,
         source: e.source,
       }))
-    );
+    ).select("id");
     if (error) {
       console.warn("[eventStore] addMultiple failed:", error);
       toast.error("Failed to add events");
       return;
     }
     window.dispatchEvent(new Event("eventsUpdated"));
+    const inserted = data ?? [];
+    newEvents.forEach((e, i) => {
+      const id = inserted[i]?.id;
+      if (!id) return;
+      void clientIndexEntity({
+        entityType: "calendar",
+        entityId: String(id),
+        subjectId: e.subject,
+        content: [e.title, e.description].filter(Boolean).join("\n"),
+        metadata: { title: e.title },
+      });
+    });
   },
 
   update: async (
@@ -111,6 +131,13 @@ export const eventStore = {
     }
 
     window.dispatchEvent(new Event("eventsUpdated"));
+    void clientIndexEntity({
+      entityType: "calendar",
+      entityId: id,
+      subjectId: updates.subject,
+      content: [updates.title, updates.description].filter(Boolean).join("\n"),
+      metadata: updates.title ? { title: updates.title } : undefined,
+    });
   },
 
   remove: async (id: string): Promise<void> => {
@@ -126,6 +153,7 @@ export const eventStore = {
     }
     toast.success("Event deleted");
     window.dispatchEvent(new Event("eventsUpdated"));
+    void clientUnindexEntity("calendar", id);
   },
 
   clearAll: async (): Promise<void> => {
@@ -133,6 +161,7 @@ export const eventStore = {
     const supabase = createClient();
     if (!user) return;
 
+    const { data: all } = await supabase.from("events").select("id").eq("user_id", user.id);
     const { error } = await supabase.from("events").delete().eq("user_id", user.id);
     if (error) {
       console.warn("[eventStore] clearAll failed:", error);
@@ -140,5 +169,8 @@ export const eventStore = {
       return;
     }
     window.dispatchEvent(new Event("eventsUpdated"));
+    for (const row of (all ?? [])) {
+      void clientUnindexEntity("calendar", row.id);
+    }
   },
 };

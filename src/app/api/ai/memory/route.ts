@@ -122,6 +122,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Failed to save memory" }, { status: 500 });
     }
 
+    // Index for semantic retrieval (synchronous, best-effort).
+    const { indexEntity } = await import("@/lib/rag/indexer");
+    await indexEntity({
+      ownerUserId: user.id,
+      entityType: "memory",
+      entityId: String(data?.id || content),
+      content: String(content),
+      metadata: { title: memory_type, memory_type },
+    }).catch((err) => console.warn("[POST /api/ai/memory] Index failed:", err));
+
     return NextResponse.json(data);
   } catch (error) {
     console.error("[POST /api/ai/memory] Unexpected error:", error);
@@ -174,6 +184,12 @@ export async function DELETE(request: Request) {
       console.error("[DELETE /api/ai/memory] Error:", error);
       return NextResponse.json({ error: "Failed to delete memory" }, { status: 500 });
     }
+
+    // Remove from the semantic index.
+    const { unindexEntity } = await import("@/lib/rag/indexer");
+    await unindexEntity("memory", memoryId, user.id).catch((err) =>
+      console.warn("[DELETE /api/ai/memory] Unindex failed:", err)
+    );
 
     return NextResponse.json({ success: true });
   } catch (error) {

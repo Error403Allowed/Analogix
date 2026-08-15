@@ -71,6 +71,19 @@ async function handleAddFlashcards(supabase: any, userId: any, action: any, defa
         }
         try {
             const setData = await createFlashcardSet(userId, supabase, { subjectId, name: setName, cards });
+            try {
+                const { indexEntity } = await import("@/lib/rag/indexer");
+                await indexEntity({
+                    ownerUserId: userId,
+                    entityType: "flashcard",
+                    entityId: String(setData.id),
+                    subjectId,
+                    content: `${setName}\n${cards.map((c: any) => `Q: ${c.front}\nA: ${c.back}`).join("\n\n")}`,
+                    metadata: { title: setName },
+                });
+            } catch (indexErr) {
+                console.warn("[handleAddFlashcards] Index failed:", indexErr);
+            }
             return {
                 type: "add_flashcards",
                 status: "success",
@@ -92,6 +105,19 @@ async function handleAddFlashcards(supabase: any, userId: any, action: any, defa
                     .single();
                 if (existingSet) {
                     const result = await createFlashcards(userId, supabase, { setId: existingSet.id, cards }, 50);
+                    try {
+                        const { indexEntity } = await import("@/lib/rag/indexer");
+                        await indexEntity({
+                            ownerUserId: userId,
+                            entityType: "flashcard",
+                            entityId: String(existingSet.id),
+                            subjectId,
+                            content: `${setName}\n${cards.map((c: any) => `Q: ${c.front}\nA: ${c.back}`).join("\n\n")}`,
+                            metadata: { title: setName },
+                        });
+                    } catch (indexErr) {
+                        console.warn("[handleAddFlashcards] Index failed:", indexErr);
+                    }
                     return {
                         type: "add_flashcards",
                         status: "success",

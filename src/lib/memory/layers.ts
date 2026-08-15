@@ -56,6 +56,18 @@ export class MemorySystem {
       .single() as { data: { id: string } | null; error: { message: string } | null };
 
     if (error) throw new Error(`Failed to store memory: ${error.message}`);
+
+    // Index for semantic retrieval (synchronous, best-effort).
+    const { indexEntity } = await import('@/lib/rag/indexer');
+    await indexEntity({
+      ownerUserId: this.userId,
+      entityType: 'memory',
+      entityId: data?.id ?? '',
+      subjectId: options?.subjectId,
+      content,
+      metadata: { title: type, memory_type: type },
+    }).catch((err) => console.warn('[MemorySystem] Index failed:', err));
+
     return data?.id ?? '';
   }
 

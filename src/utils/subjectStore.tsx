@@ -2,6 +2,7 @@
 import { createClient } from "@/lib/supabase/client";
 import { EMPTY_TIPTAP_DOC, TIPTAP_CONTENT_FORMAT, } from "@/lib/document-content";
 import { getAuthUser } from "./authCache";
+import { clientIndexEntity, clientUnindexEntity } from "@/lib/rag/client-index";
 // Alias so existing code in this file needs no changes
 const getUser = getAuthUser;
 
@@ -273,6 +274,16 @@ export const subjectStore = {
         // Invalidate cache so next read fetches fresh data from Supabase
         invalidateSubjectCache(subjectId);
         window.dispatchEvent(new Event("subjectDataUpdated"));
+        const subjectContent = [updated.notes?.title, updated.notes?.content].filter(Boolean).join("\n").trim();
+        if (subjectContent) {
+            void clientIndexEntity({
+                entityType: "subject",
+                entityId: subjectId,
+                subjectId,
+                content: subjectContent,
+                metadata: { title: updated.notes?.title || subjectId },
+            });
+        }
     },
     addMark: async (subjectId: string, mark: any) => {
         const current = await subjectStore.getSubject(subjectId);
@@ -329,7 +340,15 @@ export const subjectStore = {
         }
         invalidateSubjectCache(subjectId);
         window.dispatchEvent(new Event("subjectDataUpdated"));
-        return normalizeDocumentRow(data);
+        const created = normalizeDocumentRow(data);
+        void clientIndexEntity({
+            entityType: "document",
+            entityId: String(created.id),
+            subjectId,
+            content: `${created.title}\n${created.contentText || created.content || ""}`,
+            metadata: { title: created.title },
+        });
+        return created;
     },
     updateDocument: async (subjectId: string, docId: string, updates: Partial<SubjectDocumentItem>) => {
         const user = await getUser();
@@ -368,6 +387,14 @@ export const subjectStore = {
         }
         invalidateSubjectCache(subjectId);
         window.dispatchEvent(new Event("subjectDataUpdated"));
+        const docTitle = typeof updates.title === "string" ? updates.title : undefined;
+        void clientIndexEntity({
+            entityType: "document",
+            entityId: docId,
+            subjectId,
+            content: `${docTitle ?? ""}\n${updates.contentText ?? updates.content ?? ""}`,
+            metadata: docTitle ? { title: docTitle } : undefined,
+        });
     },
     removeDocument: async (subjectId: string, docId: string) => {
         const supabase = createClient();
@@ -382,6 +409,7 @@ export const subjectStore = {
         }
         invalidateSubjectCache(subjectId);
         window.dispatchEvent(new Event("subjectDataUpdated"));
+        void clientUnindexEntity("document", docId);
     },
     duplicateDocument: async (subjectId: string, docId: string) => {
         const user = await getUser();
@@ -420,7 +448,15 @@ export const subjectStore = {
         }
         invalidateSubjectCache(subjectId);
         window.dispatchEvent(new Event("subjectDataUpdated"));
-        return normalizeDocumentRow(data);
+        const dupDoc = normalizeDocumentRow(data);
+        void clientIndexEntity({
+            entityType: "document",
+            entityId: String(dupDoc.id),
+            subjectId,
+            content: `${dupDoc.title}\n${dupDoc.contentText ?? dupDoc.content ?? ""}`,
+            metadata: { title: dupDoc.title },
+        });
+        return dupDoc;
     },
     updateHomework: async (subjectId: string, homework: SubjectHomework[]) => {
         const current = await subjectStore.getSubject(subjectId);

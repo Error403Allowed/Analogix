@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/client";
 import { getAuthUser } from "./authCache";
+import { clientIndexEntity, clientUnindexEntity } from "@/lib/rag/client-index";
 // ── SM-2 spaced repetition ────────────
 interface SM2Card { intervalDays: number; easeFactor: number; repetitions: number; }
 interface SM2Result { intervalDays: number; easeFactor: number; repetitions: number; nextReview: string; }
@@ -68,6 +69,43 @@ const broadcastChange = () => {
 export type Flashcard = ReturnType<typeof toCard>;
 export type FlashcardSet = ReturnType<typeof toSet>;
 export type FlashcardRating = number;
+
+const reindexSet = async (setId: string) => {
+    if (!setId) return;
+    const user = await getAuthUser();
+    if (!user) return;
+    const supabase = createClient();
+    const { data: setRow } = await supabase
+        .from("flashcard_sets")
+        .select("*")
+        .eq("id", setId)
+        .eq("user_id", user.id)
+        .maybeSingle();
+    if (!setRow) {
+        await clientUnindexEntity("flashcard", setId);
+        return;
+    }
+    const { data: cards } = await supabase
+        .from("flashcards")
+        .select("*")
+        .eq("set_id", setId)
+        .eq("user_id", user.id);
+    const cardText = ((cards || []) as FlashcardRow[])
+        .map(c => `Q: ${c.front}\nA: ${c.back}`)
+        .join("\n\n");
+    const content = [setRow.name, cardText].filter(Boolean).join("\n");
+    if (!content) {
+        await clientUnindexEntity("flashcard", setId);
+        return;
+    }
+    await clientIndexEntity({
+        entityType: "flashcard",
+        entityId: setId,
+        subjectId: setRow.subject_id,
+        content,
+        metadata: { title: setRow.name || "Flashcard Set" },
+    });
+};
 // ── Store ─────────────────────────────
 export const flashcardStore = {
     // ── Sets ──────────────────────────
@@ -102,7 +140,9 @@ export const flashcardStore = {
             return null;
         }
         broadcastChange();
-        return toSet(data);
+        const set = toSet(data);
+        void reindexSet(set.id);
+        return set;
     },
     renameSet: async (setId: string, name: string) => {
         const user = await getAuthUser();
@@ -117,6 +157,7 @@ export const flashcardStore = {
         if (error)
             console.warn("[flashcardStore] renameSet failed:", error);
         broadcastChange();
+        void reindexSet(setId);
     },
     deleteSet: async (setId: string) => {
         const user = await getAuthUser();
@@ -132,6 +173,7 @@ export const flashcardStore = {
         if (error)
             console.warn("[flashcardStore] deleteSet failed:", error);
         broadcastChange();
+        void clientUnindexEntity("flashcard", setId);
     },
     // ── Cards ─────────────────────────
     getAll: async () => {
@@ -221,6 +263,9 @@ export const flashcardStore = {
             return [];
         }
         broadcastChange();
+        for (const setId of new Set(newCards.map((c: any) => c.setId).filter(Boolean))) {
+            void reindexSet(setId);
+        }
         return newCards;
     },
     /**
@@ -264,6 +309,9 @@ export const flashcardStore = {
         }
         console.log(`[flashcardStore] Removed ${duplicates.length} duplicate cards`);
         broadcastChange();
+        for (const setId of new Set(duplicates.map((c: any) => c.setId).filter(Boolean))) {
+            void reindexSet(setId);
+        }
         return duplicates.length;
     },
     /**
@@ -302,6 +350,9 @@ export const flashcardStore = {
         }
         console.log(`[flashcardStore] Removed ${orphans.length} orphaned cards`);
         broadcastChange();
+        for (const setId of new Set(orphans.map((c: any) => c.setId).filter(Boolean))) {
+            void reindexSet(String(setId));
+        }
         return orphans.length;
     },
     review: async (cardId: string, rating: number) => {
@@ -337,17 +388,25 @@ export const flashcardStore = {
         if (error)
             console.warn("[flashcardStore] update failed:", error);
         broadcastChange();
+        const all = await flashcardStore.getAll();
+        const card = all.find((c: any) => c.id === cardId);
+        if (card?.setId)
+            void reindexSet(card.setId);
     },
     delete: async (cardId: string) => {
         const user = await getAuthUser();
         if (!user)
             return;
         const supabase = createClient();
+        const all = await flashcardStore.getAll();
+        const card = all.find((c: any) => c.id === cardId);
         const { error } = await supabase.from("flashcards").delete()
             .eq("id", cardId).eq("user_id", user.id);
         if (error)
             console.warn("[flashcardStore] delete failed:", error);
         broadcastChange();
+        if (card?.setId)
+            void reindexSet(card.setId);
     },
 };
 //# sourceMappingURL=flashcardStore.js.map
