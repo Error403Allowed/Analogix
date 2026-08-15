@@ -1,6 +1,5 @@
 import { getAchievement } from "@analogix/shared/achievements";
 import { listFlashcardSets } from "@analogix/shared/tools/handlers";
-import { getSubjects } from "@/lib/retrieval/metadata";
 
 /**
  * Which on-demand user-data scopes a message requires. Loading is intent-gated:
@@ -18,7 +17,7 @@ export interface ContextIntents {
 const INTENT_PATTERNS: Record<keyof ContextIntents, RegExp> = {
     calendar: /\b(schedule|scheduling|calendar|timeslot|timeslots|timetable|event|events|deadline|deadlines|due\b|upcoming|next week|this week|tomorrow|today|weekly|exam\b|exams|test date|assignment|assignments|homework|lesson|lessons|when is|what'?s (on|next|coming up)|plan|plans? for|organi[sz]e)\b/i,
     documents: /\b(document|documents|docs?|notes?|workspace|essay|draft|study guide|saved|writing|paragraph|report|composition)\b/i,
-    performance: /\b(quiz\b|quizzes|score|scores|result|results|marks?|weak\b|weakness|weaknesses|struggle|struggling|improve|improvement|improving|progress|accuracy|percent|percentage|performance|grades?|improve my)\b/i,
+    performance: /\b(quiz\b|quizzes|score|scores|result|results|marks?|weak(est|ness|nesses)?\b|struggle|struggling|improve|improvement|improving|progress|accuracy|percent|percentage|performance|grades?|improve my)\b/i,
     achievements: /\b(achievement|achievements|badge|badges|streak|streaks|troph|trophies|unlock|unlocked|milestone|award|awards)\b/i,
     flashcards: /\b(flashcard|flashcards|flash cards|spaced repetition|revision card|revision cards)\b/i,
 };
@@ -61,8 +60,11 @@ export async function fetchEnrolledSubjects(
     }
     if (enrolled.length === 0) {
         try {
-            const subjects = await getSubjects(userId);
-            enrolled = subjects.map(s => s.id).filter(Boolean);
+            const { data: subjectRows } = await supabase
+                .from("subject_data")
+                .select("subject_id")
+                .eq("user_id", userId);
+            enrolled = (subjectRows ?? []).map((r: any) => r.subject_id).filter(Boolean);
         }
         catch {
             enrolled = [];
