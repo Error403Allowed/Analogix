@@ -565,7 +565,6 @@ export function useChat() {
     setMessages(prev => [...prev, userMessage]);
     setInput("");
     fileAttach.setAttachedFiles([]);
-    scroll.lockedToBottomRef.current = true;
     requestAnimationFrame(() => scroll.scrollToBottom("smooth"));
     setIsTyping(true);
 
@@ -674,7 +673,6 @@ export function useChat() {
       }]);
       setStreamingId(responseId);
       setStreamingContent("");
-      scroll.lockedToBottomRef.current = true;
 
       let accumulated = "";
       let streamError: Error | null;

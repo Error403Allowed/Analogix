@@ -106,6 +106,7 @@ const Chat = () => {
     handleGenerateFlashcards,
     handleGenerateQuiz,
     updateScrollButton,
+    contentRef,
     handleSend,
     handleNewTopic,
     handleSwitchThread,
@@ -299,9 +300,11 @@ const Chat = () => {
                 onScroll={updateScrollButton}
                 className="absolute inset-0 overflow-y-auto min-h-0 chat-scroll"
               >
-                <div className={`mx-auto max-w-4xl w-full px-4 flex flex-col pt-4 sm:pt-4 ${
+                <div
+                  ref={contentRef}
+                  className={`mx-auto max-w-4xl w-full px-4 flex flex-col pt-4 sm:pt-4 ${
                   messages.length === 0 && !isTyping
-                    ? "min-h-full pb-6"
+                    ? "min-h-full pb-4"
                     : "pb-44 sm:pb-40 space-y-6"
                 }`}>
                   {/* Empty state - shown before any messages */}
@@ -318,7 +321,7 @@ const Chat = () => {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.05, duration: 0.5, ease: "easeOut" }}
-                        className="text-center mb-5"
+                        className="text-center mb-3"
                       >
                         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground/90 mb-2">
                           {userName ? `What are you studying, ${userName.split(" ")[0]}?` : "What are you studying?"}
@@ -330,7 +333,7 @@ const Chat = () => {
                         initial={{ opacity: 0, y: 12 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.25, duration: 0.4 }}
-                        className="w-full max-w-xl mb-6"
+                        className="w-full max-w-xl mb-4"
                       >
                         <p className="text-[11px] font-semibold text-muted-foreground/40 uppercase tracking-widest text-center mb-3">
                           Try asking about
@@ -357,7 +360,7 @@ const Chat = () => {
                                 <p className="text-xs font-medium text-foreground/80 group-hover:text-foreground transition-colors">
                                   {prompt.label}
                                 </p>
-                                <p className="text-[11px] text-muted-foreground/50 mt-0.5 line-clamp-1">
+                                <p className="text-[11px] text-muted-foreground/50 mt-0.5 leading-relaxed line-clamp-2">
                                   {prompt.prompt}
                                 </p>
                               </div>
