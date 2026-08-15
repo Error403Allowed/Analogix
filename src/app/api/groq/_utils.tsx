@@ -684,7 +684,16 @@ export const callGroqChatStream = async (payload: any, taskType = "default", use
                         console.warn(`[Groq] Streaming request timeout for ${model} after 90s`);
                         controller!.abort();
                     }, 90000);
-                    const response = await fetch(GROQ_CHAT_URL, {
+                    // GPT-OSS models reason by default, and reasoning tokens count against the same
+// output budget as the visible answer. "low" effort keeps the chain-of-thought
+// short so general chat has room to actually answer instead of truncating.
+// Qwen only accepts "none"|"default", so it keeps full thinking - the
+// chat-stream route reserves an answer floor in the token budget for that.
+const getReasoningEffort = (model: string): string | undefined => {
+    if (model.toLowerCase().includes("qwen")) return "default";
+    return payload.reasoning_effort ?? "low";
+};
+ const response = await fetch(GROQ_CHAT_URL, {
                         method: "POST",
                         headers: {
                             Authorization: `Bearer ${apiKey}`,
@@ -696,6 +705,7 @@ export const callGroqChatStream = async (payload: any, taskType = "default", use
                             messages: payload.messages,
                             max_tokens: safeMaxTokens,
                             temperature: payload.temperature,
+                            reasoning_effort: getReasoningEffort(model),
                         }),
                         signal: controller.signal,
                     });

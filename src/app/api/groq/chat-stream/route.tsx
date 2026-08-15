@@ -682,11 +682,6 @@ export async function POST(request: Request) {
             /\b(detailed|comprehensive|essay|report|study guide|lesson plan|long answer)\b/i.test(latestUserMsg);
         const SYSTEM_BUDGET = 2200;
         const targetMaxTokens = isSimpleGreeting ? 300 : wantsLongResponse ? OUTPUT_HARD_CAP : (isQwenModel ? 8000 : 4096);
-        // Build initial messages
-        const finalMessages = [
-            { role: "system", content: fullSystemPrompt },
-            ...recentMsgs.filter((m: any) => m.role !== "system"),
-        ];
         // NOTE: the Groq org TPM cap is 8000. Every estimate below uses ~4.5
         // chars/token, which is deliberately conservative (the prompt measures
         // ~5.6 chars/token in practice), so staying under TOTAL_BUDGET keeps the
@@ -695,57 +690,71 @@ export async function POST(request: Request) {
         const systemPromptTokens = Math.ceil(fullSystemPrompt.length / 4.5);
         const estimateTotal = (messages: { content: string }[], outputTokens: number) =>
             Math.ceil(messages.reduce((sum, m) => sum + m.content.length, 0) / 4.5) + outputTokens;
-        let effectiveMaxTokens = targetMaxTokens;
-        let currentEst = estimateTotal(finalMessages, targetMaxTokens);
-        // 1) Cap output to fit the budget while keeping the prompt intact.
-        if (currentEst > TOTAL_BUDGET) {
-            const availableForOutput = TOTAL_BUDGET - (currentEst - targetMaxTokens);
-            effectiveMaxTokens = Math.max(300, Math.min(targetMaxTokens, availableForOutput));
-            currentEst = estimateTotal(finalMessages, effectiveMaxTokens);
-        }
-        // 2) Strip expendable tail blocks (research-mode instructions,
-        //    visualisation guide) so tool capabilities stay intact, but only if a
-        //    minimum output still does not fit. Do NOT strip the visualisation
-        //    guide when the user explicitly asked for a visual - it is the point
-        //    of the request.
-        if (currentEst > TOTAL_BUDGET && systemPromptTokens > SYSTEM_BUDGET) {
-            const stripTailBlocks = (prompt: string) => {
-                const importantIdx = prompt.indexOf("\nIMPORTANT: If the user asks for a visual");
-                if (importantIdx === -1)
-                    return prompt;
-                let cutStart = -1;
-                const researchMarker = prompt.lastIndexOf("\n\nRESEARCH MODE (ACADEMIC SOURCES ONLY):", importantIdx);
-                const visualMarker = prompt.lastIndexOf("Visualisations - you have THREE tools", importantIdx);
-                if (researchMarker !== -1)
-                    cutStart = cutStart === -1 ? researchMarker : Math.min(cutStart, researchMarker);
-                if (visualMarker !== -1 && !wantsVisualisation(recentMsgs))
-                    cutStart = cutStart === -1 ? visualMarker : Math.min(cutStart, visualMarker);
-                if (cutStart === -1)
-                    return prompt;
-                return prompt.slice(0, cutStart) + prompt.slice(importantIdx);
-            };
+        // Thinking models (Qwen) spend their output budget on BOTH the hidden
+        // reasoning pass and the visible answer. When that budget is tight the
+        // model can use it all thinking and the final answer is truncated without
+        // any error signal. Reserve a floor for the answer and free up input room
+        // to reach it so reasoning never silently swallows the response.
+        const thinkingAnswerFloor = isQwenModel ? 2000 : 512;
+        const stripTailBlocks = (prompt: string) => {
+            const importantIdx = prompt.indexOf("\nIMPORTANT: If the user asks for a visual");
+            if (importantIdx === -1)
+                return prompt;
+            let cutStart = -1;
+            const researchMarker = prompt.lastIndexOf("\n\nRESEARCH MODE (ACADEMIC SOURCES ONLY):", importantIdx);
+            const visualMarker = prompt.lastIndexOf("Visualisations - you have THREE tools", importantIdx);
+            if (researchMarker !== -1)
+                cutStart = cutStart === -1 ? researchMarker : Math.min(cutStart, researchMarker);
+            if (visualMarker !== -1 && !wantsVisualisation(recentMsgs))
+                cutStart = cutStart === -1 ? visualMarker : Math.min(cutStart, visualMarker);
+            if (cutStart === -1)
+                return prompt;
+            return prompt.slice(0, cutStart) + prompt.slice(importantIdx);
+        };
+        // 1) For reasoning models, strip expendable system tail blocks FIRST so
+        //    the output budget (reasoning + answer) has as much room as possible.
+        //    Do NOT strip the visualisation guide when the user explicitly asked
+        //    for a visual - it is the point of the request.
+        let workingSystemPrompt = fullSystemPrompt;
+        if (isQwenModel && systemPromptTokens > SYSTEM_BUDGET) {
             const stripped = stripTailBlocks(fullSystemPrompt);
-            const strippedTokens = Math.ceil(stripped.length / 4.5);
-            if (strippedTokens < systemPromptTokens) {
-                console.log(`[chat-stream] System trimmed: ${systemPromptTokens}t → ${strippedTokens}t (stripped optional blocks)`);
-                finalMessages[0] = { role: "system", content: stripped };
-                currentEst = estimateTotal(finalMessages, effectiveMaxTokens);
+            if (stripped.length < fullSystemPrompt.length) {
+                console.log(`[chat-stream] System trimmed for thinking model: ${systemPromptTokens}t → ${Math.ceil(stripped.length / 4.5)}t (stripped optional blocks)`);
+                workingSystemPrompt = stripped;
             }
         }
-        // 3) Final check. If a large conversation still exceeds budget after
-        //    system trimming, drop the oldest recent turns while preserving the
-        //    latest user ask.
+        const finalMessages = [
+            { role: "system", content: workingSystemPrompt },
+            ...recentMsgs.filter((m: any) => m.role !== "system"),
+        ];
+        let effectiveMaxTokens = targetMaxTokens;
+        let currentEst = estimateTotal(finalMessages, targetMaxTokens);
+        // 2) Cap output to fit the hard request budget, but never drop below the
+        //    answer floor. If the prompt alone is too big for even a floor-sized
+        //    reply, the drop-old-turns loop below reclaims input room.
+        if (currentEst > TOTAL_BUDGET) {
+            const availableForOutput = TOTAL_BUDGET - (currentEst - targetMaxTokens);
+            effectiveMaxTokens = Math.max(thinkingAnswerFloor, Math.min(targetMaxTokens, availableForOutput));
+            currentEst = estimateTotal(finalMessages, effectiveMaxTokens);
+        }
+        // 3) If the conversation is still over budget, drop the oldest recent
+        //    turns while preserving the latest user ask. For thinking models keep
+        //    dropping until the answer floor actually fits in the request budget.
         let droppedRecentMessages = 0;
-        while (currentEst > TOTAL_BUDGET && finalMessages.length > 2) {
+        while (finalMessages.length > 2 &&
+               (estimateTotal(finalMessages, effectiveMaxTokens) > TOTAL_BUDGET ||
+                (isQwenModel && effectiveMaxTokens < thinkingAnswerFloor))) {
             finalMessages.splice(1, 1);
             droppedRecentMessages += 1;
+            const availableForOutput = TOTAL_BUDGET - estimateTotal(finalMessages, 0);
+            effectiveMaxTokens = Math.max(thinkingAnswerFloor, Math.min(targetMaxTokens, availableForOutput));
             currentEst = estimateTotal(finalMessages, effectiveMaxTokens);
         }
         if (droppedRecentMessages > 0) {
             console.log(`[chat-stream] Dropped ${droppedRecentMessages} old recent messages to fit token budget`);
         }
         const promptTokens = Math.ceil(finalMessages.reduce((sum, m) => sum + m.content.length, 0) / 4.5);
-        effectiveMaxTokens = Math.min(effectiveMaxTokens, Math.max(300, TOTAL_BUDGET - promptTokens));
+        effectiveMaxTokens = Math.min(effectiveMaxTokens, Math.max(thinkingAnswerFloor, TOTAL_BUDGET - promptTokens));
         console.log(`[chat-stream] Final: ${currentEst}t (budget: ${TOTAL_BUDGET}t, output cap: ${effectiveMaxTokens}t, messages: ${recentMsgs.length} full + ${olderMsgs.length} summarized)`);
         const upstreamStream = await callGroqChatStream({
             messages: finalMessages,
