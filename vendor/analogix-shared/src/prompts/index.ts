@@ -41,16 +41,16 @@ function seededShuffle<T>(items: T[], rand: Rand): T[] {
 const pickTemplate = (rand: Rand) => <T,>(items: T[]): T =>
   items[Math.floor(rand() * items.length)];
 
-const EXPLAIN = (topic: string): string[] => [
-  `Explain ${topic} step by step with simple examples`,
-  `Break down ${topic} into easy-to-understand pieces`,
-  `Walk me through ${topic} like I've never seen it before`,
+const EXPLAIN = (topic: string, hobby?: string): string[] => [
+  `Teach me about ${topic} step by step with simple examples${hobby ? `, using ${hobby} analogies` : ""}`,
+  `Break down ${topic} into easy-to-understand pieces${hobby ? ` through the lens of ${hobby}` : ""}`,
+  `Walk me through ${topic} like I've never seen it before${hobby ? `, tying it to ${hobby}` : ""}`,
 ];
 
-const QUIZ = (topic: string): string[] => [
-  `Make me a quiz on ${topic} and explain the answers`,
-  `Quiz me on ${topic} with answer explanations`,
-  `Create a quick quiz on ${topic} to test what I know`,
+const QUIZ = (topic: string, hobby?: string): string[] => [
+  `Test me with a quiz on ${topic} and explain the answers${hobby ? ` using ${hobby} examples` : ""}`,
+  `Quiz me on ${topic} with answer explanations${hobby ? ` framed around ${hobby}` : ""}`,
+  `Create a quick quiz on ${topic} to test what I know${hobby ? ` with ${hobby}` : ""}`,
 ];
 
 const STUDY_PLAN = (grade?: string): string[] =>
@@ -67,15 +67,15 @@ const STUDY_PLAN = (grade?: string): string[] =>
       ];
 
 const HOBBY = (topic: string, hobby: string): string[] => [
-  `Explain ${topic} using analogies from ${hobby}`,
-  `Teach me ${topic} with examples from ${hobby}`,
-  `Help me understand ${topic} through the lens of ${hobby}`,
+  `Teach me about ${topic} using ${hobby} analogies`,
+  `Explain ${topic} through the lens of ${hobby} with concrete examples`,
+  `Help me understand ${topic} using examples from ${hobby}`,
 ];
 
-const PRACTICE = (topic: string): string[] => [
-  `Give me practice questions on ${topic} with worked solutions`,
-  `Set me some problems on ${topic} to work through`,
-  `Create practice exercises for ${topic} with solutions`,
+const PRACTICE = (topic: string, hobby?: string): string[] => [
+  `Give me practice questions on ${topic} with worked solutions${hobby ? ` inspired by ${hobby}` : ""}`,
+  `Set me some problems on ${topic} to work through${hobby ? ` using ${hobby} scenarios` : ""}`,
+  `Create practice exercises for ${topic} with solutions${hobby ? ` based on ${hobby}` : ""}`,
 ];
 
 /**
@@ -112,11 +112,13 @@ export function buildPromptSuggestions(
   const pick = pickTemplate(rand);
 
   const candidates: PromptSuggestion[] = [
-    { label: "Break down a concept", prompt: pick(EXPLAIN(topic || "a concept")) },
-    { label: "Test your knowledge", prompt: pick(QUIZ(topic || "today's topics")) },
-    { label: "Study plan", prompt: pick(STUDY_PLAN(hasGrade ? grade : undefined)) },
     hobby
       ? { label: `Learn with ${hobby}`, prompt: pick(HOBBY(topic || "a concept", hobby)) }
+      : { label: "Break down a concept", prompt: pick(EXPLAIN(topic || "a concept")) },
+    { label: "Test your knowledge", prompt: pick(QUIZ(topic || "today's topics", hobby)) },
+    { label: "Study plan", prompt: pick(STUDY_PLAN(hasGrade ? grade : undefined)) },
+    hobby
+      ? { label: `Practice with ${hobby}`, prompt: pick(PRACTICE(topic || "your current topics", hobby)) }
       : { label: "Practice questions", prompt: pick(PRACTICE(topic || "your current topics")) },
   ];
 
