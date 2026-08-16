@@ -28,7 +28,7 @@ interface TaskBudget {
 const TASK_BUDGETS: Record<string, TaskBudget> = {
   // Lightweight: still keep 8 messages for conversation context!
   lightweight: {
-    maxTokens: 4096,
+    maxTokens: 2048,
     maxMessages: 8,
     maxMemories: 0,
     includePersonality: false,
@@ -36,7 +36,7 @@ const TASK_BUDGETS: Record<string, TaskBudget> = {
   },
   // Default: normal chat, balance speed/quality
   default: {
-    maxTokens: 8000,
+    maxTokens: 4000,
     maxMessages: 12,
     maxMemories: 4,
     includePersonality: true,
@@ -44,7 +44,7 @@ const TASK_BUDGETS: Record<string, TaskBudget> = {
   },
   // Reasoning: more context for complex questions
   reasoning: {
-    maxTokens: 10000,
+    maxTokens: 5000,
     maxMessages: 15,
     maxMemories: 5,
     includePersonality: true,
@@ -52,7 +52,7 @@ const TASK_BUDGETS: Record<string, TaskBudget> = {
   },
   // Deep: full context for research/analysis
   deep: {
-    maxTokens: 16000,
+    maxTokens: 6000,
     maxMessages: 25,
     maxMemories: 8,
     includePersonality: true,

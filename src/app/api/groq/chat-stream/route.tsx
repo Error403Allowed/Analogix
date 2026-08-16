@@ -682,14 +682,14 @@ export async function POST(request: Request) {
             /\b(detailed|comprehensive|essay|report|study guide|lesson plan|long answer)\b/i.test(latestUserMsg);
         const SYSTEM_BUDGET = 2200;
         const targetMaxTokens = isSimpleGreeting ? 300 : wantsLongResponse ? OUTPUT_HARD_CAP : (isQwenModel ? 8000 : 4096);
-        // NOTE: the Groq org TPM cap is 8000. Every estimate below uses ~4.5
+        // NOTE: the Groq org TPM cap is 8000. Every estimate below uses ~4
         // chars/token, which is deliberately conservative (the prompt measures
         // ~5.6 chars/token in practice), so staying under TOTAL_BUDGET keeps the
         // real request comfortably under the hard cap. Output is budgeted FIRST -
         // only if even a small reply does not fit do we start stripping input.
-        const systemPromptTokens = Math.ceil(fullSystemPrompt.length / 4.5);
+        const systemPromptTokens = Math.ceil(fullSystemPrompt.length / 4);
         const estimateTotal = (messages: { content: string }[], outputTokens: number) =>
-            Math.ceil(messages.reduce((sum, m) => sum + m.content.length, 0) / 4.5) + outputTokens;
+            Math.ceil(messages.reduce((sum, m) => sum + m.content.length, 0) / 4) + outputTokens;
         // Thinking models (Qwen) spend their output budget on BOTH the hidden
         // reasoning pass and the visible answer. When that budget is tight the
         // model can use it all thinking and the final answer is truncated without
@@ -719,7 +719,7 @@ export async function POST(request: Request) {
         if (isQwenModel && systemPromptTokens > SYSTEM_BUDGET) {
             const stripped = stripTailBlocks(fullSystemPrompt);
             if (stripped.length < fullSystemPrompt.length) {
-                console.log(`[chat-stream] System trimmed for thinking model: ${systemPromptTokens}t → ${Math.ceil(stripped.length / 4.5)}t (stripped optional blocks)`);
+                console.log(`[chat-stream] System trimmed for thinking model: ${systemPromptTokens}t → ${Math.ceil(stripped.length / 4)}t (stripped optional blocks)`);
                 workingSystemPrompt = stripped;
             }
         }
@@ -753,7 +753,7 @@ export async function POST(request: Request) {
         if (droppedRecentMessages > 0) {
             console.log(`[chat-stream] Dropped ${droppedRecentMessages} old recent messages to fit token budget`);
         }
-        const promptTokens = Math.ceil(finalMessages.reduce((sum, m) => sum + m.content.length, 0) / 4.5);
+        const promptTokens = Math.ceil(finalMessages.reduce((sum, m) => sum + m.content.length, 0) / 4);
         effectiveMaxTokens = Math.min(effectiveMaxTokens, Math.max(thinkingAnswerFloor, TOTAL_BUDGET - promptTokens));
         console.log(`[chat-stream] Final: ${currentEst}t (budget: ${TOTAL_BUDGET}t, output cap: ${effectiveMaxTokens}t, messages: ${recentMsgs.length} full + ${olderMsgs.length} summarized)`);
         const upstreamStream = await callGroqChatStream({

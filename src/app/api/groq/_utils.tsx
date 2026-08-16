@@ -86,6 +86,68 @@ const getSafeMaxTokens = (model: string, requested: number, estimatedInputTokens
     return Math.min(requested, limit, maxByRequestBudget);
 };
 // ============================================================================
+// REQUEST BUDGET SAFETY NET
+// ============================================================================
+// Groq's on-demand tier rejects any single request whose input + reserved
+// max_tokens exceeds the org's TPM cap (8000) with HTTP 413 "Request too
+// large". Routes already trim to fit, but a single oversized message (e.g. a
+// pasted document) or dense content (LaTeX/JSON/code) can still blow past the
+// estimate. This safety net runs immediately before every fetch and guarantees
+// the outgoing request fits by capping output, dropping the oldest non-system
+// turns, and truncating content as a last resort.
+// 3.5 chars/token is deliberately conservative: real tokenizers run ~4-4.5 for
+// prose but ~3 for dense content, so this never underestimates a request.
+const ESTIMATE_CHARS_PER_TOKEN = 3.5;
+const estimateRequestTokens = (text: string): number =>
+    Math.ceil(text.length / ESTIMATE_CHARS_PER_TOKEN);
+/**
+ * Guarantee a message list + output budget fits Groq's per-request token cap.
+ * Returns the trimmed message list and a safe max_tokens value.
+ */
+export const enforceGroqRequestBudget = (
+    messages: { role: string; content: string }[],
+    requestedMaxTokens: number,
+    totalBudget: number = 7000,
+): { messages: { role: string; content: string }[]; maxTokens: number } => {
+    const msgs = messages.map(m => ({ ...m }));
+    const estimateInput = (list: { content: string }[]) =>
+        list.reduce((sum, m) => sum + estimateRequestTokens(m.content), 0);
+    let inputTokens = estimateInput(msgs);
+    // 1) Drop the oldest non-system turns while the request (even at minimum
+    //    output) is still over budget. The latest user ask is always kept.
+    let dropped = 0;
+    const nonSystemCount = () => msgs.filter(m => m.role !== "system").length;
+    while (msgs.length > 1 && nonSystemCount() > 1 && inputTokens + MIN_COMPLETION_TOKENS > totalBudget) {
+        const dropIdx = msgs.findIndex(m => m.role !== "system");
+        if (dropIdx === -1)
+            break;
+        inputTokens -= estimateRequestTokens(msgs[dropIdx].content);
+        msgs.splice(dropIdx, 1);
+        dropped++;
+    }
+    // 2) If a single oversized message still blows the budget, truncate its
+    //    content (oldest non-system first; the system prompt tail only as an
+    //    absolute last resort). A truncated prompt is far better than a 413.
+    let guard = 0;
+    while (inputTokens + MIN_COMPLETION_TOKENS > totalBudget && guard < 10) {
+        const idx = msgs.findIndex(m => m.role !== "system" && m.content.length > 200);
+        const targetIdx = idx === -1 ? (msgs[0]?.role === "system" && msgs[0].content.length > 200 ? 0 : -1) : idx;
+        if (targetIdx === -1)
+            break;
+        const over = inputTokens + MIN_COMPLETION_TOKENS - totalBudget;
+        const cutChars = Math.ceil(over * ESTIMATE_CHARS_PER_TOKEN) + 64;
+        const kept = Math.max(120, msgs[targetIdx].content.length - cutChars);
+        msgs[targetIdx].content = msgs[targetIdx].content.slice(0, kept) + "\n…[truncated]";
+        inputTokens = estimateInput(msgs);
+        guard++;
+    }
+    const maxTokens = Math.max(MIN_COMPLETION_TOKENS, Math.min(requestedMaxTokens, totalBudget - inputTokens));
+    if (dropped > 0 || guard > 0) {
+        console.warn(`[Groq] Budget safety net: dropped ${dropped} message(s), truncated ${guard} content(s) to fit ${totalBudget}t request cap`);
+    }
+    return { messages: msgs, maxTokens };
+};
+// ============================================================================
 // SMART QUESTION DETECTION: How we figure out what type of question it is
 // ============================================================================
 // Simple greetings/small talk that should use fast path
@@ -434,7 +496,10 @@ const callFastChat = async (payload: any, userModel?: any) => {
         throw new Error("No API key available");
     }
     // Estimate token size - skip fast path if request is too large
-    const messageText = payload.messages.map((m: any) => m.content).join(" ");
+    const budgeted = enforceGroqRequestBudget(payload.messages, payload.max_tokens ?? MIN_COMPLETION_TOKENS);
+    const budgetMessages = budgeted.messages;
+    const budgetMaxTokens = budgeted.maxTokens;
+    const messageText = budgetMessages.map((m: any) => m.content).join(" ");
     const estimatedTokens = Math.ceil(messageText.length / 4.5);
     const FAST_PATH_TOKEN_LIMIT = 5000; // Leave room for response tokens
     if (estimatedTokens > FAST_PATH_TOKEN_LIMIT) {
@@ -448,7 +513,7 @@ const callFastChat = async (payload: any, userModel?: any) => {
         controller = new AbortController();
         timeoutId = setTimeout(() => controller?.abort(), 8000); // 8s timeout for fast path
         // Apply safe max tokens limit for lightweight model
-        const safeMaxTokens = getSafeMaxTokens(model, payload.max_tokens, estimatedTokens);
+        const safeMaxTokens = getSafeMaxTokens(model, budgetMaxTokens, estimatedTokens);
         const response = await fetch(GROQ_CHAT_URL, {
             method: "POST",
             headers: {
@@ -457,7 +522,7 @@ const callFastChat = async (payload: any, userModel?: any) => {
             },
             body: JSON.stringify({
                 model,
-                messages: payload.messages,
+                messages: budgetMessages,
                 max_tokens: Math.min(safeMaxTokens, 200), // Keep greeting replies short & fast
                 temperature: payload.temperature,
             }),
@@ -494,10 +559,14 @@ export const callGroqChat = async (payload: any, taskType = "default", userSelec
             console.log("[Groq] Fast path failed, using normal path");
         }
     }
-    // Estimate tokens BEFORE model selection
-    const messageText = payload.messages.map((m: any) => m.content).join(" ");
+    // Estimate tokens BEFORE model selection, but only after guaranteeing the
+    // request fits Groq's per-request TPM cap so oversized prompts can never 413.
+    const budgeted = enforceGroqRequestBudget(payload.messages, payload.max_tokens ?? MIN_COMPLETION_TOKENS);
+    const budgetMessages = budgeted.messages;
+    const budgetMaxTokens = budgeted.maxTokens;
+    const messageText = budgetMessages.map((m: any) => m.content).join(" ");
     const estimatedInputTokens = Math.ceil(messageText.length / 4.5);
-    const estimatedTokens = estimatedInputTokens + payload.max_tokens;
+    const estimatedTokens = estimatedInputTokens + budgetMaxTokens;
     const taskModels = getModelsForTaskType(taskType, userSelectedModel, estimatedTokens);
     const modelsToTry = [...new Set([...taskModels, DEFAULT_MODEL])];
     console.log(`[Groq] Task: "${taskType}" → Models: ${modelsToTry.join(" → ")} | API Keys: ${apiKeys.length} | Est. tokens: ${estimatedTokens}`);
@@ -528,7 +597,7 @@ export const callGroqChat = async (payload: any, taskType = "default", userSelec
                 if (!apiKey)
                     continue;
                 // Apply safe max tokens limit for this specific model and current prompt.
-                const safeMaxTokens = getSafeMaxTokens(model, payload.max_tokens, estimatedInputTokens);
+                const safeMaxTokens = getSafeMaxTokens(model, budgetMaxTokens, estimatedInputTokens);
                 const requestTokens = estimatedInputTokens + safeMaxTokens;
                 await waitForToken(keyIndex, requestTokens);
                 let controller: AbortController | null = null;
@@ -549,7 +618,7 @@ export const callGroqChat = async (payload: any, taskType = "default", userSelec
                         },
                         body: JSON.stringify({
                             model,
-                            messages: payload.messages,
+                            messages: budgetMessages,
                             max_tokens: safeMaxTokens,
                             temperature: payload.temperature,
                         }),
@@ -638,10 +707,14 @@ export const callGroqChat = async (payload: any, taskType = "default", userSelec
 // ============================================================================
 export const callGroqChatStream = async (payload: any, taskType = "default", userSelectedModel?: any) => {
     assertApiKeys();
-    // Estimate tokens BEFORE model selection
-    const messageText = payload.messages.map((m: any) => m.content).join(" ");
+    // Estimate tokens BEFORE model selection, but only after guaranteeing the
+    // request fits Groq's per-request TPM cap so oversized prompts can never 413.
+    const budgeted = enforceGroqRequestBudget(payload.messages, payload.max_tokens ?? MIN_COMPLETION_TOKENS);
+    const budgetMessages = budgeted.messages;
+    const budgetMaxTokens = budgeted.maxTokens;
+    const messageText = budgetMessages.map((m: any) => m.content).join(" ");
     const estimatedInputTokens = Math.ceil(messageText.length / 4.5);
-    const estimatedTokens = estimatedInputTokens + payload.max_tokens;
+    const estimatedTokens = estimatedInputTokens + budgetMaxTokens;
     const taskModels = getModelsForTaskType(taskType, userSelectedModel, estimatedTokens);
     const modelsToTry = [...new Set([...taskModels, DEFAULT_MODEL])];
     console.log(`[Groq] Task: "${taskType}" → Models: ${modelsToTry.join(" → ")} | API Keys: ${apiKeys.length} | Est. tokens: ${estimatedTokens}`);
@@ -671,7 +744,7 @@ export const callGroqChatStream = async (payload: any, taskType = "default", use
                 if (!apiKey)
                     continue;
                 // Apply safe max tokens limit for this specific model and current prompt.
-                const safeMaxTokens = getSafeMaxTokens(model, payload.max_tokens, estimatedInputTokens);
+                const safeMaxTokens = getSafeMaxTokens(model, budgetMaxTokens, estimatedInputTokens);
                 const requestTokens = estimatedInputTokens + safeMaxTokens;
                 await waitForToken(keyIndex, requestTokens);
                 let controller: AbortController | null = null;
@@ -702,7 +775,7 @@ const getReasoningEffort = (model: string): string | undefined => {
                         body: JSON.stringify({
                             model,
                             stream: true,
-                            messages: payload.messages,
+                            messages: budgetMessages,
                             max_tokens: safeMaxTokens,
                             temperature: payload.temperature,
                             reasoning_effort: getReasoningEffort(model),

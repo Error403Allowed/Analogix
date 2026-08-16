@@ -469,7 +469,7 @@ ${userSubjectsContext}`;
         // start dropping input. This keeps the prompt intact (incl. the
         // visualisation guide when the user asked for a visual) whenever possible.
         const estimateTotal = (msgs: { content: string }[], outputTokens: number) =>
-            Math.ceil(msgs.reduce((sum, m) => sum + m.content.length, 0) / 4.5) + outputTokens;
+            Math.ceil(msgs.reduce((sum, m) => sum + m.content.length, 0) / 4) + outputTokens;
         let effectiveMaxTokens = maxTokens;
         let currentEst = estimateTotal(aiMessages, maxTokens);
         if (currentEst > TOTAL_BUDGET) {
