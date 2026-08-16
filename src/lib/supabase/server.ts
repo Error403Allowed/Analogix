@@ -19,6 +19,9 @@ export const createClient = async (): Promise<any> => {
   const secureCookies = process.env.NODE_ENV === "production";
 
   return createServerClient(serverSupabaseUrl, serverSupabaseAnonKey, {
+    cookieOptions: {
+      name: "sb-auth-token",
+    },
     cookies: {
       getAll() {
         return cookieStore.getAll();

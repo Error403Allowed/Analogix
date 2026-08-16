@@ -1,47 +1,12 @@
- 
 "use client";
 
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { createClient } from "@/lib/supabase/client";
+import { resolveAuthDestination } from "@/lib/auth-routing";
+import { syncPrefsFromProfile, type ProfileRecord } from "@/lib/profile-sync";
 import { Loader2 } from "lucide-react";
-
-const hasProfileData = (profile: any) => {
-  if (!profile) return false;
-  if (profile.onboarding_complete) return true;
-  if (profile.grade || profile.state) return true;
-  if (Array.isArray(profile.subjects) && profile.subjects.length > 0) return true;
-  if (Array.isArray(profile.hobbies) && profile.hobbies.length > 0) return true;
-  if (Array.isArray(profile.hobby_ids) && profile.hobby_ids.length > 0) return true;
-  if (profile.hobby_details && typeof profile.hobby_details === "object" && Object.keys(profile.hobby_details).length > 0) return true;
-  return false;
-};
-
-const syncPrefsFromProfile = (profile: any, userId: string) => {
-  try {
-    const existing = JSON.parse(localStorage.getItem("userPreferences") || "{}");
-    const dbGrade = profile?.grade;
-    const next = {
-      ...existing,
-      name: profile?.name ?? existing.name ?? "Student",
-      grade: existing.grade || dbGrade || null,
-      state: profile?.state ?? existing.state,
-      subjects: Array.isArray(profile?.subjects) ? profile.subjects : (existing.subjects ?? []),
-      hobbies: Array.isArray(profile?.hobbies) ? profile.hobbies : (existing.hobbies ?? []),
-      hobbyIds: Array.isArray(profile?.hobby_ids) ? profile.hobby_ids : (existing.hobbyIds ?? []),
-      hobbyDetails: profile?.hobby_details && typeof profile.hobby_details === "object"
-        ? profile.hobby_details
-        : (existing.hobbyDetails ?? {}),
-      avatarUrl: profile?.avatar_url ?? existing.avatarUrl,
-      toursCompleted: Array.isArray(profile?.tours_completed) ? profile.tours_completed : (existing.toursCompleted ?? []),
-      onboardingComplete: true,
-      userId,
-    };
-    localStorage.setItem("userPreferences", JSON.stringify(next));
-    window.dispatchEvent(new Event("userPreferencesUpdated"));
-  } catch { /* ignore storage errors */ }
-};
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
@@ -63,17 +28,22 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
       return;
     }
 
-    // User is authenticated - allow access (onboarding check removed)
     const checkAuth = async () => {
-      // Only check if user changed (prevent redundant checks)
+      // Only re-resolve when the user changes
       if (userRef.current === user.id) {
         setIsChecking(false);
         return;
       }
-
       userRef.current = user.id;
 
-      // Sync profile data to localStorage for returning users
+      const destination = await resolveAuthDestination(user.id);
+      if (destination === "onboarding") {
+        // Brand-new account - finish setup before entering the app
+        router.replace("/onboarding?step=1");
+        return;
+      }
+
+      // Returning user - hydrate the local cache from the DB (best effort)
       if (!dbCheckDoneRef.current) {
         dbCheckDoneRef.current = true;
         syncPrefsFromProfileDeferred(user.id);
@@ -95,16 +65,16 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
         .eq("id", userId)
         .maybeSingle();
 
-      if (hasProfileData(profile)) {
-        syncPrefsFromProfile(profile, userId);
+      if (profile) {
+        syncPrefsFromProfile(profile as ProfileRecord, userId);
       }
     } catch {
-      // Silently fail - localStorage is our source of truth for now
+      // Silently fail - localStorage cache is already in place
     }
   };
 
   const isRedirecting = (!user && !loading) || (user && isChecking);
-  
+
   if (isRedirecting) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">

@@ -16,19 +16,19 @@ test.describe('Landing Page', () => {
     expect(title).toBeTruthy();
   });
 
-  test('hero "Start for free" button navigates to onboarding', async ({ page }) => {
+  test('hero "Start for free" button navigates to login', async ({ page }) => {
     const cta = page.getByRole('button', { name: /Start for free/i });
     await expect(cta).toBeVisible({ timeout: 10000 });
     await cta.click();
-    await expect(page).toHaveURL(/\/onboarding/, { timeout: 15000 });
+    await expect(page).toHaveURL(/\/login/, { timeout: 15000 });
   });
 
-  test('"Get Started - It\'s Free" button in footer navigates to onboarding', async ({ page }) => {
+  test('"Get Started - It\'s Free" button in footer navigates to login', async ({ page }) => {
     const bottomCta = page.getByRole('button', { name: /Get Started.*It.*Free/i });
     await bottomCta.scrollIntoViewIfNeeded();
     await expect(bottomCta).toBeVisible({ timeout: 10000 });
     await bottomCta.click();
-    await expect(page).toHaveURL(/\/onboarding/, { timeout: 15000 });
+    await expect(page).toHaveURL(/\/login/, { timeout: 15000 });
   });
 
   test('"See all features" button scrolls to features section', async ({ page }) => {

@@ -8,7 +8,6 @@ import {
   Cpu, LineChart, Briefcase, Wallet, HeartPulse, Globe, Wrench,
   Stethoscope, Languages, Dumbbell, Gamepad2, Music, CookingPot,
   Palette, Film, Leaf, Laptop, Book, Plane, CalendarDays, Upload,
-  Loader2, Eye, EyeOff, Mail, Lock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,61 +21,9 @@ import { AustralianState, STATE_LABELS } from "@/utils/termData";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/context/AuthContext";
-import { signInWithGoogle, signInWithEmail, signUpWithEmail, getEmailError, validatePassword } from "@/lib/auth-client";
+import { resolveAuthDestination } from "@/lib/auth-routing";
+import { readUserPreferences, writeUserPreferences } from "@/lib/profile-sync";
 import OnboardingBackdrop from "@/components/onboarding/OnboardingBackdrop";
-
-// ── Friendly auth error mapper ───────
-// Translates Supabase auth / OAuth error codes into actionable messages a real
-// user can fix.
-function describeAuthError(code: string | null, raw: string | null): string {
-  const c = (code || "").toLowerCase();
-  const r = (raw || "").toLowerCase();
-
-  // OAuth-specific errors
-  if (
-    r.includes("unable to exchange external code") ||
-    r.includes("4/0a") ||
-    r.includes("unexpected_failure") ||
-    c === "unexpected_failure"
-  ) {
-    return "Google sign-in couldn't be completed. Please try again - if you registered with Google, keep using Continue with Google.";
-  }
-  if (c.includes("redirect_uri_mismatch") || r.includes("redirect_uri_mismatch")) {
-    return "The Google sign-in redirect isn't configured for this site address yet. Please try again in a moment or use email & password.";
-  }
-  if (c.includes("access_denied") || r.includes("access_denied")) {
-    return "Google sign-in was cancelled. Tap Continue with Google to try again.";
-  }
-  if (c.includes("exchange_failed") || c === "missing_code") {
-    return "We couldn't finish signing you in. The auth code was missing or expired - please try again.";
-  }
-
-  // Email/password errors
-  if (c === "google_account_required") {
-    return "This email uses Google sign-in. Please sign in with Google to continue.";
-  }
-  if (c === "invalid_credentials" || c === "wrong_password" || r.includes("invalid login credentials")) {
-    return "Invalid email or password. If you signed up with Google, use Continue with Google instead.";
-  }
-  if (c === "email_not_confirmed" || r.includes("email not confirmed")) {
-    return "Please confirm your email address first - check your inbox for a confirmation link.";
-  }
-  if (c === "user_not_found" || r.includes("user not found")) {
-    return "No account found with this email.";
-  }
-  if (c === "weak_password" || r.includes("weak password") || r.includes("password should be at least 6") || r.includes("password should be at least 8")) {
-    return "Password must be at least 8 characters with uppercase, lowercase, numbers, and symbols.";
-  }
-  if (c === "email_exists" || r.includes("user already registered")) {
-    return "An account with this email already exists. Try signing in.";
-  }
-  if (c === "rate_limit" || r.includes("rate limit") || r.includes("too many requests")) {
-    return "Too many attempts. Please wait a moment and try again.";
-  }
-
-  if (r) return `Sign-in failed (${code || "auth_failed"}): ${raw}`;
-  return "Authentication failed. Please try again.";
-}
 
 // ── Typewriter ────────────────────────
 const TypewriterText = ({ text, delay = 0 }: { text: string; delay?: number }) => {
@@ -113,264 +60,6 @@ const TypewriterText = ({ text, delay = 0 }: { text: string; delay?: number }) =
     </span>
   );
 };
-
-// ── Password requirements checklist ───
-function PasswordRequirements({ password }: { password: string }) {
-  const { checks } = validatePassword(password);
-
-  return (
-    <div className="space-y-1.5">
-      {checks.map((c) => (
-        <div key={c.key} className="flex items-center gap-2 text-xs">
-          <div className={cn(
-            "w-4 h-4 rounded-full flex items-center justify-center shrink-0 transition-colors",
-            c.pass ? "bg-success/20 text-success" : "bg-muted text-muted-foreground"
-          )}>
-            {c.pass ? <Check className="w-3 h-3" /> : <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40" />}
-          </div>
-          <span className={c.pass ? "text-success" : "text-muted-foreground"}>{c.label}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// ── Auth Step ─────────────────────────
-function AuthStep({ onAuthed, externalError }: { onAuthed: () => void; externalError?: string | null }) {
-  const { user, loading } = useAuth();
-  const [googleLoading, setGoogleLoading] = useState(false);
-
-  const [mode, setMode] = useState<"signin" | "signup">("signup");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [authError, setAuthError] = useState<string | null>(null);
-  const [successMsg, setSuccessMsg] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!loading && user) onAuthed();
-  }, [user, loading, onAuthed]);
-
-  const handleGoogle = async () => {
-    setGoogleLoading(true);
-    setAuthError(null);
-    try {
-      await signInWithGoogle("/onboarding");
-    } catch (e) {
-      const err = e as { code?: string; message?: string };
-      setAuthError(getEmailError(err.code ?? null, err.message ?? null));
-    } finally {
-      setGoogleLoading(false);
-    }
-  };
-
-  const isValidEmail = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
-  const emailOk = isValidEmail(email);
-  const { allPass: pwOk } = validatePassword(password);
-  const matchOk = mode === "signin" || password === confirmPassword;
-  const canSubmit = emailOk && pwOk && matchOk && !submitting;
-
-  const handleSubmit = async () => {
-    if (!canSubmit) return;
-    setSubmitting(true);
-    setAuthError(null);
-    try {
-      if (mode === "signin") {
-        await signInWithEmail(email, password);
-      } else {
-        const result = await signUpWithEmail(email, password);
-        if (result?.user?.identities?.length === 0) {
-          setAuthError("An account with this email already exists. Try signing in.");
-        } else {
-          setSuccessMsg("Check your email for a confirmation link! ✨");
-        }
-      }
-    } catch (e) {
-      const err = e as { code?: string; message?: string };
-      setAuthError(getEmailError(err.code ?? null, err.message ?? null));
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-16">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="w-12 h-12 flex-shrink-0">
-          <img src="/tab-icon.png" alt="Analogix" className="w-full h-full object-contain" />
-        </div>
-        <div>
-          <h1 className="text-3xl font-black text-foreground tracking-tight">Welcome to Analogix.</h1>
-          <p className="text-muted-foreground text-base mt-0.5">Create an account to save your progress.</p>
-        </div>
-      </div>
-
-      {/* Mode toggle pill */}
-      <div className="flex bg-muted/60 rounded-full p-1 max-w-[200px]">
-        <button
-          onClick={() => { setMode("signin"); setAuthError(null); setSuccessMsg(null); }}
-          className={cn(
-            "flex-1 px-4 py-2 rounded-full text-sm font-semibold transition-all duration-300",
-            mode === "signin"
-              ? "bg-primary text-primary-foreground shadow-md"
-              : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          Sign In
-        </button>
-        <button
-          onClick={() => { setMode("signup"); setAuthError(null); setSuccessMsg(null); }}
-          className={cn(
-            "flex-1 px-4 py-2 rounded-full text-sm font-semibold transition-all duration-300",
-            mode === "signup"
-              ? "bg-primary text-primary-foreground shadow-md"
-              : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          Sign Up
-        </button>
-      </div>
-
-      {/* Errors */}
-      {(authError || externalError) && (
-        <div className="bg-destructive/10 border border-destructive/30 rounded-xl px-4 py-3 text-sm text-destructive font-medium">
-          {authError || externalError}
-        </div>
-      )}
-
-      {/* Success message after sign-up */}
-      {successMsg ? (
-        <div className="flex flex-col items-center gap-3 py-4">
-          <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
-            <Mail className="w-7 h-7 text-primary" />
-          </div>
-          <p className="text-sm text-muted-foreground text-center">{successMsg}</p>
-        </div>
-      ) : (
-        <>
-          {/* Email */}
-          <div className="relative">
-            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground w-5 h-5" />
-            <Input
-              type="email"
-              placeholder="name@email.com"
-              value={email}
-              onChange={e => { setEmail(e.target.value); setAuthError(null); }}
-              onKeyDown={e => e.key === "Enter" && canSubmit && handleSubmit()}
-              className="pl-12 h-14 text-base border-2 focus:border-primary transition-all rounded-2xl"
-            />
-          </div>
-
-          {/* Password */}
-          <div className="relative">
-            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground w-5 h-5" />
-            <Input
-              type={showPassword ? "text" : "password"}
-              placeholder={mode === "signin" ? "Your password" : "Create a password "}
-              value={password}
-              onChange={e => { setPassword(e.target.value); setAuthError(null); }}
-              onKeyDown={e => e.key === "Enter" && canSubmit && handleSubmit()}
-              className="pl-12 pr-12 h-14 text-base border-2 focus:border-primary transition-all rounded-2xl"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(p => !p)}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-              tabIndex={-1}
-            >
-              {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-            </button>
-          </div>
-
-          {/* Confirm password (sign-up) */}
-          {mode === "signup" && (
-            <div className="relative">
-              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground w-5 h-5" />
-              <Input
-                type={showConfirm ? "text" : "password"}
-                placeholder="Confirm your password"
-                value={confirmPassword}
-                onChange={e => { setConfirmPassword(e.target.value); setAuthError(null); }}
-                onKeyDown={e => e.key === "Enter" && canSubmit && handleSubmit()}
-                className={cn(
-                  "pl-12 pr-12 h-14 text-base border-2 focus:border-primary transition-all rounded-2xl",
-                  confirmPassword && password !== confirmPassword && "border-destructive"
-                )}
-              />
-              <button
-                type="button"
-                onClick={() => setShowConfirm(p => !p)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                tabIndex={-1}
-              >
-                {showConfirm ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-              </button>
-              {confirmPassword && password !== confirmPassword && (
-                <p className="text-xs text-destructive font-medium mt-1">Passwords don&apos;t match</p>
-              )}
-            </div>
-          )}
-
-          {/* Password requirements (sign-up) */}
-          {mode === "signup" && password.length > 0 && (
-            <PasswordRequirements password={password} />
-          )}
-
-          {/* Submit */}
-          <Button
-            onClick={handleSubmit}
-            disabled={!canSubmit}
-            className="w-full h-14 gap-2 gradient-primary text-primary-foreground border-0 rounded-2xl font-bold shadow-xl hover:opacity-90 transition-opacity"
-          >
-            {submitting ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
-            ) : (
-              <>{mode === "signin" ? "Sign In" : "Create Account"} <ArrowRight className="w-5 h-5" /></>
-            )}
-          </Button>
-        </>
-      )}
-
-      <div className="flex items-center gap-3">
-        <div className="flex-1 h-px bg-border/50" />
-        <span className="text-xs text-muted-foreground font-medium whitespace-nowrap">or continue with</span>
-        <div className="flex-1 h-px bg-border/50" />
-      </div>
-
-      <Button
-        variant="outline"
-        className="w-full h-12 gap-3 rounded-2xl font-semibold border-2 hover:border-primary/40 transition-all"
-        onClick={handleGoogle}
-        disabled={googleLoading || submitting}
-      >
-        {googleLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
-          <svg className="w-5 h-5" viewBox="0 0 24 24">
-            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-          </svg>
-        )}
-        Continue with Google
-      </Button>
-
-      <p className="text-center text-xs text-muted-foreground pt-1">
-        Already have an account? Signing in will link to your existing profile.
-      </p>
-    </div>
-  );
-}
 
 // ── Data ──────────────────────────────
 const SUBJECTS = [
@@ -439,40 +128,28 @@ function IcsStep({ importing, imported, count, error, onFile }:
 }
 
 // ── Main ──────────────────────────────
-// Steps: 1=Auth, 2=Name, 3=Year, 4=State, 5=Subjects, 6=Hobbies, 7=ICS
-const TOTAL_STEPS = 7;
+// Setup-only onboarding. Auth lives on /login. Steps:
+// 1=Name, 2=Year, 3=State, 4=Subjects, 5=Hobbies, 6=Calendar
+const TOTAL_STEPS = 6;
 
 const Onboarding = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user: authUser, loading: authLoading } = useAuth();
 
-  // Get pre-filled name from URL (passed from auth callback)
+  // Get pre-filled name from URL (kept for deep links) or the local cache
   const urlNameParam = searchParams?.get("name") || "";
 
-  // Translate the error code/description from the auth callback into a
-  // user-friendly message. See describeAuthError above.
-  const [authError] = useState<string | null>(() => {
-    if (searchParams?.get("error") !== "auth_failed") return null;
-    return describeAuthError(
-      searchParams?.get("error_code") ?? null,
-      searchParams?.get("error_description") ?? null,
-    );
-  });
-
-  // Always start on step 1 - the gate below moves us forward once auth resolves.
-  // This prevents ?step=2 in the URL from skipping auth for unauthenticated users.
   const [step, setStep] = useState(1);
 
-  // Initialize name state - will be updated via effect if URL param exists
   const [name, setName] = useState("");
 
-  // Apply pre-filled name from URL params after mount
   useEffect(() => {
     if (urlNameParam && !name) {
       setName(urlNameParam);
     }
   }, [urlNameParam, name]);
+
   const [grade, setGrade] = useState<string | null>(null);
   const [state, setState] = useState<AustralianState | null>(null);
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
@@ -488,58 +165,31 @@ const Onboarding = () => {
   useEffect(() => {
     if (authLoading) return;
 
-    if (authUser) {
-      // Check localStorage first
-      try {
-        const prefs = JSON.parse(localStorage.getItem("userPreferences") || "{}");
-        if (prefs?.onboardingComplete && prefs.userId === authUser.id) {
-          router.replace("/dashboard");
-          return;
-        }
-      } catch { /* ignore localStorage errors */ }
-      
-      // Check database for profile data
-      const supabase = createClient();
-      supabase
-        .from("profiles")
-        .select("onboarding_complete, name, grade, state, subjects, hobbies, hobby_ids, hobby_details")
-        .eq("id", authUser.id)
-        .maybeSingle()
-        .then(({ data: profile }: { data: any }) => {
-          const hasProfileData = profile?.onboarding_complete 
-            || profile?.name 
-            || profile?.grade 
-            || profile?.state 
-            || (Array.isArray(profile?.subjects) && profile.subjects.length > 0)
-            || (Array.isArray(profile?.hobbies) && profile.hobbies.length > 0)
-            || (Array.isArray(profile?.hobby_ids) && profile.hobby_ids.length > 0)
-            || (profile?.hobby_details && Object.keys(profile?.hobby_details || {}).length > 0);
-          
-          if (hasProfileData) {
-            // Sync to localStorage
-            const existing = JSON.parse(localStorage.getItem("userPreferences") || "{}");
-            localStorage.setItem("userPreferences", JSON.stringify({
-              ...existing,
-              name: profile?.name ?? existing.name ?? "Student",
-              grade: existing.grade || profile?.grade || null,
-              state: profile?.state ?? existing.state ?? null,
-              subjects: Array.isArray(profile?.subjects) ? profile.subjects : (existing.subjects ?? []),
-              hobbies: Array.isArray(profile?.hobbies) ? profile.hobbies : (existing.hobbies ?? []),
-              hobbyIds: Array.isArray(profile?.hobby_ids) ? profile.hobby_ids : (existing.hobbyIds ?? []),
-              hobbyDetails: profile?.hobby_details ?? (existing.hobbyDetails ?? {}),
-              onboardingComplete: true,
-              userId: authUser.id,
-            }));
-            window.dispatchEvent(new Event("userPreferencesUpdated"));
-            router.replace("/dashboard");
-            return;
-          }
-          
-          const urlStep = parseInt(searchParams?.get("step") ?? "2", 10);
-          setStep(isNaN(urlStep) || urlStep <= 1 ? 2 : urlStep);
-        });
+    // Onboarding is setup-only - unauthenticated visitors go to /login
+    if (!authUser) {
+      router.replace("/login");
       return;
     }
+
+    let cancelled = false;
+    resolveAuthDestination(authUser.id).then((dest) => {
+      if (cancelled) return;
+      // Already fully onboarded? Send straight into the app.
+      if (dest === "app") {
+        router.replace("/dashboard");
+        return;
+      }
+      // Brand-new user: prefill their name if we know it, then begin setup.
+      try {
+        const prefs = readUserPreferences();
+        if (prefs?.name) setName(prefs.name);
+      } catch { /* ignore storage errors */ }
+      const urlStep = parseInt(searchParams?.get("step") ?? "1", 10);
+      setStep(isNaN(urlStep) || urlStep < 1 ? 1 : Math.min(urlStep, TOTAL_STEPS));
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [authUser, authLoading, router, searchParams]);
 
   const toggleSubject = (id: string) =>
@@ -591,17 +241,19 @@ const Onboarding = () => {
       const detail = hobbyDetails[id] || "";
       return detail ? `${label} (${detail})` : label;
     });
-    const prefs = {
-      name: name.trim(), grade, state, subjects: selectedSubjects,
-      hobbies, hobbyIds, hobbyDetails, onboardingComplete: true,
-    };
-    localStorage.setItem("userPreferences", JSON.stringify(prefs));
-    sessionStorage.setItem("isNewUser", "true");
 
     try {
       const supabase = createClient();
       const { data: { user: currentUser } } = await supabase.auth.getUser();
       if (currentUser) {
+        const prefs = {
+          name: name.trim(), grade, state, subjects: selectedSubjects,
+          hobbies, hobbyIds, hobbyDetails, onboardingComplete: true,
+          userId: currentUser.id,
+        };
+        writeUserPreferences(prefs);
+        sessionStorage.setItem("isNewUser", "true");
+
         await supabase.from("profiles").upsert({
           id: currentUser.id, name: prefs.name, grade: prefs.grade, state: prefs.state,
           subjects: prefs.subjects, hobbies: prefs.hobbies, hobby_ids: prefs.hobbyIds,
@@ -626,22 +278,20 @@ const Onboarding = () => {
     finally { setIcsImporting(false); }
   };
 
-  // Step 1 (auth) is complete once the user is logged in
   const canNext =
-    (step === 1 && !!authUser) ||
-    (step === 2 && !!name.trim()) ||
-    (step === 3 && !!grade) ||
-    (step === 4 && !!state) ||
-    (step === 5 && selectedSubjects.length > 0) ||
-    (step === 6 && selectedHobbies.length > 0) ||
-    (step === 7 && !icsImporting);
+    (step === 1 && !!name.trim()) ||
+    (step === 2 && !!grade) ||
+    (step === 3 && !!state) ||
+    (step === 4 && selectedSubjects.length > 0) ||
+    (step === 5 && selectedHobbies.length > 0) ||
+    (step === 6 && !icsImporting);
 
   const handleNext = async () => {
     if (!canNext) return;
-    if (step < 6) { setStep(s => s + 1); return; }
-    if (step === 6) {
+    if (step < 5) { setStep(s => s + 1); return; }
+    if (step === 5) {
       await savePreferences(selectedHobbies, buildHobbyDetails(selectedHobbies));
-      setStep(7); return;
+      setStep(6); return;
     }
     setIsComplete(true);
     setTimeout(() => { window.location.href = "/dashboard"; }, 800);
@@ -659,20 +309,15 @@ const Onboarding = () => {
             <motion.div key={`step-${step}`} initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }}
               className="glass-card p-8 md:p-10 shadow-2xl border-white/20">
 
-              {/* Progress bar - only show from step 2 onwards */}
-              {step > 1 && (
-                <div className="flex items-center gap-2 mb-10">
-                  {Array.from({ length: TOTAL_STEPS - 1 }).map((_, i) => (
-                    <div key={i} className={cn("h-2 flex-1 rounded-full transition-colors", step - 1 >= i + 1 ? "gradient-primary" : "bg-muted")} />
-                  ))}
-                </div>
-              )}
+              {/* Progress bar */}
+              <div className="flex items-center gap-2 mb-10">
+                {Array.from({ length: TOTAL_STEPS - 1 }).map((_, i) => (
+                  <div key={i} className={cn("h-2 flex-1 rounded-full transition-colors", step - 1 >= i + 1 ? "gradient-primary" : "bg-muted")} />
+                ))}
+              </div>
 
-              {/* Step 1 - Auth */}
-              {step === 1 && <AuthStep onAuthed={() => setStep(2)} externalError={authError} />}
-
-              {/* Step 2 - Name */}
-              {step === 2 && (
+              {/* Step 1 - Name */}
+              {step === 1 && (
                 <div className="space-y-8">
                   <div>
                     <h1 className="text-3xl font-black text-foreground tracking-tight"><TypewriterText text="Hi there! I'm Analogix AI." delay={300} /></h1>
@@ -687,8 +332,8 @@ const Onboarding = () => {
                 </div>
               )}
 
-              {/* Step 3 - Year */}
-              {step === 3 && (
+              {/* Step 2 - Year */}
+              {step === 2 && (
                 <div className="space-y-8">
                   <div>
                     <h1 className="text-3xl font-black text-foreground tracking-tight">What year are you in?</h1>
@@ -707,8 +352,8 @@ const Onboarding = () => {
                 </div>
               )}
 
-              {/* Step 4 - State */}
-              {step === 4 && (
+              {/* Step 3 - State */}
+              {step === 3 && (
                 <div className="space-y-8">
                   <div>
                     <h1 className="text-3xl font-black text-foreground tracking-tight">Where do you go to school?</h1>
@@ -727,8 +372,8 @@ const Onboarding = () => {
                 </div>
               )}
 
-              {/* Step 5 - Subjects */}
-              {step === 5 && (
+              {/* Step 4 - Subjects */}
+              {step === 4 && (
                 <div className="space-y-8">
                   <div>
                     <h1 className="text-3xl font-black text-foreground tracking-tight">Nice to meet you, {name}!</h1>
@@ -753,8 +398,8 @@ const Onboarding = () => {
                 </div>
               )}
 
-              {/* Step 6 - Hobbies */}
-              {step === 6 && (
+              {/* Step 5 - Hobbies */}
+              {step === 5 && (
                 <div className="space-y-8">
                   <div>
                     <h1 className="text-3xl font-black text-foreground tracking-tight">Almost there!</h1>
@@ -817,40 +462,28 @@ const Onboarding = () => {
                 </div>
               )}
 
-              {/* Step 7 - ICS */}
-              {step === 7 && (
+              {/* Step 6 - Calendar */}
+              {step === 6 && (
                 <IcsStep importing={icsImporting} imported={icsImported} count={icsCount} error={icsError} onFile={handleIcsFile} />
               )}
 
-              {/* Footer buttons - hidden on auth step since it handles its own flow */}
-              {step > 1 && (
-                <div className="flex justify-between items-center mt-10">
-                  <Button variant="ghost" onClick={() => setStep(s => s - 1)} className="px-6 rounded-xl">Back</Button>
-                  <div className="flex items-center gap-3">
-                    {step === 7 && !icsImported && (
-                      <Button variant="ghost" onClick={handleNext} className="px-6 rounded-xl text-muted-foreground">Skip</Button>
-                    )}
-                    <Button onClick={handleNext} disabled={!canNext}
-                      className="gap-2 gradient-primary text-primary-foreground border-0 h-14 px-8 rounded-2xl font-bold shadow-xl hover:opacity-90 transition-opacity">
-                      {step === 7 ? (
-                        <><Sparkles className="w-5 h-5" />{icsImported ? "All Done!" : "Finish Setup"}</>
-                      ) : (
-                        <>Next <ArrowRight className="w-5 h-5" /></>
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              )}
-
-              {/* On the auth step, show Continue if already authed */}
-              {step === 1 && authUser && (
-                <div className="flex justify-end mt-10">
-                  <Button onClick={() => setStep(2)}
+              {/* Footer buttons */}
+              <div className="flex justify-between items-center mt-10">
+                <Button variant="ghost" onClick={() => setStep(s => s - 1)} className="px-6 rounded-xl">Back</Button>
+                <div className="flex items-center gap-3">
+                  {step === 6 && !icsImported && (
+                    <Button variant="ghost" onClick={handleNext} className="px-6 rounded-xl text-muted-foreground">Skip</Button>
+                  )}
+                  <Button onClick={handleNext} disabled={!canNext}
                     className="gap-2 gradient-primary text-primary-foreground border-0 h-14 px-8 rounded-2xl font-bold shadow-xl hover:opacity-90 transition-opacity">
-                    Continue <ArrowRight className="w-5 h-5" />
+                    {step === 6 ? (
+                      <><Sparkles className="w-5 h-5" />{icsImported ? "All Done!" : "Finish Setup"}</>
+                    ) : (
+                      <>Next <ArrowRight className="w-5 h-5" /></>
+                    )}
                   </Button>
                 </div>
-              )}
+              </div>
 
             </motion.div>
           ) : (

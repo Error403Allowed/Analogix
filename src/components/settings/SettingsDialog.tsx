@@ -64,7 +64,7 @@ const SettingsDialog = ({ open, onOpenChange }: SettingsDialogProps) => {
   const handleSignOut = async () => {
     await signOut();
     onOpenChange(false);
-    router.replace("/onboarding");
+    router.replace("/login");
   };
 
   const handleDeleteAccount = async () => {
@@ -88,7 +88,7 @@ const SettingsDialog = ({ open, onOpenChange }: SettingsDialogProps) => {
       achievementStore.reset();
       toast.success("Account deleted.");
       onOpenChange(false);
-      router.replace("/onboarding");
+      router.replace("/login");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Could not delete your account.";
       toast.error(message);

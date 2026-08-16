@@ -49,7 +49,7 @@ function getAuthRedirectOrigin(): string {
   return window.location.origin;
 }
 
-export async function signInWithGoogle(next = "/onboarding") {
+export async function signInWithGoogle(next = "/dashboard") {
   const supabase = createClient();
   
   const { data, error } = await supabase.auth.signInWithOAuth({
@@ -166,4 +166,33 @@ export function getEmailError(code: string | null, message: string | null): stri
   }
   if (m) return message!;
   return "Something went wrong. Please try again.";
+}
+
+/**
+ * Map a Supabase auth / OAuth error code + description from the callback URL
+ * into a message a user can actually act on. Used on the login surface after
+ * an OAuth or PKCE round trip fails.
+ */
+export function describeAuthError(code: string | null, raw: string | null): string {
+  const c = (code || "").toLowerCase();
+  const r = (raw || "").toLowerCase();
+
+  if (
+    r.includes("unable to exchange external code") ||
+    r.includes("4/0a") ||
+    r.includes("unexpected_failure") ||
+    c === "unexpected_failure"
+  ) {
+    return "Google sign-in couldn't be completed. Please try again - if you registered with Google, keep using Continue with Google.";
+  }
+  if (c.includes("redirect_uri_mismatch") || r.includes("redirect_uri_mismatch")) {
+    return "The Google sign-in redirect isn't configured for this site address yet. Please try again in a moment or use email & password.";
+  }
+  if (c.includes("access_denied") || r.includes("access_denied")) {
+    return "Google sign-in was cancelled. Tap Continue with Google to try again.";
+  }
+  if (c.includes("exchange_failed") || c === "missing_code") {
+    return "We couldn't finish signing you in. The auth code was missing or expired - please try again.";
+  }
+  return getEmailError(c || null, raw);
 }

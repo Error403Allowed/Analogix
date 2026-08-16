@@ -3,12 +3,13 @@
 import { useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { resolveAuthDestination } from "@/lib/auth-routing";
 import { Loader2 } from "lucide-react";
 
 const redirectWithError = (origin: string, errorCode: string, description: string | null) => {
   const params = new URLSearchParams({ error: "auth_failed", error_code: errorCode });
   if (description) params.set("error_description", description.slice(0, 500));
-  return `${origin}/onboarding?${params.toString()}`;
+  return `${origin}/login?${params.toString()}`;
 };
 
 export default function CallbackHandler() {
@@ -40,8 +41,6 @@ export default function CallbackHandler() {
     const code = searchParams.get("code");
     const errorParam = searchParams.get("error");
     const errorDescription = searchParams.get("error_description");
-    const nextRaw = searchParams.get("next");
-    const next = nextRaw ? decodeURIComponent(nextRaw) : "/dashboard";
 
     if (errorParam) {
       console.error("OAuth error:", errorParam, errorDescription);
@@ -75,7 +74,7 @@ export default function CallbackHandler() {
       if (!result) return;
       const { data: { user }, error: userError } = result;
       if (userError || !user) {
-        router.replace(`${origin}${next}`);
+        router.replace(`${origin}/login`);
         return;
       }
 
@@ -94,7 +93,10 @@ export default function CallbackHandler() {
         await supabase.from("profiles").upsert(profileData, { onConflict: "id" }).maybeSingle();
       }
 
-      router.replace(next);
+      // New accounts go through onboarding; returning accounts go straight into
+      // the app. Same decision as /login and ProtectedRoute.
+      const destination = await resolveAuthDestination(user.id);
+      router.replace(destination === "app" ? "/dashboard" : "/onboarding?step=1");
     }).catch((err: any) => {
       console.error("Auth callback: unexpected error", err);
       router.replace(redirectWithError(origin, "unexpected", err?.message ?? null));

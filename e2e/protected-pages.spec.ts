@@ -30,15 +30,15 @@ const unprotectedRoutes = [
   { path: '/rooms', name: 'Rooms' },
 ];
 
-test.describe('Protected Pages - Redirect to Onboarding', () => {
+test.describe('Protected Pages - Redirect to Login', () => {
   for (const { path, name } of protectedRoutes) {
-    test(`redirects ${name} to onboarding`, async ({ page }) => {
+    test(`redirects ${name} to login`, async ({ page }) => {
       const response = await page.goto(path, {
         waitUntil: 'domcontentloaded',
         timeout: TIMEOUT,
       });
       expect(response?.ok()).toBeTruthy();
-      await page.waitForURL(/\/onboarding$/, { timeout: TIMEOUT });
+      await page.waitForURL(/\/login$/, { timeout: TIMEOUT });
       await expect(page.getByPlaceholder('name@email.com')).toBeVisible({ timeout: 10000 });
     });
   }

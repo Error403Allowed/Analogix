@@ -187,7 +187,7 @@ const Landing = () => {
       return;
     }
     if (!user) {
-      router.push("/onboarding");
+      router.push("/login");
       return;
     }
     if (path === "/dashboard" && !hasCompletedOnboarding) {
@@ -264,7 +264,7 @@ const Landing = () => {
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
               <Button size="lg" className="h-13 px-8 text-base font-bold rounded-xl shadow-xl shadow-primary/20 group"
                 style={{ height: 52 }}
-                onClick={() => handleNav("/onboarding")}>
+                onClick={() => handleNav("/login")}>
                 Start for free
                 <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </Button>
@@ -455,7 +455,7 @@ const Landing = () => {
               </p>
               <Button size="lg" variant="secondary"
                 className="h-14 px-12 text-lg font-bold rounded-xl hover:scale-105 transition-transform"
-                onClick={() => handleNav("/onboarding")}>
+                onClick={() => handleNav("/login")}>
                 Get Started - It's Free
                 <ArrowRight className="ml-2 w-5 h-5" />
               </Button>

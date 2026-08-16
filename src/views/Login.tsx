@@ -9,11 +9,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/context/AuthContext";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   signInWithGoogle, signInWithEmail, signUpWithEmail,
-  resetPasswordForEmail, getEmailError, validatePassword,
+  resetPasswordForEmail, getEmailError, describeAuthError, validatePassword,
 } from "@/lib/auth-client";
+import { resolveAuthDestination } from "@/lib/auth-routing";
 import { cn } from "@/lib/utils";
 
 // ── Password requirements checklist ─────────────────────────────────────
@@ -107,6 +108,7 @@ function ModePill({ mode, onChange }: {
 export default function LoginView() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
@@ -115,7 +117,15 @@ export default function LoginView() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(() => {
+    // Friendly message for failures handed back from the auth callback
+    // (OAuth / PKCE failures arrive with error=auth_failed).
+    if (searchParams?.get("error") !== "auth_failed") return null;
+    return describeAuthError(
+      searchParams?.get("error_code"),
+      searchParams?.get("error_description"),
+    );
+  });
   const [success, setSuccess] = useState<string | null>(null);
   const [focused, setFocused] = useState<string | null>(null);
 
@@ -139,9 +149,18 @@ export default function LoginView() {
     }
   }, [step]);
 
-  // Redirect if already authed
+  // Redirect already-authenticated users to their destination: returning
+  // users go straight into the app, brand-new users continue onboarding.
   useEffect(() => {
-    if (!authLoading && user) router.replace("/dashboard");
+    if (authLoading || !user) return;
+    let cancelled = false;
+    resolveAuthDestination(user.id).then((dest) => {
+      if (cancelled) return;
+      router.replace(dest === "app" ? "/dashboard" : "/onboarding?step=1");
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [user, authLoading, router]);
 
   // Auto-advance / retreat step based on email
@@ -213,7 +232,8 @@ export default function LoginView() {
     setLoading(true);
     setError(null);
     try {
-      await signInWithGoogle("/onboarding");
+      // Destination is resolved after the OAuth callback returns.
+      await signInWithGoogle();
     } catch (e) {
       const err = e as { code?: string; message?: string };
       setError(getEmailError(err.code ?? null, err.message ?? null));
