@@ -31,7 +31,7 @@ Single Next.js app (Next.js 16 App Router, Turbopack) for an AI study platform, 
 - Always run tests after making a fix or making/editing a component/piece of code
 - After context compaction, always refer back to AGENTS.md
 - Do not go with quick fixes, make fixes that work in the long-term and produce less errors over time
-- When asked to commit and push changes, make sure all local changes are pushed neatly so that commits can be referred in a neat and structured manner
+- When asked to commit and push changes, make sure only YOUR changes are pushed neatly so that commits can be referred to in a neat and structured manner
 - Before committing and pushing, ALWAYS run "npm run build". npm run build MUST PASS before pushing in order to create a valid vercel deployment. 
 - When creating a plan, always complete a risk assessment and present it to the user transparently and with no bias whatsoever. 
 
