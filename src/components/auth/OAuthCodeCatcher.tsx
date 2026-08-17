@@ -51,7 +51,10 @@ export default function OAuthCodeCatcher() {
     }
 
     const errorParam = params.get("error");
-    if (errorParam) {
+    // `auth_failed` is the app's own signal (see redirectWithError) and is
+    // surfaced by the login page itself - re-forwarding it here would clobber
+    // the real error_code/error_description and log a spurious error.
+    if (errorParam && errorParam !== "auth_failed") {
       processedKey.current = key;
       console.error("Auth catcher: OAuth error", errorParam, params.get("error_description"));
       router.replace(redirectWithError(origin, errorParam, params.get("error_description")));
