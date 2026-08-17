@@ -1,4 +1,4 @@
-import { callGroqChatStream, formatError, classifyTaskType, resolveModelForUser } from "../_utils";
+import { callGroqChatStream, formatError, classifyTaskType, resolveModelForUser, REASONING_OUTPUT_FLOOR } from "../_utils";
 import { createClient } from "@/lib/supabase/server";
 import { buildCalendarContext } from "../_calendarContext";
 import { listUserDocuments } from "@/lib/server/documents";
@@ -676,11 +676,11 @@ export async function POST(request: Request) {
         const OUTPUT_HARD_CAP = isQwenModel ? 8192 : 4096;
         // NOTE: the Groq org TPM cap is 8000, so the total request (input + output)
         // must stay well under that. The system prompt alone is ~5k tokens, leaving
-        // little room - never budget for more than ~7000 tokens total.
-        const TOTAL_BUDGET = 7000;
+        // little room - never budget for more than ~7600 tokens total.
+        const TOTAL_BUDGET = 7600;
         const wantsLongResponse = isResearchMode || isFormalRequest ||
             /\b(detailed|comprehensive|essay|report|study guide|lesson plan|long answer)\b/i.test(latestUserMsg);
-        const SYSTEM_BUDGET = 2200;
+        const SYSTEM_BUDGET = 2600;
         const targetMaxTokens = isSimpleGreeting ? 300 : wantsLongResponse ? OUTPUT_HARD_CAP : (isQwenModel ? 8000 : 4096);
         // NOTE: the Groq org TPM cap is 8000. Every estimate below uses ~4
         // chars/token, which is deliberately conservative (the prompt measures
@@ -695,7 +695,7 @@ export async function POST(request: Request) {
         // model can use it all thinking and the final answer is truncated without
         // any error signal. Reserve a floor for the answer and free up input room
         // to reach it so reasoning never silently swallows the response.
-        const thinkingAnswerFloor = isQwenModel ? 2000 : 512;
+        const thinkingAnswerFloor = isQwenModel ? REASONING_OUTPUT_FLOOR : 512;
         const stripTailBlocks = (prompt: string) => {
             const importantIdx = prompt.indexOf("\nIMPORTANT: If the user asks for a visual");
             if (importantIdx === -1)

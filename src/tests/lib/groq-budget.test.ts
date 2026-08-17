@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 
-import { enforceGroqRequestBudget } from '@/app/api/groq/_utils';
+import { enforceGroqRequestBudget, REASONING_OUTPUT_FLOOR, getMinOutputTokens } from '@/app/api/groq/_utils';
 
 const charsPerToken = 3.5;
 const estimate = (text: string) => Math.ceil(text.length / charsPerToken);
@@ -63,5 +63,25 @@ describe('enforceGroqRequestBudget', () => {
     const { messages: out, maxTokens } = enforceGroqRequestBudget([], 1024, 7000);
     expect(out).toEqual([]);
     expect(maxTokens).toBe(1024);
+  });
+
+  it('keeps the reasoning output floor when the request is trimmed for a thinking model', () => {
+    // Input ≈ 6k tokens, so reaching the reasoning floor (2560t) forces input to
+    // give way - but the visible answer + chain-of-thought must still fit.
+    const messages = [sys(3000), user(9000), assistant(9000), user(20)];
+    const { messages: out, maxTokens } = enforceGroqRequestBudget(messages, 6000, 7600, REASONING_OUTPUT_FLOOR);
+    expect(maxTokens).toBeGreaterThanOrEqual(REASONING_OUTPUT_FLOOR);
+    // System prompt and the latest user ask survive the trim.
+    expect(out[0].role).toBe("system");
+    expect(out[out.length - 1].content).toBe("u".repeat(20));
+    const total = out.reduce((sum, m) => sum + estimate(m.content), 0) + maxTokens;
+    expect(total).toBeLessThanOrEqual(7600);
+  });
+
+  it('resolves the minimum output allowance from task type and model', () => {
+    expect(getMinOutputTokens("reasoning")).toBe(REASONING_OUTPUT_FLOOR);
+    expect(getMinOutputTokens("default", "qwen/qwen3.6-27b")).toBe(REASONING_OUTPUT_FLOOR);
+    expect(getMinOutputTokens("default", "openai/gpt-oss-20b")).toBe(256);
+    expect(getMinOutputTokens("lightweight")).toBe(256);
   });
 });

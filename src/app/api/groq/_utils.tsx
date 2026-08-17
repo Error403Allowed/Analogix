@@ -54,11 +54,12 @@ export const resolveModelForUser = (modelId?: string | null): string => {
         return DEFAULT_MODEL;
     return normalizeModelId(modelId);
 };
-// Model-specific token limits - capped to stay under Groq's rate limits
-// Qwen3.6-27B supports longer outputs for math/science reasoning
+// Model-specific output ceilings. These sit ABOVE the per-request budget so the
+// request budget (input + output) is the binding constraint, not the model's
+// own output limit. Kept uniform so every model can use the full budget room.
 const MODEL_OUTPUT_LIMITS = {
-    "openai/gpt-oss-20b": 4096,
-    "openai/gpt-oss-120b": 4096,
+    "openai/gpt-oss-20b": 8192,
+    "openai/gpt-oss-120b": 8192,
     "qwen/qwen3.6-27b": 8192,
 };
 const MODEL_CONTEXT_LIMITS = {
@@ -70,13 +71,38 @@ const MODEL_CONTEXT_LIMITS = {
 // IMPORTANT: The account (org_01jv397r1kf1gstffd2f0vyfv3) is capped at 8000
 // TPM. A request whose input + max_tokens exceeds 8000 is rejected by Groq
 // with 413 "Request too large", so the budgets below MUST keep every request
-// comfortably under that hard cap (input + requested output together).
+// comfortably under that hard cap (input + requested output together). 7600
+// leaves a 400-token cushion on top of the conservative estimate - the
+// enforcement estimator (~3.5 chars/token) deliberately overestimates, so a
+// 7600-token estimate is a smaller real request and can never hit the cap.
 const MODEL_REQUEST_TOKEN_BUDGETS = {
-    "openai/gpt-oss-20b": 7000,
-    "openai/gpt-oss-120b": 7000,
-    "qwen/qwen3.6-27b": 7000,
+    "openai/gpt-oss-20b": 7600,
+    "openai/gpt-oss-120b": 7600,
+    "qwen/qwen3.6-27b": 7600,
 };
 const MIN_COMPLETION_TOKENS = 256;
+// Reasoning models (Qwen - and GPT-OSS, which reasons by default) spend part of
+// their output budget on the hidden chain-of-thought before the visible answer.
+// Reserve extra output room so the thinking pass AND the answer both fit and
+// neither gets truncated mid-stream. This floor also feeds the request throttle,
+// so a reasoning request is charged for its real (reasoning + answer) allowance.
+export const REASONING_TOKEN_RESERVE = 2048;
+export const MIN_ANSWER_TOKENS = 512;
+export const REASONING_OUTPUT_FLOOR = REASONING_TOKEN_RESERVE + MIN_ANSWER_TOKENS;
+
+/**
+ * Minimum output allowance for a request. Reasoning requests (or an explicit
+ * Qwen selection) reserve room for the hidden chain-of-thought on top of the
+ * visible answer, so the reply is never silently truncated. Non-reasoning
+ * requests keep the small default floor.
+ */
+export const getMinOutputTokens = (taskType: string, userSelectedModel?: any): number => {
+    if (taskType === "reasoning") return REASONING_OUTPUT_FLOOR;
+    if (userSelectedModel && typeof userSelectedModel === "string" && userSelectedModel.toLowerCase().includes("qwen")) {
+        return REASONING_OUTPUT_FLOOR;
+    }
+    return MIN_COMPLETION_TOKENS;
+};
 const getSafeMaxTokens = (model: string, requested: number, estimatedInputTokens = 0): number => {
     const limit = (MODEL_OUTPUT_LIMITS as Record<string, number>)[model] || 4096;
     const requestBudget = (MODEL_REQUEST_TOKEN_BUDGETS as Record<string, number>)[model];
@@ -102,22 +128,27 @@ const estimateRequestTokens = (text: string): number =>
     Math.ceil(text.length / ESTIMATE_CHARS_PER_TOKEN);
 /**
  * Guarantee a message list + output budget fits Groq's per-request token cap.
+ * `minOutputTokens` is the smallest output allowance worth keeping - for
+ * reasoning models pass REASONING_OUTPUT_FLOOR so the trim reclaims enough
+ * input room for the chain-of-thought AND the visible answer to fit, instead
+ * of starving the reply down to a couple of hundred tokens.
  * Returns the trimmed message list and a safe max_tokens value.
  */
 export const enforceGroqRequestBudget = (
     messages: { role: string; content: string }[],
     requestedMaxTokens: number,
-    totalBudget: number = 7000,
+    totalBudget: number = 7600,
+    minOutputTokens: number = MIN_COMPLETION_TOKENS,
 ): { messages: { role: string; content: string }[]; maxTokens: number } => {
     const msgs = messages.map(m => ({ ...m }));
     const estimateInput = (list: { content: string }[]) =>
         list.reduce((sum, m) => sum + estimateRequestTokens(m.content), 0);
     let inputTokens = estimateInput(msgs);
-    // 1) Drop the oldest non-system turns while the request (even at minimum
-    //    output) is still over budget. The latest user ask is always kept.
+    // 1) Drop the oldest non-system turns while the request (even at the minimum
+    //    output allowance) is still over budget. The latest user ask is always kept.
     let dropped = 0;
     const nonSystemCount = () => msgs.filter(m => m.role !== "system").length;
-    while (msgs.length > 1 && nonSystemCount() > 1 && inputTokens + MIN_COMPLETION_TOKENS > totalBudget) {
+    while (msgs.length > 1 && nonSystemCount() > 1 && inputTokens + minOutputTokens > totalBudget) {
         const dropIdx = msgs.findIndex(m => m.role !== "system");
         if (dropIdx === -1)
             break;
@@ -129,19 +160,19 @@ export const enforceGroqRequestBudget = (
     //    content (oldest non-system first; the system prompt tail only as an
     //    absolute last resort). A truncated prompt is far better than a 413.
     let guard = 0;
-    while (inputTokens + MIN_COMPLETION_TOKENS > totalBudget && guard < 10) {
+    while (inputTokens + minOutputTokens > totalBudget && guard < 10) {
         const idx = msgs.findIndex(m => m.role !== "system" && m.content.length > 200);
         const targetIdx = idx === -1 ? (msgs[0]?.role === "system" && msgs[0].content.length > 200 ? 0 : -1) : idx;
         if (targetIdx === -1)
             break;
-        const over = inputTokens + MIN_COMPLETION_TOKENS - totalBudget;
+        const over = inputTokens + minOutputTokens - totalBudget;
         const cutChars = Math.ceil(over * ESTIMATE_CHARS_PER_TOKEN) + 64;
         const kept = Math.max(120, msgs[targetIdx].content.length - cutChars);
         msgs[targetIdx].content = msgs[targetIdx].content.slice(0, kept) + "\n…[truncated]";
         inputTokens = estimateInput(msgs);
         guard++;
     }
-    const maxTokens = Math.max(MIN_COMPLETION_TOKENS, Math.min(requestedMaxTokens, totalBudget - inputTokens));
+    const maxTokens = Math.max(minOutputTokens, Math.min(requestedMaxTokens, totalBudget - inputTokens));
     if (dropped > 0 || guard > 0) {
         console.warn(`[Groq] Budget safety net: dropped ${dropped} message(s), truncated ${guard} content(s) to fit ${totalBudget}t request cap`);
     }
@@ -561,7 +592,15 @@ export const callGroqChat = async (payload: any, taskType = "default", userSelec
     }
     // Estimate tokens BEFORE model selection, but only after guaranteeing the
     // request fits Groq's per-request TPM cap so oversized prompts can never 413.
-    const budgeted = enforceGroqRequestBudget(payload.messages, payload.max_tokens ?? MIN_COMPLETION_TOKENS);
+    // Reasoning requests reserve an output floor so the chain-of-thought and the
+    // visible answer both fit, and that full allowance feeds the throttle below.
+    const minOutputTokens = getMinOutputTokens(taskType, userSelectedModel);
+    const budgeted = enforceGroqRequestBudget(
+        payload.messages,
+        payload.max_tokens ?? minOutputTokens,
+        MODEL_REQUEST_TOKEN_BUDGETS[DEFAULT_MODEL] || 7600,
+        minOutputTokens,
+    );
     const budgetMessages = budgeted.messages;
     const budgetMaxTokens = budgeted.maxTokens;
     const messageText = budgetMessages.map((m: any) => m.content).join(" ");
@@ -709,7 +748,15 @@ export const callGroqChatStream = async (payload: any, taskType = "default", use
     assertApiKeys();
     // Estimate tokens BEFORE model selection, but only after guaranteeing the
     // request fits Groq's per-request TPM cap so oversized prompts can never 413.
-    const budgeted = enforceGroqRequestBudget(payload.messages, payload.max_tokens ?? MIN_COMPLETION_TOKENS);
+    // Reasoning requests reserve an output floor so the chain-of-thought and the
+    // visible answer both fit, and that full allowance feeds the throttle below.
+    const minOutputTokens = getMinOutputTokens(taskType, userSelectedModel);
+    const budgeted = enforceGroqRequestBudget(
+        payload.messages,
+        payload.max_tokens ?? minOutputTokens,
+        MODEL_REQUEST_TOKEN_BUDGETS[DEFAULT_MODEL] || 7600,
+        minOutputTokens,
+    );
     const budgetMessages = budgeted.messages;
     const budgetMaxTokens = budgeted.maxTokens;
     const messageText = budgetMessages.map((m: any) => m.content).join(" ");

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { callGroqChat, formatError, classifyTaskType, resolveModelForUser } from "../_utils";
+import { callGroqChat, formatError, classifyTaskType, resolveModelForUser, REASONING_OUTPUT_FLOOR } from "../_utils";
 import { getFormulaSheetContext } from "@/data/formulaSheets";
 import { createClient } from "@/lib/supabase/server";
 import { getUserAIPersonality, getRelevantMemories, buildMemoryContext, buildPersonalityInstructions } from "@/lib/aiMemory";
@@ -477,8 +477,8 @@ ${userSubjectsContext}`;
         // from Groq's free tier, so drop the oldest turns while always keeping the
         // system prompt and the latest user message.
         // NOTE: the org TPM cap is 8000, so the total request (input + output) must
-        // stay well under that - never budget for more than ~7000 tokens.
-        const TOTAL_BUDGET = 7000;
+        // stay well under that - never budget for more than ~7600 tokens.
+        const TOTAL_BUDGET = 7600;
         const aiMessages: { role: string; content: string }[] = [
             {
                 role: "system",
@@ -489,24 +489,34 @@ ${userSubjectsContext}`;
         // Output is budgeted FIRST - only if even a minimum reply cannot fit do we
         // start dropping input. This keeps the prompt intact (incl. the
         // visualisation guide when the user asked for a visual) whenever possible.
+        // Thinking models (Qwen - or reasoning tasks) share one output budget
+        // between the hidden chain-of-thought and the visible answer, so reserve
+        // an answer floor and reclaim input room until that floor actually fits,
+        // otherwise the reply gets truncated mid-thought.
         const estimateTotal = (msgs: { content: string }[], outputTokens: number) =>
             Math.ceil(msgs.reduce((sum, m) => sum + m.content.length, 0) / 4) + outputTokens;
+        const isReasoningModel = taskType === "reasoning" || resolvedModel.toLowerCase().includes("qwen");
+        const ANSWER_FLOOR = isReasoningModel ? REASONING_OUTPUT_FLOOR : 512;
         let effectiveMaxTokens = maxTokens;
         let currentEst = estimateTotal(aiMessages, maxTokens);
         if (currentEst > TOTAL_BUDGET) {
             const availableForOutput = TOTAL_BUDGET - (currentEst - maxTokens);
-            effectiveMaxTokens = Math.max(256, Math.min(maxTokens, availableForOutput));
+            effectiveMaxTokens = Math.max(ANSWER_FLOOR, Math.min(maxTokens, availableForOutput));
             currentEst = estimateTotal(aiMessages, effectiveMaxTokens);
         }
         let droppedMessages = 0;
-        while (currentEst > TOTAL_BUDGET && aiMessages.length > 2) {
+        while ((currentEst > TOTAL_BUDGET || (isReasoningModel && effectiveMaxTokens < ANSWER_FLOOR)) && aiMessages.length > 2) {
             aiMessages.splice(1, 1);
             droppedMessages += 1;
+            const availableForOutput = TOTAL_BUDGET - estimateTotal(aiMessages, 0);
+            effectiveMaxTokens = Math.max(ANSWER_FLOOR, Math.min(maxTokens, availableForOutput));
             currentEst = estimateTotal(aiMessages, effectiveMaxTokens);
         }
         if (droppedMessages > 0) {
             console.log(`[chat] Dropped ${droppedMessages} old message(s) to fit token budget (${currentEst}t / ${TOTAL_BUDGET}t)`);
         }
+        const promptTokens = Math.ceil(aiMessages.reduce((sum, m) => sum + m.content.length, 0) / 4);
+        effectiveMaxTokens = Math.min(effectiveMaxTokens, Math.max(ANSWER_FLOOR, TOTAL_BUDGET - promptTokens));
         const rawContent = await callGroqChat({
             messages: aiMessages,
             max_tokens: effectiveMaxTokens,
