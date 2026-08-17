@@ -2,15 +2,8 @@
 
 import { useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
-import { resolveAuthDestination } from "@/lib/auth-routing";
+import { completeAuthCodeExchange, redirectWithError } from "@/lib/auth-callback";
 import { Loader2 } from "lucide-react";
-
-const redirectWithError = (origin: string, errorCode: string, description: string | null) => {
-  const params = new URLSearchParams({ error: "auth_failed", error_code: errorCode });
-  if (description) params.set("error_description", description.slice(0, 500));
-  return `${origin}/login?${params.toString()}`;
-};
 
 export default function CallbackHandler() {
   const router = useRouter();
@@ -54,53 +47,7 @@ export default function CallbackHandler() {
       return;
     }
 
-    const supabase = createClient();
-
-    supabase.auth.exchangeCodeForSession(code).then(({ error }: { error: any }) => {
-      if (error) {
-        console.error("Auth callback: exchangeCodeForSession failed", {
-          message: error.message,
-          code: (error as { code?: string }).code,
-          status: (error as { status?: number }).status,
-          name: error.name,
-        });
-        const supabaseCode = (error as { code?: string }).code ?? "exchange_failed";
-        router.replace(redirectWithError(origin, supabaseCode, error.message));
-        return;
-      }
-
-      return supabase.auth.getUser();
-    }).then(async (result: any) => {
-      if (!result) return;
-      const { data: { user }, error: userError } = result;
-      if (userError || !user) {
-        router.replace(`${origin}/login`);
-        return;
-      }
-
-      const meta = user.user_metadata || {};
-      const profileData: Record<string, unknown> = {
-        id: user.id,
-        updated_at: new Date().toISOString(),
-      };
-      if (meta.name || meta.full_name) {
-        profileData.name = meta.name || meta.full_name;
-      }
-      if (meta.avatar_url || meta.picture) {
-        profileData.avatar_url = meta.avatar_url || meta.picture;
-      }
-      if (Object.keys(profileData).length > 1) {
-        await supabase.from("profiles").upsert(profileData, { onConflict: "id" }).maybeSingle();
-      }
-
-      // New accounts go through onboarding; returning accounts go straight into
-      // the app. Same decision as /login and ProtectedRoute.
-      const destination = await resolveAuthDestination(user.id);
-      router.replace(destination === "app" ? "/dashboard" : "/onboarding?step=1");
-    }).catch((err: any) => {
-      console.error("Auth callback: unexpected error", err);
-      router.replace(redirectWithError(origin, "unexpected", err?.message ?? null));
-    });
+    void completeAuthCodeExchange(code).then((target) => router.replace(target));
   }, [router, searchParams]);
 
   return (

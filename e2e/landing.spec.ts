@@ -47,23 +47,32 @@ test.describe('Landing Page', () => {
   });
 
   test('cycles the landing page main colour on each refresh', async ({ page }) => {
-    const primaryHue = () =>
-      page.evaluate(() =>
-        getComputedStyle(document.querySelector('[data-landing-root]')).getPropertyValue('--p-h').trim()
-      );
+    const landingColors = () =>
+      page.evaluate(() => {
+        const root = document.querySelector('[data-landing-root]');
+        return {
+          // The internal cycle counter advances on every visit...
+          hue: getComputedStyle(root).getPropertyValue('--p-h').trim(),
+          // ...and the RENDERED colour must follow it, otherwise the page
+          // never visually changes (a regression this assertion catches).
+          rendered: getComputedStyle(root).getPropertyValue('--color-primary').trim(),
+        };
+      });
 
     await page.goto('/', { waitUntil: 'domcontentloaded', timeout: 15000 });
     // Give the colour-cycle effect time to run.
     await page.waitForTimeout(1200);
-    const first = await primaryHue();
+    const first = await landingColors();
 
     await page.reload({ waitUntil: 'domcontentloaded', timeout: 15000 });
     await page.waitForTimeout(1200);
-    const second = await primaryHue();
+    const second = await landingColors();
 
-    expect(first).toBeTruthy();
-    expect(second).toBeTruthy();
-    expect(second).not.toBe(first);
+    expect(first.hue).toBeTruthy();
+    expect(second.hue).toBeTruthy();
+    expect(second.hue).not.toBe(first.hue);
+    expect(first.rendered).toBeTruthy();
+    expect(second.rendered).not.toBe(first.rendered);
   });
 
   test('does not touch the saved app theme when cycling the landing colour', async ({ page }) => {

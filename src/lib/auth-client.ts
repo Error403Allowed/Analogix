@@ -35,17 +35,17 @@ function isInvalidCredentials(error: { code?: string; message?: string }): boole
 }
 
 /**
- * Canonical origin used for OAuth / email redirect targets. Falls back to the
- * current tab's origin so dev (localhost) and any live alias keep working,
- * but in production it pins auth callbacks to the real site (NEXT_PUBLIC_SITE_URL)
- * so a visit from a Vercel deployment alias never strands the user on a
- * throwaway domain like analogix-analogix.vercel.app.
+ * Origin used for OAuth / email redirect targets. Always the current tab's
+ * origin - never the canonical domain (NEXT_PUBLIC_SITE_URL).
+ *
+ * Supabase's PKCE flow stores the code verifier in a cookie on the origin
+ * where sign-in was started. If Google/email redirects back to a DIFFERENT
+ * origin (e.g. pinning to the canonical domain while the visitor is on a
+ * Vercel preview alias, or on localhost), the callback cannot find the code
+ * verifier and the exchange fails with `pkce_code_verifier_not_found`,
+ * silently bouncing the user back to the login page unsigned-in.
  */
 function getAuthRedirectOrigin(): string {
-  const configured = process.env.NEXT_PUBLIC_SITE_URL;
-  if (configured && !/^http:\/\/localhost(?::\d+)?$/.test(configured)) {
-    return configured.replace(/\/$/, "");
-  }
   return window.location.origin;
 }
 

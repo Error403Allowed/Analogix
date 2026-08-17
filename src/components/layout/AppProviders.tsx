@@ -11,6 +11,7 @@ import { AuthProvider } from "@/context/AuthContext";
 import { TourProvider } from "@/context/TourContext";
 import PageTour from "@/components/onboarding/PageTour";
 import { TourAutoTrigger } from "@/components/onboarding/TourAutoTrigger";
+import OAuthCodeCatcher from "@/components/auth/OAuthCodeCatcher";
 import { getAuthUser } from "@/utils/authCache";
 import { createClient } from "@/lib/supabase/client";
 
@@ -65,6 +66,7 @@ export default function AppProviders({ children }: { children: React.ReactNode }
               <ThemeSync />
               <ReleasePointerCaptureGuard />
               <TourAutoTrigger />
+              <OAuthCodeCatcher />
               <PageTour />
               {children}
               <Sonner />

@@ -245,9 +245,9 @@ export const themes = [
   }),
 ];
 
-const applyThemeVars = (theme: Theme, target: HTMLElement) => {
-  const pickForeground = (l: string) => (parseFloat(l) >= 62 ? "222.2 47.4% 11.2%" : "210 40% 98%");
+const pickForeground = (l: string) => (parseFloat(l) >= 62 ? "222.2 47.4% 11.2%" : "210 40% 98%");
 
+const applyThemeVars = (theme: Theme, target: HTMLElement) => {
   target.style.setProperty("--p-h", theme.p.h);
   target.style.setProperty("--p-s", theme.p.s);
   target.style.setProperty("--p-l", theme.p.l);
@@ -293,6 +293,57 @@ const applyThemeVars = (theme: Theme, target: HTMLElement) => {
 };
 
 /**
+ * Override the fully-resolved colour tokens on `target` as well as the raw HSL
+ * vars. Tailwind v4 defines `--color-primary: hsl(var(--primary))` on `:root`,
+ * so setting only `--p-h`/`--primary-foreground`/... on a child element never
+ * changes what its descendants render - the `var(--primary)` inside is resolved
+ * in the `:root` context where the `--color-*` token is declared.
+ *
+ * Writing both the resolved `--color-*` tokens and the raw HSL values on
+ * `target` makes the scoped theme visible (utilities AND inline
+ * `hsl(var(--primary))` styles) while staying isolated to the target's subtree.
+ */
+const applyScopedColorTokens = (theme: Theme, target: HTMLElement) => {
+  const set = (name: string, value: string) => target.style.setProperty(name, value);
+  const resolved = (c: HSL) => `hsl(${hslValue(c)})`;
+
+  // Raw tokens referenced directly by inline styles / components.
+  set("--primary", hslValue(theme.p));
+  set("--primary-foreground", pickForeground(theme.p.l));
+  set("--accent", hslValue(theme.accent));
+  set("--accent-foreground", pickForeground(theme.accent.l));
+  set("--success", hslValue(theme.success));
+  set("--success-foreground", pickForeground(theme.success.l));
+  set("--warning", hslValue(theme.warning));
+  set("--warning-foreground", pickForeground(theme.warning.l));
+  set("--destructive", hslValue(theme.danger));
+  set("--destructive-foreground", pickForeground(theme.danger.l));
+  set("--muted", hslValue(theme.muted));
+  set("--muted-foreground", hslValue(theme.mutedFg));
+  set("--secondary", hslValue(theme.muted));
+  set("--secondary-foreground", hslValue(theme.mutedFg));
+  set("--ring", hslValue(theme.p));
+
+  // Tailwind v4 `--color-*` tokens consumed by utilities (text-primary,
+  // bg-primary/10, border-primary/20, ...).
+  set("--color-primary", resolved(theme.p));
+  set("--color-primary-foreground", pickForeground(theme.p.l));
+  set("--color-accent", resolved(theme.accent));
+  set("--color-accent-foreground", pickForeground(theme.accent.l));
+  set("--color-success", resolved(theme.success));
+  set("--color-success-foreground", pickForeground(theme.success.l));
+  set("--color-warning", resolved(theme.warning));
+  set("--color-warning-foreground", pickForeground(theme.warning.l));
+  set("--color-destructive", resolved(theme.danger));
+  set("--color-destructive-foreground", pickForeground(theme.danger.l));
+  set("--color-muted", resolved(theme.muted));
+  set("--color-muted-foreground", resolved(theme.mutedFg));
+  set("--color-secondary", resolved(theme.muted));
+  set("--color-secondary-foreground", resolved(theme.mutedFg));
+  set("--color-ring", resolved(theme.p));
+};
+
+/**
  * Apply a theme's CSS variables to `target` WITHOUT persisting anything.
  * Used for scoped, throwaway theming (e.g. the landing page colour cycle)
  * so the visitor's saved app theme is never touched.
@@ -301,6 +352,7 @@ export const applyThemeScoped = (themeName: string, target: HTMLElement) => {
   const theme = themes.find(t => t.name === themeName);
   if (!theme) return;
   applyThemeVars(theme, target);
+  applyScopedColorTokens(theme, target);
 };
 
 export const applyThemeByName = (themeName: string) => {

@@ -213,6 +213,33 @@ async function stubSignUp(page: Page, user: StubUser) {
   });
 }
 
+/** Stub the GoTrue endpoints used when exchanging an auth code for a session
+ * (the /auth/callback route or the OAuthCodeCatcher fallback). */
+async function stubCodeExchange(page: Page, user: StubUser) {
+  const now = Math.floor(Date.now() / 1000);
+  await page.route("**/auth/v1/token*", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        access_token: FAKE_ACCESS_TOKEN,
+        token_type: "bearer",
+        expires_in: 3600,
+        expires_at: now + 3600,
+        refresh_token: "test-refresh-token",
+        user: gotrueUser(user),
+      }),
+    })
+  );
+  await page.route("**/auth/v1/user*", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(gotrueUser(user)),
+    })
+  );
+}
+
 /** Stub /api/auth/account-provider so the Google-only hint can be tested. */
 async function stubAccountProvider(page: Page, provider: "google" | "email" | "both" | null) {
   await page.route("**/api/auth/account-provider*", (route) =>
@@ -231,6 +258,7 @@ export const authTest = base.extend<{
   stubPasswordLogin: (stub: LoginStub) => Promise<void>;
   stubSignUp: (user: StubUser) => Promise<void>;
   stubAccountProvider: (provider: "google" | "email" | "both" | null) => Promise<void>;
+  stubCodeExchange: (user: StubUser) => Promise<void>;
 }>({
   signInAsReturningUser: async ({ page }, use) => {
     await use((user) => stubReturningUser(page, user));
@@ -249,5 +277,8 @@ export const authTest = base.extend<{
   },
   stubAccountProvider: async ({ page }, use) => {
     await use((provider) => stubAccountProvider(page, provider));
+  },
+  stubCodeExchange: async ({ page }, use) => {
+    await use((user) => stubCodeExchange(page, user));
   },
 });
