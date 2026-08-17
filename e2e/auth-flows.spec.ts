@@ -25,9 +25,10 @@ const NEW_USER = {
 const RETURNING_GOOGLE = {
   id: "google-returning",
   email: "sam.carter@gmail.com",
+  // Google's account name - must never clobber the user's saved custom name.
   name: "Sam Carter",
   profile: {
-    name: "Sam Carter",
+    name: "Shrav", // custom name the user saved during onboarding
     grade: "10",
     state: "NSW",
     subjects: ["math", "english"],
@@ -326,10 +327,13 @@ test.describe("Profile & theme restore after OAuth sign-in", () => {
         }),
       })
     );
-    // The existing profile row (name, grade, state, subjects...).
+    // The existing profile row (custom name, grade, state, subjects...).
+    const postedProfileNames: Array<string | undefined> = [];
     await page.route("**/rest/v1/profiles*", (route) => {
       const method = route.request().method();
       if (method === "POST" || method === "PATCH") {
+        const body = route.request().postDataJSON();
+        postedProfileNames.push(body?.name);
         return route.fulfill({ status: 200, contentType: "application/json", body: "[]" });
       }
       return route.fulfill({
@@ -373,10 +377,13 @@ test.describe("Profile & theme restore after OAuth sign-in", () => {
     await page.waitForTimeout(1500);
 
     const prefs = await page.evaluate(() => localStorage.getItem("userPreferences") || "{}");
-    expect(JSON.parse(prefs).name).toBe("Sam Carter");
+    expect(JSON.parse(prefs).name).toBe("Shrav");
     expect(JSON.parse(prefs).grade).toBe("10");
     expect(JSON.parse(prefs).state).toBe("NSW");
     expect(JSON.parse(prefs).userId).toBe(RETURNING_GOOGLE.id);
+
+    // The Google metadata name must never have been written over the custom name.
+    expect(postedProfileNames).toEqual([undefined]);
 
     // Saved theme restored from the DB, not the default.
     const appTheme = await page.evaluate(() => localStorage.getItem("app-theme"));

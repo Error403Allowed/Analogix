@@ -30,7 +30,16 @@ export async function resolveAuthDestination(
 ): Promise<AuthDestination> {
   try {
     const prefs = readUserPreferences();
-    if (prefs?.onboardingComplete && (!prefs.userId || prefs.userId === userId)) {
+    // Only trust the local cache when it actually carries the user's data.
+    // A stale or partial cache (e.g. name/grade/subjects missing) must not
+    // route the user to the app with default values - fall through to the
+    // canonical profiles row so the real saved details are hydrated.
+    const hasRealData =
+      Boolean(prefs.name) &&
+      Boolean(prefs.grade) &&
+      Array.isArray(prefs.subjects) &&
+      prefs.subjects.length > 0;
+    if (prefs?.onboardingComplete && hasRealData && (!prefs.userId || prefs.userId === userId)) {
       return "app";
     }
   } catch {

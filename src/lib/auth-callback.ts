@@ -66,8 +66,20 @@ export async function completeAuthCodeExchange(code: string): Promise<string> {
     if (meta.name || meta.full_name) profileData.name = meta.name || meta.full_name;
     if (meta.avatar_url || meta.picture) profileData.avatar_url = meta.avatar_url || meta.picture;
 
+    // Backfill name/avatar for brand-new accounts (or auto-created empty rows),
+    // but NEVER overwrite a name the user has already set - Google metadata
+    // must not clobber the custom name they saved during onboarding.
     if (profileData.name !== undefined || profileData.avatar_url !== undefined) {
       try {
+        const { data: existing } = await supabase
+          .from("profiles")
+          .select("name")
+          .eq("id", user.id)
+          .maybeSingle();
+        if (existing?.name) {
+          // User's own name wins; only keep the fresh avatar.
+          delete profileData.name;
+        }
         await supabase.from("profiles").upsert(profileData, { onConflict: "id" }).maybeSingle();
       } catch (upsertErr) {
         // A profile write must never block an otherwise-successful sign-in.

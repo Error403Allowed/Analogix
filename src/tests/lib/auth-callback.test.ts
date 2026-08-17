@@ -17,6 +17,9 @@ vi.mock("@/lib/supabase/client", () => ({
       getUser: mocks.getUser,
     },
     from: () => ({
+      select: () => ({
+        eq: () => ({ maybeSingle: mocks.maybeSingle }),
+      }),
       upsert: (record: unknown, opts: unknown) => {
         mocks.upsertCall(record, opts);
         return { maybeSingle: mocks.maybeSingle };
@@ -122,10 +125,42 @@ describe("completeAuthCodeExchange", () => {
   it("does not block sign-in when the profile upsert fails", async () => {
     mocks.exchangeCodeForSession.mockResolvedValue({ error: null });
     mocks.getUser.mockResolvedValue({ data: { user: user() }, error: null });
+    mocks.maybeSingle.mockResolvedValueOnce({ data: null, error: null });
     mocks.maybeSingle.mockRejectedValue(new Error("row level security blocked"));
     mocks.resolve.mockResolvedValue("app");
 
     const target = await completeAuthCodeExchange("CODE");
+    expect(target).toBe("/dashboard");
+  });
+
+  it("preserves a user's saved name instead of overwriting it with Google metadata", async () => {
+    mocks.exchangeCodeForSession.mockResolvedValue({ error: null });
+    mocks.getUser.mockResolvedValue({ data: { user: user() }, error: null });
+    // The existing profile row already carries the user's own name.
+    mocks.maybeSingle.mockResolvedValueOnce({ data: { name: "Shrav" }, error: null });
+    mocks.maybeSingle.mockResolvedValue({ data: null, error: null });
+    mocks.resolve.mockResolvedValue("app");
+
+    const target = await completeAuthCodeExchange("CODE");
+
+    const upserted = mocks.upsertCall.mock.calls[0][0];
+    expect(upserted).toMatchObject({ id: "u1", avatar_url: "https://example.com/avatar.png" });
+    expect(upserted).not.toHaveProperty("name");
+    expect(target).toBe("/dashboard");
+  });
+
+  it("backfills name and avatar for a brand-new account with no saved name", async () => {
+    mocks.exchangeCodeForSession.mockResolvedValue({ error: null });
+    mocks.getUser.mockResolvedValue({ data: { user: user() }, error: null });
+    mocks.maybeSingle.mockResolvedValue({ data: null, error: null });
+    mocks.resolve.mockResolvedValue("app");
+
+    const target = await completeAuthCodeExchange("CODE");
+
+    expect(mocks.upsertCall).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "u1", name: "Sam", avatar_url: "https://example.com/avatar.png" }),
+      { onConflict: "id" }
+    );
     expect(target).toBe("/dashboard");
   });
 
