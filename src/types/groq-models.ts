@@ -2,7 +2,7 @@
  * Available Groq models for user selection.
  *
  * Lineup verified against the live Groq API (August 2026). All IDs below map
- * to production models currently served by Groq — deprecated models
+ * to production models currently served by Groq - deprecated models
  * (llama-3.1-8b-instant, llama-3.3-70b-versatile, llama-4-scout,
  * qwen-3-32b, etc.) have been replaced by their recommended successors.
  */
@@ -38,7 +38,7 @@ export const GROQ_MODELS: GroqModelConfig[] = [
   {
     id: "qwen-3.6-27b",
     name: "STEM Professor",
-    description: "Analogix's strongest reasoning model for math, science and coding — with vision",
+    description: "Analogix's strongest reasoning model for math, science and coding - with vision",
     modelString: "qwen/qwen3.6-27b",
     maxTokens: 8192,
   },

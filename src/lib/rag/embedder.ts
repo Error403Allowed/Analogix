@@ -2,7 +2,7 @@
 // import) and never statically. Its native onnxruntime binding does not exist
 // on serverless runtimes (Vercel Lambda), so any static import would throw
 // "cannot open shared object file" at module-evaluation time and crash every
-// route that reaches here — even ones that never perform RAG.
+// route that reaches here - even ones that never perform RAG.
 
 // In serverless runtimes (Vercel, etc.) node_modules is read-only, so the model
 // cache must live somewhere writable. Downloads are shared per-instance there.

@@ -142,8 +142,29 @@ export async function POST(request: any) {
         else {
             maxTokens = isQwenModel ? 4096 : 2048; // Balanced
         }
-        // Get the user's hobbies/interests for making analogies
-        const interestList = userContext?.hobbies?.filter(Boolean) ?? [];
+        // Get the user's hobbies/interests for making analogies.
+        // When the client sends the structured interests object, trust ONLY it
+        // (it may be intentionally empty when the student has no hobbies on file) -
+        // never layer the flat-list fallback on top and invent interests for them.
+        const structuredInterests =
+            userContext?.interests && typeof userContext.interests === "object"
+                ? userContext.interests
+                : null;
+        const structuredPool = structuredInterests
+            ? [
+                ...(Object.values(structuredInterests.byCategory ?? {}).flat() || []),
+                ...(structuredInterests.tags ?? []),
+            ].filter(Boolean)
+            : [];
+        const hasStructuredInterests =
+            !!structuredInterests &&
+            (Object.keys(structuredInterests.byCategory ?? {}).length > 0 ||
+                (structuredInterests.tags ?? []).length > 0);
+        const interestList = structuredInterests
+            ? hasStructuredInterests
+                ? [...new Set(structuredPool)]
+                : []
+            : (userContext?.hobbies?.filter(Boolean) ?? []);
         // If no interests set, guide the AI to ask about them in a natural way
         const allowedInterests = interestList.length > 0
             ? interestList.join(", ")

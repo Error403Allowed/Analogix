@@ -50,7 +50,7 @@ The project is built incrementally and some areas are still experimental:
 
 ## Development notes
 
-This project is being developed incrementally. The current focus is improving the tutor's workspace context, document reliability, and curriculum-specific responses. I keep my own design notes and reasoning for the key choices — why Groq for inference, Supabase for auth and storage, Yjs for collaboration, and the ACARA curriculum data structure — in [docs/architecture.md](./docs/architecture.md) and in the commit history.
+This project is being developed incrementally. The current focus is improving the tutor's workspace context, document reliability, and curriculum-specific responses. I keep my own design notes and reasoning for the key choices - why Groq for inference, Supabase for auth and storage, Yjs for collaboration, and the ACARA curriculum data structure - in [docs/architecture.md](./docs/architecture.md) and in the commit history.
 
 ## License
 
@@ -60,6 +60,6 @@ This software and associated documentation files (the "Software") may not be rep
 
 ## Further documentation
 
-- [docs/features.md](./docs/features.md) — full feature matrix and page list
-- [docs/api.md](./docs/api.md) — REST API endpoints
-- [docs/architecture.md](./docs/architecture.md) — architecture, tech stack, build config
+- [docs/features.md](./docs/features.md) - full feature matrix and page list
+- [docs/api.md](./docs/api.md) - REST API endpoints
+- [docs/architecture.md](./docs/architecture.md) - architecture, tech stack, build config

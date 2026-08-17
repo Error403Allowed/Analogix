@@ -4,7 +4,7 @@ This document covers the high-level architecture of the Analogix codebase, the p
 
 ## Overview
 
-Single Next.js application (Next.js App Router, Turbopack) backed directly by Supabase. There is no separate API server or GraphQL layer — route handlers under `src/app/api/` talk to Supabase (Postgres, Auth, RLS) and to Groq through the Vercel AI SDK. The old GraphQL BFF and native mobile app were removed; `@analogix/shared` and `@analogix/mcp` are vendored under `vendor/` and wired in as `file:` dependencies.
+Single Next.js application (Next.js App Router, Turbopack) backed directly by Supabase. There is no separate API server or GraphQL layer - route handlers under `src/app/api/` talk to Supabase (Postgres, Auth, RLS) and to Groq through the Vercel AI SDK. The old GraphQL BFF and native mobile app were removed; `@analogix/shared` and `@analogix/mcp` are vendored under `vendor/` and wired in as `file:` dependencies.
 
 ## Project Structure
 
@@ -88,7 +88,7 @@ Configured model IDs are stored in source code and may change as Groq updates it
 
 ## Build Configuration (`next.config.mjs`)
 
-- **Server external packages**: `pdf-parse`, `pdfjs-dist`, `@huggingface/transformers` — these rely on native bindings or load files from disk at require-time and must not be bundled on the server.
+- **Server external packages**: `pdf-parse`, `pdfjs-dist`, `@huggingface/transformers` - these rely on native bindings or load files from disk at require-time and must not be bundled on the server.
 - **Server Actions body size limit**: 5 MB (file uploads are limited to 50 MB at the API layer).
 - **Package import optimization**: lucide-react, selected Radix packages, recharts, date-fns, framer-motion are tree-shaken automatically.
 - **Image formats**: AVIF and WebP.
@@ -100,7 +100,7 @@ Schema and migrations live in `supabase/migrations/`. RLS policies protect all u
 
 ## Vendored Packages
 
-- **`@analogix/shared`** — types, Zod schemas, curriculum data, formulas, achievements. Must be built before typecheck and before `@analogix/mcp` (mcp imports its dist).
-- **`@analogix/mcp`** — MCP server exposing app data via the Model Context Protocol.
+- **`@analogix/shared`** - types, Zod schemas, curriculum data, formulas, achievements. Must be built before typecheck and before `@analogix/mcp` (mcp imports its dist).
+- **`@analogix/mcp`** - MCP server exposing app data via the Model Context Protocol.
 
 `node_modules/@analogix/{shared,mcp}` are symlinks into `vendor/`. Run `npm install` after changing vendored versions or `file:` specs.

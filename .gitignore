@@ -48,7 +48,7 @@ src/**/*.js
 src/**/*.d.ts
 .vercel
 
-# AI coding tool artifacts — local only, not for version control
+# AI coding tool artifacts - local only, not for version control
 .home/
 .npm-cache/
 .qwen/

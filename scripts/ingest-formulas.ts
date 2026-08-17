@@ -6,7 +6,7 @@ import { generateEmbeddings } from '@/lib/rag/embedder';
  * Ingests the static formula corpus into `entity_embeddings` as a shared
  * (owner_user_id = NULL) index so hybrid_search can return formulas for any
  * authenticated user. Idempotent via the UNIQUE (entity_type, entity_id,
- * owner_user_id) constraint — rerun freely after formula data changes.
+ * owner_user_id) constraint - rerun freely after formula data changes.
  */
 async function ingestFormulas() {
   console.log('Starting formula ingestion...');
@@ -23,7 +23,7 @@ async function ingestFormulas() {
     for (const category of sheet.categories) {
       for (const formula of category.formulas) {
         const content = [
-          `${sheet.subjectName} — ${category.name}: ${formula.name}`,
+          `${sheet.subjectName} - ${category.name}: ${formula.name}`,
           formula.description ? `Description: ${formula.description}` : '',
           formula.latex ? `Formula: ${formula.latex}` : '',
         ].filter(Boolean).join('\n');

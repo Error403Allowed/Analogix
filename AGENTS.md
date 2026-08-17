@@ -59,7 +59,7 @@ Single Next.js app (Next.js 16 App Router, Turbopack) for an AI study platform, 
 - Node.js >=22 <27, npm >=11
 - `tsc --noEmit` requires the shared package to be built first: `npm run build --prefix vendor/analogix-shared` before `npm run typecheck`
 - ESLint config lives at root `eslint.config.mjs` - do NOT add per-workspace eslint config files (single project)
-- Vendored packages are wired as `file:` deps in `package.json`; `prebuild` compiles `vendor/analogix-shared` then `vendor/analogix-mcp` (shared must build first — mcp imports its dist)
+- Vendored packages are wired as `file:` deps in `package.json`; `prebuild` compiles `vendor/analogix-shared` then `vendor/analogix-mcp` (shared must build first - mcp imports its dist)
 - `node_modules/@analogix/{shared,mcp}` are symlinks into `vendor/`; run `npm install` after changing vendored versions or `file:` specs
 - Supabase migrations are applied manually against the remote/local DB; `.env` holds `SUPABASE_SERVICE_ROLE_KEY` + URL for server-side admin access
 - Room ownership transfer and permission changes use SECURITY DEFINER RPCs (direct `study_rooms` UPDATE would fail RLS `WITH CHECK`)

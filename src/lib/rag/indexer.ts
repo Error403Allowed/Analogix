@@ -41,7 +41,7 @@ export interface EntitySearchResult {
 /**
  * Upsert a single entity embedding into the unified index.
  * Idempotent via (entity_type, entity_id, owner_user_id) unique key.
- * Runs synchronously — callers opt into embedding-on-save by invoking this.
+ * Runs synchronously - callers opt into embedding-on-save by invoking this.
  *
  * Documents are special-cased: they have their own `documents.embedding`
  * column and hybrid_search('documents') branch, so they are written there

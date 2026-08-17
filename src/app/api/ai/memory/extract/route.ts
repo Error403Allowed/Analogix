@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import Groq from "groq-sdk";
+import { extractStructuredJson } from "@/lib/memory/jsonExtract";
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
@@ -69,12 +70,15 @@ FRAMING RULES - VERY IMPORTANT:
 
 EXTRACT these types of information:
 - Facts: Year level, location, school type, subjects enrolled, exam boards (HSC, VCE, QCE, etc.)
+- Interests: "Loves basketball", "Plays Rocket League", "Fan of Formula 1", "Enjoys K-Pop" - ANY hobby, sport, game, show, or passion the student mentions, however briefly. These power analogy-based explanations, so capture them eagerly.
 - Preferences: "Prefers metric units", "Likes short answers", "Prefers simple explanations", "Likes visual diagrams"
 - Skills: "Familiar with algebra", "Learning calculus", "Knows Python", "Studying physics"
 - Goals: "Preparing for trials", "Aiming for 90+ in HSC", "Wanting to improve writing", "Interested in medicine"
 - Context: "Uses a Mac", "Studies at night", "Has an exam next week", "Tutoring sister", "Works part-time"
 
 IMPORTANT: Read between the lines. If a student asks for a simpler explanation, note that they prefer clear, accessible explanations. If they mention a specific teacher or textbook, note it. But always frame positively.
+
+TYPE EVERY INTEREST OR HOBBY AS "preference" so future explanations can build analogies around it.
 
 Return ONLY valid JSON in this exact format (no markdown, no code blocks):
 {"memories": [{"content": "extracted fact as a clear statement", "type": "fact|preference|skill|goal|context", "importance": 0.5}]}
@@ -90,52 +94,37 @@ Use ONLY the conversation below. If nothing clear was stated, return {"memories"
 Conversation:
 ${transcript}`;
 
-    const response = await groq.chat.completions.create({
+    const runExtraction = () => groq.chat.completions.create({
       model: "openai/gpt-oss-20b",
       messages: [{ role: "user", content: extractionPrompt }],
-      max_tokens: 400,
+      max_tokens: 600,
       temperature: 0.1,
-      response_format: { type: "json_object" },
-    }).catch(async (err: unknown) => {
+      // NOTE: response_format json_object is intentionally NOT used. gpt-oss-20b
+      // intermittently emits empty generations under Groq's strict JSON mode,
+      // which hard-fails with `json_validate_failed` (400). We instruct JSON-only
+      // output in the prompt and extract the value robustly from the text instead.
+    });
+
+    let response: Awaited<ReturnType<typeof runExtraction>>;
+    try {
+      response = await runExtraction();
+    } catch (err: unknown) {
       const error = err as { response?: { headers?: { get?: (key: string) => string | null }; status?: number }; message?: string };
       if (error.response?.status === 429) {
         const retryAfter = error.response.headers?.get?.("retry-after");
-        if (retryAfter) {
-          const waitMs = (Number(retryAfter) || 5) * 1000;
-          console.log(`[memory/extract] Rate limited, waiting ${waitMs}ms (retry-after: ${retryAfter})`);
-          await new Promise(r => setTimeout(r, waitMs));
-          return groq.chat.completions.create({
-            model: "openai/gpt-oss-20b",
-            messages: [{ role: "user", content: extractionPrompt }],
-            max_tokens: 400,
-            temperature: 0.1,
-            response_format: { type: "json_object" },
-          });
-        }
-        const waitMs = 5000;
-        console.log(`[memory/extract] Rate limited, waiting ${waitMs}ms`);
+        const waitMs = (retryAfter ? Number(retryAfter) || 5 : 5) * 1000;
+        console.log(`[memory/extract] Rate limited, waiting ${waitMs}ms (retry-after: ${retryAfter})`);
         await new Promise(r => setTimeout(r, waitMs));
-        return groq.chat.completions.create({
-          model: "openai/gpt-oss-20b",
-          messages: [{ role: "user", content: extractionPrompt }],
-          max_tokens: 400,
-          temperature: 0.1,
-          response_format: { type: "json_object" },
-        });
+        response = await runExtraction();
+      } else {
+        throw err;
       }
-      throw err;
-    });
+    }
 
-    const raw = response.choices[0]?.message?.content?.trim() || "{}";
-
-    // Strip markdown code blocks if present (LLMs love wrapping JSON in ```json ... ```)
-    const cleaned = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
-
-    let extracted: { memories: { content: string; type: string; importance: number }[] };
-    try {
-      extracted = JSON.parse(cleaned);
-    } catch {
-      console.warn("[memory/extract] JSON parse failed, cleaned output:", cleaned.slice(0, 200));
+    const raw = response.choices[0]?.message?.content?.trim() || "";
+    const extracted = extractStructuredJson<{ memories: { content: string; type: string; importance: number }[] }>(raw);
+    if (!extracted) {
+      console.warn("[memory/extract] No valid JSON in model output:", raw.slice(0, 200));
       return NextResponse.json({ ok: true, extracted: 0, reason: "json_parse_failed" });
     }
 
