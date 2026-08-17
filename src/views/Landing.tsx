@@ -278,7 +278,7 @@ const Landing = () => {
         </section>
 
         {/* ── Stats ticker ── */}
-        <section className="border-y border-border/40 bg-muted/30 py-4 overflow-hidden">
+        <section className="border-y border-border/40 bg-card/40 py-4 overflow-hidden">
           <div className="flex items-center justify-center gap-10 sm:gap-16 flex-wrap px-6">
             {stats.map((s) => (
               <div key={s.label} className="flex items-center gap-3">
