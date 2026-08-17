@@ -209,7 +209,7 @@ const Landing = () => {
             <div className="w-8 h-8 rounded-lg overflow-hidden shrink-0">
               <img src="/tab-icon.png" alt="Analogix" className="w-full h-full object-cover" />
             </div>
-            <span className="text-lg font-bold tracking-tight">Analogix</span>
+            <span className="text-lg font-bold tracking-tight text-primary">Analogix</span>
           </div>
 
           <div className="hidden md:flex items-center gap-7">

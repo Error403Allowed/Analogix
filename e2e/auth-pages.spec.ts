@@ -62,6 +62,24 @@ test.describe('Login Page', () => {
     await expect(page.getByText('Continue with Google')).toBeVisible({ timeout: 15000 });
     await expect(page.getByText('Continue with Google')).toBeEnabled();
   });
+
+  test('shows the branding panel on desktop viewports', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('/login', { waitUntil: 'domcontentloaded', timeout: 15000 });
+    await expect(
+      page.getByRole('heading', { name: /Study smarter with a tutor/i })
+    ).toBeVisible({ timeout: 15000 });
+    await expect(page.getByPlaceholder('name@email.com')).toBeVisible();
+  });
+
+  test('hides the branding panel and keeps the form centred on mobile', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/login', { waitUntil: 'domcontentloaded', timeout: 15000 });
+    await expect(
+      page.getByRole('heading', { name: /Study smarter with a tutor/i })
+    ).toBeHidden({ timeout: 15000 });
+    await expect(page.getByPlaceholder('name@email.com')).toBeVisible();
+  });
 });
 
 test.describe('Onboarding Page', () => {

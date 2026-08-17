@@ -91,4 +91,27 @@ test.describe('Landing Page', () => {
     expect(savedTheme).toBe('Oceanic Blue');
     expect(docHue).toBeTruthy();
   });
+
+  test('cycles the "Analogix" nav wordmark colour with the landing theme', async ({ page }) => {
+    const wordmarkColor = () =>
+      page.evaluate(() => {
+        const nav = document.querySelector('nav');
+        const wordmark = [...(nav?.querySelectorAll('span') ?? [])].find(
+          (el) => el.textContent?.trim() === 'Analogix'
+        );
+        return wordmark ? getComputedStyle(wordmark).color : null;
+      });
+
+    await page.goto('/', { waitUntil: 'domcontentloaded', timeout: 15000 });
+    await page.waitForTimeout(1200);
+    const first = await wordmarkColor();
+
+    await page.reload({ waitUntil: 'domcontentloaded', timeout: 15000 });
+    await page.waitForTimeout(1200);
+    const second = await wordmarkColor();
+
+    expect(first).toBeTruthy();
+    expect(second).toBeTruthy();
+    expect(second).not.toBe(first);
+  });
 });

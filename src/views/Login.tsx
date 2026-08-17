@@ -251,9 +251,59 @@ export default function LoginView() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4 relative">
-      <div className="w-full max-w-md">
-        <div className="bg-card border border-border rounded-xl p-8 shadow-lg space-y-6">
+    <div className="min-h-screen bg-background flex flex-col lg:flex-row relative">
+      {/* ── Left: branding panel (desktop only) ── */}
+      <div className="hidden lg:flex lg:w-[44%] xl:w-[46%] relative overflow-hidden">
+        <div
+          className="absolute inset-0"
+          style={{ backgroundImage: "linear-gradient(135deg, var(--g-1) 0%, var(--g-2) 55%, var(--g-3) 100%)" }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/25 to-black/30" />
+        <div className="absolute -top-24 -right-24 w-96 h-96 rounded-full bg-white/10 blur-3xl" />
+        <div className="absolute -bottom-32 -left-24 w-80 h-80 rounded-full bg-white/10 blur-3xl" />
+
+        <div className="relative z-10 flex flex-col justify-between w-full p-12 xl:p-16">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 shadow-lg">
+              <img src="/tab-icon.png" alt="Analogix" className="w-full h-full object-cover" />
+            </div>
+            <span className="text-xl font-bold tracking-tight text-white">Analogix</span>
+          </div>
+
+          <div className="space-y-8">
+            <h1 className="text-4xl xl:text-5xl font-bold tracking-tight text-white leading-[1.05]">
+              Study smarter with a tutor that gets you.
+            </h1>
+            <p className="text-white/80 text-lg leading-relaxed max-w-md">
+              Free AI tutoring, adaptive quizzes, flashcards and study guides — built around your interests and aligned to the Australian curriculum.
+            </p>
+
+            <ul className="space-y-4">
+              {[
+                "AI explanations built around your hobbies",
+                "Flashcards & quizzes that adapt to you",
+                "Everything free — no paywalls, ever",
+              ].map((item) => (
+                <li key={item} className="flex items-start gap-3">
+                  <span className="mt-0.5 w-6 h-6 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+                    <Check className="w-3.5 h-3.5 text-white" />
+                  </span>
+                  <span className="text-white/90 font-medium">{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <p className="text-xs text-white/60 font-medium uppercase tracking-widest">
+            Free for all Australian students · Y7–12
+          </p>
+        </div>
+      </div>
+
+      {/* ── Right: auth form ── */}
+      <div className="flex-1 flex items-center justify-center p-4 lg:p-8">
+        <div className="w-full max-w-md">
+          <div className="bg-card border border-border rounded-xl p-8 shadow-lg space-y-6">
           {/* Animated brain */}
           <AnimatedBrain
             focused={focused !== null}
@@ -578,6 +628,7 @@ export default function LoginView() {
               </p>
             </div>
           )}
+          </div>
         </div>
       </div>
     </div>
