@@ -1,16 +1,19 @@
 import { useEffect } from "react";
 import { applyThemeByName } from "@/components/theme/ThemeSelector";
 import { createClient } from "@/lib/supabase/client";
-import { getAuthUser } from "@/utils/authCache";
+import { useAuth } from "@/context/AuthContext";
 
 const ThemeSync = () => {
+  const { user } = useAuth();
+
   useEffect(() => {
     const savedTheme = localStorage.getItem("app-theme") || "Classic Blue";
     applyThemeByName(savedTheme);
 
-    // Load theme from database (takes priority over localStorage)
-    getAuthUser().then(user => {
-      if (!user) return;
+    // Load theme from the database (takes priority over localStorage).
+    // This re-runs whenever the auth user changes so a theme picked in a
+    // previous session is restored after sign-in, not just on app boot.
+    if (user) {
       createClient()
         .from("user_preferences")
         .select("theme")
@@ -21,7 +24,7 @@ const ThemeSync = () => {
             applyThemeByName(data.theme);
           }
         });
-    });
+    }
 
     const handleThemeChange = () => {
       const theme = localStorage.getItem("app-theme") || "Classic Blue";
@@ -34,7 +37,7 @@ const ThemeSync = () => {
       window.removeEventListener("themeUpdated", handleThemeChange);
       window.removeEventListener("storage", handleThemeChange);
     };
-  }, []);
+  }, [user]);
 
   return null;
 };

@@ -22,6 +22,23 @@ const NEW_USER = {
   name: "New User",
 };
 
+const RETURNING_GOOGLE = {
+  id: "google-returning",
+  email: "sam.carter@gmail.com",
+  name: "Sam Carter",
+  profile: {
+    name: "Sam Carter",
+    grade: "10",
+    state: "NSW",
+    subjects: ["math", "english"],
+    hobbies: ["Sports (basketball)"],
+    hobby_ids: ["sports"],
+    hobby_details: { sports: "basketball" },
+    onboarding_complete: true,
+  },
+  theme: "Oceanic Blue",
+};
+
 const FAKE_ACCESS_TOKEN =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0LXVzZXIiLCJyb2xlIjoiYXV0aGVudGljYXRlZCIsImF1ZCI6ImF1dGhlbnRpY2F0ZWQiLCJpYXQiOjE3MDAwMDAwMDAsImV4cCI6MTgwMDAwMDAwMH0.fake";
 
@@ -251,6 +268,125 @@ test.describe("OAuth code landing on the site root", () => {
     await page.goto("/?code=STALECODE&state=stale", { waitUntil: "domcontentloaded" });
     await expect(page).toHaveURL(/\/login/, { timeout: 15000 });
     await expect(page).toHaveURL(/error_code=pkce_code_verifier_not_found/, { timeout: 15000 });
+  });
+});
+
+test.describe("Profile & theme restore after OAuth sign-in", () => {
+  // Regression test for: "it signs me in, but my name, grade and colour
+  // scheme/theme aren't being saved properly and are using my default ones".
+  // A returning user's profile (name/grade/state) must be hydrated from the
+  // profiles row and their saved theme must be re-applied from user_preferences
+  // AFTER sign-in completes - not just on app boot (ThemeSync re-runs on auth
+  // user change).
+  test("returning Google user restores name, grade and saved theme from the DB", async ({ page }) => {
+    await page.route("**/auth/v1/authorize*", (route) => {
+      const redirectTo = new URL(route.request().url()).searchParams.get("redirect_to");
+      if (!redirectTo) return route.continue();
+      const callback = new URL(redirectTo);
+      callback.pathname = "/";
+      callback.search = "";
+      callback.searchParams.set("code", "FAKECODE");
+      return route.fulfill({ status: 302, headers: { location: callback.toString() } });
+    });
+
+    const now = Math.floor(Date.now() / 1000);
+    await page.route("**/auth/v1/token*", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          access_token: FAKE_ACCESS_TOKEN,
+          token_type: "bearer",
+          expires_in: 3600,
+          expires_at: now + 3600,
+          refresh_token: "test-refresh-token",
+          user: {
+            id: RETURNING_GOOGLE.id,
+            aud: "authenticated",
+            role: "authenticated",
+            email: RETURNING_GOOGLE.email,
+            email_confirmed_at: new Date().toISOString(),
+            app_metadata: { provider: "google", providers: ["google"] },
+            user_metadata: { name: RETURNING_GOOGLE.name },
+          },
+        }),
+      })
+    );
+    await page.route("**/auth/v1/user*", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          id: RETURNING_GOOGLE.id,
+          aud: "authenticated",
+          role: "authenticated",
+          email: RETURNING_GOOGLE.email,
+          app_metadata: { provider: "google", providers: ["google"] },
+          user_metadata: { name: RETURNING_GOOGLE.name },
+        }),
+      })
+    );
+    // The existing profile row (name, grade, state, subjects...).
+    await page.route("**/rest/v1/profiles*", (route) => {
+      const method = route.request().method();
+      if (method === "POST" || method === "PATCH") {
+        return route.fulfill({ status: 200, contentType: "application/json", body: "[]" });
+      }
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify([
+          {
+            id: RETURNING_GOOGLE.id,
+            name: RETURNING_GOOGLE.profile.name,
+            grade: RETURNING_GOOGLE.profile.grade,
+            state: RETURNING_GOOGLE.profile.state,
+            subjects: RETURNING_GOOGLE.profile.subjects,
+            hobbies: RETURNING_GOOGLE.profile.hobbies,
+            hobby_ids: RETURNING_GOOGLE.profile.hobby_ids,
+            hobby_details: RETURNING_GOOGLE.profile.hobby_details,
+            avatar_url: "",
+            tours_completed: [],
+            onboarding_complete: RETURNING_GOOGLE.profile.onboarding_complete,
+          },
+        ]),
+      });
+    });
+    // The theme previously saved in user_preferences.
+    await page.route("**/rest/v1/user_preferences*", (route) => {
+      const method = route.request().method();
+      if (method === "POST" || method === "PATCH") {
+        return route.fulfill({ status: 200, contentType: "application/json", body: "[]" });
+      }
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify([{ user_id: RETURNING_GOOGLE.id, theme: RETURNING_GOOGLE.theme }]),
+      });
+    });
+
+    await page.goto("/login", { waitUntil: "domcontentloaded" });
+    await page.getByText("Continue with Google").click();
+
+    // Straight into the app with the saved details restored.
+    await expect(page).toHaveURL(/\/dashboard/, { timeout: 15000 });
+    await page.waitForTimeout(1500);
+
+    const prefs = await page.evaluate(() => localStorage.getItem("userPreferences") || "{}");
+    expect(JSON.parse(prefs).name).toBe("Sam Carter");
+    expect(JSON.parse(prefs).grade).toBe("10");
+    expect(JSON.parse(prefs).state).toBe("NSW");
+    expect(JSON.parse(prefs).userId).toBe(RETURNING_GOOGLE.id);
+
+    // Saved theme restored from the DB, not the default.
+    const appTheme = await page.evaluate(() => localStorage.getItem("app-theme"));
+    expect(appTheme).toBe("Oceanic Blue");
+    const dataTheme = await page.evaluate(() => document.documentElement.getAttribute("data-theme"));
+    expect(dataTheme).toBe("oceanic-blue");
+    const primary = await page.evaluate(() =>
+      getComputedStyle(document.documentElement).getPropertyValue("--color-primary")
+    );
+    expect(primary).not.toBe("hsl(221.2 83.2% 53.3%)");
   });
 });
 
