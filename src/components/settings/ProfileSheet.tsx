@@ -21,6 +21,7 @@ import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
+import { useProfileAvatar } from "@/hooks/useProfileAvatar";
 import { achievementStore } from "@/utils/achievementStore";
 import { HOBBY_OPTIONS, POPULAR_INTERESTS } from "@/utils/interests";
 import type { HobbyId } from "@/utils/interests";
@@ -87,6 +88,11 @@ interface ProfileSheetProps {
 
 const ProfileSheet = ({ open, onOpenChange }: ProfileSheetProps) => {
   const { user: authUser } = useAuth();
+  const fallbackAvatarUrl = useProfileAvatar();
+  const fallbackAvatarRef = useRef(fallbackAvatarUrl);
+  useEffect(() => {
+    fallbackAvatarRef.current = fallbackAvatarUrl;
+  });
   const loadPrefs = (): Prefs =>
     typeof window !== "undefined"
       ? JSON.parse(localStorage.getItem("userPreferences") || "{}")
@@ -117,7 +123,7 @@ const ProfileSheet = ({ open, onOpenChange }: ProfileSheetProps) => {
       setSubjects(p.subjects || []);
       setHobbyIds(p.hobbyIds || []);
       setHobbyDetails(p.hobbyDetails || {});
-      setAvatarUrl(p.avatarUrl || "");
+      setAvatarUrl(p.avatarUrl || fallbackAvatarRef.current || "");
       setCustomInputs({});
       setDirty(false);
       setEditingName(false);

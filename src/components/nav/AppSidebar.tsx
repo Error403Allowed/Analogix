@@ -25,6 +25,7 @@ import ProfileSheet from "@/components/settings/ProfileSheet";
 import { NewPageModal } from "@/components/shared/NewPageModal";
 import { useTabs, pathMeta } from "@/context/TabsContext";
 import { subjectStore, type SubjectData } from "@/utils/subjectStore";
+import { useProfileAvatar } from "@/hooks/useProfileAvatar";
 import { toast } from "sonner";
 
 import { CommandMenu } from "@/components/shared/CommandMenu";
@@ -181,7 +182,7 @@ export function AppSidebar() {
   }, [refreshSidebar]);
 
   const name      = userData?.name || "Student";
-  const avatarUrl = userData?.avatarUrl || "";
+  const avatarUrl = useProfileAvatar() || userData?.avatarUrl || "";
   const { toggleSidebar, setOpenMobile, isMobile, state } = useSidebar();
 
 
@@ -398,9 +399,7 @@ export function AppSidebar() {
                 {/* Name + meta */}
                 {state === "expanded" && (
                   <div className="flex-1 min-w-0 text-foreground">
-                    <p className="text-sm font-black truncate leading-tight">{name}</p>
-                    <p className="text-[9px] font-bold text-muted-foreground/60 uppercase tracking-widest truncate">
-                    </p>
+                    <p className="text-sm font-black leading-tight break-words">{name}</p>
                   </div>
                 )}
               </SidebarMenuButton>

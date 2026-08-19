@@ -22,6 +22,7 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import ProfileSheet from "@/components/settings/ProfileSheet";
 import AppearanceSection from "@/components/settings/AppearanceSection";
+import { useProfileAvatar } from "@/hooks/useProfileAvatar";
 import { cn } from "@/lib/utils";
 
 type MenuRow = {
@@ -60,7 +61,7 @@ const ProfilePage = () => {
   }, []);
 
   const name = (userData?.name as string) || user?.email?.split("@")[0] || "Student";
-  const avatarUrl = (userData?.avatarUrl as string) || "";
+  const avatarUrl = useProfileAvatar() || (userData?.avatarUrl as string) || "";
   const streak = Number(stats.currentStreak) || 0;
   const quizzes = Number(stats.quizzesDone) || 0;
 
