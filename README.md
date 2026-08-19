@@ -2,7 +2,7 @@
 
 Analogix is a study workspace for Australian secondary students in Years 7–12.
 
-It combines an AI tutor with notes, flashcards, quizzes, deadlines, study sessions, and collaborative rooms. With Analogix, students can go from "What does this mean" to "I understand it in my own word and have practiced it properly" without switching between several apps.
+It combines an AI tutor with notes, flashcards, quizzes, deadlines, study sessions, and collaborative rooms. With Analogix, students can go from "What does this mean" to "I understand it in my own words and have practiced it properly" without switching between several apps and/or websites.
 
 > **Status:** Pilot and testing; project is not yet deployed in production but is being actively developed. Users are free to test and give feedback of the product and any of its features.
 
