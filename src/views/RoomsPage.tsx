@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { CopyPlus, DoorOpen, Loader2, Lock, Plus, RefreshCw, Users } from "lucide-react";
+import { CopyPlus, DoorOpen, Loader2, Lock, Plus, RefreshCw, Trash2, Users } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,6 +44,8 @@ export default function RoomsPage() {
   const [createTitle, setCreateTitle] = useState("");
   const [createTopic, setCreateTopic] = useState("");
   const [createVisibility, setCreateVisibility] = useState<"public" | "private">("public");
+  const [deleteTarget, setDeleteTarget] = useState<StudyRoom | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const loadRooms = useCallback(async () => {
     setLoading(true);
@@ -118,6 +120,25 @@ export default function RoomsPage() {
       toast.error(error instanceof Error ? error.message : "Failed to join room");
     } finally {
       setJoiningRoomId(null);
+    }
+  };
+
+  const handleDelete = async (room: StudyRoom) => {
+    setDeleting(true);
+    try {
+      const response = await fetch(`/api/rooms/${room.id}`, { method: "DELETE" });
+      if (!response.ok) {
+        const err = (await response.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(err?.error ?? "Failed to delete room");
+      }
+      toast.success("Room deleted.");
+      setDeleteTarget(null);
+      setRooms((current) => current.filter((r) => r.id !== room.id));
+    } catch (error) {
+      console.error("[RoomsPage] delete failed:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to delete room");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -250,6 +271,7 @@ export default function RoomsPage() {
                   actionLabel="Open room"
                   actionIcon={<DoorOpen className="h-4 w-4" />}
                   onAction={() => router.push(`/rooms/${room.id}`)}
+                  onDelete={room.isOwner ? () => setDeleteTarget(room) : undefined}
                 />
               ))
             )}
@@ -292,6 +314,29 @@ export default function RoomsPage() {
         </div>
       )}
 
+      <ResponsiveSheet open={deleteTarget !== null} onOpenChange={(open) => { if (!open && !deleting) setDeleteTarget(null); }}>
+        <ResponsiveSheetContent className="sm:max-w-lg">
+          <ResponsiveSheetHeader>
+            <ResponsiveSheetTitle>Delete room?</ResponsiveSheetTitle>
+            <ResponsiveSheetDescription>
+              This will permanently delete “{deleteTarget?.title}” and all its messages, canvas and documents. This action cannot be undone.
+            </ResponsiveSheetDescription>
+          </ResponsiveSheetHeader>
+          <ResponsiveSheetFooter>
+            <Button variant="secondary" disabled={deleting} onClick={() => setDeleteTarget(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={deleting || !deleteTarget}
+              onClick={() => deleteTarget && void handleDelete(deleteTarget)}
+            >
+              {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Delete room"}
+            </Button>
+          </ResponsiveSheetFooter>
+        </ResponsiveSheetContent>
+      </ResponsiveSheet>
+
       <MobileFAB label="New room" onClick={() => setCreateOpen(true)} />
     </div>
   );
@@ -302,12 +347,14 @@ function RoomCard({
   actionLabel,
   actionIcon,
   onAction,
+  onDelete,
   loading = false,
 }: {
   room: StudyRoom;
   actionLabel: string;
   actionIcon: React.ReactNode;
   onAction: () => void;
+  onDelete?: () => void;
   loading?: boolean;
 }) {
   const onlineHint = room.timerState === "running"
@@ -342,10 +389,24 @@ function RoomCard({
           </div>
         </div>
 
-        <Button size="sm" onClick={onAction} disabled={loading}>
-          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : actionIcon}
-          <span className="ml-2">{actionLabel}</span>
-        </Button>
+        <div className="flex items-center gap-2">
+          {onDelete && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-destructive hover:text-destructive"
+              onClick={onDelete}
+              title="Delete room"
+              aria-label={`Delete ${room.title}`}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
+          <Button size="sm" onClick={onAction} disabled={loading}>
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : actionIcon}
+            <span className="ml-2">{actionLabel}</span>
+          </Button>
+        </div>
       </div>
     </motion.div>
   );
