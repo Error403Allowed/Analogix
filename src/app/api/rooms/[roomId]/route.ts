@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getRoomState, requireRoomControl } from "@/lib/rooms/server";
+import { getRoomState, requireRoomAccess, requireRoomControl } from "@/lib/rooms/server";
 
 export async function GET(
   _request: Request,
@@ -57,7 +57,10 @@ export async function DELETE(
 ) {
   try {
     const { roomId } = await context.params;
-    const { supabase } = await requireRoomControl(roomId);
+    const { supabase, isOwner } = await requireRoomAccess(roomId);
+    if (!isOwner) {
+      return NextResponse.json({ error: "Only the room owner can delete this room" }, { status: 403 });
+    }
     const { error } = await supabase.from("study_rooms").delete().eq("id", roomId);
     if (error) throw error;
     return NextResponse.json({ success: true });

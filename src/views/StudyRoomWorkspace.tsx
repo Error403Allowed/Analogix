@@ -376,7 +376,7 @@ export default function StudyRoomWorkspace() {
                 <ShieldCheck className="h-4 w-4" />
               </Button>
             )}
-            {(state.room.isOwner || state.room.viewerRole === "cohost") ? (
+            {state.room.isOwner ? (
               <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => setShowDeleteConfirm(true)} title="Delete room">
                 <Trash2 className="h-4 w-4" />
               </Button>
