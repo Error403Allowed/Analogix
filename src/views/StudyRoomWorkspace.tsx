@@ -24,6 +24,7 @@ import {
   ChevronLeft,
   ArrowRight,
   Trash2,
+  Pencil,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -83,6 +84,10 @@ export default function StudyRoomWorkspace() {
     showDeleteConfirm,
     showTransferOwnership,
     showPermissions,
+    showRoomDetails,
+    roomTitle,
+    roomTopic,
+    roomVisibility,
     setActiveSection,
     setComposerMode,
     setComposer,
@@ -98,6 +103,10 @@ export default function StudyRoomWorkspace() {
     setShowDeleteConfirm,
     setShowTransferOwnership,
     setShowPermissions,
+    setShowRoomDetails,
+    setRoomTitle,
+    setRoomTopic,
+    setRoomVisibility,
     setPerms,
     setSidebarOpen,
     loadedDocumentIdRef,
@@ -113,6 +122,8 @@ export default function StudyRoomWorkspace() {
     deleteRoom,
     transferOwnership,
     savePermissions,
+    openRoomDetails,
+    saveRoomDetails,
     copyCurrentDocument,
     handleSaveCanvas,
     handleCreateDocument,
@@ -164,6 +175,12 @@ export default function StudyRoomWorkspace() {
           </div>
 
           <div className="flex items-center gap-2">
+            {(state.room.isOwner || state.room.viewerRole === "cohost") && (
+              <Button variant="secondary" onClick={openRoomDetails}>
+                <Pencil className="mr-2 h-4 w-4 text-muted-foreground" />
+                Edit details
+              </Button>
+            )}
             <Button variant="secondary" onClick={copyJoinCode}>
               <Copy className="mr-2 h-4 w-4 text-muted-foreground" />
               Copy code
@@ -366,6 +383,11 @@ export default function StudyRoomWorkspace() {
             <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => void loadRoom()} title="Refresh">
               <RefreshCw className="h-4 w-4" />
             </Button>
+            {(state.room.isOwner || state.room.viewerRole === "cohost") && (
+              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={openRoomDetails} title="Edit room details">
+                <Pencil className="h-4 w-4" />
+              </Button>
+            )}
             {state.room.isOwner && (
               <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setShowTransferOwnership(true)} title="Transfer ownership">
                 <Crown className="h-4 w-4 text-amber-500" />
@@ -898,6 +920,73 @@ export default function StudyRoomWorkspace() {
             <Button onClick={() => void savePermissions()}>
               Save
             </Button>
+          </div>
+        </ResponsiveSheetContent>
+      </ResponsiveSheet>
+
+      {/* Edit room details dialog */}
+      <ResponsiveSheet open={showRoomDetails} onOpenChange={setShowRoomDetails}>
+        <ResponsiveSheetContent>
+          <ResponsiveSheetHeader>
+            <ResponsiveSheetTitle>Edit room details</ResponsiveSheetTitle>
+            <ResponsiveSheetDescription>
+              Update the room name, topic and visibility. Members will see these changes immediately.
+            </ResponsiveSheetDescription>
+          </ResponsiveSheetHeader>
+          <div className="space-y-4 pt-2">
+            <div className="grid gap-2">
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60">Room name</p>
+              <Input
+                id="room-title"
+                value={roomTitle}
+                onChange={(e) => setRoomTitle(e.target.value)}
+                placeholder="Study room"
+                maxLength={80}
+              />
+            </div>
+            <div className="grid gap-2">
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60">Topic</p>
+              <Input
+                id="room-topic"
+                value={roomTopic}
+                onChange={(e) => setRoomTopic(e.target.value)}
+                placeholder="e.g. VCE Maths Methods"
+                maxLength={120}
+              />
+              <p className="text-[10px] text-muted-foreground/60">Leave empty to clear the topic.</p>
+            </div>
+            <div className="grid gap-2">
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60">Visibility</p>
+              <div className="flex gap-2">
+                {(["public", "private"] as const).map((v) => (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => setRoomVisibility(v)}
+                    className={`px-4 py-2 rounded-xl border text-xs font-bold capitalize transition-all ${
+                      roomVisibility === v
+                        ? "border-primary bg-primary/10"
+                        : "border-border glass hover:border-primary/50"
+                    }`}
+                  >
+                    {v}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[10px] text-muted-foreground/60">
+                {roomVisibility === "private"
+                  ? "Only members with the join code can enter."
+                  : "Anyone on Analogix can find and join this room."}
+              </p>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => setShowRoomDetails(false)}>
+                Cancel
+              </Button>
+              <Button onClick={() => void saveRoomDetails()}>
+                Save changes
+              </Button>
+            </div>
           </div>
         </ResponsiveSheetContent>
       </ResponsiveSheet>

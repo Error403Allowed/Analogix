@@ -8,7 +8,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useTabs } from "@/context/TabsContext";
 import { useRoomCollaboration } from "@/hooks/useRoomCollaboration";
 import { subjectStore } from "@/utils/subjectStore";
-import type { StudyRoomMember, StudyRoom } from "@/types/rooms";
+import type { StudyRoomMember, StudyRoom, RoomVisibility } from "@/types/rooms";
 import type { RoomStateResponse, SharedDocumentRecord } from "@/lib/room-utils";
 
 const jsonHeaders = { "Content-Type": "application/json" };
@@ -57,6 +57,10 @@ export function useStudyRoomWorkspace() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showTransferOwnership, setShowTransferOwnership] = useState(false);
   const [showPermissions, setShowPermissions] = useState(false);
+  const [showRoomDetails, setShowRoomDetails] = useState(false);
+  const [roomTitle, setRoomTitle] = useState("");
+  const [roomTopic, setRoomTopic] = useState("");
+  const [roomVisibility, setRoomVisibility] = useState<RoomVisibility>("public");
   const [perms, setPerms] = useState({
     canShareDocuments: true,
     canInviteMembers: false,
@@ -412,7 +416,7 @@ export function useStudyRoomWorkspace() {
 
   const savePermissions = async () => {
     try {
-      const data = await api<{ room: StudyRoom }>(`/api/rooms/${roomId}/permissions`, {
+      await api(`/api/rooms/${roomId}/permissions`, {
         method: "PATCH",
         headers: jsonHeaders,
         body: JSON.stringify(perms),
@@ -423,6 +427,46 @@ export function useStudyRoomWorkspace() {
     } catch (error) {
       console.error("[StudyRoomWorkspace] savePermissions failed:", error);
       toast.error(error instanceof Error ? error.message : "Failed to save permissions");
+    }
+  };
+
+  const openRoomDetails = () => {
+    if (!state?.room) return;
+    setRoomTitle(state.room.title);
+    setRoomTopic(state.room.topic || "");
+    setRoomVisibility(state.room.visibility);
+    setShowRoomDetails(true);
+  };
+
+  const saveRoomDetails = async () => {
+    if (!state?.room) return;
+    const patch: Record<string, unknown> = {};
+    const title = roomTitle.trim() || "Study room";
+    if (title !== state.room.title) patch.title = title;
+    const topic = roomTopic.trim() || null;
+    if (topic !== state.room.topic) patch.topic = topic;
+    if (roomVisibility !== state.room.visibility) patch.visibility = roomVisibility;
+    if (Object.keys(patch).length === 0) {
+      setShowRoomDetails(false);
+      return;
+    }
+    try {
+      const data = await api<{ room: StudyRoom }>(`/api/rooms/${roomId}`, {
+        method: "PATCH",
+        headers: jsonHeaders,
+        body: JSON.stringify(patch),
+      });
+      if (data?.room) {
+        setState((current) => current ? { ...current, room: data.room } : current);
+        if (data.room.title) {
+          updateTabLabelByPath(`/rooms/${roomId}`, data.room.title, "👥");
+        }
+      }
+      setShowRoomDetails(false);
+      toast.success("Room updated.");
+    } catch (error) {
+      console.error("[StudyRoomWorkspace] saveRoomDetails failed:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to update room");
     }
   };
 
@@ -525,6 +569,10 @@ export function useStudyRoomWorkspace() {
     showDeleteConfirm,
     showTransferOwnership,
     showPermissions,
+    showRoomDetails,
+    roomTitle,
+    roomTopic,
+    roomVisibility,
     setComposerMode,
     setComposer,
     setActiveSection,
@@ -541,6 +589,10 @@ export function useStudyRoomWorkspace() {
     setShowDeleteConfirm,
     setShowTransferOwnership,
     setShowPermissions,
+    setShowRoomDetails,
+    setRoomTitle,
+    setRoomTopic,
+    setRoomVisibility,
     setPerms,
     setInRoom,
     loadRoom,
@@ -555,6 +607,8 @@ export function useStudyRoomWorkspace() {
     deleteRoom,
     transferOwnership,
     savePermissions,
+    openRoomDetails,
+    saveRoomDetails,
     copyCurrentDocument,
     handleSaveCanvas,
     handleCreateDocument,
