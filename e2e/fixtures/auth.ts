@@ -25,6 +25,10 @@ export type StubProfile = {
   hobbyDetails?: Record<string, unknown>;
   avatarUrl?: string;
   onboardingComplete?: boolean;
+  /** Profile created_at. Defaults to far in the future so "What's New" notices
+   *  are hidden from existing tests; opt into a past date to exercise them. */
+  createdAt?: string;
+  announcementsSeen?: string[];
 };
 
 export type StubUser = {
@@ -108,6 +112,8 @@ async function stubReturningUser(page: Page, user: StubUser) {
       hobby_details: p.hobbyDetails ?? { sports: "basketball" },
       avatar_url: p.avatarUrl ?? "",
       tours_completed: [],
+      created_at: p.createdAt ?? "2099-01-01T00:00:00.000Z",
+      announcements_seen: p.announcementsSeen ?? [],
       onboarding_complete: p.onboardingComplete ?? true,
     };
     return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify([profile]) });

@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import UpcomingEvents from "@/components/dashboard/UpcomingEvents";
 import QuickLinks from "@/components/dashboard/QuickLinks";
+import WhatsNewCard from "@/components/dashboard/WhatsNewCard";
 import { statsStore } from "@/utils/statsStore";
 import { activityLog } from "@/utils/activityLog";
 import { useAchievementChecker } from "@/hooks/useAchievementChecker";
@@ -708,6 +709,11 @@ export default function Dashboard() {
           initial="hidden"
           animate="visible"
         >
+
+          {/* What's New - one-time post-release notice */}
+          <motion.div variants={fadeInUp}>
+            <WhatsNewCard />
+          </motion.div>
 
           {/* Streak widget */}
           <motion.div variants={fadeInUp}>
