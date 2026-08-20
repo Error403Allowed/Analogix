@@ -182,6 +182,7 @@ export function AppSidebar() {
   }, [refreshSidebar]);
 
   const name      = userData?.name || "Student";
+  const grade     = userData?.grade;
   const avatarUrl = useProfileAvatar() || userData?.avatarUrl || "";
   const { toggleSidebar, setOpenMobile, isMobile, state } = useSidebar();
 
@@ -217,7 +218,11 @@ export function AppSidebar() {
                 <img src="/tab-icon.png" alt="Analogix" className="w-full h-full object-contain group-data-[collapsible=icon]:group-hover/logo:opacity-0 group-data-[collapsible=icon]:group-hover/logo:scale-75 transition-all duration-200" />
                 <PanelLeft className="absolute inset-0 w-full h-full p-0 opacity-0 scale-75 group-data-[collapsible=icon]:group-hover/logo:opacity-100 group-data-[collapsible=icon]:group-hover/logo:scale-100 transition-all duration-200 text-primary" />
               </div>
-              {state === "expanded" && <span className="text-lg font-black tracking-tight text-foreground">Analogix</span>}
+              {state === "expanded" && (
+                <span className="gradient-primary bg-clip-text text-xl font-black tracking-tight text-transparent">
+                  Analogix
+                </span>
+              )}
             </button>
             {isMobile ? (
               <button
@@ -399,7 +404,12 @@ export function AppSidebar() {
                 {/* Name + meta */}
                 {state === "expanded" && (
                   <div className="flex-1 min-w-0 text-foreground">
-                    <p className="text-sm font-black leading-tight break-words">{name}</p>
+                    <p className="truncate text-sm font-bold leading-tight">{name}</p>
+                    {grade ? (
+                      <p className="mt-0.5 text-[10px] font-medium uppercase tracking-widest text-muted-foreground/80">
+                        Year {grade}
+                      </p>
+                    ) : null}
                   </div>
                 )}
               </SidebarMenuButton>

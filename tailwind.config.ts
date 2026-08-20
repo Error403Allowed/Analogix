@@ -130,14 +130,14 @@ export default {
 		},
   		fontFamily: {
   			sans: [
-  				'Inter',
+  				'var(--font-sans)',
   				'ui-sans-serif',
   				'system-ui',
   				'-apple-system',
   				'sans-serif'
   			],
   			display: [
-  				'Inter',
+  				'var(--font-display)',
   				'ui-serif',
   				'Georgia',
   				'serif'
@@ -150,7 +150,8 @@ export default {
   				'serif'
   			],
   			mono: [
-  				'JetBrains Mono',
+  				'var(--font-mono)',
+  				'ui-monospace',
   				'SF Mono',
   				'Monaco',
   				'Consolas',

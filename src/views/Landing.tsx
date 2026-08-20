@@ -298,7 +298,7 @@ const Landing = () => {
               Every tool you need to level up.
             </h2>
             <p className="text-muted-foreground max-w-lg mx-auto">
-              Not just an AI chat. Flashcards, quizzes, a calendar, study guides, resources, formula sheets - all working together.
+              Not just an AI chat. Flashcards, quizzes, a calendar, study guides, resources, formula sheets, all working together.
             </p>
           </div>
 

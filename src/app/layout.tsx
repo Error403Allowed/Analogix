@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { Inter, Playfair_Display, JetBrains_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/react";
 import AppProviders from "@/components/layout/AppProviders";
 import { ServiceWorkerRegistration } from "@/components/layout/ServiceWorkerRegistration";
@@ -42,6 +43,27 @@ export const metadata: Metadata = {
   },
 };
 
+const fontSans = Inter({
+  subsets: ["latin"],
+  variable: "--font-sans",
+  display: "swap",
+  weight: ["400", "500", "600", "700", "800"],
+});
+
+const fontDisplay = Playfair_Display({
+  subsets: ["latin"],
+  variable: "--font-display",
+  display: "swap",
+  weight: "variable",
+});
+
+const fontMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
+  display: "swap",
+  weight: ["400", "500", "600", "700"],
+});
+
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
@@ -69,7 +91,7 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="Analogix" />
       </head>
-      <body>
+      <body className={`${fontSans.variable} ${fontDisplay.variable} ${fontMono.variable}`}>
         <AppProviders>
           <DashLayout>{children}</DashLayout>
         </AppProviders>
