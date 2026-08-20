@@ -56,4 +56,24 @@ describe("buildInterestList regression", () => {
     });
     expect(list).toEqual(["Rocket League games"]);
   });
+
+  it("appends 'food' to cooking sub-interests so cuisines read clearly", () => {
+    const list = buildInterestList({
+      hobbyIds: ["cooking"],
+      hobbyDetails: { cooking: "Asian, Mexican, Italian, Baking, Desserts" },
+    });
+    expect(list).toContain("Asian food");
+    expect(list).toContain("Mexican food");
+    expect(list).toContain("Italian food");
+    expect(list).toContain("Baking");
+    expect(list).toContain("Desserts");
+  });
+
+  it("appends 'food' to cooking sub-interests from parenthesised hobbies", () => {
+    const list = buildInterestList({
+      hobbies: ["Cooking (Asian, Mexican)"],
+    });
+    expect(list).toContain("Asian food");
+    expect(list).toContain("Mexican food");
+  });
 });

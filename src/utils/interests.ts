@@ -45,6 +45,11 @@ const splitDetails = (value: string) =>
 const ensureGamingSuffix = (items: string[]) =>
   items.map((item) => (/\bgame\b/i.test(item) ? item : `${item} games`));
 
+const FOOD_TERMS = /\b(food|baking|bake|dessert|grill|meal|snack|dish|recipe|cook|cuisine)/i;
+
+const ensureFoodSuffix = (items: string[]) =>
+  items.map((item) => (FOOD_TERMS.test(item) ? item : `${item} food`));
+
 const extractParenDetails = (label: string) => {
   const match = label.match(/^([^(]+)\(([^)]+)\)/);
   if (!match) return [];
@@ -54,6 +59,7 @@ const extractParenDetails = (label: string) => {
     (hobby) => hobby.label.toLowerCase() === base.toLowerCase()
   )?.id;
   if (hobbyId === "gaming") return ensureGamingSuffix(details);
+  if (hobbyId === "cooking") return ensureFoodSuffix(details);
   return details;
 };
 
@@ -74,6 +80,7 @@ export const buildInterestList = (
     ...Object.entries(hobbyDetails).flatMap(([id, detail]) => {
       const details = splitDetails(detail);
       if (id === "gaming") return ensureGamingSuffix(details);
+      if (id === "cooking") return ensureFoodSuffix(details);
       return details;
     }),
     ...hobbies.flatMap(extractParenDetails)
@@ -137,6 +144,7 @@ export const buildInterestsObject = (prefs: unknown): InterestObject => {
       HOBBY_OPTIONS.find((hobby) => hobby.id === id)?.label || id;
     let details = splitDetails(hobbyDetails[id] || "");
     if (id === "gaming") details = ensureGamingSuffix(details);
+    if (id === "cooking") details = ensureFoodSuffix(details);
     const items = [...details];
     if (items.length === 0) items.push(label);
     byCategory[label] = items;

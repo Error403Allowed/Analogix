@@ -41,45 +41,47 @@ function seededShuffle<T>(items: T[], rand: Rand): T[] {
 const pickTemplate = (rand: Rand) => <T,>(items: T[]): T =>
   items[Math.floor(rand() * items.length)];
 
-const EXPLAIN = (topic: string, hobby?: string): string[] => [
-  `Teach me about ${topic} step by step with simple examples${hobby ? `, using ${hobby} analogies` : ""}`,
-  `Break down ${topic} into easy-to-understand pieces${hobby ? ` through the lens of ${hobby}` : ""}`,
-  `Walk me through ${topic} like I've never seen it before${hobby ? `, tying it to ${hobby}` : ""}`,
+const EXPLAIN = (topic: string): string[] => [
+  `Understand ${topic} step by step with clear examples`,
+  `Break down ${topic} into easy-to-understand pieces`,
+  `Walk through ${topic} from the basics with practical examples`,
 ];
 
-const QUIZ = (topic: string, hobby?: string): string[] => [
-  `Test me with a quiz on ${topic} and explain the answers${hobby ? ` using ${hobby} examples` : ""}`,
-  `Quiz me on ${topic} with answer explanations${hobby ? ` framed around ${hobby}` : ""}`,
-  `Create a quick quiz on ${topic} to test what I know${hobby ? ` with ${hobby}` : ""}`,
+const QUIZ = (topic: string): string[] => [
+  `Test what you know about ${topic} with a short quiz`,
+  `Quiz yourself on ${topic} and review the answers`,
+  `Try a quick quiz covering ${topic} with explanations`,
 ];
 
-const STUDY_PLAN = (grade?: string): string[] =>
-  grade
-    ? [
-        `Create a study plan to prepare for my Year ${grade} exams`,
-        `Help me build a study schedule for Year ${grade}`,
-        `Plan my revision for the Year ${grade} exam period`,
-      ]
-    : [
-        "Create a weekly study plan to prepare for my exams",
-        "Help me build a study schedule for the week",
-        "Plan my revision schedule for upcoming assessments",
-      ];
+const STUDY_PLAN = (topic?: string, grade?: string): string[] => {
+  const focus = topic ? ` for ${topic}` : "";
+  if (grade) {
+    return [
+      `Build a study plan${focus} to prepare for your Year ${grade} exams`,
+      `Create a revision schedule${focus} ahead of your Year ${grade} exams`,
+      `Plan how to cover everything before the Year ${grade} exams${topic ? `, starting with ${topic}` : ""}`,
+    ];
+  }
+  return [
+    `Create a weekly study plan${focus} to prepare for my exams`,
+    `Build a study schedule${focus} for the week`,
+    `Plan my revision${focus} for upcoming assessments`,
+  ];
+};
 
-const HOBBY = (topic: string, hobby: string): string[] => [
-  `Teach me about ${topic} using ${hobby} analogies`,
-  `Explain ${topic} through the lens of ${hobby} with concrete examples`,
-  `Help me understand ${topic} using examples from ${hobby}`,
-];
-
-const PRACTICE = (topic: string, hobby?: string): string[] => [
-  `Give me practice questions on ${topic} with worked solutions${hobby ? ` inspired by ${hobby}` : ""}`,
-  `Set me some problems on ${topic} to work through${hobby ? ` using ${hobby} scenarios` : ""}`,
-  `Create practice exercises for ${topic} with solutions${hobby ? ` based on ${hobby}` : ""}`,
+const PRACTICE = (topic: string): string[] => [
+  `Practice questions on ${topic} with worked solutions`,
+  `Work through problems on ${topic} with step-by-step solutions`,
+  `Get practice exercises for ${topic} with full solutions`,
 ];
 
 /**
  * Builds 4 dynamic chat prompt suggestions from a user's profile.
+ *
+ * The first (main) suggestion is framed around the user's interest — the
+ * label is the interest only (e.g. "Practice with Formula 1") and the subtext
+ * is what they will learn (the subject). Each suggestion pairs a different
+ * interest with a different subject when the profile allows it.
  *
  * Results vary across visits: pass a fresh `seed` (e.g. generated on mount)
  * to get a different set of prompts each time. Without a seed, a random one
@@ -93,8 +95,8 @@ export function buildPromptSuggestions(
   const seed = options.seed ?? Math.floor(Math.random() * 0x7fffffff);
   const rand = mulberry32(seed);
 
-  const subjects = seededShuffle((profile.subjects ?? []).filter(Boolean), rand);
-  const hobbies = seededShuffle((profile.hobbies ?? []).filter(Boolean), rand);
+  const rawSubjects = (profile.subjects ?? []).filter(Boolean);
+  const hobbies = (profile.hobbies ?? []).map(cleanHobby).filter(Boolean);
   const rawGrade = profile.grade;
   // Grade can arrive as a string or a number (older localStorage / DB rows).
   // Coerce to a trimmed string so `.trim()` never throws on a non-string, and
@@ -106,21 +108,38 @@ export function buildPromptSuggestions(
         ? rawGrade.trim()
         : "";
   const hasGrade = grade !== "" && grade !== "0";
-  const topic = (options.currentSubject ?? "").trim() || subjects[0] || "";
-  const hobby = hobbies[0] ? cleanHobby(hobbies[0]) : undefined;
+
+  const currentSubject = (options.currentSubject ?? "").trim();
+  const shuffledSubjects = seededShuffle(rawSubjects, rand);
+  const topics = [
+    currentSubject,
+    ...shuffledSubjects.filter((s) => s !== currentSubject),
+  ].filter(Boolean);
+  const shuffledHobbies = seededShuffle(hobbies, rand);
+
+  const hobbyAt = (i: number): string | undefined =>
+    shuffledHobbies.length ? shuffledHobbies[i % shuffledHobbies.length] : undefined;
+  const topicAt = (i: number): string | undefined =>
+    topics.length ? topics[i % topics.length] : undefined;
 
   const pick = pickTemplate(rand);
 
-  const candidates: PromptSuggestion[] = [
-    hobby
-      ? { label: `Learn with ${hobby}`, prompt: pick(HOBBY(topic || "a concept", hobby)) }
-      : { label: "Break down a concept", prompt: pick(EXPLAIN(topic || "a concept")) },
-    { label: "Test your knowledge", prompt: pick(QUIZ(topic || "today's topics", hobby)) },
-    { label: "Study plan", prompt: pick(STUDY_PLAN(hasGrade ? grade : undefined)) },
-    hobby
-      ? { label: `Practice with ${hobby}`, prompt: pick(PRACTICE(topic || "your current topics", hobby)) }
-      : { label: "Practice questions", prompt: pick(PRACTICE(topic || "your current topics")) },
+  return [
+    {
+      label: hobbyAt(0) ? `Practice with ${hobbyAt(0)}` : "Practice questions",
+      prompt: pick(PRACTICE(topicAt(0) || "your current topics")),
+    },
+    {
+      label: hobbyAt(1) ? `Learn with ${hobbyAt(1)}` : "Break down a concept",
+      prompt: pick(EXPLAIN(topicAt(1) || "a concept")),
+    },
+    {
+      label: hobbyAt(2) ? `Quiz with ${hobbyAt(2)}` : "Test your knowledge",
+      prompt: pick(QUIZ(topicAt(2) || "your current topics")),
+    },
+    {
+      label: hobbyAt(3) ? `Study with ${hobbyAt(3)}` : "Study plan",
+      prompt: pick(STUDY_PLAN(topicAt(3), hasGrade ? grade : undefined)),
+    },
   ];
-
-  return seededShuffle(candidates, rand);
 }

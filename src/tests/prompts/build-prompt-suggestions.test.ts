@@ -32,18 +32,48 @@ describe("buildPromptSuggestions", () => {
     expect(suggestions.some((s) => s.prompt.includes("Biology"))).toBe(true);
   });
 
-  it("lets the selected subject override profile subjects", () => {
+  it("lets the selected subject drive the main suggestion", () => {
     const suggestions = buildPromptSuggestions(
       { subjects: ["Biology"] },
       { currentSubject: "Mathematics", seed: 42 },
     );
-    expect(suggestions.some((s) => s.prompt.includes("Mathematics"))).toBe(true);
-    expect(suggestions.some((s) => s.prompt.includes("Biology"))).toBe(false);
+    expect(suggestions[0].prompt).toContain("Mathematics");
+  });
+
+  it("makes the main suggestion the interest with the subject as subtext", () => {
+    const suggestions = buildPromptSuggestions(
+      { subjects: ["Mathematics"], hobbies: ["Formula 1"] },
+      { seed: 42 },
+    );
+    expect(suggestions[0].label).toBe("Practice with Formula 1");
+    expect(suggestions[0].prompt).toContain("Mathematics");
+    expect(suggestions[0].prompt).not.toContain("Formula 1");
   });
 
   it("anchors a suggestion to a hobby when present", () => {
     const suggestions = buildPromptSuggestions({ hobbies: ["Gaming"] }, { seed: 7 });
     expect(suggestions.some((s) => s.label === "Learn with Gaming")).toBe(true);
+  });
+
+  it("uses a different interest for each suggestion when possible", () => {
+    const suggestions = buildPromptSuggestions(
+      { hobbies: ["Gaming", "Sports", "Cooking", "Music"] },
+      { seed: 42 },
+    );
+    const interests = suggestions.map((s) =>
+      s.label.replace(/^(Practice|Learn|Quiz|Study) with /, ""),
+    );
+    expect(new Set(interests).size).toBe(4);
+  });
+
+  it("uses a different subject for each suggestion when possible", () => {
+    const suggestions = buildPromptSuggestions(
+      { subjects: ["Biology", "Mathematics", "Chemistry", "Physics"] },
+      { seed: 42 },
+    );
+    const names = ["Biology", "Mathematics", "Chemistry", "Physics"];
+    const found = names.filter((n) => suggestions.some((s) => s.prompt.includes(n)));
+    expect(found).toHaveLength(4);
   });
 
   it("cleans hobby labels that carry sub-interests in parentheses", () => {
@@ -53,7 +83,6 @@ describe("buildPromptSuggestions", () => {
     );
     const hobbySuggestion = suggestions.find((s) => s.label === "Learn with Sports");
     expect(hobbySuggestion).toBeDefined();
-    expect(hobbySuggestion!.prompt).toContain("Sports");
     expect(hobbySuggestion!.prompt).not.toContain("Soccer");
   });
 
