@@ -1,6 +1,6 @@
 import type { ToolCall } from "@analogix/shared/types";
 import type { SubjectId } from "@/constants/subjects";
-import { detectSubject } from "@/services/groq";
+import { detectSubject } from "@/services/ai";
 
 export function getToolAutoApproval() {
   if (typeof window === "undefined") return { autoApproveAll: false, autoApproveRead: false, autoApproveSubjects: [] as string[] };

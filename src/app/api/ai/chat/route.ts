@@ -1,291 +1,335 @@
-import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
-import { createRetriever } from '@/lib/retrieval/retriever';
-import { buildMemoryContext } from '@/lib/memory/layers';
-import { getUserAIPersonality, buildPersonalityInstructions } from '@/lib/aiMemory';
-import { resolveModelForUser } from '@/app/api/groq/_utils';
+import { convertToModelMessages, streamText } from "ai";
+import type { UIMessage } from "ai";
+import { createClient } from "@/lib/supabase/server";
+import {
+  buildSystemPrompt,
+  compressToSummary,
+  classifyTaskType,
+  computeChatOutputBudget,
+  getGroqModel,
+  getProviderOptionsForModel,
+  getToolApprovalSecret,
+  isSimpleGreetingMessage,
+  loadAIContext,
+  resolveModelForUser,
+  TOTAL_BUDGET,
+  estimateRequestTokens,
+  estimateUIMessagesTokens,
+  ESTIMATE_CHARS_PER_TOKEN,
+  buildToolSet,
+  estimateToolTokens,
+  getToolsForRequest,
+  type ToolBindings,
+} from "@/lib/ai";
+import {
+  getUserAIPersonality,
+  getRelevantMemories,
+  buildMemoryContext,
+  buildPersonalityInstructions,
+} from "@/lib/aiMemory";
+import type { AIPersonality } from "@/types/ai-personality";
+import { sanitizeParts } from "@/lib/ai/parts";
 
-const GROQ_API_URL = process.env.GROQ_CHAT_URL || 'https://api.groq.com/openai/v1/chat/completions';
-const GROQ_API_KEY = process.env.GROQ_API_KEY || process.env.GROQ_API_KEY_2;
+export const runtime = "nodejs";
 
-export const runtime = 'nodejs';
-
-interface ChatMessage {
-  role: 'system' | 'user' | 'assistant';
-  content: string;
+interface ChatUserContext {
+  subjects?: string[];
+  grade?: string;
+  state?: string;
+  name?: string;
+  hobbies?: string[];
+  interests?: unknown;
+  analogyIntensity?: number;
+  analogyAnchor?: string;
+  researchMode?: boolean;
+  researchSources?: Array<Record<string, unknown>>;
+  selectedModel?: string;
 }
 
-interface ChatRequest {
-  messages: ChatMessage[];
-  userContext?: {
-    subjects?: string[];
-    grade?: string;
-    state?: string;
-    analogyIntensity?: number;
-    analogyAnchor?: string;
-    researchMode?: boolean;
-    selectedModel?: string;
-  };
+interface ChatRequestBody {
+  messages: Array<{ id?: string; role: string; parts: unknown[] }>;
+  userContext?: ChatUserContext;
 }
 
 const FULL_MESSAGE_WINDOW = 8;
 
-function buildSystemPrompt(
-  userContext: ChatRequest['userContext'],
-  userName: string,
-  workspaceContext: string,
-  calendarContext: string,
-  memoryContext: string,
-  personalityInstructions: string
-): string {
-  const analogyIntensity = userContext?.analogyIntensity ?? 3;
-  const studentGrade = userContext?.grade || '7';
-  const studentState = userContext?.state || null;
+// convertToModelMessages throws "Unsupported part" for any UI part type it does
+// not recognise (legacy `tool-invocation`/`thinking`/`sources` parts from older
+// sessions, or `source-url`/`source-document` citations). Drop those, but KEEP
+// the real v6 tool parts - `tool-*` / `dynamic-tool` - because the client's
+// Allow/Deny response lives on one of them; sanitizing them away was the root
+// cause of the "it keeps asking to use the tool" approval loop.
 
-  const STATE_FULL_NAMES: Record<string, string> = {
-    NSW: 'New South Wales', VIC: 'Victoria', QLD: 'Queensland',
-    WA: 'Western Australia', SA: 'South Australia', TAS: 'Tasmania',
-    ACT: 'Australian Capital Territory', NT: 'Northern Territory',
-  };
+const flattenText = (messages: Array<{ role: string; parts: unknown[] }>): string =>
+  messages
+    .map((m) => {
+      const parts = (m.parts ?? []) as Array<{ type?: string; text?: string }>;
+      return parts
+        .filter((p) => p.type === "text" && p.text)
+        .map((p) => p.text)
+        .join(" ");
+    })
+    .join("\n");
 
-  const stateFullName = studentState ? (STATE_FULL_NAMES[studentState] || studentState) : null;
+const flattenMessages = (messages: Array<{ role: string; parts: unknown[] }>) =>
+  messages.map((m) => ({
+    role: m.role === "tool" ? "user" : m.role,
+    content: flattenText([m]),
+  }));
 
-  const curriculumContext = stateFullName
-    ? `The student is in Year ${studentGrade} in ${stateFullName}, Australia. Always align explanations to the ${stateFullName} syllabus.`
-    : `The student is in Year ${studentGrade} in Australia. Use Australian curriculum standards.`;
+const isFormalRequest = (latestUserMsg: string): boolean =>
+  /^(write|essay|assignment|report|piece|article|paragraph|analysis|critique|review|composition)/.test(latestUserMsg.toLowerCase()) ||
+  latestUserMsg.toLowerCase().includes("essay on") ||
+  latestUserMsg.toLowerCase().includes("write an") ||
+  latestUserMsg.toLowerCase().includes("assign") ||
+  latestUserMsg.toLowerCase().includes("composition");
 
-  const greeting = userName
-    ? `The student's name is ${userName}. Address them by name naturally in conversation - not in every message, but enough to feel personal and warm.`
-    : '';
-
-  const levels = [
-    'SCHOOL MODE: Formal, precise, curriculum-aligned. No analogies.',
-    'Use analogies sparingly - only when they genuinely help clarify a tricky point. When you do, weave the analogy naturally into the explanation.',
-    'Use analogies as a teaching tool for abstract or complex concepts. Connect unfamiliar ideas to everyday experiences the student already understands.',
-    'Weave analogies throughout your explanation. Compare new concepts to familiar things. Extend the comparison so the student can see how the pieces map across.',
-    'Analogies are your primary teaching method. For every concept, find a relatable comparison and weave it into the explanation. Show how the analogy maps to the real concept step by step.',
-    'Maximum analogy integration. Every explanation should be anchored in a vivid, extended analogy that the student can visualize and relate to their own life.',
-  ];
-  const clamped = typeof analogyIntensity === 'number' && !Number.isNaN(analogyIntensity)
-    ? Math.max(0, Math.min(5, Math.round(analogyIntensity)))
-    : 3;
-  const analogyGuidance = levels[clamped];
-
-  const curriculumInstruction = workspaceContext.includes('CURRICULUM CONTENT')
-    ? '\n\nThe workspace above includes Australian curriculum content for the student\'s grade and subject. Reference this curriculum content in your answer. Mention the ACARA code (e.g. AC9M8G03) when relevant. Ensure your explanations match the specified grade level and syllabus outcomes.'
-    : '';
-
-  const workspaceSection = workspaceContext || calendarContext ? `
-${calendarContext ? `━━━ CALENDAR & DEADLINES ━━━\n${calendarContext}\n━━━ END CALENDAR ━━━\n` : ''}
-${workspaceContext ? `━━━ YOUR WORKSPACE ━━━\n${workspaceContext}\n━━━ END WORKSPACE ━━━` : ''}
-${curriculumInstruction}
-` : '';
-
-  return `You are "Analogix AI", a friendly AI tutor for Australian students.
-
-VOICE & STYLE - BE A HUMAN TUTOR, NOT A CHATBOT:
-- Talk like a great real-life tutor: warm, friendly, and relaxed - never robotic, clinical, or corporate. Use natural, conversational English.
-- Personalise to the student: ${greeting.replace(/^The student's name is ([^.]*)\..*$/, 'address "$1" by name naturally from time to time')} Weave their interests into examples and analogies where it helps learning.
-- CONVERSATION FIRST, STRUCTURE SECOND: Don't structure every reply the same way. A quick question gets a quick, friendly answer; a hard concept gets a clear, calm walkthrough. Vary your format between messages. No templated bullet-point-everything.
-- KEEP IT SIMPLE: The student is in Year ${studentGrade}. Use plain, natural language the way a great high-school teacher would. Don't overcomplicate - no university-level formalism, no walls of equations, no multi-stage formulas unless the student asks for that depth. A simple explanation or one good example is usually the best answer.
-- No robotic filler: no "Great question!", no "As an AI assistant", no forced headings or decorative dividers for simple answers. Keep it natural and readable.
-
-Context: Year ${studentGrade}${stateFullName ? ` in ${stateFullName}` : ''}, Australia. ${curriculumContext}
-
-${greeting}
-
-${analogyIntensity === 0 ? 'Mode: School/Assessment - formal, precise, no analogies.' : `Learning Mode: ${analogyGuidance}`}
-
-Rules:
-- Keep responses concise and conversational
-- LATEX WITH JUDGEMENT: Use LaTeX ($...$ for inline, $$...$$ for display) for proper mathematical expressions, equations, formulas, and scientific notation when maths is genuinely the point - e.g. solving an equation, showing working, physics/chemistry formulas, $\\frac{3}{4}$, $x^2 + 2x - 5 = 0$. Use PLAIN TEXT for conversational numbers and simple arithmetic - 25%, "x = 5", "6 hours", "half of 30 is 15", times like 8:30am. Do NOT wrap ordinary numbers, measurements, clock times, or simple amounts in LaTeX just because they're numeric - that makes simple answers look like a university paper and overwhelms the student.
-- VALID LATEX ONLY (the renderer uses KaTeX): Only output well-formed, standard LaTeX that KaTeX supports. Never hallucinate commands. Always balance $ / $$ delimiters. NEVER use & or \\\\ outside a proper environment - wrap multi-line/multi-column maths in \\begin{aligned}...\\end{aligned} or \\begin{cases}...\\end{cases} inside the $$ block, and never emit \\begin{align}/\\begin{equation} directly (use \\begin{aligned}). Use standard commands only (\\frac, \\sqrt, \\times, \\div, \\pm, \\sum, \\int, \\pi, \\theta, \\text{...}, \\cdot, ^{}, _{}, \\left(...\\right)). If the student pastes broken LaTeX, silently fix it to valid, renderable LaTeX - do not lecture them about syntax.
-- No emojis
-- Help guide learning, don't give direct answers to homework
-${workspaceSection}
-${memoryContext}
-${personalityInstructions}
-- Analogix`;
-}
+const ALLOWED_PERSONALITY_OVERRIDES = new Set([
+  "analogy_frequency", "detail_level", "verbosity", "creativity", "tone", "focus",
+]);
 
 export async function POST(request: Request) {
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
-
     const userId = user?.id;
-
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const body: ChatRequest = await request.json();
-    const { messages, userContext = {} } = body;
-
-    let userName = '';
-    if (user) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('name')
-        .eq('id', userId)
-        .single();
-      userName = profile?.name || user.email?.split('@')[0] || '';
-    }
-
-    const [personality, memoryContext] = await Promise.all([
-      user ? getUserAIPersonality(userId) : Promise.resolve(null),
-      user ? buildMemoryContext(userId, messages[messages.length - 1]?.content) : Promise.resolve(''),
-    ]);
-
-    const retriever = createRetriever(userId as string);
-    const lastMessage = messages.filter(m => m.role === 'user').pop()?.content || '';
-
-    const isSimpleGreeting = /^(hi|hello|hey|thanks?|bye)[\s!?.]*$/i.test(lastMessage.trim()) && 
-      messages.filter(m => m.role === 'user').length <= 1;
-
-    let workspaceContext = '';
-    let calendarContext = '';
-
-    if (!isSimpleGreeting) {
-      const retrievalResult = await retriever.retrieve({
-        userId: userId as string,
-        query: lastMessage,
-        scopes: [
-          { type: 'documents', maxResults: 5 },
-          { type: 'curriculum', maxResults: 5 },
-          { type: 'flashcards', maxResults: 3 },
-          { type: 'quizzes', maxResults: 3 },
-          { type: 'calendar', maxResults: 5 },
-          { type: 'subjects', maxResults: 5 },
-        ],
-        subjectId: userContext.subjects?.[0],
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
       });
+    }
 
-      const docs = retrievalResult.scopes.documents || [];
-      const curriculumEntries = retrievalResult.scopes.curriculum || [];
+    const body: ChatRequestBody = await request.json();
+    const messages = Array.isArray(body.messages) ? body.messages : [];
+    if (messages.length === 0) {
+      return new Response(JSON.stringify({ error: "messages are required" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    const userContext = body.userContext ?? {};
 
-      const docParts: string[] = [];
-      if (docs.length > 0) {
-        docParts.push('━━━ YOUR DOCUMENTS ━━━');
-        docParts.push(docs.map((d) =>
-          `[${d.entity.metadata?.subject_id?.toUpperCase()}] "${d.entity.metadata?.title}": ${d.entity.entity_data?.content || ''}`
-        ).join('\n\n'));
-      }
-
-      if (curriculumEntries.length > 0) {
-        docParts.push('━━━ CURRICULUM CONTENT ━━━');
-        docParts.push(curriculumEntries.map((c) => {
-          const data = c.entity.entity_data as Record<string, unknown>;
-          return `[${String(data.state || 'ACARA')}] ${String(data.subject || '')} Year ${String(data.grade || '')}${data.acara_code ? ` (${data.acara_code})` : ''}: ${data.topic ? `${data.strand} > ${data.topic}: ` : ''}${data.content || ''}`;
-        }).join('\n\n'));
-      }
-
-      workspaceContext = docParts.join('\n\n');
-
-      const events = retrievalResult.scopes.calendar || [];
-      if (events.length > 0) {
-        const formatDateTime = (value: unknown) => {
-          if (!value) return null;
-          const parsed = value instanceof Date ? value : new Date(String(value));
-          if (isNaN(parsed.getTime())) return null;
-          const datePart = parsed.toLocaleDateString('en-AU', {
-            weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
-          });
-          const timePart = parsed.toLocaleTimeString('en-AU', {
-            hour: '2-digit', minute: '2-digit', hour12: true,
-          });
-          return `${datePart} at ${timePart}`;
-        };
-
-        calendarContext = events.slice(0, 5).map((e) => {
-          const title = e.entity.metadata?.title || 'Untitled event';
-          const subject = e.entity.metadata?.subject_id ? ` [${e.entity.metadata?.subject_id}]` : '';
-          const start = formatDateTime(e.entity.entity_data?.start_date ?? e.entity.entity_data?.date);
-          const end = formatDateTime(e.entity.entity_data?.end_date);
-          if (start && end) {
-            return `${title}${subject} - ${start} to ${end}`;
+    // ── Client-side personality/memory overrides (localStorage, anonymous) ──
+    let clientPersonality: Partial<AIPersonality> | null = null;
+    let clientMemories: unknown[] | null = null;
+    const clientData = request.headers.get("x-client-data");
+    if (clientData) {
+      try {
+        const parsed = JSON.parse(clientData);
+        const safePersonality: Record<string, unknown> = {};
+        if (parsed.personality && typeof parsed.personality === "object") {
+          for (const key of Object.keys(parsed.personality)) {
+            if (ALLOWED_PERSONALITY_OVERRIDES.has(key)) {
+              safePersonality[key] = (parsed.personality as Record<string, unknown>)[key];
+            }
           }
-          if (start) {
-            return `${title}${subject} - ${start}`;
-          }
-          return `${title}${subject} - ${String((e.entity.entity_data?.start_date ?? e.entity.entity_data?.date) || 'Unknown date')}`;
-        }).join('\n');
+          clientPersonality = safePersonality;
+        }
+        clientMemories = parsed.memories ?? null;
+      } catch (e) {
+        console.warn("[ai/chat] Failed to parse x-client-data:", e instanceof Error ? e.message : e);
       }
     }
 
-    const personalityInstructions = personality 
-      ? buildPersonalityInstructions(personality, userContext.analogyIntensity)
-      : '';
+    // ── Personality + memory ──
+    let aiPersonality: AIPersonality | null = null;
+    let memoryContext = "";
+    let studentName: string | null = null;
 
-    const effectiveAnalogyIntensity = userContext.analogyIntensity !== undefined
-      ? userContext.analogyIntensity
-      : personality ? Math.max(1, Math.min(5, personality.analogy_frequency ?? 3)) : 3;
+    const flat = flattenMessages(messages);
+    const latestUserMsg = flat.filter((m) => m.role === "user").pop()?.content || "";
 
-    const systemPrompt = buildSystemPrompt(
-      { ...userContext, analogyIntensity: effectiveAnalogyIntensity },
-      userName,
+    aiPersonality = await getUserAIPersonality(userId);
+    try {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("name")
+        .eq("id", userId)
+        .single();
+      studentName = profile?.name || null;
+    } catch (e) {
+      console.warn("[ai/chat] Failed to fetch profile name:", e instanceof Error ? e.message : e);
+    }
+    if (clientPersonality) {
+      aiPersonality = { ...(aiPersonality ?? {}), ...clientPersonality } as AIPersonality;
+    }
+    const { memories, summaries } = await getRelevantMemories(userId, {
+      limit: 15,
+      minImportance: 0.3,
+      currentMessage: latestUserMsg,
+    });
+    memoryContext = buildMemoryContext(memories, summaries);
+
+    if (clientMemories && Array.isArray(clientMemories)) {
+      const clientParts = (clientMemories as Array<unknown>)
+        .map((m) => {
+          if (typeof m === "string") return m;
+          const content = (m as { content?: unknown })?.content;
+          return typeof content === "string" ? content : null;
+        })
+        .filter((c): c is string => Boolean(c && c.trim()));
+      if (clientParts.length > 0) {
+        const clientBlock = `Client Memory (local): ${clientParts.join("; ")}`;
+        memoryContext = memoryContext ? `${memoryContext}\n\n${clientBlock}` : clientBlock;
+      }
+    }
+
+    // ── On-demand workspace context ──
+    const { workspaceContext, calendarContext, extraDataContext, enrolledSubjects } =
+      await loadAIContext(flat, { subjects: userContext.subjects });
+
+    const isSimpleGreeting = isSimpleGreetingMessage(flat);
+    const isFormal = isFormalRequest(latestUserMsg);
+    const effectiveUserContext = aiPersonality
+      ? {
+          ...userContext,
+          analogyIntensity:
+            userContext.analogyIntensity !== undefined
+              ? userContext.analogyIntensity
+              : isFormal
+                ? 0
+                : Math.max(1, Math.min(5, aiPersonality.analogy_frequency ?? 3)),
+        }
+      : { ...userContext, analogyIntensity: isFormal ? 0 : userContext.analogyIntensity };
+
+    let systemPrompt = buildSystemPrompt({
+      userContext: {
+        ...effectiveUserContext,
+        subjects: userContext.subjects,
+      },
+      messages: flat,
       workspaceContext,
       calendarContext,
-      memoryContext,
-      personalityInstructions
-    );
-
-    const recentMsgs = messages.slice(-FULL_MESSAGE_WINDOW).filter(m => m.role !== 'system');
-    const olderMsgs = messages.slice(0, -FULL_MESSAGE_WINDOW);
-
-    let conversationSummary = '';
-    if (olderMsgs.length > 0) {
-      const topics = olderMsgs
-        .filter(m => m.role === 'user')
-        .map(m => m.content.split('.')[0].slice(0, 50))
-        .slice(0, 3);
-      if (topics.length > 0) {
-        conversationSummary = `[Earlier] Topics: ${topics.join(', ')} (${olderMsgs.length} earlier messages)`;
-      }
-    }
-
-    let fullSystemPrompt = systemPrompt;
-    if (conversationSummary) {
-      fullSystemPrompt = fullSystemPrompt.replace('- Analogix', `${conversationSummary}\n\n- Analogix`);
-    }
-
-    const model = resolveModelForUser(userContext.selectedModel || null);
-
-    if (!GROQ_API_KEY) {
-      return NextResponse.json({ error: 'GROQ_API_KEY not configured' }, { status: 500 });
-    }
-
-    const response = await fetch(GROQ_API_URL, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${GROQ_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model,
-        messages: [
-          { role: 'system', content: fullSystemPrompt },
-          ...recentMsgs,
-        ],
-        max_tokens: 1024,
-        temperature: userContext.researchMode ? 0.3 : 0.55,
-      }),
+      extraDataContext,
+      studentName: studentName ?? undefined,
+      enrolledSubjects,
     });
 
-    if (!response.ok) {
-      await response.text();
-      return NextResponse.json({ error: `AI error: ${response.status}` }, { status: response.status });
+    // Inject memory + summary context at the top, personality at the very top.
+    const contextBlocks: string[] = [];
+    if (memoryContext) contextBlocks.push(memoryContext);
+    const recentForSummary = flat.slice(0, -FULL_MESSAGE_WINDOW);
+    const conversationSummary = recentForSummary.length > 0
+      ? compressToSummary(recentForSummary)
+      : "";
+    if (conversationSummary) contextBlocks.push(conversationSummary);
+    if (contextBlocks.length > 0) {
+      systemPrompt = contextBlocks.join("\n\n") + "\n\n" + systemPrompt;
+    }
+    if (aiPersonality) {
+      const personalityInstructions = buildPersonalityInstructions(
+        aiPersonality,
+        effectiveUserContext.analogyIntensity ?? 3,
+      );
+      systemPrompt = `--- PERSONALITY SETTINGS (HIGHEST PRIORITY) ---\n${personalityInstructions}\n--- END PERSONALITY ---\n\n${systemPrompt}`;
     }
 
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content || '';
+    // ── Task classification + model selection ──
+    const primarySubject = userContext.subjects?.[0];
+    const taskType = isSimpleGreeting
+      ? "lightweight"
+      : classifyTaskType(flat, primarySubject);
+    const resolvedModel = resolveModelForUser(userContext.selectedModel || null);
+    const isQwen = taskType === "reasoning" || resolvedModel.toLowerCase().includes("qwen");
+    const OUTPUT_HARD_CAP = isQwen ? 8192 : 4096;
+    const wantsLongResponse =
+      Boolean(userContext.researchMode) || isFormal ||
+      /\b(detailed|comprehensive|essay|report|study guide|lesson plan|long answer|timetable|study plan|revision plan|syllabus|walk me through|step-by-step guide)\b/i.test(latestUserMsg);
 
-    return NextResponse.json({ message: content });
-  } catch (error) {
-    console.error('[/api/ai/chat] Error:', error);
-    return NextResponse.json(
-      { error: 'Chat failed' },
-      { status: 500 }
+    // gpt-oss and qwen spend part of their output budget on the hidden
+    // chain-of-thought even for ordinary questions. Reserve headroom so the
+    // thinking pass AND the visible answer both fit (the answer alone gets
+    // ~DEFAULT_OUTPUT tokens).
+    const reasons =
+      isQwen || resolvedModel.toLowerCase().includes("gpt-oss");
+
+    // ── Tool set + budget ──
+    const ctx: ToolBindings = { userId, supabase };
+    const tools = buildToolSet(ctx, getToolsForRequest(latestUserMsg, taskType));
+
+    // ── Trim to window + budget ──
+    let recent = messages
+      .filter((m) => m.role === "user" || m.role === "assistant")
+      .map((m) => ({ ...m, parts: sanitizeParts(m.parts) }))
+      .slice(-FULL_MESSAGE_WINDOW);
+    // Groq counts the serialized tool definitions against the request/TPM limit.
+    const toolTokens = estimateToolTokens(tools);
+    const budgetInput = {
+      isSimpleGreeting,
+      wantsLongResponse,
+      reasons,
+      outputHardCap: OUTPUT_HARD_CAP,
+      outputBudget: TOTAL_BUDGET,
+    };
+    const { requested } = computeChatOutputBudget(budgetInput);
+
+    // Reserve the output target BEFORE context is spent, so a long answer (plus
+    // the hidden chain-of-thought for gpt-oss/qwen) is never starved - the root
+    // cause of "responses getting cut off". Long-form reserves the full hard cap;
+    // ordinary turns reserve a solid floor and grow with leftover budget.
+    const reserveForOutput = wantsLongResponse ? requested : Math.min(requested, 3072);
+    const originalSystemTokens = estimateRequestTokens(systemPrompt);
+    const fitsBudget = (msgs: typeof messages) =>
+      originalSystemTokens + toolTokens + estimateUIMessagesTokens(msgs) + reserveForOutput <=
+      TOTAL_BUDGET;
+
+    // Keep the latest user ask plus at least one preceding turn.
+    while (recent.length > 2 && !fitsBudget(recent)) {
+      recent = recent.slice(1);
+    }
+    const inputTokens = estimateUIMessagesTokens(recent);
+
+    // The system prompt (personality + memory + summary + workspace context)
+    // counts against the same request cap. Truncate it as a last resort so the
+    // outgoing request can NEVER exceed TOTAL_BUDGET and the reserved output
+    // target stays achievable (memory/summary sits at the top, so cutting the
+    // tail drops workspace/calendar detail - far better than a cut-off answer).
+    const maxSystemTokens = TOTAL_BUDGET - toolTokens - inputTokens - reserveForOutput;
+    if (systemPrompt.length > Math.floor(maxSystemTokens * ESTIMATE_CHARS_PER_TOKEN)) {
+      const newLen = Math.max(600, Math.floor(maxSystemTokens * ESTIMATE_CHARS_PER_TOKEN));
+      console.warn(
+        `[ai/chat] Truncating system prompt (${systemPrompt.length} -> ${newLen} chars) to keep ${reserveForOutput}t output reserve`,
+      );
+      systemPrompt = systemPrompt.slice(0, newLen) + "\n…[context truncated]";
+    }
+    const systemTokens = estimateRequestTokens(systemPrompt);
+    const outputBudget = TOTAL_BUDGET - systemTokens - toolTokens - inputTokens;
+    // `requested` is the target; `outputBudget` is the hard ceiling the request
+    // can survive. maxOutputTokens is the intersection, never below the safe
+    // floor so the stream can at least start.
+    const { maxOutputTokens } = computeChatOutputBudget({ ...budgetInput, outputBudget });
+
+    // ── Model + stream ──
+    const { model } = getGroqModel(resolvedModel);
+    const modelMessages = await convertToModelMessages(
+      recent as unknown as Array<UIMessage>,
+      { tools },
     );
+
+    const result = streamText({
+      model,
+      system: systemPrompt,
+      messages: modelMessages,
+      tools,
+      temperature: userContext.researchMode ? 0.3 : 0.55,
+      maxOutputTokens,
+      providerOptions: getProviderOptionsForModel(resolvedModel),
+      experimental_toolApprovalSecret: getToolApprovalSecret(),
+      maxRetries: 2,
+    });
+
+    return result.toUIMessageStreamResponse({
+      originalMessages: messages as unknown as Array<UIMessage>,
+      onError: (error) =>
+        error instanceof Error ? error.message : "Chat failed",
+    });
+  } catch (error) {
+    console.error("[/api/ai/chat] Error:", error);
+    const detail = error instanceof Error ? error.message : String(error);
+    return new Response(JSON.stringify({ error: `Chat failed: ${detail}` }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 }

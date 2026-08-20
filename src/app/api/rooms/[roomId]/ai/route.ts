@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { callGroqChat } from "@/app/api/groq/_utils";
+import { runText } from "@/lib/ai";
 import { getDocumentPreviewText, getDocumentPlainText } from "@/lib/document-content";
 import { listDocumentsByIds } from "@/lib/server/documents";
 import {
@@ -64,7 +64,7 @@ export async function POST(
       .map((message: any) => `${message.name}: ${message.content}`)
       .join("\n");
 
-    const answer = await callGroqChat(
+    const answer = (await runText(
       {
         messages: [
           {
@@ -87,11 +87,11 @@ Answer as a tutor speaking to the group. Keep it concise but complete.`,
           },
           { role: "user", content: prompt },
         ],
-        max_tokens: 1400,
+        taskType: "reasoning",
         temperature: 0.3,
+        maxTokens: 1400,
       },
-      "reasoning",
-    );
+    )).text;
 
     const now = new Date();
     const promptCreatedAt = now.toISOString();

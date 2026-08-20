@@ -2,7 +2,7 @@ import { useState, useRef, useCallback } from "react";
 import { toast } from "sonner";
 import { extractFileText } from "@/utils/extractFileText";
 import { flashcardStore } from "@/utils/flashcardStore";
-import { generateQuizFromDocument, generateFlashcardsFromDocument } from "@/services/groq";
+import { generateQuizFromDocument, generateFlashcardsFromDocument } from "@/services/ai";
 import { SUBJECT_CATALOG, SubjectId } from "@/constants/subjects";
 
 export interface Attachment {

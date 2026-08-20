@@ -1,7 +1,7 @@
 /**
  * extractFileText - browser-side utility
  * Handles: .txt .md .csv .rtf  →  read directly
- *          .pdf .docx .pptx    →  send to /api/groq/extract-text
+ *          .pdf .docx .pptx    →  send to /api/ai/extract-text
  * Returns the extracted string, or throws with a user-friendly message.
  */
 const TEXT_TYPES = new Set([
@@ -38,7 +38,7 @@ export async function extractFileText(file: any) {
     if (SERVER_TYPES.has(mimeType) || SERVER_EXTS.has(fileExt)) {
         const form = new FormData();
         form.append("file", file);
-        const res = await fetch("/api/groq/extract-text", { method: "POST", body: form });
+        const res = await fetch("/api/ai/extract-text", { method: "POST", body: form });
         if (!res.ok) {
             const json = await res.json().catch(() => null);
             throw new Error(json?.error || "Extraction failed.");
@@ -52,7 +52,7 @@ export async function extractFileText(file: any) {
     if (mimeType.startsWith("image/") || /\.(png|jpe?g|webp|gif|heic|heif|bmp|tiff?)$/i.test(file.name)) {
         const form = new FormData();
         form.append("file", file);
-        const res = await fetch("/api/groq/extract-text", { method: "POST", body: form });
+        const res = await fetch("/api/ai/extract-text", { method: "POST", body: form });
         if (!res.ok) {
             const json = await res.json().catch(() => null);
             throw new Error(json?.error || "Image reading failed.");

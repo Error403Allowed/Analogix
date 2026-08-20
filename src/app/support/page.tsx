@@ -16,7 +16,7 @@ const faqs = [
   },
   {
     question: "Is Analogix really free?",
-    answer: "Yes! Analogix is 100% free to use. We believe every Australian student deserves access to quality learning tools. No subscriptions, no paywalls, no hidden costs.",
+    answer: "Yes! Analogix is free to use. We believe every Australian student deserves access to quality learning tools.",
     icon: Zap,
     color: "text-emerald-400 bg-emerald-500/10",
   },

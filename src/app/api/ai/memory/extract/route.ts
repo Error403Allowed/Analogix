@@ -97,7 +97,10 @@ ${transcript}`;
     const runExtraction = () => groq.chat.completions.create({
       model: "openai/gpt-oss-20b",
       messages: [{ role: "user", content: extractionPrompt }],
-      max_tokens: 600,
+      // gpt-oss reasons by default: reserve room for the hidden chain-of-thought
+      // so the JSON payload itself is never truncated (a cut-off JSON previously
+      // produced `json_parse_failed` and dropped every memory).
+      max_tokens: 1500,
       temperature: 0.1,
       // NOTE: response_format json_object is intentionally NOT used. gpt-oss-20b
       // intermittently emits empty generations under Groq's strict JSON mode,

@@ -17,6 +17,7 @@ import {
   Beaker,
   BookOpen,
   Calculator,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import AISettingsSheet from "@/components/settings/AISettingsSheet";
@@ -26,7 +27,7 @@ import {
   ResponsiveSheetContent,
 } from "@/components/ui/responsive-sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { ToolProposalCard } from "@/components/chat/ToolProposalCard";
+import { ToolApprovalCard } from "@/components/chat/ToolApprovalCard";
 import { ThinkingBlock } from "@/components/chat/ThinkingBlock";
 import { StreamingMessage } from "@/components/chat/StreamingMessage";
 import { ReExplainMenu } from "@/components/chat/ReExplainMenu";
@@ -78,7 +79,7 @@ const Chat = () => {
     quizGenerated,
     generatingFlashcards,
     flashcardsGenerated,
-    pendingProposal,
+    pendingApprovals,
     copiedId,
     isDraggingFiles,
     messagesEndRef,
@@ -451,6 +452,12 @@ const Chat = () => {
                                     </AnimatePresence>
                                   );
                                 })()}
+                                {reExplainingId === message.id && (
+                                  <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                    Re-explaining this in a different way…
+                                  </div>
+                                )}
                                 {message.sources && message.sources.length > 0 && (
                                   <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
                                     {message.sources.map((source, i) => (
@@ -592,9 +599,9 @@ const Chat = () => {
                     )}
                   </AnimatePresence>
 
-                  {pendingProposal && (
-                    <ToolProposalCard
-                      proposal={pendingProposal}
+                  {pendingApprovals.length > 0 && (
+                    <ToolApprovalCard
+                      approvals={pendingApprovals}
                       onAllow={handleAllowTools}
                       onDeny={handleDenyTools}
                     />

@@ -11,7 +11,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import SettingsDialog from "@/components/settings/SettingsDialog";
 import ProfileSheet from "@/components/settings/ProfileSheet";
-import { getAIGreeting } from "@/services/groq";
+import { getAIGreeting } from "@/services/ai";
 import { HOBBY_OPTIONS, POPULAR_INTERESTS } from "@/utils/interests";
 import { createClient } from "@/lib/supabase/client";
 

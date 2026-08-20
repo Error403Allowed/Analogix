@@ -57,30 +57,21 @@ test.describe("Chat layout (desktop)", () => {
     await page.goto("/chat", { waitUntil: "domcontentloaded" });
     await page.waitForTimeout(1200);
 
-    // Hold the stream open with empty content chunks (never send [DONE]) so the
-    // assistant message stays in the "thinking" state and the loader must render.
-    await page.route("**/api/groq/chat-stream", (route) => {
-      const encoder = new TextEncoder();
-      let closed = false;
-      let interval: ReturnType<typeof setInterval> | null = null;
-      const stream = new ReadableStream({
-        start(controller) {
-          const tick = () => {
-            if (closed) return;
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ choices: [{ delta: { content: "" } }] })}\n\n`));
-          };
-          tick();
-          interval = setInterval(tick, 250);
-        },
-        cancel() {
-          closed = true;
-          if (interval) clearInterval(interval);
-        },
-      });
+    // Delay the response so the request stays in the "submitted" state and the
+    // loader must render, then complete with a valid UI message stream.
+    await page.route("**/api/ai/chat", async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 10000));
+      const staticBody = [
+        { type: "start" },
+        { type: "text-start", id: "text-0" },
+        { type: "text-delta", id: "text-0", delta: "Photosynthesis is how plants turn sunlight into food." },
+        { type: "text-end", id: "text-0" },
+        { type: "finish", finishReason: "stop" },
+      ].map((p) => `data: ${JSON.stringify(p)}\n\n`).join("") + "data: [DONE]\n\n";
       route.fulfill({
         status: 200,
         contentType: "text/event-stream",
-        response: new Response(stream),
+        body: staticBody,
       });
     });
 
@@ -100,28 +91,19 @@ test.describe("Chat layout (desktop)", () => {
     await page.goto("/chat", { waitUntil: "domcontentloaded" });
     await page.waitForTimeout(1200);
 
-    await page.route("**/api/groq/chat-stream", (route) => {
-      const encoder = new TextEncoder();
-      let closed = false;
-      let interval: ReturnType<typeof setInterval> | null = null;
-      const stream = new ReadableStream({
-        start(controller) {
-          const tick = () => {
-            if (closed) return;
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ choices: [{ delta: { content: "" } }] })}\n\n`));
-          };
-          tick();
-          interval = setInterval(tick, 250);
-        },
-        cancel() {
-          closed = true;
-          if (interval) clearInterval(interval);
-        },
-      });
+    await page.route("**/api/ai/chat", async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 10000));
+      const staticBody = [
+        { type: "start" },
+        { type: "text-start", id: "text-0" },
+        { type: "text-delta", id: "text-0", delta: "Photosynthesis is how plants turn sunlight into food." },
+        { type: "text-end", id: "text-0" },
+        { type: "finish", finishReason: "stop" },
+      ].map((p) => `data: ${JSON.stringify(p)}\n\n`).join("") + "data: [DONE]\n\n";
       route.fulfill({
         status: 200,
         contentType: "text/event-stream",
-        response: new Response(stream),
+        body: staticBody,
       });
     });
 

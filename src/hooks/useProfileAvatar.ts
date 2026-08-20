@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { createClient } from "@/lib/supabase/client";
 import { readUserPreferences } from "@/lib/profile-sync";
@@ -17,7 +17,10 @@ import { readUserPreferences } from "@/lib/profile-sync";
  */
 export function useProfileAvatar(): string {
   const { user } = useAuth();
-  const [avatarUrl, setAvatarUrl] = useState<string>(() => readUserPreferences().avatarUrl || "");
+  // Starts empty so SSR and the first client render both paint the placeholder;
+  // the avatar URL is only resolved after mount (localStorage isn't available
+  // during SSR, so initializing from it would cause a hydration mismatch).
+  const [avatarUrl, setAvatarUrl] = useState<string>("");
 
   useEffect(() => {
     const load = () => setAvatarUrl(readUserPreferences().avatarUrl || "");
@@ -30,8 +33,13 @@ export function useProfileAvatar(): string {
     };
   }, []);
 
+  const fetchedForRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!user || avatarUrl) return;
+    if (!user) return;
+    if (fetchedForRef.current === user.id) return;
+    // Read the cache directly (not the state) so the fetch decision is correct
+    // on the same mount pass as the cache-loading effect above.
+    if (readUserPreferences().avatarUrl) return;
     let cancelled = false;
     const supabase = createClient();
     supabase
@@ -56,7 +64,7 @@ export function useProfileAvatar(): string {
     return () => {
       cancelled = true;
     };
-  }, [user, avatarUrl]);
+  }, [user]);
 
   return avatarUrl;
 }

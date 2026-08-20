@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import MobileFAB from "@/components/nav/MobileFAB";
 import { SUBJECT_CATALOG } from "@/constants/subjects";
 import { flashcardStore, type Flashcard, type FlashcardRating } from "@/utils/flashcardStore";
-import { generateFlashcardsFromDocument, generateQuiz, generateQuizFromDocument } from "@/services/groq";
+import { generateFlashcardsFromDocument, generateQuiz, generateQuizFromDocument } from "@/services/ai";
 import { extractFileText } from "@/utils/extractFileText";
 import { statsStore } from "@/utils/statsStore";
 import type { QuizAnswerInput, QuizOption, QuizQuestion } from "@/types/quiz";

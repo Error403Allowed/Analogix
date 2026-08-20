@@ -1,7 +1,20 @@
+"use client";
+
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { getGroqCompletion, getGroqStream, getReExplanation, generateFlashcards, generateChatTitle } from "@/services/groq";
+import { useChat as useAIChat } from "@ai-sdk/react";
+import {
+  DefaultChatTransport,
+  lastAssistantMessageIsCompleteWithApprovalResponses,
+  type UIMessage,
+} from "ai";
+import {
+  getAiCompletion,
+  getReExplanation,
+  generateFlashcards,
+  generateChatTitle,
+} from "@/services/ai";
 import { searchAcademicSources } from "@/services/research";
 import { flashcardStore } from "@/utils/flashcardStore";
 import { statsStore } from "@/utils/statsStore";
@@ -10,18 +23,38 @@ import { SUBJECT_CATALOG, SubjectId } from "@/constants/subjects";
 import { buildInterestList, buildInterestsObject } from "@/utils/interests";
 import type { ResearchSource } from "@/types/research";
 import { normalizeGroqModelId, type GroqModelId } from "@/types/groq-models";
-import type { ToolProposal, ToolCall } from "@analogix/shared/types";
 import type { Message } from "@/types/chat-message";
-import { formatToolResult } from "@/utils/format-tool-result";
 import { useChatScroll } from "./useChatScroll";
 import { useFileAttachment } from "./useFileAttachment";
 import { useChatSessions } from "./useChatSessions";
+import type { PendingApproval } from "@/components/chat/ToolApprovalCard";
+import { getToolAutoApproval } from "@/lib/chat-utils";
+import { normalizeQuizQuestions } from "@/lib/quiz-normalize";
 import {
-  shouldAutoApprove, findAnchor, buildWelcomeMessage,
-  cleanForDisplay, getLocalStorageData, detectSubjectFromMessage,
+  findAnchor, buildWelcomeMessage, cleanForDisplay, getLocalStorageData,
+  detectSubjectFromMessage,
 } from "@/lib/chat-utils";
 
 const allSubjects = SUBJECT_CATALOG;
+
+// Maximum consecutive approval-driven re-submissions per turn. See the
+// autoSendRoundsRef comment in useChat() for why this bound exists.
+const MAX_AUTO_SEND_ROUNDS = 8;
+
+type ToolUIPartLike = {
+  type: string;
+  state?: string;
+  text?: string;
+  toolCallId?: string;
+  input?: unknown;
+  approval?: { id?: string };
+};
+
+const partsToText = (parts: unknown[]): string =>
+  (parts ?? [])
+    .filter((p) => p && typeof p === "object" && (p as ToolUIPartLike).type === "text")
+    .map((p) => (p as ToolUIPartLike).text ?? "")
+    .join("");
 
 export function useChat() {
   const router = useRouter();
@@ -34,8 +67,6 @@ export function useChat() {
   const [showSubjectPicker, setShowSubjectPicker] = useState(false);
   const subjectPickerRef = useRef<HTMLDivElement>(null);
 
-  const [messages, setMessages] = useState<Message[]>([]);
-
   const [input, setInput] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -47,14 +78,6 @@ export function useChat() {
       textarea.style.height = newHeight;
     }
   }, [input]);
-
-  const [isTyping, setIsTyping] = useState(false);
-
-  const [streamingId, setStreamingId] = useState<string | null>(null);
-  const [streamingContent, setStreamingContent] = useState("");
-  const abortRef = useRef<AbortController | null>(null);
-
-  const lastMessageRef = useRef<{ content: string; timestamp: number } | null>(null);
 
   const [analogyModeEnabled, setAnalogyModeEnabled] = useState(true);
 
@@ -81,6 +104,8 @@ export function useChat() {
   const [formulaSearch, setFormulaSearch] = useState("");
 
   const [chatSessionId, setChatSessionId] = useState<string | null>(null);
+
+  const [welcomeMessage, setWelcomeMessage] = useState<Message | null>(null);
 
   const userPrefs = useMemo(
     () =>
@@ -111,26 +136,275 @@ export function useChat() {
     () => new Set(availableSubjects.map((subject) => subject.id)),
     [availableSubjects],
   );
-  const isInputLocked = isTyping || !!streamingId;
 
   const fileAttach = useFileAttachment({ selectedSubject, userSubjects, userPrefs, router });
 
-  const sessions = useChatSessions({
-    setSelectedSubject, setMessages, setChatSessionId,
-    setStreamingId, setStreamingContent, abortRef, allSubjects, userName,
-    chatSessionId,
-  });
-  const { setAllSessions } = sessions;
+  // ── AI SDK chat ──────────────────────────────────────────────────────────
+  // The SDK owns the conversation stream + native tool approvals. App-level
+  // messages are derived from its UIMessage[] state for rendering.
+  const userContextRef = useRef<Record<string, unknown>>({});
+  const attachmentsRef = useRef<Record<string, Message["attachments"]>>({});
+  const turnRef = useRef<{
+    sessionId: string | null;
+    userInput: string;
+    userContent: string;
+    historyBefore: { role: string; content: string }[];
+  } | null>(null);
+  const isRegeneratingRef = useRef(false);
 
-  const scroll = useChatScroll(messages.length, streamingContent.length);
+  // Cap the AI SDK's approval auto-send loop. After the client responds to a
+  // write-tool approval, the SDK re-submits the conversation to execute the tool
+  // and continue the turn; without a cap, a server response that keeps the last
+  // step "complete with approvals" (e.g. a new write-tool call in each pushed
+  // continuation) makes the client re-submit forever - a request storm that also
+  // churns React state so fast it trips "Maximum update depth exceeded".
+  const autoSendRoundsRef = useRef(0);
+
+  // Guard: respond to each tool approval at most ONCE. Re-responding to an
+  // approval whose part is no longer in the last message is a no-op that still
+  // replaces the messages array, which re-runs this effect -> render loop.
+  const autoApprovedIdsRef = useRef<Set<string>>(new Set());
+
+  const latestSessionIdRef = useRef<string | null>(null);
+  latestSessionIdRef.current = chatSessionId;
+
+  const chat = useAIChat({
+    transport: new DefaultChatTransport({
+      api: "/api/ai/chat",
+      body: () => ({ userContext: userContextRef.current }),
+      headers: (): Record<string, string> => {
+        const data = getLocalStorageData();
+        if (!data) return {};
+        return { "x-client-data": JSON.stringify(data) };
+      },
+    }),
+    sendAutomaticallyWhen: (args: { messages: UIMessage[] }) => {
+      if (!lastAssistantMessageIsCompleteWithApprovalResponses(args)) return false;
+      autoSendRoundsRef.current += 1;
+      return autoSendRoundsRef.current <= MAX_AUTO_SEND_ROUNDS;
+    },
+    onError: (err) => {
+      console.warn("[Chat] AI SDK error:", err);
+      const detail = err instanceof Error ? err.message : "";
+      if (detail && detail !== "An error occurred.") {
+        toast.error(`AI request failed: ${detail}`);
+      } else {
+        toast.error("Couldn't reach the AI service. You may have hit the daily limit, or your internet is down.");
+      }
+    },
+    onFinish: async ({ message, messages: allUi, isAbort, isError }) => {
+      const turn = turnRef.current;
+      const sessionId = turn?.sessionId ?? latestSessionIdRef.current;
+      const rawText = partsToText((message as UIMessage).parts as unknown[]);
+      const text = cleanForDisplay(rawText);
+
+      // Hand off a completed quiz tool result BEFORE the session-persistence
+      // guard: a chatStore/session failure must never drop the quiz handoff.
+      const quizPayload = extractQuizFromAssistantMessage(message as UIMessage);
+      if (quizPayload && !isAbort && !isError) {
+        sessionStorage.setItem("pendingQuiz", JSON.stringify(quizPayload));
+        router.push("/quiz");
+      }
+
+      if (!sessionId || isAbort || isError || !text.trim()) {
+        turnRef.current = null;
+        return;
+      }
+
+      if (!isRegeneratingRef.current) {
+        chatStore.addMessage(sessionId, "assistant", text).catch((e) =>
+          console.error("[Chat] addMessage assistant:", e),
+        );
+        sessions.setAllSessions((prev) =>
+          [...prev.map((s) => s.id === sessionId ? { ...s, updatedAt: new Date().toISOString() } : s)]
+            .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()),
+        );
+      }
+
+      if (turn) {
+        const historyForTitle = [...turn.historyBefore, { role: "user", content: turn.userContent }];
+        const titleSourceMessages = allUi.map((m) => ({
+          id: m.id,
+          role: m.role,
+          content: partsToText(m.parts as unknown[]),
+        }));
+        generateChatTitleIfNeeded(historyForTitle, titleSourceMessages, turn.userInput, sessionId);
+
+        const lastUserMsg = turn.userContent.trim().toLowerCase();
+        const isTrivialInput =
+          lastUserMsg.length < 15 &&
+          /^(hi|hello|hey|sup|yo|ok|k|lol|thanks?|bye|good\s?(morning|evening|afternoon)|what'?s up|how are you|\?)$/i.test(lastUserMsg);
+        const shouldExtract = text.length >= 20 && !isTrivialInput && lastUserMsg.length >= 10;
+        if (shouldExtract) {
+          const messagesForExtraction = [
+            ...historyForTitle,
+            { role: "assistant", content: text },
+          ];
+          fetch("/api/ai/memory/extract", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ messages: messagesForExtraction, subjectId: selectedSubject }),
+          })
+            .then((r) => (r.ok ? r.json() : null))
+            .then((d) => {
+              if (d) console.log("[memory] extract result:", d);
+            })
+            .catch((err) => console.error("[memory] extract error:", err));
+        }
+      }
+
+      turnRef.current = null;
+    },
+  });
+
+  const {
+    messages: uiMessages,
+    sendMessage,
+    regenerate,
+    stop,
+    status: chatStatus,
+    error: chatError,
+    setMessages: setUIMessages,
+    addToolApprovalResponse,
+  } = chat;
+
+  void chatError;
+
+  const isChatBusy = chatStatus === "submitted" || chatStatus === "streaming";
+
+  // ── Derive app messages from SDK state ───────────────────────────────────
+  const conversationMessages = useMemo<Message[]>(() => {
+    let pendingSources: { sources?: ResearchSource[]; researchQuery?: string } | null = null;
+    const out: Message[] = [];
+    const lastAssistantId = [...uiMessages].reverse().find((m) => m.role === "assistant")?.id;
+    for (const m of uiMessages) {
+      const meta = (m as UIMessage & { metadata?: Record<string, unknown> }).metadata;
+      if (m.role === "user" && meta && Array.isArray(meta.sources)) {
+        pendingSources = {
+          sources: meta.sources as ResearchSource[],
+          researchQuery: typeof meta.researchQuery === "string" ? meta.researchQuery : undefined,
+        };
+      }
+      let sources: ResearchSource[] | undefined;
+      let researchQuery: string | undefined;
+      if (m.role === "assistant" && pendingSources) {
+        sources = pendingSources.sources;
+        researchQuery = pendingSources.researchQuery;
+        pendingSources = null;
+      }
+      out.push({
+        id: m.id,
+        role: m.role === "user" ? "user" : "assistant",
+        content: cleanForDisplay(partsToText(m.parts as unknown[])),
+        attachments: m.role === "user" ? attachmentsRef.current[m.id] : undefined,
+        isStreaming:
+          m.role === "assistant" &&
+          isChatBusy &&
+          m.id === lastAssistantId &&
+          Array.isArray(m.parts) &&
+          m.parts.length > 0,
+        sources,
+        researchQuery,
+        analogy: typeof meta?.analogy === "string" ? meta.analogy : undefined,
+      });
+    }
+    return out;
+  }, [uiMessages, isChatBusy]);
+
+  const messages: Message[] = useMemo(
+    () => (welcomeMessage ? [welcomeMessage, ...conversationMessages] : conversationMessages),
+    [welcomeMessage, conversationMessages],
+  );
+
+  const isTyping = isChatBusy;
+  const streamingAssistant = useMemo(() => {
+    const last = conversationMessages[conversationMessages.length - 1];
+    return last && last.role === "assistant" && last.isStreaming ? last : null;
+  }, [conversationMessages]);
+  const streamingId = streamingAssistant?.id ?? null;
+  const streamingContent = streamingAssistant?.content ?? "";
+
+  const pendingApprovals = useMemo<PendingApproval[]>(() => {
+    // Only approvals in the LAST assistant message are actionable: the SDK's
+    // addToolApprovalResponse resolves against messages[messages.length - 1].
+    // Approvals left dangling in earlier messages (e.g. an interrupted turn)
+    // must not lock the input or be auto-responded forever.
+    const lastAssistant = [...uiMessages].reverse().find((m) => m.role === "assistant");
+    if (!lastAssistant) return [];
+    const out: PendingApproval[] = [];
+    for (const p of lastAssistant.parts as unknown[]) {
+      const part = p as ToolUIPartLike;
+      if (
+        part && part.type?.startsWith("tool-") &&
+        part.state === "approval-requested" && part.approval?.id
+      ) {
+        out.push({
+          messageId: lastAssistant.id,
+          approvalId: part.approval.id,
+          toolCallId: part.toolCallId ?? lastAssistant.id,
+          toolName: part.type.slice("tool-".length),
+          input: part.input,
+        });
+      }
+    }
+    return out;
+  }, [uiMessages]);
+
+  const isInputLocked = isTyping || !!streamingId || pendingApprovals.length > 0;
 
   const latestAssistantId = [...messages].reverse().find((m) => m.role === "assistant")?.id;
 
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const copyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const [pendingProposal, setPendingProposal] = useState<ToolProposal | null>(null);
-  const [pendingProposalMessageId, setPendingProposalMessageId] = useState<string | null>(null);
+  const lastMessageRef = useRef<{ content: string; timestamp: number } | null>(null);
+
+  const abortRef = useRef<AbortController | null>(null);
+  abortRef.current = {
+    abort: () => {
+      void stop();
+    },
+  } as unknown as AbortController;
+
+  const stopChat = useCallback(() => {
+    void stop();
+  }, [stop]);
+
+  // ── Set app-level messages (used by session switching) ───────────────────
+  const handleSetViewMessages = useCallback(
+    (msgsOrFn: any[] | ((prev: any[]) => any[])) => {
+      const msgs = typeof msgsOrFn === "function" ? msgsOrFn([]) : msgsOrFn;
+      const welcome = (msgs ?? []).find((m: any) => m.isWelcome) ?? null;
+      setWelcomeMessage(welcome ?? null);
+      const history = (msgs ?? [])
+        .filter((m: any) => !m.isWelcome)
+        .map((m: any) => ({
+          id: m.id || `msg-${Math.random().toString(36).slice(2)}`,
+          role: m.role,
+          parts: [{ type: "text", text: m.content ?? "" }],
+        }));
+      setUIMessages(history as UIMessage[]);
+    },
+    [setUIMessages],
+  );
+
+  // ── Sub-hooks ────────────────────────────────────────────────────────────
+  const sessions = useChatSessions({
+    setSelectedSubject,
+    setMessages: handleSetViewMessages,
+    setChatSessionId,
+    setStreamingId: () => {},
+    setStreamingContent: () => {},
+    abortRef,
+    allSubjects,
+    userName,
+    chatSessionId,
+  });
+  const { setAllSessions } = sessions;
+
+  const scroll = useChatScroll(messages.length, streamingContent.length);
+
+  const noopSetter = useCallback(() => {}, []);
 
   useEffect(() => {
     try {
@@ -167,12 +441,38 @@ export function useChat() {
     return () => document.removeEventListener("mousedown", handleClick);
   }, [showSubjectPicker]);
 
+  // Auto-approve writes matching the student's stored approval preferences.
+  useEffect(() => {
+    if (pendingApprovals.length === 0) {
+      autoApprovedIdsRef.current.clear();
+      return;
+    }
+    const { autoApproveAll, autoApproveSubjects } = getToolAutoApproval();
+    if (!autoApproveAll && autoApproveSubjects.length === 0) return;
+    // pendingApprovals is already scoped to the last assistant message, which is
+    // the only one the SDK's addToolApprovalResponse can resolve. The once-per-id
+    // guard below additionally prevents any repeated (no-op) response from
+    // re-running this effect in a render loop.
+    for (const ap of pendingApprovals) {
+      if (autoApprovedIdsRef.current.has(ap.approvalId)) continue;
+      const args = (ap.input ?? {}) as Record<string, unknown>;
+      const subject = String(args.subjectId ?? args.subject ?? "");
+      const matchesSubject =
+        autoApproveSubjects.length > 0 && subject &&
+        autoApproveSubjects.some((s: unknown) => subject.toLowerCase().includes(String(s).toLowerCase()));
+      if (autoApproveAll || matchesSubject) {
+        autoApprovedIdsRef.current.add(ap.approvalId);
+        void addToolApprovalResponse({ id: ap.approvalId, approved: true });
+      }
+    }
+  }, [pendingApprovals, addToolApprovalResponse]);
+
   const sessionParam = searchParams.get("session");
   const subjectParam = searchParams.get("subject") as SubjectId | null;
 
   useEffect(() => {
     if (!sessionParam || !subjectParam) return;
-    if (!allSubjects.find(s => s.id === subjectParam)) return;
+    if (!allSubjects.find((s) => s.id === subjectParam)) return;
 
     (async () => {
       const msgs = await chatStore.getMessages(sessionParam);
@@ -180,25 +480,28 @@ export function useChat() {
       setChatSessionId(sessionParam);
 
       if (msgs.length === 0) {
-        const subject = allSubjects.find(s => s.id === subjectParam);
+        const subject = allSubjects.find((s) => s.id === subjectParam);
         const welcomeContent = buildWelcomeMessage(subject?.label || subjectParam, userName);
-        setMessages([{
+        setWelcomeMessage({
           id: `welcome-${Date.now()}`,
           role: "assistant",
           content: welcomeContent,
           isNew: true,
           isWelcome: true,
-        }]);
+        });
+        setUIMessages([]);
       } else {
-        setMessages(msgs.map((m: any) => ({
-          id: m.id,
-          role: m.role,
-          content: m.content,
-          isNew: false,
-        })));
+        setWelcomeMessage(null);
+        setUIMessages(
+          msgs.map((m: any) => ({
+            id: m.id,
+            role: m.role,
+            parts: [{ type: "text", text: m.content }],
+          })) as UIMessage[],
+        );
       }
     })();
-  }, [userName, sessionParam, subjectParam]);
+  }, [userName, sessionParam, subjectParam, setUIMessages]);
 
   useEffect(() => {
     return () => {
@@ -208,11 +511,11 @@ export function useChat() {
 
   const generateChatTitleIfNeeded = useCallback(async (
     newHistory: { role: string; content: string }[],
-    allMessages: { id: string; role: string; content: string; isWelcome?: boolean }[],
+    allMessages: { id: string; role: string; content: string }[],
     userInput: string,
     sessionId: string,
   ) => {
-    const realUserMessages = newHistory.filter(m => m.role === "user");
+    const realUserMessages = newHistory.filter((m) => m.role === "user");
     const previousUserMessages = realUserMessages.length;
     const shouldTitle = previousUserMessages === 1 || previousUserMessages === 2;
     if (!shouldTitle) return;
@@ -220,15 +523,14 @@ export function useChat() {
     try {
       const stripToolCalls = (text: string) => text.replace(/TOOL_CALLS:\s*\[[\s\S]*?\]/g, "").trim();
       const realExchanges = allMessages
-        .filter(m => !m.isWelcome)
         .slice(0, 6)
-        .map(m => `${m.role === "user" ? "Student" : "Tutor"}: ${stripToolCalls(m.content).slice(0, 250)}`)
+        .map((m) => `${m.role === "user" ? "Student" : "Tutor"}: ${stripToolCalls(m.content).slice(0, 250)}`)
         .join("\n");
       const currentUserMsg = userInput.slice(0, 400);
       const titleResponse = await generateChatTitle(realExchanges, currentUserMsg);
       let chatTitle = (titleResponse || "")
-        .replace(/^<think>[\s\S]*?<\/think>\s*/i, "")
-        .replace(/^<think>[\s\S]*$/i, "")
+        .replace(/^ thinking[\s\S]*?<\/think>\s*/i, "")
+        .replace(/^ thinking[\s\S]*$/i, "")
         .trim();
       chatTitle = chatTitle.replace(/^["'`]|["'`]$/g, "").trim();
       chatTitle = chatTitle.replace(/^(Title:|Here'?s?( a title)?:|The title is:?)/i, "").trim();
@@ -298,70 +600,38 @@ export function useChat() {
     const target = messages[targetIndex];
     if (target.role !== "assistant") return;
 
-    const subjectLabel = allSubjects.find(s => s.id === selectedSubject)?.label || selectedSubject || "this subject";
+    const subjectLabel = allSubjects.find((s) => s.id === selectedSubject)?.label || selectedSubject || "this subject";
 
     if (target.isWelcome) {
       const nextContent = buildWelcomeMessage(subjectLabel, userName, target.content);
-      setMessages((prev) => prev.map((m) => (
-        m.id === messageId
-          ? { ...m, id: `welcome-${Date.now()}`, content: nextContent, isWelcome: true }
-          : m
-      )));
+      setWelcomeMessage((prev) => prev && prev.id === messageId
+        ? { ...prev, id: `welcome-${Date.now()}`, content: nextContent }
+        : prev);
       return;
     }
 
     if (latestAssistantId && target.id !== latestAssistantId) return;
     if (messages[targetIndex - 1]?.role !== "user") return;
 
-    const history = messages.slice(0, targetIndex).map((m) => ({
-      role: m.role,
-      content: m.content
-    }));
-
-    if (!selectedSubject) return;
-
-    setIsTyping(true);
-
+    userContextRef.current = buildContext(null);
+    isRegeneratingRef.current = true;
+    autoSendRoundsRef.current = 0;
     try {
-      const previousUser = messages[targetIndex - 1]?.role === "user"
-        ? messages[targetIndex - 1]?.content
-        : "";
-      const explicitAnchor = previousUser ? findAnchor(previousUser, userHobbies) : null;
-      const regenContext = {
-        ...buildContext(explicitAnchor),
-        analogyIntensity: target.sources && target.sources.length > 0 ? 0 : (analogyModeEnabled ? 3 : 0),
-        researchMode: Boolean(target.sources && target.sources.length > 0),
-        researchQuery: target.researchQuery,
-        researchSources: target.sources,
-      };
-      const aiResponse = await getGroqCompletion(history, regenContext);
-      setMessages((prev) => prev.map((m) => (
-        m.id === messageId
-          ? { ...m, id: `${messageId}-regen-${Date.now()}`, content: aiResponse.content || "I'm not sure how to answer that." }
-          : m
-      )));
-    } catch {
-      setMessages((prev) => prev.map((m) => (
-        m.id === messageId
-          ? { ...m, id: `${messageId}-regen-${Date.now()}`, content: "I couldn't reach the AI service, you've either hit the rate limit of 1000 requests per day or you need to check your internet." }
-          : m
-      )));
+      await regenerate({ messageId });
     } finally {
-      setIsTyping(false);
+      setTimeout(() => { isRegeneratingRef.current = false; }, 0);
     }
   }, [
-    isInputLocked, messages, selectedSubject,
-    latestAssistantId, buildContext, userName, analogyModeEnabled,
-    userHobbies,
+    isInputLocked, messages, selectedSubject, latestAssistantId,
+    buildContext, userName, regenerate,
   ]);
 
   const handleSaveAsFlashcards = useCallback(async () => {
-    if (!selectedSubject || messages.length < 2 || savingFlashcards) return;
+    if (!selectedSubject || conversationMessages.length < 2 || savingFlashcards) return;
     setSavingFlashcards(true);
     setFlashcardsSaved(false);
 
-    const conversationText = messages
-      .filter(m => !m.isWelcome)
+    const conversationText = conversationMessages
       .map(m => `${m.role === "user" ? "Student" : "Analogix AI"}: ${m.content}`)
       .join("\n\n");
 
@@ -387,59 +657,56 @@ export function useChat() {
       toast.error(`Only ${raw.length} flashcards generated - need at least 5. Try a longer conversation.`);
     }
     setSavingFlashcards(false);
-  }, [selectedSubject, messages, savingFlashcards, userPrefs.grade, router]);
+  }, [selectedSubject, conversationMessages, savingFlashcards, userPrefs.grade, router]);
 
   const handleReExplain = useCallback(async (messageId: string, chosenAnchor?: string) => {
     if (isInputLocked) return;
-    const target = messages.find(m => m.id === messageId);
+    const target = conversationMessages.find(m => m.id === messageId);
     if (!target || target.role !== "assistant") return;
 
     setReExplainOpenId(null);
     setReExplainingId(messageId);
-    setIsTyping(true);
 
     try {
-      const history = messages
-        .slice(0, messages.findIndex(m => m.id === messageId))
+      const history = conversationMessages
+        .slice(0, conversationMessages.findIndex(m => m.id === messageId))
         .map(m => ({ role: m.role, content: m.content }));
 
       const ctx = { ...buildContext(null), chosenAnchor: chosenAnchor || undefined, previousExplanation: target.content };
       const aiResponse = await getReExplanation(history, ctx);
 
-      setMessages(prev => prev.map(m =>
+      setUIMessages(prev => prev.map(m =>
         m.id === messageId
-          ? { ...m, id: `${messageId}-re-${Date.now()}`, content: aiResponse.content || "Let me try a different approach..." }
+          ? { ...m, parts: [{ type: "text", text: aiResponse.content || "Let me try a different approach..." }] }
           : m
       ));
     } catch {
-      setMessages(prev => prev.map(m =>
+      setUIMessages(prev => prev.map(m =>
         m.id === messageId
-          ? { ...m, id: `${messageId}-re-${Date.now()}`, content: "Couldn't reach the AI. Try again in a moment." }
+          ? { ...m, parts: [{ type: "text", text: "Couldn't reach the AI. Try again in a moment." }] }
           : m
       ));
     } finally {
-      setIsTyping(false);
       setReExplainingId(null);
     }
-  }, [isInputLocked, messages, buildContext]);
+  }, [isInputLocked, conversationMessages, buildContext, setUIMessages]);
 
   const handleSubjectSelect = async (subjectId: SubjectId) => {
     setSelectedSubject(subjectId);
-    setMessages([]);
-    setStreamingId(null);
+    setWelcomeMessage(null);
+    setUIMessages([]);
 
     if (!availableSubjectIds.has(subjectId)) return;
     const subject = allSubjects.find(s => s.id === subjectId);
 
     const welcomeContent = buildWelcomeMessage(subject?.label || subjectId, userName);
-    const welcomeMsg: Message = {
+    setWelcomeMessage({
       id: `welcome-${Date.now()}`,
       role: "assistant",
       content: welcomeContent,
       isNew: true,
       isWelcome: true,
-    };
-    setMessages([welcomeMsg]);
+    });
 
     const sessionId = await chatStore.createSession(subjectId, "New chat");
     setChatSessionId(sessionId);
@@ -458,89 +725,18 @@ export function useChat() {
     window.dispatchEvent(new Event("chatSessionCreated"));
   };
 
-  const handleAllowTools = useCallback(async (tools: ToolCall[]) => {
-    if (!pendingProposal || !pendingProposalMessageId) return;
-    let error: Error | null = null;
-    const originalText = messages.find(m => m.id === pendingProposalMessageId)?.content || pendingProposal.summary;
-    try {
-      const res = await fetch("/api/groq/tools/execute", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tools }),
-      });
-      const result = await res.json();
-      if (!res.ok) throw new Error(result.error || "Execution failed");
+  const handleAllowTools = useCallback((approvalId: string) => {
+    void addToolApprovalResponse({ id: approvalId, approved: true });
+  }, [addToolApprovalResponse]);
 
-      const successCount = result.results?.filter((r: any) => r.success).length ?? 0;
-      const failCount = result.results?.filter((r: any) => !r.success).length ?? 0;
+  const handleDenyTools = useCallback((approvalId: string) => {
+    void addToolApprovalResponse({ id: approvalId, approved: false, reason: "Denied by student" });
+  }, [addToolApprovalResponse]);
 
-      const resultText = result.results?.map(formatToolResult).filter(Boolean).join("\n\n") || "";
-      const combinedContent = failCount > 0
-        ? `${originalText}\n\n⚠️ ${failCount} operation(s) failed - ${pendingProposal.summary}${resultText ? `\n\n${resultText}` : ""}`
-        : `${originalText}\n\n✅ ${pendingProposal.summary}${resultText ? `\n\n${resultText}` : ""}`;
-
-      setMessages(prev => prev.map(m =>
-        m.id === pendingProposalMessageId
-          ? { ...m, content: combinedContent }
-          : m
-      ));
-
-      if (chatSessionId && pendingProposalMessageId) {
-        chatStore.updateMessageContent(chatSessionId, pendingProposalMessageId, combinedContent).catch(e => console.error("[Chat] updateMessageContent:", e));
-      }
-
-      if (successCount > 0 && failCount === 0) {
-        const toolResult = result.results?.[0];
-        const toolName = toolResult?.toolName;
-        if (toolName === "create_quiz" && toolResult?.data) {
-          const quizData = toolResult.data;
-          const raw = typeof quizData.questions === "string"
-            ? JSON.parse(quizData.questions)
-            : (quizData.questions ?? []);
-          const questions = (Array.isArray(raw) ? raw : []).map((q: any) => ({
-            ...q,
-            type: q.type === "multiple-choice" || q.type === "multiple_choice" ? "multiple_choice"
-              : q.type === "true-false" ? "multiple_choice"
-              : q.type === "short-answer" || q.type === "short_answer" ? "short_answer"
-              : "multiple_choice",
-            options: Array.isArray(q.options) ? q.options.map((opt: any, i: number) =>
-              typeof opt === "string" ? { id: `opt-${i}`, text: opt, isCorrect: q.correctAnswer === opt }
-                : opt
-            ) : [],
-            correctAnswer: q.correctAnswer || "",
-          }));
-          sessionStorage.setItem("pendingQuiz", JSON.stringify({
-            questions,
-            subjectId: quizData.subject_id,
-            title: quizData.title,
-          }));
-          router.push("/quiz");
-        }
-      }
-    } catch (err) {
-      error = err instanceof Error ? err : new Error(String(err));
-    } finally {
-      setPendingProposal(null);
-      setPendingProposalMessageId(null);
-    }
-    if (error) throw error instanceof Error ? error : new Error(String(error));
-  }, [pendingProposal, pendingProposalMessageId, router, messages, chatSessionId]);
-
-  const handleDenyTools = useCallback(() => {
-    if (!pendingProposal || !pendingProposalMessageId) return;
-    setMessages(prev => prev.map(m =>
-      m.id === pendingProposalMessageId
-        ? { ...m, content: `✕ Cancelled - let me know if you need something else.` }
-        : m
-    ));
-    setPendingProposal(null);
-    setPendingProposalMessageId(null);
-  }, [pendingProposal, pendingProposalMessageId]);
-
-  const handleSend = () => {
+  const handleSend = async () => {
     if ((!input.trim() && fileAttach.attachedFiles.length === 0) || isInputLocked) return;
 
-    abortRef.current?.abort();
+    await stopChat();
 
     const now = Date.now();
     if (lastMessageRef.current &&
@@ -550,25 +746,15 @@ export function useChat() {
     }
     lastMessageRef.current = { content: input.trim(), timestamp: now };
 
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: "user",
-      content: input,
-      attachments: fileAttach.attachedFiles.length > 0 ? [...fileAttach.attachedFiles] : undefined
-    };
+    autoSendRoundsRef.current = 0;
+    const userMessageId = `msg-${Date.now()}`;
 
     const anchorForRequest =
       analogyModeEnabled && userHobbies.length > 0
         ? findAnchor(input, userHobbies)
         : null;
 
-    setMessages(prev => [...prev, userMessage]);
-    setInput("");
-    fileAttach.setAttachedFiles([]);
-    requestAnimationFrame(() => scroll.scrollToBottom("smooth"));
-    setIsTyping(true);
-
-    const isFirstMessage = messages.filter(m => m.role === "user").length === 0;
+    const isFirstMessage = uiMessages.filter(m => m.role === "user").length === 0;
     const looksAcademic = input.trim().split(/\s+/).length > 3 &&
       !/^(hi|hello|hey|sup|yo|howdy|hiya|g'day|heya)[\s!?.]*$/i.test(input.trim());
     if (isFirstMessage && !selectedSubject && looksAcademic) {
@@ -583,352 +769,130 @@ export function useChat() {
       statsStore.recordChat(selectedSubject);
     }
 
-    (async () => {
-      let activeSessionId = chatSessionId;
-      if (!activeSessionId) {
-        const subjectForSession = selectedSubject || "general";
-        const newId = await chatStore.createSession(subjectForSession, "New chat");
-        if (newId) {
-          activeSessionId = newId;
-          setChatSessionId(newId);
-          const newSession: ChatSession = {
-            id: newId,
-            subjectId: subjectForSession,
-            title: "New chat",
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          };
-          sessions.setAllSessions(prev => [newSession, ...prev]);
-          window.dispatchEvent(new Event("chatSessionCreated"));
-        }
+    let activeSessionId = chatSessionId;
+    if (!activeSessionId) {
+      const subjectForSession = selectedSubject || "general";
+      const newId = await chatStore.createSession(subjectForSession, "New chat");
+      if (newId) {
+        activeSessionId = newId;
+        setChatSessionId(newId);
+        const newSession: ChatSession = {
+          id: newId,
+          subjectId: subjectForSession,
+          title: "New chat",
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        sessions.setAllSessions(prev => [newSession, ...prev]);
+        window.dispatchEvent(new Event("chatSessionCreated"));
       }
+    }
 
-      if (activeSessionId) {
-        const messageWithFiles = input.trim() + (fileAttach.attachedFiles.length > 0 ? `\n\n[Attached files: ${fileAttach.attachedFiles.map(f => f.name).join(', ')}]` : '');
-        chatStore.addMessage(activeSessionId, "user", messageWithFiles).catch(e => console.error("[Chat] addMessage user:", e));
-        sessions.setAllSessions(prev => {
-          const updated = prev.map(s =>
-            s.id === activeSessionId
-              ? { ...s, updatedAt: new Date().toISOString() }
-              : s
-          );
-          return updated.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-        });
+    if (activeSessionId) {
+      const messageWithFiles = input.trim() + (fileAttach.attachedFiles.length > 0 ? `\n\n[Attached files: ${fileAttach.attachedFiles.map(f => f.name).join(', ')}]` : '');
+      chatStore.addMessage(activeSessionId, "user", messageWithFiles).catch(e => console.error("[Chat] addMessage user:", e));
+      sessions.setAllSessions(prev => {
+        const updated = prev.map(s =>
+          s.id === activeSessionId
+            ? { ...s, updatedAt: new Date().toISOString() }
+            : s
+        );
+        return updated.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+      });
+    }
+
+    let researchSources: ResearchSource[] = [];
+    const researchQuery = input.trim();
+    if (researchMode) {
+      try {
+        setResearchLoading(true);
+        const localSources: ResearchSource[] = fileAttach.attachedFiles.map((file, idx) => ({
+          id: `local-${Date.now()}-${idx}`,
+          title: file.name,
+          abstract: file.extractedText ? file.extractedText.slice(0, 360) : undefined,
+          source: "local",
+        }));
+        const externalSources = researchQuery
+          ? await searchAcademicSources(researchQuery, 12)
+          : [];
+        researchSources = [...localSources, ...externalSources].slice(0, 12);
+      } finally {
+        setResearchLoading(false);
       }
-      let userContent = input;
-      if (fileAttach.attachedFiles.length > 0) {
-        const fileList = fileAttach.attachedFiles.map(f => `- ${f.name}`).join("\n");
-        userContent = `${input}\n\n[Attached files]\n${fileList}\n\n[File contents]\n` +
-          fileAttach.attachedFiles.map(f => `--- ${f.name} ---\n${f.extractedText}`).join("\n\n");
-      }
+    }
 
-      let researchSources: ResearchSource[] = [];
-      const researchQuery = input.trim();
-      if (researchMode) {
-        try {
-          setResearchLoading(true);
-          const localSources: ResearchSource[] = fileAttach.attachedFiles.map((file, idx) => ({
-            id: `local-${Date.now()}-${idx}`,
-            title: file.name,
-            abstract: file.extractedText ? file.extractedText.slice(0, 360) : undefined,
-            source: "local",
-          }));
-          const externalSources = researchQuery
-            ? await searchAcademicSources(researchQuery, 12)
-            : [];
-          researchSources = [...localSources, ...externalSources].slice(0, 12);
+    let userContent = input;
+    if (fileAttach.attachedFiles.length > 0) {
+      const fileList = fileAttach.attachedFiles.map(f => `- ${f.name}`).join("\n");
+      userContent = `${input}\n\n[Attached files]\n${fileList}\n\n[File contents]\n` +
+        fileAttach.attachedFiles.map(f => `--- ${f.name} ---\n${f.extractedText}`).join("\n\n");
+    }
 
-        } finally {
-          setResearchLoading(false);
-        }
-      }
-
-      const messagesHistory = messages.map(m => ({
-        role: m.role,
-        content: m.content
+    if (fileAttach.attachedFiles.length > 0) {
+      attachmentsRef.current[userMessageId] = fileAttach.attachedFiles.map(f => ({
+        name: f.name,
+        size: f.size,
+        type: f.type,
+        content: f.content,
+        extractedText: f.extractedText,
+        previewUrl: f.previewUrl,
+        isImage: f.isImage,
       }));
+    }
 
-      const newHistory = [...messagesHistory, { role: "user" as const, content: userContent }];
+    const historyBefore = uiMessages.map(m => ({
+      role: m.role,
+      content: partsToText(m.parts as unknown[]),
+    }));
 
-      const context = {
-        ...buildContext(anchorForRequest),
-        analogyIntensity: researchMode ? 0 : (analogyModeEnabled ? 3 : 0),
-        researchMode,
-        researchQuery: researchQuery || undefined,
-        researchSources,
-        selectedModel,
-      };
+    userContextRef.current = {
+      ...buildContext(anchorForRequest),
+      analogyIntensity: researchMode ? 0 : (analogyModeEnabled ? 3 : 0),
+      researchMode,
+      researchQuery: researchQuery || undefined,
+      researchSources,
+      selectedModel,
+    };
 
-      const localStorageData = getLocalStorageData();
+    turnRef.current = {
+      sessionId: activeSessionId,
+      userInput: input,
+      userContent,
+      historyBefore,
+    };
 
-      // ── PRIMARY: Try streaming first ──
-      const responseId = (Date.now() + 1).toString();
-      setMessages(prev => [...prev, {
-        id: responseId,
-        role: "assistant",
-        content: "",
-        isStreaming: true,
+    setInput("");
+    fileAttach.setAttachedFiles([]);
+    requestAnimationFrame(() => scroll.scrollToBottom("smooth"));
+
+    setUIMessages(prev => [
+      ...prev,
+      {
+        id: userMessageId,
+        role: "user",
+        parts: [{ type: "text", text: userContent }],
+        metadata: {
+          sources: researchSources,
+          researchQuery: researchQuery || undefined,
+        },
+      } as unknown as UIMessage,
+    ]);
+
+    await sendMessage({
+      text: userContent,
+      messageId: userMessageId,
+      metadata: {
         sources: researchSources,
         researchQuery: researchQuery || undefined,
-      }]);
-      setStreamingId(responseId);
-      setStreamingContent("");
-
-      let accumulated = "";
-      let streamError: Error | null;
-
-      const abort = new AbortController();
-      abortRef.current = abort;
-
-      try {
-        const stream = getGroqStream(newHistory, context, localStorageData, abort.signal);
-        for await (const token of stream) {
-          if (abort.signal.aborted) break;
-          accumulated += token;
-          setStreamingContent(cleanForDisplay(accumulated));
-        }
-
-        if (abort.signal.aborted) {
-          // Finalise (or remove) the streaming placeholder so an empty
-          // "isStreaming" bubble never lingers after the user hits stop.
-          setMessages(prev => accumulated.trim()
-            ? prev.map(m => m.id === responseId ? { ...m, isStreaming: false, content: cleanForDisplay(accumulated) } : m)
-            : prev.filter(m => m.id !== responseId));
-          setStreamingId(null);
-          setStreamingContent("");
-          setIsTyping(false);
-          abortRef.current = null;
-          return;
-        }
-      } catch (err) {
-        // A user-initiated abort surfaces here as an AbortError from reader.read().
-        // Finalise (or remove) the streaming placeholder and stop without wasting a
-        // non-streaming fallback call.
-        if (abort.signal.aborted) {
-          setMessages(prev => accumulated.trim()
-            ? prev.map(m => m.id === responseId ? { ...m, isStreaming: false, content: cleanForDisplay(accumulated) } : m)
-            : prev.filter(m => m.id !== responseId));
-          setStreamingId(null);
-          setStreamingContent("");
-          setIsTyping(false);
-          abortRef.current = null;
-          return;
-        }
-        streamError = err instanceof Error ? err : new Error(String(err));
-        console.warn("[Chat] Stream failed, falling back to non-streaming:", streamError.message);
-      }
-
-      // ── Streaming returned content ──
-      if (accumulated.trim().length > 4) {
-        const finalContent = cleanForDisplay(accumulated);
-        setMessages(prev => prev.map(m =>
-          m.id === responseId ? { ...m, isStreaming: false, content: finalContent } : m
-        ));
-        setStreamingId(null);
-        setStreamingContent("");
-        setIsTyping(false);
-        abortRef.current = null;
-
-        const trimmedAccumulated = accumulated.trim();
-        const lastUserMsg = userContent.trim().toLowerCase();
-
-        const isTrivialInput = lastUserMsg.length < 15 && /^(hi|hello|hey|sup|yo|ok|k|lol|thanks?|bye|good\s?(morning|evening|afternoon)|what'?s up|how are you|\?)$/i.test(lastUserMsg);
-
-        const shouldExtract = trimmedAccumulated.length >= 20 && !isTrivialInput && lastUserMsg.length >= 10;
-
-        if (shouldExtract) {
-          const messagesForExtraction = [
-            ...newHistory,
-            { role: "assistant" as const, content: trimmedAccumulated },
-          ];
-          fetch("/api/ai/memory/extract", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ messages: messagesForExtraction, subjectId: selectedSubject }),
-          })
-            .then(r => { if (!r.ok) return null; return r.json(); })
-            .then(d => { if (d) console.log("[memory] extract result:", d); })
-            .catch(err => console.error("[memory] extract error:", err));
-        }
-
-        if (activeSessionId) {
-          chatStore.addMessage(activeSessionId, "assistant", accumulated).catch(e => console.error("[Chat] addMessage assistant:", e));
-          sessions.setAllSessions(prev =>
-            [...prev.map(s => s.id === activeSessionId ? { ...s, updatedAt: new Date().toISOString() } : s)]
-              .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-          );
-          await generateChatTitleIfNeeded(newHistory, messages, input, activeSessionId);
-        }
-        return;
-      }
-
-      // ── FALLBACK: Non-streaming ──
-      try {
-        const result = await getGroqCompletion(newHistory, context);
-
-        if (result.proposal) {
-          const proposalId = (Date.now() + 2).toString();
-          const proposalContent = result.content || "";
-          // Drop the empty streaming placeholder (it never finalised) and show the
-          // tool proposal message in its place.
-          setMessages(prev => [
-            ...prev.filter(m => m.id !== responseId),
-            {
-              id: proposalId,
-              role: "assistant",
-              content: proposalContent,
-              isStreaming: true,
-            },
-          ]);
-
-          if (activeSessionId) {
-            chatStore.addMessage(activeSessionId, "assistant", proposalContent).catch(e => console.error("[Chat] addMessage assistant:", e));
-          }
-
-          const proposalTools = result.proposal.tools;
-          if (shouldAutoApprove(proposalTools)) {
-            setPendingProposal(result.proposal);
-            setPendingProposalMessageId(proposalId);
-            setTimeout(async () => {
-              try {
-                const res = await fetch("/api/groq/tools/execute", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ tools: proposalTools }),
-                });
-                const execResult = await res.json();
-                const successCount = execResult.results?.filter((r: any) => r.success).length ?? 0;
-                const failCount = execResult.results?.filter((r: any) => !r.success).length ?? 0;
-
-                const resultText = execResult.results?.map(formatToolResult).filter(Boolean).join("\n\n") || "";
-                const combinedContent = proposalContent + (resultText ? `\n\n${resultText}` : "");
-                setMessages(prev => prev.map(m =>
-                  m.id === proposalId
-                    ? { ...m, content: combinedContent, isStreaming: false }
-                    : m
-                ));
-
-                if (activeSessionId) {
-                  chatStore.updateMessageContent(activeSessionId, proposalId, combinedContent).catch(e => console.error("[Chat] updateMessageContent:", e));
-                }
-
-                if (successCount > 0 && failCount === 0) {
-                  const toolResult = execResult.results?.[0];
-                  const toolName = toolResult?.toolName;
-                  if (toolName === "create_quiz" && toolResult?.data) {
-                    const quizData = toolResult.data;
-                    const raw = typeof quizData.questions === "string" ? JSON.parse(quizData.questions) : (quizData.questions ?? []);
-                    const questions = (Array.isArray(raw) ? raw : []).map((q: any) => ({
-                      ...q,
-                      type: q.type === "multiple-choice" || q.type === "multiple_choice" ? "multiple_choice"
-                        : q.type === "true-false" ? "multiple_choice"
-                        : q.type === "short-answer" || q.type === "short_answer" ? "short_answer"
-                        : "multiple_choice",
-                      options: Array.isArray(q.options) ? q.options.map((opt: any, i: number) =>
-                        typeof opt === "string" ? { id: `opt-${i}`, text: opt, isCorrect: q.correctAnswer === opt } : opt
-                      ) : [],
-                      correctAnswer: q.correctAnswer || "",
-                    }));
-                    sessionStorage.setItem("pendingQuiz", JSON.stringify({ questions, subjectId: quizData.subject_id, title: quizData.title }));
-                    router.push("/quiz");
-                  }
-                }
-              } catch (err) {
-                console.warn("[Chat] Auto-execute failed:", err);
-                setMessages(prev => prev.map(m =>
-                  m.id === proposalId ? { ...m, content: proposalContent + "\n\n⚠️ Auto-execution failed. Please try again.", isStreaming: false } : m
-                ));
-              } finally {
-                setPendingProposal(null);
-                setPendingProposalMessageId(null);
-              }
-            }, 100);
-            if (activeSessionId) {
-              generateChatTitleIfNeeded(newHistory, messages, input, activeSessionId);
-            }
-            setIsTyping(false);
-            return;
-          }
-
-          setPendingProposal(result.proposal);
-          setPendingProposalMessageId(proposalId);
-
-          if (proposalContent) {
-            setStreamingId(proposalId);
-            setStreamingContent("");
-            const totalLen = proposalContent.length;
-            const DURATION_MS = Math.min(2500, Math.max(600, totalLen * 15));
-            const startTime = performance.now();
-            const reveal = () => {
-              const elapsed = performance.now() - startTime;
-              const progress = Math.min(elapsed / DURATION_MS, 1);
-              const chars = Math.min(Math.floor(progress * totalLen), totalLen);
-              if (chars > 0) setStreamingContent(proposalContent.slice(0, chars));
-              if (chars < totalLen) {
-                requestAnimationFrame(reveal);
-              } else {
-                setMessages(prev => prev.map(m =>
-                  m.id === proposalId ? { ...m, isStreaming: false } : m
-                ));
-                setStreamingId(null);
-                setStreamingContent("");
-              }
-            };
-            requestAnimationFrame(reveal);
-          }
-          if (activeSessionId) {
-            generateChatTitleIfNeeded(newHistory, messages, input, activeSessionId);
-          }
-          setIsTyping(false);
-          return;
-        }
-
-        const fallbackContent = result.content || "I'm not sure how to answer that.";
-        setMessages(prev => prev.map(m =>
-          m.id === responseId ? { ...m, isStreaming: false, content: fallbackContent } : m
-        ));
-        setStreamingId(null);
-        setStreamingContent("");
-
-        if (activeSessionId) {
-          chatStore.addMessage(activeSessionId, "assistant", result.content || "").catch(e => console.error("[Chat] addMessage assistant:", e));
-          sessions.setAllSessions(prev =>
-            [...prev.map(s => s.id === activeSessionId ? { ...s, updatedAt: new Date().toISOString() } : s)]
-              .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-          );
-          await generateChatTitleIfNeeded(newHistory, messages, input, activeSessionId);
-        }
-        setIsTyping(false);
-        abortRef.current = null;
-      } catch (err) {
-        // Both streaming and the non-streaming fallback failed. Drop the empty
-        // streaming placeholder (it never finalised) so the loader can't linger,
-        // and surface the real provider error when we have one.
-        const detail = err instanceof Error && err.message
-          ? err.message
-          : "you've either hit the rate limit of 1000 requests per day or you need to check your internet.";
-        setMessages(prev => [
-          ...prev.filter(m => m.id !== responseId),
-          {
-            id: (Date.now() + 3).toString(),
-            role: "assistant",
-            content: `I couldn't reach the AI service. ${detail}`,
-          },
-        ]);
-        setStreamingId(null);
-        setStreamingContent("");
-        setIsTyping(false);
-        abortRef.current = null;
-      }
-    })();
+      },
+    });
   };
 
   const handleNewTopic = async () => {
     if (!selectedSubject || isInputLocked) return;
 
-    setIsTyping(true);
     const subjectLabel = allSubjects.find(s => s.id === selectedSubject)?.label || selectedSubject;
-    const usedTopics = messages.filter(m => m.analogy).map(m => m.analogy).filter(Boolean);
+    const usedTopics = conversationMessages.filter(m => m.analogy).map(m => m.analogy).filter(Boolean);
 
     const context = buildContext(null);
 
@@ -940,24 +904,22 @@ export function useChat() {
     }];
 
     try {
-      const aiResponse = await getGroqCompletion(aiPrompt, context);
-      const newMsgId = Date.now().toString();
-      setMessages(prev => [...prev, {
+      const aiResponse = await getAiCompletion(aiPrompt, context);
+      const newMsgId = `ai-${Date.now()}`;
+      setUIMessages(prev => [...prev, {
         id: newMsgId,
         role: "assistant",
-        content: aiResponse.content || "Hmm, I'm having trouble thinking of a new topic. Try asking me a specific question!",
-        analogy: `ai-generated-${newMsgId}`,
-      }]);
+        parts: [{ type: "text", text: aiResponse.content || "Hmm, I'm having trouble thinking of a new topic. Try asking me a specific question!" }],
+        metadata: { analogy: `ai-generated-${newMsgId}` },
+      } as unknown as UIMessage]);
     } catch {
-      const newMsgId = Date.now().toString();
-      setMessages(prev => [...prev, {
+      const newMsgId = `ai-${Date.now()}`;
+      setUIMessages(prev => [...prev, {
         id: newMsgId,
         role: "assistant",
-        content: "I couldn't reach the AI service, you've either hit the rate limit of 1000 requests per day or you need to check your internet.",
-        analogy: `ai-generated-${newMsgId}`,
-      }]);
-    } finally {
-      setIsTyping(false);
+        parts: [{ type: "text", text: "I couldn't reach the AI service, you've either hit the rate limit of 1000 requests per day or you need to check your internet." }],
+        metadata: { analogy: `ai-generated-${newMsgId}` },
+      } as unknown as UIMessage]);
     }
   };
 
@@ -966,12 +928,12 @@ export function useChat() {
     subjectDetecting, setSubjectDetecting,
     showSubjectPicker, setShowSubjectPicker,
     subjectPickerRef,
-    messages, setMessages,
+    messages, setMessages: handleSetViewMessages,
     input, setInput,
     textareaRef,
-    isTyping, setIsTyping,
-    streamingId, setStreamingId,
-    streamingContent, setStreamingContent,
+    isTyping, setIsTyping: noopSetter,
+    streamingId, setStreamingId: noopSetter,
+    streamingContent, setStreamingContent: noopSetter,
     abortRef,
     analogyModeEnabled, setAnalogyModeEnabled,
     selectedModel, setSelectedModel,
@@ -991,8 +953,7 @@ export function useChat() {
     ...fileAttach,
     ...scroll,
     copiedId, setCopiedId,
-    pendingProposal, setPendingProposal,
-    pendingProposalMessageId, setPendingProposalMessageId,
+    pendingApprovals,
     userPrefs,
     userName,
     userHobbies,
@@ -1012,7 +973,43 @@ export function useChat() {
     handleSubjectSelect,
     handleSend,
     handleNewTopic,
+    stopChat,
+    chatStatus,
   };
 }
+
+const extractQuizFromAssistantMessage = (message: UIMessage): {
+  questions: unknown[];
+  subjectId: string;
+  title: string;
+} | null => {
+  let quizData: { subjectId?: string; subject_id?: string; title?: string; questions?: unknown } | null = null;
+  for (const p of message.parts as unknown[]) {
+    const part = p as ToolUIPartLike;
+    if (
+      part?.type?.startsWith("tool-") &&
+      part.state === "output-available" &&
+      part.type === "tool-createQuiz" &&
+      part.input
+    ) {
+      quizData = (part as { input?: { subjectId?: string; subject_id?: string; title?: string; questions?: unknown } }).input ?? null;
+      break;
+    }
+  }
+  if (!quizData) return null;
+
+  const raw = typeof quizData.questions === "string"
+    ? (() => { try { return JSON.parse(quizData.questions); } catch { return []; } })()
+    : (quizData.questions ?? []);
+  const questions = normalizeQuizQuestions(raw);
+
+  if (questions.length === 0) return null;
+
+  return {
+    questions,
+    subjectId: quizData.subjectId || quizData.subject_id || "",
+    title: quizData.title || "AI Quiz",
+  };
+};
 
 export { allSubjects };

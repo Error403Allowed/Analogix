@@ -35,7 +35,7 @@ const features = [
     label: "AI Tutor",
     headline: "Explains things using what YOU love",
     desc: "The AI tutor learns your hobbies and uses them as analogies to explain any concept. Maths using FIFA stats. Chemistry through cooking. History as game lore.",
-    tags: ["Unlimited use", "Free", "Analogy-first"],
+    tags: ["Analogy-first", "Curriculum-related answers", "Personalised"],
   },
   {
     id: "flashcards",
@@ -113,7 +113,6 @@ const features = [
 
 const stats = [
   { value: "15", label: "Subjects covered" },
-  { value: "100%", label: "Free to use" },
   { value: "8", label: "Study tools" },
   { value: "Y7–12", label: "All year levels" },
   { value: "ACARA", label: "Curriculum aligned" },

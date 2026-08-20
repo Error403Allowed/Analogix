@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 
-import { enforceGroqRequestBudget, REASONING_OUTPUT_FLOOR, getMinOutputTokens } from '@/app/api/groq/_utils';
+import { enforceGroqRequestBudget, REASONING_OUTPUT_FLOOR, getMinOutputTokens } from '@/lib/ai/budget';
 
 const charsPerToken = 3.5;
 const estimate = (text: string) => Math.ceil(text.length / charsPerToken);

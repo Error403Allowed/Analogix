@@ -5,7 +5,7 @@ import { Brain, CheckCircle2, Circle, Play } from "lucide-react";
 import { WorkspaceScaffold, Panel } from "@/components/layout/WorkspaceScaffold";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { generateQuiz, generateQuizReview } from "@/services/groq";
+import { generateQuiz, generateQuizReview } from "@/services/ai";
 import { SUBJECT_CATALOG } from "@/constants/subjects";
 import { statsStore } from "@/utils/statsStore";
 import type { QuizAnswerInput, QuizQuestion } from "@/types/quiz";

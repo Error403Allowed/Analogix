@@ -325,22 +325,19 @@ async function runUnitTest(testCase: TestCase): Promise<unknown> {
 }
 
 async function runAITest(testCase: TestCase): Promise<unknown> {
-  const { callGroqChat } = await import("@/app/api/groq/_utils");
-  
-  const response = await callGroqChat(
-    {
-      messages: [
-        { role: "system", content: "You are a helpful AI tutor." },
-        { role: "user", content: testCase.userMessage || "" }
-      ],
-      max_tokens: 1000,
-      temperature: 0.5
-    },
-    "default",
-    null
-  );
-  
-  return response;
+  const { runText } = await import("@/lib/ai");
+
+  const { text } = await runText({
+    messages: [
+      { role: "system", content: "You are a helpful AI tutor." },
+      { role: "user", content: testCase.userMessage || "" },
+    ],
+    taskType: "default",
+    temperature: 0.5,
+    maxTokens: 1000,
+  });
+
+  return text;
 }
 
 async function runIntegrationTest(testCase: TestCase): Promise<unknown> {

@@ -193,8 +193,8 @@ function AiChatWidget() {
     const next = [...history, { role: "user" as const, content: q }];
     setHistory(next);
     try {
-      const { getGroqCompletion } = await import("@/services/groq");
-      const res = await getGroqCompletion(next.map(m => ({ role: m.role, content: m.content })), {});
+      const { getAiCompletion } = await import("@/services/ai");
+      const res = await getAiCompletion(next.map(m => ({ role: m.role, content: m.content })), {});
       const ans = res.content || "…";
       setReply(ans);
       setHistory([...next, { role: "assistant" as const, content: ans }]);

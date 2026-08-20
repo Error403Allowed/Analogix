@@ -10,7 +10,7 @@ import QuizCard from "@/components/shared/QuizCard";
 import Confetti from "@/components/shared/Confetti";
 import { statsStore } from "@/utils/statsStore";
 import { achievementStore } from "@/utils/achievementStore";
-import { generateQuiz, generateQuizReview } from "@/services/groq";
+import { generateQuiz, generateQuizReview } from "@/services/ai";
 import TypewriterText from "@/components/shared/TypewriterText";
 import MarkdownRenderer from "@/components/shared/MarkdownRenderer";
 import { SUBJECT_CATALOG, SubjectId, getGradeBand } from "@/constants/subjects";
