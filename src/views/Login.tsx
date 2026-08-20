@@ -64,7 +64,7 @@ function AnimatedBrain({ focused, mode }: {
         transition={{ duration: 0.8, ease: "easeInOut" }}
       />
       <motion.div
-        className="relative w-14 h-14 shadow-lg shadow-primary/20"
+        className="relative w-14 h-14 rounded-xl overflow-hidden shadow-lg shadow-primary/20"
         animate={{
           scale: focused ? 1.05 : 1,
           boxShadow: focused
@@ -275,14 +275,13 @@ export default function LoginView() {
               Study smarter with a tutor that gets you.
             </h1>
             <p className="text-white/80 text-lg leading-relaxed max-w-md">
-              Free AI tutoring, adaptive quizzes, flashcards and study guides — built around your interests and aligned to the Australian curriculum.
+              Free AI tutoring, adaptive quizzes, flashcards and study guides, built around your interests and aligned to the Australian curriculum.
             </p>
 
             <ul className="space-y-4">
               {[
                 "AI explanations built around your hobbies",
                 "Flashcards & quizzes that adapt to you",
-                "Everything free — no paywalls, ever",
               ].map((item) => (
                 <li key={item} className="flex items-start gap-3">
                   <span className="mt-0.5 w-6 h-6 rounded-full bg-white/20 flex items-center justify-center shrink-0">

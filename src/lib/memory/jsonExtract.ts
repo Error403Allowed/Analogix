@@ -9,7 +9,14 @@
  */
 export function extractStructuredJson<T = unknown>(raw: string): T | null {
   if (!raw) return null;
-  const text = raw.trim();
+  let text = raw.trim();
+  if (!text) return null;
+
+  // Reasoning models (gpt-oss/qwen on Groq) emit a hidden chain-of-thought as a
+  // `<think>...</think>` prefix before the JSON. Strip it (closed or cut off) so
+  // the scan below starts at the actual JSON value.
+  text = text.replace(/^<think>[\s\S]*?<\/think>\s*/i, "");
+  text = text.replace(/^<think>[\s\S]*$/i, "").trim();
   if (!text) return null;
 
   // Fast path: the whole output is already valid JSON.

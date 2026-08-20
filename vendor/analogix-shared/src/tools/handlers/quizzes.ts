@@ -67,9 +67,11 @@ export async function deleteQuiz(userId: string, supabase: any, quizId: string) 
 }
 
 export async function getQuizAttempts(userId: string, supabase: any, quizId?: string) {
+  // Embed the related quiz so consumers can aggregate by subject (the quiz is
+  // the only FK to quizzes, so the nested select is unambiguous).
   let query = supabase
     .from("quiz_attempts")
-    .select("*")
+    .select("*, quiz:quizzes(subject_id, title)")
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
   if (quizId) query = query.eq("quiz_id", quizId);

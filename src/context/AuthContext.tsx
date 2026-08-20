@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState, useCallback, useMemo } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
+import { signOut as clearSession } from "@/lib/auth-client";
 
 interface AuthContextType {
   user: User | null;
@@ -53,8 +54,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [supabase]);
 
   const signOut = useCallback(async () => {
-    await supabase.auth.signOut();
-  }, [supabase]);
+    await clearSession();
+  }, []);
 
   return (
     <AuthContext.Provider value={{ user, session, loading, signOut }}>

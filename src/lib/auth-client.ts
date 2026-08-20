@@ -105,7 +105,27 @@ export async function signUpWithEmail(email: string, password: string) {
 
 export async function signOut() {
   const supabase = createClient();
-  await supabase.auth.signOut();
+  try {
+    await supabase.auth.signOut();
+  } catch {
+    // Fall through - a stale/invalid JWT makes the remote revoke fail before
+    // the local session cookie is removed.
+  }
+  clearAuthSessionCookies();
+}
+
+/**
+ * Force-expire the session cookie(s) locally. A session token signed with an
+ * old JWT secret (or from a previous project) makes PostgREST reject every
+ * request with `JWT cryptographic operation failed` (PGRST301); the remote
+ * signOut() can't clean those up, so we clear the cookie regardless.
+ */
+export function clearAuthSessionCookies() {
+  const names = ["sb-auth-token", "sb-auth-token.0", "sb-auth-token.1"];
+  for (const name of names) {
+    document.cookie = `${name}=; Path=/; Max-Age=0; SameSite=Lax`;
+    document.cookie = `${name}=; Path=/; Max-Age=0; SameSite=Lax; Secure`;
+  }
 }
 
 export async function resetPasswordForEmail(email: string) {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getEmailError, validatePassword } from '@/lib/auth-client';
+import { getEmailError, validatePassword, clearAuthSessionCookies } from '@/lib/auth-client';
 
 describe('validatePassword', () => {
   it('rejects empty password', () => {
@@ -174,5 +174,29 @@ describe('getEmailError', () => {
   it('is case-insensitive when matching messages', () => {
     const result = getEmailError(null, 'WEAK PASSWORD');
     expect(result).toBe('Password must be at least 8 characters with uppercase, lowercase, numbers, and symbols.');
+  });
+});
+
+describe('clearAuthSessionCookies', () => {
+  it('expires every sb-auth-token cookie variant in plain and Secure form', () => {
+    const writes: string[] = [];
+    (globalThis as Record<string, unknown>).document = {
+      set cookie(value: string) {
+        writes.push(value);
+      },
+    };
+
+    clearAuthSessionCookies();
+
+    expect(writes).toEqual([
+      'sb-auth-token=; Path=/; Max-Age=0; SameSite=Lax',
+      'sb-auth-token=; Path=/; Max-Age=0; SameSite=Lax; Secure',
+      'sb-auth-token.0=; Path=/; Max-Age=0; SameSite=Lax',
+      'sb-auth-token.0=; Path=/; Max-Age=0; SameSite=Lax; Secure',
+      'sb-auth-token.1=; Path=/; Max-Age=0; SameSite=Lax',
+      'sb-auth-token.1=; Path=/; Max-Age=0; SameSite=Lax; Secure',
+    ]);
+
+    delete (globalThis as Record<string, unknown>).document;
   });
 });
