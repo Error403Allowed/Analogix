@@ -51,7 +51,7 @@ export async function resolveAuthDestination(
     const { data: profile } = await supabase
       .from("profiles")
       .select(
-        "onboarding_complete, name, grade, state, subjects, hobbies, hobby_ids, hobby_details, avatar_url, tours_completed"
+        "onboarding_complete, name, grade, state, subjects, hobbies, hobby_ids, hobby_details, avatar_url"
       )
       .eq("id", userId)
       .maybeSingle();

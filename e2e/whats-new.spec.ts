@@ -1,5 +1,4 @@
 import { authTest as test, expect } from "./fixtures/auth";
-import type { Page } from "@playwright/test";
 
 /**
  * "What's New" notice: shown once, only to pre-release accounts that haven't
@@ -17,18 +16,12 @@ const baseUser = {
   profile: { grade: "10", state: "NSW", subjects: ["math"] },
 };
 
-/** Returning users have finished the guided tour, so it must not overlay the
- *  dashboard and intercept clicks. Runs on every navigation (incl. reloads). */
-const skipTutorial = (page: Page) =>
-  page.addInitScript(() => localStorage.setItem("tutorialComplete", "1"));
-
 test.describe("What's New notice", () => {
   test("shows the card once to a pre-release user who hasn't seen it", async ({ page, signInAsReturningUser }) => {
     await signInAsReturningUser({
       ...baseUser,
       profile: { ...baseUser.profile, createdAt: OLD_ACCOUNT, announcementsSeen: [] },
     });
-    await skipTutorial(page);
     await page.goto("/dashboard", { waitUntil: "domcontentloaded" });
 
     await expect(page.getByTestId("whats-new")).toBeVisible({ timeout: 15000 });
@@ -40,7 +33,6 @@ test.describe("What's New notice", () => {
       ...baseUser,
       profile: { ...baseUser.profile, createdAt: NEW_ACCOUNT },
     });
-    await skipTutorial(page);
     await page.goto("/dashboard", { waitUntil: "domcontentloaded" });
 
     await expect(page.getByTestId("whats-new")).toHaveCount(0, { timeout: 15000 });
@@ -73,7 +65,6 @@ test.describe("What's New notice", () => {
             hobby_ids: ["sports"],
             hobby_details: { sports: "basketball" },
             avatar_url: "",
-            tours_completed: [],
             created_at: OLD_ACCOUNT,
             announcements_seen: seen,
             onboarding_complete: true,
@@ -82,7 +73,6 @@ test.describe("What's New notice", () => {
       });
     });
 
-    await skipTutorial(page);
     await page.goto("/dashboard", { waitUntil: "domcontentloaded" });
     await expect(page.getByTestId("whats-new")).toBeVisible({ timeout: 15000 });
 

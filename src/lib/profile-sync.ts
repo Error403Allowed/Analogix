@@ -17,7 +17,6 @@ export type ProfileRecord = {
   hobby_ids?: string[] | null;
   hobby_details?: Record<string, unknown> | null;
   avatar_url?: string | null;
-  tours_completed?: string[] | null;
   onboarding_complete?: boolean | null;
 };
 
@@ -30,7 +29,6 @@ export type UserPreferences = {
   hobbyIds?: string[];
   hobbyDetails?: Record<string, unknown>;
   avatarUrl?: string;
-  toursCompleted?: string[];
   onboardingComplete?: boolean;
   userId?: string;
 };
@@ -104,9 +102,6 @@ export function syncPrefsFromProfile(
         ? profile.hobby_details
         : (existing.hobbyDetails ?? {}),
     avatarUrl: profile?.avatar_url ?? existing.avatarUrl,
-    toursCompleted: Array.isArray(profile?.tours_completed)
-      ? profile.tours_completed
-      : (existing.toursCompleted ?? []),
     onboardingComplete: true,
     userId,
   };

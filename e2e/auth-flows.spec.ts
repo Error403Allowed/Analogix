@@ -350,7 +350,6 @@ test.describe("Profile & theme restore after OAuth sign-in", () => {
             hobby_ids: RETURNING_GOOGLE.profile.hobby_ids,
             hobby_details: RETURNING_GOOGLE.profile.hobby_details,
             avatar_url: "",
-            tours_completed: [],
             onboarding_complete: RETURNING_GOOGLE.profile.onboarding_complete,
           },
         ]),

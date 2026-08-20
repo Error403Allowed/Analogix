@@ -76,7 +76,6 @@ describe("syncPrefsFromProfile", () => {
       hobby_ids: ["sports"],
       hobby_details: { sports: "basketball" },
       avatar_url: "data:image/png;base64,abc",
-      tours_completed: ["dashboard"],
       onboarding_complete: true,
     };
     const prefs = syncPrefsFromProfile(profile, "u1");
@@ -88,7 +87,6 @@ describe("syncPrefsFromProfile", () => {
     expect(prefs.hobbyIds).toEqual(["sports"]);
     expect(prefs.hobbyDetails).toEqual({ sports: "basketball" });
     expect(prefs.avatarUrl).toBe("data:image/png;base64,abc");
-    expect(prefs.toursCompleted).toEqual(["dashboard"]);
     expect(prefs.onboardingComplete).toBe(true);
     expect(prefs.userId).toBe("u1");
     expect(readUserPreferences()).toEqual(prefs);

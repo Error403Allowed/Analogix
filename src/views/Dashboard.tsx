@@ -18,7 +18,6 @@ import WhatsNewCard from "@/components/dashboard/WhatsNewCard";
 import { statsStore } from "@/utils/statsStore";
 import { activityLog } from "@/utils/activityLog";
 import { useAchievementChecker } from "@/hooks/useAchievementChecker";
-import TutorialOverlay from "@/components/onboarding/TutorialOverlay";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { useTabs } from "@/context/TabsContext";
@@ -600,7 +599,6 @@ export default function Dashboard() {
 
   // Start empty so SSR and client initial render match, then hydrate in useEffect.
   const [prefs, setPrefs]                   = useState<Prefs>({});
-  const [showTutorial, setShowTutorial]     = useState(false);
   const [showCustomise, setShowCustomise]   = useState(false);
   const [menuOpen, setMenuOpen]             = useState(false);
   const [enabledWidgets, setEnabledWidgets] = useState<WidgetId[]>(DEFAULT_ENABLED);
@@ -631,13 +629,6 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
-    if (!localStorage.getItem("tutorialComplete")) {
-      const t = setTimeout(() => setShowTutorial(true), 600);
-      return () => clearTimeout(t);
-    }
-  }, []);
-
-  useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
     };
@@ -648,11 +639,6 @@ export default function Dashboard() {
   const saveWidgets = useCallback((ids: WidgetId[]) => {
     setEnabledWidgets(ids);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(ids));
-  }, []);
-
-  const handleTutorialComplete = useCallback(() => {
-    localStorage.setItem("tutorialComplete", "1");
-    setShowTutorial(false);
   }, []);
 
   const weekActivity = buildWeek(rawActivity);
@@ -825,7 +811,6 @@ export default function Dashboard() {
       </div>
 
       <CustomisePanel open={showCustomise} enabled={enabledWidgets} onSave={saveWidgets} onClose={() => setShowCustomise(false)} />
-      {showTutorial && <TutorialOverlay onComplete={handleTutorialComplete} />}
     </>
   );
 }

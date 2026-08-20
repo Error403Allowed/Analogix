@@ -61,7 +61,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
       const supabase = createClient();
       const { data: profile } = await supabase
         .from("profiles")
-        .select("onboarding_complete, tours_completed, name, grade, state, subjects, hobbies, hobby_ids, hobby_details, avatar_url")
+        .select("onboarding_complete, name, grade, state, subjects, hobbies, hobby_ids, hobby_details, avatar_url")
         .eq("id", userId)
         .maybeSingle();
 

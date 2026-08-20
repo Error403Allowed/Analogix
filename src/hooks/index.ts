@@ -1,7 +1,6 @@
 export * from "./use-mobile";
 export * from "./useAchievementChecker";
 export * from "./useAIPersonality";
-export * from "./useAutoTour";
 export * from "./useChat";
 export * from "./useChatScroll";
 export * from "./useChatSessions";

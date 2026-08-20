@@ -111,7 +111,6 @@ async function stubReturningUser(page: Page, user: StubUser) {
       hobby_ids: p.hobbyIds ?? ["sports"],
       hobby_details: p.hobbyDetails ?? { sports: "basketball" },
       avatar_url: p.avatarUrl ?? "",
-      tours_completed: [],
       created_at: p.createdAt ?? "2099-01-01T00:00:00.000Z",
       announcements_seen: p.announcementsSeen ?? [],
       onboarding_complete: p.onboardingComplete ?? true,
@@ -135,7 +134,6 @@ async function stubLocalPrefs(page: Page, user: StubUser) {
         hobbyDetails: profile?.hobbyDetails ?? { sports: "basketball" },
         avatarUrl: profile?.avatarUrl ?? "",
         onboardingComplete: profile?.onboardingComplete ?? true,
-        toursCompleted: ["dashboard", "chat", "calendar", "flashcards", "quiz", "resources"],
         userId,
       };
       localStorage.setItem("userPreferences", JSON.stringify(prefs));

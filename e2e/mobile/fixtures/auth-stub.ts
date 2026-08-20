@@ -64,7 +64,6 @@ export const test = base.extend({
             hobbyIds: ["sports"],
             hobbyDetails: { sports: "basketball" },
             onboardingComplete: true,
-            toursCompleted: ["dashboard", "chat", "calendar", "flashcards", "quiz", "resources"],
             userId,
           }),
         );
