@@ -164,7 +164,7 @@ export default function StudyRoomWorkspace() {
               <Badge variant="secondary" className="capitalize">{state.room.visibility}</Badge>
             </div>
             <p className="mt-1 text-sm text-muted-foreground">{state.room.topic || "No topic set yet."}</p>
-            <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
+            <div className="mt-2 flex items-center gap-3 text-sm text-muted-foreground">
               <span className="inline-flex items-center gap-1">
                 <Users className="h-3.5 w-3.5" />
                 {state.room.memberCount} members
@@ -247,15 +247,15 @@ export default function StudyRoomWorkspace() {
               </p>
               <div className="space-y-2">
                 {state.members.map((member) => (
-                  <div key={member.id} className="flex items-center justify-between gap-3 rounded-lg border border-border/30 bg-background/50 px-3 py-2 dark:border-border/50 dark:bg-muted/20">
+                  <div key={member.id} className="flex items-center justify-between gap-3 rounded-lg border border-border/30 bg-background/50 px-3.5 py-2.5 dark:border-border/50 dark:bg-muted/20">
                     <div className="flex min-w-0 items-center gap-2">
                       <div className="min-w-0">
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-2">
                           <p className="truncate text-sm font-semibold">{member.name}</p>
                           {member.role === "host" ? <Crown className="h-3.5 w-3.5 flex-shrink-0 text-amber-500" /> : null}
                           {member.role === "cohost" ? <ShieldCheck className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" /> : null}
                         </div>
-                        <p className="text-xs text-muted-foreground">{member.isOnline ? "Online" : "Away"}</p>
+                        <p className="text-sm text-muted-foreground">{member.isOnline ? "Online" : "Away"}</p>
                       </div>
                     </div>
                     {state.room.isOwner && member.role !== "host" ? (
@@ -303,8 +303,8 @@ export default function StudyRoomWorkspace() {
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-background">
       {/* Compact Header */}
-      <header className="flex shrink-0 items-center justify-between border-b border-border/30 px-4 py-2 dark:border-border/60">
-        <div className="flex items-center gap-3 min-w-0">
+      <header className="flex shrink-0 items-center justify-between border-b border-border/30 px-3.5 py-2.5 dark:border-border/60">
+        <div className="flex items-center gap-2 min-w-0">
           <button
             className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition"
             onClick={handleLeaveRoom}
@@ -312,26 +312,26 @@ export default function StudyRoomWorkspace() {
             <ChevronLeft className="h-4 w-4" />
             <p className="text-sm font-bold truncate">{state.room.title}</p>
           </button>
-          <Badge variant="secondary" className="capitalize text-xs">{state.room.visibility}</Badge>
+          <Badge variant="secondary" className="capitalize text-sm">{state.room.visibility}</Badge>
         </div>
 
         <div className="flex items-center gap-3">
           {/* Compact Timer */}
           <div className="flex items-center gap-2">
-            <Clock3 className="h-4 w-4 text-muted-foreground" />
-            <span className="text-lg font-bold tabular-nums">{formatClock(remainingSeconds)}</span>
+            <Clock3 className="h-3.5 w-3.5 text-muted-foreground" />
+            <span className="text-sm font-bold tabular-nums">{formatClock(remainingSeconds)}</span>
             {canControlTimer && (
               <div className="flex items-center gap-0.5">
                 {state.room.timerState === "running" ? (
-                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => void updateTimer("pause")}>
+                  <Button size="icon" variant="ghost" className="h-3.5 w-3.5" onClick={() => void updateTimer("pause")}>
                     <Pause className="h-3.5 w-3.5" />
                   </Button>
                 ) : (
-                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => void updateTimer(state.room.timerState === "paused" ? "resume" : "start")}>
+                  <Button size="icon" variant="ghost" className="h-3.5 w-3.5" onClick={() => void updateTimer(state.room.timerState === "paused" ? "resume" : "start")}>
                     <Play className="h-3.5 w-3.5" />
                   </Button>
                 )}
-                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setShowTimerControls(!showTimerControls)}>
+                <Button size="icon" variant="ghost" className="h-3.5 w-3.5" onClick={() => setShowTimerControls(!showTimerControls)}>
                   <RotateCcw className="h-3.5 w-3.5" />
                 </Button>
               </div>
@@ -350,9 +350,9 @@ export default function StudyRoomWorkspace() {
                 <Input
                   value={timerMinutes}
                   onChange={(e) => setTimerMinutes(e.target.value.replace(/[^\d]/g, ""))}
-                  className="w-14 h-7 text-xs"
+                  className="w-14 h-8 text-sm"
                 />
-                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => void updateTimer("reset")}>
+                <Button size="sm" variant="outline" className="h-8 text-sm" onClick={() => void updateTimer("reset")}>
                   Reset
                 </Button>
               </motion.div>
@@ -360,51 +360,51 @@ export default function StudyRoomWorkspace() {
           </AnimatePresence>
 
           {/* Online Members */}
-          <div className="flex items-center gap-1.5">
-            <div className="flex -space-x-2">
+          <div className="flex items-center gap-2">
+            <div className="flex -space-x-1.5">
               {onlineMembers.slice(0, 4).map((m) => (
                 <div
                   key={m.id}
-                  className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-background bg-muted text-xs font-medium"
+                  className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-background bg-muted text-sm font-medium"
                   title={m.name}
                 >
                   {m.name.charAt(0).toUpperCase()}
                 </div>
               ))}
             </div>
-            <span className="text-xs text-muted-foreground">{onlineMembers.length} online</span>
+            <span className="text-sm text-muted-foreground">{onlineMembers.length} online</span>
           </div>
 
           {/* Actions */}
           <div className="flex items-center gap-1 border-l border-border/30 pl-3 dark:border-border/60">
-            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={copyJoinCode} title="Copy join code">
+            <Button size="icon" variant="ghost" className="h-3.5 w-3.5" onClick={copyJoinCode} title="Copy join code">
               <Copy className="h-4 w-4" />
             </Button>
-            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => void loadRoom()} title="Refresh">
+            <Button size="icon" variant="ghost" className="h-3.5 w-3.5" onClick={() => void loadRoom()} title="Refresh">
               <RefreshCw className="h-4 w-4" />
             </Button>
             {(state.room.isOwner || state.room.viewerRole === "cohost") && (
-              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={openRoomDetails} title="Edit room details">
-                <Pencil className="h-4 w-4" />
+              <Button size="icon" variant="ghost" className="h-3.5 w-3.5" onClick={openRoomDetails} title="Edit room details">
+                <Pencil className="h-3.5 w-3.5" />
               </Button>
             )}
             {state.room.isOwner && (
-              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setShowTransferOwnership(true)} title="Transfer ownership">
-                <Crown className="h-4 w-4 text-amber-500" />
+              <Button size="icon" variant="ghost" className="h-3.5 w-3.5" onClick={() => setShowTransferOwnership(true)} title="Transfer ownership">
+                <Crown className="h-3.5 w-3.5 text-amber-500" />
               </Button>
             )}
             {(state.room.isOwner || state.room.viewerRole === "cohost") && (
-              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setShowPermissions(true)} title="Room permissions">
-                <ShieldCheck className="h-4 w-4" />
+              <Button size="icon" variant="ghost" className="h-3.5 w-3.5" onClick={() => setShowPermissions(true)} title="Room permissions">
+                <ShieldCheck className="h-3.5 w-3.5" />
               </Button>
             )}
             {state.room.isOwner ? (
               <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => setShowDeleteConfirm(true)} title="Delete room">
-                <Trash2 className="h-4 w-4" />
+                <Trash2 className="h-3.5 w-3.5" />
               </Button>
             ) : (
               <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" onClick={leaveRoom} title="Leave room">
-                <DoorOpen className="h-4 w-4" />
+                <DoorOpen className="h-3.5 w-3.5" />
               </Button>
             )}
           </div>
@@ -413,19 +413,19 @@ export default function StudyRoomWorkspace() {
 
       {/* Timer status bar */}
       {state.room.timerState === "running" && (
-        <div className="shrink-0 bg-primary/5 px-4 py-1 text-center text-xs text-muted-foreground">
+        <div className="shrink-0 bg-primary/5 px-4 py-1 text-center text-sm text-muted-foreground">
           Focus block in progress
         </div>
       )}
 
       {/* Mobile section pills */}
-      <div className="md:hidden shrink-0 flex items-center gap-1 overflow-x-auto scrollbar-none border-b border-border/30 px-3 py-2 dark:border-border/60">
+      <div className="md:hidden shrink-0 flex items-center gap-1  border-b border-border/30 px-3.5 py-2.5 dark:border-border/60">
         {sections.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
             type="button"
             onClick={() => handleSectionChange(id)}
-            className={`flex shrink-0 items-center gap-1.5 rounded-full px-3 py-2 min-h-11 text-xs font-semibold transition ${
+            className={`flex shrink-0 items-center gap-2 rounded-full px-3.5 py-2.5 min-h-12 text-sm font-semibold transition ${
               activeSection === id
                 ? "bg-primary text-primary-foreground"
                 : "text-muted-foreground bg-muted/40 hover:bg-muted hover:text-foreground"
@@ -439,7 +439,7 @@ export default function StudyRoomWorkspace() {
           <button
             type="button"
             onClick={() => setShowDocsSheet(true)}
-            className="flex shrink-0 items-center gap-1.5 rounded-full px-3 py-2 min-h-11 text-xs font-semibold text-primary bg-primary/10 hover:bg-primary/20 transition"
+            className="flex shrink-0 items-center gap-2 rounded-full px-3.5 py-2.5 min-h-12 text-sm font-semibold text-primary bg-primary/10 hover:bg-primary/20 transition"
           >
             <FileText className="h-4 w-4 shrink-0" />
             Documents
@@ -461,7 +461,7 @@ export default function StudyRoomWorkspace() {
                 key={id}
                 type="button"
                 onClick={() => handleSectionChange(id)}
-                className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
+                className={`flex items-center gap-3 rounded-lg px-3.5 py-2.5.5 text-sm font-medium transition ${
                   activeSection === id
                     ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
@@ -477,8 +477,8 @@ export default function StudyRoomWorkspace() {
           {(activeSection === "workspace" || activeSection === "documents") && state.sharedDocuments.length > 0 && (
             <>
               <div className="mx-2 mt-2 border-t border-border/20 dark:border-border/40" />
-              <div className="flex items-center justify-between px-3 py-2">
-                {sidebarOpen && <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Documents</span>}
+              <div className="flex items-center justify-between px-3.5 py-2.5">
+                {sidebarOpen && <span className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Documents</span>}
                 <button
                   className="ml-auto rounded p-1 hover:bg-muted/60 text-muted-foreground"
                   title="Toggle sidebar"
@@ -496,7 +496,7 @@ export default function StudyRoomWorkspace() {
                         setActiveDocumentId(doc.documentId);
                         if (activeSection === "documents") setActiveSection("workspace");
                       }}
-                      className={`w-full rounded-md px-3 py-2 text-left text-xs transition ${
+                      className={`w-full rounded-md px-3.5 py-2.5 text-left text-sm transition ${
                         activeDocumentId === doc.documentId
                           ? "bg-muted dark:bg-muted/70 font-medium"
                           : "text-muted-foreground hover:bg-muted/40"
@@ -505,7 +505,7 @@ export default function StudyRoomWorkspace() {
                       {sidebarOpen ? (
                         <>
                           <p className="truncate">{doc.title}</p>
-                          <p className="text-[10px] text-muted-foreground/70">{doc.role === "study-guide" ? "Study guide" : "Notes"}</p>
+                          <p className="text-[12px] text-muted-foreground/70">{doc.role === "study-guide" ? "Study guide" : "Notes"}</p>
                         </>
                       ) : (
                         <div className="flex justify-center">
@@ -535,17 +535,17 @@ export default function StudyRoomWorkspace() {
           {/* Chat Section */}
           {activeSection === "chat" && (
             <div className="flex flex-1 flex-col min-h-0 overflow-hidden">
-              <div className="border-b border-border/30 px-4 py-2 dark:border-border/60 flex items-center justify-between">
+              <div className="border-b border-border/30 px-3 py-1.5 dark:border-border/60 flex items-center justify-between">
                 <p className="text-sm font-semibold">Group conversation</p>
                 <div className="flex rounded-lg border border-border/60 p-0.5">
                   <button
-                    className={`rounded-md px-2.5 py-1 text-xs font-medium transition ${composerMode === "chat" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted/40"}`}
+                    className={`rounded-md px-2.5 py-1 text-sm font-medium transition ${composerMode === "chat" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted/40"}`}
                     onClick={() => setComposerMode("chat")}
                   >
                     Chat
                   </button>
                   <button
-                    className={`rounded-md px-2.5 py-1 text-xs font-medium transition ${composerMode === "ai" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted/40"}`}
+                    className={`rounded-md px-2.5 py-1 text-sm font-medium transition ${composerMode === "ai" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted/40"}`}
                     onClick={() => setComposerMode("ai")}
                   >
                     AI
@@ -568,9 +568,9 @@ export default function StudyRoomWorkspace() {
                         >
                           <div className={`max-w-[80%] ${isCurrentUser ? "" : "w-full"}`}>
                             {!isCurrentUser && (
-                              <div className="flex items-center gap-1.5 mb-1.5">
+                              <div className="flex items-center gap-2 mb-1.5">
                                 {isAI && <Bot className="h-3.5 w-3.5 text-muted-foreground" />}
-                                <span className="text-xs font-semibold text-muted-foreground">
+                                <span className="text-sm font-semibold text-muted-foreground">
                                   {message.name}
                                 </span>
                               </div>
@@ -594,7 +594,7 @@ export default function StudyRoomWorkspace() {
                                 />
                               )}
                             </div>
-                            <p className={`text-[10px] mt-1 ${isCurrentUser ? "text-right" : ""} text-muted-foreground/60`}>
+                            <p className={`text-[12px] mt-1 ${isCurrentUser ? "text-right" : ""} text-muted-foreground/60`}>
                               {new Date(message.createdAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
                             </p>
                           </div>
@@ -622,7 +622,7 @@ export default function StudyRoomWorkspace() {
                         }}
                       />
                     </div>
-                    <Button size="sm" disabled={submitting || !composer.trim()} onClick={() => void sendMessage()} className="h-8 self-end">
+                    <Button size="sm" disabled={submitting || !composer.trim()} onClick={() => void sendMessage()} className="h-10 self-end">
                       {submitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
                     </Button>
                   </div>
@@ -635,7 +635,7 @@ export default function StudyRoomWorkspace() {
           {activeSection === "workspace" && (
             <div className="flex flex-1 flex-col min-h-0 overflow-hidden">
               {/* Document header */}
-              <div className="shrink-0 border-b border-border/30 px-4 py-2 dark:border-border/60 flex items-center justify-between gap-3">
+              <div className="shrink-0 border-b border-border/30 px-3 py-1.5 dark:border-border/60 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3 min-w-0">
                   <PencilRuler className="h-4 w-4 text-muted-foreground shrink-0" />
                   {activeDocumentId && selectedDocument ? (
@@ -654,13 +654,13 @@ export default function StudyRoomWorkspace() {
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   {activeDocumentId ? (
-                    <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => void copyCurrentDocument()}>
-                      <Copy className="mr-1 h-3 w-3" />
+                    <Button variant="outline" size="sm" className="h-8 text-sm" onClick={() => void copyCurrentDocument()}>
+                      <Copy className="mr-1 h-3.5 w-3.5" />
                       Copy
                     </Button>
                   ) : (
-                    <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => void handleSaveCanvas()}>
-                      <Copy className="mr-1 h-3 w-3" />
+                    <Button variant="outline" size="sm" className="h-8 text-sm" onClick={() => void handleSaveCanvas()}>
+                      <Copy className="mr-1 h-3.5 w-3.5" />
                       Save as my doc
                     </Button>
                   )}
@@ -668,7 +668,7 @@ export default function StudyRoomWorkspace() {
               </div>
 
               {/* Editor */}
-              <div className="flex-1 min-h-0 overflow-hidden p-3">
+              <div className="flex-1 min-h-0 overflow-hidden p-2">
                 {activeDocumentId && documentCollab.ready ? (
                   <div className="h-full rounded-xl border border-border/30 bg-background dark:border-border/60 overflow-hidden">
                     <BlockNoteEditor
@@ -712,9 +712,9 @@ export default function StudyRoomWorkspace() {
           {/* Documents Section */}
           {activeSection === "documents" && (
             <div className="flex flex-1 flex-col min-h-0 overflow-hidden">
-              <div className="shrink-0 border-b border-border/30 px-4 py-2 dark:border-border/60">
+              <div className="shrink-0 border-b border-border/30 px-3 py-1.5 dark:border-border/60">
                 <p className="text-sm font-semibold">Shared documents</p>
-                <p className="text-xs text-muted-foreground">Select a document to view and collaborate</p>
+                <p className="text-sm text-muted-foreground">Select a document to view and collaborate</p>
               </div>
 
               <div className="flex flex-1 min-h-0 overflow-hidden">
@@ -722,7 +722,7 @@ export default function StudyRoomWorkspace() {
                 <div className="hidden md:block w-64 shrink-0 border-r border-border/30 overflow-y-auto dark:border-border/60">
                   {state.sharedDocuments.length === 0 ? (
                     <div className="flex h-full items-center justify-center p-4 text-center flex-col gap-3">
-                      <p className="text-xs text-muted-foreground">No documents shared yet</p>
+                      <p className="text-sm text-muted-foreground">No documents shared yet</p>
                       <Button size="sm" variant="outline" onClick={() => setShowNewDoc(true)}>
                         <Plus className="mr-1 h-3 w-3" />
                         New document
@@ -741,7 +741,7 @@ export default function StudyRoomWorkspace() {
                           }`}
                         >
                           <p className="truncate text-sm font-medium">{doc.title}</p>
-                          <p className="text-xs text-muted-foreground mt-0.5">{doc.role === "study-guide" ? "Study guide" : "Notes"}</p>
+                          <p className="text-sm text-muted-foreground mt-0.5">{doc.role === "study-guide" ? "Study guide" : "Notes"}</p>
                         </button>
                       ))}
                       <div className="pt-2">
@@ -755,10 +755,10 @@ export default function StudyRoomWorkspace() {
                 </div>
 
                 {/* Document preview */}
-                <div className="flex-1 min-h-0 overflow-hidden p-3">
+                <div className="flex-1 min-h-0 overflow-hidden p-2">
                   {activeDocumentId && selectedDocument ? (
                     <div className="h-full rounded-xl border border-border/30 bg-background dark:border-border/60 overflow-hidden flex flex-col">
-                      <div className="shrink-0 border-b border-border/30 px-4 py-2 dark:border-border/60 flex items-center justify-between">
+                      <div className="shrink-0 border-b border-border/30 px-3 py-1.5 dark:border-border/60 flex items-center justify-between">
                         <Input
                           value={documentTitle}
                           onChange={(e) => {
@@ -768,8 +768,8 @@ export default function StudyRoomWorkspace() {
                           }}
                           className="text-sm font-semibold h-7 bg-transparent border-0 focus-visible:ring-0 px-0"
                         />
-                        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => void copyCurrentDocument()}>
-                          <Copy className="mr-1 h-3 w-3" />
+                        <Button variant="outline" size="sm" className="h-8 text-sm" onClick={() => void copyCurrentDocument()}>
+                          <Copy className="mr-1 h-3.5 w-3.5" />
                           Copy
                         </Button>
                       </div>
@@ -871,7 +871,7 @@ export default function StudyRoomWorkspace() {
               <button
                 key={member.id}
                 onClick={() => void transferOwnership(member.userId)}
-                className="w-full text-left rounded-lg border border-border/30 px-3 py-2 hover:bg-muted/50 transition text-sm font-medium"
+                className="w-full text-left rounded-lg border border-border/30 px-3.5 py-2.5 hover:bg-muted/50 transition text-sm font-medium"
               >
                 {member.name}
               </button>
@@ -935,7 +935,7 @@ export default function StudyRoomWorkspace() {
           </ResponsiveSheetHeader>
           <div className="space-y-4 pt-2">
             <div className="grid gap-2">
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60">Room name</p>
+              <p className="text-[12px] font-black uppercase tracking-[0.2em] text-muted-foreground/60">Room name</p>
               <Input
                 id="room-title"
                 value={roomTitle}
@@ -945,7 +945,7 @@ export default function StudyRoomWorkspace() {
               />
             </div>
             <div className="grid gap-2">
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60">Topic</p>
+              <p className="text-[12px] font-black uppercase tracking-[0.2em] text-muted-foreground/60">Topic</p>
               <Input
                 id="room-topic"
                 value={roomTopic}
@@ -953,17 +953,17 @@ export default function StudyRoomWorkspace() {
                 placeholder="e.g. VCE Maths Methods"
                 maxLength={120}
               />
-              <p className="text-[10px] text-muted-foreground/60">Leave empty to clear the topic.</p>
+              <p className="text-[12px] text-muted-foreground/60">Leave empty to clear the topic.</p>
             </div>
             <div className="grid gap-2">
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60">Visibility</p>
+              <p className="text-[12px] font-black uppercase tracking-[0.2em] text-muted-foreground/60">Visibility</p>
               <div className="flex gap-2">
                 {(["public", "private"] as const).map((v) => (
                   <button
                     key={v}
                     type="button"
                     onClick={() => setRoomVisibility(v)}
-                    className={`px-4 py-2 rounded-xl border text-xs font-bold capitalize transition-all ${
+                    className={`px-3 py-1.5 rounded-xl border text-sm font-bold capitalize transition-all ${
                       roomVisibility === v
                         ? "border-primary bg-primary/10"
                         : "border-border glass hover:border-primary/50"
@@ -973,7 +973,7 @@ export default function StudyRoomWorkspace() {
                   </button>
                 ))}
               </div>
-              <p className="text-[10px] text-muted-foreground/60">
+              <p className="text-[12px] text-muted-foreground/60">
                 {roomVisibility === "private"
                   ? "Only members with the join code can enter."
                   : "Anyone on Analogix can find and join this room."}
@@ -1025,7 +1025,7 @@ export default function StudyRoomWorkspace() {
                   }`}
                 >
                   <p className="truncate text-sm font-medium">{doc.title}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{doc.role === "study-guide" ? "Study guide" : "Notes"}</p>
+                  <p className="text-sm text-muted-foreground mt-0.5">{doc.role === "study-guide" ? "Study guide" : "Notes"}</p>
                 </button>
               ))
             )}

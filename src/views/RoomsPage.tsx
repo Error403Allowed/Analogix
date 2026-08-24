@@ -373,7 +373,7 @@ function RoomCard({
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      className="rounded-lg border border-border/60 bg-card p-5"
+className="rounded-lg border border-border/60 bg-card p-4 sm:p-5"
     >
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">

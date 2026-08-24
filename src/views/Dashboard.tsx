@@ -27,8 +27,6 @@ import { SUBJECT_CATALOG } from "@/constants/subjects";
 import { loadTimerState, saveTimerState, getDefaultTimerState } from "@/lib/timerStore";
 import type { TimerPhase } from "@/lib/timerStore";
 
-import { BarChart, Bar, XAxis, ResponsiveContainer } from "recharts";
-
 // ── helpers ───────────────────────────
 function buildWeek(entries: { date: string; count: number }[]): { date: string; count: number }[] {
   const now = new Date();
@@ -61,6 +59,12 @@ const readJson = <T,>(key: string, fallback: T): T => {
 const toInt = (v: unknown) => { const n = Number(v); return Number.isFinite(n) && n >= 0 ? Math.floor(n) : 0; };
 const DAY_SH = ["M", "T", "W", "T", "F", "S", "S"];
 const fmt = (n: number) => String(n).padStart(2, "0");
+
+function todayIndexInWeek(): number {
+  const now = new Date();
+  const todayDow = now.getDay(); // 0 = Sun
+  return (todayDow + 6) % 7; // 0 = Mon ... 6 = Sun
+}
 
 function greeting() {
   const h = new Date().getHours();
@@ -706,27 +710,57 @@ export default function Dashboard() {
             {on("streak") && (
             <div className="space-y-3" data-tour="streak-strip">
               <div className="dashboard-panel p-5">
-                <div className="flex items-center gap-5">
-                  <div className="shrink-0">
-                    <div className="w-10 h-10 rounded-xl bg-amber-500/15 flex items-center justify-center mb-2.5">
+                <div className="flex items-center justify-between gap-3 mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-amber-500/15 flex items-center justify-center shrink-0">
                       <Zap className="w-5 h-5 text-amber-500" />
                     </div>
-                    <p className="text-3xl font-display font-black text-foreground tracking-tighter leading-none">
-                      {str}
-                    </p>
-                    <p className="text-[9px] font-black uppercase tracking-[0.18em] mt-0.5 text-amber-500">
-                      Day streak
-                    </p>
+                    <div>
+                      <p className="text-3xl font-display font-black text-foreground tracking-tighter leading-none">
+                        {str}
+                      </p>
+                      <p className="text-[9px] font-black uppercase tracking-[0.18em] mt-0.5 text-amber-500">
+                        Day streak
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0 self-end">
-                    <ResponsiveContainer width="100%" height={72}>
-                      <BarChart data={(weekActivity.length > 0 ? weekActivity : Array.from({ length: 7 }, () => ({ date: "", count: 0 }))).map((d, i) => ({ ...d, day: DAY_SH[i] }))}>
-                        <Bar dataKey="count" radius={[5, 5, 0, 0]} fill="#f59e0b" />
-                        <XAxis dataKey="day" axisLine={false} tickLine={false}
-                          tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
+                </div>
+
+                <div className="flex items-start justify-between gap-1">
+                  {(weekActivity.length > 0 ? weekActivity : Array.from({ length: 7 }, () => ({ date: "", count: 0 }))).map((d, i) => {
+                    const done = d.count > 0;
+                    const isToday = i === todayIndexInWeek();
+                    return (
+                      <div key={i} className="flex flex-1 flex-col items-center gap-2">
+                        <p className={cn(
+                          "text-[9px] font-black uppercase tracking-wider",
+                          isToday ? "text-amber-500" : "text-muted-foreground/40"
+                        )}>
+                          {DAY_SH[i]}
+                        </p>
+                        <motion.div
+                          whileHover={{ scale: 1.08 }}
+                          initial={false}
+                          animate={{ scale: done ? [0.7, 1.08, 1] : 1 }}
+                          transition={{ duration: 0.35, ease: "easeOut" }}
+                          className={cn(
+                            "relative w-9 h-9 rounded-full flex items-center justify-center",
+                            done
+                              ? "bg-gradient-to-br from-green-400 to-green-600 shadow-[0_3px_10px_-2px_rgba(245,158,11,0.55)]"
+                              : "bg-muted/30 border border-border/50",
+                            isToday && "ring-2 ring-emerald-500/45 ring-offset-2 ring-offset-card"
+                          )}
+                          title={done ? "Studied" : "No activity"}
+                        >
+                          {done ? (
+                            <Check className="w-4 h-4 text-white" strokeWidth={3} />
+                          ) : isToday ? (
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500/70" />
+                          ) : null}
+                        </motion.div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </div>
