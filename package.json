@@ -25,7 +25,7 @@
   },
   "dependencies": {
     "@ai-sdk/groq": "3.0.53",
-    "@analogix/mcp": "file:vendor/analogix-mcp",
+    
     "@analogix/shared": "file:vendor/analogix-shared",
     "@blocknote/core": "^0.51.4",
     "@blocknote/react": "^0.51.4",
@@ -63,7 +63,7 @@
     "@supabase/ssr": "^0.12.1",
     "@supabase/supabase-js": "^2.110.5",
     "@tanstack/react-query": "^5.101.2",
-    "@modelcontextprotocol/sdk": "^1.30.0",
+    
     "@vercel/analytics": "^2.0.1",
     "ai": "6.0.235",
     "class-variance-authority": "^0.7.1",
