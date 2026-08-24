@@ -25,12 +25,20 @@ import {
   ArrowRight,
   Trash2,
   Pencil,
+  MoreVertical,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   ResponsiveSheet,
   ResponsiveSheetContent,
@@ -157,14 +165,14 @@ export default function StudyRoomWorkspace() {
     return (
       <div className="mx-auto flex min-h-screen w-full max-w-[1200px] flex-col gap-6 px-6 py-6 lg:px-8">
         {/* Title row */}
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
           <div className="min-w-0">
-            <div className="flex items-center gap-3">
-              <p className="text-2xl font-extrabold tracking-tight text-foreground">{state.room.title}</p>
-              <Badge variant="secondary" className="capitalize">{state.room.visibility}</Badge>
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-2xl font-extrabold tracking-tight text-foreground break-words">{state.room.title}</p>
+              <Badge variant="secondary" className="capitalize shrink-0">{state.room.visibility}</Badge>
             </div>
             <p className="mt-1 text-sm text-muted-foreground">{state.room.topic || "No topic set yet."}</p>
-            <div className="mt-2 flex items-center gap-3 text-sm text-muted-foreground">
+            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
               <span className="inline-flex items-center gap-1">
                 <Users className="h-3.5 w-3.5" />
                 {state.room.memberCount} members
@@ -174,20 +182,21 @@ export default function StudyRoomWorkspace() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
             {(state.room.isOwner || state.room.viewerRole === "cohost") && (
-              <Button variant="secondary" onClick={openRoomDetails}>
-                <Pencil className="mr-2 h-4 w-4 text-muted-foreground" />
-                Edit details
+              <Button variant="secondary" size="sm" onClick={openRoomDetails} className="flex-1 sm:flex-none">
+                <Pencil className="mr-2 h-3.5 w-3.5 text-muted-foreground" />
+                <span className="sm:hidden">Edit</span>
+                <span className="hidden sm:inline">Edit details</span>
               </Button>
             )}
-            <Button variant="secondary" onClick={copyJoinCode}>
-              <Copy className="mr-2 h-4 w-4 text-muted-foreground" />
-              Copy code
+            <Button variant="secondary" size="sm" onClick={copyJoinCode} className="flex-1 sm:flex-none">
+              <Copy className="mr-2 h-3.5 w-3.5 text-muted-foreground" />
+              <span className="sm:hidden">Code</span>
+              <span className="hidden sm:inline">Copy code</span>
             </Button>
-            <Button variant="secondary" onClick={() => void loadRoom()}>
-              <RefreshCw className="mr-2 h-4 w-4 text-muted-foreground" />
-              Refresh
+            <Button variant="secondary" size="icon" onClick={() => void loadRoom()} aria-label="Refresh" className="shrink-0">
+              <RefreshCw className="h-3.5 w-3.5 text-muted-foreground" />
             </Button>
           </div>
         </div>
@@ -303,49 +312,50 @@ export default function StudyRoomWorkspace() {
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-background">
       {/* Compact Header */}
-      <header className="flex shrink-0 items-center justify-between border-b border-border/30 px-3.5 py-2.5 dark:border-border/60">
-        <div className="flex items-center gap-2 min-w-0">
+      <header className="flex shrink-0 items-center justify-between gap-2 border-b border-border/30 px-3 py-2.5 dark:border-border/60">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
           <button
-            className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition"
+            className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition shrink-0"
             onClick={handleLeaveRoom}
+            aria-label="Back to room overview"
           >
             <ChevronLeft className="h-4 w-4" />
-            <p className="text-sm font-bold truncate">{state.room.title}</p>
           </button>
-          <Badge variant="secondary" className="capitalize text-sm">{state.room.visibility}</Badge>
+          <p className="text-sm font-bold truncate min-w-0">{state.room.title}</p>
+          <Badge variant="secondary" className="capitalize text-sm hidden sm:inline-flex shrink-0">{state.room.visibility}</Badge>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           {/* Compact Timer */}
-          <div className="flex items-center gap-2">
-            <Clock3 className="h-3.5 w-3.5 text-muted-foreground" />
+          <div className="flex items-center gap-1.5">
+            <Clock3 className="hidden sm:block h-3.5 w-3.5 text-muted-foreground" />
             <span className="text-sm font-bold tabular-nums">{formatClock(remainingSeconds)}</span>
             {canControlTimer && (
               <div className="flex items-center gap-0.5">
                 {state.room.timerState === "running" ? (
-                  <Button size="icon" variant="ghost" className="h-3.5 w-3.5" onClick={() => void updateTimer("pause")}>
+                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => void updateTimer("pause")}>
                     <Pause className="h-3.5 w-3.5" />
                   </Button>
                 ) : (
-                  <Button size="icon" variant="ghost" className="h-3.5 w-3.5" onClick={() => void updateTimer(state.room.timerState === "paused" ? "resume" : "start")}>
+                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => void updateTimer(state.room.timerState === "paused" ? "resume" : "start")}>
                     <Play className="h-3.5 w-3.5" />
                   </Button>
                 )}
-                <Button size="icon" variant="ghost" className="h-3.5 w-3.5" onClick={() => setShowTimerControls(!showTimerControls)}>
+                <Button size="icon" variant="ghost" className="hidden sm:inline-flex h-7 w-7" onClick={() => setShowTimerControls(!showTimerControls)}>
                   <RotateCcw className="h-3.5 w-3.5" />
                 </Button>
               </div>
             )}
           </div>
 
-          {/* Timer expanded controls */}
+          {/* Timer expanded controls - desktop only, avoids crowding the mobile header */}
           <AnimatePresence>
             {showTimerControls && canControlTimer && (
               <motion.div
                 initial={{ opacity: 0, width: 0 }}
                 animate={{ opacity: 1, width: "auto" }}
                 exit={{ opacity: 0, width: 0 }}
-                className="flex items-center gap-1 overflow-hidden"
+                className="hidden sm:flex items-center gap-1 overflow-hidden"
               >
                 <Input
                   value={timerMinutes}
@@ -359,8 +369,8 @@ export default function StudyRoomWorkspace() {
             )}
           </AnimatePresence>
 
-          {/* Online Members */}
-          <div className="flex items-center gap-2">
+          {/* Online Members - avatar stack on wide screens, count-only below that */}
+          <div className="hidden lg:flex items-center gap-2">
             <div className="flex -space-x-1.5">
               {onlineMembers.slice(0, 4).map((m) => (
                 <div
@@ -374,27 +384,31 @@ export default function StudyRoomWorkspace() {
             </div>
             <span className="text-sm text-muted-foreground">{onlineMembers.length} online</span>
           </div>
+          <div className="flex lg:hidden items-center gap-1 text-sm text-muted-foreground" title={`${onlineMembers.length} online`}>
+            <Users className="h-3.5 w-3.5" />
+            {onlineMembers.length}
+          </div>
 
-          {/* Actions */}
-          <div className="flex items-center gap-1 border-l border-border/30 pl-3 dark:border-border/60">
-            <Button size="icon" variant="ghost" className="h-3.5 w-3.5" onClick={copyJoinCode} title="Copy join code">
-              <Copy className="h-4 w-4" />
+          {/* Actions - full icon row on desktop */}
+          <div className="hidden md:flex items-center gap-1 border-l border-border/30 pl-3 dark:border-border/60">
+            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={copyJoinCode} title="Copy join code">
+              <Copy className="h-3.5 w-3.5" />
             </Button>
-            <Button size="icon" variant="ghost" className="h-3.5 w-3.5" onClick={() => void loadRoom()} title="Refresh">
-              <RefreshCw className="h-4 w-4" />
+            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => void loadRoom()} title="Refresh">
+              <RefreshCw className="h-3.5 w-3.5" />
             </Button>
             {(state.room.isOwner || state.room.viewerRole === "cohost") && (
-              <Button size="icon" variant="ghost" className="h-3.5 w-3.5" onClick={openRoomDetails} title="Edit room details">
+              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={openRoomDetails} title="Edit room details">
                 <Pencil className="h-3.5 w-3.5" />
               </Button>
             )}
             {state.room.isOwner && (
-              <Button size="icon" variant="ghost" className="h-3.5 w-3.5" onClick={() => setShowTransferOwnership(true)} title="Transfer ownership">
+              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setShowTransferOwnership(true)} title="Transfer ownership">
                 <Crown className="h-3.5 w-3.5 text-amber-500" />
               </Button>
             )}
             {(state.room.isOwner || state.room.viewerRole === "cohost") && (
-              <Button size="icon" variant="ghost" className="h-3.5 w-3.5" onClick={() => setShowPermissions(true)} title="Room permissions">
+              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setShowPermissions(true)} title="Room permissions">
                 <ShieldCheck className="h-3.5 w-3.5" />
               </Button>
             )}
@@ -407,6 +421,63 @@ export default function StudyRoomWorkspace() {
                 <DoorOpen className="h-3.5 w-3.5" />
               </Button>
             )}
+          </div>
+
+          {/* Actions - overflow menu on mobile so the header doesn't overflow */}
+          <div className="flex md:hidden">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="icon" variant="ghost" className="h-8 w-8" aria-label="Room actions">
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52">
+                <DropdownMenuItem onClick={copyJoinCode}>
+                  <Copy className="mr-2 h-3.5 w-3.5" />
+                  Copy join code
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => void loadRoom()}>
+                  <RefreshCw className="mr-2 h-3.5 w-3.5" />
+                  Refresh
+                </DropdownMenuItem>
+                {canControlTimer && (
+                  <DropdownMenuItem onClick={() => void updateTimer("reset")}>
+                    <RotateCcw className="mr-2 h-3.5 w-3.5" />
+                    Reset timer
+                  </DropdownMenuItem>
+                )}
+                {(state.room.isOwner || state.room.viewerRole === "cohost") && (
+                  <DropdownMenuItem onClick={openRoomDetails}>
+                    <Pencil className="mr-2 h-3.5 w-3.5" />
+                    Edit room details
+                  </DropdownMenuItem>
+                )}
+                {state.room.isOwner && (
+                  <DropdownMenuItem onClick={() => setShowTransferOwnership(true)}>
+                    <Crown className="mr-2 h-3.5 w-3.5 text-amber-500" />
+                    Transfer ownership
+                  </DropdownMenuItem>
+                )}
+                {(state.room.isOwner || state.room.viewerRole === "cohost") && (
+                  <DropdownMenuItem onClick={() => setShowPermissions(true)}>
+                    <ShieldCheck className="mr-2 h-3.5 w-3.5" />
+                    Room permissions
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator />
+                {state.room.isOwner ? (
+                  <DropdownMenuItem onClick={() => setShowDeleteConfirm(true)} className="text-destructive focus:text-destructive">
+                    <Trash2 className="mr-2 h-3.5 w-3.5" />
+                    Delete room
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem onClick={leaveRoom} className="text-destructive focus:text-destructive">
+                    <DoorOpen className="mr-2 h-3.5 w-3.5" />
+                    Leave room
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </header>
