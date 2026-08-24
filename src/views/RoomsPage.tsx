@@ -78,6 +78,7 @@ export default function RoomsPage() {
       const response = await fetch("/api/rooms", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ title: createTitle, topic: createTopic, visibility: createVisibility }),
       });
       if (!response.ok) {
@@ -93,7 +94,12 @@ export default function RoomsPage() {
       router.push(`/rooms/${created.id}`);
     } catch (error) {
       console.error("[RoomsPage] create failed:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to create room");
+      const errMessage = error instanceof Error ? error.message : "Failed to create room";
+      if (errMessage === "Unauthorized") {
+        toast.error("You need to log in to create a room. Please sign in or sign up.");
+      } else {
+        toast.error(errMessage);
+      }
     } finally {
       setCreating(false);
     }
@@ -155,7 +161,7 @@ export default function RoomsPage() {
           </p>
           <div className="flex flex-wrap gap-2">
             <ResponsiveSheet open={createOpen} onOpenChange={setCreateOpen}>
-              <Button className="hidden md:inline-flex">
+              <Button className="hidden md:inline-flex" onClick={() => setCreateOpen(true)}>
                 <Plus className="mr-2 h-4 w-4" />
                 Create room
               </Button>

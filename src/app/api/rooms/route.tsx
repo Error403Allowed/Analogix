@@ -94,7 +94,11 @@ export async function POST(request: Request) {
     }
     catch (error) {
         console.error("[api/rooms] POST failed:", error);
-        return NextResponse.json({ error: "Failed to create room" }, { status: 500 });
+        const errMessage = error instanceof Error ? error.message : "Failed to create room";
+        if (errMessage === "Unauthorized") {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+        return NextResponse.json({ error: errMessage }, { status: 500 });
     }
 }
 //# sourceMappingURL=route.js.map
