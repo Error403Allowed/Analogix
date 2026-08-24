@@ -10,7 +10,6 @@ import {
   Flame,
   GraduationCap,
   LifeBuoy,
-  ListChecks,
   LogOut,
   Pencil,
   ShieldCheck,
@@ -114,34 +113,6 @@ const ProfilePage = () => {
             </div>
           </div>
         </div>
-      </motion.div>
-
-      {/* Stats rail */}
-      <motion.div
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.05 }}
-        className="grid grid-cols-3 gap-3"
-      >
-        {[
-          { value: streak, label: "Streak", icon: Flame },
-          { value: quizzes, label: "Quizzes", icon: ListChecks },
-          { value: name ? name[0]?.toUpperCase() : "-", label: "Student", icon: User },
-        ].map((stat) => {
-          const Icon = stat.icon;
-          return (
-            <div
-              key={stat.label}
-              className="flex flex-col items-center gap-1.5 rounded-2xl border border-border bg-card p-4 text-center"
-            >
-              <Icon className="h-4 w-4 text-primary" />
-              <span className="text-lg font-black text-foreground">{stat.value}</span>
-              <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                {stat.label}
-              </span>
-            </div>
-          );
-        })}
       </motion.div>
 
       {/* Appearance */}
