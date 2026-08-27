@@ -126,15 +126,10 @@ export default function ResetPasswordForm() {
       animate={{ opacity: 1, y: 0 }}
       className="w-full max-w-md"
     >
-      <div className="bg-card border border-border rounded-3xl p-8 shadow-2xl space-y-6">
+      <div className="bg-card border border-border rounded-3xl p-8 space-y-6">
         {/* Logo */}
         <div className="relative flex justify-center">
-          <motion.div
-            className="absolute inset-0 rounded-full blur-xl bg-primary/[0.08]"
-            animate={{ scale: [1, 1.2, 1] }}
-            transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-          />
-          <div className="relative w-14 h-14 rounded-2xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20">
+          <div className="relative w-14 h-14 rounded-2xl bg-primary flex items-center justify-center">
             <Lock className="w-7 h-7 text-primary-foreground" />
           </div>
         </div>

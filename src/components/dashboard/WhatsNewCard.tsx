@@ -20,13 +20,13 @@ export default function WhatsNewCard() {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -8 }}
           transition={{ duration: 0.25, ease: "easeOut" }}
-          className="dashboard-panel p-4 flex items-start gap-3 border-primary/20 bg-gradient-to-r from-primary/10 via-transparent to-transparent"
+          className="dashboard-panel p-4 flex items-start gap-3"
         >
           <div className="shrink-0 w-9 h-9 rounded-xl bg-primary/15 flex items-center justify-center">
             <Sparkles className="w-4 h-4 text-primary" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-black uppercase tracking-[0.18em] text-primary">
+            <p className="text-xs font-bold tracking-wide text-primary">
               What&apos;s new
             </p>
             <p className="text-sm font-semibold text-foreground mt-0.5">{announcement.title}</p>

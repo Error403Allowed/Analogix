@@ -23,7 +23,6 @@ import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/context/AuthContext";
 import { resolveAuthDestination } from "@/lib/auth-routing";
 import { readUserPreferences, writeUserPreferences } from "@/lib/profile-sync";
-import OnboardingBackdrop from "@/components/onboarding/OnboardingBackdrop";
 
 // ── Typewriter ────────────────────────
 const TypewriterText = ({ text, delay = 0 }: { text: string; delay?: number }) => {
@@ -302,12 +301,11 @@ const Onboarding = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 relative isolate overflow-hidden bg-background">
-      <OnboardingBackdrop />
       <motion.div className="w-full max-w-2xl relative z-10" initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }}>
         <AnimatePresence mode="wait">
           {!isComplete ? (
             <motion.div key={`step-${step}`} initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }}
-              className="glass-card p-8 md:p-10 shadow-2xl border-white/20">
+              className="glass-card p-8 md:p-10 border-border">
 
               {/* Progress bar */}
               <div className="flex items-center gap-2 mb-10">

@@ -25,7 +25,7 @@ export default function MobileFAB({
       onClick={onClick}
       aria-label={ariaLabel ?? label ?? "Action"}
       className={cn(
-        "pressable fixed z-40 md:hidden right-4 bottom-[calc(3.5rem+var(--safe-bottom)+1rem)] flex items-center gap-2 rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/25",
+        "pressable fixed z-40 md:hidden right-4 bottom-[calc(3.5rem+var(--safe-bottom)+1rem)] flex items-center gap-2 rounded-full bg-primary text-primary-foreground shadow-lg",
         label ? "h-12 px-4 text-sm font-semibold" : "h-14 w-14 justify-center",
         className,
       )}

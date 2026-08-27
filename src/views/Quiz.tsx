@@ -386,7 +386,7 @@ const Quiz = () => {
             className="glass-card p-6 md:p-8"
           >
             <div className="flex items-center gap-4 mb-6">
-              <div className="w-12 h-12 rounded-2xl gradient-primary flex items-center justify-center shadow-lg shadow-primary/25">
+              <div className="w-12 h-12 rounded-2xl gradient-primary flex items-center justify-center">
                 <Settings2 className="w-6 h-6 text-white" />
               </div>
               <div>
@@ -412,7 +412,7 @@ const Quiz = () => {
                       className={cn(
                         "flex items-center gap-2 p-3 rounded-xl border text-xs font-bold transition-all",
                         selectedSubject === s.id
-                          ? "border-primary bg-primary/10 shadow-md shadow-primary/10 text-primary"
+                          ? "border-primary bg-primary/10 text-primary"
                           : "border-border/70 bg-card/80 text-foreground/85 hover:border-primary/50 hover:text-foreground hover:bg-primary/5"
                       )}
                     >
@@ -506,7 +506,7 @@ const Quiz = () => {
                 <Button
                   size="lg"
                   onClick={startQuiz}
-                  className="w-full h-14 rounded-2xl gradient-primary text-white font-bold text-base shadow-xl shadow-primary/25 hover:shadow-2xl hover:shadow-primary/30 transition-all gap-2"
+                  className="w-full h-14 rounded-2xl gradient-primary text-white font-bold text-base transition-all gap-2"
                 >
                   Start Quiz
                   <ChevronRight className="w-5 h-5" />
@@ -551,7 +551,7 @@ const Quiz = () => {
             <motion.div
               animate={{ scale: [0.9, 1.05, 0.9] }}
               transition={{ duration: 2, repeat: Infinity }}
-              className="w-14 h-14 rounded-2xl gradient-primary flex items-center justify-center shadow-xl shadow-primary/30"
+              className="w-14 h-14 rounded-2xl gradient-primary flex items-center justify-center"
             >
               <Brain className="w-7 h-7 text-white" />
             </motion.div>

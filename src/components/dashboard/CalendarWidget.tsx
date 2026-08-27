@@ -46,7 +46,7 @@ const TermBadge = () => {
     return (
       <div className="px-3 py-2 rounded-xl bg-primary/5 border border-primary/10 flex items-center justify-between gap-3">
         <div>
-          <p className="text-[9px] font-bold uppercase tracking-wider text-primary/70">{info.term.label}</p>
+          <p className="text-[10px] font-bold tracking-wide text-primary/70">{info.term.label}</p>
           <p className="text-xs font-bold text-foreground">Week {info.week} <span className="text-muted-foreground font-normal">of {info.weeksTotal}</span></p>
         </div>
         <div className="flex flex-col items-end gap-1.5 shrink-0">

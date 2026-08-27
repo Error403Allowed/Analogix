@@ -48,29 +48,11 @@ function AnimatedBrain({ focused, mode }: {
   focused: boolean;
   mode: "signin" | "signup" | "forgot" | "success";
 }) {
-  const glow = mode === "forgot"
-    ? "rgba(59,130,246,0.25)"
-    : mode === "success"
-      ? "rgba(34,197,94,0.25)"
-      : focused
-        ? "rgba(56,189,248,0.25)"
-        : "rgba(56,189,248,0.06)";
-
   return (
     <div className="relative flex justify-center">
       <motion.div
-        className="absolute inset-0 rounded-full blur-xl"
-        animate={{ scale: focused ? 1.3 : 1, opacity: focused ? 1 : 0.5, backgroundColor: glow }}
-        transition={{ duration: 0.8, ease: "easeInOut" }}
-      />
-      <motion.div
-        className="relative w-14 h-14 rounded-xl overflow-hidden shadow-lg shadow-primary/20"
-        animate={{
-          scale: focused ? 1.05 : 1,
-          boxShadow: focused
-            ? "0 0 30px rgba(56,189,248,0.25)"
-            : "0 8px 30px rgba(0,0,0,0.12)",
-        }}
+        className="relative w-14 h-14 rounded-xl overflow-hidden border border-border"
+        animate={{ scale: focused ? 1.05 : 1 }}
         transition={{ type: "spring", stiffness: 200, damping: 15 }}
       >
         <img src="/tab-icon.png" alt="Analogix" className="w-full h-full object-contain" />
@@ -259,8 +241,6 @@ export default function LoginView() {
           style={{ backgroundImage: "linear-gradient(135deg, var(--g-1) 0%, var(--g-2) 55%, var(--g-3) 100%)" }}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/25 to-black/30" />
-        <div className="absolute -top-24 -right-24 w-96 h-96 rounded-full bg-white/10 blur-3xl" />
-        <div className="absolute -bottom-32 -left-24 w-80 h-80 rounded-full bg-white/10 blur-3xl" />
 
         <div className="relative z-10 flex flex-col justify-between w-full p-12 xl:p-16">
           <div className="flex items-center gap-3">

@@ -65,7 +65,7 @@ const AchievementsLibrary = () => {
           animate={{ opacity: 1, x: 0 }}
         >
           <h1 className="text-5xl font-black text-foreground tracking-tight flex items-center gap-4 mb-3">
-            <div className="w-14 h-14 rounded-2xl gradient-primary flex items-center justify-center text-white shadow-xl shadow-primary/20">
+            <div className="w-14 h-14 rounded-2xl gradient-primary flex items-center justify-center text-white">
               <Trophy className="w-7 h-7" />
             </div>
             Achievement Library
@@ -87,7 +87,7 @@ const AchievementsLibrary = () => {
               initial={{ width: 0 }}
               animate={{ width: `${percentage}%` }}
               transition={{ duration: 1.5, ease: "easeOut", delay: 0.5 }}
-              className="absolute inset-0 gradient-primary shadow-[0_0_15px_rgba(255,255,255,0.3)]"
+              className="absolute inset-0 gradient-primary"
             />
           </div>
         </motion.div>
@@ -110,7 +110,7 @@ const AchievementsLibrary = () => {
               className={cn(
                 "px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap border",
                 filter === cat.id 
-                  ? "bg-primary text-white shadow-lg shadow-primary/30 border-primary" 
+                  ? "bg-primary text-white border-primary" 
                   : "bg-muted/50 text-muted-foreground hover:bg-muted border-transparent"
               )}
             >
@@ -146,16 +146,11 @@ const AchievementsLibrary = () => {
               className={cn(
                 "relative p-8 rounded-[2rem] border transition-all group overflow-hidden flex flex-col items-center text-center",
                 ach.unlocked 
-                  ? "glass-card border-primary/20 shadow-xl shadow-primary/5 hover:border-primary/50" 
+                  ? "glass-card border-primary/20 hover:border-primary/50" 
                   : "bg-muted/30 border-dashed border-muted-foreground/10 opacity-60 grayscale"
               )}
             >
-              {/* Background Glow */}
-              {ach.unlocked && (
-                <div className="absolute -right-12 -top-12 w-32 h-32 rounded-full bg-primary/5 group-hover:bg-primary/10 transition-all duration-700 blur-2xl" />
-              )}
-              
-              <div className="text-6xl mb-6 transform group-hover:scale-110 transition-transform duration-500 drop-shadow-2xl">
+              <div className="text-6xl mb-6 transform group-hover:scale-110 transition-transform duration-500">
                 {ach.icon}
               </div>
               

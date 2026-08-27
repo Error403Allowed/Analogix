@@ -712,14 +712,14 @@ export default function Dashboard() {
               <div className="dashboard-panel p-5">
                 <div className="flex items-center justify-between gap-3 mb-4">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-amber-500/15 flex items-center justify-center shrink-0">
-                      <Zap className="w-5 h-5 text-amber-500" />
+                    <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center shrink-0">
+                      <Zap className="w-5 h-5 text-primary" />
                     </div>
                     <div>
                       <p className="text-3xl font-display font-black text-foreground tracking-tighter leading-none">
                         {str}
                       </p>
-                      <p className="text-[9px] font-black uppercase tracking-[0.18em] mt-0.5 text-amber-500">
+                      <p className="text-[10px] font-bold tracking-wide mt-0.5 text-primary">
                         Day streak
                       </p>
                     </div>
@@ -734,7 +734,7 @@ export default function Dashboard() {
                       <div key={i} className="flex flex-1 flex-col items-center gap-2">
                         <p className={cn(
                           "text-[9px] font-black uppercase tracking-wider",
-                          isToday ? "text-amber-500" : "text-muted-foreground/40"
+                          isToday ? "text-primary" : "text-muted-foreground/40"
                         )}>
                           {DAY_SH[i]}
                         </p>
@@ -746,16 +746,16 @@ export default function Dashboard() {
                           className={cn(
                             "relative w-9 h-9 rounded-full flex items-center justify-center",
                             done
-                              ? "bg-gradient-to-br from-green-400 to-green-600 shadow-[0_3px_10px_-2px_rgba(245,158,11,0.55)]"
+                              ? "bg-gradient-to-br from-[var(--growth-light)] to-[var(--growth-deep)]"
                               : "bg-muted/30 border border-border/50",
-                            isToday && "ring-2 ring-emerald-500/45 ring-offset-2 ring-offset-card"
+                            isToday && !done && "border-2 border-primary"
                           )}
                           title={done ? "Studied" : "No activity"}
                         >
                           {done ? (
                             <Check className="w-4 h-4 text-white" strokeWidth={3} />
                           ) : isToday ? (
-                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500/70" />
+                            <span className="w-1.5 h-1.5 rounded-full bg-primary/70" />
                           ) : null}
                         </motion.div>
                       </div>

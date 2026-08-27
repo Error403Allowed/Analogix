@@ -60,7 +60,7 @@ export function QuizHubView(props: QuizHubViewProps) {
       {!props.quizStarted && !props.quizLoading && (
         <div className="rounded-2xl border border-border bg-card p-8 space-y-6">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl gradient-primary flex items-center justify-center shadow-lg shadow-primary/25">
+            <div className="w-12 h-12 rounded-2xl gradient-primary flex items-center justify-center">
               <Target className="w-6 h-6 text-white" />
             </div>
             <div>
@@ -121,7 +121,7 @@ export function QuizHubView(props: QuizHubViewProps) {
             </div>
           </div>
 
-          <Button size="lg" className="w-full gradient-primary text-white border-0 hover:opacity-90 shadow-lg shadow-primary/20 h-14 text-base font-bold" onClick={props.onRunQuizHub}>
+          <Button size="lg" className="w-full gradient-primary text-white border-0 h-14 text-base font-bold" onClick={props.onRunQuizHub}>
             <Sparkles className="w-5 h-5 mr-2" /> Generate Quiz
           </Button>
         </div>

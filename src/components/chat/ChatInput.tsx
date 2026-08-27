@@ -281,7 +281,7 @@ const ChatInput = ({
                 type="button"
                 onClick={handleSend}
                 disabled={!input.trim() && attachedFiles.length === 0}
-                className="w-9 h-9 rounded-lg bg-primary hover:bg-primary/90 flex items-center justify-center text-white transition-all hover:shadow-md hover:shadow-primary/20 active:scale-95 disabled:opacity-30 disabled:pointer-events-none disabled:hover:shadow-none"
+                className="w-9 h-9 rounded-lg bg-primary hover:bg-primary/90 flex items-center justify-center text-white transition-all active:scale-95 disabled:opacity-30 disabled:pointer-events-none"
               >
                 <Send className="w-4 h-4" />
               </button>

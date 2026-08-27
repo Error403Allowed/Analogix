@@ -13,7 +13,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
-import { cycleLandingColor } from "@/utils/landingColorCycle";
+import { applyLandingBrand } from "@/utils/landingColorCycle";
 
 const accentColors: Record<string, { bg: string; text: string; border: string; tag: string }> = {
   blue:   { bg: "bg-blue-500/8",   text: "text-blue-600",   border: "hover:border-blue-300", tag: "bg-blue-500/10 text-blue-600" },
@@ -173,10 +173,10 @@ const Landing = () => {
     syncOnboardingFromDb();
   }, [syncOnboardingFromDb]);
 
-  // Cycle the site's main colour on every visit/refresh, scoped to the landing
-  // page root so the visitor's saved app theme (localStorage + DB) is untouched.
+  // Apply the fixed Analogix brand colour, scoped to the landing page root so
+  // the visitor's saved app theme (localStorage + DB) is untouched.
   useEffect(() => {
-    cycleLandingColor(landingRoot.current);
+    applyLandingBrand(landingRoot.current);
   }, []);
 
   const handleNav = (path?: string, sectionId?: string) => {
@@ -227,7 +227,7 @@ const Landing = () => {
             {loading || !isMounted ? (
               <div className="h-9 w-28 rounded-lg bg-muted animate-pulse" />
             ) : (
-              <Button size="sm" className="rounded-lg px-5 font-bold shadow-md shadow-primary/15"
+              <Button size="sm" className="rounded-lg px-5 font-bold"
                 onClick={() => handleNav("/dashboard")}>
                 {user && hasCompletedOnboarding ? "Dashboard" : user && !hasCompletedOnboarding ? "Continue Setup" : "Get Started"}
                 <ChevronRight className="w-3.5 h-3.5 ml-1" />
@@ -246,14 +246,10 @@ const Landing = () => {
             transition={{ duration: 0.4 }}
             className="space-y-8"
           >
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-medium uppercase tracking-wider">
-              <Sparkles className="w-3.5 h-3.5" />
-              Built for students, by a student
-            </div>
 
             <h1 className="text-5xl sm:text-7xl lg:text-8xl font-bold tracking-tight leading-[0.92] text-balance">
               Actually <span className="text-primary">understand</span>
-              <br className="hidden sm:block" /> what you study.
+              <br className="hidden sm:block" /> what you study. 
             </h1>
 
             <p className="text-lg sm:text-xl text-muted-foreground max-w-xl mx-auto leading-relaxed">
@@ -261,7 +257,7 @@ const Landing = () => {
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
-              <Button size="lg" className="h-13 px-8 text-base font-bold rounded-xl shadow-xl shadow-primary/20 group"
+              <Button size="lg" className="h-13 px-8 text-base font-bold rounded-xl group"
                 style={{ height: 52 }}
                 onClick={() => handleNav("/login")}>
                 Start for free
@@ -363,7 +359,7 @@ const Landing = () => {
                   {
                     icon: Zap, color: "violet",
                     title: "Everything is free",
-                    desc: "No subscriptions, no paywalls, no ads. Every single feature - AI tutor, flashcards, quizzes, all of it - completely free."
+                    desc: "In the free plan of Analogix, single feature - AI tutor, flashcards, quizzes, is free to use."
                   },
                 ].map((item) => {
                   const Icon = item.icon;

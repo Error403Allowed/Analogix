@@ -96,7 +96,7 @@ const QuickChat = () => {
 
       {messages.length === 1 && (
         <div className="px-4 pb-4">
-          <p className="text-[10px] uppercase font-bold text-muted-foreground mb-2 px-1">Try asking about:</p>
+          <p className="text-[10px] font-bold text-muted-foreground mb-2 px-1">Try asking about:</p>
           <div className="flex flex-wrap gap-2">
             {["Photosynthesis", "Pythagoras", "The Silk Road", "Supply & Demand"].map((topic) => (
               <button
@@ -120,7 +120,7 @@ const QuickChat = () => {
           placeholder="e.g. explain gravity..."
           className="text-xs h-10 glass border-none focus-visible:ring-1 focus-visible:ring-primary/30"
         />
-        <Button size="icon" className="h-10 w-10 gradient-primary shrink-0 shadow-lg shadow-primary/20" disabled={isTyping}>
+        <Button size="icon" className="h-10 w-10 gradient-primary shrink-0" disabled={isTyping}>
           <Send className="w-4 h-4" />
         </Button>
       </form>

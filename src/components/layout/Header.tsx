@@ -325,7 +325,7 @@ const Header = ({ userName = "Student", streak = 0 }: HeaderProps) => {
 
             {/* Profile */}
             <motion.button
-              className="w-10 h-10 rounded-full gradient-primary flex items-center justify-center shadow-lg hover:shadow-primary/20 transition-all"
+              className="w-10 h-10 rounded-full gradient-primary flex items-center justify-center transition-all"
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => setShowProfile(true)}

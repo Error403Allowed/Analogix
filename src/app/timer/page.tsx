@@ -241,7 +241,7 @@ export default function TimerPage() {
               className={cn(
                 "w-3 h-3 rounded-full transition-all duration-300",
                 i < filledDots
-                  ? "bg-primary scale-110 shadow-sm shadow-primary/30"
+                  ? "bg-primary scale-110"
                   : "bg-muted-foreground/15"
               )}
             />
@@ -292,16 +292,16 @@ export default function TimerPage() {
 
         {editing ? (
           <button onClick={confirmEdit}
-            className="flex items-center gap-2 h-14 px-8 rounded-full font-black text-base uppercase tracking-widest bg-primary text-primary-foreground shadow-lg shadow-primary/30 hover:scale-105 transition-all">
+            className="flex items-center gap-2 h-14 px-8 rounded-full font-black text-base uppercase tracking-widest bg-primary text-primary-foreground hover:scale-105 transition-all">
             <Check className="w-5 h-5" /> Set
           </button>
         ) : (
           <button onClick={() => setIsActive(a => !a)}
             className={cn(
-              "flex items-center gap-2.5 h-14 px-10 rounded-full font-black text-base uppercase tracking-widest shadow-lg hover:scale-105 transition-all duration-200",
+              "flex items-center gap-2.5 h-14 px-10 rounded-full font-black text-base uppercase tracking-widest hover:scale-105 transition-all duration-200",
               isActive
-                ? "bg-destructive/90 text-destructive-foreground shadow-destructive/30"
-                : "bg-primary text-primary-foreground shadow-primary/30"
+                ? "bg-destructive/90 text-destructive-foreground"
+                : "bg-primary text-primary-foreground"
             )}>
             {isActive
               ? <><Pause className="w-5 h-5 fill-current" /> Pause</>

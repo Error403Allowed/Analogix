@@ -52,7 +52,7 @@ const StudyHub = () => {
     <div className="mx-auto max-w-7xl space-y-10 pb-10">
       <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
         <h1 className="mb-3 flex items-center gap-4 text-4xl font-black tracking-tight text-foreground md:text-5xl">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl gradient-primary text-white shadow-xl shadow-primary/20 md:h-14 md:w-14">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl gradient-primary text-white md:h-14 md:w-14">
             <Layers className="h-6 w-6" />
           </div>
           Study Hub
@@ -77,10 +77,9 @@ const StudyHub = () => {
                 data-testid="study-tool"
                 className={cn(
                   "pressable group relative flex h-full flex-col overflow-hidden rounded-2xl border bg-card p-6 transition-all duration-200",
-                  "hover:-translate-y-1 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5"
+                  "hover:-translate-y-1 hover:border-primary/30"
                 )}
               >
-                <div className="absolute -right-10 -top-10 h-28 w-28 rounded-full bg-primary/5 blur-2xl transition-all duration-500 group-hover:bg-primary/10" />
                 <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-white">
                   <Icon className="h-5 w-5" />
                 </div>
