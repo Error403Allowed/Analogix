@@ -10,6 +10,16 @@ interface FakeAttempt {
   quiz?: { subject_id: string; title: string } | null;
 }
 
+type QuizPerformanceEntry = {
+  subjectId: string;
+  attempts: number;
+  correctAnswers: number;
+  totalQuestions: number;
+  accuracy: number;
+};
+
+type WeakAreaEntry = { subjectId: string; accuracy: number; reason: string };
+
 const makeFakeSupabase = (attempts: FakeAttempt[]) => {
   const select = () => ({
     eq: () => ({
@@ -70,7 +80,7 @@ describe("getQuizPerformance binding", () => {
         },
       ]),
       { limit: 10 },
-    );
+    ) as QuizPerformanceEntry[];
 
     expect(performance).toHaveLength(2);
     const math = performance.find((p) => p.subjectId === "math");
@@ -99,7 +109,7 @@ describe("getQuizPerformance binding", () => {
         },
       ]),
       { subjectId: "math", limit: 10 },
-    );
+    ) as QuizPerformanceEntry[];
 
     expect(performance).toHaveLength(1);
     expect(performance[0]).toMatchObject({ subjectId: "math", attempts: 1 });
@@ -109,7 +119,7 @@ describe("getQuizPerformance binding", () => {
     const performance = await bindings.getQuizPerformance(
       ctx([{ id: "a1", quiz_id: null, correct_answers: 2, total_questions: 4, quiz: null }]),
       { limit: 10 },
-    );
+    ) as QuizPerformanceEntry[];
     expect(performance).toEqual([
       {
         subjectId: "unknown",
@@ -147,7 +157,7 @@ describe("getWeakAreas binding", () => {
         },
       ]),
       {},
-    );
+    ) as WeakAreaEntry[];
 
     expect(weak.map((w) => w.subjectId)).toEqual(["science"]);
   });

@@ -50,7 +50,7 @@ describe("estimateUIMessagesTokens", () => {
 
   it("returns zero for empty messages or empty parts", () => {
     expect(estimateUIMessagesTokens([])).toBe(0);
-    expect(estimateUIMessagesTokens([{ role: "user", parts: [] }])).toBe(0);
+    expect(estimateUIMessagesTokens([{ parts: [] }])).toBe(0);
   });
 });
 

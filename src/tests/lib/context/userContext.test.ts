@@ -8,7 +8,7 @@ import {
     buildStudyStatsContext,
 } from '@/lib/context/userContext';
 
-const mockFrom = (tableHandlers: Record<string, jest.Mock>) => {
+const mockFrom = (tableHandlers: Record<string, (...args: any[]) => any>) => {
     const handlers: Record<string, any> = {};
     for (const [table, fn] of Object.entries(tableHandlers)) {
         handlers[table] = fn;
