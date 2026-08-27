@@ -61,6 +61,8 @@ const ProfilePage = () => {
 
   const name = (userData?.name as string) || user?.email?.split("@")[0] || "Student";
   const avatarUrl = useProfileAvatar() || (userData?.avatarUrl as string) || "";
+  const [avatarFailed, setAvatarFailed] = useState(false);
+  useEffect(() => { setAvatarFailed(false); }, [avatarUrl]);
   const streak = Number(stats.currentStreak) || 0;
   const quizzes = Number(stats.quizzesDone) || 0;
 
@@ -88,9 +90,14 @@ const ProfilePage = () => {
         className="relative overflow-hidden rounded-3xl border border-border bg-gradient-to-br from-primary/15 via-primary/5 to-transparent p-6"
       >
         <div className="flex items-center gap-4">
-          <div className="h-16 w-16 shrink-0 overflow-hidden rounded-2xl bg-muted shadow-lg shadow-primary/10">
-            {avatarUrl ? (
-              <img src={avatarUrl} alt={name} className="h-full w-full object-cover" />
+          <div className="h-16 w-16 shrink-0 overflow-hidden rounded-2xl bg-muted">
+            {avatarUrl && !avatarFailed ? (
+              <img
+                src={avatarUrl}
+                alt={name}
+                className="h-full w-full object-cover"
+                onError={() => setAvatarFailed(true)}
+              />
             ) : (
               <div className="flex h-full w-full items-center justify-center gradient-primary">
                 <User className="h-7 w-7 text-white" />

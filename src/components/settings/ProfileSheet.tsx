@@ -186,6 +186,8 @@ const ProfileSheet = ({ open, onOpenChange }: ProfileSheetProps) => {
       img.src = src;
     });
 
+  const [avatarUploading, setAvatarUploading] = useState(false);
+
   const handleAvatarChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -197,7 +199,12 @@ const ProfileSheet = ({ open, onOpenChange }: ProfileSheetProps) => {
       toast.error("Image is too large. Please use a file under 5MB.");
       return;
     }
+    if (!authUser?.id) {
+      toast.error("You need to be signed in to upload a profile photo.");
+      return;
+    }
 
+    setAvatarUploading(true);
     try {
       const dataUrl = await readImage(file);
       const img = await loadImageElement(dataUrl);
@@ -211,12 +218,33 @@ const ProfileSheet = ({ open, onOpenChange }: ProfileSheetProps) => {
       const ctx = canvas.getContext("2d");
       if (!ctx) throw new Error("Canvas not supported.");
       ctx.drawImage(img, sx, sy, size, size, 0, 0, target, target);
-      const output = canvas.toDataURL("image/jpeg", 0.85);
-      setAvatarUrl(output);
+
+      const blob = await new Promise<Blob | null>((resolve) =>
+        canvas.toBlob(resolve, "image/jpeg", 0.85)
+      );
+      if (!blob) throw new Error("Could not process this image.");
+
+      // Upload to Supabase Storage rather than embedding a base64 string in
+      // the database - the profiles.avatar_url column stores a real URL.
+      const supabase = createClient();
+      const path = `${authUser.id}/avatar.jpg`;
+      const { error: uploadError } = await supabase.storage
+        .from("avatars")
+        .upload(path, blob, { contentType: "image/jpeg", upsert: true });
+      if (uploadError) throw uploadError;
+
+      const { data: publicUrlData } = supabase.storage.from("avatars").getPublicUrl(path);
+      // Cache-bust so the browser doesn't keep showing the old image at the
+      // same path after a re-upload.
+      const url = `${publicUrlData.publicUrl}?t=${Date.now()}`;
+
+      setAvatarUrl(url);
       mark();
-    } catch {
-      toast.error("Could not process this image.");
+    } catch (e) {
+      console.error("[ProfileSheet] Avatar upload failed:", e);
+      toast.error("Could not upload this image. Please try again.");
     } finally {
+      setAvatarUploading(false);
       if (event.target) event.target.value = "";
     }
   };
@@ -341,7 +369,12 @@ const ProfileSheet = ({ open, onOpenChange }: ProfileSheetProps) => {
               <div className="flex items-center gap-4">
                 <div className="w-16 h-16 rounded-2xl border border-border/60 bg-muted/30 overflow-hidden flex items-center justify-center shrink-0">
                   {avatarUrl ? (
-                    <img src={avatarUrl} alt="Profile" className="w-full h-full object-cover" />
+                    <img
+                      src={avatarUrl}
+                      alt="Profile"
+                      className="w-full h-full object-cover"
+                      onError={() => setAvatarUrl("")}
+                    />
                   ) : (
                     <User className="w-6 h-6 text-muted-foreground/60" />
                   )}
@@ -353,9 +386,10 @@ const ProfileSheet = ({ open, onOpenChange }: ProfileSheetProps) => {
                     size="sm"
                     className="rounded-xl"
                     onClick={() => fileInputRef.current?.click()}
+                    disabled={avatarUploading}
                   >
                     <Upload className="w-3.5 h-3.5 mr-2" />
-                    Upload
+                    {avatarUploading ? "Uploading..." : "Upload"}
                   </Button>
                   <Button
                     type="button"
@@ -363,7 +397,7 @@ const ProfileSheet = ({ open, onOpenChange }: ProfileSheetProps) => {
                     size="sm"
                     className="rounded-xl text-muted-foreground"
                     onClick={handleAvatarRemove}
-                    disabled={!avatarUrl}
+                    disabled={!avatarUrl || avatarUploading}
                   >
                     <Trash2 className="w-3.5 h-3.5 mr-2" />
                     Remove
