@@ -8,10 +8,13 @@ const badgeVariants = cva(
   {
     variants: {
       variant: {
-        default: "border-transparent bg-primary text-primary-foreground hover:bg-primary/80",
+        // soft duotone fill, not a solid block - reads as considered rather than a stock pill
+        default: "border-primary/20 bg-primary/10 text-primary hover:bg-primary/15",
         secondary: "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
         destructive: "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80",
-        outline: "text-foreground",
+        outline: "border-border text-foreground hover:bg-muted/40",
+        // growth: reserved for progress / mastery / streak labels only
+        growth: "border-growth/20 bg-growth/10 text-growth hover:bg-growth/15",
       },
     },
     defaultVariants: {

@@ -1,41 +1,29 @@
 "use client";
 
-import { applyThemeScoped, themes } from "@/components/theme/ThemeSelector";
+import { applyThemeScoped } from "@/components/theme/ThemeSelector";
 
 export { applyThemeScoped };
 
-// The colour schemes users can pick from, in the order the picker shows them.
-// "Paper" is excluded because it is a monochrome / distraction-free mode, not
-// one of the main colours we cycle through.
-export const LANDING_COLOR_THEMES = themes
-  .filter((t) => t.name !== "Paper")
-  .map((t) => t.name);
-
-const LANDING_COLOR_KEY = "landing-color-cycle";
+/**
+ * The fixed brand identity shown on the marketing/landing page. This used to
+ * cycle through every theme in the picker on each visit/refresh, which meant
+ * anonymous visitors never saw a consistent brand colour - the single
+ * biggest thing standing in the way of Analogix being recognisable at a
+ * glance. The landing page now always shows this one deliberate colour,
+ * regardless of what a signed-in user has personalised their own dashboard
+ * to. In-app personalisation (the theme picker in Settings/Sidebar) is
+ * untouched - only the anonymous first impression is pinned.
+ */
+export const LANDING_BRAND_THEME = "Ocean";
 
 /**
- * Index of the next colour scheme to show on the landing page. Advances on
- * every visit/refresh and wraps around so the colours cycle forever.
+ * Apply the fixed brand theme to `target`. Scoped to the given element so a
+ * signed-in visitor's own saved theme (localStorage + DB) is never touched -
+ * this only affects the landing page root.
  */
-export function getNextLandingColorIndex(): number {
-  const raw = parseInt(localStorage.getItem(LANDING_COLOR_KEY) ?? "-1", 10);
-  const prev = Number.isFinite(raw) && raw >= 0 ? raw : -1;
-  return (prev + 1) % LANDING_COLOR_THEMES.length;
-}
-
-/**
- * Advance the landing-page colour cycle and apply the new colour to `target`.
- * The theme is applied ONLY to the given element so the visitor's saved app
- * theme (localStorage + DB) is never touched. Returns the applied theme name,
- * or null when paper mode is active (that preference wins).
- */
-export function cycleLandingColor(target: HTMLElement | null): string | null {
+export function applyLandingBrand(target: HTMLElement | null): string | null {
   if (typeof window === "undefined") return null;
   if (localStorage.getItem("paper-mode") === "true") return null;
-
-  const index = getNextLandingColorIndex();
-  localStorage.setItem(LANDING_COLOR_KEY, String(index));
-  const name = LANDING_COLOR_THEMES[index];
-  if (target) applyThemeScoped(name, target);
-  return name;
+  if (target) applyThemeScoped(LANDING_BRAND_THEME, target);
+  return LANDING_BRAND_THEME;
 }

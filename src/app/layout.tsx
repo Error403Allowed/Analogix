@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Playfair_Display, JetBrains_Mono } from "next/font/google";
+import { Space_Grotesk, Sora, JetBrains_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/react";
 import AppProviders from "@/components/layout/AppProviders";
 import { ServiceWorkerRegistration } from "@/components/layout/ServiceWorkerRegistration";
@@ -43,18 +43,18 @@ export const metadata: Metadata = {
   },
 };
 
-const fontSans = Inter({
+const fontSans = Space_Grotesk({
   subsets: ["latin"],
   variable: "--font-sans",
   display: "swap",
-  weight: ["400", "500", "600", "700", "800"],
+  weight: ["300", "400", "500", "600", "700"],
 });
 
-const fontDisplay = Playfair_Display({
+const fontDisplay = Sora({
   subsets: ["latin"],
   variable: "--font-display",
   display: "swap",
-  weight: "variable",
+  weight: ["500", "600", "700", "800"],
 });
 
 const fontMono = JetBrains_Mono({

@@ -17,4 +17,3 @@ export * from "./researchStore";
 export * from "./statsStore";
 export * from "./subjectStore";
 export * from "./termData";
-export * from "./theme";

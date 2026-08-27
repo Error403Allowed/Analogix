@@ -19,6 +19,8 @@
   --color-accent-foreground: hsl(var(--accent-foreground));
   --color-success: hsl(var(--success));
   --color-success-foreground: hsl(var(--success-foreground));
+  --color-growth: hsl(var(--growth));
+  --color-growth-foreground: hsl(var(--growth-foreground));
   --color-warning: hsl(var(--warning));
   --color-warning-foreground: hsl(var(--warning-foreground));
   --color-popover: hsl(var(--popover));
@@ -34,9 +36,9 @@
   --color-sidebar-border: hsl(var(--sidebar-border));
   --color-sidebar-ring: hsl(var(--sidebar-ring));
 
-  --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-sans: Space Grotesk, ui-sans-serif, system-ui, -apple-system, sans-serif;
   --font-mono: JetBrains Mono, ui-monospace, SF Mono, Monaco, Consolas, monospace;
-  --font-display: "Playfair Display", ui-serif, Georgia, serif;
+  --font-display: "Sora", Space Grotesk, ui-sans-serif, system-ui, sans-serif;
 
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -73,6 +75,9 @@
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 15%;
 
+    --p-h: 199;
+    --p-s: 89%;
+    --p-l: 48%;
     --primary: var(--p-h) var(--p-s) var(--p-l);
     --primary-foreground: 0 0% 100%;
 
@@ -97,19 +102,19 @@
     --input: 0 0% 97%;
     --ring: var(--p-h) var(--p-s) var(--p-l);
 
-    --bg-1: rgba(37, 99, 235, 0.06);
-    --bg-2: rgba(79, 70, 229, 0.04);
-    --bg-3: rgba(67, 56, 202, 0.03);
-    --bg-1-dark: rgba(37, 99, 235, 0.045);
-    --bg-2-dark: rgba(79, 70, 229, 0.035);
-    --bg-3-dark: rgba(67, 56, 202, 0.025);
+    --bg-1: rgba(56, 189, 248, 0.16);
+    --bg-2: rgba(14, 165, 233, 0.12);
+    --bg-3: rgba(3, 105, 161, 0.1);
+    --bg-1-dark: rgba(56, 189, 248, 0.045);
+    --bg-2-dark: rgba(14, 165, 233, 0.035);
+    --bg-3-dark: rgba(3, 105, 161, 0.025);
 
     --glass-bg-light: rgba(255, 255, 255, 0.85);
-    --glass-tint-light: rgba(37, 99, 235, 0.08);
-    --glass-border-light: rgba(37, 99, 235, 0.12);
+    --glass-tint-light: rgba(14, 165, 233, 0.12);
+    --glass-border-light: rgba(14, 165, 233, 0.20);
     --glass-bg-dark: rgba(15, 23, 42, 0.92);
-    --glass-tint-dark: rgba(37, 99, 235, 0.08);
-    --glass-border-dark: rgba(37, 99, 235, 0.15);
+    --glass-tint-dark: rgba(14, 165, 233, 0.08);
+    --glass-border-dark: rgba(14, 165, 233, 0.15);
     --glass-bg: var(--glass-bg-light);
     --glass-tint: var(--glass-tint-light);
     --glass-border: var(--glass-border-light);
@@ -124,18 +129,30 @@
     --sidebar-border: 0 0% 90%;
     --sidebar-ring: var(--p-h) var(--p-s) var(--p-l);
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
     --blur: 8px;
     --glass-opacity: 0.95;
     --border-opacity: 0.08;
     --font-weight-display: 600;
 
-    --g-1: #2563eb;
-    --g-2: #4f46e5;
-    --g-3: #4338ca;
+    --g-1: #38bdf8;
+    --g-2: #0ea5e9;
+    --g-3: #0369a1;
 
-    --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, "Apple Color Emoji", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol";
-    --font-mono: "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas, monospace;
+    /* growth accent - reserved for progress/mastery/streak states only */
+    --growth: 142 71% 45%;
+    --growth-foreground: 0 0% 100%;
+    --growth-light: #22c55e;
+    --growth-deep: #15803d;
+
+    /* spacious/calm spacing scale (default app-wide) */
+    --space-card: 1.5rem;
+    --space-card-lg: 2rem;
+    --space-section: 3rem;
+
+    /* compact density scale - scoped exception for dashboard-style widget grids */
+    --space-card-compact: 1rem;
+    --space-section-compact: 1.25rem;
   }
 
   .dark {
@@ -169,7 +186,7 @@
     --bg-3: var(--bg-3-dark);
 
     --glass-bg: rgba(25, 25, 25, 0.98);
-    --glass-tint: rgba(56, 189, 248, 0.05);
+    --glass-tint: rgba(14, 165, 233, 0.05);
     --glass-border: transparent;
     --glass-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 
@@ -279,16 +296,11 @@
   }
 
   .dashboard-panel {
-    @apply rounded-xl p-5 transition-all duration-200;
+    @apply rounded-xl p-5 transition-colors duration-200;
     background: hsl(var(--card) / 0.7);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     border: 1px solid hsl(var(--border));
-    box-shadow: 0 1px 3px 1px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.03);
-  }
-
-  .dark .dashboard-panel {
-    box-shadow: 0 1px 3px 1px rgba(0, 0, 0, 0.2), 0 1px 2px rgba(0, 0, 0, 0.12);
   }
 
   .pressable {
@@ -315,7 +327,7 @@
   --notion-fg: 45 10% 20%;
   --notion-border: 45 6% 94%;
   --notion-muted: 45 5% 50%;
-  --notion-font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  --notion-font-sans: "Space Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
   font-family: var(--notion-font-sans);
   color: hsl(var(--notion-fg));
 }

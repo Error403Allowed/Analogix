@@ -15,9 +15,9 @@ import { cn } from "@/lib/utils";
 const AppearanceSection = () => {
   const { setTheme, resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
-  const [activeTheme, setActiveTheme] = useState("Classic Blue");
+  const [activeTheme, setActiveTheme] = useState("Ocean");
   const [paperMode, setPaperMode] = useState(false);
-  const lastColorTheme = useRef<string>("Classic Blue");
+  const lastColorTheme = useRef<string>("Ocean");
 
   useEffect(() => {
     setMounted(true);
@@ -26,7 +26,7 @@ const AppearanceSection = () => {
   useEffect(() => {
     const sync = () => {
       try {
-        const saved = localStorage.getItem("app-theme") || "Classic Blue";
+        const saved = localStorage.getItem("app-theme") || "Ocean";
         const isPaper = localStorage.getItem("paper-mode") === "true";
         setPaperMode(isPaper);
         if (isPaper) {
@@ -69,7 +69,7 @@ const AppearanceSection = () => {
       applyThemeByName("Paper");
       setActiveTheme("Paper");
     } else {
-      const prev = lastColorTheme.current || "Classic Blue";
+      const prev = lastColorTheme.current || "Ocean";
       applyThemeByName(prev);
       setActiveTheme(prev);
     }
@@ -91,7 +91,7 @@ const AppearanceSection = () => {
       <div className="space-y-5 px-4 py-4">
         {/* Light / dark mode */}
         <div>
-          <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+          <p className="mb-2 text-xs font-bold tracking-wide text-muted-foreground">
             Mode
           </p>
           <div className="grid grid-cols-2 gap-2" role="group" aria-label="Mode">
@@ -155,7 +155,7 @@ const AppearanceSection = () => {
 
         {/* Colour scheme */}
         <div>
-          <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+          <p className="mb-2 text-xs font-bold tracking-wide text-muted-foreground">
             Colour scheme
           </p>
           <div className="grid grid-cols-2 gap-2">

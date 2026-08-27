@@ -83,19 +83,7 @@ const withDerived = (theme: Theme): Theme => {
 
 export const themes = [
   withDerived({
-    name: "Classic Blue",
-    p: hsl(221.2, 83.2, 53.3),
-    g: ["#2563eb", "#4f46e5", "#4338ca"],
-    accent: hsl(197, 82, 45),
-    accent2: hsl(262, 83, 66),
-    success: hsl(142, 71, 45),
-    warning: hsl(38, 92, 55),
-    danger: hsl(0, 84, 60),
-    muted: hsl(220, 26, 96),
-    mutedFg: hsl(215, 18, 42),
-  }),
-  withDerived({
-    name: "Oceanic Blue",
+    name: "Ocean",
     p: hsl(199, 89, 48),
     g: ["#38bdf8", "#0ea5e9", "#0369a1"],
     accent: hsl(217, 75, 58),
@@ -106,26 +94,26 @@ export const themes = [
     muted: hsl(205, 30, 95),
     mutedFg: hsl(210, 18, 42),
     bg: [
-      hexToRgba("#38bdf8", 0.28),
-      hexToRgba("#0ea5e9", 0.20),
-      hexToRgba("#0369a1", 0.18),
-    ],
-    bgDark: [
-      hexToRgba("#38bdf8", 0.10),
+      hexToRgba("#38bdf8", 0.12),
       hexToRgba("#0ea5e9", 0.08),
       hexToRgba("#0369a1", 0.06),
     ],
+    bgDark: [
+      hexToRgba("#38bdf8", 0.05),
+      hexToRgba("#0ea5e9", 0.04),
+      hexToRgba("#0369a1", 0.03),
+    ],
     glass: {
-      bg: "rgba(235, 248, 255, 0.80)",
-      tint: "rgba(56, 189, 248, 0.18)",
-      border: "rgba(14, 165, 233, 0.25)",
-      darkBg: "rgba(7, 20, 40, 0.88)",
-      darkTint: "rgba(56, 189, 248, 0.10)",
-      darkBorder: "rgba(56, 189, 248, 0.18)",
+      bg: "rgba(250, 252, 255, 0.85)",
+      tint: "rgba(56, 189, 248, 0.08)",
+      border: "rgba(14, 165, 233, 0.14)",
+      darkBg: "rgba(7, 20, 40, 0.92)",
+      darkTint: "rgba(56, 189, 248, 0.05)",
+      darkBorder: "rgba(56, 189, 248, 0.10)",
     },
   }),
   withDerived({
-    name: "Forest Glow",
+    name: "Forest",
     p: hsl(142, 71, 45),
     g: ["#16a34a", "#22c55e", "#15803d"],
     accent: hsl(96, 62, 42),
@@ -137,7 +125,7 @@ export const themes = [
     mutedFg: hsl(150, 16, 40),
   }),
   withDerived({
-    name: "Midnight Gold",
+    name: "Gold",
     p: hsl(45, 93, 47),
     g: ["#fbbf24", "#f59e0b", "#d97706"],
     accent: hsl(210, 82, 45),
@@ -149,7 +137,7 @@ export const themes = [
     mutedFg: hsl(35, 20, 40),
   }),
   withDerived({
-    name: "Sunset Ember",
+    name: "Sunset",
     p: hsl(15, 91, 60),
     g: ["#f97316", "#f43f5e", "#e11d48"],
     accent: hsl(330, 78, 58),
@@ -161,7 +149,7 @@ export const themes = [
     mutedFg: hsl(10, 18, 42),
   }),
   withDerived({
-    name: "Cyber Neon",
+    name: "Neon",
     p: hsl(292, 91, 50),
     g: ["#d946ef", "#c026d3", "#a21caf"],
     accent: hsl(186, 90, 45),
@@ -173,7 +161,7 @@ export const themes = [
     mutedFg: hsl(280, 16, 42),
   }),
   withDerived({
-    name: "Coral Blush",
+    name: "Coral",
     p: hsl(3, 76, 70),
     g: ["#ef7b76", "#e8605a", "#f4a09c"],
     accent: hsl(340, 72, 60),
@@ -183,42 +171,6 @@ export const themes = [
     danger: hsl(0, 82, 58),
     muted: hsl(10, 24, 96),
     mutedFg: hsl(10, 18, 44),
-  }),
-  withDerived({
-    name: "Cosmic Aurora",
-    p: hsl(172, 88, 45),
-    g: ["#2dd4bf", "#3b82f6", "#a855f7"],
-    accent: hsl(250, 80, 62),
-    accent2: hsl(200, 90, 50),
-    success: hsl(152, 64, 42),
-    warning: hsl(38, 92, 55),
-    danger: hsl(0, 82, 58),
-    muted: hsl(190, 24, 95),
-    mutedFg: hsl(210, 18, 42),
-  }),
-  withDerived({
-    name: "Candy Pop",
-    p: hsl(316, 91, 60),
-    g: ["#ec4899", "#facc15", "#06b6d4"],
-    accent: hsl(50, 92, 55),
-    accent2: hsl(185, 80, 45),
-    success: hsl(152, 68, 42),
-    warning: hsl(45, 92, 55),
-    danger: hsl(0, 82, 58),
-    muted: hsl(320, 20, 96),
-    mutedFg: hsl(320, 18, 42),
-  }),
-  withDerived({
-    name: "Prismatic",
-    p: hsl(280, 90, 60),
-    g: ["#ff005d", "#7c3aed", "#06b6d4"],
-    accent: hsl(200, 90, 50),
-    accent2: hsl(20, 90, 55),
-    success: hsl(152, 64, 42),
-    warning: hsl(45, 92, 55),
-    danger: hsl(0, 82, 58),
-    muted: hsl(280, 18, 96),
-    mutedFg: hsl(275, 16, 42),
   }),
   withDerived({
     name: "Paper",
@@ -382,8 +334,8 @@ export const applyThemeByName = (themeName: string) => {
 
 const ThemeSelector = () => {
   const [activeTheme, setActiveTheme] = useState(() => {
-    if (typeof window === "undefined") return "Classic Blue";
-    return localStorage.getItem("app-theme") || "Classic Blue";
+    if (typeof window === "undefined") return "Ocean";
+    return localStorage.getItem("app-theme") || "Ocean";
   });
   const [paperMode, setPaperMode] = useState(() => {
     if (typeof window === "undefined") return false;
@@ -393,7 +345,7 @@ const ThemeSelector = () => {
 
   // On mount, apply saved theme
   useEffect(() => {
-    const saved = localStorage.getItem("app-theme") || "Classic Blue";
+    const saved = localStorage.getItem("app-theme") || "Ocean";
     const isPaper = localStorage.getItem("paper-mode") === "true";
     if (isPaper) {
       applyThemeByName("Paper");
@@ -410,7 +362,7 @@ const ThemeSelector = () => {
       applyThemeByName("Paper");
       setActiveTheme("Paper");
     } else {
-      const prev = lastColorTheme.current || "Classic Blue";
+      const prev = lastColorTheme.current || "Ocean";
       applyThemeByName(prev);
       setActiveTheme(prev);
     }
@@ -440,7 +392,7 @@ const ThemeSelector = () => {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <Settings2 className="w-4 h-4 text-primary" />
-            <h4 className="font-bold text-sm">Choose Your Vibe</h4>
+            <h4 className="font-bold text-sm">Accent colour</h4>
           </div>
         </div>
 

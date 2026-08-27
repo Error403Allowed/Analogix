@@ -15,7 +15,7 @@ export type MoodProfile = {
 export const moodProfiles = {
   focus: {
     label: "Focus",
-    theme: "Classic Blue",
+    theme: "Ocean",
     dashboard: {
       calendarTitle: "Upcoming lessons",
       deadlinesTitle: "Due soon",
@@ -24,7 +24,7 @@ export const moodProfiles = {
   },
   energized: {
     label: "Energized",
-    theme: "Sunset Ember",
+    theme: "Sunset",
     dashboard: {
       calendarTitle: "Let us move",
       deadlinesTitle: "Next sprints",
@@ -33,7 +33,7 @@ export const moodProfiles = {
   },
   calm: {
     label: "Calm",
-    theme: "Oceanic Blue",
+    theme: "Paper",
     dashboard: {
       calendarTitle: "Gentle schedule",
       deadlinesTitle: "Light reminders",
@@ -42,7 +42,7 @@ export const moodProfiles = {
   },
   grounded: {
     label: "Grounded",
-    theme: "Forest Glow",
+    theme: "Forest",
     dashboard: {
       calendarTitle: "Today in focus",
       deadlinesTitle: "Rooted priorities",
@@ -51,7 +51,7 @@ export const moodProfiles = {
   },
   bold: {
     label: "Bold",
-    theme: "Cyber Neon",
+    theme: "Neon",
     dashboard: {
       calendarTitle: "Big moves",
       deadlinesTitle: "High impact",
@@ -60,7 +60,7 @@ export const moodProfiles = {
   },
   dreamy: {
     label: "Dreamy",
-    theme: "Cosmic Aurora",
+    theme: "Coral",
     dashboard: {
       calendarTitle: "Drift ahead",
       deadlinesTitle: "Soft checkpoints",
@@ -69,7 +69,7 @@ export const moodProfiles = {
   },
   focused: {
     label: "Focus",
-    theme: "Classic Blue",
+    theme: "Ocean",
     dashboard: {
       calendarTitle: "Upcoming lessons",
       deadlinesTitle: "Due soon",

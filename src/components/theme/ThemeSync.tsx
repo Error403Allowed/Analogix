@@ -7,7 +7,7 @@ const ThemeSync = () => {
   const { user } = useAuth();
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem("app-theme") || "Classic Blue";
+    const savedTheme = localStorage.getItem("app-theme") || "Ocean";
     applyThemeByName(savedTheme);
 
     // Load theme from the database (takes priority over localStorage).
@@ -27,7 +27,7 @@ const ThemeSync = () => {
     }
 
     const handleThemeChange = () => {
-      const theme = localStorage.getItem("app-theme") || "Classic Blue";
+      const theme = localStorage.getItem("app-theme") || "Ocean";
       applyThemeByName(theme);
     };
 

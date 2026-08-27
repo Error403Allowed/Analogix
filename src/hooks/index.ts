@@ -8,4 +8,3 @@ export * from "./useFileAttachment";
 export * from "./useRoomCollaboration";
 export * from "./useStudyRoomWorkspace";
 export * from "./useTextToSpeech";
-export * from "./useThemeSelector";

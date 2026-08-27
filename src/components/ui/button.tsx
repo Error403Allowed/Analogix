@@ -5,18 +5,23 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold ring-offset-background transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 active:scale-[0.98]",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold ring-offset-background transition-all duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 active:scale-[0.98]",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90 shadow-md hover:shadow-lg",
-        destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-md",
-        outline: "border-2 border-border bg-card/50 backdrop-blur-sm hover:bg-primary/10 hover:border-primary/50 hover:text-primary",
-        secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80 shadow-sm",
+        default:
+          "bg-primary text-primary-foreground hover:bg-[#38bdf8]",
+        destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+        outline:
+          "border-2 border-border bg-card/50 backdrop-blur-sm hover:bg-primary/10 hover:border-primary/50 hover:text-primary",
+        secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
         ghost: "hover:bg-primary/10 hover:text-primary",
         link: "text-primary underline-offset-4 hover:underline",
-        success: "bg-success text-success-foreground hover:bg-success/90 shadow-md",
-        warning: "bg-warning text-warning-foreground hover:bg-warning/90 shadow-md",
+        // growth: reserved for progress / mastery / streak-related actions only
+        growth:
+          "bg-growth text-growth-foreground hover:bg-[var(--growth-light)]",
+        success: "bg-success text-success-foreground hover:bg-success/90",
+        warning: "bg-warning text-warning-foreground hover:bg-warning/90",
       },
       size: {
         default: "h-11 px-5 py-2",
