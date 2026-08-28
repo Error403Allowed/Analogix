@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import MarkdownRenderer from "@/components/shared/MarkdownRenderer";
 import { FORMULA_SHEETS, type Formula, type FormulaSheet } from "@/data/formulaSheets";
 import { SUBJECT_CATALOG } from "@/constants/subjects";
-import { cn } from "@/lib/utils";
+import { cn, cardStyles } from "@/lib/utils";
 
 const subjectLabel = (id: string) =>
   SUBJECT_CATALOG.find(s => s.id === id)?.label
@@ -42,7 +42,7 @@ const groupByTopic = (formulas: Formula[], query: string, state: string | null) 
 };
 
 const FormulaCard = ({ formula, isFavorite, onToggleFavorite }: { formula: Formula; isFavorite?: boolean; onToggleFavorite?: () => void }) => (
-  <div className="min-w-0 rounded-2xl border border-border bg-card p-4 shadow-sm">
+  <div className={cn(cardStyles.default, "min-w-0 p-4 shadow-sm")}>
     <div className="flex items-start justify-between gap-3">
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold text-foreground">{formula.name}</p>
@@ -199,7 +199,7 @@ export default function FormulasPage() {
 
           {/* Sidebar */}
           <div className="space-y-4">
-            <div className="rounded-2xl border border-border bg-card p-4">
+            <div className={cn(cardStyles.default, "p-4")}>
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">Subjects</p>
 
               {/* Subject search */}
@@ -255,7 +255,7 @@ export default function FormulasPage() {
             </div>
 
             {/* Stats */}
-            <div className="rounded-2xl border border-border bg-card p-4">
+            <div className={cn(cardStyles.default, "p-4")}>
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Quick Stats</p>
               <div className="mt-3 space-y-2 text-sm">
                 <div className="flex items-center justify-between">
@@ -282,7 +282,7 @@ export default function FormulasPage() {
             </div>
 
             {favoriteFormulas.length > 0 && (
-              <div className="rounded-2xl border border-border bg-card p-4">
+              <div className={cn(cardStyles.default, "p-4")}>
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">Favorites</p>
                 <div className="space-y-2">
                   {favoriteFormulas.slice(0, 5).map(f => (
@@ -311,7 +311,7 @@ export default function FormulasPage() {
           <div className="min-w-0 space-y-5">
 
             {/* Search bar */}
-            <div className="rounded-2xl border border-border bg-card p-4">
+            <div className={cn(cardStyles.default, "p-4")}>
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="text-sm font-semibold">

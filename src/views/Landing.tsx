@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { createClient } from "@/lib/supabase/client";
-import { cn } from "@/lib/utils";
+import { cn, cardStyles } from "@/lib/utils";
 import { applyLandingBrand } from "@/utils/landingColorCycle";
 
 const accentColors: Record<string, { bg: string; text: string; border: string; tag: string }> = {
@@ -306,7 +306,7 @@ const Landing = () => {
                 <div
                   key={feature.id}
                   onClick={() => handleNav(`/${feature.id}`)}
-                  className={cn("rounded-xl border border-border bg-card p-6 flex flex-col gap-4 transition-all cursor-pointer hover:shadow-sm", accent.border)}
+                  className={cn(cardStyles.default, "p-6 flex flex-col gap-4 transition-all cursor-pointer hover:shadow-sm", accent.border)}
                 >
                   <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center", accent.bg)}>
                     <Icon className={cn("w-5 h-5", accent.text)} />
