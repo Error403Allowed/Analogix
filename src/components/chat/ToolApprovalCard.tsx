@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { Sparkles, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { IconBadge } from "@/components/shared/IconBadge";
 
 export interface PendingApproval {
   messageId: string;
@@ -75,9 +76,7 @@ export function ToolApprovalCard({ approvals, onAllow, onDeny, loading }: ToolAp
           >
             <div className="rounded-2xl border border-border/60 bg-card shadow-sm overflow-hidden">
               <div className="flex items-start gap-3 p-4 pb-3">
-                <div className="shrink-0 mt-0.5 w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <Sparkles className="w-4 h-4 text-primary" />
-                </div>
+                <IconBadge icon={Sparkles} size="sm" className="mt-0.5" />
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold text-foreground">
                     Analogix AI wants to

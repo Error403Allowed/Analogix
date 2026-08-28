@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { BookOpen, FolderOpen, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DynamicIcon } from "@/components/shared/IconPicker";
+import { IconBadge } from "@/components/shared/IconBadge";
 import { subjectIconName, subjectLabel, type CardSet } from "./types";
 
 export interface SubjectDetailViewProps {
@@ -28,9 +29,9 @@ export function SubjectDetailView(props: SubjectDetailViewProps) {
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0">
+          <IconBadge size="lg">
             <DynamicIcon name={subjectIconName(activeSubjectId)} className="w-6 h-6 text-primary" />
-          </div>
+          </IconBadge>
           <div>
             <h2 className="text-2xl font-black">{subjectLabel(activeSubjectId)}</h2>
             <p className="text-sm text-muted-foreground">
@@ -66,11 +67,9 @@ export function SubjectDetailView(props: SubjectDetailViewProps) {
               </button>
               <div onClick={() => props.onOpenSet(s.set.id)}>
                 <div className="flex items-center justify-between mb-3">
-                  <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center">
-                    <BookOpen className="w-4 h-4 text-primary" />
-                  </div>
+                  <IconBadge icon={BookOpen} size="sm" />
                   {s.dueCount > 0 && (
-                    <span className="text-[10px] font-black bg-amber-500/15 text-amber-600 border border-amber-500/30 rounded-full px-2 py-0.5">
+                    <span className="text-[10px] font-black bg-primary/10 text-primary border border-primary/20 rounded-full px-2 py-0.5">
                       {s.dueCount} due
                     </span>
                   )}

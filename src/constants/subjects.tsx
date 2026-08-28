@@ -34,22 +34,11 @@ export type SubjectId =
 
 type GradeBand = "junior" | "middle" | "senior";
 
-/**
- * Each subject gets a fixed, distinct colour used consistently everywhere a
- * subject appears - flashcards, quiz, calendar chips, document headers, the
- * subjects list. This is the app's real wayfinding system: colour encodes
- * "which subject", not decoration. Hues are deliberately spread around the
- * wheel and ordered so that subjects adjacent in the catalog (and therefore
- * in most list/grid UIs) never land on similar hues. Kept separate from the
- * personalised theme accent (--primary) so a subject's identity doesn't
- * shift when a student changes their app theme.
- */
 export const SUBJECT_CATALOG: Array<{
   id: SubjectId;
   label: string;
   icon: typeof Calculator;
   iconName: string;
-  color: string;
   descriptions: Record<GradeBand, string>;
 }> = [
   {
@@ -57,7 +46,6 @@ export const SUBJECT_CATALOG: Array<{
     label: "Mathematics",
     icon: Calculator,
     iconName: "Calculator",
-    color: "#DC2626",
     descriptions: {
       junior: "NUMBERS, ALGEBRA, GEOMETRY",
       middle: "FUNCTIONS, GRAPHS, PROOFS",
@@ -69,7 +57,6 @@ export const SUBJECT_CATALOG: Array<{
     label: "Biology",
     icon: Microscope,
     iconName: "Microscope",
-    color: "#16A34A",
     descriptions: {
       junior: "LIFE, CELLS, NATURE",
       middle: "SYSTEMS, GENETICS, EVOLUTION",
@@ -81,7 +68,6 @@ export const SUBJECT_CATALOG: Array<{
     label: "History",
     icon: Landmark,
     iconName: "Landmark",
-    color: "#E11D48",
     descriptions: {
       junior: "PAST EVENTS, CULTURES",
       middle: "CONFLICTS, IDEAS, CIVILISATIONS",
@@ -93,7 +79,6 @@ export const SUBJECT_CATALOG: Array<{
     label: "Physics",
     icon: Zap,
     iconName: "Zap",
-    color: "#0891B2",
     descriptions: {
       junior: "MATTER, ENERGY, FORCES",
       middle: "MOTION, WAVES, ELECTRICITY",
@@ -105,7 +90,6 @@ export const SUBJECT_CATALOG: Array<{
     label: "Chemistry",
     icon: FlaskConical,
     iconName: "FlaskConical",
-    color: "#DB2777",
     descriptions: {
       junior: "ELEMENTS, REACTIONS",
       middle: "BONDS, RATES, ENERGY",
@@ -117,7 +101,6 @@ export const SUBJECT_CATALOG: Array<{
     label: "English",
     icon: BookOpen,
     iconName: "BookOpen",
-    color: "#0D9488",
     descriptions: {
       junior: "READING, WRITING, SPEAKING",
       middle: "LITERATURE, LANGUAGE, CULTURE",
@@ -129,7 +112,6 @@ export const SUBJECT_CATALOG: Array<{
     label: "Computing",
     icon: Cpu,
     iconName: "Cpu",
-    color: "#C026D3",
     descriptions: {
       junior: "CODING, HARDWARE, SOFTWARE",
       middle: "ALGORITHMS, DATA, SYSTEMS",
@@ -141,7 +123,6 @@ export const SUBJECT_CATALOG: Array<{
     label: "Economics",
     icon: LineChart,
     iconName: "LineChart",
-    color: "#059669",
     descriptions: {
       junior: "SUPPLY, DEMAND, MARKETS",
       middle: "POLICIES, INCENTIVES, TRADE",
@@ -153,7 +134,6 @@ export const SUBJECT_CATALOG: Array<{
     label: "Business Studies",
     icon: Briefcase,
     iconName: "Briefcase",
-    color: "#9333EA",
     descriptions: {
       junior: "MANAGEMENT, STRATEGY, STARTUPS",
       middle: "MARKETING, FINANCE, OPERATIONS",
@@ -165,7 +145,6 @@ export const SUBJECT_CATALOG: Array<{
     label: "Commerce",
     icon: Wallet,
     iconName: "Wallet",
-    color: "#0284C7",
     descriptions: {
       junior: "TRADE, FINANCE, ACCOUNTING",
       middle: "ENTREPRENEURSHIP, LAW, MONEY",
@@ -177,7 +156,6 @@ export const SUBJECT_CATALOG: Array<{
     label: "PDHPE",
     icon: HeartPulse,
     iconName: "HeartPulse",
-    color: "#7C3AED",
     descriptions: {
       junior: "HEALTH, FITNESS, WELL-BEING",
       middle: "SPORT, NUTRITION, MINDSET",
@@ -189,7 +167,6 @@ export const SUBJECT_CATALOG: Array<{
     label: "Geography",
     icon: Globe,
     iconName: "Globe",
-    color: "#D97706",
     descriptions: {
       junior: "WORLD, MAPS, ENVIRONMENT",
       middle: "POPULATION, CLIMATE, CITIES",
@@ -201,7 +178,6 @@ export const SUBJECT_CATALOG: Array<{
     label: "Engineering",
     icon: Wrench,
     iconName: "Wrench",
-    color: "#4F46E5",
     descriptions: {
       junior: "DESIGN, MECHANICS, BUILD",
       middle: "STRUCTURES, MATERIALS, SYSTEMS",
@@ -213,7 +189,6 @@ export const SUBJECT_CATALOG: Array<{
     label: "Medicine",
     icon: Stethoscope,
     iconName: "Stethoscope",
-    color: "#EA580C",
     descriptions: {
       junior: "HEALTH, ANATOMY, DISEASE",
       middle: "ORGANS, TREATMENTS, PATHOLOGY",
@@ -225,7 +200,6 @@ export const SUBJECT_CATALOG: Array<{
     label: "Languages",
     icon: Languages,
     iconName: "Languages",
-    color: "#2563EB",
     descriptions: {
       junior: "VOCAB, GRAMMAR, SPEAKING",
       middle: "LITERATURE, CULTURE, WRITING",
@@ -233,21 +207,6 @@ export const SUBJECT_CATALOG: Array<{
     }
   }
 ];
-
-/** Hex -> "r, g, b" (for rgba() strings). */
-const hexToRgbTriplet = (hex: string): string => {
-  const clean = hex.replace("#", "");
-  const num = parseInt(clean, 16);
-  return `${(num >> 16) & 255}, ${(num >> 8) & 255}, ${num & 255}`;
-};
-
-/** The fixed colour for a subject, or a neutral grey fallback for unknown ids. */
-export const getSubjectColor = (id: string): string =>
-  SUBJECT_CATALOG.find((s) => s.id === id)?.color || "#71717A";
-
-/** Subject colour at a given opacity, e.g. for tinted backgrounds/borders. */
-export const getSubjectColorAlpha = (id: string, alpha: number): string =>
-  `rgba(${hexToRgbTriplet(getSubjectColor(id))}, ${alpha})`;
 
 export const getGradeBand = (grade?: string | null): GradeBand => {
   const g = Number(grade);

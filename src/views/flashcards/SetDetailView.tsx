@@ -8,6 +8,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { DynamicIcon } from "@/components/shared/IconPicker";
+import { IconBadge } from "@/components/shared/IconBadge";
 import { FlipCard, StudyCardContent } from "./card-components";
 import { subjectLabel, subjectIconName, type CardSet, type SetTab } from "./types";
 import type { Flashcard, FlashcardRating } from "@/utils/flashcardStore";
@@ -59,9 +60,9 @@ export function SetDetailView(props: SetDetailViewProps) {
     >
       <div className="mb-6">
         <div className="flex items-center gap-2 mb-3">
-          <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+          <IconBadge size="sm">
             <DynamicIcon name={subjectIconName(activeSet.set.subjectId)} className="w-4 h-4 text-primary" />
-          </div>
+          </IconBadge>
           <span className="text-xs font-bold text-muted-foreground">{subjectLabel(activeSet.set.subjectId)}</span>
         </div>
         <h2 className="text-3xl font-black mb-0.5">{activeSet.set.name}</h2>

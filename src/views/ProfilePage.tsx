@@ -108,7 +108,7 @@ const ProfilePage = () => {
             <p className="text-lg font-black tracking-tight text-foreground">{name}</p>
             <div className="mt-1.5 flex flex-wrap items-center gap-2">
               {streak > 0 && (
-                <span className="flex items-center gap-1 rounded-full bg-amber-500/15 px-2.5 py-1 text-[11px] font-bold text-amber-600">
+                <span className="flex items-center gap-1 rounded-full bg-growth/10 px-2.5 py-1 text-[11px] font-bold text-growth">
                   <Flame className="h-3.5 w-3.5" /> {streak} day streak
                 </span>
               )}

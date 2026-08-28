@@ -1,24 +1,40 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { Compass, ArrowLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 const NotFound = () => {
   const pathname = usePathname();
+  const router = useRouter();
 
   useEffect(() => {
     console.error("404 Error: User attempted to access non-existent route:", pathname);
   }, [pathname]);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">404</h1>
-        <p className="mb-4 text-xl text-muted-foreground">Oops! Page not found</p>
-        <Link href="/" className="text-primary underline hover:text-primary/90">
-          Return to Home
-        </Link>
+    <div className="flex min-h-screen items-center justify-center bg-background px-6">
+      <div className="max-w-sm text-center">
+        <div className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10">
+          <Compass className="h-6 w-6 text-primary" />
+        </div>
+        <h1 className="font-display text-3xl font-semibold tracking-tight text-foreground">
+          Nothing here
+        </h1>
+        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+          That page doesn&apos;t exist, or has moved somewhere else.
+        </p>
+        <div className="mt-8 flex items-center justify-center gap-3">
+          <Button variant="outline" onClick={() => router.back()}>
+            <ArrowLeft className="h-4 w-4" />
+            Go back
+          </Button>
+          <Button asChild>
+            <Link href="/">Return home</Link>
+          </Button>
+        </div>
       </div>
     </div>
   );

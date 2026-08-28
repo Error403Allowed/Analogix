@@ -7,6 +7,7 @@ export { default as Confetti } from "./Confetti";
 export { default as ContentInput } from "./ContentInput";
 export { default as CursorParticles } from "./CursorParticles";
 export { EmojiPicker } from "./EmojiPicker";
+export { IconBadge } from "./IconBadge";
 export { IconPicker, DynamicIcon } from "./IconPicker";
 export { default as ICSUploader } from "./ICSUploader";
 export { normaliseLatex, default as MarkdownRenderer } from "./MarkdownRenderer";

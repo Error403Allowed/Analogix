@@ -302,53 +302,27 @@ export async function POST(request: Request) {
 
     // ── Model + stream ──
     const { model } = getGroqModel(resolvedModel);
-    let modelMessages;
-    try {
-      modelMessages = await convertToModelMessages(
-        recent as unknown as Array<UIMessage>,
-        { tools },
-      );
-    } catch (convertError) {
-      console.error("[/api/ai/chat] convertToModelMessages error:", convertError);
-      const detail = convertError instanceof Error ? convertError.message : JSON.stringify(convertError);
-      return new Response(JSON.stringify({ error: `Chat failed: ${detail}` }), {
-        status: 500,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
+    const modelMessages = await convertToModelMessages(
+      recent as unknown as Array<UIMessage>,
+      { tools },
+    );
 
-    let result;
-    try {
-      result = streamText({
-        model,
-        system: systemPrompt,
-        messages: modelMessages,
-        tools,
-        temperature: userContext.researchMode ? 0.3 : 0.55,
-        maxOutputTokens,
-        // providerOptions: getProviderOptionsForModel(resolvedModel),
-        // experimental_toolApprovalSecret: getToolApprovalSecret(),
-        maxRetries: 2,
-      });
-    } catch (streamError) {
-      console.error("[/api/ai/chat] streamText init error:", streamError);
-      const detail = streamError instanceof Error ? streamError.message : JSON.stringify(streamError);
-      return new Response(JSON.stringify({ error: `Chat failed: ${detail}` }), {
-        status: 500,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
+    const result = streamText({
+      model,
+      system: systemPrompt,
+      messages: modelMessages,
+      tools,
+      temperature: userContext.researchMode ? 0.3 : 0.55,
+      maxOutputTokens,
+      providerOptions: getProviderOptionsForModel(resolvedModel),
+      experimental_toolApprovalSecret: getToolApprovalSecret(),
+      maxRetries: 2,
+    });
 
     return result.toUIMessageStreamResponse({
       originalMessages: messages as unknown as Array<UIMessage>,
-      onError: (error) => {
-        console.error("[/api/ai/chat] Stream error:", JSON.stringify(error, null, 2));
-        console.error("[/api/ai/chat] Stream error type:", typeof error);
-        console.error("[/api/ai/chat] Stream error constructor:", error?.constructor?.name);
-        console.error("[/api/ai/chat] Stream error keys:", error ? Object.keys(error) : "none");
-        const detail = error instanceof Error ? error.message : JSON.stringify(error);
-        return detail || "Chat failed";
-      },
+      onError: (error) =>
+        error instanceof Error ? error.message : "Chat failed",
     });
   } catch (error) {
     console.error("[/api/ai/chat] Error:", error);

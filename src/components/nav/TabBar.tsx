@@ -5,6 +5,7 @@ import { useRef, useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Plus, FileText, GripHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { IconBadge } from "@/components/shared/IconBadge";
 import { useTabs, type AppTab, pathMeta } from "@/context/TabsContext";
 import {
   ContextMenu,
@@ -402,15 +403,7 @@ export default function TabBar({ onNavigate }: TabBarProps) {
               onClick={e => e.stopPropagation()}
             >
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                  {createMode === "document" ? (
-                    <FileText className="w-5 h-5 text-primary" />
-                  ) : createMode === "flashcards" ? (
-                    <FileText className="w-5 h-5 text-primary" />
-                  ) : (
-                    <FileText className="w-5 h-5 text-primary" />
-                  )}
-                </div>
+                <IconBadge icon={FileText} />
                 <div>
                   <h3 className="text-lg font-bold text-foreground">
                     {createMode === "document" 

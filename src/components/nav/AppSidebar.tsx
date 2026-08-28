@@ -394,7 +394,7 @@ export function AppSidebar() {
                   </div>
                   {/* Streak badge - like the inspiration's percentage badge */}
                   {streak > 0 && (
-                    <div className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] rounded-full bg-amber-500 flex items-center justify-center px-1 shadow-md group-data-[collapsible=icon]:-top-1 group-data-[collapsible=icon]:-right-1 group-data-[collapsible=icon]:min-w-[14px] group-data-[collapsible=icon]:h-[14px] group-data-[collapsible=icon]:px-0.5">
+                    <div className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] rounded-full bg-gradient-to-br from-[var(--growth-light)] to-[var(--growth-deep)] flex items-center justify-center px-1 shadow-md group-data-[collapsible=icon]:-top-1 group-data-[collapsible=icon]:-right-1 group-data-[collapsible=icon]:min-w-[14px] group-data-[collapsible=icon]:h-[14px] group-data-[collapsible=icon]:px-0.5">
                       <span className="text-[8px] font-black text-white leading-none flex items-center gap-0.5 group-data-[collapsible=icon]:text-[6px]">
                         <Flame className="w-2.5 h-2.5 group-data-[collapsible=icon]:w-2 group-data-[collapsible=icon]:h-2" />{streak}
                       </span>

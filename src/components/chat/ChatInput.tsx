@@ -137,7 +137,7 @@ const ChatInput = ({
                   type="button"
                   onClick={handleGenerateFlashcards}
                   disabled={generatingFlashcards}
-                  className="flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-500/10 text-emerald-600 border border-emerald-500/30 text-xs font-bold hover:bg-emerald-500/20 transition-all disabled:opacity-50"
+                  className="flex items-center gap-2 px-3 py-2 rounded-xl bg-growth/10 text-growth border border-growth/20 text-xs font-bold hover:bg-growth/15 transition-all disabled:opacity-50"
                   title="Generate flashcards from uploaded documents"
                 >
                   {generatingFlashcards ? (
@@ -153,7 +153,7 @@ const ChatInput = ({
                   type="button"
                   onClick={handleGenerateQuiz}
                   disabled={generatingQuiz}
-                  className="flex items-center gap-2 px-3 py-2 rounded-xl bg-amber-500/10 text-amber-600 border border-amber-500/30 text-xs font-bold hover:bg-amber-500/20 transition-all disabled:opacity-50"
+                  className="flex items-center gap-2 px-3 py-2 rounded-xl bg-primary/10 text-primary border border-primary/20 text-xs font-bold hover:bg-primary/15 transition-all disabled:opacity-50"
                   title="Generate quiz from uploaded documents"
                 >
                   {generatingQuiz ? (

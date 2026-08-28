@@ -9,6 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { DynamicIcon } from "@/components/shared/IconPicker";
+import { IconBadge } from "@/components/shared/IconBadge";
 import { subjectIconName, subjectLabel, type CardSet } from "./types";
 
 export interface LibraryViewProps {
@@ -83,9 +84,7 @@ export function LibraryView(props: LibraryViewProps) {
 
       <div className="rounded-2xl border border-border bg-card overflow-hidden">
         <div className="flex items-center gap-3 p-5 border-b border-border/50">
-          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-            <Sparkles className="w-5 h-5 text-primary" />
-          </div>
+          <IconBadge icon={Sparkles} />
           <div>
             <p className="text-sm font-black">Generate from content</p>
             <p className="text-xs text-muted-foreground">Upload a file or paste text - AI builds a flashcard set.</p>
@@ -93,7 +92,7 @@ export function LibraryView(props: LibraryViewProps) {
         </div>
 
         <div className="p-5 border-b border-border/50">
-          <p className="text-[11px] font-black uppercase tracking-widest text-muted-foreground mb-3">Upload file</p>
+          <p className="text-xs font-bold tracking-wide text-muted-foreground mb-3">Upload file</p>
           <div
             onDragOver={e => { e.preventDefault(); props.onSetIsDragOver(true); }}
             onDragLeave={() => props.onSetIsDragOver(false)}
@@ -244,11 +243,11 @@ export function LibraryView(props: LibraryViewProps) {
                   className="rounded-2xl border border-border bg-card p-5 cursor-pointer hover:border-primary/40 transition-all"
                 >
                   <div className="flex items-center justify-between mb-4">
-                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                    <IconBadge>
                       <DynamicIcon name={subjectIconName(subId)} className="w-5 h-5 text-primary" />
-                    </div>
+                    </IconBadge>
                     {dueSubCards > 0 && (
-                      <span className="text-[10px] font-black bg-amber-500/15 text-amber-600 border border-amber-500/30 rounded-full px-2 py-0.5">
+                      <span className="text-[10px] font-black bg-primary/10 text-primary border border-primary/20 rounded-full px-2 py-0.5">
                         {dueSubCards} due
                       </span>
                     )}

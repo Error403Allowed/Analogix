@@ -261,7 +261,7 @@ export default function StudyRoomWorkspace() {
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
                           <p className="truncate text-sm font-semibold">{member.name}</p>
-                          {member.role === "host" ? <Crown className="h-3.5 w-3.5 flex-shrink-0 text-amber-500" /> : null}
+                          {member.role === "host" ? <Crown className="h-3.5 w-3.5 flex-shrink-0 text-primary" /> : null}
                           {member.role === "cohost" ? <ShieldCheck className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" /> : null}
                         </div>
                         <p className="text-sm text-muted-foreground">{member.isOnline ? "Online" : "Away"}</p>
@@ -404,7 +404,7 @@ export default function StudyRoomWorkspace() {
             )}
             {state.room.isOwner && (
               <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setShowTransferOwnership(true)} title="Transfer ownership">
-                <Crown className="h-3.5 w-3.5 text-amber-500" />
+                <Crown className="h-3.5 w-3.5 text-primary" />
               </Button>
             )}
             {(state.room.isOwner || state.room.viewerRole === "cohost") && (
@@ -454,7 +454,7 @@ export default function StudyRoomWorkspace() {
                 )}
                 {state.room.isOwner && (
                   <DropdownMenuItem onClick={() => setShowTransferOwnership(true)}>
-                    <Crown className="mr-2 h-3.5 w-3.5 text-amber-500" />
+                    <Crown className="mr-2 h-3.5 w-3.5 text-primary" />
                     Transfer ownership
                   </DropdownMenuItem>
                 )}
