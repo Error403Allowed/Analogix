@@ -406,7 +406,7 @@ export function AppSidebar() {
                   <div className="flex-1 min-w-0 text-foreground">
                     <p className="truncate text-sm font-bold leading-tight">{name}</p>
                     {grade ? (
-                      <p className="mt-0.5 text-[10px] font-medium uppercase tracking-widest text-muted-foreground/80">
+                      <p className="mt-0.5 text-[10px] font-medium tracking-wide text-muted-foreground/80">
                         Year {grade}
                       </p>
                     ) : null}
