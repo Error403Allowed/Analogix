@@ -6,6 +6,16 @@ import { useParams, useRouter } from "next/navigation";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 import {
   FileText,
@@ -270,12 +280,9 @@ export default function SubjectDocument() {
     };
   }, [docId, subjectId, loadDocument]);
 
+  const [showRevertConfirm, setShowRevertConfirm] = useState(false);
   const handleRevert = useCallback(async () => {
     if (!canRevert || isReverting) return;
-    
-    const confirmed = window.confirm("Revert to the previous version? This will undo your latest changes.");
-    if (!confirmed) return;
-    
     setIsReverting(true);
     try {
       const res = await fetch(`/api/documents/revert`, {
@@ -492,9 +499,9 @@ export default function SubjectDocument() {
 
           {canRevert && (
             <button
-              onClick={handleRevert}
+              onClick={() => setShowRevertConfirm(true)}
               disabled={isReverting}
-              className="notion-btn-minimal text-amber-600 hover:text-amber-700 hover:bg-amber-500/10"
+              className="notion-btn-minimal text-primary hover:text-primary hover:bg-primary/10"
               title="Revert to previous version"
             >
               {isReverting ? (
@@ -673,6 +680,25 @@ export default function SubjectDocument() {
         selectedEmoji={icon || "📄"}
         onSelect={handleIconChange}
       />
+
+      <AlertDialog open={showRevertConfirm} onOpenChange={setShowRevertConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Revert to the previous version?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will undo your latest changes and can't be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => { setShowRevertConfirm(false); handleRevert(); }}
+            >
+              Revert
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </motion.div>
   );
 }

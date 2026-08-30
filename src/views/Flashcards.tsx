@@ -7,6 +7,16 @@ import {
 } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import MobileFAB from "@/components/nav/MobileFAB";
 import { SUBJECT_CATALOG } from "@/constants/subjects";
 import { flashcardStore, type Flashcard, type FlashcardRating } from "@/utils/flashcardStore";
@@ -629,14 +639,19 @@ export default function Flashcards() {
     setEditingId(null);
     await refresh();
   };
-  const deleteCard = async (id: string) => {
-    if (!window.confirm("Delete this card?")) return;
-    await flashcardStore.delete(id);
-    await refresh();
-  };
-  const deleteSet = async (setId: string, setName: string) => {
-    if (!window.confirm(`Delete "${setName}" and all its cards? Can't be undone.`)) return;
-    await flashcardStore.deleteSet(setId);
+  const [confirmDelete, setConfirmDelete] = useState<
+    { type: "card"; id: string } | { type: "set"; id: string; name: string } | null
+  >(null);
+  const deleteCard = (id: string) => setConfirmDelete({ type: "card", id });
+  const deleteSet = (setId: string, setName: string) => setConfirmDelete({ type: "set", id: setId, name: setName });
+  const confirmDeleteAction = async () => {
+    if (!confirmDelete) return;
+    if (confirmDelete.type === "card") {
+      await flashcardStore.delete(confirmDelete.id);
+    } else {
+      await flashcardStore.deleteSet(confirmDelete.id);
+    }
+    setConfirmDelete(null);
     await refresh();
   };
 
@@ -847,6 +862,30 @@ export default function Flashcards() {
       {topView === "subject-detail" && activeSubjectId && (
         <MobileFAB label="New set" onClick={() => { setNewSetSubject(activeSubjectId); setTopView("create-set"); }} />
       )}
+
+      <AlertDialog open={!!confirmDelete} onOpenChange={(open) => { if (!open) setConfirmDelete(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {confirmDelete?.type === "set" ? `Delete "${confirmDelete.name}"?` : "Delete this card?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmDelete?.type === "set"
+                ? "This deletes the set and every card inside it. This can't be undone."
+                : "This can't be undone."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={confirmDeleteAction}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
