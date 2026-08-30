@@ -3,8 +3,9 @@
 import {
   LayoutDashboard, MessageCircle, Calendar,
   GraduationCap, Trophy, ChevronDown, Palette,
-  Sun, Moon, User, Flame, Library, SigmaIcon, SquareStack, ClipboardList,
+  Sun, Moon, User, Flame, SigmaIcon, SquareStack, ClipboardList,
   Plus, Search, Sparkles, Users, PanelLeft, X,
+  BookMarked,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarHeader,
@@ -44,7 +45,7 @@ const navGroups = [
     label: "Study",
     items: [
       { title: "Formulas",      url: "/formulas",     icon: SigmaIcon,       tutorial: "formulas-nav"     },
-      { title: "Resources",     url: "/resources",    icon: Library,         tutorial: "resources-nav"    },
+      { title: "Resources",     url: "/resources",    icon: BookMarked,      tutorial: "resources-nav"    },
       { title: "Study Rooms",   url: "/rooms",        icon: Users,           tutorial: "rooms-nav"        },
       { title: "My Subjects",   url: "/subjects",     icon: GraduationCap,   tutorial: "subjects-nav"     },
     ],
