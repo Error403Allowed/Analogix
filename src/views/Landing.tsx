@@ -15,19 +15,6 @@ import { createClient } from "@/lib/supabase/client";
 import { cn, cardStyles } from "@/lib/utils";
 import { applyLandingBrand } from "@/utils/landingColorCycle";
 
-const accentColors: Record<string, { bg: string; text: string; border: string; tag: string }> = {
-  blue:   { bg: "bg-blue-500/8",   text: "text-blue-600",   border: "hover:border-blue-300", tag: "bg-blue-500/10 text-blue-600" },
-  amber:  { bg: "bg-amber-500/8",  text: "text-amber-600",  border: "hover:border-amber-300", tag: "bg-amber-500/10 text-amber-600" },
-  emerald:{ bg: "bg-emerald-500/8",text: "text-emerald-600",border: "hover:border-emerald-300",tag: "bg-emerald-500/10 text-emerald-600" },
-  violet: { bg: "bg-violet-500/8", text: "text-violet-600", border: "hover:border-violet-300", tag: "bg-violet-500/10 text-violet-600" },
-};
-
-const featureAccents: Record<string, string> = {
-  tutor: "blue", flashcards: "emerald", quiz: "amber", rooms: "violet",
-  calendar: "amber", subjects: "blue", resources: "emerald",
-  formulas: "violet", timer: "amber", achievements: "emerald",
-};
-
 const features = [
   {
     id: "tutor",
@@ -301,15 +288,14 @@ const Landing = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {features.map((feature) => {
               const Icon = feature.icon;
-              const accent = accentColors[featureAccents[feature.id] || "blue"];
               return (
                 <div
                   key={feature.id}
                   onClick={() => handleNav(`/${feature.id}`)}
-                  className={cn(cardStyles.default, "p-6 flex flex-col gap-4 transition-all cursor-pointer hover:shadow-sm", accent.border)}
+                  className={cn(cardStyles.default, "p-6 flex flex-col gap-4 transition-all cursor-pointer hover:shadow-sm hover:border-primary/30")}
                 >
-                  <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center", accent.bg)}>
-                    <Icon className={cn("w-5 h-5", accent.text)} />
+                  <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-primary/10">
+                    <Icon className="w-5 h-5 text-primary" />
                   </div>
                   <div className="flex-1">
                     <h3 className="text-base font-bold mb-1">{feature.label}</h3>
@@ -318,7 +304,7 @@ const Landing = () => {
                   </div>
                   <div className="flex flex-wrap gap-1.5">
                     {feature.tags.map((tag) => (
-                      <span key={tag} className={cn("text-[10px] font-medium px-2 py-0.5 rounded-full", accent.tag)}>
+                      <span key={tag} className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-primary/10 text-primary">
                         {tag}
                       </span>
                     ))}
@@ -342,32 +328,31 @@ const Landing = () => {
               <div className="space-y-6">
                 {[
                   {
-                    icon: Sparkles, color: "blue",
+                    icon: Sparkles,
                     title: "Personalised for your interests",
                     desc: "Your hobbies power the analogies. Football, gaming, art - the AI adapts every explanation to something you already understand."
                   },
                   {
-                    icon: Check, color: "emerald",
+                    icon: Check,
                     title: "ACARA curriculum aligned",
                     desc: "Every subject, every year level, mapped directly to the Australian curriculum. No fluff - just what's in your exams."
                   },
                   {
-                    icon: Trophy, color: "amber",
+                    icon: Trophy,
                     title: "Gamified to keep you going",
                     desc: "Badges, streaks, and achievements that reward consistent effort. Because study shouldn't feel like a punishment."
                   },
                   {
-                    icon: Zap, color: "violet",
+                    icon: Zap,
                     title: "Everything is free",
                     desc: "In the free plan of Analogix, single feature - AI tutor, flashcards, quizzes, is free to use."
                   },
                 ].map((item) => {
                   const Icon = item.icon;
-                  const a = accentColors[item.color];
                   return (
                     <div key={item.title} className="flex gap-4">
-                      <div className={cn("w-9 h-9 rounded-lg flex items-center justify-center shrink-0 mt-0.5", a.bg)}>
-                        <Icon className={cn("w-4 h-4", a.text)} />
+                      <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 mt-0.5 bg-primary/10">
+                        <Icon className="w-4 h-4 text-primary" />
                       </div>
                       <div>
                         <h4 className="font-bold mb-1">{item.title}</h4>
@@ -382,21 +367,20 @@ const Landing = () => {
             <div className="relative grid grid-cols-2 gap-4">
               <div className="space-y-4 pt-8">
                 {[
-                  { icon: Trophy, label: "Achievement", value: "Quiz Master", color: "emerald", filled: true },
-                  { icon: TrendingUp, label: "Momentum", value: "7 Day Streak", color: "amber", filled: false },
+                  { icon: Trophy, label: "Achievement", value: "Quiz Master", filled: true },
+                  { icon: TrendingUp, label: "Momentum", value: "7 Day Streak", filled: false },
                 ].map((card) => {
                   const Icon = card.icon;
-                  const a = accentColors[card.color];
                   return (
                     <div
                       key={card.label}
                       className={cn(
                         "rounded-xl p-6 flex flex-col gap-6",
-                        card.filled ? "bg-emerald-600 text-white" : "bg-card border border-border"
+                        card.filled ? "bg-growth text-white" : "bg-card border border-border"
                       )}
                     >
                       <div>
-                        <Icon className={cn("w-6 h-6", card.filled ? "text-white" : a.text)} />
+                        <Icon className={cn("w-6 h-6", card.filled ? "text-white" : "text-primary")} />
                       </div>
                       <div>
                         <p className={cn("text-[10px] font-medium uppercase tracking-widest mb-1",
@@ -411,22 +395,21 @@ const Landing = () => {
               </div>
               <div className="space-y-4">
                 {[
-                  { icon: TrendingUp, label: "Accuracy", value: "87%", progress: 87, color: "blue" },
-                  { icon: Target, label: "Quizzes done", value: "23", color: "violet" },
+                  { icon: TrendingUp, label: "Accuracy", value: "87%", progress: 87 },
+                  { icon: Target, label: "Quizzes done", value: "23" },
                 ].map((card) => {
                   const Icon = card.icon;
-                  const a = accentColors[card.color];
                   return (
                     <div key={card.label} className="rounded-xl bg-card border border-border p-6 flex flex-col gap-6">
                       <div>
-                        <Icon className={cn("w-6 h-6", a.text)} />
+                        <Icon className="w-6 h-6 text-primary" />
                       </div>
                       <div>
                         <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground mb-1">{card.label}</p>
                         <p className="text-2xl font-bold">{card.value}</p>
                         {card.progress !== undefined && (
                           <div className="mt-2 h-1.5 bg-muted rounded-full overflow-hidden">
-                            <div className="h-full rounded-full bg-blue-500" style={{ width: `${card.progress}%` }} />
+                            <div className="h-full rounded-full bg-primary" style={{ width: `${card.progress}%` }} />
                           </div>
                         )}
                       </div>
