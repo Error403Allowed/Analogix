@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { BookOpen, FolderOpen, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cardStyles } from "@/lib/utils";
 import { DynamicIcon } from "@/components/shared/IconPicker";
 import { IconBadge } from "@/components/shared/IconBadge";
 import { subjectIconName, subjectLabel, type CardSet } from "./types";
@@ -58,7 +59,7 @@ export function SubjectDetailView(props: SubjectDetailViewProps) {
           {subjectSets.map(s => (
             <motion.div key={s.set.id}
               whileHover={{ y: -3 }} whileTap={{ scale: 0.98 }}
-              className="rounded-2xl border border-border bg-card p-5 cursor-pointer hover:border-primary/40 transition-all group relative"
+              className={`${cardStyles.default} p-5 cursor-pointer hover:border-primary/40 transition-all group relative`}
             >
               <button onClick={e => { e.stopPropagation(); props.onDeleteSet(s.set.id, s.set.name); }}
                 className="absolute top-3 right-3 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-all z-10"
