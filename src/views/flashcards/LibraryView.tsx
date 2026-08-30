@@ -7,7 +7,7 @@ import {
   Upload,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { cn, cardStyles } from "@/lib/utils";
 import { DynamicIcon } from "@/components/shared/IconPicker";
 import { IconBadge } from "@/components/shared/IconBadge";
 import { subjectIconName, subjectLabel, type CardSet } from "./types";
@@ -59,7 +59,7 @@ export function LibraryView(props: LibraryViewProps) {
           { label: "Cards", value: props.totalCards, color: "text-primary" },
           { label: "Sets", value: props.setsCount, color: "text-blue-500" },
         ].map(({ label, value, color }) => (
-          <div key={label} className="rounded-2xl border border-border bg-card p-4 text-center">
+          <div key={label} className={cn(cardStyles.default, "p-4 text-center")}>
             <p className={cn("text-3xl font-black", color)}>{value}</p>
             <p className="text-xs text-muted-foreground mt-1">{label}</p>
           </div>
@@ -70,19 +70,19 @@ export function LibraryView(props: LibraryViewProps) {
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="rounded-2xl border border-green-500/20 bg-green-500/5 p-4 flex items-center gap-3"
+          className="rounded-2xl border border-growth/20 bg-growth/5 p-4 flex items-center gap-3"
         >
-          <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center shrink-0">
-            <Check className="w-4 h-4 text-green-500" />
+          <div className="w-8 h-8 rounded-full bg-growth/20 flex items-center justify-center shrink-0">
+            <Check className="w-4 h-4 text-growth" />
           </div>
           <div>
-            <p className="text-sm font-semibold text-green-600">Cleaned up {props.duplicateCount} orphaned/duplicate cards</p>
+            <p className="text-sm font-semibold text-growth">Cleaned up {props.duplicateCount} orphaned/duplicate cards</p>
             <p className="text-xs text-muted-foreground">Cards without a valid set are automatically removed.</p>
           </div>
         </motion.div>
       )}
 
-      <div className="rounded-2xl border border-border bg-card overflow-hidden">
+      <div className={cn(cardStyles.default, "overflow-hidden")}>
         <div className="flex items-center gap-3 p-5 border-b border-border/50">
           <IconBadge icon={Sparkles} />
           <div>
@@ -175,7 +175,7 @@ export function LibraryView(props: LibraryViewProps) {
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 10 }}
               transition={{ duration: 0.18 }}
-              className="w-full max-w-sm rounded-2xl border border-border bg-card shadow-2xl p-6 space-y-5"
+              className={cn(cardStyles.default, "w-full max-w-sm shadow-2xl p-6 space-y-5")}
             >
               <div>
                 <h3 className="text-lg font-black">Which subject is this for?</h3>
@@ -240,7 +240,7 @@ export function LibraryView(props: LibraryViewProps) {
                 <motion.div key={subId}
                   whileHover={{ y: -3 }} whileTap={{ scale: 0.98 }}
                   onClick={() => props.onOpenSubject(subId)}
-                  className="rounded-2xl border border-border bg-card p-5 cursor-pointer hover:border-primary/40 transition-all"
+                  className={cn(cardStyles.default, "p-5 cursor-pointer hover:border-primary/40 transition-all")}
                 >
                   <div className="flex items-center justify-between mb-4">
                     <IconBadge>

@@ -22,7 +22,7 @@ import { useAuth } from "@/context/AuthContext";
 import ProfileSheet from "@/components/settings/ProfileSheet";
 import AppearanceSection from "@/components/settings/AppearanceSection";
 import { useProfileAvatar } from "@/hooks/useProfileAvatar";
-import { cn } from "@/lib/utils";
+import { cn, cardStyles } from "@/lib/utils";
 
 type MenuRow = {
   label: string;
@@ -136,7 +136,7 @@ const ProfilePage = () => {
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="overflow-hidden rounded-2xl border border-border bg-card"
+        className={cn(cardStyles.default, "overflow-hidden")}
       >
         {menu.map((row, i) => {
           const Icon = row.icon;

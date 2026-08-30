@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { cn, cardStyles } from "@/lib/utils";
 import {
   MessageCircle, Calendar, GitBranch, ExternalLink, ChevronDown,
   Sparkles, BookOpen, Shield, Clock, Users, Zap, Bug, FileText, ArrowUpRight
@@ -146,7 +147,7 @@ export default function SupportPage() {
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 + i * 0.06, duration: 0.4 }}
-              className={`group p-6 rounded-2xl border border-border bg-card hover:border-primary/30 transition-all ${link.color}`}
+              className={cn(cardStyles.default, "group p-6 hover:border-primary/30 transition-all", link.color)}
             >
               <div className="w-9 h-9 rounded-xl bg-background/50 border border-border/50 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                 <Icon className="w-4 h-4" />
@@ -182,7 +183,7 @@ export default function SupportPage() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.25 + i * 0.05, duration: 0.35 }}
-                className="overflow-hidden bg-card rounded-2xl border border-border"
+                className={cn(cardStyles.default, "overflow-hidden")}
               >
                 <button
                   onClick={() => setOpenFaq(openFaq === i ? null : i)}
@@ -226,7 +227,7 @@ export default function SupportPage() {
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.6 }}
-          className="mt-12 p-8 rounded-2xl border border-border bg-card text-center"
+          className={cn(cardStyles.default, "mt-12 p-8 text-center")}
         >
           <div className="w-10 h-10 rounded-xl bg-background border border-border flex items-center justify-center mx-auto mb-4">
             <MessageCircle className="w-5 h-5 text-muted-foreground" />

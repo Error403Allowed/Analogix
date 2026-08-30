@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
+import { cn, cardStyles } from "@/lib/utils";
 import { SUBJECT_CATALOG } from "@/constants/subjects";
 import RESOURCES, { type ResourceLink, type SubjectResources } from "@/data/resources";
 
@@ -22,7 +22,7 @@ const ResourceCard = ({ resource }: { resource: ResourceLink }) => (
     href={resource.url}
     target="_blank"
     rel="noopener noreferrer"
-    className="group flex flex-col gap-2 rounded-2xl border border-border bg-card p-4 shadow-sm transition hover:border-primary/50 hover:shadow-md"
+    className={cn(cardStyles.default, "group flex flex-col gap-2 p-4 shadow-sm transition hover:border-primary/50 hover:shadow-md")}
   >
     <div className="flex items-start justify-between gap-3">
       <p className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors leading-snug">
@@ -160,7 +160,7 @@ export default function ResourcesPage() {
 
           {/* Sidebar */}
           <div className="space-y-4 lg:sticky lg:top-24">
-            <div className="rounded-2xl border border-border bg-card p-4">
+            <div className={cn(cardStyles.default, "p-4")}>
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">Subjects</p>
               <div className="relative mb-3">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/50" />
@@ -209,7 +209,7 @@ export default function ResourcesPage() {
             </div>
 
             {/* Legend */}
-            <div className="rounded-2xl border border-border bg-card p-4 space-y-2">
+            <div className={cn(cardStyles.default, "p-4 space-y-2")}>
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Legend</p>
               <div className="flex items-center gap-2">
                 <Badge variant="outline" className="text-[10px] uppercase tracking-wide text-emerald-600 border-emerald-500/40 bg-emerald-500/8">Free</Badge>
@@ -226,7 +226,7 @@ export default function ResourcesPage() {
           <div className="space-y-5">
 
             {/* Search bar */}
-            <div className="rounded-2xl border border-border bg-card p-4">
+            <div className={cn(cardStyles.default, "p-4")}>
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="text-sm font-semibold">

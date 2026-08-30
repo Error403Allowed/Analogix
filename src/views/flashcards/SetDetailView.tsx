@@ -6,7 +6,7 @@ import {
   Edit3, Loader2, Plus, RotateCcw, Trash2, Trophy, Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { cn, cardStyles } from "@/lib/utils";
 import { DynamicIcon } from "@/components/shared/IconPicker";
 import { IconBadge } from "@/components/shared/IconBadge";
 import { FlipCard, StudyCardContent } from "./card-components";
@@ -197,7 +197,7 @@ export function SetDetailView(props: SetDetailViewProps) {
                     </Button>
                   </div>
                   {activeSet.cards.map(card => (
-                    <div key={card.id} className="rounded-xl border border-border bg-card">
+                    <div key={card.id} className={cardStyles.default}>
                       {props.editingId === card.id ? (
                         <div className="p-4 space-y-3">
                           <textarea value={props.editFront} onChange={e => props.setEditFront(e.target.value)} rows={2}

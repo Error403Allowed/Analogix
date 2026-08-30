@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { Check, Loader2, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn, cardStyles } from "@/lib/utils";
 import { subjectLabel } from "./types";
 
 interface CardRow {
@@ -34,7 +35,7 @@ export function CreateSetView(props: CreateSetViewProps) {
       exit={{ opacity: 0, y: -14 }}
       className="space-y-6"
     >
-      <div className="rounded-2xl border border-border bg-card p-6">
+      <div className={cn(cardStyles.default, "p-6")}>
         <h2 className="text-xl font-black mb-1">New flashcard set</h2>
         <p className="text-xs text-muted-foreground mb-5">Name your set, pick a subject, then add cards.</p>
         <div className="space-y-4">
@@ -60,7 +61,7 @@ export function CreateSetView(props: CreateSetViewProps) {
       <div className="space-y-3">
         {props.newSetCards.map((card, i) => (
           <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}
-            className="rounded-2xl border border-border bg-card overflow-hidden"
+            className={cn(cardStyles.default, "overflow-hidden")}
           >
             <div className="flex items-center justify-between px-5 pt-4 pb-2">
               <span className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">{i + 1}</span>

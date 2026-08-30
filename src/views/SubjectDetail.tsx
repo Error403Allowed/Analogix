@@ -33,7 +33,7 @@ import {
   type SubjectHomework,
 } from "@/utils/subjectStore";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
+import { cn, cardStyles } from "@/lib/utils";
 import { useTabs } from "@/context/TabsContext";
 import { SUBJECT_COLORS } from "@/components/shared/ColorPicker";
 import { DynamicIcon } from "@/components/shared/IconPicker";
@@ -282,7 +282,7 @@ export default function SubjectDetail() {
                   {documents.map((doc) => (
                     <div
                       key={doc.id}
-                      className="group flex cursor-pointer items-center gap-3 rounded-xl border border-border bg-card p-3 shadow-sm transition-all hover:border-border/80 hover:shadow-md"
+                      className={cn(cardStyles.default, "group flex cursor-pointer items-center gap-3 p-3 shadow-sm transition-all hover:border-border/80 hover:shadow-md")}
                       onClick={() => {
                         const url = `/subjects/${subjectId}/document/${doc.id}`;
                         openTab(url, doc.title || "Untitled", doc.icon || "📄");

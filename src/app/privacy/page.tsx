@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { sanitizeHtml } from "@/lib/sanitize";
+import { cn, cardStyles } from "@/lib/utils";
 import {
   Shield, User, Settings, Brain, Database, Lock, Share2,
   Globe, Scale, Cookie, Baby, Clock, FileText, ExternalLink,
@@ -169,7 +170,7 @@ export default function PrivacyPage() {
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.08 }}
-          className="p-8 rounded-2xl border border-border bg-card mb-12"
+          className={cn(cardStyles.default, "p-8 mb-12")}
         >
           <p className="text-base text-muted-foreground leading-relaxed">
             Analogix is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our web application and services. We believe you deserve to know exactly what data we collect and why - no hidden surprises.
@@ -187,7 +188,7 @@ export default function PrivacyPage() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.12 + i * 0.04, duration: 0.35 }}
-              className="overflow-hidden bg-card rounded-2xl border border-border"
+              className={cn(cardStyles.default, "overflow-hidden")}
             >
               <button
                 onClick={() => setOpenSection(openSection === i ? null : i)}
@@ -260,7 +261,7 @@ export default function PrivacyPage() {
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.7 }}
-          className="mt-10 p-8 rounded-2xl border border-border bg-card"
+          className={cn(cardStyles.default, "mt-10 p-8")}
         >
           <div className="flex items-start gap-4 mb-4">
             <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0 mt-0.5">
@@ -280,7 +281,7 @@ export default function PrivacyPage() {
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.75 }}
-          className="mt-6 p-8 rounded-2xl border border-border bg-card text-center"
+          className={cn(cardStyles.default, "mt-6 p-8 text-center")}
         >
           <h3 className="font-bold text-lg mb-2">Questions or Concerns?</h3>
           <p className="text-base text-muted-foreground mb-5 max-w-sm mx-auto leading-relaxed">

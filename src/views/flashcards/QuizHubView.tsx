@@ -8,7 +8,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
+import { cn, cardStyles } from "@/lib/utils";
 import QuizCard from "@/components/shared/QuizCard";
 import { subjectLabel } from "./types";
 import type { QuizQuestion } from "@/types/quiz";
@@ -58,7 +58,7 @@ export function QuizHubView(props: QuizHubViewProps) {
       className="space-y-6 max-w-5xl mx-auto w-full"
     >
       {!props.quizStarted && !props.quizLoading && (
-        <div className="rounded-2xl border border-border bg-card p-8 space-y-6">
+        <div className={cn(cardStyles.default, "p-8 space-y-6")}>
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-2xl gradient-primary flex items-center justify-center">
               <Target className="w-6 h-6 text-white" />
@@ -136,7 +136,7 @@ export function QuizHubView(props: QuizHubViewProps) {
 
       {props.quizStarted && !props.quizLoading && props.quizQuestions.length > 0 && !props.quizComplete && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between rounded-2xl border border-border bg-card px-5 py-3">
+          <div className={cn(cardStyles.default, "flex items-center justify-between px-5 py-3")}>
             <span className="text-sm font-bold">{props.quizCurrentQ + 1} / {props.quizQuestions.length}</span>
             {props.quizTimeLeft !== null && (
               <span className={cn("font-mono font-bold text-sm", props.quizTimeLeft < 30 ? "text-destructive animate-pulse" : "text-primary")}>
@@ -179,7 +179,7 @@ export function QuizHubView(props: QuizHubViewProps) {
 
       {props.quizComplete && (
         <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }}
-          className="rounded-2xl border border-border bg-card p-8 text-center space-y-5"
+          className={cn(cardStyles.default, "p-8 text-center space-y-5")}
         >
           <Trophy className="w-14 h-14 mx-auto text-primary" />
           <h3 className="text-2xl font-black">Quiz complete!</h3>
