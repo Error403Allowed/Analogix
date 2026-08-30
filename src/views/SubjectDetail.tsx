@@ -17,7 +17,6 @@ import {
   Plus,
   Sparkles,
   Trash2,
-  Upload,
   Copy,
   MoreVertical,
 } from "lucide-react";
@@ -40,6 +39,7 @@ import { DynamicIcon } from "@/components/shared/IconPicker";
 import { SubjectCustomizationSheet } from "@/components/settings/SubjectCustomizationSheet";
 import RESOURCES from "@/data/resources";
 import { ACARA_CURRICULUM } from "@/data/curriculum";
+import { getSubjectTopicProgress, type TopicProgress } from "@/utils/curriculumProgress";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -87,6 +87,7 @@ export default function SubjectDetail() {
   const homework = data.notes.homework || [];
   const links = data.notes.links || [];
   const documents = data.notes.documents || [];
+  const [curriculumProgress, setCurriculumProgress] = useState<Record<string, TopicProgress>>({});
 
   const appearance = useMemo(() => {
     const colorId = customSubject?.custom_color || "default";
@@ -114,6 +115,7 @@ export default function SubjectDetail() {
       setUserPrefs(JSON.parse(localStorage.getItem("userPreferences") || "{}"));
     };
     load();
+    getSubjectTopicProgress(subjectId).then(setCurriculumProgress);
   }, [subjectId]);
 
   const handleCreateDocument = async () => {
@@ -463,31 +465,57 @@ export default function SubjectDetail() {
               const grade = userPrefs.grade || "7";
               const yearData = curriculum.yearLevels[grade];
               if (!yearData) return null;
-              const strandEntries = Object.entries(yearData.strands).slice(0, 6);
+              const strandEntries = Object.entries(yearData.strands).slice(0, 2);
+              const topicCount = Object.values(yearData.strands).reduce(
+                (sum: number, topics) => sum + (topics as any[]).length, 0,
+              );
+              const coveredCount = Object.values(curriculumProgress).filter(
+                (p) => p.status === "covered",
+              ).length;
               return (
-                <section className="rounded-2xl border border-border bg-muted/5 p-6">
-                  <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground/60 flex items-center gap-2 mb-5">
-                    <BookOpen className="h-4 w-4" />
-                    Year {grade} Syllabus
-                  </h2>
+                <section className={cn(cardStyles.default, "p-6")}>
+                  <div className="flex items-center justify-between mb-1">
+                    <h2 className="text-sm font-bold text-muted-foreground/70 flex items-center gap-2">
+                      <BookOpen className="h-4 w-4" />
+                      Year {grade} curriculum
+                    </h2>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground/50 mb-5">
+                    {coveredCount > 0
+                      ? `${coveredCount} of ${topicCount} topics covered`
+                      : `${topicCount} topics mapped to this year level`}
+                  </p>
                   <div className="space-y-4">
                     {strandEntries.map(([strandName, topics]) => (
                       <div key={strandName}>
                         <h3 className="text-xs font-bold text-foreground/80 mb-2">{strandName}</h3>
                         <div className="space-y-1.5">
-                          {(topics as any[]).slice(0, 4).map((topic: any) => (
-                            <div key={topic.id} className="flex items-start gap-2">
-                              <div className="w-1.5 h-1.5 rounded-full bg-primary/40 mt-1.5 shrink-0" />
-                              <p className="text-[11px] text-muted-foreground/70 leading-relaxed">{topic.topic}</p>
-                            </div>
-                          ))}
-                          {(topics as any[]).length > 4 && (
-                            <p className="text-[10px] text-muted-foreground/40 pl-3">+{(topics as any[]).length - 4} more topics</p>
-                          )}
+                          {(topics as any[]).slice(0, 3).map((topic: any) => {
+                            const status = curriculumProgress[topic.id]?.status ?? "not-started";
+                            return (
+                              <div key={topic.id} className="flex items-start gap-2">
+                                <div
+                                  className={cn(
+                                    "w-1.5 h-1.5 rounded-full mt-1.5 shrink-0",
+                                    status === "covered" ? "bg-growth" : status === "in-progress" ? "bg-primary" : "bg-muted-foreground/30",
+                                  )}
+                                />
+                                <p className="text-[11px] text-muted-foreground/70 leading-relaxed">{topic.topic}</p>
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     ))}
                   </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full mt-5 h-8 text-xs"
+                    onClick={() => router.push(`/subjects/${subjectId}/curriculum`)}
+                  >
+                    View full curriculum
+                  </Button>
                 </section>
               );
             })()}
@@ -555,15 +583,6 @@ export default function SubjectDetail() {
                   </div>
                 ))}
               </div>
-            </section>
-
-            {/* Assessment Dropzone - Minimalist */}
-            <section className="rounded-2xl border border-dashed border-border/60 p-6 text-center bg-muted/5 transition-colors hover:bg-muted/10 cursor-pointer">
-              <Upload className="mx-auto h-6 w-6 text-muted-foreground/30 mb-3" />
-              <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60">Upload Assessment</h3>
-              <p className="mt-2 text-[10px] text-muted-foreground/40 leading-relaxed">
-                Drop your rubric or prompt here to generate a custom study guide.
-              </p>
             </section>
           </div>
         </div>
