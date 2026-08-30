@@ -103,6 +103,7 @@ const newId = () => {
 
 const normalizeTabs = (tabs: AppTab[], activeId: string | null) => {
   const seenPaths = new Map<string, AppTab>();
+  const seenIds = new Set<string>();
   const idRemap = new Map<string, string>();
   const normalized: AppTab[] = [];
 
@@ -118,11 +119,17 @@ const normalizeTabs = (tabs: AppTab[], activeId: string | null) => {
     }
 
     let id = tab.id;
-    if (!id) {
-      id = newId();
-      idRemap.set(tab.id, id);
+    // Guard against non-unique ids too - not just duplicate paths. Stale
+    // persisted tabs (e.g. from an older version, or any other source
+    // of collision) can otherwise carry the same id for two different
+    // paths, which produces duplicate React keys downstream.
+    if (!id || seenIds.has(id)) {
+      const freshId = newId();
+      idRemap.set(id || "", freshId);
+      id = freshId;
     }
 
+    seenIds.add(id);
     seenPaths.set(tab.path, { ...tab, id });
     normalized.push({ ...tab, id });
   }
