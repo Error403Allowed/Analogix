@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { flushSync } from "react-dom";
 import { useSearchParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useChat as useAIChat } from "@ai-sdk/react";
@@ -49,6 +50,11 @@ type ToolUIPartLike = {
   input?: unknown;
   approval?: { id?: string };
 };
+
+// Module-scope (not per-render) so every reference to this is the SAME
+// function identity forever - safe to hand to hooks like useChatSessions
+// that memoize their returned callbacks against this options object.
+const noop = () => {};
 
 const partsToText = (parts: unknown[]): string =>
   (parts ?? [])
@@ -167,95 +173,202 @@ export function useChat() {
 
   const latestSessionIdRef = useRef<string | null>(null);
   latestSessionIdRef.current = chatSessionId;
+  const selectedSubjectRef = useRef<SubjectId | null>(null);
+  selectedSubjectRef.current = selectedSubject;
+  const routerRef = useRef(router);
+  routerRef.current = router;
 
-  const chat = useAIChat({
-    transport: new DefaultChatTransport({
-      api: "/api/ai/chat",
-      body: () => ({ userContext: userContextRef.current }),
-      headers: (): Record<string, string> => {
-        const data = getLocalStorageData();
-        if (!data) return {};
-        return { "x-client-data": JSON.stringify(data) };
-      },
-    }),
-    sendAutomaticallyWhen: (args: { messages: UIMessage[] }) => {
-      if (!lastAssistantMessageIsCompleteWithApprovalResponses(args)) return false;
-      autoSendRoundsRef.current += 1;
-      return autoSendRoundsRef.current <= MAX_AUTO_SEND_ROUNDS;
-    },
-    onError: (err) => {
-      console.warn("[Chat] AI SDK error:", err);
-      const detail = err instanceof Error ? err.message : "";
-      if (detail && detail !== "An error occurred.") {
-        toast.error(`AI request failed: ${detail}`);
-      } else {
-        toast.error("Couldn't reach the AI service. You may have hit the daily limit, or your internet is down.");
+  // Waiting UI instead of truncated output / toast storm. When TPM 429 or
+  // budget would cut off, we show "Please bear with us..." and auto-retry
+  // after Retry-After. This keeps output intact rather than slicing.
+  const [rateLimitWait, setRateLimitWait] = useState<{ seconds: number; message: string } | null>(null);
+  const retryPayloadRef = useRef<{ text: string; messageId: string; metadata: any } | null>(null);
+  const rateLimitIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const rateLimitTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const sendMessageRef = useRef<((args: any) => Promise<void>) | null>(null);
+  const stopRef = useRef<(() => void) | null>(null);
+
+  // Transport must be stable across renders: creating a new DefaultChatTransport
+  // on every render gives useAIChat a new transport identity each time, which
+  // makes its internal effect tear down and re-subscribe on every render and
+  // can trigger "Maximum update depth exceeded" (state churn + re-render loop).
+  const chatTransport = useMemo(
+    () =>
+      new DefaultChatTransport({
+        api: "/api/ai/chat",
+        body: () => ({ userContext: userContextRef.current }),
+        headers: (): Record<string, string> => {
+          const data = getLocalStorageData();
+          if (!data) return {};
+          return { "x-client-data": JSON.stringify(data) };
+        },
+      }),
+    [],
+  );
+
+  // sessions ref is needed inside onFinish without creating a dependency cycle:
+  // sessions is declared after useAIChat, so capturing it directly would be
+  // stale/TDZ. A ref stays current and keeps the chat config stable.
+  const sessionsRef = useRef<{ setAllSessions: (fn: (prev: ChatSession[]) => ChatSession[]) => void } | null>(null);
+  // onFinish/callers need generateChatTitleIfNeeded without re-creating the chat config
+  const generateTitleRef = useRef<typeof generateChatTitleIfNeeded | null>(null);
+
+  const sendAutomaticallyWhen = useCallback((args: { messages: UIMessage[] }) => {
+    if (!lastAssistantMessageIsCompleteWithApprovalResponses(args)) return false;
+    autoSendRoundsRef.current += 1;
+    return autoSendRoundsRef.current <= MAX_AUTO_SEND_ROUNDS;
+  }, []);
+
+  const onChatError = useCallback((err: unknown) => {
+    console.warn("[Chat] AI SDK error:", err);
+    const detail = err instanceof Error ? err.message : String(err);
+    if (detail.includes("Maximum update depth")) {
+      console.error("[Chat] Suppressed maximum depth toast to avoid loop");
+      return;
+    }
+    if (detail.includes("Rate limit") || detail.includes("TPM") || detail.includes("429") || detail.includes("tokens per minute")) {
+      const retryMatch = detail.match(/Please try again in ([\d.]+)s/);
+      const seconds = retryMatch ? Math.ceil(parseFloat(retryMatch[1])) : 5;
+      // Clear any existing timers
+      if (rateLimitIntervalRef.current) clearInterval(rateLimitIntervalRef.current);
+      if (rateLimitTimeoutRef.current) clearTimeout(rateLimitTimeoutRef.current);
+      setRateLimitWait({
+        seconds,
+        message: "Please bear with us — this is how we keep Analogix free for students. The AI is cooling down due to rate limits.",
+      });
+      // Countdown ticker
+      rateLimitIntervalRef.current = setInterval(() => {
+        setRateLimitWait(prev => {
+          if (!prev) return prev;
+          if (prev.seconds <= 1) {
+            if (rateLimitIntervalRef.current) clearInterval(rateLimitIntervalRef.current);
+            return { ...prev, seconds: 0 };
+          }
+          return { ...prev, seconds: prev.seconds - 1 };
+        });
+      }, 1000);
+      // Auto-retry the last payload once wait is over, instead of cutting output
+      const payload = retryPayloadRef.current;
+      if (payload) {
+        rateLimitTimeoutRef.current = setTimeout(() => {
+          setRateLimitWait(null);
+          if (rateLimitIntervalRef.current) clearInterval(rateLimitIntervalRef.current);
+          console.log("[Chat] Retrying after rate-limit wait", payload.messageId);
+          // SDK is in error state; clearing via stop then resend avoids depth loop
+          void stopRef.current?.();
+          // Small delay to let status settle
+          setTimeout(() => {
+            void sendMessageRef.current?.({
+              text: payload.text,
+              messageId: payload.messageId,
+              metadata: payload.metadata,
+            }).catch(e => console.error("[Chat] retry failed:", e));
+          }, 300);
+        }, seconds * 1000);
       }
-    },
-    onFinish: async ({ message, messages: allUi, isAbort, isError }) => {
-      const turn = turnRef.current;
-      const sessionId = turn?.sessionId ?? latestSessionIdRef.current;
-      const rawText = partsToText((message as UIMessage).parts as unknown[]);
-      const text = cleanForDisplay(rawText);
+      return;
+    }
+    if (detail && detail !== "An error occurred.") {
+      toast.error(`AI request failed: ${detail}`);
+    } else {
+      toast.error("Couldn't reach the AI service. You may have hit the daily limit, or your internet is down.");
+    }
+  }, []);
 
-      // Hand off a completed quiz tool result BEFORE the session-persistence
-      // guard: a chatStore/session failure must never drop the quiz handoff.
-      const quizPayload = extractQuizFromAssistantMessage(message as UIMessage);
-      if (quizPayload && !isAbort && !isError) {
-        sessionStorage.setItem("pendingQuiz", JSON.stringify(quizPayload));
-        router.push("/quiz");
-      }
+  const onChatFinish = useCallback(async ({ message, messages: allUi, isAbort, isError }: { message: UIMessage; messages: UIMessage[]; isAbort: boolean; isError: boolean }) => {
+    // Success clears the waiting UI (which was shown instead of truncating)
+    if (!isAbort && !isError) {
+      setRateLimitWait(null);
+      if (rateLimitIntervalRef.current) clearInterval(rateLimitIntervalRef.current);
+      if (rateLimitTimeoutRef.current) clearTimeout(rateLimitTimeoutRef.current);
+      retryPayloadRef.current = null;
+    }
+    const turn = turnRef.current;
+    const sessionId = turn?.sessionId ?? latestSessionIdRef.current;
+    const rawText = partsToText((message as UIMessage).parts as unknown[]);
+    const text = cleanForDisplay(rawText);
 
-      if (!sessionId || isAbort || isError || !text.trim()) {
-        turnRef.current = null;
-        return;
-      }
+    const quizPayload = extractQuizFromAssistantMessage(message as UIMessage);
+    if (quizPayload && !isAbort && !isError) {
+      sessionStorage.setItem("pendingQuiz", JSON.stringify(quizPayload));
+      routerRef.current.push("/quiz");
+    }
 
-      if (!isRegeneratingRef.current) {
-        chatStore.addMessage(sessionId, "assistant", text).catch((e) =>
-          console.error("[Chat] addMessage assistant:", e),
-        );
-        sessions.setAllSessions((prev) =>
+    if (!sessionId || isAbort || isError || !text.trim()) {
+      turnRef.current = null;
+      autoSendRoundsRef.current = 0;
+      autoApprovedIdsRef.current.clear();
+      return;
+    }
+
+    if (!isRegeneratingRef.current) {
+      chatStore.addMessage(sessionId, "assistant", text).catch((e) =>
+        console.error("[Chat] addMessage assistant:", e),
+      );
+      const sess = sessionsRef.current;
+      if (sess) {
+        sess.setAllSessions((prev) =>
           [...prev.map((s) => s.id === sessionId ? { ...s, updatedAt: new Date().toISOString() } : s)]
             .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()),
         );
       }
+    }
 
-      if (turn) {
-        const historyForTitle = [...turn.historyBefore, { role: "user", content: turn.userContent }];
-        const titleSourceMessages = allUi.map((m) => ({
-          id: m.id,
-          role: m.role,
-          content: partsToText(m.parts as unknown[]),
-        }));
-        generateChatTitleIfNeeded(historyForTitle, titleSourceMessages, turn.userInput, sessionId);
+    if (turn) {
+      const historyForTitle = [...turn.historyBefore, { role: "user", content: turn.userContent }];
+      const titleSourceMessages = allUi.map((m) => ({
+        id: m.id,
+        role: m.role,
+        content: partsToText(m.parts as unknown[]),
+      }));
+      const gen = generateTitleRef.current;
+      if (gen) void gen(historyForTitle, titleSourceMessages, turn.userInput, sessionId);
 
-        const lastUserMsg = turn.userContent.trim().toLowerCase();
-        const isTrivialInput =
-          lastUserMsg.length < 15 &&
-          /^(hi|hello|hey|sup|yo|ok|k|lol|thanks?|bye|good\s?(morning|evening|afternoon)|what'?s up|how are you|\?)$/i.test(lastUserMsg);
-        const shouldExtract = text.length >= 20 && !isTrivialInput && lastUserMsg.length >= 10;
-        if (shouldExtract) {
-          const messagesForExtraction = [
-            ...historyForTitle,
-            { role: "assistant", content: text },
-          ];
-          fetch("/api/ai/memory/extract", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ messages: messagesForExtraction, subjectId: selectedSubject }),
+      const lastUserMsg = turn.userContent.trim().toLowerCase();
+      const isTrivialInput =
+        lastUserMsg.length < 15 &&
+        /^(hi|hello|hey|sup|yo|ok|k|lol|thanks?|bye|good\s?(morning|evening|afternoon)|what'?s up|how are you|\?)$/i.test(lastUserMsg);
+      const shouldExtract = text.length >= 20 && !isTrivialInput && lastUserMsg.length >= 10;
+      if (shouldExtract) {
+        const messagesForExtraction = [
+          ...historyForTitle,
+          { role: "assistant", content: text },
+        ];
+        fetch("/api/ai/memory/extract", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ messages: messagesForExtraction, subjectId: selectedSubjectRef.current }),
+        })
+          .then((r) => (r.ok ? r.json() : null))
+          .then((d) => {
+            if (d) console.log("[memory] extract result:", d);
           })
-            .then((r) => (r.ok ? r.json() : null))
-            .then((d) => {
-              if (d) console.log("[memory] extract result:", d);
-            })
-            .catch((err) => console.error("[memory] extract error:", err));
-        }
+          .catch((err) => console.error("[memory] extract error:", err));
       }
+    }
 
-      turnRef.current = null;
-    },
-  });
+    turnRef.current = null;
+    autoSendRoundsRef.current = 0;
+    autoApprovedIdsRef.current.clear();
+  }, []);
+
+  const chatOptions = useMemo(() => ({
+    transport: chatTransport,
+    // Keep id stable across new-session creation. The original `chatSessionId ?? "default"`
+    // caused the first prompt to be lost: handleSend created a new session id,
+    // setChatSessionId(newId) triggered a re-render with a new `id`, which
+    // made the SDK discard the optimistic user message that had just been
+    // pushed for the old `default` id. A stable id + manual session persistence
+    // via chatStore (already done in handleSend/onFinish) avoids the race.
+    // Switching threads still works because handleSwitchThread calls setUIMessages
+    // to replace the whole history.
+    id: "analogix-chat",
+    sendAutomaticallyWhen,
+    onError: onChatError,
+    onFinish: onChatFinish,
+  }), [chatTransport, sendAutomaticallyWhen, onChatError, onChatFinish]);
+
+  const chat = useAIChat(chatOptions);
 
   const {
     messages: uiMessages,
@@ -270,13 +383,43 @@ export function useChat() {
 
   void chatError;
 
+  useEffect(() => {
+    sendMessageRef.current = sendMessage;
+  }, [sendMessage]);
+  useEffect(() => {
+    stopRef.current = stop;
+  }, [stop]);
+
+  // Cleanup rate-limit timers on unmount or when wait is cancelled
+  useEffect(() => {
+    return () => {
+      if (rateLimitIntervalRef.current) clearInterval(rateLimitIntervalRef.current);
+      if (rateLimitTimeoutRef.current) clearTimeout(rateLimitTimeoutRef.current);
+    };
+  }, []);
+
   const isChatBusy = chatStatus === "submitted" || chatStatus === "streaming";
 
   // ── Derive app messages from SDK state ───────────────────────────────────
   const conversationMessages = useMemo<Message[]>(() => {
     let pendingSources: { sources?: ResearchSource[]; researchQuery?: string } | null = null;
     const out: Message[] = [];
-    const lastAssistantId = [...uiMessages].reverse().find((m) => m.role === "assistant")?.id;
+    // Only the message that is LITERALLY last in the array can be "the one
+    // streaming". The SDK flips status to "submitted" (isChatBusy = true)
+    // synchronously, the instant sendMessage() is called - well before the
+    // network round-trip resolves and the new assistant placeholder actually
+    // gets pushed into uiMessages. In that gap the array still ends in
+    // [..., previousAssistantReply, newUserMessage], so a "search backwards
+    // for the last assistant message" finds the PREVIOUS turn's already-
+    // finished reply and marks it isStreaming - the loader then renders
+    // attached to the old message, above the new prompt, instead of the new
+    // (not-yet-created) assistant placeholder. Requiring the assistant
+    // message to literally be uiMessages' last entry means nothing is
+    // misflagged during that gap, and the standalone bottom loader (which
+    // fires on `isTyping && !messages.some(m => m.isStreaming)`) correctly
+    // takes over until the real placeholder appears.
+    const trailingMessage = uiMessages[uiMessages.length - 1];
+    const lastAssistantId = trailingMessage?.role === "assistant" ? trailingMessage.id : undefined;
     for (const m of uiMessages) {
       const meta = (m as UIMessage & { metadata?: Record<string, unknown> }).metadata;
       if (m.role === "user" && meta && Array.isArray(meta.sources)) {
@@ -297,12 +440,14 @@ export function useChat() {
         role: m.role === "user" ? "user" : "assistant",
         content: cleanForDisplay(partsToText(m.parts as unknown[])),
         attachments: m.role === "user" ? attachmentsRef.current[m.id] : undefined,
+        // Placeholder assistant messages start with empty parts - they are still
+        // the streaming turn and must be flagged so the loader renders inside the
+        // NEW placeholder bubble (below the just-sent user message), not re-attached
+        // to the previous turn's already-finished assistant message.
         isStreaming:
           m.role === "assistant" &&
           isChatBusy &&
-          m.id === lastAssistantId &&
-          Array.isArray(m.parts) &&
-          m.parts.length > 0,
+          m.id === lastAssistantId,
         sources,
         researchQuery,
         analogy: typeof meta?.analogy === "string" ? meta.analogy : undefined,
@@ -350,7 +495,7 @@ export function useChat() {
     return out;
   }, [uiMessages]);
 
-  const isInputLocked = isTyping || !!streamingId || pendingApprovals.length > 0;
+  const isInputLocked = isTyping || !!streamingId || pendingApprovals.length > 0 || !!rateLimitWait;
 
   const latestAssistantId = [...messages].reverse().find((m) => m.role === "assistant")?.id;
 
@@ -389,18 +534,40 @@ export function useChat() {
   );
 
   // ── Sub-hooks ────────────────────────────────────────────────────────────
-  const sessions = useChatSessions({
-    setSelectedSubject,
-    setMessages: handleSetViewMessages,
-    setChatSessionId,
-    setStreamingId: () => {},
-    setStreamingContent: () => {},
-    abortRef,
-    allSubjects,
-    userName,
-    chatSessionId,
-  });
+  // useChatSessions memoizes handleSwitchThread/handleStartNewChat/etc against
+  // this WHOLE options object (useCallback([options], ...) internally). An
+  // inline object literal here would be a brand-new reference every render of
+  // useChat(), silently defeating that memoization and hitting every consumer
+  // that lists e.g. `handleStartNewChat` in an effect dependency array with a
+  // callback that never actually stabilizes - the classic "dependency changes
+  // on every render" pattern. `noop` is a module-scope constant (stable
+  // forever) so it's safe to include here.
+  const chatSessionsOptions = useMemo(
+    () => ({
+      setSelectedSubject,
+      setMessages: handleSetViewMessages,
+      setChatSessionId,
+      setStreamingId: noop,
+      setStreamingContent: noop,
+      abortRef,
+      allSubjects,
+      userName,
+      chatSessionId,
+    }),
+    [setSelectedSubject, handleSetViewMessages, setChatSessionId, userName, chatSessionId],
+  );
+  const sessions = useChatSessions(chatSessionsOptions);
   const { setAllSessions } = sessions;
+  useEffect(() => {
+    sessionsRef.current = sessions;
+  }, [sessions]);
+
+  // Reset approval loop caps when switching sessions so a previous session's
+  // cap does not leak into the new one and incorrectly block tool approvals.
+  useEffect(() => {
+    autoSendRoundsRef.current = 0;
+    autoApprovedIdsRef.current.clear();
+  }, [chatSessionId]);
 
   const scroll = useChatScroll(messages.length, streamingContent.length);
 
@@ -465,7 +632,7 @@ export function useChat() {
         void addToolApprovalResponse({ id: ap.approvalId, approved: true });
       }
     }
-  }, [pendingApprovals, addToolApprovalResponse]);
+  }, [pendingApprovals]);
 
   const sessionParam = searchParams.get("session");
   const subjectParam = searchParams.get("subject") as SubjectId | null;
@@ -552,6 +719,10 @@ export function useChat() {
       }
     }
   }, [setAllSessions]);
+
+  useEffect(() => {
+    generateTitleRef.current = generateChatTitleIfNeeded;
+  }, [generateChatTitleIfNeeded]);
 
   const buildContext = useCallback((overrideAnchor?: string | null) => ({
     subjects: selectedSubject ? [selectedSubject] : [],
@@ -824,8 +995,19 @@ export function useChat() {
     let userContent = input;
     if (fileAttach.attachedFiles.length > 0) {
       const fileList = fileAttach.attachedFiles.map(f => `- ${f.name}`).join("\n");
-      userContent = `${input}\n\n[Attached files]\n${fileList}\n\n[File contents]\n` +
-        fileAttach.attachedFiles.map(f => `--- ${f.name} ---\n${f.extractedText}`).join("\n\n");
+      // Cap file content per request to avoid blowing TPM budget. Full text stays in attachment preview.
+      const MAX_FILE_CHARS_PER_REQUEST = 900;
+      const MAX_TOTAL_FILE_CHARS = 1800;
+      let totalChars = 0;
+      const fileBlocks = fileAttach.attachedFiles.map(f => {
+        const raw = f.extractedText || "";
+        const remaining = Math.max(0, MAX_TOTAL_FILE_CHARS - totalChars);
+        const slice = raw.slice(0, Math.min(MAX_FILE_CHARS_PER_REQUEST, remaining));
+        totalChars += slice.length;
+        const suffix = raw.length > slice.length ? "\n…[truncated for budget]" : "";
+        return `--- ${f.name} ---\n${slice}${suffix}`;
+      });
+      userContent = `${input}\n\n[Attached files]\n${fileList}\n\n[File contents]\n` + fileBlocks.join("\n\n");
     }
 
     if (fileAttach.attachedFiles.length > 0) {
@@ -865,27 +1047,69 @@ export function useChat() {
     fileAttach.setAttachedFiles([]);
     requestAnimationFrame(() => scroll.scrollToBottom("smooth"));
 
-    setUIMessages(prev => [
-      ...prev,
-      {
-        id: userMessageId,
-        role: "user",
-        parts: [{ type: "text", text: userContent }],
+    // If we were waiting for rate-limit, a new user intent cancels the wait
+    if (rateLimitWait) {
+      setRateLimitWait(null);
+      if (rateLimitIntervalRef.current) clearInterval(rateLimitIntervalRef.current);
+      if (rateLimitTimeoutRef.current) clearTimeout(rateLimitTimeoutRef.current);
+    }
+    // Store for auto-retry on 429 instead of cutting output
+    retryPayloadRef.current = {
+      text: userContent,
+      messageId: userMessageId,
+      metadata: { sources: researchSources, researchQuery: researchQuery || undefined },
+    };
+
+    // Flush the optimistic user message synchronously before sendMessage.
+    // useAIChat with a `messageId` does `findIndex` on `state.messages` and
+    // throws `message with id ... not found` if the React state hasn't flushed
+    // yet (React 18 batches). On the initial screen `chatSessionId` was null
+    // and the old `id: chatSessionId ?? "default"` switched mid-send, so the
+    // first prompt was effectively lost and only the second prompt (now with
+    // a stable id) went through. flushSync guarantees the message exists.
+    flushSync(() => {
+      setUIMessages(prev => [
+        ...prev,
+        {
+          id: userMessageId,
+          role: "user",
+          parts: [{ type: "text", text: userContent }],
+          metadata: {
+            sources: researchSources,
+            researchQuery: researchQuery || undefined,
+          },
+        } as unknown as UIMessage,
+      ]);
+    });
+
+    try {
+      await sendMessage({
+        text: userContent,
+        messageId: userMessageId,
         metadata: {
           sources: researchSources,
           researchQuery: researchQuery || undefined,
         },
-      } as unknown as UIMessage,
-    ]);
-
-    await sendMessage({
-      text: userContent,
-      messageId: userMessageId,
-      metadata: {
-        sources: researchSources,
-        researchQuery: researchQuery || undefined,
-      },
-    });
+      });
+      // Success: clear retry payload so a later 429 doesn't replay an old prompt
+      retryPayloadRef.current = null;
+    } catch (e) {
+      console.error("[Chat] sendMessage failed (first-prompt race):", e);
+      // Fallback: if the messageId race still throws, retry without an id
+      // (SDK will generate one). The user message is already in the UI.
+      if (e instanceof Error && e.message.includes("not found")) {
+        await sendMessage({
+          text: userContent,
+          metadata: {
+            sources: researchSources,
+            researchQuery: researchQuery || undefined,
+          },
+        });
+        retryPayloadRef.current = null;
+      } else {
+        throw e;
+      }
+    }
   };
 
   const handleNewTopic = async () => {
@@ -975,6 +1199,8 @@ export function useChat() {
     handleNewTopic,
     stopChat,
     chatStatus,
+    rateLimitWait,
+    setRateLimitWait,
   };
 }
 

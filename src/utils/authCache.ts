@@ -17,32 +17,69 @@ type AuthUser = { id: string };
 
 let cachedUser: AuthUser | null = null;
 let inFlight: Promise<AuthUser | null> | null = null;
+let lastFetchTime = 0;
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 /** Returns the current user from cache, or fetches once and caches. */
 export async function getAuthUser(): Promise<AuthUser | null> {
-  if (cachedUser) return cachedUser;
-  if (inFlight)   return inFlight;
+  // Return cached user if still valid
+  if (cachedUser && Date.now() - lastFetchTime < CACHE_TTL) {
+    return cachedUser;
+  }
+  if (inFlight) return inFlight;
 
   inFlight = (async () => {
     try {
-      // getSession() reads from localStorage synchronously - no lock needed.
-      // Only falls back to getUser() (network round-trip + lock) when there's no
-      // session at all, which means the user isn't logged in anyway.
       const supabase = createClient();
-      const { data: { session } } = await supabase.auth.getSession();
+      
+      // First try to get session from localStorage (fast, no network)
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError) {
+        console.warn("[authCache] getSession error:", sessionError.message);
+        // If session error is JWT-related, try to refresh
+        if (sessionError.message.includes("JWT") || sessionError.message.includes("PGRST301")) {
+          console.log("[authCache] Attempting token refresh...");
+          const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession();
+          if (refreshError) {
+            console.error("[authCache] Token refresh failed:", refreshError.message);
+            // Clear corrupted auth state
+            await supabase.auth.signOut();
+            cachedUser = null;
+            return null;
+          }
+          if (refreshedSession?.user) {
+            cachedUser = { id: refreshedSession.user.id };
+            lastFetchTime = Date.now();
+            return cachedUser;
+          }
+        }
+      }
+      
       const user = session?.user ?? null;
-      cachedUser = user ? { id: user.id } : null;
+      
+      // If no session, try getUser() as fallback (network call)
+      if (!user) {
+        const { data: { user: fetchedUser }, error: userError } = await supabase.auth.getUser();
+        if (userError) {
+          console.warn("[authCache] getUser failed:", userError.message);
+          if (userError.message.includes("JWT") || userError.message.includes("PGRST301")) {
+            await supabase.auth.signOut();
+          }
+          cachedUser = null;
+          return null;
+        }
+        cachedUser = fetchedUser ? { id: fetchedUser.id } : null;
+      } else {
+        cachedUser = { id: user.id };
+      }
+      
+      lastFetchTime = Date.now();
       return cachedUser;
     } catch (err) {
-      console.warn("[authCache] getSession failed, falling back to getUser:", err);
-      try {
-        const supabase = createClient();
-        const { data: { user } } = await supabase.auth.getUser();
-        cachedUser = user ? { id: user.id } : null;
-        return cachedUser;
-      } catch {
-        return null;
-      }
+      console.error("[authCache] Unexpected error:", err);
+      cachedUser = null;
+      return null;
     } finally {
       inFlight = null;
     }
@@ -54,20 +91,37 @@ export async function getAuthUser(): Promise<AuthUser | null> {
 /** Call this whenever auth state changes (sign in / sign out). */
 export function invalidateAuthCache() {
   cachedUser = null;
-  inFlight   = null;
+  inFlight = null;
+  lastFetchTime = 0;
+}
+
+/** Force a fresh fetch on next call */
+export function forceRefreshAuth() {
+  cachedUser = null;
+  inFlight = null;
+  lastFetchTime = 0;
 }
 
 // Keep cache in sync with auth state changes
 if (typeof window !== "undefined") {
   const supabase = createClient();
-  supabase.auth.onAuthStateChange((_event: any, session: any) => {
-    // Always clear stale cache
+  supabase.auth.onAuthStateChange((event: any, session: any) => {
+    // Always clear stale cache on auth changes
     cachedUser = null;
     inFlight = null;
+    lastFetchTime = 0;
+    
     // If we have a fresh session, pre-populate the cache immediately
     // so the next getAuthUser() call doesn't race with localStorage writes
-    if (session?.user) {
+    if (session?.user && (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "INITIAL_SESSION")) {
       cachedUser = { id: session.user.id };
+      lastFetchTime = Date.now();
+    }
+    
+    // On sign out, ensure complete cleanup
+    if (event === "SIGNED_OUT") {
+      cachedUser = null;
+      lastFetchTime = 0;
     }
   });
 }

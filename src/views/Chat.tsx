@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSidebar } from "@/components/ui/sidebar";
@@ -114,11 +114,48 @@ const Chat = () => {
     handleStartNewChat,
     handleDeleteThread,
     handleRenameThread,
+    rateLimitWait,
   } = useChat();
 
   const [initialLoading, setInitialLoading] = useState(true);
   const { state: sidebarState } = useSidebar();
   const isMobile = useIsMobile();
+
+  // Deep-link from the Curriculum page ("Explain this"): a pending question
+  // stashed in sessionStorage gets sent automatically once chat is ready.
+  //
+  // handleSend comes back from useChat() as a brand-new function on every
+  // render (it isn't wrapped in useCallback there), so it can't safely sit in
+  // a dependency array - an effect that lists it fires on every render of
+  // this component, not just the ones that matter. We stash the latest
+  // handleSend in a ref and read from the ref inside the effect instead, so
+  // the effect's dependencies only ever change when pendingAutoSend/input
+  // actually change, and the "send" happens exactly once per deep-link.
+  const [pendingAutoSend, setPendingAutoSend] = useState(false);
+  const handleSendRef = useRef(handleSend);
+  useEffect(() => {
+    handleSendRef.current = handleSend;
+  });
+
+  useEffect(() => {
+    if (initialLoading) return;
+    let prefill: string | null = null;
+    try {
+      prefill = sessionStorage.getItem("analogix_chat_prefill");
+      if (prefill) sessionStorage.removeItem("analogix_chat_prefill");
+    } catch { /* ignore */ }
+    if (prefill) {
+      setInput(prefill);
+      setPendingAutoSend(true);
+    }
+  }, [initialLoading, setInput]);
+
+  useEffect(() => {
+    if (pendingAutoSend && input.trim()) {
+      setPendingAutoSend(false);
+      handleSendRef.current();
+    }
+  }, [pendingAutoSend, input]);
 
   const [suggestionSeed] = useState(() => Math.floor(Math.random() * 0x7fffffff));
 
@@ -605,6 +642,22 @@ const Chat = () => {
                       onAllow={handleAllowTools}
                       onDeny={handleDenyTools}
                     />
+                  )}
+
+                  {rateLimitWait && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="flex flex-col items-center gap-3 py-5 px-6 rounded-2xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/50"
+                    >
+                      <NeuralNetworkLoader />
+                      <p className="text-sm text-center font-medium text-amber-900 dark:text-amber-100 leading-relaxed">
+                        {rateLimitWait.message}
+                      </p>
+                      <p className="text-xs text-amber-700 dark:text-amber-300">
+                        Retrying in {rateLimitWait.seconds}s — your answer will not be cut off.
+                      </p>
+                    </motion.div>
                   )}
                   
                   <div ref={messagesEndRef} />

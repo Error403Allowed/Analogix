@@ -160,6 +160,17 @@ async function fetchDocumentsForUser(userId: string, subjectId?: string): Promis
     }
     const { data, error } = await query.order("updated_at", { ascending: false });
     if (error) {
+        // Handle JWT/auth errors by forcing auth cache refresh
+        if (error.code === "PGRST301" || error.message?.includes("JWT")) {
+            console.warn("[subjectStore] Auth error detected, forcing auth refresh:", error.message);
+            const { forceRefreshAuth } = await import("./authCache");
+            forceRefreshAuth();
+            // Try once more after refresh
+            const { data: retryData, error: retryError } = await query.order("updated_at", { ascending: false });
+            if (!retryError) {
+                return (retryData ?? []).map((row: any) => normalizeDocumentRow(row));
+            }
+        }
         console.warn("[subjectStore] fetchDocumentsForUser failed:", error);
         return [];
     }
@@ -189,6 +200,12 @@ export const subjectStore = {
             fetchDocumentsForUser(user.id),
         ]);
         if (error) {
+            // Handle JWT/auth errors
+            if (error.code === "PGRST301" || error.message?.includes("JWT")) {
+                console.warn("[subjectStore] Auth error in getAll, forcing auth refresh:", error.message);
+                const { forceRefreshAuth } = await import("./authCache");
+                forceRefreshAuth();
+            }
             console.warn("[subjectStore] getAll failed:", error);
             return {};
         }

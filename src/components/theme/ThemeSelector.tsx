@@ -327,7 +327,15 @@ export const applyThemeByName = (themeName: string) => {
       { user_id: user.id, theme: themeName, updated_at: new Date().toISOString() },
       { onConflict: "user_id" }
     ).then(({ error }: { error: any }) => {
-      if (error) console.error("[theme] Failed to persist theme:", error);
+      if (error) {
+        // Handle JWT/auth errors
+        if (error.code === "PGRST301" || error.message?.includes("JWT")) {
+          console.warn("[theme] Auth error persisting theme, forcing auth refresh:", error.message);
+          import("@/utils/authCache").then(({ forceRefreshAuth }) => forceRefreshAuth());
+        } else {
+          console.error("[theme] Failed to persist theme:", error);
+        }
+      }
     });
   });
 };

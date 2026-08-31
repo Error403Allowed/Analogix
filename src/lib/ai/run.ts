@@ -2,10 +2,12 @@ import { APICallError, generateObject, generateText, streamText, zodSchema } fro
 import { z } from "zod";
 import {
   classifyTaskType,
+  getAIModel,
   getModelsForTaskType,
   getProviderAtIndex,
   getProviderOptionsForModel,
   isKeyDead,
+  isVercelGatewayEnabled,
   markKeyDead,
   resolveModelForUser,
   type TaskType,
@@ -91,10 +93,37 @@ export const withModelFallback = async <T>(
     options.estimatedTokens,
   );
   const models = [...new Set([...modelsToTry, resolveModelForUser(options.userModel)])];
+
+  // Seamless Vercel infra: try gateway first (higher TPM, managed retries)
+  // before falling back to direct Groq pool. This single attempt per model
+  // avoids the hammering that previously caused 429 → retry storm → depth.
+  if (isVercelGatewayEnabled()) {
+    for (const model of models) {
+      try {
+        const gw = getAIModel(model);
+        if (gw.via === "gateway") {
+          const result = await run({
+            model,
+            keyIndex: -1,
+            maxTokens: getSafeMaxTokens(model, options.maxTokens, options.estimatedInputTokens ?? 0),
+          });
+          return { result, model, keyIndex: -1 };
+        }
+      } catch (error) {
+        const apiError = APICallError.isInstance(error) ? error : undefined;
+        // Gateway 429 should fall through to Groq pool; don't retry gateway instantly
+        if (apiError?.statusCode === 429) {
+          console.warn(`[AI] Gateway rate-limited for ${model}, falling back to Groq`);
+          break;
+        }
+        console.warn(`[AI] Gateway failed for ${model}: ${error instanceof Error ? error.message : String(error)}, trying Groq`);
+        break;
+      }
+    }
+  }
+
   const startingKeyIndex = 0;
   const keyCount = (() => {
-    // Resolve how many keys are configured without importing assertApiKeys
-    // (models.ts already throws when no keys are present at call time).
     const keys = [process.env.GROQ_API_KEY, process.env.GROQ_API_KEY_2].filter(Boolean);
     return keys.length;
   })();
@@ -224,8 +253,9 @@ export const runText = async (options: RunTextOptions): Promise<RunResult> => {
   const { result, model, keyIndex } = await withModelFallback(
     { taskType, userModel: options.userModel, estimatedTokens, estimatedInputTokens, maxTokens: budgeted.maxTokens },
     async ({ model, keyIndex, maxTokens }) => {
+      const aiModel = keyIndex === -1 ? getAIModel(model).model : getProviderAtIndex(keyIndex)!(model);
       const { text, usage } = await generateText({
-        model: getProviderAtIndex(keyIndex)!(model),
+        model: aiModel,
         system: budgeted.messages.find((m) => m.role === "system")?.content,
         messages: budgeted.messages
           .filter((m) => m.role !== "system")
@@ -268,8 +298,9 @@ export const runStream = (options: RunStreamOptions): ReadableStream<Uint8Array>
         await withModelFallback(
           { taskType, userModel: options.userModel, estimatedTokens, estimatedInputTokens, maxTokens: budgeted.maxTokens },
           async ({ model, keyIndex, maxTokens }) => {
+            const aiModel = keyIndex === -1 ? getAIModel(model).model : getProviderAtIndex(keyIndex)!(model);
             const result = streamText({
-              model: getProviderAtIndex(keyIndex)!(model),
+              model: aiModel,
               system: budgeted.messages.find((m) => m.role === "system")?.content,
               messages: budgeted.messages
                 .filter((m) => m.role !== "system")
@@ -326,8 +357,9 @@ export const runObject = async <T>(options: RunObjectOptions): Promise<T> => {
   const { result } = await withModelFallback(
     { taskType, userModel: options.userModel, estimatedTokens, estimatedInputTokens, maxTokens: budgeted.maxTokens },
     async ({ model, keyIndex, maxTokens }) => {
+      const aiModel = keyIndex === -1 ? getAIModel(model).model : getProviderAtIndex(keyIndex)!(model);
       return generateObject({
-        model: getProviderAtIndex(keyIndex)!(model),
+        model: aiModel,
         schema: zodSchema(options.schema),
         system: budgeted.messages.find((m) => m.role === "system")?.content,
         messages: budgeted.messages

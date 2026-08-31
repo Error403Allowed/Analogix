@@ -1,5 +1,6 @@
 import { createGroq } from "@ai-sdk/groq";
 import type { GroqProvider } from "@ai-sdk/groq";
+import { createGateway } from "@ai-sdk/gateway";
 
 // ============================================================================
 // MODEL REGISTRY
@@ -54,18 +55,28 @@ export const MODEL_CONTEXT_LIMITS: Record<string, number> = {
   "qwen/qwen3.6-27b": 131072,
 };
 
-// Conservative per-request caps based on Groq free-tier limits (org TPM cap is
-// 8000). A request whose input + max_tokens exceeds 8000 is rejected with 413.
-export const MODEL_REQUEST_TOKEN_BUDGETS: Record<string, number> = {
-  "openai/gpt-oss-20b": 7600,
-  "openai/gpt-oss-120b": 7600,
-  "qwen/qwen3.6-27b": 7600,
-};
-
 export const MIN_COMPLETION_TOKENS = 256;
 
+export const MODEL_REQUEST_TOKEN_BUDGETS: Record<string, number> = {
+  "openai/gpt-oss-20b": 4200,
+  "openai/gpt-oss-120b": 4200,
+  "qwen/qwen3.6-27b": 4200,
+};
+
+// Vercel AI Gateway – seamless infra. If AI_GATEWAY_API_KEY is set, gateway
+// is preferred (higher TPM, managed retries); else direct Groq pool.
+const GATEWAY_API_KEY = process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_AI_GATEWAY_KEY;
+const isGatewayEnabled = Boolean(GATEWAY_API_KEY);
+
+let gatewayProvider: ReturnType<typeof createGateway> | null = null;
+if (isGatewayEnabled) {
+  gatewayProvider = createGateway({ apiKey: GATEWAY_API_KEY! });
+}
+
+export const isVercelGatewayEnabled = (): boolean => isGatewayEnabled;
+
 // ============================================================================
-// PROVIDER POOL (multi-key rotation)
+// PROVIDER POOL (multi-key rotation + Gateway)
 // ============================================================================
 
 const BASE_URL =
@@ -156,6 +167,29 @@ export const getGroqModel = (
   }
   return { model: provider(modelId), keyIndex: keyIndex ?? 0 };
 };
+
+// Unified entry point for Vercel infra: prefers gateway, falls back to Groq pool.
+// Keeps the rest of the app provider-agnostic and guarantees seamless failover.
+export const getAIModel = (
+  modelId: string,
+  keyIndex?: number,
+): { model: any; keyIndex: number; via: "gateway" | "groq" } => {
+  if (isGatewayEnabled && gatewayProvider) {
+    // Gateway model ids are "groq/<groq-model-id>" – normalize for gateway
+    const gatewayModelId = modelId.includes("/") ? `groq/${modelId}` : `groq/${modelId}`;
+    try {
+      const model = gatewayProvider(gatewayModelId);
+      return { model, keyIndex: -1, via: "gateway" };
+    } catch {
+      // Fall through to Groq pool if gateway mapping fails
+    }
+  }
+  const groq = getGroqModel(modelId, keyIndex);
+  return { ...groq, via: "groq" as const };
+};
+
+export const getAIProviderOptionsForModel = (model: string) =>
+  getProviderOptionsForModel(model);
 
 // ============================================================================
 // MODEL SELECTION + TASK CLASSIFICATION

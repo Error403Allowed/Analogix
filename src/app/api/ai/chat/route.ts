@@ -1,4 +1,4 @@
-import { convertToModelMessages, streamText } from "ai";
+import { convertToModelMessages, streamText, stepCountIs } from "ai";
 import type { UIMessage } from "ai";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -6,10 +6,11 @@ import {
   compressToSummary,
   classifyTaskType,
   computeChatOutputBudget,
-  getGroqModel,
+  getAIModel,
   getProviderOptionsForModel,
   getToolApprovalSecret,
   isSimpleGreetingMessage,
+  isVercelGatewayEnabled,
   loadAIContext,
   resolveModelForUser,
   TOTAL_BUDGET,
@@ -51,7 +52,20 @@ interface ChatRequestBody {
   userContext?: ChatUserContext;
 }
 
-const FULL_MESSAGE_WINDOW = 8;
+const FULL_MESSAGE_WINDOW = 4;
+
+// Bounds how many internal LLM steps a single turn may take (tool call ->
+// tool result -> next LLM step -> ...) before streamText stops and returns
+// control to the client. Without a stopWhen condition, streamText defaults to
+// stepCountIs(1): the model runs exactly one step, so after a tool call it
+// never gets to read the tool's result and synthesize a reply - the client
+// then has to resubmit the whole conversation itself (via
+// sendAutomaticallyWhen) just to get the *next* step. For a multi-tool turn
+// that resubmit-per-step pattern is a request storm that also churns React
+// state fast enough to trip "Maximum update depth exceeded" on the client.
+// Letting the server run up to MAX_AGENT_STEPS steps internally means a
+// normal multi-step tool turn completes in ONE client request instead of N.
+const MAX_AGENT_STEPS = 4;
 
 // convertToModelMessages throws "Unsupported part" for any UI part type it does
 // not recognise (legacy `tool-invocation`/`thinking`/`sources` parts from older
@@ -232,7 +246,7 @@ export async function POST(request: Request) {
       : classifyTaskType(flat, primarySubject);
     const resolvedModel = resolveModelForUser(userContext.selectedModel || null);
     const isQwen = taskType === "reasoning" || resolvedModel.toLowerCase().includes("qwen");
-    const OUTPUT_HARD_CAP = isQwen ? 8192 : 4096;
+    const OUTPUT_HARD_CAP = isQwen ? 1500 : 1100;
     const wantsLongResponse =
       Boolean(userContext.researchMode) || isFormal ||
       /\b(detailed|comprehensive|essay|report|study guide|lesson plan|long answer|timetable|study plan|revision plan|syllabus|walk me through|step-by-step guide)\b/i.test(latestUserMsg);
@@ -248,13 +262,33 @@ export async function POST(request: Request) {
     const ctx: ToolBindings = { userId, supabase };
     const tools = buildToolSet(ctx, getToolsForRequest(latestUserMsg, taskType));
 
-    // ── Trim to window + budget ──
-    let recent = messages
-      .filter((m) => m.role === "user" || m.role === "assistant")
-      .map((m) => ({ ...m, parts: sanitizeParts(m.parts) }))
-      .slice(-FULL_MESSAGE_WINDOW);
-    // Groq counts the serialized tool definitions against the request/TPM limit.
-    const toolTokens = estimateToolTokens(tools);
+    // ── Budget architecture: tiered section dropping, not blind slicing ──
+    // 1) Tool budget: Groq counts serialized tools against TPM. If tools alone
+    //    already push us near cap, drop low-value reads first rather than
+    //    starving output. This is the correct layer to shed, not the system
+    //    prompt tail.
+    let effectiveTools = tools;
+    let toolTokens = estimateToolTokens(effectiveTools);
+    const TOOL_BUDGET_CAP = 700;
+    if (toolTokens > TOOL_BUDGET_CAP && !isSimpleGreeting) {
+      // Rebuild with only write tools relevant to intent + minimal reads
+      const minimalTools = buildToolSet(ctx, getToolsForRequest(latestUserMsg, taskType).filter(t => !["searchWorkspace","searchDocuments","getDocument","listFlashcards","listQuizzes","searchCurriculum"].includes(t) || toolTokens < TOOL_BUDGET_CAP));
+      const minimalTokens = estimateToolTokens(minimalTools);
+      if (minimalTokens < toolTokens) {
+        console.warn(`[ai/chat] Tool budget ${toolTokens}t -> ${minimalTokens}t by pruning low-value reads`);
+        effectiveTools = minimalTools;
+        toolTokens = minimalTokens;
+      }
+      if (toolTokens > TOOL_BUDGET_CAP) {
+        // Still over: drop all read tools, keep only essential writes + storeMemory
+        const emergencyTools = buildToolSet(ctx, (getToolsForRequest(latestUserMsg, taskType).filter(t => t === "storeMemory") as any));
+        const emergencyTokens = estimateToolTokens(emergencyTools);
+        console.warn(`[ai/chat] Emergency tool prune ${toolTokens}t -> ${emergencyTokens}t`);
+        effectiveTools = emergencyTools;
+        toolTokens = emergencyTokens;
+      }
+    }
+
     const budgetInput = {
       isSimpleGreeting,
       wantsLongResponse,
@@ -263,60 +297,133 @@ export async function POST(request: Request) {
       outputBudget: TOTAL_BUDGET,
     };
     const { requested } = computeChatOutputBudget(budgetInput);
+    const reserveForOutput = wantsLongResponse ? requested : Math.min(requested, 1400);
 
-    // Reserve the output target BEFORE context is spent, so a long answer (plus
-    // the hidden chain-of-thought for gpt-oss/qwen) is never starved - the root
-    // cause of "responses getting cut off". Long-form reserves the full hard cap;
-    // ordinary turns reserve a solid floor and grow with leftover budget.
-    const reserveForOutput = wantsLongResponse ? requested : Math.min(requested, 3072);
-    const originalSystemTokens = estimateRequestTokens(systemPrompt);
-    const fitsBudget = (msgs: typeof messages) =>
-      originalSystemTokens + toolTokens + estimateUIMessagesTokens(msgs) + reserveForOutput <=
-      TOTAL_BUDGET;
+    // 2) Message window: keep at least 2 turns, drop oldest outside budget.
+    let recent = messages
+      .filter((m) => m.role === "user" || m.role === "assistant")
+      .map((m) => ({ ...m, parts: sanitizeParts(m.parts) }))
+      .slice(-FULL_MESSAGE_WINDOW);
 
-    // Keep the latest user ask plus at least one preceding turn.
-    while (recent.length > 2 && !fitsBudget(recent)) {
+    // Helper: tiered system-prompt fitting. Instead of slicing mid-string
+    // (which leaves dangling JSON/markdown and can corrupt the prompt),
+    // drop whole low-priority sections first.
+    const fitSystemPrompt = (prompt: string, maxTokens: number): string => {
+      if (estimateRequestTokens(prompt) <= maxTokens) return prompt;
+      // Low -> high priority for dropping. Each entry is a regex that removes
+      // a whole block. Order matters: visualisation, research, extraData,
+      // workspace/calendar, tool capabilities, curriculum, memory. Personality
+      // and core voice are never dropped here.
+      const dropPatterns: Array<{ re: RegExp; label: string }> = [
+        // Visualisation guide is huge and only needed when user asks for graph
+        { re: /Visualisations -[\s\S]*?Don't just describe it - SHOW it\./, label: "visualisationGuide" },
+        { re: /RESEARCH MODE[\s\S]*?ACADEMIC SOURCES:[\s\S]*?(?=\n\n---|\n\nCRITICAL|\n\n━━━|$)/, label: "researchBlock" },
+        { re: /━━━ YOUR DATA[\s\S]*?━━━ END YOUR DATA ━━━/, label: "extraData" },
+        { re: /━━━ CALENDAR & DEADLINES ━━━[\s\S]*?━━━ END CALENDAR ━━━/, label: "calendar" },
+        { re: /━━━ YOUR WORKSPACE ━━━[\s\S]*?━━━ END WORKSPACE ━━━/, label: "workspace" },
+        { re: /━━━ CURRICULUM CONTENT ━━━[\s\S]*?━━━ END CURRICULUM ━━━/, label: "curriculum" },
+        { re: /YOUR CAPABILITIES \(TOOLS\)[\s\S]*?━━━+/, label: "toolCapabilities" },
+        // Memory/summary/personality at top are last resort
+        { re: /--- PERSONALITY SETTINGS[\s\S]*?--- END PERSONALITY ---\n\n/, label: "personality" },
+        { re: /^\[Memory\][\s\S]*?\n\n/, label: "memory" },
+        { re: /^\[Earlier\][\s\S]*?\n\n/, label: "summary" },
+      ];
+      let out = prompt;
+      for (const { re, label } of dropPatterns) {
+        if (estimateRequestTokens(out) <= maxTokens) break;
+        if (re.test(out)) {
+          const before = out.length;
+          out = out.replace(re, "").replace(/\n{3,}/g, "\n\n").trim();
+          console.warn(`[ai/chat] Dropped ${label} (${before} -> ${out.length} chars) to fit ${maxTokens}t system budget`);
+        }
+      }
+      // Final safety: if still over, hard-truncate tail (core prompt tail is least harmful)
+      if (estimateRequestTokens(out) > maxTokens) {
+        const maxChars = Math.max(600, Math.floor(maxTokens * ESTIMATE_CHARS_PER_TOKEN));
+        console.warn(`[ai/chat] Hard truncating system prompt ${out.length} -> ${maxChars} chars for ${maxTokens}t`);
+        out = out.slice(0, maxChars) + "\n…[context truncated - low priority sections removed]";
+      }
+      return out;
+    };
+
+    const fitsBudgetWithPrompt = (msgs: typeof recent, prompt: string) =>
+      estimateRequestTokens(prompt) + toolTokens + estimateUIMessagesTokens(msgs) + reserveForOutput <= TOTAL_BUDGET;
+
+    // First, reduce message window until even a minimal prompt would fit
+    while (recent.length > 2 && !fitsBudgetWithPrompt(recent, systemPrompt)) {
+      // Remove oldest non-user? Keep latest ask.
       recent = recent.slice(1);
     }
-    const inputTokens = estimateUIMessagesTokens(recent);
 
-    // The system prompt (personality + memory + summary + workspace context)
-    // counts against the same request cap. Truncate it as a last resort so the
-    // outgoing request can NEVER exceed TOTAL_BUDGET and the reserved output
-    // target stays achievable (memory/summary sits at the top, so cutting the
-    // tail drops workspace/calendar detail - far better than a cut-off answer).
-    const maxSystemTokens = TOTAL_BUDGET - toolTokens - inputTokens - reserveForOutput;
-    if (systemPrompt.length > Math.floor(maxSystemTokens * ESTIMATE_CHARS_PER_TOKEN)) {
-      const newLen = Math.max(600, Math.floor(maxSystemTokens * ESTIMATE_CHARS_PER_TOKEN));
-      console.warn(
-        `[ai/chat] Truncating system prompt (${systemPrompt.length} -> ${newLen} chars) to keep ${reserveForOutput}t output reserve`,
-      );
-      systemPrompt = systemPrompt.slice(0, newLen) + "\n…[context truncated]";
-    }
+    // Then fit system prompt to remaining budget (tiered dropping)
+    const inputTokensForFit = estimateUIMessagesTokens(recent);
+    const maxSystemTokens = TOTAL_BUDGET - toolTokens - inputTokensForFit - reserveForOutput;
+    const fittedPrompt = fitSystemPrompt(systemPrompt, Math.max(600, maxSystemTokens));
+    systemPrompt = fittedPrompt;
+
     const systemTokens = estimateRequestTokens(systemPrompt);
+    const inputTokens = estimateUIMessagesTokens(recent);
     const outputBudget = TOTAL_BUDGET - systemTokens - toolTokens - inputTokens;
-    // `requested` is the target; `outputBudget` is the hard ceiling the request
-    // can survive. maxOutputTokens is the intersection, never below the safe
-    // floor so the stream can at least start.
+    if (outputBudget < 256) {
+      console.error(`[ai/chat] Output budget critically low: ${outputBudget}t (system ${systemTokens}t + tools ${toolTokens}t + input ${inputTokens}t + reserve ${reserveForOutput}t)`);
+    }
     const { maxOutputTokens } = computeChatOutputBudget({ ...budgetInput, outputBudget });
+    // Use the fitted tools (may be pruned) for the stream
+    const finalTools = effectiveTools;
 
     // ── Model + stream ──
-    const { model } = getGroqModel(resolvedModel);
+    // Seamless Vercel infra: prefers AI Gateway (higher TPM, unified retries)
+    // with automatic fallback to direct Groq pool.
+    const { model, via } = getAIModel(resolvedModel);
+    if (isVercelGatewayEnabled()) {
+      console.log(`[ai/chat] via=${via} budget=${TOTAL_BUDGET}t window=${FULL_MESSAGE_WINDOW} tools=${toolTokens}t`);
+    }
     const modelMessages = await convertToModelMessages(
       recent as unknown as Array<UIMessage>,
-      { tools },
+      { tools: finalTools },
     );
 
     const result = streamText({
       model,
       system: systemPrompt,
       messages: modelMessages,
-      tools,
+      tools: finalTools,
       temperature: userContext.researchMode ? 0.3 : 0.55,
       maxOutputTokens,
       providerOptions: getProviderOptionsForModel(resolvedModel),
       experimental_toolApprovalSecret: getToolApprovalSecret(),
-      maxRetries: 2,
+      // Do not hammer Groq on TPM 429: we budget conservatively, so a 429
+      // means the sliding window is full. Retrying instantly just burns the
+      // window and triggers the SDK's 3-attempt retry storm (Used+Requested >
+      // 8000) which surfaces as "Maximum update depth" on the client via
+      // rapid status churn. Let the client see a single 429 with Retry-After.
+      maxRetries: 0,
+      stopWhen: stepCountIs(MAX_AGENT_STEPS),
+      onStepFinish: (() => {
+        // Local counter, not derived from the event: streamText doesn't hand
+        // onStepFinish a step index, and we need one to tell "the agent
+        // naturally finished" apart from "we hit MAX_AGENT_STEPS mid-tool-use
+        // and stopWhen cut it off". The latter would surface to the user as a
+        // response that just stops with no final text - if this ever fires,
+        // MAX_AGENT_STEPS is too low for real usage and should go up.
+        let stepIndex = 0;
+        return ({ finishReason, toolCalls }: { finishReason: string; toolCalls?: Array<{ toolName: string }> }) => {
+          stepIndex += 1;
+          if (toolCalls?.length) {
+            console.log(
+              `[ai/chat] step ${stepIndex}/${MAX_AGENT_STEPS} finished: reason=${finishReason} tools=${toolCalls
+                .map((t) => t.toolName)
+                .join(",")}`,
+            );
+          }
+          if (stepIndex >= MAX_AGENT_STEPS && finishReason === "tool-calls") {
+            console.warn(
+              `[ai/chat] MAX_AGENT_STEPS (${MAX_AGENT_STEPS}) exhausted while still calling tools - ` +
+                `the turn was cut off before generating a final answer. Consider raising MAX_AGENT_STEPS.`,
+            );
+          }
+        };
+      })(),
     });
 
     return result.toUIMessageStreamResponse({

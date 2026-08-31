@@ -28,23 +28,31 @@ export const estimateUIMessagesTokens = (messages: Array<{ parts?: unknown[] }>)
   for (const m of messages) {
     const parts = (m.parts ?? []) as Array<Record<string, unknown>>;
     for (const p of parts) {
-      switch (p.type) {
-        case "text":
-          chars += typeof p.text === "string" ? p.text.length : 0;
-          break;
-        case "file":
-          chars += FILE_PART_TOKEN_ESTIMATE * ESTIMATE_CHARS_PER_TOKEN;
-          break;
-        case "tool-call":
-        case "tool-result":
-        case "data": {
-          const value = p.input ?? p.output ?? p.data ?? "";
-          chars += typeof value === "string" ? value.length : JSON.stringify(value).length;
-          break;
+      const t = typeof p.type === "string" ? p.type : "";
+      if (t === "text") {
+        chars += typeof p.text === "string" ? p.text.length : 0;
+      } else if (t === "file") {
+        chars += FILE_PART_TOKEN_ESTIMATE * ESTIMATE_CHARS_PER_TOKEN;
+      } else if (
+        t === "tool-call" ||
+        t === "tool-result" ||
+        t === "dynamic-tool" ||
+        t.startsWith("tool-") ||
+        t.startsWith("data-")
+      ) {
+        const value = p.input ?? p.output ?? p.data ?? (typeof p.text === "string" ? p.text : "");
+        if (typeof value === "string") {
+          chars += value.length;
+        } else if (value !== undefined && value !== null && value !== "") {
+          chars += JSON.stringify(value).length;
+        } else if (t.startsWith("tool-") || t === "dynamic-tool") {
+          // v6 tool parts carry input/output even when values above are empty
+          const fallback = (p as Record<string, unknown>).input ?? (p as Record<string, unknown>).output ?? "";
+          chars += typeof fallback === "string" ? fallback.length : JSON.stringify(fallback).length;
         }
-        case "reasoning":
-          chars += typeof p.text === "string" ? p.text.length : 0;
-          break;
+      } else if (t === "reasoning" || t === "step-start") {
+        const txt = typeof p.text === "string" ? p.text : typeof (p as Record<string, unknown>).reasoning === "string" ? (p as unknown as { reasoning: string }).reasoning : "";
+        chars += txt.length;
       }
     }
   }
@@ -68,14 +76,15 @@ export interface BudgetResult {
 
 // Reasoning models (Qwen - and GPT-OSS, which reasons by default) spend part of
 // their output budget on the hidden chain-of-thought before the visible answer.
-// Reserve extra output room so the thinking pass AND the answer both fit.
-export const REASONING_TOKEN_RESERVE = 2048;
-export const MIN_ANSWER_TOKENS = 512;
+// Reserve extra output room so the thinking pass AND the visible answer both fit.
+export const REASONING_TOKEN_RESERVE = 1024;
+export const MIN_ANSWER_TOKENS = 400;
 export const REASONING_OUTPUT_FLOOR = REASONING_TOKEN_RESERVE + MIN_ANSWER_TOKENS;
 
 // Target visible answer size for ordinary chat turns (before the reasoning
-// reserve is added for CoT-heavy models).
-export const DEFAULT_OUTPUT_TOKENS = 2048;
+// reserve is added for CoT-heavy models). Keep this modest on On-Demand tier
+// so input+output together leave TPM headroom (Used + Requested < 8000).
+export const DEFAULT_OUTPUT_TOKENS = 1100;
 export const MIN_SAFE_OUTPUT = 256;
 const GREETING_OUTPUT_TOKENS = 300;
 const GREETING_OUTPUT_TOKENS_WITH_REASONING = 600;
@@ -194,6 +203,18 @@ const getSafeMaxTokens = (model: string, requested: number, estimatedInputTokens
   return Math.min(requested, limit, maxByRequestBudget);
 };
 
-export const TOTAL_BUDGET = 7600;
+// On-Demand TPM is 8000. We must leave ~3500-4000 headroom for the sliding
+// window (Used + Requested < 8000). A per-request cap of 7600 only protects
+// against 413, not 429 TPM bursts. 4200 is conservative enough that even
+// with ~3800 already used, a new request stays under the TPM limit.
+// When Vercel AI Gateway (paid) is enabled or AI_BUDGET_TOKENS is set, we
+// raise the cap for seamless higher-throughput infra.
+const envBudget = Number(process.env.AI_BUDGET_TOKENS || process.env.AI_GATEWAY_BUDGET);
+export const TOTAL_BUDGET = (() => {
+  if (Number.isFinite(envBudget) && envBudget > 1000 && envBudget <= 12000) return envBudget;
+  if (process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_AI_GATEWAY_KEY) return 7000;
+  return 4200;
+})();
+export const TOTAL_BUDGET_LEGACY = 7600;
 
 export { getSafeMaxTokens };

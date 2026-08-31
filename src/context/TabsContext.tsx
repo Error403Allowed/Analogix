@@ -87,6 +87,9 @@ export const pathMeta = (path: string): { label: string; emoji: string } => {
     // For now, use a default - actual detection happens when the document loads
     return { label: "Document", emoji: "📄" };
   }
+  if (path.startsWith("/subjects/") && path.endsWith("/curriculum")) {
+    return { label: "Curriculum", emoji: "🗺️" };
+  }
   if (path.startsWith("/subjects/")) return { label: "Subject", emoji: "📖" };
   return { label: "Page", emoji: "📄" };
 };

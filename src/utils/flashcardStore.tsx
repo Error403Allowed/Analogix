@@ -32,6 +32,7 @@ const toSet = (row: FlashcardSetRow) => ({
     id: row.id,
     subjectId: row.subject_id,
     name: row.name,
+    topicId: row.topic_id ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
 });
@@ -125,14 +126,14 @@ export const flashcardStore = {
         }
         return (data ?? []).map(toSet);
     },
-    createSet: async (subjectId: string, name: string) => {
+    createSet: async (subjectId: string, name: string, topicId?: string | null) => {
         const user = await getAuthUser();
         if (!user)
             return null;
         const supabase = createClient();
         const { data, error } = await supabase
             .from("flashcard_sets")
-            .insert({ user_id: user.id, subject_id: subjectId, name: name.trim() })
+            .insert({ user_id: user.id, subject_id: subjectId, name: name.trim(), topic_id: topicId ?? null })
             .select()
             .single();
         if (error) {

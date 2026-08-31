@@ -1,6 +1,17 @@
  
 import { createClient } from "@/lib/supabase/client";
-import { getAuthUser } from "./authCache";
+import { getAuthUser, forceRefreshAuth } from "./authCache";
+
+function isAuthError(error: any): boolean {
+  return error?.code === "PGRST301" || error?.message?.includes("JWT");
+}
+
+function handleAuthError(context: string, error: any) {
+  if (isAuthError(error)) {
+    console.warn(`[chatStore] ${context}: Auth error detected, forcing auth refresh:`, error.message);
+    forceRefreshAuth();
+  }
+}
 
 export interface ChatMessage {
   id: string;
@@ -18,7 +29,6 @@ export interface ChatSession {
   messages?: ChatMessage[];
 }
 
-/** Quick health check - call once on mount to surface any Supabase issues in console */
 export const checkChatStoreHealth = async (): Promise<void> => {
   const user = await getAuthUser();
   if (!user) { console.warn("[chatStore:health] No user logged in - chat history will not save"); return; }
@@ -30,6 +40,7 @@ export const checkChatStoreHealth = async (): Promise<void> => {
     .select("id")
     .limit(1);
   if (readErr) {
+    handleAuthError("health check", readErr);
     console.error("[chatStore:health] Cannot read chat_sessions:", readErr.message, readErr.code);
     console.error("[chatStore:health] → Make sure the chat_sessions and chat_messages tables exist in Supabase (run supabase-schema.sql)");
   } else {
@@ -54,7 +65,7 @@ export const chatStore = {
       .select("id")
       .maybeSingle();
 
-    if (error) { console.error("[chatStore] createSession insert error:", error.message, error.code, error.details); return null; }
+    if (error) { handleAuthError("createSession", error); console.error("[chatStore] createSession insert error:", error.message, error.code, error.details); return null; }
     return data?.id ?? null;
   },
 
@@ -65,13 +76,14 @@ export const chatStore = {
     const supabase = createClient();
 
     // Verify session exists before inserting message
-    const { data: session } = await supabase
+    const { data: session, error: sessionError } = await supabase
       .from("chat_sessions")
       .select("id")
       .eq("id", sessionId)
       .eq("user_id", user.id)
       .maybeSingle();
 
+    if (sessionError) { handleAuthError("addMessage (verify session)", sessionError); }
     if (!session) {
       return null;
     }
@@ -83,7 +95,7 @@ export const chatStore = {
       content,
     }).select("id").single();
 
-    if (error) { console.error("[chatStore] addMessage insert error:", error.message, error.code, "session:", sessionId); return null; }
+    if (error) { handleAuthError("addMessage", error); console.error("[chatStore] addMessage insert error:", error.message, error.code, "session:", sessionId); return null; }
 
     // Bump session updated_at
     const { error: updateError } = await supabase
@@ -107,7 +119,7 @@ export const chatStore = {
       .eq("user_id", user.id)
       .order("updated_at", { ascending: false });
 
-    if (error) { console.error("[chatStore] getSessions error:", error.message, error.code); return []; }
+    if (error) { handleAuthError("getSessions", error); console.error("[chatStore] getSessions error:", error.message, error.code); return []; }
 
     return (data ?? []).map((row: any) => ({
       id: row.id,
@@ -127,7 +139,7 @@ export const chatStore = {
       .eq("session_id", sessionId)
       .order("created_at", { ascending: true });
 
-    if (error) { console.error("[chatStore] getMessages error:", error.message, error.code, "session:", sessionId); return []; }
+    if (error) { handleAuthError("getMessages", error); console.error("[chatStore] getMessages error:", error.message, error.code, "session:", sessionId); return []; }
 
     return (data ?? []).map((row: any) => ({
       id: row.id,
@@ -143,7 +155,7 @@ export const chatStore = {
     const supabase = createClient();
     if (!user) return;
     const { error } = await supabase.from("chat_sessions").delete().eq("id", sessionId).eq("user_id", user.id);
-    if (error) console.error("[chatStore] deleteSession error:", error.message);
+    if (error) { handleAuthError("deleteSession", error); console.error("[chatStore] deleteSession error:", error.message); }
   },
 
   /** Update session title */
@@ -156,7 +168,7 @@ export const chatStore = {
       .update({ title })
       .eq("id", sessionId)
       .eq("user_id", user.id);
-    if (error) console.error("[chatStore] updateSessionTitle error:", error.message);
+    if (error) { handleAuthError("updateSessionTitle", error); console.error("[chatStore] updateSessionTitle error:", error.message); }
   },
 
   /** Update the content of an existing message.
@@ -173,7 +185,7 @@ export const chatStore = {
     if (!realId) {
       // Client generated a temp ID; find the actual DB row by session + ordering.
       // We grab the most recent assistant message (the one we just added).
-      const { data } = await supabase
+      const { data, error: lookupError } = await supabase
         .from("chat_messages")
         .select("id")
         .eq("session_id", sessionId)
@@ -182,6 +194,7 @@ export const chatStore = {
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
+      if (lookupError) { handleAuthError("updateMessageContent (lookup)", lookupError); }
       if (data?.id) realId = data.id;
     }
 
@@ -195,6 +208,6 @@ export const chatStore = {
       .update({ content })
       .eq("id", realId)
       .eq("session_id", sessionId);
-    if (error) console.error("[chatStore] updateMessageContent error:", error.message);
+    if (error) { handleAuthError("updateMessageContent", error); console.error("[chatStore] updateMessageContent error:", error.message); }
   },
 };

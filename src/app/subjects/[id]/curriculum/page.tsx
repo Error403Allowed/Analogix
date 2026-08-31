@@ -4,15 +4,15 @@ import ProtectedRoute from "@/components/layout/ProtectedRoute";
 import dynamic from "next/dynamic";
 import { PageLoader } from "@/components/layout/PageSkeleton";
 
-const StudyMapSubject = dynamic(() => import("@/views/v2/StudyMapSubject"), {
+const SubjectCurriculum = dynamic(() => import("@/views/SubjectCurriculum"), {
   ssr: false,
-  loading: () => <PageLoader message="Loading subject workspace..." />,
+  loading: () => <PageLoader message="Loading curriculum..." />,
 });
 
-export default function StudyMapSubjectPage() {
+export default function SubjectCurriculumPage() {
   return (
     <ProtectedRoute>
-      <StudyMapSubject />
+      <SubjectCurriculum />
     </ProtectedRoute>
   );
 }

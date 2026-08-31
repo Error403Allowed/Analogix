@@ -173,7 +173,7 @@ export const loadAIContext = async (
           }
         }
         if (allDocs.length > 0) {
-          const WORKSPACE_TOKEN_BUDGET = 2000;
+          const WORKSPACE_TOKEN_BUDGET = 700;
           const { docs: truncatedDocs, truncated } = truncateWorkspaceDocs(allDocs, WORKSPACE_TOKEN_BUDGET);
           if (truncated) {
             console.log(`[AI context] Workspace truncated: ${allDocs.length} → ${truncatedDocs.length} docs`);

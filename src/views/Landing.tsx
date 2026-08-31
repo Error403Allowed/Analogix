@@ -29,7 +29,7 @@ const features = [
     icon: Layers,
     label: "Flashcards",
     headline: "Spaced repetition that actually works",
-    desc: "Flip cards with built-in spaced repetition (SM-2 algorithm). Upload your notes and the AI builds your deck automatically.",
+    desc: "Flip cards with built-in spaced repetition (SM-2 algorithm, what anki uses). Upload your notes and the AI builds your deck automatically, or manually create your own flashcards.",
     tags: ["Smart scheduling", "Doc upload", "Learn + Test modes"],
   },
   {
@@ -291,7 +291,6 @@ const Landing = () => {
               return (
                 <div
                   key={feature.id}
-                  onClick={() => handleNav(`/${feature.id}`)}
                   className={cn(cardStyles.default, "p-6 flex flex-col gap-4 transition-all cursor-pointer hover:shadow-sm hover:border-primary/30")}
                 >
                   <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-primary/10">
@@ -428,9 +427,6 @@ const Landing = () => {
               <h2 className="text-4xl sm:text-6xl font-bold tracking-tight leading-none">
                 Stop guessing.<br />Start mastering.
               </h2>
-              <p className="text-lg text-background/70 max-w-md mx-auto leading-relaxed">
-                Every tool, completely free. No signup walls, no paywalls. Just better study.
-              </p>
               <Button size="lg" variant="secondary"
                 className="h-14 px-12 text-lg font-bold rounded-xl hover:scale-105 transition-transform"
                 onClick={() => handleNav("/login")}>
