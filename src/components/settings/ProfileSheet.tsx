@@ -16,13 +16,14 @@ import {
   BookOpen, Cpu, LineChart, Briefcase, Wallet, HeartPulse,
   Globe, Wrench, Stethoscope, Languages,
   Dumbbell, Gamepad2, Music, CookingPot, Palette, Film,
-  Leaf, Laptop, Book, Plane, Upload, Trash2,
+  Leaf, Laptop, Book, Plane, Upload, Trash2, LogOut,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import { useProfileAvatar } from "@/hooks/useProfileAvatar";
+import { useRouter } from "next/navigation";
 import { achievementStore } from "@/utils/achievementStore";
 import { HOBBY_OPTIONS, POPULAR_INTERESTS } from "@/utils/interests";
 import type { HobbyId } from "@/utils/interests";
@@ -88,7 +89,8 @@ interface ProfileSheetProps {
 // ── Component ─────────────────────────
 
 const ProfileSheet = ({ open, onOpenChange }: ProfileSheetProps) => {
-  const { user: authUser } = useAuth();
+  const { user: authUser, signOut } = useAuth();
+  const router = useRouter();
   const fallbackAvatarUrl = useProfileAvatar();
   const fallbackAvatarRef = useRef(fallbackAvatarUrl);
   useEffect(() => {
@@ -342,6 +344,16 @@ const ProfileSheet = ({ open, onOpenChange }: ProfileSheetProps) => {
     localStorage.clear();
     achievementStore.reset();
     window.location.reload();
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      onOpenChange(false);
+      router.push("/login");
+    } catch {
+      toast.error("Failed to sign out. Please try again.");
+    }
   };
 
 
@@ -598,6 +610,16 @@ const ProfileSheet = ({ open, onOpenChange }: ProfileSheetProps) => {
                   </motion.div>
                 )}
               </AnimatePresence>
+            </section>
+
+            {/* ── Sign out (non-destructive) ── */}
+            <section className="border-t border-border pt-6">
+              <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 mb-3 block">Account</Label>
+              <Button variant="outline" size="sm" data-testid="profile-sheet-logout" className="w-full rounded-xl" onClick={handleSignOut}>
+                <LogOut className="w-3.5 h-3.5 mr-2" />
+                Sign out
+              </Button>
+              <p className="mt-2 text-[11px] text-muted-foreground/60">Only signs you out — your data is kept.</p>
             </section>
 
             {/* ── Danger Zone ── */}
