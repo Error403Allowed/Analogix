@@ -43,15 +43,15 @@ function PasswordRequirements({ password }: { password: string }) {
   );
 }
 
-// ── Logo ─────────
-function Logo({ focused }: {
+// ── Animated brain icon ─────────
+function AnimatedBrain({ focused, mode }: {
   focused: boolean;
   mode: "signin" | "signup" | "forgot" | "success";
 }) {
   return (
     <div className="relative flex justify-center">
       <motion.div
-        className="relative w-14 h-14 rounded-xl overflow-hidden "
+        className="relative w-14 h-14 rounded-xl overflow-hidden border border-border"
         animate={{ scale: focused ? 1.05 : 1 }}
         transition={{ type: "spring", stiffness: 200, damping: 15 }}
       >
@@ -244,12 +244,10 @@ export default function LoginView() {
 
         <div className="relative z-10 flex flex-col justify-between w-full p-12 xl:p-16">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0">
+            <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 shadow-lg">
               <img src="/tab-icon.png" alt="Analogix" className="w-full h-full object-cover" />
             </div>
-            <Button size="sm" variant="ghost" className="text-xl font-bold tracking-tight text-white" onClick={() => router.push('/')}>
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
+            <span className="text-xl font-bold tracking-tight text-white">Analogix</span>
           </div>
 
           <div className="space-y-8">
@@ -284,9 +282,9 @@ export default function LoginView() {
       {/* ── Right: auth form ── */}
       <div className="flex-1 flex items-center justify-center p-4 lg:p-8">
         <div className="w-full max-w-md">
-          <div className="bg-card rounded-xl p-8 shadow-lg space-y-6">
-          {/* Logo */}
-          <Logo
+          <div className="bg-card border border-border rounded-xl p-8 shadow-lg space-y-6">
+          {/* Animated brain */}
+          <AnimatedBrain
             focused={focused !== null}
             mode={success ? "success" : showForgot ? "forgot" : mode}
           />
