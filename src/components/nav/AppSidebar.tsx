@@ -225,11 +225,11 @@ export function AppSidebar() {
                   toggleSidebar();
                 }
               }}
-              className="group/logo flex items-center gap-3.5 rounded-3xl px-3 py-2 hover:bg-muted/30 transition-all active:scale-[0.98] group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:w-10 group-data-[collapsible=icon]:h-10 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:rounded-lg"
+              className="group/logo flex items-center gap-3.5 rounded-3xl px-3 py-2 hover:bg-muted/30 transition-all active:scale-[0.80] group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:w-10 group-data-[collapsible=icon]:h-10 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:rounded-lg"
             >
               <div className="w-10 h-10 shrink-0 relative group-data-[collapsible=icon]:w-6 group-data-[collapsible=icon]:h-6">
                 <img src="/tab-icon.png" alt="Analogix" className="w-full h-full object-contain group-data-[collapsible=icon]:group-hover/logo:opacity-0 group-data-[collapsible=icon]:group-hover/logo:scale-75 transition-all duration-200" />
-                <PanelLeft className="absolute inset-0 w-full h-full p-0 opacity-0 scale-75 group-data-[collapsible=icon]:group-hover/logo:opacity-100 group-data-[collapsible=icon]:group-hover/logo:scale-100 transition-all duration-200 text-primary" />
+                <PanelLeft className="absolute inset-0 w-full h-full p-0 opacity-0 scale-50 group-data-[collapsible=icon]:group-hover/logo:opacity-100 group-data-[collapsible=icon]:group-hover/logo:scale-90 transition-all duration-200 text-primary" />
               </div>
               {state === "expanded" && (
                 <span className="gradient-primary bg-clip-text text-xl font-black tracking-tight text-transparent">
