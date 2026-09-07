@@ -27,7 +27,6 @@ import { NewPageModal } from "@/components/shared/NewPageModal";
 import { useTabs, pathMeta } from "@/context/TabsContext";
 import { subjectStore, type SubjectData } from "@/utils/subjectStore";
 import { useProfileAvatar } from "@/hooks/useProfileAvatar";
-import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 
 import { CommandMenu } from "@/components/shared/CommandMenu";
@@ -187,18 +186,6 @@ export function AppSidebar() {
   const grade     = userData?.grade;
   const avatarUrl = useProfileAvatar() || userData?.avatarUrl || "";
   const { toggleSidebar, setOpenMobile, isMobile, state } = useSidebar();
-  const { signOut } = useAuth();
-
-  const handleSignOut = async () => {
-    try {
-      await signOut();
-      setOpenMobile(false);
-      router.push("/login");
-    } catch {
-      toast.error("Failed to sign out. Please try again.");
-    }
-  };
-
 
   return (
     /* Outer container - cleaner dark-friendly glass panel */
