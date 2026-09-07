@@ -245,7 +245,7 @@ export default function LoginView() {
         <div className="relative z-10 flex flex-col justify-between w-full p-12 xl:p-16">
           <button 
             type="button"
-            onClick={() => {}} 
+            onClick={() => window.location.href = '/'} 
             className="flex items-center gap-3 p-2 rounded-xl w-fit transition hover:bg-white/10"
           >
             <div className="flex items-center gap-3">
