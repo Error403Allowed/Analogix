@@ -246,7 +246,7 @@ export default function LoginView() {
           <button 
             type="button"
             onClick={() => {}} 
-            className="flex items-center gap-3 p-2 rounded-xl w-fit transition-colors duration-200 hover:bg-white/10 active:bg-white/20 focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-none drop-shadow-none cursor-pointer"
+            className="flex items-center gap-3 p-2 rounded-xl w-fit transition hover:bg-white/10"
           >
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 shadow-none">
