@@ -1,6 +1,6 @@
 # Features
 
-Analogix is a study workspace for Australian secondary students (Years 7-12). It combines a Groq-powered AI tutor with a structured study workspace (documents, flashcards, quizzes, study guides, collaborative rooms, and planning tools) so complex ideas feel intuitive and actionable.
+Analogix is a study workspace for Australian secondary students (Years 7-12). It combines a Groq-powered AI tutor with a structured study workspace (documents, flashcards, quizzes, study notes, collaborative. rooms, and planning tools) so complex ideas feel intuitive and actionable.
 
 ## AI Learning
 
@@ -43,7 +43,7 @@ Analogix is a study workspace for Australian secondary students (Years 7-12). It
 - **Achievements** - Unlock badges for milestones.
 - **Activity Stats** - Time spent, accuracy, progress over time.
 - **Data Charts** - Charts generated from study data using Recharts (bar, line, pie, area).
-- **3D Concept Visualisation** - 3D scenes with Three.js (atoms, molecules, networks, hierarchies, timelines).
+- **Concept Diagrams** - 2D SVG diagrams (atoms, molecules, networks, hierarchies, timelines).
 - **Function Plotting** - Mathematical graph visualization with Desmos.
 
 ## Collaboration & Rooms
@@ -71,7 +71,7 @@ Analogix is a study workspace for Australian secondary students (Years 7-12). It
 
 - **Supported formats**: PDF, DOCX/DOC, PPTX/PPT, TXT, MD, CSV, RTF, images (JPG, PNG, WEBP).
 - **Max size**: 50 MB per file.
-- **Used for**: Chat attachments, study guides, quizzes, flashcards, resources.
+- **Used for**: Chat attachments, notes, quizzes, flashcards, resources.
 
 ## Pages
 

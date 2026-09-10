@@ -41,7 +41,7 @@ const sections: Section[] = [
     icon: Brain,
     color: "text-emerald-400 bg-emerald-500/10",
     title: "Study Data",
-    content: "To provide personalized learning features, we store chat conversations with our AI tutor (stored securely in Supabase), flashcard sets and study progress, quiz results and performance statistics, calendar events and reminders, and document notes and study guides.",
+    content: "To provide personalized learning features, we store chat conversations with our AI tutor (stored securely in Supabase), flashcard sets and study progress, quiz results and performance statistics, calendar events and reminders, and document notes.",
   },
   {
     id: "ai",
@@ -55,7 +55,7 @@ const sections: Section[] = [
     icon: FileText,
     color: "text-amber-400 bg-amber-500/10",
     title: "How We Use Your Information",
-    content: "We use your information to provide, maintain, and improve our services; personalize your learning experience with tailored analogies; track your study progress and provide spaced repetition scheduling; generate flashcards, quizzes, and study guides; sync your calendar with school timetables; and communicate about your account and service updates.",
+    content: "We use your information to provide, maintain, and improve our services; personalize your learning experience with tailored analogies; track your study progress and provide spaced repetition scheduling; generate flashcards, and quizzes; sync your calendar with school timetables; and communicate about your account and service updates.",
   },
   {
     id: "security",

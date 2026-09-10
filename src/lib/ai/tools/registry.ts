@@ -102,7 +102,7 @@ export const getToolNames = (): { reads: string[]; writes: string[] } => ({
 // Groq counts the serialized tool definitions against the request/TPM budget.
 // Sending all 30 tools (~3.7k tokens) leaves almost no room for long-form
 // output on the free tier, so we select only the tools relevant to the
-// current message. This is what keeps essays/study guides from being cut off.
+// current message. This is what keeps essays from being cut off.
 // ============================================================================
 
 const CORE_READ_TOOLS: ReadToolName[] = [

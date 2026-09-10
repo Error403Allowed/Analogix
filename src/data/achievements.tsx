@@ -144,12 +144,6 @@ export const ACHIEVEMENTS_LIBRARY: Achievement[] = [
   { id: "doc_50", title: "Librarian", description: "Create 50 documents", icon: <FileText className="w-5 h-5" />, category: "mastery", condition: (stats) => getDocumentsCreated(stats) >= 50 },
   { id: "doc_100", title: "Document Master", description: "Create 100 documents", icon: <FileText className="w-5 h-5" />, category: "mastery", condition: (stats) => getDocumentsCreated(stats) >= 100 },
 
-  // STUDY GUIDES
-  { id: "guide_1", title: "Guide Creator", description: "Create your first study guide", icon: <BookOpen className="w-5 h-5" />, category: "mastery", condition: (stats) => getStudyGuidesCreated(stats) >= 1 },
-  { id: "guide_3", title: "Guide Collector", description: "Create 3 study guides", icon: <BookOpen className="w-5 h-5" />, category: "mastery", condition: (stats) => getStudyGuidesCreated(stats) >= 3 },
-  { id: "guide_5", title: "Study Expert", description: "Create 5 study guides", icon: <BookOpen className="w-5 h-5" />, category: "mastery", condition: (stats) => getStudyGuidesCreated(stats) >= 5 },
-  { id: "guide_10", title: "Guide Master", description: "Create 10 study guides", icon: <BookOpen className="w-5 h-5" />, category: "mastery", condition: (stats) => getStudyGuidesCreated(stats) >= 10 },
-
   // FLASHCARDS
   { id: "flash_1", title: "First Card", description: "Create your first flashcard", icon: <Brain className="w-5 h-5" />, category: "mastery", condition: (stats) => getFlashcardsCreated(stats) >= 1 },
   { id: "flash_10", title: "Card Starter", description: "Create 10 flashcards", icon: <Brain className="w-5 h-5" />, category: "mastery", condition: (stats) => getFlashcardsCreated(stats) >= 10 },

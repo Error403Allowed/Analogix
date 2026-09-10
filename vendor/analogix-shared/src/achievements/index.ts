@@ -84,11 +84,6 @@ export const ACHIEVEMENTS: Achievement[] = [
   { id: "doc_50", title: "Librarian", description: "Create 50 documents", icon: "file-text", category: "mastery", condition: (stats) => (stats.documentsCreated ?? 0) >= 50 },
   { id: "doc_100", title: "Document Master", description: "Create 100 documents", icon: "file-text", category: "mastery", condition: (stats) => (stats.documentsCreated ?? 0) >= 100 },
 
-  { id: "guide_1", title: "Guide Creator", description: "Create your first study guide", icon: "book-open", category: "mastery", condition: (stats) => (stats.studyGuidesCreated ?? 0) >= 1 },
-  { id: "guide_3", title: "Guide Collector", description: "Create 3 study guides", icon: "book-open", category: "mastery", condition: (stats) => (stats.studyGuidesCreated ?? 0) >= 3 },
-  { id: "guide_5", title: "Study Expert", description: "Create 5 study guides", icon: "book-open", category: "mastery", condition: (stats) => (stats.studyGuidesCreated ?? 0) >= 5 },
-  { id: "guide_10", title: "Guide Master", description: "Create 10 study guides", icon: "book-open", category: "mastery", condition: (stats) => (stats.studyGuidesCreated ?? 0) >= 10 },
-
   { id: "flash_1", title: "First Card", description: "Create your first flashcard", icon: "brain", category: "mastery", condition: (stats) => (stats.flashcardsCreated ?? stats.cardsReviewed ?? 0) >= 1 },
   { id: "flash_10", title: "Card Starter", description: "Create 10 flashcards", icon: "brain", category: "mastery", condition: (stats) => (stats.flashcardsCreated ?? stats.cardsReviewed ?? 0) >= 10 },
   { id: "flash_50", title: "Flash Master", description: "Create 50 flashcards", icon: "brain", category: "mastery", condition: (stats) => (stats.flashcardsCreated ?? stats.cardsReviewed ?? 0) >= 50 },

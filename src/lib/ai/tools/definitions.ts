@@ -13,7 +13,7 @@ const optionalSubjectIdSchema = z.string().optional().describe("Filter by subjec
 export const readToolDefinitions = {
   searchDocuments: {
     description:
-      "Search the student's workspace documents by keyword. Returns matching documents with a short preview. Use when the student asks about their notes, documents, or study guides.",
+      "Search the student's workspace documents by keyword. Returns matching documents with a short preview. Use when the student asks about their notes or documents.",
     inputSchema: z.object({
       query: z.string().describe("Search keywords to match against document titles and content"),
       subjectId: optionalSubjectIdSchema,

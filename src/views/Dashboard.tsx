@@ -87,7 +87,7 @@ interface WidgetMeta {
 const WIDGET_REGISTRY: WidgetMeta[] = [
   { id: "streak",     label: "Streak",          desc: "Your study streak",                   icon: Zap,           defaultOn: true  },
   { id: "chat",       label: "AI Tutor",        desc: "Quick chat with your AI tutor",      icon: MessageSquare, defaultOn: true  },
-  { id: "docs",       label: "Recent Docs",     desc: "Your latest notes & study guides",   icon: FileText,      defaultOn: true  },
+  { id: "docs",       label: "Recent Docs",     desc: "Your latest notes and documents",   icon: FileText,      defaultOn: true  },
   { id: "events",     label: "Upcoming Events", desc: "Deadlines and calendar events",      icon: Calendar,      defaultOn: true  },
   { id: "timer",      label: "Pomodoro Timer",  desc: "Focus timer for study sessions",     icon: Timer,         defaultOn: true  },
   { id: "quicklinks", label: "Quick Links",     desc: "Jump to key pages instantly",        icon: Link2,         defaultOn: true  },

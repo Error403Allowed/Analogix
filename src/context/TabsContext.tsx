@@ -80,7 +80,6 @@ export const pathMeta = (path: string): { label: string; emoji: string } => {
   if (path === "/achievements") return { label: "Achievements",emoji: "🏆" };
   if (path === "/study")        return { label: "Study Hub",   emoji: "📚" };
   if (path === "/profile")      return { label: "Profile",     emoji: "👤" };
-  if (path === "/study-guides") return { label: "Study Guides", emoji: "📘" };
   if (path.startsWith("/rooms/")) return { label: "Study Room", emoji: "👥" };
   if (path.startsWith("/subjects/") && path.includes("/document/")) {
     // Check if it's a study guide by looking at URL params or localStorage

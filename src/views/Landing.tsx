@@ -61,8 +61,8 @@ const features = [
     icon: BookOpen,
     label: "Subject Workspace",
     headline: "Your notes, organised by subject",
-    desc: "Create rich documents, AI-generated study guides, and flashcard sets - all organised by subject.",
-    tags: ["AI study guides", "Rich editor", "Subject-organised"],
+    desc: "Create documents with in-built AI, keep track of your progress, and flashcard sets - all organised by subject.",
+    tags: ["Rich editor", "Subject-organised", "Resources hub"],
   },
   {
     id: "resources",
@@ -240,7 +240,7 @@ const Landing = () => {
             </h1>
 
             <p className="text-lg sm:text-xl text-muted-foreground max-w-xl mx-auto leading-relaxed">
-              Every tool you need to go from confused to confident, for free. Quizzes, flashcards, study guides, a smart calendar, and an AI tutor that actually speaks your language.
+              Every tool you need to go from confused to confident, for free. Quizzes, flashcards, study rooms, a smart calendar, and an AI tutor that actually speaks your language.
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
@@ -281,7 +281,7 @@ const Landing = () => {
               Every tool you need to level up.
             </h2>
             <p className="text-muted-foreground max-w-lg mx-auto">
-              Not just an AI chat. Flashcards, quizzes, a calendar, study guides, resources, formula sheets, all working together.
+              Not just an AI chat. Flashcards, quizzes, a calendar, study rooms, resources, formula sheets, all working together.
             </p>
           </div>
 

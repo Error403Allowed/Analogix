@@ -261,7 +261,7 @@ export default function LoginView() {
               Study smarter with a tutor that gets you.
             </h1>
             <p className="text-white/80 text-lg leading-relaxed max-w-md">
-              Free AI tutoring, adaptive quizzes, flashcards and study guides, built around your interests and aligned to the Australian curriculum.
+              Free AI tutoring, adaptive quizzes, flashcards as a personalized learning experience, built around your interests and aligned to the Australian curriculum.
             </p>
 
             <ul className="space-y-4">

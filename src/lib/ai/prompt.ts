@@ -67,7 +67,7 @@ export const compressToSummary = (msgs: any[]): string => {
   return `[Earlier] ${summaryParts.join(" | ")}`;
 };
 
-const VISUAL_INTENT_RE = /\b(graphs?|plots?|charts?|visuali[sz]e|visuali[sz]ation|visuals?|diagrams?|3d|three-?dimensional|timeline|render|sketch)\b/i;
+const VISUAL_INTENT_RE = /\b(graphs?|plots?|charts?|visuali[sz]e|visuali[sz]ation|visuals?|diagrams?|timeline|render|sketch)\b/i;
 
 export const wantsVisualisation = (messages: any[]): boolean => {
   const latestUserMsg = [...messages].reverse().find((m: any) => m.role === "user")?.content || "";
@@ -206,7 +206,7 @@ ${workspaceContext}
     : "";
 
   const showVisualisations = wantsVisualisation(messages);
-  const visualisationGuide = showVisualisations ? `Visualisations - you have THREE tools to make concepts visual and memorable:
+  const visualisationGuide = showVisualisations ? `Visualisations - you have TWO tools to make concepts visual and memorable:
 
   1. DESMOS GRAPHS (for any math visualisation):
     When the user asks to graph, plot, or visualise ANY equation, function, inequality, or mathematical concept, you MUST output a code block with language "desmos". Desmos supports:
@@ -262,45 +262,7 @@ ${workspaceContext}
      Types: "bar" for comparisons, "line" for trends over time, "pie" for parts of a whole, "area" for cumulative trends.
      Use for: any numerical data, comparisons, trends, distributions, statistics, or percentages.
 
-  3. THREE.JS 3D SCENES (for concepts & structures):
-   When explaining abstract concepts, structures, systems, or relationships, generate a 3D scene using a JSON code block with language "three".
-   Use for: atoms/molecules, solar systems, biological structures, networks, hierarchies, timelines, ecosystems, flow diagrams, or ANY concept that benefits from a visual spatial representation.
-   Format:
-   \`\`\`three
-   {
-     "title": "Short display title",
-     "description": "1-2 sentence explanation",
-     "sceneType": "atom" | "solar" | "molecule" | "wave" | "dna" | "cell" | "graph" | "geometry" | "network" | "timeline" | "hierarchy" | "flow" | "ecosystem" | "generic",
-     "primaryColor": "#hexcolor",
-     "secondaryColor": "#hexcolor",
-     "objects": [
-       {
-         "id": "unique_id",
-         "shape": "sphere" | "torus" | "box" | "cylinder" | "cone" | "helix" | "ring" | "pyramid",
-         "label": "short label",
-         "color": "#hexcolor",
-         "size": 1.0,
-         "position": {"x": 0, "y": 0, "z": 0},
-         "orbitRadius": null,
-         "orbitSpeed": null,
-         "pulsates": false
-       }
-     ],
-     "connections": [
-       {"from": "object_id", "to": "object_id", "color": "#hexcolor"}
-     ],
-     "analogyHint": "A fun one-liner analogy or memory tip"
-   }
-   \`\`\`
-   Rules for 3D scenes:
-   - Include 4-10 objects spread across the full position range (x: -3 to 3, y: -2 to 2, z: -2 to 2)
-   - Layout should reflect the concept's structure (timeline = left to right, hierarchy = top to bottom)
-   - Use orbitRadius/orbitSpeed for objects that should animate (electrons, planets)
-   - Use pulsates: true for living things, energy, or active processes
-   - Use meaningful, distinct colours
-   - Keep labels short (2-3 words max)
-
-` : "";
+ ` : "";
 
   return `You are "Analogix AI", an AI tutor for Australian students. Your core job is to help students understand concepts and succeed in their studies.
 
@@ -344,11 +306,10 @@ Rules:
   - For subscripts/superscripts with multiple characters, always group them: x^{2}, v_{final}, not x^2 (fine for single char) - prefer explicit braces for clarity.
 - CHARTS: If the user asks for a graph, chart, or visualisation of data, use the Recharts format described at the end of this prompt to create an interactive chart. Make sure this chart can render accurately and properly on the frontend. 
 - DESMOS: If the user asks for a graph of a mathematical function, equation, or inequality, you MUST output a \`\`\`desmos code block with the equation(s). NEVER output a URL or just describe the graph.
-- 3D VISUALISATIONS: For complex concepts, structures, systems, or relationships (e.g. solar system, atomic structure, biological processes, networks), use the Three.js format described at the end of this prompt to create an interactive 3D scene that illustrates the concept.
 - NOTE: If asked to write something very long (essays, reports, etc.), explain that responses are capped at roughly ${isQwenModel ? '8000' : '4000'} tokens per reply, but offer to continue in a follow-up message.${workspaceSection}${toolCapabilitiesSection}
 ${researchBlock}
 
 ${visualisationGuide}
-IMPORTANT: If the user asks for a visual, diagram, or graph - use the right tool. Math functions → Desmos. Data/statistics → Recharts. Concepts/structures → Three.js. Don't just describe it - SHOW it.
+IMPORTANT: If the user asks for a visual, diagram, or graph - use the right tool. Math functions → Desmos. Data/statistics → Recharts. Don't just describe it - SHOW it.
 - Analogix`;
 };

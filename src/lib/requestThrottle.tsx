@@ -182,7 +182,7 @@ export const aiThrottle = new RequestThrottle({
     baseDelay: 500, // Start with 500ms backoff
     maxDelay: 5000, // Cap at 5s backoff
 });
-// Throttle instance for heavy/long-running AI operations (study guides, document analysis)
+// Throttle instance for heavy/long-running AI operations (e.g. document analysis)
 export const heavyAiThrottle = new RequestThrottle({
     maxConcurrent: 1, // Only 1 at a time
     minDelay: 1000, // 1s minimum delay

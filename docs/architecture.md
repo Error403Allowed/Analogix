@@ -4,7 +4,7 @@ This document covers the high-level architecture of the Analogix codebase, the p
 
 ## Overview
 
-Single Next.js application (Next.js App Router, Turbopack) backed directly by Supabase. There is no separate API server or GraphQL layer - route handlers under `src/app/api/` talk to Supabase (Postgres, Auth, RLS) and to Groq through the Vercel AI SDK. The old GraphQL BFF and native mobile app were removed; `@analogix/shared` and `@analogix/mcp` are vendored under `vendor/` and wired in as `file:` dependencies.
+Single Next.js application (Next.js App Router, Turbopack) backed directly by Supabase. Route handlers under `src/app/api/` talk to Supabase (Postgres, Auth, RLS) and to Groq through the Vercel AI SDK. `@analogix/shared` and `@analogix/mcp` are vendored under `vendor/` and wired in as `file:` dependencies.
 
 ## Project Structure
 
@@ -57,7 +57,7 @@ vendor/
 - **Tailwind CSS + shadcn/ui** (Radix primitives)
 - **BlockNote editor** (built on TipTap) for rich documents, with KaTeX math
 - **Recharts** for charts generated from study data
-- **Three.js** for 3D concept visualisation
+- **Concept diagrams** (SVG) for concept visualisation
 - **Desmos** for interactive graphing
 
 ### Backend & Data
