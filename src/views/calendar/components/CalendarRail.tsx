@@ -5,7 +5,6 @@ import {
   Pencil,
   Plus,
   Trash2,
-  Upload,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import ICSUploader from "@/components/shared/ICSUploader";
@@ -22,8 +21,6 @@ export type CalendarRailProps = {
   timeStr: string;
   tzStr: string;
   eventCount: number;
-  showUploader: boolean;
-  onToggleUploader: () => void;
   onSelectDay: (d: Date) => void;
   onOpenCreate: (day: Date) => void;
   onManageTags: () => void;
@@ -31,7 +28,8 @@ export type CalendarRailProps = {
 };
 
 export function CalendarRail({
-  date,  events,
+  date,
+  events,
   allTypes,
   termInfo,
   filterType,
@@ -39,8 +37,6 @@ export function CalendarRail({
   timeStr,
   tzStr,
   eventCount,
-  showUploader,
-  onToggleUploader,
   onSelectDay,
   onOpenCreate,
   onManageTags,
@@ -105,17 +101,10 @@ export function CalendarRail({
       </div>
 
       <div className="mt-auto space-y-1">
-        <button
-          onClick={onToggleUploader}
-          className="w-full flex items-center gap-2 px-3 py-2 rounded-xl border border-border text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
-        >
-          <Upload className="w-3.5 h-3.5" /> Import .ics
-        </button>
-        {showUploader && (
-          <div className="overflow-hidden">
-            <ICSUploader allTypes={allTypes} />
-          </div>
-        )}
+        <div className="overflow-hidden">
+          <ICSUploader allTypes={allTypes} />
+        </div>
+
         {eventCount > 0 && (
           <button
             onClick={onClearAll}
