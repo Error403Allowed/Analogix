@@ -2,7 +2,6 @@
 import type { ReactNode } from "react";
 import {
   BadgeCheck,
-  BookOpen,
   Brain,
   Calendar,
   ClipboardCheck,
@@ -48,7 +47,6 @@ const getTopSubjectCount = (stats: any) => {
 // Helper functions for new achievements
 const getTotalStudyTime = (stats: any) => stats.totalStudyTimeMinutes || 0;
 const getDocumentsCreated = (stats: any) => stats.documentsCreated || 0;
-const getStudyGuidesCreated = (stats: any) => stats.studyGuidesCreated || 0;
 const getFlashcardsCreated = (stats: any) => stats.flashcardsCreated || 0;
 const getPerfectQuizzes = (stats: any) => stats.perfectQuizzes || 0;
 const getEarlyMorningSessions = (stats: any) => stats.earlyMorningSessions || 0;
