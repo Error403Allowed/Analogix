@@ -45,7 +45,6 @@ const CalendarPage = () => {
   const [filterType, setFilterType] = useState("all");
   const [showCreate, setShowCreate] = useState(false);
   const [createDefaults, setCreateDefaults] = useState<{ date: Date; startMin?: number; endMin?: number } | null>(null);
-  const [showUploader, setShowUploader] = useState(false);
   const [showManageTags, setShowManageTags] = useState(false);
   const [showRailSheet, setShowRailSheet] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<AppEvent | null>(null);
@@ -174,8 +173,6 @@ const CalendarPage = () => {
           timeStr={timeStr}
           tzStr={tzStr}
           eventCount={events.length}
-          showUploader={showUploader}
-          onToggleUploader={() => setShowUploader((s) => !s)}
           onSelectDay={setDate}
           onOpenCreate={(day) => openCreate(day)}
           onManageTags={() => setShowManageTags(true)}
@@ -388,8 +385,6 @@ const CalendarPage = () => {
             timeStr={timeStr}
             tzStr={tzStr}
             eventCount={events.length}
-            showUploader={showUploader}
-            onToggleUploader={() => setShowUploader((s) => !s)}
             onSelectDay={(day) => { setDate(day); setShowRailSheet(false); }}
             onOpenCreate={(day) => { openCreate(day); setShowRailSheet(false); }}
             onManageTags={() => setShowManageTags(true)}
