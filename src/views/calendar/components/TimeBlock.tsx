@@ -32,20 +32,21 @@ export function TimeBlock({ event, allTypes, col, totalCols, span, height, onDel
       style={{ left, width, backgroundColor: meta.color + "22", borderLeft: `3px solid ${meta.color}` }}
     >
       <div
-        className="absolute inset-x-0 top-0 h-1.5 cursor-ns-resize opacity-0 group-hover:opacity-100 transition-opacity"
+        className="absolute inset-x-0 top-0 h-2.5 cursor-ns-resize opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 [@media(pointer:coarse)]:opacity-100 transition-opacity"
         onPointerDown={(pointerEvent) => onResizeStart("start", pointerEvent)}
       />
-      <p className="text-[10px] font-bold truncate leading-tight" style={{ color: meta.color }}>{event.title}</p>
-      {height >= 36 && <p className="text-[9px] opacity-70 leading-tight" style={{ color: meta.color }}>{format(new Date(event.date), "h:mm a")}</p>}
-      {height >= 52 && event.location && <p className="text-[9px] opacity-70 leading-tight truncate" style={{ color: meta.color }}>{event.location}</p>}
+      <p className="text-[11px] font-bold truncate leading-tight pr-6" style={{ color: meta.color }}>{event.title}</p>
+      {height >= 36 && <p className="text-[10px] opacity-70 leading-tight" style={{ color: meta.color }}>{format(new Date(event.date), "h:mm a")}</p>}
+      {height >= 52 && event.location && <p className="text-[10px] opacity-70 leading-tight truncate" style={{ color: meta.color }}>{event.location}</p>}
       <button
+        aria-label={`Delete ${event.title}`}
         onPointerDown={(clickEvent) => clickEvent.stopPropagation()}
         onClick={e => { e.stopPropagation(); onDelete(); }}
-        className="absolute top-0.5 right-0.5 opacity-0 group-hover:opacity-100 transition-opacity w-4 h-4 rounded flex items-center justify-center hover:bg-black/10">
-        <X className="w-2.5 h-2.5" style={{ color: meta.color }} />
+        className="absolute top-0.5 right-0.5 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 [@media(pointer:coarse)]:opacity-100 transition-opacity w-6 h-6 rounded-md flex items-center justify-center hover:bg-black/10">
+        <X className="w-3 h-3" style={{ color: meta.color }} />
       </button>
       <div
-        className="absolute inset-x-0 bottom-0 h-2 cursor-ns-resize opacity-0 group-hover:opacity-100 transition-opacity"
+        className="absolute inset-x-0 bottom-0 h-2.5 cursor-ns-resize opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 [@media(pointer:coarse)]:opacity-100 transition-opacity"
         onPointerDown={(pointerEvent) => onResizeStart("end", pointerEvent)}
       />
     </div>

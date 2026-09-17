@@ -8,13 +8,19 @@ import {
 } from "date-fns";
 import { cn } from "@/lib/utils";
 import type { AppEvent } from "@/types/events";
+import type { WeekStartsOn } from "../settings";
 
-export function MiniCalendar({ date, events, onSelect }: { date: Date; events: AppEvent[]; onSelect: (d: Date) => void }) {
+const WEEKDAY_LETTERS: Record<WeekStartsOn, string[]> = {
+  1: ["M", "T", "W", "T", "F", "S", "S"],
+  0: ["S", "M", "T", "W", "T", "F", "S"],
+};
+
+export function MiniCalendar({ date, events, weekStartsOn = 1, onSelect }: { date: Date; events: AppEvent[]; weekStartsOn?: WeekStartsOn; onSelect: (d: Date) => void }) {
   const [navDate, setNavDate] = useState(date);
   useEffect(() => setNavDate(date), [date]);
   const days = eachDayOfInterval({
-    start: startOfWeek(startOfMonth(navDate), { weekStartsOn: 1 }),
-    end: endOfWeek(endOfMonth(navDate), { weekStartsOn: 1 }),
+    start: startOfWeek(startOfMonth(navDate), { weekStartsOn }),
+    end: endOfWeek(endOfMonth(navDate), { weekStartsOn }),
   });
   return (
     <div className="select-none">
@@ -26,7 +32,7 @@ export function MiniCalendar({ date, events, onSelect }: { date: Date; events: A
         </div>
       </div>
       <div className="grid grid-cols-7 mb-1">
-        {["M","T","W","T","F","S","S"].map((d, i) => <div key={i} className="text-center text-[9px] font-bold text-muted-foreground/60 py-1">{d}</div>)}
+        {WEEKDAY_LETTERS[weekStartsOn].map((d, i) => <div key={i} className="text-center text-[9px] font-bold text-muted-foreground/60 py-1">{d}</div>)}
       </div>
       <div className="grid grid-cols-7 gap-y-0.5">
         {days.map((day, i) => {

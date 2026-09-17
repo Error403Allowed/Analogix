@@ -8,9 +8,10 @@ import { cn } from "@/lib/utils";
 
 interface ICSUploaderProps {
   allTypes: Record<string, { color: string; label: string; icon: string }>;
+  defaultTag?: string;
 }
 
-const ICSUploader = ({ allTypes }: ICSUploaderProps) => {
+const ICSUploader = ({ allTypes, defaultTag }: ICSUploaderProps) => {
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
@@ -48,9 +49,10 @@ const ICSUploader = ({ allTypes }: ICSUploaderProps) => {
 
   const pickFile = (file: File) => {
     if (!file.name.endsWith(".ics")) { toast.error("Please upload a .ics file"); return; }
-    // Default to "event" if it exists, else first available tag
-    const defaultTag = allTypes["event"] ? "event" : Object.keys(allTypes)[0] ?? "event";
-    setSelectedTag(defaultTag);
+    // Prefer the calendar's default import tag, else "event", else first tag.
+    const preferred = defaultTag && allTypes[defaultTag] ? defaultTag : undefined;
+    const defaultTagKey = preferred ?? (allTypes["event"] ? "event" : Object.keys(allTypes)[0] ?? "event");
+    setSelectedTag(defaultTagKey);
     setPendingFile(file);
     setIsDragging(false);
   };

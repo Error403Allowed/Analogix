@@ -4,14 +4,14 @@ import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronLeft, ChevronRight,
-  Search, LayoutGrid,
+  Search, LayoutGrid, Settings,
   List, AlignLeft, Columns, SlidersHorizontal,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   startOfWeek, endOfWeek, eachDayOfInterval, addWeeks, subWeeks,
   addMonths, subMonths,
-  isSameDay, isToday, format,
+  isSameDay, isToday, isWeekend, format,
   addDays, subDays,
 } from "date-fns";
 import MobileFAB from "@/components/nav/MobileFAB";
@@ -36,20 +36,37 @@ import { ScheduleView } from "./calendar/components/ScheduleView";
 import { CreateEventModal } from "./calendar/components/CreateEventModal";
 import { EventDetail } from "./calendar/components/EventDetail";
 import { ManageTagsModal } from "./calendar/components/ManageTagsModal";
+import { CalendarSettingsSheet } from "./calendar/components/CalendarSettingsSheet";
 import { CalendarRail } from "./calendar/components/CalendarRail";
+import { useCalendarSettings } from "./calendar/hooks/useCalendarSettings";
+import {
+  hourHeightForDensity,
+  loadLastFilter,
+  loadLastView,
+  saveLastFilter,
+  saveLastView,
+  visibleHoursForSettings,
+} from "./calendar/settings";
+
+const formatHourLabel = (h: number) => h === 24 ? "12a" : h === 12 ? "12p" : h < 12 ? `${h}a` : `${h - 12}p`;
 
 const CalendarPage = () => {
+  const { settings, update: updateSettings } = useCalendarSettings();
   const [date, setDate] = useState(new Date());
-  const [view, setView] = useState<CalendarView>("week");
+  const [view, setView] = useState<CalendarView>(() => loadLastView(settings.defaultView));
   const [events, setEvents] = useState<AppEvent[]>([]);
   const [search, setSearch] = useState("");
-  const [filterType, setFilterType] = useState("all");
+  const [filterType, setFilterType] = useState(() => loadLastFilter());
   const [showCreate, setShowCreate] = useState(false);
   const [createDefaults, setCreateDefaults] = useState<{ date: Date; startMin?: number; endMin?: number } | null>(null);
   const [showManageTags, setShowManageTags] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [showRailSheet, setShowRailSheet] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<AppEvent | null>(null);
   const [showSearch, setShowSearch] = useState(false);
+  // Session-only override: tapping "earlier/later" expands to the full day
+  // without rewriting the persisted work-hours setting.
+  const [fullDayOverride, setFullDayOverride] = useState(false);
   const [customTypes, setCustomTypes] = useState<CustomEventType[]>(() => loadCustomTypes());
   const [deletedBuiltins, setDeletedBuiltins] = useState<string[]>(() => loadDeletedBuiltins());
   const [builtinOverrides, setBuiltinOverrides] = useState(() => loadBuiltinOverrides());
@@ -69,7 +86,20 @@ const CalendarPage = () => {
   const handleViewChange = useCallback((next: CalendarView) => {
     userPickedViewRef.current = true;
     setView(next);
+    saveLastView(next);
   }, []);
+
+  const handleFilterChange = useCallback((key: string) => {
+    setFilterType(key);
+    saveLastFilter(key);
+  }, []);
+
+  const hourHeight = hourHeightForDensity(settings.density);
+  const workHoursCollapsed = settings.workHoursOnly && !fullDayOverride;
+  const visibleHours = useMemo(
+    () => visibleHoursForSettings({ ...settings, workHoursOnly: workHoursCollapsed }),
+    [settings, workHoursCollapsed],
+  );
 
   const allTypes = useMemo(
     () => getAllTypes(customTypes, deletedBuiltins, builtinOverrides),
@@ -93,8 +123,9 @@ const CalendarPage = () => {
     const q = search.toLowerCase();
     const matchSearch = !q || e.title.toLowerCase().includes(q) || e.subject?.toLowerCase().includes(q) || e.description?.toLowerCase().includes(q) || e.location?.toLowerCase().includes(q);
     const matchType = filterType === "all" || e.type === filterType;
-    return matchSearch && matchType;
-  }), [events, search, filterType]);
+    const notHidden = !settings.hiddenTags.includes(e.type);
+    return matchSearch && matchType && notHidden;
+  }), [events, search, filterType, settings.hiddenTags]);
 
   const upcomingEvents = useMemo(() =>
     filteredEvents.filter(e => new Date(e.date) >= now)
@@ -113,8 +144,27 @@ const CalendarPage = () => {
   };
 
   const handleDelete = (id: string) => {
-    if (!confirm("Delete this event?")) return;
+    const snapshot = events.find(e => e.id === id);
+    if (!snapshot) return;
     void eventStore.remove(id);
+    toast.success("Event deleted", {
+      action: {
+        label: "Undo",
+        onClick: () => void eventStore.add({ ...snapshot, id: crypto.randomUUID() }),
+      },
+    });
+  };
+
+  const handleClearAll = () => {
+    if (events.length === 0) return;
+    const snapshot = [...events];
+    void eventStore.clearAll();
+    toast.success(`Cleared ${snapshot.length} events`, {
+      action: {
+        label: "Undo",
+        onClick: () => void eventStore.addMultiple(snapshot.map(e => ({ ...e, id: crypto.randomUUID() }))),
+      },
+    });
   };
 
   const handleAddCustomType = useCallback((label: string, icon: string, color: string) => {
@@ -146,14 +196,17 @@ const CalendarPage = () => {
     else setDate(d => dir === 1 ? addDays(d, 1) : subDays(d, 1));
   };
 
-  const weekDays = eachDayOfInterval({
-    start: startOfWeek(date, { weekStartsOn: 1 }),
-    end: endOfWeek(date, { weekStartsOn: 1 }),
-  });
+  const weekDays = useMemo(() => {
+    const all = eachDayOfInterval({
+      start: startOfWeek(date, { weekStartsOn: settings.weekStartsOn }),
+      end: endOfWeek(date, { weekStartsOn: settings.weekStartsOn }),
+    });
+    return settings.showWeekends ? all : all.filter(d => !isWeekend(d));
+  }, [date, settings.weekStartsOn, settings.showWeekends]);
 
   const navLabel =
     view === "month" ? format(date, "MMMM yyyy")
-    : view === "week" ? `${format(weekDays[0], "MMM d")} – ${format(weekDays[6], "MMM d, yyyy")}`
+    : view === "week" ? `${format(weekDays[0], "MMM d")} – ${format(weekDays[weekDays.length - 1], "MMM d, yyyy")}`
     : view === "schedule" ? `All events · ${format(date, "MMM d, yyyy")}`
     : format(date, "EEEE, MMMM d");
 
@@ -185,14 +238,16 @@ const CalendarPage = () => {
           allTypes={allTypes}
           termInfo={termInfo}
           filterType={filterType}
-          onFilterChange={(key) => setFilterType(key)}
+          onFilterChange={handleFilterChange}
+          weekStartsOn={settings.weekStartsOn}
+          defaultImportTag={settings.defaultImportTag}
           timeStr={timeStr}
           tzStr={tzStr}
           eventCount={events.length}
           onSelectDay={setDate}
           onOpenCreate={(day) => openCreate(day)}
           onManageTags={() => setShowManageTags(true)}
-          onClearAll={() => { if (confirm(`Clear all ${events.length} events?`)) eventStore.clearAll(); }}
+          onClearAll={handleClearAll}
         />
       </aside>
 
@@ -220,6 +275,10 @@ const CalendarPage = () => {
             <button data-testid="calendar-filters-button" onClick={() => setShowRailSheet(true)}
               className="md:hidden w-9 h-9 rounded-lg border border-border flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors">
               <SlidersHorizontal className="w-4 h-4" />
+            </button>
+            <button data-testid="calendar-settings-button" onClick={() => setShowSettings(true)} aria-label="Calendar settings"
+              className="w-9 h-9 rounded-lg border border-border flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors">
+              <Settings className="w-4 h-4" />
             </button>
             <button onClick={() => { setShowSearch(s => !s); if (!showSearch) setTimeout(() => searchRef.current?.focus(), 100); }}
               className={cn("w-9 h-9 rounded-lg border flex items-center justify-center transition-colors",
@@ -253,12 +312,23 @@ const CalendarPage = () => {
           <AnimatePresence mode="wait">
             <motion.div key={view + format(date, "yyyy-MM")} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
               transition={{ duration: 0.15 }} className="flex flex-col flex-1 min-h-0 overflow-hidden">
-              {view === "month" && (
-                <div className="flex flex-1 min-h-0 overflow-x-auto">
-                  <div className="flex min-w-[600px] flex-1 min-h-0">
-                    <MonthView date={date} events={filteredEvents} allTypes={allTypes} onSelectDay={setDate} onSelectEvent={setSelectedEvent} onClickCreate={d => openCreate(d)} />
-                  </div>
+              {(view === "week" || view === "day") && (settings.workHoursOnly || fullDayOverride) && (
+                <div className="flex justify-center shrink-0 pt-2">
+                  <button
+                    data-testid="calendar-day-range-toggle"
+                    onClick={() => setFullDayOverride(v => !v)}
+                    className="text-[10px] font-bold text-primary bg-primary/8 border border-primary/20 rounded-full px-3 py-1 hover:bg-primary/15 transition-colors"
+                  >
+                    {workHoursCollapsed
+                      ? `Work hours (${formatHourLabel(settings.workDayStart)}–${formatHourLabel(settings.workDayEnd)}) · show full day`
+                      : "Showing full day · back to work hours"}
+                  </button>
                 </div>
+              )}
+              {view === "month" && (
+                <MonthView date={date} events={filteredEvents} allTypes={allTypes}
+                  weekStartsOn={settings.weekStartsOn} showWeekends={settings.showWeekends}
+                  onSelectDay={setDate} onSelectEvent={setSelectedEvent} onClickCreate={d => openCreate(d)} />
               )}
               {view === "week" && (
                 <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
@@ -283,9 +353,12 @@ const CalendarPage = () => {
                       </div>
                       <TimeGrid
                         days={weekDays} events={filteredEvents} allTypes={allTypes} now={now}
+                        hourHeight={hourHeight} visibleHours={visibleHours}
+                        defaultDurationMinutes={settings.defaultDurationMinutes}
                         onDelete={handleDelete} onSelect={setSelectedEvent}
                         onCreateSelection={(day, startMin, endMin) => openCreate(day, startMin, endMin)}
                         onUpdateEvent={handleUpdateEvent}
+                        onExpandDay={() => setFullDayOverride(true)}
                       />
                     </div>
                   </div>
@@ -294,9 +367,12 @@ const CalendarPage = () => {
               {view === "day" && (
                 <TimeGrid
                   days={[date]} events={filteredEvents} allTypes={allTypes} now={now}
+                  hourHeight={hourHeight} visibleHours={visibleHours}
+                  defaultDurationMinutes={settings.defaultDurationMinutes}
                   onDelete={handleDelete} onSelect={setSelectedEvent}
                   onCreateSelection={(day, startMin, endMin) => openCreate(day, startMin, endMin)}
                   onUpdateEvent={handleUpdateEvent}
+                  onExpandDay={() => setFullDayOverride(true)}
                 />
               )}
               {view === "schedule" && <ScheduleView events={filteredEvents} allTypes={allTypes} focusDate={date} onSelectEvent={setSelectedEvent} onDelete={handleDelete} />}
@@ -366,6 +442,7 @@ const CalendarPage = () => {
           defaultDate={createDefaults?.date ?? date}
           defaultStartMin={createDefaults?.startMin}
           defaultEndMin={createDefaults?.endMin}
+          defaultDurationMinutes={settings.defaultDurationMinutes}
           allTypes={allTypes}
           onClose={() => { setShowCreate(false); setCreateDefaults(null); }}
           onSave={handleSaveEvent}
@@ -373,6 +450,16 @@ const CalendarPage = () => {
           onCreateTag={handleAddCustomType}
         />}
         {selectedEvent && <EventDetail event={selectedEvent} allTypes={allTypes} onClose={() => setSelectedEvent(null)} onDelete={() => { handleDelete(selectedEvent.id); setSelectedEvent(null); }} />}
+        {showSettings && (
+          <CalendarSettingsSheet
+            open={showSettings}
+            onOpenChange={setShowSettings}
+            settings={settings}
+            onChange={updateSettings}
+            allTypes={allTypes}
+            onManageTags={() => { setShowSettings(false); setShowManageTags(true); }}
+          />
+        )}
         {showManageTags && (
           <ManageTagsModal
             customTypes={customTypes}
@@ -398,14 +485,16 @@ const CalendarPage = () => {
             allTypes={allTypes}
             termInfo={termInfo}
             filterType={filterType}
-            onFilterChange={(key) => setFilterType(key)}
+            onFilterChange={handleFilterChange}
+            weekStartsOn={settings.weekStartsOn}
+            defaultImportTag={settings.defaultImportTag}
             timeStr={timeStr}
             tzStr={tzStr}
             eventCount={events.length}
             onSelectDay={(day) => { setDate(day); setShowRailSheet(false); }}
             onOpenCreate={(day) => { openCreate(day); setShowRailSheet(false); }}
             onManageTags={() => setShowManageTags(true)}
-            onClearAll={() => { if (confirm(`Clear all ${events.length} events?`)) eventStore.clearAll(); }}
+            onClearAll={handleClearAll}
           />
         </ResponsiveSheetContent>
       </ResponsiveSheet>

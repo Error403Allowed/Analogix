@@ -17,17 +17,18 @@ import type { AppEvent } from "@/types/events";
 import type { CustomEventType } from "../types";
 import { TagEditorPanel } from "./TagEditorPanel";
 
-export function CreateEventModal({ defaultDate, defaultStartMin, defaultEndMin, allTypes, onClose, onSave, onManageTags, onCreateTag }: {
+export function CreateEventModal({ defaultDate, defaultStartMin, defaultEndMin, defaultDurationMinutes = DEFAULT_EVENT_DURATION_MINUTES, allTypes, onClose, onSave, onManageTags, onCreateTag }: {
   defaultDate: Date;
   defaultStartMin?: number;
   defaultEndMin?: number;
+  defaultDurationMinutes?: number;
   allTypes: Record<string,{color:string;label:string;icon:string}>;
   onClose: () => void; onSave: (event: AppEvent) => void;
   onManageTags: () => void;
   onCreateTag: (label: string, icon: string, color: string) => CustomEventType | null;
 }) {
   const startMin = defaultStartMin ?? 9 * 60;
-  const endMin = defaultEndMin ?? Math.min(startMin + DEFAULT_EVENT_DURATION_MINUTES, 23 * 60 + 45);
+  const endMin = defaultEndMin ?? Math.min(startMin + defaultDurationMinutes, 23 * 60 + 45);
   const [title, setTitle] = useState("");
   const [date, setDate] = useState(format(defaultDate, "yyyy-MM-dd"));
   const [startTime, setStartTime] = useState(formatMinutesForTimeInput(startMin));

@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import ICSUploader from "@/components/shared/ICSUploader";
 import type { AppEvent } from "@/types/events";
 import { MiniCalendar } from "./MiniCalendar";
+import type { WeekStartsOn } from "../settings";
 
 export type CalendarRailProps = {
   date: Date;
@@ -18,6 +19,8 @@ export type CalendarRailProps = {
   termInfo: ReturnType<typeof import("@/utils/termData").getTermInfo> | null;
   filterType: string;
   onFilterChange: (key: string) => void;
+  weekStartsOn: WeekStartsOn;
+  defaultImportTag: string;
   timeStr: string;
   tzStr: string;
   eventCount: number;
@@ -34,6 +37,8 @@ export function CalendarRail({
   termInfo,
   filterType,
   onFilterChange,
+  weekStartsOn,
+  defaultImportTag,
   timeStr,
   tzStr,
   eventCount,
@@ -56,7 +61,7 @@ export function CalendarRail({
         <p className="text-[9px] font-medium text-muted-foreground/50">{tzStr}</p>
       </div>
 
-      <MiniCalendar date={date} events={events} onSelect={onSelectDay} />
+      <MiniCalendar date={date} events={events} weekStartsOn={weekStartsOn} onSelect={onSelectDay} />
 
       {termInfo && (
         <div className="rounded-xl bg-primary/8 border border-primary/20 px-3 py-2.5">
@@ -101,7 +106,7 @@ export function CalendarRail({
       </div>
 
       <div className="mt-auto space-y-1">
-        <ICSUploader allTypes={allTypes} />
+        <ICSUploader allTypes={allTypes} defaultTag={defaultImportTag} />
 
         {eventCount > 0 && (
           <button
