@@ -92,7 +92,7 @@ export function CreateEventModal({ defaultDate, defaultStartMin, defaultEndMin, 
               <AnimatePresence>
                 {showTypeMenu && (
                   <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
-                    className="absolute top-full left-0 right-0 mt-1 rounded-xl border border-border bg-card shadow-xl z-20 overflow-hidden max-h-48 overflow-y-auto">
+                    className="absolute top-full left-0 right-0 mt-1 rounded-xl border border-border bg-card shadow-xl z-20 max-h-48 overflow-y-auto overscroll-contain">
                     {Object.entries(allTypes).map(([key, m]) => (
                       <button key={key} onClick={() => { setType(key); setShowTypeMenu(false); }}
                         className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs font-semibold hover:bg-muted transition-colors text-left">

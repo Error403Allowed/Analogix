@@ -101,9 +101,7 @@ export function CalendarRail({
       </div>
 
       <div className="mt-auto space-y-1">
-        <div className="overflow-hidden">
-          <ICSUploader allTypes={allTypes} />
-        </div>
+        <ICSUploader allTypes={allTypes} />
 
         {eventCount > 0 && (
           <button
