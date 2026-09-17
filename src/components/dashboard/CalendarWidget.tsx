@@ -249,7 +249,7 @@ const EventRow = ({ event, onDelete }: { event: AppEvent; onDelete: () => void }
       <div className={cn("w-1.5 self-stretch rounded-full shrink-0", style.bg)} />
       <div className="flex-1 min-w-0">
         <p className="text-xs font-bold text-foreground leading-tight truncate">{event.title}</p>
-        <p className="text-[9px] text-foreground/60 mt-0.5 truncate uppercase tracking-wider">{event.subject || event.type}</p>
+        <p className="text-[9px] text-foreground/60 mt-0.5 truncate uppercase tracking-wider">{event.location || event.subject || event.type}</p>
       </div>
       <div className="flex items-center gap-1.5 shrink-0">
         <span className="text-[9px] text-foreground/60 font-medium">{format(new Date(event.date), "h:mma")}</span>

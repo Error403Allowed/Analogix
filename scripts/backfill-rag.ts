@@ -98,7 +98,7 @@ async function backfillRag() {
     if (error) throw new Error(`events: ${error.message}`);
 
     for (const event of (events ?? []) as any[]) {
-      const content = [event.title, event.description].filter(Boolean).join('\n');
+      const content = [event.title, event.description, event.location].filter(Boolean).join('\n');
       if (!content) continue;
 
       try {

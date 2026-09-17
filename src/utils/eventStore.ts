@@ -30,6 +30,7 @@ export const eventStore = {
       type: row.type as string,
       subject: row.subject,
       description: row.description,
+      location: row.location ?? undefined,
       source: (row.source ?? "import") as AppEvent["source"],
     }));
   },
@@ -47,6 +48,7 @@ export const eventStore = {
       type: event.type,
       subject: event.subject,
       description: event.description,
+      location: event.location ?? null,
       source: event.source,
     }).select("id").single();
     if (error) {
@@ -59,7 +61,7 @@ export const eventStore = {
       entityType: "calendar",
       entityId: String(data?.id ?? ""),
       subjectId: event.subject,
-      content: [event.title, event.description].filter(Boolean).join("\n"),
+      content: [event.title, event.description, event.location].filter(Boolean).join("\n"),
       metadata: { title: event.title },
     });
   },
@@ -78,6 +80,7 @@ export const eventStore = {
         type: e.type,
         subject: e.subject,
         description: e.description,
+        location: e.location ?? null,
         source: e.source,
       }))
     ).select("id");
@@ -95,7 +98,7 @@ export const eventStore = {
         entityType: "calendar",
         entityId: String(id),
         subjectId: e.subject,
-        content: [e.title, e.description].filter(Boolean).join("\n"),
+        content: [e.title, e.description, e.location].filter(Boolean).join("\n"),
         metadata: { title: e.title },
       });
     });
@@ -103,7 +106,7 @@ export const eventStore = {
 
   update: async (
     id: string,
-    updates: Partial<Pick<AppEvent, "title" | "date" | "endDate" | "type" | "subject" | "description">>,
+    updates: Partial<Pick<AppEvent, "title" | "date" | "endDate" | "type" | "subject" | "description" | "location">>,
   ): Promise<void> => {
     const user = await getAuthUser();
     const supabase = createClient();
@@ -117,6 +120,7 @@ export const eventStore = {
     if (updates.type !== undefined) payload.type = updates.type;
     if (updates.subject !== undefined) payload.subject = updates.subject ?? null;
     if (updates.description !== undefined) payload.description = updates.description ?? null;
+    if (updates.location !== undefined) payload.location = updates.location ?? null;
 
     const { error } = await supabase
       .from("events")
@@ -135,7 +139,7 @@ export const eventStore = {
       entityType: "calendar",
       entityId: id,
       subjectId: updates.subject,
-      content: [updates.title, updates.description].filter(Boolean).join("\n"),
+      content: [updates.title, updates.description, updates.location].filter(Boolean).join("\n"),
       metadata: updates.title ? { title: updates.title } : undefined,
     });
   },

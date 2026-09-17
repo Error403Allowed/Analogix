@@ -21,6 +21,7 @@ export function TimeBlock({ event, allTypes, col, totalCols, span, height, onDel
     <div
       data-calendar-event="true"
       onPointerDown={onMoveStart}
+      title={event.location ? `${event.title} · ${event.location}` : event.title}
       className={cn(
         // inset-y-0 makes the block fill the exact duration-sized slot its wrapper
         // defines. Without it the block collapses to its text height, which is what
@@ -36,6 +37,7 @@ export function TimeBlock({ event, allTypes, col, totalCols, span, height, onDel
       />
       <p className="text-[10px] font-bold truncate leading-tight" style={{ color: meta.color }}>{event.title}</p>
       {height >= 36 && <p className="text-[9px] opacity-70 leading-tight" style={{ color: meta.color }}>{format(new Date(event.date), "h:mm a")}</p>}
+      {height >= 52 && event.location && <p className="text-[9px] opacity-70 leading-tight truncate" style={{ color: meta.color }}>{event.location}</p>}
       <button
         onPointerDown={(clickEvent) => clickEvent.stopPropagation()}
         onClick={e => { e.stopPropagation(); onDelete(); }}

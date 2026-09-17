@@ -36,6 +36,7 @@ export function CreateEventModal({ defaultDate, defaultStartMin, defaultEndMin, 
   const [type, setType] = useState(Object.keys(allTypes)[0] || "event");
   const [subject, setSubject] = useState("");
   const [description, setDescription] = useState("");
+  const [location, setLocation] = useState("");
   const [showTypeMenu, setShowTypeMenu] = useState(false);
   const [showQuickTagCreator, setShowQuickTagCreator] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -58,6 +59,7 @@ export function CreateEventModal({ defaultDate, defaultStartMin, defaultEndMin, 
       type,
       subject: subject.trim() || undefined,
       description: description.trim() || undefined,
+      location: location.trim() || undefined,
       source: "manual",
     });
     onClose();
@@ -167,6 +169,8 @@ export function CreateEventModal({ defaultDate, defaultStartMin, defaultEndMin, 
               </div>
             </div>
             <input value={subject} onChange={e => setSubject(e.target.value)} placeholder="Subject (optional)"
+              className="w-full text-xs bg-muted/40 border border-border rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-primary/20 placeholder:text-muted-foreground/40" />
+            <input value={location} onChange={e => setLocation(e.target.value)} placeholder="Location / room (optional)"
               className="w-full text-xs bg-muted/40 border border-border rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-primary/20 placeholder:text-muted-foreground/40" />
             <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Add a description…" rows={2}
               className="w-full text-xs bg-muted/40 border border-border rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-primary/20 resize-none placeholder:text-muted-foreground/40" />

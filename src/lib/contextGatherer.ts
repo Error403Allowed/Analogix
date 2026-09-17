@@ -18,7 +18,7 @@ export interface AppContext {
   currentPath?: string;
   subjects?: string[];
   recentDocuments?: Array<{ title: string; subject: string; lastUpdated: string }>;
-  upcomingEvents?: Array<{ title: string; date: string; type: string }>;
+  upcomingEvents?: Array<{ title: string; date: string; type: string; location?: string }>;
   stats?: {
     studyStreak?: number;
     quizzesCompleted?: number;
@@ -81,6 +81,7 @@ export async function gatherAppContext(path?: string, options: ContextOptions = 
           title: e.title,
           date: new Date(e.date).toLocaleDateString("en-AU", { month: "short", day: "numeric" }),
           type: e.type,
+          location: e.location,
         }));
       context.upcomingEvents = upcoming;
     }

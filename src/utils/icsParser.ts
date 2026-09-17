@@ -19,8 +19,8 @@ export const parseICS = async (file: any) => {
                 const rangeStart = ICAL.Time.fromJSDate(rangeStartJs, false);
                 const rangeEnd = ICAL.Time.fromJSDate(rangeEndJs, false);
                 const events: any[] = [];
-                const pushEvent = (event: any, startTime: any, endTime: any, title: any, description: any) => {
-                    const combined = (title + " " + description).toLowerCase();
+                const pushEvent = (event: any, startTime: any, endTime: any, title: any, description: any, location: any) => {
+                    const combined = (title + " " + description + " " + (location || "")).toLowerCase();
                     const isExam = academicKeywords.some((kw) => combined.includes(kw));
                     const isAssignment = assignmentKeywords.some((kw) => combined.includes(kw));
                     const isClass = classKeywords.some((kw) => combined.includes(kw));
@@ -39,6 +39,7 @@ export const parseICS = async (file: any) => {
                             : undefined,
                         type: isExam ? "exam" : isAssignment ? "assignment" : isClass ? "class" : "event",
                         description: description || "Imported from calendar",
+                        location: location || undefined,
                         source: "import",
                     });
                 };
@@ -48,19 +49,20 @@ export const parseICS = async (file: any) => {
                         return;
                     const title = event.summary || "Untitled event";
                     const description = event.description || "";
+                    const location = (event.location || "").trim() || "";
                     if (event.isRecurring()) {
                         const iter = event.iterator(rangeStart);
                         let next = iter.next();
                         let guard = 0;
                         while (next && next.compare(rangeEnd) <= 0 && guard < 1000) {
                             const occurrence = event.getOccurrenceDetails(next);
-                            pushEvent(event, occurrence.startDate, occurrence.endDate ?? null, title, description);
+                            pushEvent(event, occurrence.startDate, occurrence.endDate ?? null, title, description, location);
                             next = iter.next();
                             guard += 1;
                         }
                     }
                     else {
-                        pushEvent(event, event.startDate, event.endDate ?? null, title, description);
+                        pushEvent(event, event.startDate, event.endDate ?? null, title, description, location);
                     }
                 });
                 resolve(events);
@@ -73,4 +75,3 @@ export const parseICS = async (file: any) => {
         reader.readAsText(file);
     });
 };
-//# sourceMappingURL=icsParser.js.map

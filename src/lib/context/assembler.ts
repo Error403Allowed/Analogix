@@ -287,9 +287,10 @@ export class ContextAssembler {
       const start = formatDateTime(e.start_date);
       const end = formatDateTime(e.end_date);
       const subject = e.subject ? ` [${e.subject}]` : '';
+      const location = (e as any).location ? ` in ${(e as any).location}` : '';
       const typeLabel = e.type ? `${e.type.charAt(0).toUpperCase()}${e.type.slice(1)}` : 'Event';
       const timeLabel = start ? (end ? ` from ${start} to ${end}` : ` at ${timeOnly(e.start_date) || start}`) : '';
-      parts.push(`• ${typeLabel}: "${e.title}"${subject}${timeLabel}`);
+      parts.push(`• ${typeLabel}: "${e.title}"${subject}${timeLabel}${location}`);
     });
 
     parts.push('━━━ END CALENDAR ━━━');

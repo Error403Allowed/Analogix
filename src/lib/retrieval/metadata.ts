@@ -53,6 +53,7 @@ export async function filterByMetadata(
     end_date?: string;
     type?: string;
     subject?: string;
+    location?: string;
   }
 
   const promises: Promise<void>[] = [];
@@ -131,7 +132,7 @@ export async function filterByMetadata(
       (async () => {
         const { data } = await supabase
           .from('events')
-          .select('id, title, date, end_date, type, subject')
+          .select('id, title, date, end_date, type, subject, location')
           .eq('user_id', userId) as { data: EventRow[] | null };
         let filtered = data || [];
         if (subjectId) filtered = filtered.filter((e) => e.subject === subjectId);
@@ -142,6 +143,7 @@ export async function filterByMetadata(
           end_date: e.end_date,
           type: e.type || 'event',
           subject: e.subject,
+          location: e.location,
         }));
       })()
     );

@@ -16,7 +16,7 @@ export async function listEvents(userId: string, supabase: any, from?: string, t
 
 export async function createEvent(userId: string, supabase: any, args: {
   title: string; date: string; endDate?: string; type?: string;
-  subject?: string; color?: string; description?: string;
+  subject?: string; color?: string; description?: string; location?: string;
 }) {
   const subjectError = validateOptionalSubject(args.subject);
   if (subjectError) throw new Error(subjectError);
@@ -33,6 +33,7 @@ export async function createEvent(userId: string, supabase: any, args: {
       subject: normalizedSubject,
       color: args.color ?? null,
       description: args.description ?? null,
+      location: args.location ?? null,
       source: "manual",
       created_at: new Date().toISOString(),
     })
@@ -58,6 +59,7 @@ export async function updateEvent(
   if (normalizedSubjectField !== undefined) update.subject = normalizedSubjectField;
   if (fields.color !== undefined) update.color = fields.color;
   if (fields.description !== undefined) update.description = fields.description;
+  if (fields.location !== undefined) update.location = fields.location;
   const { data, error } = await supabase
     .from("events")
     .update(update)

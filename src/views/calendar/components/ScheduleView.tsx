@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useRef } from "react";
 import { motion } from "framer-motion";
-import { Clock, Tag, CalendarDays, X } from "lucide-react";
+import { Clock, MapPin, Tag, CalendarDays, X } from "lucide-react";
 import { format, isToday } from "date-fns";
 import { cn } from "@/lib/utils";
 import type { AppEvent } from "@/types/events";
@@ -105,6 +105,7 @@ export function ScheduleView({ events, allTypes, focusDate, onSelectEvent, onDel
                           {e.endDate && ` – ${format(new Date(e.endDate), "h:mm a")}`}
                         </span>
                         {e.subject && <span className="text-[10px] text-muted-foreground flex items-center gap-1"><Tag className="w-2.5 h-2.5" />{e.subject}</span>}
+                        {e.location && <span className="text-[10px] text-muted-foreground flex items-center gap-1"><MapPin className="w-2.5 h-2.5" />{e.location}</span>}
                       </div>
                     </div>
                     <button onClick={ev => { ev.stopPropagation(); onDelete(e.id); }}

@@ -8,6 +8,7 @@ interface EventRow {
   type?: string;
   subject?: string;
   description?: string;
+  location?: string;
 }
 
 interface DeadlineRow {
@@ -25,6 +26,7 @@ export interface CalendarEvent {
   type: string;
   subject?: string;
   description?: string;
+  location?: string;
 }
 
 export interface CreateEventParams {
@@ -34,6 +36,7 @@ export interface CreateEventParams {
   type: string;
   subject?: string;
   description?: string;
+  location?: string;
 }
 
 export async function getUpcomingEvents(
@@ -89,6 +92,7 @@ export async function getUpcomingEvents(
     type: e.type || 'event',
     subject: e.subject,
     description: e.description,
+    location: e.location,
   }));
 
   const allEvents = [...eventObjects, ...deadlineEvents].sort(

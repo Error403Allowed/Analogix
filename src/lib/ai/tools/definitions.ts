@@ -185,6 +185,7 @@ export const writeToolDefinitions = {
       type: z.string().optional().describe("Event type, e.g. exam, assignment, class"),
       subject: z.string().optional().describe("Subject id"),
       description: z.string().optional(),
+      location: z.string().optional().describe("Room or place, e.g. classroom"),
     }),
   },
   updateEvent: {
@@ -197,6 +198,7 @@ export const writeToolDefinitions = {
       type: z.string().optional(),
       subject: z.string().optional(),
       description: z.string().optional(),
+      location: z.string().optional(),
     }),
   },
   deleteEvent: {

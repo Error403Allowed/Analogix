@@ -304,6 +304,7 @@ case 'create_quiz': {
           type: payload.type || 'event',
           subject: payload.subject,
           description: payload.description,
+          location: payload.location,
           created_at: now,
         } as any);
         try {
@@ -313,7 +314,7 @@ case 'create_quiz': {
             entityType: 'calendar',
             entityId: evtId,
             subjectId: payload.subject,
-            content: [payload.title, payload.description].filter(Boolean).join('\n'),
+            content: [payload.title, payload.description, payload.location].filter(Boolean).join('\n'),
             metadata: { title: payload.title },
           });
         } catch (err) {

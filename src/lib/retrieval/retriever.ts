@@ -345,7 +345,7 @@ export class WorkspaceRetriever {
         entity_type: 'calendar_event' as EntityType,
         workspace_id: this.userId,
         entity_id: e.id,
-        entity_data: { title: e.title, start_date: e.start_date, end_date: e.end_date, type: e.type },
+        entity_data: { title: e.title, start_date: e.start_date, end_date: e.end_date, type: e.type, location: (e as any).location },
         metadata: { title: e.title, subject_id: e.subject },
         relationships: [],
         tags: [],

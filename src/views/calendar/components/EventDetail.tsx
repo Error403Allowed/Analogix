@@ -1,5 +1,5 @@
 "use client";
-import { X, Clock, Tag, Trash2 } from "lucide-react";
+import { X, Clock, MapPin, Tag, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import type { AppEvent } from "@/types/events";
 import { getTypeMeta } from "../storage";
@@ -29,6 +29,12 @@ export function EventDetail({ event, allTypes, onClose, onDelete }: { event: App
             </div>
           </div>
           {event.description && <p className="text-xs text-muted-foreground leading-relaxed mb-4">{event.description}</p>}
+          {event.location && (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
+              <MapPin className="w-3.5 h-3.5 shrink-0" />
+              <span className="font-semibold">{event.location}</span>
+            </div>
+          )}
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <Clock className="w-3.5 h-3.5" />
             <span>{format(new Date(event.date), "EEEE, MMMM d 'at' h:mm a")}</span>

@@ -128,6 +128,7 @@ export interface CalendarEventContext {
   end_date?: string;
   type: string;
   subject?: string;
+  location?: string;
   linked_assignment_id?: string;
 }
 

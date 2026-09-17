@@ -8,6 +8,7 @@ export interface AppEvent {
   type: string;  // open string so users can create custom types
   subject?: string;
   description?: string;
+  location?: string;
   source: 'manual' | 'import';
   repeat?: RepeatRule;
   repeatEnd?: string; // ISO date string - last date to generate occurrences

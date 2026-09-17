@@ -91,7 +91,7 @@ const CalendarPage = () => {
 
   const filteredEvents = useMemo(() => events.filter(e => {
     const q = search.toLowerCase();
-    const matchSearch = !q || e.title.toLowerCase().includes(q) || e.subject?.toLowerCase().includes(q) || e.description?.toLowerCase().includes(q);
+    const matchSearch = !q || e.title.toLowerCase().includes(q) || e.subject?.toLowerCase().includes(q) || e.description?.toLowerCase().includes(q) || e.location?.toLowerCase().includes(q);
     const matchType = filterType === "all" || e.type === filterType;
     return matchSearch && matchType;
   }), [events, search, filterType]);
@@ -324,7 +324,7 @@ const CalendarPage = () => {
                             <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: meta.color }} />
                             <div className="flex-1 min-w-0">
                               <p className="text-[11px] font-semibold text-foreground truncate">{e.title}</p>
-                              <p className="text-[9px] text-muted-foreground/60">{format(new Date(e.date), "h:mm a")}{e.endDate && ` – ${format(new Date(e.endDate), "h:mm a")}`}</p>
+                              <p className="text-[9px] text-muted-foreground/60">{format(new Date(e.date), "h:mm a")}{e.endDate && ` – ${format(new Date(e.endDate), "h:mm a")}`}{e.location && ` · ${e.location}`}</p>
                             </div>
                           </button>
                         );
