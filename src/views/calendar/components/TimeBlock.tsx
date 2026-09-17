@@ -22,7 +22,10 @@ export function TimeBlock({ event, allTypes, col, totalCols, span, height, onDel
       data-calendar-event="true"
       onPointerDown={onMoveStart}
       className={cn(
-        "absolute rounded-md px-1.5 py-1 overflow-hidden cursor-grab group hover:brightness-110 transition-all shadow-sm touch-none select-none",
+        // inset-y-0 makes the block fill the exact duration-sized slot its wrapper
+        // defines. Without it the block collapses to its text height, which is what
+        // made back-to-back events render with phantom gaps between them.
+        "absolute inset-y-0 rounded-md px-1.5 py-1 overflow-hidden cursor-grab group hover:brightness-110 transition-all shadow-sm touch-none select-none",
         isDragging && "opacity-90 ring-1 ring-white/20 cursor-grabbing",
       )}
       style={{ left, width, backgroundColor: meta.color + "22", borderLeft: `3px solid ${meta.color}` }}

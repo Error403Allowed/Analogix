@@ -15,6 +15,7 @@ import {
   addDays, subDays,
 } from "date-fns";
 import MobileFAB from "@/components/nav/MobileFAB";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   ResponsiveSheet,
   ResponsiveSheetContent,
@@ -54,6 +55,21 @@ const CalendarPage = () => {
   const [builtinOverrides, setBuiltinOverrides] = useState(() => loadBuiltinOverrides());
   const searchRef = useRef<HTMLInputElement>(null);
   const now = useNow();
+  const isMobile = useIsMobile();
+
+  // A seven-column week grid is unreadable on a phone, so mobile opens on the
+  // single-day grid instead. Only the initial view is forced - once the student
+  // picks a view themselves, that choice is respected.
+  const userPickedViewRef = useRef(false);
+  useEffect(() => {
+    if (isMobile === undefined || userPickedViewRef.current) return;
+    setView((current) => (isMobile && current === "week" ? "day" : current));
+  }, [isMobile]);
+
+  const handleViewChange = useCallback((next: CalendarView) => {
+    userPickedViewRef.current = true;
+    setView(next);
+  }, []);
 
   const allTypes = useMemo(
     () => getAllTypes(customTypes, deletedBuiltins, builtinOverrides),
@@ -138,7 +154,7 @@ const CalendarPage = () => {
   const navLabel =
     view === "month" ? format(date, "MMMM yyyy")
     : view === "week" ? `${format(weekDays[0], "MMM d")} – ${format(weekDays[6], "MMM d, yyyy")}`
-    : view === "schedule" ? "All Events"
+    : view === "schedule" ? `All events · ${format(date, "MMM d, yyyy")}`
     : format(date, "EEEE, MMMM d");
 
   const viewIcons: Record<CalendarView, React.ReactNode> = {
@@ -212,8 +228,9 @@ const CalendarPage = () => {
             </button>
             <div className="flex bg-muted/60 p-0.5 rounded-lg border border-border/50">
               {(["month","week","day","schedule"] as CalendarView[]).map(v => (
-                <button key={v} onClick={() => setView(v)}
-                  className={cn("flex items-center justify-center gap-1.5 px-1.5 lg:px-2.5 py-1.5 rounded-md text-[10px] font-bold transition-all min-w-[28px] lg:min-w-0",
+                <button key={v} onClick={() => handleViewChange(v)}
+                  aria-label={v}
+                  className={cn("flex items-center justify-center gap-1.5 px-2.5 lg:px-2.5 py-2 lg:py-1.5 rounded-md text-[10px] font-bold transition-all min-w-[36px] lg:min-w-0",
                     view === v ? "bg-background text-foreground shadow-sm border border-border/40" : "text-muted-foreground hover:text-foreground")}>
                   {viewIcons[v]}<span className="hidden lg:inline capitalize">{v}</span>
                 </button>
@@ -282,7 +299,7 @@ const CalendarPage = () => {
                   onUpdateEvent={handleUpdateEvent}
                 />
               )}
-              {view === "schedule" && <ScheduleView events={filteredEvents} allTypes={allTypes} onSelectEvent={setSelectedEvent} onDelete={handleDelete} />}
+              {view === "schedule" && <ScheduleView events={filteredEvents} allTypes={allTypes} focusDate={date} onSelectEvent={setSelectedEvent} onDelete={handleDelete} />}
             </motion.div>
           </AnimatePresence>
 
@@ -317,7 +334,7 @@ const CalendarPage = () => {
               <div className="flex-1 overflow-y-auto p-4">
                 <div className="flex items-center justify-between mb-3">
                   <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/60">Upcoming</p>
-                  <button onClick={() => setView("schedule")} className="text-[9px] font-bold text-primary hover:underline">View all</button>
+                  <button onClick={() => handleViewChange("schedule")} className="text-[9px] font-bold text-primary hover:underline">View all</button>
                 </div>
                 <div className="space-y-1.5">
                   {upcomingEvents.length === 0

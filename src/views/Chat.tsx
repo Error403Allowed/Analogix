@@ -342,7 +342,7 @@ const Chat = () => {
                   ref={contentRef}
                   className={`mx-auto max-w-4xl w-full px-4 flex flex-col pt-4 sm:pt-4 ${
                   messages.length === 0 && !isTyping
-                    ? "min-h-full pb-4"
+                    ? "min-h-full pb-44 sm:pb-40"
                     : "pb-44 sm:pb-40 space-y-6"
                 }`}>
                   {/* Empty state - shown before any messages */}
@@ -351,9 +351,9 @@ const Chat = () => {
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       transition={{ duration: 0.5 }}
-                      className="flex flex-1 flex-col items-center min-h-0 px-6 pt-2 sm:pt-2"
+                      className="flex flex-1 flex-col items-center justify-center px-2 sm:px-6 pt-2"
                     >
-                      <div className="w-full flex flex-col items-center m-auto">
+                      <div className="w-full flex flex-col items-center my-auto">
                       {/* Greeting */}
                       <motion.div
                         initial={{ opacity: 0, y: 20 }}
@@ -373,7 +373,7 @@ const Chat = () => {
                         transition={{ delay: 0.25, duration: 0.4 }}
                         className="w-full max-w-xl mb-4"
                       >
-                        <p className="text-[11px] font-semibold text-muted-foreground/40 uppercase tracking-widest text-center mb-3">
+                        <p className="text-[11px] font-semibold text-muted-foreground/40 tracking-widest text-center mb-3">
                           Try asking about
                         </p>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -389,9 +389,9 @@ const Chat = () => {
                                 setInput(prompt.prompt);
                                 textareaRef.current?.focus();
                               }}
-                              className="group flex items-start gap-3 p-3.5 rounded-xl border border-border/40 bg-card/50 hover:bg-card hover:border-border/70 transition-all text-left hover:shadow-sm"
+                              className="group flex items-start gap-2.5 sm:gap-3 p-2.5 sm:p-3.5 rounded-xl border border-border/40 bg-card/50 hover:bg-card hover:border-border/70 transition-all text-left hover:shadow-sm"
                             >
-                              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary/12 to-primary/5 flex items-center justify-center shrink-0 group-hover:from-primary/18 group-hover:to-primary/8 transition-all">
+                              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-gradient-to-br from-primary/12 to-primary/5 flex items-center justify-center shrink-0 group-hover:from-primary/18 group-hover:to-primary/8 transition-all">
                                 <PromptIcon className="w-4 h-4 text-primary/60" />
                               </div>
                               <div className="min-w-0">
@@ -670,7 +670,7 @@ const Chat = () => {
                   size="icon"
                   variant="secondary"
                   aria-label="Scroll to bottom"
-                  className="absolute bottom-24 right-6 z-30 h-9 w-9 rounded-full shadow-lg hover:bg-background"
+                  className="absolute bottom-40 right-4 sm:bottom-24 sm:right-6 z-30 h-10 w-10 sm:h-9 sm:w-9 rounded-full shadow-lg hover:bg-background"
                 >
                   <ChevronDown className="h-4 w-4" />
                 </Button>

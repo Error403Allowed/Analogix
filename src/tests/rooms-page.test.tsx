@@ -96,7 +96,7 @@ describe("RoomsPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Delete room" }));
 
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith("/api/rooms/r1", { method: "DELETE" });
+      expect(fetchMock).toHaveBeenCalledWith("/api/rooms/r1", { method: "DELETE", credentials: "include" });
     });
     await waitFor(() => {
       expect(screen.queryByRole("button", { name: "Delete My Room" })).not.toBeInTheDocument();
@@ -109,7 +109,7 @@ describe("RoomsPage", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Delete My Room" }));
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
-    expect(fetchMock).not.toHaveBeenCalledWith("/api/rooms/r1", { method: "DELETE" });
+    expect(fetchMock).not.toHaveBeenCalledWith("/api/rooms/r1", { method: "DELETE", credentials: "include" });
     expect(screen.getByRole("button", { name: "Delete My Room" })).toBeInTheDocument();
   });
 });

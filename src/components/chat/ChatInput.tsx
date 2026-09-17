@@ -178,14 +178,20 @@ const ChatInput = ({
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                handleSend();
-              }
+              if (e.key !== "Enter" || e.shiftKey) return;
+              // On a soft keyboard Enter is the newline key, so only treat it as
+              // "send" where there is a real keyboard driving a fine pointer.
+              const hasHardwareKeyboard =
+                typeof window === "undefined" ||
+                window.matchMedia("(pointer: fine)").matches;
+              if (!hasHardwareKeyboard) return;
+              e.preventDefault();
+              handleSend();
             }}
+            enterKeyHint="send"
             placeholder="Ask me anything..."
             style={{ minHeight: 56, height: 56 }}
-            className="w-full px-4 py-4 text-sm sm:text-base bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/40 resize-none leading-relaxed rounded-t-2xl"
+            className="w-full px-4 py-4 text-base bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/40 resize-none leading-relaxed rounded-t-2xl"
           />
 
           {/* Bottom row of input - separate from textarea */}

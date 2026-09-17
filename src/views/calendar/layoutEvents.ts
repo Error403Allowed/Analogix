@@ -75,9 +75,14 @@ export function layoutEvents(events: any, hourH: any) {
             return {
                 event,
                 startMin,
-                endMin: startMin + Math.max(durationMin, 30),
+                // endMin must be the event's real end, otherwise two genuinely
+                // consecutive events (10:00-10:30, 10:30-11:00) get padded into a
+                // fake overlap and are laid out side by side instead of stacked.
+                endMin: startMin + durationMin,
                 top: startMin * (hourH / 60),
-                height: Math.max(durationMin * (hourH / 60), 28),
+                // Small floor purely so a very short event stays readable; kept
+                // tight so it does not visibly bleed into the following block.
+                height: Math.max(durationMin * (hourH / 60), 16),
             };
         });
         itemsByDay.set(dayKey, items);

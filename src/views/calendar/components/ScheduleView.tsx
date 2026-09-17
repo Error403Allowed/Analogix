@@ -1,4 +1,5 @@
 "use client";
+import { useEffect, useMemo, useRef } from "react";
 import { motion } from "framer-motion";
 import { Clock, Tag, CalendarDays, X } from "lucide-react";
 import { format, isToday } from "date-fns";
@@ -6,19 +7,53 @@ import { cn } from "@/lib/utils";
 import type { AppEvent } from "@/types/events";
 import { getTypeMeta } from "../storage";
 
-export function ScheduleView({ events, allTypes, onSelectEvent, onDelete }: {
+export function ScheduleView({ events, allTypes, focusDate, onSelectEvent, onDelete }: {
   events: AppEvent[]; allTypes: Record<string,{color:string;label:string;icon:string}>;
+  focusDate: Date;
   onSelectEvent: (e: AppEvent) => void; onDelete: (id: string) => void;
 }) {
-  const sorted = [...events].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-  const byDate = sorted.reduce((acc, e) => {
-    const key = format(new Date(e.date), "yyyy-MM-dd");
-    if (!acc[key]) acc[key] = [];
-    acc[key].push(e);
-    return acc;
-  }, {} as Record<string, AppEvent[]>);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const groupRefs = useRef(new Map<string, HTMLDivElement>());
 
-  if (sorted.length === 0) {
+  const { orderedKeys, byDate } = useMemo(() => {
+    const sorted = [...events].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    const grouped = sorted.reduce((acc, e) => {
+      const key = format(new Date(e.date), "yyyy-MM-dd");
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(e);
+      return acc;
+    }, {} as Record<string, AppEvent[]>);
+    return { orderedKeys: Object.keys(grouped), byDate: grouped };
+  }, [events]);
+
+  const focusKey = format(focusDate, "yyyy-MM-dd");
+
+  // Jumping to a date (Today, the arrows, picking a day in the rail) has to move
+  // the agenda. There may be no events on the target day, so fall back to the
+  // first day at or after it, then to the last day before it.
+  const targetKey = useMemo(() => {
+    if (orderedKeys.length === 0) return null;
+    return (
+      orderedKeys.find((key) => key >= focusKey)
+      ?? orderedKeys[orderedKeys.length - 1]
+    );
+  }, [orderedKeys, focusKey]);
+
+  // focusTime (not just the day key) is in the deps so that re-picking the same
+  // day - tapping "Today" twice, or after scrolling away - jumps back again.
+  const focusTime = focusDate.getTime();
+  useEffect(() => {
+    if (!targetKey) return;
+    const container = scrollRef.current;
+    const group = groupRefs.current.get(targetKey);
+    if (!container || !group) return;
+    container.scrollTo({
+      top: Math.max(group.offsetTop - container.offsetTop, 0),
+      behavior: "smooth",
+    });
+  }, [targetKey, focusTime]);
+
+  if (orderedKeys.length === 0) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center gap-3 py-20 text-center">
         <div className="w-16 h-16 rounded-2xl bg-muted/50 border border-border flex items-center justify-center">
@@ -30,13 +65,21 @@ export function ScheduleView({ events, allTypes, onSelectEvent, onDelete }: {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto">
-      {Object.entries(byDate).map(([dateKey, dayEvents]) => {
-        const d = new Date(dateKey);
+    <div ref={scrollRef} className="flex-1 overflow-y-auto">
+      {orderedKeys.map((dateKey) => {
+        const dayEvents = byDate[dateKey];
+        const d = new Date(`${dateKey}T00:00:00`);
         const isTod = isToday(d);
         return (
-          <div key={dateKey} className="flex">
-            <div className="w-[110px] shrink-0 sticky top-0 self-start pt-5 pl-4 pr-3">
+          <div
+            key={dateKey}
+            ref={(node) => {
+              if (node) groupRefs.current.set(dateKey, node);
+              else groupRefs.current.delete(dateKey);
+            }}
+            className={cn("flex scroll-mt-4", dateKey === targetKey && "bg-primary/[0.03]")}
+          >
+            <div className="w-[72px] sm:w-[110px] shrink-0 sticky top-0 self-start pt-5 pl-3 pr-2 sm:pl-4 sm:pr-3">
               <p className={cn("text-[9px] font-black uppercase tracking-widest mb-0.5", isTod ? "text-primary" : "text-muted-foreground/60")}>
                 {isTod ? "Today" : format(d, "EEE")}
               </p>
@@ -65,7 +108,8 @@ export function ScheduleView({ events, allTypes, onSelectEvent, onDelete }: {
                       </div>
                     </div>
                     <button onClick={ev => { ev.stopPropagation(); onDelete(e.id); }}
-                      className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive shrink-0">
+                      aria-label={`Delete ${e.title}`}
+                      className="opacity-60 md:opacity-0 md:group-hover:opacity-100 transition-opacity p-2 md:p-1 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive shrink-0">
                       <X className="w-3.5 h-3.5" />
                     </button>
                   </motion.div>

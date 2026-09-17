@@ -163,7 +163,7 @@ export default function StudyRoomWorkspace() {
   /* ─── Room Overview (before entering) ─── */
   if (!inRoom) {
     return (
-      <div className="mx-auto flex min-h-screen w-full max-w-[1200px] flex-col gap-6 px-6 py-6 lg:px-8">
+      <div className="mx-auto flex min-h-[100dvh] w-full max-w-[1200px] flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
         {/* Title row */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
           <div className="min-w-0">
@@ -310,7 +310,7 @@ export default function StudyRoomWorkspace() {
 
   /* ─── In-Room Workspace ─── */
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-background">
+    <div className="flex h-[100dvh] flex-col overflow-hidden bg-background">
       {/* Compact Header */}
       <header className="flex shrink-0 items-center justify-between gap-2 border-b border-border/30 px-3 py-2.5 dark:border-border/60">
         <div className="flex items-center gap-2 min-w-0 flex-1">
@@ -490,7 +490,7 @@ export default function StudyRoomWorkspace() {
       )}
 
       {/* Mobile section pills */}
-      <div className="md:hidden shrink-0 flex items-center gap-1  border-b border-border/30 px-3.5 py-2.5 dark:border-border/60">
+      <div className="md:hidden shrink-0 flex items-center gap-1.5 overflow-x-auto overscroll-x-contain border-b border-border/30 px-3.5 py-2.5 dark:border-border/60 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {sections.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
@@ -532,7 +532,7 @@ export default function StudyRoomWorkspace() {
                 key={id}
                 type="button"
                 onClick={() => handleSectionChange(id)}
-                className={`flex items-center gap-3 rounded-lg px-3.5 py-2.5.5 text-sm font-medium transition ${
+                className={`flex items-center gap-3 rounded-lg px-3.5 py-2.5 text-sm font-medium transition ${
                   activeSection === id
                     ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
@@ -676,7 +676,10 @@ export default function StudyRoomWorkspace() {
                   </div>
                 </ScrollArea>
 
-                <div className="shrink-0 border-t border-border/30 px-4 py-3 dark:border-border/60">
+                <div
+                  className="shrink-0 border-t border-border/30 px-4 py-3 dark:border-border/60"
+                  style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
+                >
                   <div className="flex items-end gap-2">
                     <div className="flex-1">
                       <Textarea
@@ -684,7 +687,7 @@ export default function StudyRoomWorkspace() {
                         onChange={(e) => setComposer(e.target.value)}
                         rows={2}
                         placeholder={composerMode === "ai" ? "Ask AI to explain something..." : "Send a message..."}
-                        className="resize-none"
+                        className="resize-none text-base sm:text-sm"
                         onKeyDown={(e) => {
                           if (e.key === "Enter" && !e.shiftKey) {
                             e.preventDefault();

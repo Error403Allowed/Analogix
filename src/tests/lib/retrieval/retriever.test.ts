@@ -2,9 +2,18 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { WorkspaceRetriever, createRetriever } from '@/lib/retrieval/retriever';
 
 const searchEntitiesMock = vi.fn();
+const generateEmbeddingMock = vi.fn();
 
 vi.mock('@/lib/rag/indexer', () => ({
   searchEntities: (...args: unknown[]) => searchEntitiesMock(...args),
+}));
+
+// The documents scope falls through to vectorSearchDocuments, which calls the
+// real ONNX embedder when this isn't mocked. That pulls in a real transformer
+// model load - slow, network/filesystem dependent, and unrelated to what this
+// suite is testing - and previously hung until the test's 5s timeout.
+vi.mock('@/lib/rag/embedder', () => ({
+  generateEmbedding: (...args: unknown[]) => generateEmbeddingMock(...args),
 }));
 
 vi.mock('@/lib/supabase/tools-client', () => ({
@@ -33,6 +42,7 @@ describe('WorkspaceRetriever semantic scopes', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     searchEntitiesMock.mockResolvedValue([]);
+    generateEmbeddingMock.mockResolvedValue([0.1, 0.2, 0.3]);
   });
 
   it('searches flashcards via vector search when a query is present', async () => {

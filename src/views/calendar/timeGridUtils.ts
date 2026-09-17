@@ -70,7 +70,11 @@ export function getEventDurationMinutes(
     );
   }
 
-  if (event.source === "import" && siblingEvents) {
+  // Any event missing an explicit end time infers its duration from the next
+  // event that starts after it, so a run of back-to-back periods tiles the grid
+  // with no phantom gaps. This used to be limited to imported events, which left
+  // manually created ones falling back to a flat 60 minutes.
+  if (siblingEvents) {
     const startMinutes = getEventStartMinutes(event);
     const nextStartMinutes = siblingEvents
       .filter((candidate) => candidate.id !== event.id)

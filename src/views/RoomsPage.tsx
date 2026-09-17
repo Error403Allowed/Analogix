@@ -50,7 +50,7 @@ export default function RoomsPage() {
   const loadRooms = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await fetch("/api/rooms", { cache: "no-store" });
+      const response = await fetch("/api/rooms", { cache: "no-store", credentials: "include" });
       if (!response.ok) throw new Error("Failed to load rooms");
       const data = (await response.json()) as RoomsListResponse;
       setRooms(data.rooms ?? []);
@@ -111,7 +111,8 @@ export default function RoomsPage() {
       const response = await fetch("/api/rooms/join", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(roomId ? { roomId } : { joinCode: code }),
+        credentials: "include",
+        body: JSON.stringify(roomId ? { roomId } : { joinCode: code?.trim().toUpperCase() }),
       });
       if (!response.ok) {
         const err = (await response.json().catch(() => null)) as { error?: string } | null;
@@ -132,7 +133,7 @@ export default function RoomsPage() {
   const handleDelete = async (room: StudyRoom) => {
     setDeleting(true);
     try {
-      const response = await fetch(`/api/rooms/${room.id}`, { method: "DELETE" });
+      const response = await fetch(`/api/rooms/${room.id}`, { method: "DELETE", credentials: "include" });
       if (!response.ok) {
         const err = (await response.json().catch(() => null)) as { error?: string } | null;
         throw new Error(err?.error ?? "Failed to delete room");
@@ -149,13 +150,13 @@ export default function RoomsPage() {
   };
 
   return (
-    <div className="mx-auto flex max-w-7xl flex-col gap-8 px-6 py-8">
+    <div className="mx-auto flex max-w-7xl flex-col gap-8 px-4 py-6 sm:px-6 sm:py-8">
       <section className="grid gap-4 lg:grid-cols-[minmax(0,1.1fr)_360px]">
         <div className="space-y-3">
           <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-muted-foreground">
             Rooms
           </p>
-          <h1 className="text-4xl font-black tracking-tight">Group tutoring, but things actually make sense. </h1>
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight">Group tutoring, but things actually make sense. </h1>
           <p className="max-w-2xl text-sm text-muted-foreground">
             Create a study room, bring the group into one shared timer and workspace, and keep AI in the same conversation as the rest of the room.
           </p>
@@ -240,6 +241,14 @@ export default function RoomsPage() {
               value={joinCode}
               onChange={(event) => setJoinCode(event.target.value.toUpperCase())}
               placeholder="ABC123"
+              autoCapitalize="characters"
+              autoCorrect="off"
+              spellCheck={false}
+              inputMode="text"
+              className="text-base sm:text-sm"
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && joinCode.trim()) void handleJoin(undefined, joinCode);
+              }}
             />
             <Button
               disabled={!joinCode.trim() || joiningRoomId === "join-code"}
@@ -375,11 +384,11 @@ function RoomCard({
       animate={{ opacity: 1, y: 0 }}
 className="rounded-lg border border-border/60 bg-card p-4 sm:p-5"
     >
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <p className="truncate text-lg font-bold">{room.title}</p>
-            <Badge variant="secondary" className="capitalize">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="min-w-0 truncate text-base sm:text-lg font-bold">{room.title}</p>
+            <Badge variant="secondary" className="capitalize shrink-0">
               {room.visibility === "private" ? <Lock className="mr-1 h-3 w-3" /> : null}
               {room.visibility}
             </Badge>
@@ -395,7 +404,7 @@ className="rounded-lg border border-border/60 bg-card p-4 sm:p-5"
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           {onDelete && (
             <Button
               size="sm"
@@ -408,7 +417,7 @@ className="rounded-lg border border-border/60 bg-card p-4 sm:p-5"
               <Trash2 className="h-4 w-4" />
             </Button>
           )}
-          <Button size="sm" onClick={onAction} disabled={loading}>
+          <Button size="sm" className="flex-1 sm:flex-none" onClick={onAction} disabled={loading}>
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : actionIcon}
             <span className="ml-2">{actionLabel}</span>
           </Button>
